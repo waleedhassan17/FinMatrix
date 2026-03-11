@@ -20,4 +20,7 @@ export const ROUTES = {
   DP_DELIVERIES: 'DPDeliveries',
   DP_INVENTORY: 'DPInventory',
   DP_PROFILE: 'DPProfile',
+  DELIVERY_PERSONNEL_LIST: 'DeliveryPersonnelList',
+  ADD_DELIVERY_PERSONNEL: 'AddDeliveryPersonnel',
+  DELIVERY_PERSONNEL_DETAIL: 'DeliveryPersonnelDetail',
 } as const;

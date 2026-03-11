@@ -3,8 +3,8 @@ import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Global slices ──
-import authReducer from './authSlice';
-import companyReducer from './companySlice';
+import authReducer from '../screens/Auth/authSlice';
+import companyReducer from '../screens/Auth/companySlice';
 
 // ── App-level slices ──
 import { appContainerSlice } from '../components/app-container/appContainerSlice';
@@ -16,6 +16,13 @@ import { forgotPasswordSlice } from '../screens/Auth/ForgotPassword/forgotPasswo
 import { emailVerificationSlice } from '../screens/Auth/EmailVerification/emailVerificationSlice';
 import { onboardingSlice } from '../screens/Onboarding/onboardingSlice';
 import { roleSelectionSlice } from '../screens/RoleSelection/roleSelectionSlice';
+import { companySetupSlice } from '../screens/Auth/CompanySetup/companySetupSlice';
+import { createCompanySlice } from '../screens/Auth/CreateCompany/createCompanySlice';
+import { joinCompanySlice } from '../screens/Auth/JoinCompany/joinCompanySlice';
+import { deliveryOnboardingSlice } from '../screens/Auth/DeliveryOnboarding/deliveryOnboardingSlice';
+import { deliveryPersonnelListSlice } from '../screens/Delivery/Admin/DeliveryPersonnelList/deliveryPersonnelListSlice';
+import { addDeliveryPersonnelSlice } from '../screens/Delivery/Admin/AddDeliveryPersonnel/addDeliveryPersonnelSlice';
+import { deliveryPersonnelDetailSlice } from '../screens/Delivery/Admin/DeliveryPersonnelDetail/deliveryPersonnelDetailSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -27,6 +34,13 @@ const rootReducer = combineReducers({
   emailVerification: emailVerificationSlice.reducer,
   onboarding: onboardingSlice.reducer,
   roleSelection: roleSelectionSlice.reducer,
+  companySetup: companySetupSlice.reducer,
+  createCompany: createCompanySlice.reducer,
+  joinCompany: joinCompanySlice.reducer,
+  deliveryOnboarding: deliveryOnboardingSlice.reducer,
+  deliveryPersonnelList: deliveryPersonnelListSlice.reducer,
+  addDeliveryPersonnel: addDeliveryPersonnelSlice.reducer,
+  deliveryPersonnelDetail: deliveryPersonnelDetailSlice.reducer,
 });
 
 const persistConfig = {

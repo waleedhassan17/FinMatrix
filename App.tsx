@@ -8,6 +8,10 @@ import { store, persistor } from './src/store/store';
 import { colors } from './src/theme';
 import AppContainer from './src/components/app-container/AppContainer';
 
+// ⚠️ DEV ONLY: Purge persisted state to re-test registration flow.
+// Remove this line once done testing.
+persistor.purge();
+
 const LoadingFallback = () => (
   <View style={styles.loading}>
     <ActivityIndicator size="large" color={colors.primary} />

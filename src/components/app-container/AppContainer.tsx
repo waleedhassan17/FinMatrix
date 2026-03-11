@@ -22,7 +22,7 @@ import {
 import {
   selectIsAuthenticated,
   selectUser,
-} from '../../store/authSlice';
+} from '../../screens/Auth/authSlice';
 import { resetSignInForm } from '../../screens/Auth/SignIn/signInSlice';
 import { resetSignUpForm } from '../../screens/Auth/SignUp/signUpSlice';
 import { resetForgotPasswordForm } from '../../screens/Auth/ForgotPassword/forgotPasswordSlice';

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppSelector } from '../hooks/useReduxHooks';
 import { colors, typography, spacing } from '../theme';
+import { selectActiveCompany } from '../screens/Auth/companySlice';
 import type { RootStackParamList } from '../types';
 
 // Screens — Real
@@ -12,6 +13,13 @@ import SignInScreen from '../screens/Auth/SignIn/SignInScreen';
 import SignUpScreen from '../screens/Auth/SignUp/SignUpScreen';
 import ForgotPasswordScreen from '../screens/Auth/ForgotPassword/ForgotPasswordScreen';
 import EmailVerificationScreen from '../screens/Auth/EmailVerification/EmailVerificationScreen';
+import CompanySetupScreen from '../screens/Auth/CompanySetup/CompanySetupScreen';
+import CreateCompanyScreen from '../screens/Auth/CreateCompany/CreateCompanyScreen';
+import JoinCompanyScreen from '../screens/Auth/JoinCompany/JoinCompanyScreen';
+import DeliveryOnboardingScreen from '../screens/Auth/DeliveryOnboarding/DeliveryOnboardingScreen';
+import DeliveryPersonnelListScreen from '../screens/Delivery/Admin/DeliveryPersonnelList/DeliveryPersonnelListScreen';
+import AddDeliveryPersonnelScreen from '../screens/Delivery/Admin/AddDeliveryPersonnel/AddDeliveryPersonnelScreen';
+import DeliveryPersonnelDetailScreen from '../screens/Delivery/Admin/DeliveryPersonnelDetail/DeliveryPersonnelDetailScreen';
 
 // Placeholder screens for flows not yet built
 const PlaceholderScreen: React.FC<{ name: string }> = ({ name }) => (
@@ -40,26 +48,23 @@ const placeholderStyles = StyleSheet.create({
 });
 
 // Placeholder wrappers (future prompts)
-const CompanySetupScreen = () => <PlaceholderScreen name="Company Setup" />;
-const CreateCompanyScreen = () => <PlaceholderScreen name="Create Company" />;
-const JoinCompanyScreen = () => <PlaceholderScreen name="Join Company" />;
-const DeliveryOnboardingScreen = () => <PlaceholderScreen name="Delivery Onboarding" />;
 const AdminTabsPlaceholder = () => <PlaceholderScreen name="Admin Dashboard" />;
 const DeliveryTabsPlaceholder = () => <PlaceholderScreen name="Delivery Dashboard" />;
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const BaseNavigator: React.FC = () => {
-  const { isAuthenticated, hasSeenOnboarding, user } = useAppSelector(
+  const { isAuthenticated, hasSeenOnboarding, hasSeenDeliveryOnboarding, user } = useAppSelector(
     state => state.auth,
   );
-  const { company } = useAppSelector(state => state.company);
+  const activeCompany = useAppSelector(selectActiveCompany);
 
   // ─── Auth Flow Logic ─────────────────────────────────
   // 1. Not seen onboarding → Onboarding
   // 2. Not authenticated → RoleSelection → Sign In/Up
-  // 3. Authenticated, no company → CompanySetup
-  // 4. Authenticated + company → AdminTabs or DeliveryTabs based on role
+  // 3. Authenticated + delivery role → DeliveryOnboarding / DeliveryTabs
+  // 4. Authenticated, no company → CompanySetup
+  // 5. Authenticated + company → AdminTabs
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -81,28 +86,44 @@ const BaseNavigator: React.FC = () => {
             component={EmailVerificationScreen}
           />
         </>
-      ) : !company ? (
-        // ── Authenticated but no company ──
-        <>
-          <Stack.Screen name="CompanySetup" component={CompanySetupScreen} />
-          <Stack.Screen name="CreateCompany" component={CreateCompanyScreen} />
-          <Stack.Screen name="JoinCompany" component={JoinCompanyScreen} />
-        </>
       ) : user?.role === 'delivery' ? (
-        // ── Delivery Personnel ──
+        // ── Delivery Personnel (skip CompanySetup) ──
         <>
-          <Stack.Screen
-            name="DeliveryOnboarding"
-            component={DeliveryOnboardingScreen}
-          />
+          {!hasSeenDeliveryOnboarding && (
+            <Stack.Screen
+              name="DeliveryOnboarding"
+              component={DeliveryOnboardingScreen}
+            />
+          )}
           <Stack.Screen
             name="DeliveryTabs"
             component={DeliveryTabsPlaceholder}
           />
         </>
+      ) : !activeCompany ? (
+        // ── Authenticated admin but no company ──
+        <>
+          <Stack.Screen name="CompanySetup" component={CompanySetupScreen} />
+          <Stack.Screen name="CreateCompany" component={CreateCompanyScreen} />
+          <Stack.Screen name="JoinCompany" component={JoinCompanyScreen} />
+        </>
       ) : (
         // ── Admin ──
-        <Stack.Screen name="AdminTabs" component={AdminTabsPlaceholder} />
+        <>
+          <Stack.Screen name="AdminTabs" component={AdminTabsPlaceholder} />
+          <Stack.Screen
+            name="DeliveryPersonnelList"
+            component={DeliveryPersonnelListScreen}
+          />
+          <Stack.Screen
+            name="AddDeliveryPersonnel"
+            component={AddDeliveryPersonnelScreen}
+          />
+          <Stack.Screen
+            name="DeliveryPersonnelDetail"
+            component={DeliveryPersonnelDetailScreen}
+          />
+        </>
       )}
     </Stack.Navigator>
   );

@@ -11,9 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { colors, typography, spacing } from '../../../theme';
+import { colors, typography, spacing, borderRadius } from '../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { setOnboardingSeen } from '../../../store/authSlice';
+import { setOnboardingSeen } from '../authSlice';
 import {
   decrementVerificationCooldown,
   resendVerificationAsync,
@@ -32,7 +32,6 @@ const EmailVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   const { email } = route.params;
   const dispatch = useAppDispatch();
 
-  // ── Slice selectors ──
   const resendCooldown = useAppSelector(selectVerificationCooldown);
   const resendStatus = useAppSelector(selectResendStatus);
   const verifyStatus = useAppSelector(selectVerifyStatus);
@@ -44,7 +43,7 @@ const EmailVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 500,
         useNativeDriver: true,
       }),
       Animated.spring(bounceAnim, {
@@ -60,7 +59,6 @@ const EmailVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
     };
   }, [fadeAnim, bounceAnim, dispatch]);
 
-  // Cooldown timer
   useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setTimeout(
@@ -97,18 +95,22 @@ const EmailVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
             { opacity: fadeAnim, transform: [{ scale: bounceAnim }] },
           ]}>
           <View style={styles.emailCircle}>
-            <Text style={styles.emailIcon}>📧</Text>
+            <View style={styles.emailInner}>
+              <Text style={styles.emailIconText}>{'@'}</Text>
+            </View>
           </View>
         </Animated.View>
 
         <Animated.View style={[styles.textContainer, { opacity: fadeAnim }]}>
-          <Text style={styles.title}>Verify Your Email</Text>
+          <Text style={styles.title}>Verify your email</Text>
           <Text style={styles.message}>
             We've sent a verification link to
           </Text>
-          <Text style={styles.emailAddress}>{email}</Text>
+          <View style={styles.emailBadge}>
+            <Text style={styles.emailAddress}>{email}</Text>
+          </View>
           <Text style={styles.subMessage}>
-            Please check your inbox and click the verification link to continue.
+            Check your inbox and click the verification link to activate your account.
           </Text>
         </Animated.View>
 
@@ -120,13 +122,12 @@ const EmailVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
             variant="secondary"
             size="lg"
             fullWidth
-            icon={<Text style={{ fontSize: 16 }}>📨</Text>}
           />
 
           <View style={styles.spacer} />
 
           <CustomButton
-            title="I've Verified"
+            title="I've Verified My Email"
             onPress={handleVerified}
             variant="primary"
             size="lg"
@@ -139,7 +140,8 @@ const EmailVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
         <TouchableOpacity
           onPress={handleResend}
           disabled={resendCooldown > 0 || resendStatus === 'loading'}
-          style={styles.resendButton}>
+          style={styles.resendButton}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text
             style={[
               styles.resendText,
@@ -149,8 +151,8 @@ const EmailVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
             {resendStatus === 'loading'
               ? 'Sending...'
               : resendCooldown > 0
-              ? `Resend Verification (${resendCooldown}s)`
-              : 'Resend Verification Email'}
+              ? `Resend in ${resendCooldown}s`
+              : "Didn't receive it? Resend"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -167,46 +169,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   iconContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.lg + 4,
   },
   emailCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: colors.secondary + '18',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.secondary + '0A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.secondary + '20',
+  },
+  emailInner: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.secondary + '15',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emailIcon: {
-    fontSize: 52,
+  emailIconText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.secondary,
+    fontFamily: typography.fontFamily,
   },
   textContainer: {
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
   title: {
-    ...typography.h2,
+    fontSize: 26,
+    fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.sm,
+    fontFamily: typography.fontFamily,
+    letterSpacing: -0.3,
   },
   message: {
-    ...typography.body,
+    fontSize: typography.body.fontSize,
     color: colors.textSecondary,
     textAlign: 'center',
+    fontFamily: typography.fontFamily,
+  },
+  emailBadge: {
+    backgroundColor: colors.primary + '0A',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: 8,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm + 4,
+    borderWidth: 1,
+    borderColor: colors.primary + '15',
   },
   emailAddress: {
-    ...typography.body,
+    fontSize: typography.body.fontSize,
     color: colors.primary,
     fontWeight: '600',
-    marginTop: spacing.xs,
-    marginBottom: spacing.sm,
+    fontFamily: typography.fontFamily,
   },
   subMessage: {
-    ...typography.small,
+    fontSize: typography.small.fontSize,
     color: colors.textLight,
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: spacing.md,
+    fontFamily: typography.fontFamily,
   },
   actionsContainer: {
     width: '100%',
@@ -219,9 +248,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   resendText: {
-    ...typography.small,
+    fontSize: typography.small.fontSize,
     color: colors.primary,
     fontWeight: '500',
+    fontFamily: typography.fontFamily,
   },
   resendDisabled: {
     color: colors.textLight,

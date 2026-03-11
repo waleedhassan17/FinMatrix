@@ -7,6 +7,11 @@ export interface SignInData {
   password: string;
 }
 
+export interface DeliverySignInData {
+  username: string;
+  password: string;
+}
+
 export interface SignUpData {
   fullName: string;
   email: string;
@@ -14,12 +19,6 @@ export interface SignUpData {
   password: string;
   confirmPassword: string;
   acceptedTerms: boolean;
-  role: 'admin' | 'delivery';
-  // Delivery-specific
-  vehicleType?: string;
-  vehicleNumber?: string;
-  zones?: string[];
-  companyCode?: string;
 }
 
 export interface ValidationErrors {
@@ -53,6 +52,23 @@ export const strengthConfig: Record<
   fair: { color: '#F39C12', label: 'Fair', width: '50%' },
   strong: { color: '#2E75B6', label: 'Strong', width: '75%' },
   excellent: { color: '#27AE60', label: 'Excellent', width: '100%' },
+};
+
+// ─── Delivery Sign In Validation ─────────────────────
+export const validateDeliverySignIn = (data: DeliverySignInData): ValidationErrors => {
+  const errors: ValidationErrors = {};
+
+  if (!data.username.trim()) {
+    errors.username = 'Username is required';
+  } else if (!/^[A-Za-z0-9]+\.[A-Za-z0-9.]+$/.test(data.username.trim())) {
+    errors.username = 'Enter your full username (e.g., FM2024.saim)';
+  }
+
+  if (!data.password) {
+    errors.password = 'Password is required';
+  }
+
+  return errors;
 };
 
 // ─── Sign In Validation ──────────────────────────────
@@ -114,21 +130,6 @@ export const validateSignUp = (data: SignUpData): ValidationErrors => {
   // Terms
   if (!data.acceptedTerms) {
     errors.acceptedTerms = 'You must accept the Terms and Conditions';
-  }
-
-  // ── Delivery-Specific ──
-  if (data.role === 'delivery') {
-    if (!data.vehicleType) {
-      errors.vehicleType = 'Vehicle type is required';
-    }
-    if (!data.vehicleNumber?.trim()) {
-      errors.vehicleNumber = 'Vehicle number is required';
-    }
-    if (!data.companyCode?.trim()) {
-      errors.companyCode = 'Company invite code is required';
-    } else if (data.companyCode.trim().length !== 6) {
-      errors.companyCode = 'Invite code must be 6 characters';
-    }
   }
 
   return errors;

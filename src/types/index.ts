@@ -44,6 +44,7 @@ export type BankTransactionType = 'deposit' | 'withdrawal' | 'transfer' | 'fee' 
 export interface User {
   uid: string;
   email: string;
+  username?: string;
   displayName: string;
   role: UserRole;
   companyId: string | null;
@@ -536,4 +537,7 @@ export type RootStackParamList = {
   DeliveryOnboarding: undefined;
   AdminTabs: undefined;
   DeliveryTabs: undefined;
+  DeliveryPersonnelList: undefined;
+  AddDeliveryPersonnel: undefined;
+  DeliveryPersonnelDetail: { userId: string };
 };

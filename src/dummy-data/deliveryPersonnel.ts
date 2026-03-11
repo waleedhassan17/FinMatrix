@@ -5,6 +5,7 @@
 export interface DummyDeliveryPerson {
   userId: string;
   displayName: string;
+  username: string;
   email: string;
   password: string;
   phone: string;
@@ -26,6 +27,7 @@ export const dummyDeliveryPersonnel: DummyDeliveryPerson[] = [
   {
     userId: 'dp_001',
     displayName: 'Saim',
+    username: 'FM2024.saim',
     email: 'saim@finmatrix.pk',
     password: 'deliver123',
     phone: '+92-301-1112233',
@@ -45,6 +47,7 @@ export const dummyDeliveryPersonnel: DummyDeliveryPerson[] = [
   {
     userId: 'dp_002',
     displayName: 'Hassan Raza',
+    username: 'FM2024.hassan',
     email: 'hassan@finmatrix.pk',
     password: 'deliver123',
     phone: '+92-302-4445566',
@@ -64,6 +67,7 @@ export const dummyDeliveryPersonnel: DummyDeliveryPerson[] = [
   {
     userId: 'dp_003',
     displayName: 'Usman Tariq',
+    username: 'FM2024.usman',
     email: 'usman@finmatrix.pk',
     password: 'deliver123',
     phone: '+92-303-7778899',
@@ -83,6 +87,7 @@ export const dummyDeliveryPersonnel: DummyDeliveryPerson[] = [
   {
     userId: 'dp_004',
     displayName: 'Ali Abbas',
+    username: 'FM2024.ali',
     email: 'ali@finmatrix.pk',
     password: 'deliver123',
     phone: '+92-304-1234567',
@@ -102,6 +107,7 @@ export const dummyDeliveryPersonnel: DummyDeliveryPerson[] = [
   {
     userId: 'dp_005',
     displayName: 'Kamran Malik',
+    username: 'FM2024.kamran',
     email: 'kamran@finmatrix.pk',
     password: 'deliver123',
     phone: '+92-305-9876543',

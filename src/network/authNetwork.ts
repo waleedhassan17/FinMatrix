@@ -8,9 +8,8 @@ import { simulateApiCall } from './apiHelpers';
 import {
   dummyAdminUser,
   dummyDeliveryPersonnel,
-  validCompanyCodes,
 } from '../dummy-data/deliveryPersonnel';
-import type { User, UserRole } from '../types';
+import type { User } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 // ─── Types ────────────────────────────────────────────
@@ -25,15 +24,15 @@ export interface RegisterPayload {
   email: string;
   phone: string;
   password: string;
-  role: UserRole;
-  vehicleType?: string;
-  vehicleNumber?: string;
-  zones?: string[];
-  companyCode?: string;
 }
 
 export interface ForgotPasswordPayload {
   email: string;
+}
+
+export interface DeliverySignInPayload {
+  username: string;
+  password: string;
 }
 
 export interface VerifyEmailPayload {
@@ -44,12 +43,34 @@ export interface ResendVerificationPayload {
   email: string;
 }
 
-// In-memory store for users created via signUp (persists during session)
+// In-memory store for users created via signUp or admin Quick-Add (persists during session)
 const registeredUsers: Array<{
   email: string;
+  username?: string;
   password: string;
   user: User;
 }> = [];
+
+/**
+ * Register a delivery person created by admin via Quick-Add so they can log in.
+ */
+export const registerAdminCreatedPersonnel = (info: {
+  email: string;
+  username: string;
+  password: string;
+  user: User;
+}) => {
+  const normalizedEmail = info.email.trim().toLowerCase();
+  const normalizedUsername = info.username.trim().toLowerCase();
+  if (!registeredUsers.some(u => u.username === normalizedUsername)) {
+    registeredUsers.push({
+      email: normalizedEmail,
+      username: normalizedUsername,
+      password: info.password,
+      user: info.user,
+    });
+  }
+};
 
 // ─── Login ────────────────────────────────────────────
 
@@ -123,6 +144,60 @@ export const authLogin = async ({
   }
 };
 
+// ─── Delivery Login (Username-based) ──────────────────
+
+export const authDeliveryLogin = async ({
+  signInInfo,
+}: {
+  signInInfo: DeliverySignInPayload;
+}) => {
+  try {
+    const normalizedUsername = signInInfo.username.trim().toLowerCase();
+
+    // Check dummy delivery personnel by username
+    const deliveryPerson = dummyDeliveryPersonnel.find(
+      dp =>
+        dp.username.toLowerCase() === normalizedUsername &&
+        dp.password === signInInfo.password,
+    );
+    if (deliveryPerson) {
+      const user: User = {
+        uid: deliveryPerson.userId,
+        email: deliveryPerson.email,
+        username: deliveryPerson.username,
+        displayName: deliveryPerson.displayName,
+        role: 'delivery',
+        companyId: deliveryPerson.companyId,
+        phoneNumber: deliveryPerson.phone,
+        photoURL: null,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const result = await simulateApiCall({ data: user }, 800);
+      return result;
+    }
+
+    // Check admin-created registered delivery users by username
+    const registered = registeredUsers.find(
+      u =>
+        u.username === normalizedUsername &&
+        u.password === signInInfo.password,
+    );
+    if (registered) {
+      const result = await simulateApiCall({ data: registered.user }, 800);
+      return result;
+    }
+
+    throw new Error('Invalid username or password');
+  } catch (e: any) {
+    const newError = new Error(
+      e.message || 'Invalid username or password. Please try again.',
+    );
+    throw newError;
+  }
+};
+
 // ─── Register ─────────────────────────────────────────
 
 export const authRegister = async ({
@@ -136,32 +211,18 @@ export const authRegister = async ({
     // Check if email already exists
     const emailExists =
       normalizedEmail === dummyAdminUser.email ||
-      dummyDeliveryPersonnel.some(dp => dp.email === normalizedEmail) ||
       registeredUsers.some(u => u.email === normalizedEmail);
 
     if (emailExists) {
       throw new Error('An account with this email already exists.');
     }
 
-    // For delivery role, validate company code
-    let companyId: string | null = null;
-    if (registerInfo.role === 'delivery') {
-      if (!registerInfo.companyCode) {
-        throw new Error('Company invite code is required.');
-      }
-      const code = registerInfo.companyCode.trim().toUpperCase();
-      companyId = validCompanyCodes[code] || null;
-      if (!companyId) {
-        throw new Error('Invalid company code. Contact your administrator.');
-      }
-    }
-
     const user: User = {
       uid: uuidv4(),
       email: normalizedEmail,
       displayName: registerInfo.fullName.trim(),
-      role: registerInfo.role,
-      companyId,
+      role: 'admin',
+      companyId: null,
       phoneNumber: registerInfo.phone || '',
       photoURL: null,
       isActive: true,

@@ -5,13 +5,14 @@
 // Per-screen state/thunks live in their own co-located slices.
 
 import type { PayloadAction } from '@reduxjs/toolkit';
-import { createAppSlice } from './createAppSlice';
-import type { User, UserRole } from '../types';
+import { createAppSlice } from '@store/createAppSlice';
+import type { User, UserRole } from '../../types';
 
 export interface AuthSliceState {
   user: User | null;
   isAuthenticated: boolean;
   hasSeenOnboarding: boolean;
+  hasSeenDeliveryOnboarding: boolean;
   selectedRole: UserRole | null;
   error: string;
   status: 'idle' | 'loading' | 'failed';
@@ -21,6 +22,7 @@ const initialState: AuthSliceState = {
   user: null,
   isAuthenticated: false,
   hasSeenOnboarding: false,
+  hasSeenDeliveryOnboarding: false,
   selectedRole: null,
   error: '',
   status: 'idle',
@@ -44,11 +46,15 @@ export const authSlice = createAppSlice({
       state.user = null;
       state.isAuthenticated = false;
       state.selectedRole = null;
+      state.hasSeenDeliveryOnboarding = false;
       state.error = '';
       state.status = 'idle';
     }),
     setOnboardingSeen: create.reducer(state => {
       state.hasSeenOnboarding = true;
+    }),
+    setDeliveryOnboardingSeen: create.reducer(state => {
+      state.hasSeenDeliveryOnboarding = true;
     }),
     setSelectedRole: create.reducer(
       (state, action: PayloadAction<UserRole>) => {
@@ -74,6 +80,7 @@ export const authSlice = createAppSlice({
     selectUser: state => state.user,
     selectIsAuthenticated: state => state.isAuthenticated,
     selectHasSeenOnboarding: state => state.hasSeenOnboarding,
+    selectHasSeenDeliveryOnboarding: state => state.hasSeenDeliveryOnboarding,
     selectSelectedRole: state => state.selectedRole,
     selectAuthStatus: state => state.status,
     selectAuthError: state => state.error,
@@ -85,6 +92,7 @@ export const {
   clearUser,
   signOut,
   setOnboardingSeen,
+  setDeliveryOnboardingSeen,
   setSelectedRole,
   setAuthLoading,
   setAuthError,
@@ -95,6 +103,7 @@ export const {
   selectUser,
   selectIsAuthenticated,
   selectHasSeenOnboarding,
+  selectHasSeenDeliveryOnboarding,
   selectSelectedRole,
   selectAuthStatus,
   selectAuthError,
