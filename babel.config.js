@@ -1,3 +1,31 @@
-module.exports = {
-  presets: ['module:@react-native/babel-preset'],
+module.exports = function (api) {
+  api.cache(true);
+  return {
+  presets: ['babel-preset-expo'],
+  plugins: [
+    [
+      'module-resolver',
+      {
+        root: ['./'],
+        alias: {
+          '@': './src',
+          '@screens': './src/screens',
+          '@components': './src/components',
+          '@custom': './src/Custom-Components',
+          '@store': './src/store',
+          '@network': './src/network',
+          '@models': './src/models',
+          '@serializers': './src/serializers',
+          '@dummy': './src/dummy-data',
+          '@hooks': './src/hooks',
+          '@theme': './src/theme',
+          '@utils': './src/utils',
+          '@navigators': './src/navigators',
+          '@assets': './assets',
+        },
+      },
+    ],
+    'react-native-reanimated/plugin', // MUST be last plugin
+  ],
+};
 };

@@ -1,44 +1,36 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import 'react-native-gesture-handler';
+import React from 'react';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { store, persistor } from './src/store/store';
+import { colors } from './src/theme';
+import AppContainer from './src/components/app-container/AppContainer';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+const LoadingFallback = () => (
+  <View style={styles.loading}>
+    <ActivityIndicator size="large" color={colors.primary} />
+  </View>
+);
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
+const App = () => (
+  <GestureHandlerRootView style={styles.root}>
+    <Provider store={store}>
+      <PersistGate loading={<LoadingFallback />} persistor={persistor}>
+        <AppContainer />
+      </PersistGate>
+    </Provider>
+  </GestureHandlerRootView>
+);
 
 const styles = StyleSheet.create({
-  container: {
+  root: { flex: 1 },
+  loading: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
   },
 });
 

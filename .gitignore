@@ -73,3 +73,34 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+
+# Android
+android/build/
+android/app/build/
+android/.gradle/
+*.apk
+*.keystore
+
+# Bundle
+*.jsbundle
+
+# Env
+.env
+.env.local
+.env.production
+
+# iOS (not used)
+ios/

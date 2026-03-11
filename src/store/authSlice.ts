@@ -1,0 +1,103 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Global Auth Slice (createAppSlice pattern)
+// ═══════════════════════════════════════════════════════
+// Holds global auth state only (user session, onboarding flag, role).
+// Per-screen state/thunks live in their own co-located slices.
+
+import type { PayloadAction } from '@reduxjs/toolkit';
+import { createAppSlice } from './createAppSlice';
+import type { User, UserRole } from '../types';
+
+export interface AuthSliceState {
+  user: User | null;
+  isAuthenticated: boolean;
+  hasSeenOnboarding: boolean;
+  selectedRole: UserRole | null;
+  error: string;
+  status: 'idle' | 'loading' | 'failed';
+}
+
+const initialState: AuthSliceState = {
+  user: null,
+  isAuthenticated: false,
+  hasSeenOnboarding: false,
+  selectedRole: null,
+  error: '',
+  status: 'idle',
+};
+
+export const authSlice = createAppSlice({
+  name: 'auth',
+  initialState,
+  reducers: create => ({
+    setUser: create.reducer((state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+      state.isAuthenticated = true;
+      state.error = '';
+    }),
+    clearUser: create.reducer(state => {
+      state.user = null;
+      state.isAuthenticated = false;
+      state.selectedRole = null;
+    }),
+    signOut: create.reducer(state => {
+      state.user = null;
+      state.isAuthenticated = false;
+      state.selectedRole = null;
+      state.error = '';
+      state.status = 'idle';
+    }),
+    setOnboardingSeen: create.reducer(state => {
+      state.hasSeenOnboarding = true;
+    }),
+    setSelectedRole: create.reducer(
+      (state, action: PayloadAction<UserRole>) => {
+        state.selectedRole = action.payload;
+      },
+    ),
+    setAuthLoading: create.reducer(
+      (state, action: PayloadAction<boolean>) => {
+        state.status = action.payload ? 'loading' : 'idle';
+      },
+    ),
+    setAuthError: create.reducer(
+      (state, action: PayloadAction<string>) => {
+        state.error = action.payload;
+      },
+    ),
+    clearAuthError: create.reducer(state => {
+      state.error = '';
+    }),
+  }),
+
+  selectors: {
+    selectUser: state => state.user,
+    selectIsAuthenticated: state => state.isAuthenticated,
+    selectHasSeenOnboarding: state => state.hasSeenOnboarding,
+    selectSelectedRole: state => state.selectedRole,
+    selectAuthStatus: state => state.status,
+    selectAuthError: state => state.error,
+  },
+});
+
+export const {
+  setUser,
+  clearUser,
+  signOut,
+  setOnboardingSeen,
+  setSelectedRole,
+  setAuthLoading,
+  setAuthError,
+  clearAuthError,
+} = authSlice.actions;
+
+export const {
+  selectUser,
+  selectIsAuthenticated,
+  selectHasSeenOnboarding,
+  selectSelectedRole,
+  selectAuthStatus,
+  selectAuthError,
+} = authSlice.selectors;
+
+export default authSlice.reducer;

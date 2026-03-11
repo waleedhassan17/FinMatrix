@@ -1,4 +1,23 @@
 {
-  "name": "FinMatrix",
-  "displayName": "FinMatrix"
+  "expo": {
+    "name": "FinMatrix",
+    "slug": "finmatrix",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "finmatrix",
+    "newArchEnabled": true,
+    "platforms": [
+      "android"
+    ],
+    "android": {
+      "package": "com.finmatrix",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "plugins": [
+      "expo-font",
+      "@react-native-community/datetimepicker"
+    ]
+  }
 }

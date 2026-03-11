@@ -1,8 +1,26 @@
 {
-  "extends": "@react-native/typescript-config",
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "types": ["jest"]
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@screens/*": ["src/screens/*"],
+      "@components/*": ["src/components/*"],
+      "@custom/*": ["src/Custom-Components/*"],
+      "@store/*": ["src/store/*"],
+      "@network/*": ["src/network/*"],
+      "@models/*": ["src/models/*"],
+      "@serializers/*": ["src/serializers/*"],
+      "@dummy/*": ["src/dummy-data/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@theme/*": ["src/theme/*"],
+      "@utils/*": ["src/utils/*"],
+      "@navigators/*": ["src/navigators/*"],
+      "@assets/*": ["assets/*"]
+    }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/node_modules", "**/Pods"]
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js", "__tests__"]
 }
