@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
 import { ROUTES } from '../../../navigations-map/Base';
@@ -36,10 +35,11 @@ import {
 import { validateSignIn, validateDeliverySignIn } from '../../../models/authModel';
 import type { RootStackParamList } from '../../../types';
 
-// ── Design Tokens ──
-const BRAND = {
+// ═══════════════════════════════════════
+// Design Tokens
+// ═══════════════════════════════════════
+const B = {
   navy: '#0F172A',
-  navyLight: '#1E293B',
   emerald: '#059669',
   emeraldLight: '#10B981',
 };
@@ -62,9 +62,9 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const accentColor = role === 'admin' ? BRAND.navy : BRAND.emerald;
-  const roleLabel = role === 'admin' ? 'Administrator' : 'Delivery Personnel';
   const isDelivery = role === 'delivery';
+  const roleLabel = isDelivery ? 'Delivery Personnel' : 'Administrator';
+  const ctaColor = isDelivery ? B.emerald : B.navy;
 
   const demoEmail = 'admin@finmatrix.pk';
   const demoUsername = 'FM2024.saim';
@@ -135,68 +135,84 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={BRAND.navy} />
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor={B.navy} />
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={s.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={s.scroll}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={false}>
-          {/* ── Brand Header ── */}
-          <View style={styles.brandHeader}>
-            {/* Decorative circles */}
-            <View style={styles.decorCircle1} />
-            <View style={styles.decorCircle2} />
 
-            <SafeAreaView edges={['top']} style={styles.brandHeaderInner}>
+          {/* ══════════════════════════════════
+              BRAND HEADER
+             ══════════════════════════════════ */}
+          <View style={s.header}>
+            <View
+              style={[
+                s.headerDecor1,
+                isDelivery && { backgroundColor: 'rgba(16,185,129,0.08)' },
+              ]}
+            />
+            <View style={s.headerDecor2} />
+
+            <SafeAreaView edges={['top']} style={s.headerInner}>
               {/* Back */}
               <TouchableOpacity
                 onPress={() => navigation.goBack()}
-                style={styles.backButton}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                <View style={styles.backIconContainer}>
-                  <Text style={styles.backArrow}>{'‹'}</Text>
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={s.backWrap}>
+                <View style={s.backBtn}>
+                  <Text style={s.backChar}>{'\u2039'}</Text>
                 </View>
               </TouchableOpacity>
 
-              {/* Brand + Role */}
-              <View style={styles.brandInfo}>
-                <View style={styles.brandLogoRow}>
-                  <View style={styles.miniLogo}>
-                    <Text style={styles.miniLogoText}>FM</Text>
-                  </View>
-                  <Text style={styles.roleLabel}>{roleLabel}</Text>
+              {/* Brand row */}
+              <View style={s.brandRow}>
+                <View
+                  style={[
+                    s.logo,
+                    isDelivery && { backgroundColor: 'rgba(16,185,129,0.2)' },
+                  ]}>
+                  <Text
+                    style={[
+                      s.logoChar,
+                      isDelivery && { color: B.emeraldLight },
+                    ]}>
+                    FM
+                  </Text>
                 </View>
-
-                <Text style={styles.brandTitle}>Welcome back</Text>
-                <Text style={styles.brandSubtitle}>
-                  {isDelivery
-                    ? 'Sign in with your company credentials'
-                    : 'Sign in to manage your business'}
-                </Text>
+                <Text style={s.roleBadge}>{roleLabel}</Text>
               </View>
+
+              <Text style={s.headerTitle}>Welcome back</Text>
+              <Text style={s.headerSub}>
+                {isDelivery
+                  ? 'Sign in with your company credentials'
+                  : 'Sign in to manage your business'}
+              </Text>
             </SafeAreaView>
           </View>
 
-          {/* ── Form Area ── */}
+          {/* ══════════════════════════════════
+              FORM
+             ══════════════════════════════════ */}
           <Animated.View
             style={[
-              styles.formArea,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateX: shakeAnim }],
-              },
+              s.form,
+              { opacity: fadeAnim, transform: [{ translateX: shakeAnim }] },
             ]}>
+
+            {/* Identity field */}
             {isDelivery ? (
               <CustomInput
                 label="Username"
                 value={username}
-                onChangeText={text => {
-                  dispatch(setUsername(text));
-                  if (errors.username) setErrors(prev => ({ ...prev, username: '' }));
+                onChangeText={t => {
+                  dispatch(setUsername(t));
+                  if (errors.username) setErrors(p => ({ ...p, username: '' }));
                 }}
                 placeholder="e.g., FM2024.saim"
                 autoCapitalize="none"
@@ -206,9 +222,9 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
               <CustomInput
                 label="Email Address"
                 value={email}
-                onChangeText={text => {
-                  dispatch(setEmail(text));
-                  if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                onChangeText={t => {
+                  dispatch(setEmail(t));
+                  if (errors.email) setErrors(p => ({ ...p, email: '' }));
                 }}
                 placeholder="name@company.com"
                 keyboardType="email-address"
@@ -220,9 +236,9 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
             <CustomInput
               label="Password"
               value={password}
-              onChangeText={text => {
-                dispatch(setPassword(text));
-                if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+              onChangeText={t => {
+                dispatch(setPassword(t));
+                if (errors.password) setErrors(p => ({ ...p, password: '' }));
               }}
               placeholder="Enter your password"
               secureTextEntry
@@ -230,110 +246,86 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
             />
 
             {/* Remember + Forgot */}
-            <View style={styles.optionsRow}>
+            <View style={s.optRow}>
               <TouchableOpacity
-                style={styles.rememberRow}
+                style={s.remRow}
                 onPress={() => dispatch(setRememberMe(!rememberMe))}
                 activeOpacity={0.7}>
                 <View
                   style={[
-                    styles.checkbox,
-                    rememberMe && {
-                      backgroundColor: BRAND.navy,
-                      borderColor: BRAND.navy,
-                    },
+                    s.chk,
+                    rememberMe && { backgroundColor: ctaColor, borderColor: ctaColor },
                   ]}>
-                  {rememberMe && (
-                    <Text style={styles.checkmark}>{'\u2713'}</Text>
-                  )}
+                  {rememberMe && <Text style={s.chkMark}>{'\u2713'}</Text>}
                 </View>
-                <Text style={styles.rememberText}>Remember me</Text>
+                <Text style={s.remLabel}>Remember me</Text>
               </TouchableOpacity>
+
               {!isDelivery && (
                 <TouchableOpacity
                   onPress={() => navigation.navigate(ROUTES.FORGOT_PASSWORD)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={styles.forgotText}>Forgot password?</Text>
+                  <Text style={s.forgotLabel}>Forgot password?</Text>
                 </TouchableOpacity>
               )}
             </View>
 
             {/* Error */}
             {signInError ? (
-              <View style={styles.errorBox}>
-                <View style={styles.errorDot} />
-                <Text style={styles.errorBoxText}>{signInError}</Text>
+              <View style={s.errBox}>
+                <View style={s.errDot} />
+                <Text style={s.errText}>{signInError}</Text>
               </View>
             ) : null}
 
-            {/* Sign In Button */}
+            {/* ── CTA ── */}
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={[s.cta, { backgroundColor: ctaColor }]}
               onPress={handleSignIn}
               activeOpacity={0.85}
               disabled={status === 'loading'}>
-              {status === 'loading' ? (
-                <Text style={styles.primaryButtonText}>Signing in...</Text>
-              ) : (
-                <Text style={styles.primaryButtonText}>Sign In</Text>
-              )}
+              <Text style={s.ctaLabel}>
+                {status === 'loading' ? 'Signing in\u2026' : 'Sign In'}
+              </Text>
             </TouchableOpacity>
 
-            {/* Demo Credentials */}
+            {/* Dev demo fill */}
             {__DEV__ && (
               <TouchableOpacity
-                style={styles.demoBox}
+                style={s.demoBox}
                 onPress={handleDemoFill}
                 activeOpacity={0.7}>
-                <View style={styles.demoRow}>
-                  <View style={styles.devBadge}>
-                    <Text style={styles.devBadgeText}>DEV</Text>
+                <View style={s.demoInner}>
+                  <View style={s.devPill}>
+                    <Text style={s.devPillText}>DEV</Text>
                   </View>
-                  <Text style={styles.demoText}>Tap to auto-fill demo credentials</Text>
+                  <Text style={s.demoLabel}>Tap to auto-fill demo credentials</Text>
                 </View>
               </TouchableOpacity>
             )}
 
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Social Login */}
-            <View style={styles.socialRow}>
-              {['Google', 'Apple'].map(provider => (
-                <TouchableOpacity
-                  key={provider}
-                  style={styles.socialButton}
-                  disabled
-                  activeOpacity={0.7}>
-                  <Text style={styles.socialButtonLabel}>{provider}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.comingSoonText}>Coming soon</Text>
-
-            {/* Bottom link — admin only */}
-            {!isDelivery && (
-              <View style={styles.bottomRow}>
-                <Text style={styles.bottomText}>Don't have an account? </Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate(ROUTES.SIGN_UP, { role })}
-                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
-                  <Text style={styles.bottomLink}>Create account</Text>
-                </TouchableOpacity>
+            {/* ══════════════════════════════════
+                DELIVERY — Credential Guidance
+               ══════════════════════════════════ */}
+            {isDelivery && (
+              <View style={s.deliveryCard}>
+                <Text style={s.deliveryCardTitle}>Need your credentials?</Text>
+                <Text style={s.deliveryCardBody}>
+                  Your company administrator creates your login. Contact them if
+                  you don't have your username and password.
+                </Text>
               </View>
             )}
 
-            {/* Delivery hint */}
-            {isDelivery && (
-              <View style={styles.deliveryHintBox}>
-                <Text style={styles.deliveryHintText}>
-                  Your company administrator creates your login credentials.
-                  Contact them if you don't have your username.
-                </Text>
+            {/* ── Bottom Link (admin only) ── */}
+            {!isDelivery && (
+              <View style={s.bottomRow}>
+                <Text style={s.bottomText}>Don't have an account? </Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate(ROUTES.SIGN_UP, { role })}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                  <Text style={s.bottomLink}>Create account</Text>
+                </TouchableOpacity>
               </View>
             )}
           </Animated.View>
@@ -343,312 +335,170 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
+// ═══════════════════════════════════════
+// Styles
+// ═══════════════════════════════════════
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   flex: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-  },
+  scroll: { flexGrow: 1 },
 
-  // ── Brand Header ──
-  brandHeader: {
-    backgroundColor: BRAND.navy,
+  // ── Header ──
+  header: {
+    backgroundColor: B.navy,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     overflow: 'hidden',
     position: 'relative',
   },
-  decorCircle1: {
-    position: 'absolute',
-    top: -30,
-    right: -30,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  headerDecor1: {
+    position: 'absolute', top: -30, right: -30,
+    width: 120, height: 120, borderRadius: 60,
     backgroundColor: 'rgba(5,150,105,0.07)',
   },
-  decorCircle2: {
-    position: 'absolute',
-    bottom: -20,
-    left: -20,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  headerDecor2: {
+    position: 'absolute', bottom: -20, left: -20,
+    width: 80, height: 80, borderRadius: 40,
     backgroundColor: 'rgba(255,255,255,0.02)',
   },
-  brandHeaderInner: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    paddingTop: 12,
+  headerInner: {
+    paddingHorizontal: 24, paddingBottom: 32, paddingTop: 12,
   },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: 24,
-  },
-  backIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  backWrap: { alignSelf: 'flex-start', marginBottom: 24 },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center', alignItems: 'center',
   },
-  backArrow: {
-    fontSize: 22,
-    color: '#FFFFFF',
-    fontWeight: '300',
-    marginTop: -1,
+  backChar: { fontSize: 22, color: '#FFFFFF', fontWeight: '300', marginTop: -1 },
+  brandRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12,
   },
-  brandInfo: {},
-  brandLogoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  miniLogo: {
-    width: 32,
-    height: 32,
-    borderRadius: 9,
+  logo: {
+    width: 32, height: 32, borderRadius: 9,
     backgroundColor: 'rgba(255,255,255,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
-  miniLogoText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 1,
+  logoChar: {
+    fontSize: 11, fontWeight: '800', color: '#FFFFFF',
+    letterSpacing: 1, fontFamily: typography.fontFamily,
+  },
+  roleBadge: {
+    fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.45)',
+    textTransform: 'uppercase', letterSpacing: 1.2,
     fontFamily: typography.fontFamily,
   },
-  roleLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.45)',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    fontFamily: typography.fontFamily,
+  headerTitle: {
+    fontSize: 28, fontWeight: '700', color: '#FFFFFF',
+    marginBottom: 4, fontFamily: typography.fontFamily, letterSpacing: -0.5,
   },
-  brandTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-    fontFamily: typography.fontFamily,
-    letterSpacing: -0.5,
-  },
-  brandSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
+  headerSub: {
+    fontSize: 14, color: 'rgba(255,255,255,0.5)',
     fontFamily: typography.fontFamily,
   },
 
-  // ── Form Area ──
-  formArea: {
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 24,
+  // ── Form ──
+  form: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 32 },
+
+  // ── Options ──
+  optRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 28, marginTop: -4,
   },
-  optionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-    marginTop: -4,
+  remRow: { flexDirection: 'row', alignItems: 'center' },
+  chk: {
+    width: 18, height: 18, borderRadius: 5, borderWidth: 1.5,
+    borderColor: '#E2E8F0', justifyContent: 'center',
+    alignItems: 'center', marginRight: 8, backgroundColor: '#FFFFFF',
   },
-  rememberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  checkmark: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  rememberText: {
-    fontSize: 13,
-    color: '#64748B',
-    fontFamily: typography.fontFamily,
-  },
-  forgotText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: BRAND.navy,
+  chkMark: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  remLabel: { fontSize: 13, color: '#64748B', fontFamily: typography.fontFamily },
+  forgotLabel: {
+    fontSize: 13, fontWeight: '600', color: B.navy,
     fontFamily: typography.fontFamily,
   },
 
-  // Error
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    gap: 10,
+  // ── Error ──
+  errBox: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2',
+    borderRadius: 12, padding: 14, marginBottom: 20,
+    borderWidth: 1, borderColor: '#FECACA', gap: 10,
   },
-  errorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#DC2626',
-  },
-  errorBoxText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#991B1B',
-    fontFamily: typography.fontFamily,
-    lineHeight: 18,
+  errDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
+  errText: {
+    flex: 1, fontSize: 13, color: '#991B1B',
+    fontFamily: typography.fontFamily, lineHeight: 18,
   },
 
-  // Primary Button
-  primaryButton: {
-    height: 54,
-    borderRadius: 14,
-    backgroundColor: BRAND.navy,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
+  // ── CTA ──
+  cta: {
+    height: 54, borderRadius: 14,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 20,
   },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    fontFamily: typography.fontFamily,
-    letterSpacing: 0.2,
+  ctaLabel: {
+    fontSize: 16, fontWeight: '600', color: '#FFFFFF',
+    fontFamily: typography.fontFamily, letterSpacing: 0.2,
   },
 
-  // Demo
+  // ── Demo ──
   demoBox: {
-    backgroundColor: '#FFFBEB',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB', borderRadius: 10, padding: 12,
+    marginBottom: 20, borderWidth: 1, borderColor: '#FDE68A',
   },
-  demoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  demoInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  devPill: {
+    backgroundColor: '#F59E0B', paddingHorizontal: 8,
+    paddingVertical: 3, borderRadius: 5,
   },
-  devBadge: {
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
+  devPillText: {
+    color: '#FFFFFF', fontSize: 10, fontWeight: '700',
+    letterSpacing: 0.5, fontFamily: typography.fontFamily,
   },
-  devBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    fontFamily: typography.fontFamily,
+  demoLabel: { fontSize: 13, color: '#92400E', fontFamily: typography.fontFamily },
+
+  // ── Delivery Info Card ──
+  deliveryCard: {
+    backgroundColor: '#F0FDFA', borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: '#99F6E4', marginBottom: 16,
   },
-  demoText: {
-    fontSize: 13,
-    color: '#92400E',
-    fontFamily: typography.fontFamily,
+  deliveryCardTitle: {
+    fontSize: 13, fontWeight: '600', color: '#0F766E',
+    marginBottom: 6, fontFamily: typography.fontFamily,
+  },
+  deliveryCardBody: {
+    fontSize: 12, color: '#0F766E', lineHeight: 20,
+    fontFamily: typography.fontFamily, opacity: 0.85,
   },
 
-  // Divider
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 16,
+  // ── Security Badge ──
+  secBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#F8FAFC', padding: 14, borderRadius: 12,
+    borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 24,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E2E8F0',
+  secIcon: {
+    width: 34, height: 34, borderRadius: 9, backgroundColor: '#ECFDF5',
+    justifyContent: 'center', alignItems: 'center',
   },
-  dividerText: {
-    fontSize: 12,
-    color: '#94A3B8',
+  secDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#059669' },
+  secTextWrap: { flex: 1 },
+  secTitle: {
+    fontSize: 12, fontWeight: '600', color: '#0F172A',
     fontFamily: typography.fontFamily,
+  },
+  secSub: {
+    fontSize: 11, color: '#94A3B8', fontFamily: typography.fontFamily,
+    marginTop: 1,
   },
 
-  // Social
-  socialRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 8,
-  },
-  socialButton: {
-    flex: 1,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    opacity: 0.5,
-  },
-  socialButtonLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748B',
-    fontFamily: typography.fontFamily,
-  },
-  comingSoonText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginBottom: 24,
-    fontFamily: typography.fontFamily,
-  },
-
-  // Bottom
+  // ── Bottom ──
   bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingVertical: 8,
+    flexDirection: 'row', justifyContent: 'center', paddingVertical: 4,
   },
-  bottomText: {
-    fontSize: 14,
-    color: '#64748B',
-    fontFamily: typography.fontFamily,
-  },
+  bottomText: { fontSize: 14, color: '#64748B', fontFamily: typography.fontFamily },
   bottomLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: BRAND.navy,
-    fontFamily: typography.fontFamily,
-  },
-
-  // Delivery hint
-  deliveryHintBox: {
-    backgroundColor: '#F0FDFA',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#99F6E4',
-  },
-  deliveryHintText: {
-    fontSize: 13,
-    color: '#0F766E',
-    lineHeight: 20,
-    textAlign: 'center',
+    fontSize: 14, fontWeight: '600', color: B.navy,
     fontFamily: typography.fontFamily,
   },
 });
