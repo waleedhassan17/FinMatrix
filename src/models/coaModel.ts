@@ -1,0 +1,114 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — COA Validation Model
+// ═══════════════════════════════════════════════════════
+
+import type { AccountType } from '../types';
+
+export interface ValidationErrors {
+  [key: string]: string;
+}
+
+// ── SubType options per AccountType ───────────────────
+export const SUB_TYPE_OPTIONS: Record<AccountType, { label: string; value: string }[]> = {
+  asset: [
+    { label: 'Cash', value: 'current_asset' },
+    { label: 'Bank', value: 'current_asset' },
+    { label: 'Accounts Receivable', value: 'current_asset' },
+    { label: 'Inventory', value: 'current_asset' },
+    { label: 'Prepaid', value: 'current_asset' },
+    { label: 'Fixed Asset', value: 'fixed_asset' },
+    { label: 'Other Asset', value: 'current_asset' },
+  ],
+  liability: [
+    { label: 'Accounts Payable', value: 'current_liability' },
+    { label: 'Credit Card', value: 'current_liability' },
+    { label: 'Payroll Liability', value: 'current_liability' },
+    { label: 'Tax Payable', value: 'current_liability' },
+    { label: 'Notes Payable', value: 'long_term_liability' },
+    { label: 'Other Liability', value: 'current_liability' },
+  ],
+  equity: [
+    { label: 'Owner Equity', value: 'owner_equity' },
+    { label: 'Retained Earnings', value: 'retained_earnings' },
+    { label: 'Owner Draws', value: 'owner_equity' },
+    { label: 'Other Equity', value: 'owner_equity' },
+  ],
+  revenue: [
+    { label: 'Sales', value: 'operating_revenue' },
+    { label: 'Service', value: 'operating_revenue' },
+    { label: 'Interest', value: 'other_revenue' },
+    { label: 'Other Revenue', value: 'other_revenue' },
+  ],
+  expense: [
+    { label: 'Cost of Goods', value: 'cost_of_goods' },
+    { label: 'Operating', value: 'operating_expense' },
+    { label: 'Payroll', value: 'operating_expense' },
+    { label: 'Tax', value: 'operating_expense' },
+    { label: 'Depreciation', value: 'operating_expense' },
+    { label: 'Other Expense', value: 'operating_expense' },
+  ],
+};
+
+export const ACCOUNT_TYPE_OPTIONS: { label: string; value: AccountType }[] = [
+  { label: 'Asset', value: 'asset' },
+  { label: 'Liability', value: 'liability' },
+  { label: 'Equity', value: 'equity' },
+  { label: 'Revenue', value: 'revenue' },
+  { label: 'Expense', value: 'expense' },
+];
+
+export interface COAFormData {
+  code: string;
+  name: string;
+  type: string;
+  subTypeLabel: string;
+  parentId: string;
+  description: string;
+  openingBalance: string;
+  isActive: boolean;
+}
+
+export const validateAccount = (
+  data: COAFormData,
+  existingCodes: string[],
+  editingId?: string,
+): ValidationErrors => {
+  const errors: ValidationErrors = {};
+
+  // Account Number
+  if (!data.code.trim()) {
+    errors.code = 'Account number is required';
+  } else if (
+    existingCodes.includes(data.code.trim()) &&
+    !editingId
+  ) {
+    errors.code = 'Account number already exists';
+  }
+
+  // Name
+  if (!data.name.trim()) {
+    errors.name = 'Account name is required';
+  } else if (data.name.trim().length < 2) {
+    errors.name = 'Name must be at least 2 characters';
+  }
+
+  // Type
+  if (!data.type) {
+    errors.type = 'Account type is required';
+  }
+
+  // SubType
+  if (!data.subTypeLabel) {
+    errors.subTypeLabel = 'Sub type is required';
+  }
+
+  // Opening balance (if provided must be numeric)
+  if (data.openingBalance.trim()) {
+    const cleaned = data.openingBalance.replace(/[$,\s]/g, '');
+    if (isNaN(Number(cleaned))) {
+      errors.openingBalance = 'Enter a valid number';
+    }
+  }
+
+  return errors;
+};

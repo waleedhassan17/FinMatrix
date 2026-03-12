@@ -1,12 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppSelector } from '../hooks/useReduxHooks';
-import { colors, typography, spacing } from '../theme';
 import { selectActiveCompany } from '../screens/Auth/companySlice';
 import type { RootStackParamList } from '../types';
 
-// Screens — Real
+// Screens — Auth
 import OnboardingScreen from '../screens/Onboarding/OnboardingScreen';
 import RoleSelectionScreen from '../screens/RoleSelection/RoleSelectionScreen';
 import SignInScreen from '../screens/Auth/SignIn/SignInScreen';
@@ -17,39 +15,10 @@ import CompanySetupScreen from '../screens/Auth/CompanySetup/CompanySetupScreen'
 import CreateCompanyScreen from '../screens/Auth/CreateCompany/CreateCompanyScreen';
 import JoinCompanyScreen from '../screens/Auth/JoinCompany/JoinCompanyScreen';
 import DeliveryOnboardingScreen from '../screens/Auth/DeliveryOnboarding/DeliveryOnboardingScreen';
-import DeliveryPersonnelListScreen from '../screens/Delivery/Admin/DeliveryPersonnelList/DeliveryPersonnelListScreen';
-import AddDeliveryPersonnelScreen from '../screens/Delivery/Admin/AddDeliveryPersonnel/AddDeliveryPersonnelScreen';
-import DeliveryPersonnelDetailScreen from '../screens/Delivery/Admin/DeliveryPersonnelDetail/DeliveryPersonnelDetailScreen';
 
-// Placeholder screens for flows not yet built
-const PlaceholderScreen: React.FC<{ name: string }> = ({ name }) => (
-  <View style={placeholderStyles.container}>
-    <Text style={placeholderStyles.title}>{name}</Text>
-    <Text style={placeholderStyles.subtitle}>Coming in next prompt</Text>
-  </View>
-);
-
-const placeholderStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  title: {
-    ...typography.h3,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    ...typography.small,
-    color: colors.textSecondary,
-  },
-});
-
-// Placeholder wrappers (future prompts)
-const AdminTabsPlaceholder = () => <PlaceholderScreen name="Admin Dashboard" />;
-const DeliveryTabsPlaceholder = () => <PlaceholderScreen name="Delivery Dashboard" />;
+// Tab Navigators
+import AdminTabNavigator from './AdminTabNavigator';
+import DeliveryTabNavigator from './DeliveryTabNavigator';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -97,7 +66,7 @@ const BaseNavigator: React.FC = () => {
           )}
           <Stack.Screen
             name="DeliveryTabs"
-            component={DeliveryTabsPlaceholder}
+            component={DeliveryTabNavigator}
           />
         </>
       ) : !activeCompany ? (
@@ -110,19 +79,7 @@ const BaseNavigator: React.FC = () => {
       ) : (
         // ── Admin ──
         <>
-          <Stack.Screen name="AdminTabs" component={AdminTabsPlaceholder} />
-          <Stack.Screen
-            name="DeliveryPersonnelList"
-            component={DeliveryPersonnelListScreen}
-          />
-          <Stack.Screen
-            name="AddDeliveryPersonnel"
-            component={AddDeliveryPersonnelScreen}
-          />
-          <Stack.Screen
-            name="DeliveryPersonnelDetail"
-            component={DeliveryPersonnelDetailScreen}
-          />
+          <Stack.Screen name="AdminTabs" component={AdminTabNavigator} />
         </>
       )}
     </Stack.Navigator>

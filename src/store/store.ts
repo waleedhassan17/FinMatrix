@@ -23,6 +23,10 @@ import { deliveryOnboardingSlice } from '../screens/Auth/DeliveryOnboarding/deli
 import { deliveryPersonnelListSlice } from '../screens/Delivery/Admin/DeliveryPersonnelList/deliveryPersonnelListSlice';
 import { addDeliveryPersonnelSlice } from '../screens/Delivery/Admin/AddDeliveryPersonnel/addDeliveryPersonnelSlice';
 import { deliveryPersonnelDetailSlice } from '../screens/Delivery/Admin/DeliveryPersonnelDetail/deliveryPersonnelDetailSlice';
+import { adminDashboardSlice } from '../screens/HomeScreen/adminDashboardSlice';
+import { coaListSlice } from '../screens/ChartOfAccounts/COAList/coaListSlice';
+import { coaFormSlice } from '../screens/ChartOfAccounts/COAForm/coaFormSlice';
+import { coaDetailSlice } from '../screens/ChartOfAccounts/COADetail/coaDetailSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -41,6 +45,10 @@ const rootReducer = combineReducers({
   deliveryPersonnelList: deliveryPersonnelListSlice.reducer,
   addDeliveryPersonnel: addDeliveryPersonnelSlice.reducer,
   deliveryPersonnelDetail: deliveryPersonnelDetailSlice.reducer,
+  adminDashboard: adminDashboardSlice.reducer,
+  coaList: coaListSlice.reducer,
+  coaForm: coaFormSlice.reducer,
+  coaDetail: coaDetailSlice.reducer,
 });
 
 const persistConfig = {

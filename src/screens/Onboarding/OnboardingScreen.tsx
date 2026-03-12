@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,6 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
-import CustomButton from '../../Custom-Components/CustomButton';
-import AppLogo from '../../Custom-Components/AppLogo';
 import { colors, typography, spacing } from '../../theme';
 import { ROUTES } from '../../navigations-map/Base';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
@@ -21,74 +19,185 @@ import { setOnboardingSeen } from '../Auth/authSlice';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-// ── Design Tokens ──
+// ═══════════════════════════════════════
+// Design Tokens — Consistent Dark Theme
+// ═══════════════════════════════════════
 const BRAND = {
+  // Base
   navy: '#0F172A',
-  navyLight: '#1E293B',
-  navyMuted: '#334155',
-  emerald: '#059669',
-  emeraldLight: '#10B981',
-  emeraldBg: '#ECFDF5',
-  emeraldBorder: '#A7F3D0',
-  teal: '#0D9488',
-  tealBg: '#F0FDFA',
+  navySurface: '#162032',
+  // Text on dark
+  whiteHigh: 'rgba(255,255,255,0.92)',
+  whiteMed: 'rgba(255,255,255,0.55)',
+  whiteLow: 'rgba(255,255,255,0.25)',
+  whiteGhost: 'rgba(255,255,255,0.08)',
+  whiteBorder: 'rgba(255,255,255,0.06)',
+  // Accent per-feature
+  emerald: '#10B981',
+  emeraldGlow: 'rgba(16,185,129,0.12)',
+  teal: '#14B8A6',
+  tealGlow: 'rgba(20,184,166,0.12)',
+  sky: '#38BDF8',
+  skyGlow: 'rgba(56,189,248,0.12)',
   amber: '#F59E0B',
+  amberGlow: 'rgba(245,158,11,0.12)',
 };
 
-interface Slide {
+// ═══════════════════════════════════════
+// Slide Data — Consistent Structure
+// ═══════════════════════════════════════
+// Every slide follows the SAME pattern:
+// Illustration → Tag pill → Title + AccentLine → Subtitle
+// Only accent color and content changes.
+
+interface SlideData {
   id: string;
+  tag: string;
   title: string;
-  titleAccent?: string;
+  titleAccent: string;
   subtitle: string;
-  tag?: string;
-  variant: 'dark' | 'light';
-  accentColor: string;
-  chartHeights?: number[];
+  accent: string;
+  glow: string;
+  illustrationType: 'logo' | 'grid' | 'route' | 'chart';
 }
 
-const slides: Slide[] = [
+const slides: SlideData[] = [
   {
     id: '1',
+    tag: 'Welcome',
     title: 'Financial clarity,',
     titleAccent: 'delivered.',
     subtitle:
       'Enterprise accounting meets modern delivery management — all in one platform.',
-    variant: 'dark',
-    accentColor: BRAND.emeraldLight,
+    accent: BRAND.emerald,
+    glow: BRAND.emeraldGlow,
+    illustrationType: 'logo',
   },
   {
     id: '2',
-    title: 'Inventory synced\nacross your team',
+    tag: 'Real-Time Sync',
+    title: 'Inventory tracked',
+    titleAccent: 'in real-time.',
     subtitle:
-      'Track stock levels, movements, and valuations in real-time across all users.',
-    tag: 'Real-Time Data',
-    variant: 'light',
-    accentColor: BRAND.emerald,
-    chartHeights: [28, 44, 36, 52, 40],
+      'Cloud-synced stock across your team. Track levels, movements, and valuations instantly.',
+    accent: BRAND.teal,
+    glow: BRAND.tealGlow,
+    illustrationType: 'grid',
   },
   {
     id: '3',
-    title: 'Delivery tracking,\nfully automated',
-    subtitle:
-      'Assign routes, capture digital signatures, and verify deliveries — all streamlined.',
     tag: 'Smart Logistics',
-    variant: 'light',
-    accentColor: BRAND.teal,
-    chartHeights: [20, 32, 48, 38, 44],
+    title: 'Deliveries managed,',
+    titleAccent: 'start to finish.',
+    subtitle:
+      'Assign routes, capture signatures, and verify deliveries — all automated.',
+    accent: BRAND.sky,
+    glow: BRAND.skyGlow,
+    illustrationType: 'route',
   },
   {
     id: '4',
-    title: 'Reports that drive\nbetter decisions',
-    subtitle:
-      'Financial statements, profit & loss, balance sheets, and custom analytics at your fingertips.',
     tag: 'Powerful Insights',
-    variant: 'light',
-    accentColor: BRAND.amber,
-    chartHeights: [36, 28, 44, 40, 52],
+    title: 'Reports that drive',
+    titleAccent: 'better decisions.',
+    subtitle:
+      'Financial statements, P&L, balance sheets, and analytics at your fingertips.',
+    accent: BRAND.amber,
+    glow: BRAND.amberGlow,
+    illustrationType: 'chart',
   },
 ];
+
+// ═══════════════════════════════════════
+// Illustration Components
+// ═══════════════════════════════════════
+// Each illustration is wrapped in the SAME
+// circular ring for visual consistency.
+
+interface IllustrationProps {
+  accent: string;
+}
+
+const LogoIllustration: React.FC<IllustrationProps> = ({ accent }) => (
+  <View style={[s.illustInner, { backgroundColor: accent + '15', borderColor: accent + '25' }]}>
+    <Text style={[s.logoText, { color: accent }]}>FM</Text>
+  </View>
+);
+
+const GridIllustration: React.FC<IllustrationProps> = ({ accent }) => {
+  const opacities = [0.35, 0.18, 0.28, 0.15, 1, 0.22, 0.30, 0.12, 0.20];
+  return (
+    <View style={s.gridContainer}>
+      {opacities.map((opacity, i) => (
+        <View
+          key={i}
+          style={[
+            s.gridCell,
+            {
+              backgroundColor: i === 4 ? accent : accent + Math.round(opacity * 255).toString(16).padStart(2, '0'),
+              borderColor: i === 4 ? 'transparent' : accent + '12',
+              borderWidth: i === 4 ? 0 : 1,
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
+
+const RouteIllustration: React.FC<IllustrationProps> = ({ accent }) => (
+  <View style={s.routeContainer}>
+    {/* Dashed path */}
+    <View style={[s.routePathV, { borderColor: accent + '30' }]} />
+    <View style={[s.routePathH, { borderColor: accent + '30' }]} />
+    <View style={[s.routePathV2, { borderColor: accent + '30' }]} />
+    {/* Start node */}
+    <View style={[s.routeNode, s.routeNodeStart, { borderColor: accent + '40' }]}>
+      <View style={[s.routeNodeDot, { backgroundColor: accent }]} />
+    </View>
+    {/* Mid node */}
+    <View style={[s.routeNode, s.routeNodeMid, { borderColor: accent + '30' }]}>
+      <View style={[s.routeNodeDotSmall, { backgroundColor: accent + '60' }]} />
+    </View>
+    {/* End node */}
+    <View style={[s.routeNode, s.routeNodeEnd, { borderColor: accent + '40' }]}>
+      <Text style={[s.routeCheck, { color: accent }]}>{'\u2713'}</Text>
+    </View>
+  </View>
+);
+
+const ChartIllustration: React.FC<IllustrationProps> = ({ accent }) => {
+  const bars = [24, 40, 32, 52, 44, 36];
+  return (
+    <View style={s.chartContainer}>
+      {bars.map((h, i) => (
+        <View
+          key={i}
+          style={[
+            s.chartBar,
+            {
+              height: h,
+              backgroundColor: i === 3 ? accent : accent + (i % 2 === 0 ? '35' : '1A'),
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
+
+const ILLUSTRATION_MAP: Record<string, React.FC<IllustrationProps>> = {
+  logo: LogoIllustration,
+  grid: GridIllustration,
+  route: RouteIllustration,
+  chart: ChartIllustration,
+};
+
+// ═══════════════════════════════════════
+// Main Component
+// ═══════════════════════════════════════
 
 type OnboardingNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -106,13 +215,16 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const scrollX = useRef(new Animated.Value(0)).current;
 
   const isLastSlide = activeIndex === slides.length - 1;
+  const currentSlide = slides[activeIndex] ?? slides[0];
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const index = Math.round(e.nativeEvent.contentOffset.x / width);
-      dispatch(setCurrentPage(index));
+      if (index !== activeIndex) {
+        dispatch(setCurrentPage(index));
+      }
     },
-    [dispatch],
+    [dispatch, activeIndex],
   );
 
   const handleSkip = () => {
@@ -134,118 +246,66 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // ── Dark Slide (first) ──
-  const renderDarkSlide = (item: Slide) => (
-    <View style={[styles.slide, { backgroundColor: BRAND.navy }]}>
-      {/* Decorative circles */}
-      <View style={styles.decorCircle1} />
-      <View style={styles.decorCircle2} />
-      <View style={styles.decorSquare} />
+  // ── Render Slide ──
+  // EVERY slide uses the EXACT same layout:
+  // decorative shapes → illustration ring → tag → title → subtitle
+  const renderSlide = ({ item }: { item: SlideData }) => {
+    const IllustComponent = ILLUSTRATION_MAP[item.illustrationType];
 
-      <View style={styles.darkContent}>
-        {/* Logo badge */}
-        <View style={styles.logoBadge}>
-          <Text style={styles.logoBadgeText}>FM</Text>
-        </View>
+    return (
+      <View style={s.slide}>
+        {/* ── Decorative shapes (same on every slide) ── */}
+        <View style={[s.decorRect, { borderColor: BRAND.whiteBorder }]} />
+        <View style={[s.decorCircle, { borderColor: BRAND.whiteBorder }]} />
 
-        <Text style={styles.darkTitle}>
-          {item.title}
-          {item.titleAccent ? '\n' : ''}
-          {item.titleAccent && (
-            <Text style={{ color: item.accentColor }}>{item.titleAccent}</Text>
-          )}
-        </Text>
-        <Text style={styles.darkSubtitle}>{item.subtitle}</Text>
-      </View>
-    </View>
-  );
-
-  // ── Light Slide (2-4) ──
-  const renderLightSlide = (item: Slide) => (
-    <View style={[styles.slide, { backgroundColor: colors.background }]}>
-      {/* Top accent line */}
-      <View style={[styles.accentLine, { backgroundColor: item.accentColor }]} />
-
-      <View style={styles.lightContent}>
-        {/* Abstract chart visual */}
-        <View
-          style={[
-            styles.chartCircle,
-            { borderColor: item.accentColor + '30' },
-          ]}>
-          <View style={styles.chartBarsContainer}>
-            {(item.chartHeights ?? []).map((h, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.chartBar,
-                  {
-                    height: h,
-                    backgroundColor:
-                      i === 3
-                        ? item.accentColor
-                        : item.accentColor + (i % 2 === 0 ? '40' : '25'),
-                  },
-                ]}
-              />
-            ))}
+        <View style={s.slideContent}>
+          {/* ── Illustration Ring (consistent container) ── */}
+          <View style={s.illustrationWrapper}>
+            {/* Ambient glow */}
+            <View style={[s.illustGlow, { backgroundColor: item.glow }]} />
+            {/* Ring */}
+            <View style={[s.illustRing, { borderColor: item.accent + '20' }]}>
+              <IllustComponent accent={item.accent} />
+            </View>
           </View>
-        </View>
 
-        {/* Tag */}
-        {item.tag && (
-          <View
-            style={[
-              styles.tagContainer,
-              { backgroundColor: item.accentColor + '12' },
-            ]}>
-            <View
-              style={[styles.tagDot, { backgroundColor: item.accentColor }]}
-            />
-            <Text style={[styles.tagText, { color: item.accentColor }]}>
+          {/* ── Tag Pill (same structure, different color) ── */}
+          <View style={[s.tagPill, { backgroundColor: item.glow, borderColor: item.accent + '12' }]}>
+            <View style={[s.tagDot, { backgroundColor: item.accent }]} />
+            <Text style={[s.tagLabel, { color: item.accent }]}>
               {item.tag}
             </Text>
           </View>
-        )}
 
-        <Text style={styles.lightTitle}>{item.title}</Text>
-        <Text style={styles.lightSubtitle}>{item.subtitle}</Text>
+          {/* ── Title (same pattern: line + accent line) ── */}
+          <Text style={s.slideTitle}>
+            {item.title}
+            {'\n'}
+            <Text style={{ color: item.accent }}>{item.titleAccent}</Text>
+          </Text>
+
+          {/* ── Subtitle ── */}
+          <Text style={s.slideSubtitle}>{item.subtitle}</Text>
+        </View>
       </View>
-    </View>
-  );
-
-  const renderSlide = ({ item }: { item: Slide }) => {
-    if (item.variant === 'dark') return renderDarkSlide(item);
-    return renderLightSlide(item);
+    );
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar
-        barStyle={activeIndex === 0 ? 'light-content' : 'dark-content'}
-        backgroundColor={activeIndex === 0 ? BRAND.navy : colors.background}
-      />
+    <View style={s.container}>
+      <StatusBar barStyle="light-content" backgroundColor={BRAND.navy} />
 
-      {/* Skip */}
+      {/* ── Skip Button (consistent across all slides) ── */}
       {!isLastSlide && (
         <TouchableOpacity
-          style={[
-            styles.skipButton,
-            activeIndex === 0 && styles.skipButtonDark,
-          ]}
+          style={s.skipButton}
           onPress={handleSkip}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text
-            style={[
-              styles.skipText,
-              activeIndex === 0 && styles.skipTextDark,
-            ]}>
-            Skip
-          </Text>
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={s.skipText}>Skip</Text>
         </TouchableOpacity>
       )}
 
-      {/* Slides */}
+      {/* ── Slides ── */}
       <FlatList
         ref={flatListRef}
         data={slides}
@@ -264,15 +324,11 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
         decelerationRate="fast"
       />
 
-      {/* Bottom */}
-      <View
-        style={[
-          styles.bottomArea,
-          activeIndex === 0 && styles.bottomAreaDark,
-        ]}>
-        {/* Animated Dots */}
-        <View style={styles.dots}>
-          {slides.map((item, index) => {
+      {/* ── Bottom Area (always dark, consistent) ── */}
+      <View style={s.bottomArea}>
+        {/* Animated dots */}
+        <View style={s.dotsRow}>
+          {slides.map((_, index) => {
             const inputRange = [
               (index - 1) * width,
               index * width,
@@ -280,7 +336,7 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
             ];
             const dotWidth = scrollX.interpolate({
               inputRange,
-              outputRange: [6, 28, 6],
+              outputRange: [5, 28, 5],
               extrapolate: 'clamp',
             });
             const dotOpacity = scrollX.interpolate({
@@ -288,17 +344,15 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
               outputRange: [0.25, 1, 0.25],
               extrapolate: 'clamp',
             });
-            const dotColor =
-              activeIndex === 0 ? BRAND.emeraldLight : BRAND.navy;
             return (
               <Animated.View
                 key={index}
                 style={[
-                  styles.dot,
+                  s.dot,
                   {
                     width: dotWidth,
                     opacity: dotOpacity,
-                    backgroundColor: dotColor,
+                    backgroundColor: currentSlide.accent,
                   },
                 ]}
               />
@@ -306,27 +360,23 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
           })}
         </View>
 
-        {/* CTA */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[
-              styles.ctaButton,
-              activeIndex === 0
-                ? { backgroundColor: BRAND.emerald }
-                : { backgroundColor: BRAND.navy },
-            ]}
-            onPress={isLastSlide ? handleGetStarted : handleNext}
-            activeOpacity={0.85}>
-            <Text style={styles.ctaButtonText}>
-              {isLastSlide ? 'Get Started' : 'Continue'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* CTA Button — accent color follows slide */}
+        <TouchableOpacity
+          style={[s.ctaButton, { backgroundColor: currentSlide.accent }]}
+          onPress={isLastSlide ? handleGetStarted : handleNext}
+          activeOpacity={0.85}>
+          <Text style={s.ctaText}>
+            {isLastSlide ? 'Get Started' : 'Continue'}
+          </Text>
+        </TouchableOpacity>
 
-        {/* Skip below button on dark slide */}
-        {activeIndex === 0 && !isLastSlide && (
-          <TouchableOpacity onPress={handleSkip} style={styles.skipBelow}>
-            <Text style={styles.skipBelowText}>Skip for now</Text>
+        {/* Skip text on first slide */}
+        {activeIndex === 0 && (
+          <TouchableOpacity
+            onPress={handleSkip}
+            style={s.skipBelow}
+            hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}>
+            <Text style={s.skipBelowText}>Skip for now</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -334,213 +384,275 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+// ═══════════════════════════════════════
+// Styles
+// ═══════════════════════════════════════
+const s = StyleSheet.create({
+  // ── Container ──
   container: {
     flex: 1,
+    backgroundColor: BRAND.navy,
   },
 
-  // Skip
+  // ── Skip Button ──
   skipButton: {
     position: 'absolute',
     top: 56,
     right: 20,
     zIndex: 10,
-    paddingVertical: 8,
+    paddingVertical: 7,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: colors.white,
+    backgroundColor: BRAND.whiteGhost,
     borderWidth: 1,
-    borderColor: colors.border,
-  },
-  skipButtonDark: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: BRAND.whiteBorder,
   },
   skipText: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.textSecondary,
+    color: BRAND.whiteLow,
     fontFamily: typography.fontFamily,
   },
-  skipTextDark: {
-    color: 'rgba(255,255,255,0.5)',
-  },
 
-  // Slide common
+  // ── Slide ──
   slide: {
     width,
     flex: 1,
+    backgroundColor: BRAND.navy,
+  },
+  slideContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 36,
   },
 
-  // ── Dark Slide ──
-  decorCircle1: {
+  // ── Decorative shapes (identical on every slide) ──
+  decorRect: {
     position: 'absolute',
-    top: -40,
-    right: -40,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(5,150,105,0.07)',
+    top: '12%',
+    right: '-6%',
+    width: 90,
+    height: 90,
+    borderRadius: 24,
+    borderWidth: 1,
+    transform: [{ rotate: '15deg' }],
   },
-  decorCircle2: {
+  decorCircle: {
     position: 'absolute',
-    top: 140,
-    left: -60,
+    bottom: '18%',
+    left: '-4%',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+  },
+
+  // ── Illustration Wrapper (consistent ring on every slide) ──
+  illustrationWrapper: {
+    width: 160,
+    height: 160,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 36,
+  },
+  illustGlow: {
+    position: 'absolute',
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: 'rgba(5,150,105,0.04)',
   },
-  decorSquare: {
-    position: 'absolute',
-    bottom: 240,
-    right: -30,
-    width: 100,
-    height: 100,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    transform: [{ rotate: '45deg' }],
-  },
-  darkContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  logoBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logoBadgeText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 2,
-    fontFamily: typography.fontFamily,
-  },
-  darkTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    lineHeight: 40,
-    marginBottom: 16,
-    fontFamily: typography.fontFamily,
-    letterSpacing: -0.5,
-  },
-  darkSubtitle: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.55)',
-    textAlign: 'center',
-    lineHeight: 24,
-    fontFamily: typography.fontFamily,
-  },
-
-  // ── Light Slide ──
-  accentLine: {
-    height: 3,
-    width: '100%',
-  },
-  lightContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  chartCircle: {
+  illustRing: {
     width: 140,
     height: 140,
     borderRadius: 70,
-    borderWidth: 2,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 40,
   },
-  chartBarsContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  chartBar: {
-    width: 10,
-    borderRadius: 3,
-  },
-  tagContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+
+  // ── Logo Illustration ──
+  illustInner: {
+    width: 72,
+    height: 72,
     borderRadius: 20,
-    marginBottom: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoText: {
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: 3,
+    fontFamily: typography.fontFamily,
+  },
+
+  // ── Grid Illustration ──
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: 84,
     gap: 6,
   },
-  tagDot: {
+  gridCell: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+  },
+
+  // ── Route Illustration ──
+  routeContainer: {
+    width: 80,
+    height: 80,
+    position: 'relative',
+  },
+  routePathV: {
+    position: 'absolute',
+    left: 10,
+    top: 16,
+    width: 0,
+    height: 28,
+    borderLeftWidth: 2,
+    borderStyle: 'dashed',
+  },
+  routePathH: {
+    position: 'absolute',
+    left: 10,
+    top: 44,
+    width: 60,
+    height: 0,
+    borderTopWidth: 2,
+    borderStyle: 'dashed',
+  },
+  routePathV2: {
+    position: 'absolute',
+    right: 10,
+    top: 44,
+    width: 0,
+    height: 20,
+    borderLeftWidth: 2,
+    borderStyle: 'dashed',
+  },
+  routeNode: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    backgroundColor: BRAND.navy,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  routeNodeStart: {
+    left: 0,
+    top: 0,
+  },
+  routeNodeMid: {
+    left: 30,
+    top: 34,
+  },
+  routeNodeEnd: {
+    right: 0,
+    bottom: 0,
+  },
+  routeNodeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  routeNodeDotSmall: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  tagText: {
+  routeCheck: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // ── Chart Illustration ──
+  chartContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 7,
+    height: 56,
+  },
+  chartBar: {
+    width: 9,
+    borderRadius: 4,
+  },
+
+  // ── Tag Pill (same structure, accent changes) ──
+  tagPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 20,
+    gap: 7,
+  },
+  tagDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  tagLabel: {
     fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontFamily: typography.fontFamily,
-  },
-  lightTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    lineHeight: 34,
-    marginBottom: 12,
-    fontFamily: typography.fontFamily,
-    letterSpacing: -0.3,
-  },
-  lightSubtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
+    letterSpacing: 1.2,
     fontFamily: typography.fontFamily,
   },
 
-  // ── Bottom ──
+  // ── Title (same typography, accent changes) ──
+  slideTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: BRAND.whiteHigh,
+    textAlign: 'center',
+    lineHeight: 36,
+    marginBottom: 14,
+    fontFamily: typography.fontFamily,
+    letterSpacing: -0.5,
+  },
+
+  // ── Subtitle ──
+  slideSubtitle: {
+    fontSize: 15,
+    color: BRAND.whiteMed,
+    textAlign: 'center',
+    lineHeight: 24,
+    fontFamily: typography.fontFamily,
+    maxWidth: 300,
+  },
+
+  // ── Bottom Area (always dark) ──
   bottomArea: {
     paddingHorizontal: 28,
-    paddingBottom: 40,
+    paddingBottom: 42,
     alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  bottomAreaDark: {
     backgroundColor: BRAND.navy,
   },
-  dots: {
+  dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 24,
-    gap: 6,
+    gap: 7,
   },
   dot: {
-    height: 6,
+    height: 5,
     borderRadius: 3,
   },
-  buttonContainer: {
-    width: '100%',
-  },
   ctaButton: {
+    width: '100%',
     height: 54,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  ctaButtonText: {
+  ctaText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
@@ -548,12 +660,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   skipBelow: {
-    marginTop: 12,
-    paddingVertical: 8,
+    marginTop: 14,
+    paddingVertical: 6,
   },
   skipBelowText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+    color: BRAND.whiteLow,
     fontWeight: '500',
     fontFamily: typography.fontFamily,
   },
