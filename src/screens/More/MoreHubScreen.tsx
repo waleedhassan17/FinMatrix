@@ -25,6 +25,20 @@ const ROWS: MoreRow[] = [
     onPress: nav => nav.navigate('COAList'),
   },
   {
+    key: 'gl',
+    icon: '📖',
+    label: 'General Ledger',
+    subtitle: 'View entries, balances, and audit trail',
+    onPress: nav => nav.navigate('GeneralLedger'),
+  },
+  {
+    key: 'je',
+    icon: '📝',
+    label: 'Journal Entries',
+    subtitle: 'Create, post, and manage journal entries',
+    onPress: nav => nav.navigate('JEList'),
+  },
+  {
     key: 'company',
     icon: '🏢',
     label: 'Company Profile',

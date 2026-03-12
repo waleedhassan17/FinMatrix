@@ -27,6 +27,10 @@ import { adminDashboardSlice } from '../screens/HomeScreen/adminDashboardSlice';
 import { coaListSlice } from '../screens/ChartOfAccounts/COAList/coaListSlice';
 import { coaFormSlice } from '../screens/ChartOfAccounts/COAForm/coaFormSlice';
 import { coaDetailSlice } from '../screens/ChartOfAccounts/COADetail/coaDetailSlice';
+import { glSlice } from '../screens/GeneralLedger/glSlice';
+import { jeListSlice } from '../screens/JournalEntries/JEList/jeListSlice';
+import { jeFormSlice } from '../screens/JournalEntries/JEForm/jeFormSlice';
+import { jeDetailSlice } from '../screens/JournalEntries/JEDetail/jeDetailSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -49,6 +53,10 @@ const rootReducer = combineReducers({
   coaList: coaListSlice.reducer,
   coaForm: coaFormSlice.reducer,
   coaDetail: coaDetailSlice.reducer,
+  gl: glSlice.reducer,
+  jeList: jeListSlice.reducer,
+  jeForm: jeFormSlice.reducer,
+  jeDetail: jeDetailSlice.reducer,
 });
 
 const persistConfig = {
