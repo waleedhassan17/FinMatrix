@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -22,36 +22,28 @@ import type { RootStackParamList } from '../../types';
 const { width } = Dimensions.get('window');
 
 // ═══════════════════════════════════════
-// Design Tokens — Consistent Dark Theme
+// Design Tokens
 // ═══════════════════════════════════════
-const BRAND = {
-  // Base
-  navy: '#0F172A',
-  navySurface: '#162032',
-  // Text on dark
-  whiteHigh: 'rgba(255,255,255,0.92)',
-  whiteMed: 'rgba(255,255,255,0.55)',
-  whiteLow: 'rgba(255,255,255,0.25)',
-  whiteGhost: 'rgba(255,255,255,0.08)',
-  whiteBorder: 'rgba(255,255,255,0.06)',
-  // Accent per-feature
+const B = {
+  navy: '#0B1120',
+  w95: 'rgba(255,255,255,0.95)',
+  w70: 'rgba(255,255,255,0.70)',
+  w50: 'rgba(255,255,255,0.50)',
+  w30: 'rgba(255,255,255,0.30)',
+  w12: 'rgba(255,255,255,0.12)',
+  w08: 'rgba(255,255,255,0.08)',
+  w06: 'rgba(255,255,255,0.06)',
+  w04: 'rgba(255,255,255,0.04)',
+  w03: 'rgba(255,255,255,0.03)',
   emerald: '#10B981',
-  emeraldGlow: 'rgba(16,185,129,0.12)',
   teal: '#14B8A6',
-  tealGlow: 'rgba(20,184,166,0.12)',
   sky: '#38BDF8',
-  skyGlow: 'rgba(56,189,248,0.12)',
   amber: '#F59E0B',
-  amberGlow: 'rgba(245,158,11,0.12)',
 };
 
 // ═══════════════════════════════════════
-// Slide Data — Consistent Structure
+// Slide Data
 // ═══════════════════════════════════════
-// Every slide follows the SAME pattern:
-// Illustration → Tag pill → Title + AccentLine → Subtitle
-// Only accent color and content changes.
-
 interface SlideData {
   id: string;
   tag: string;
@@ -59,21 +51,27 @@ interface SlideData {
   titleAccent: string;
   subtitle: string;
   accent: string;
-  glow: string;
-  illustrationType: 'logo' | 'grid' | 'route' | 'chart';
+  cardTitle: string;
+  cardBadge: string;
+  badge1: { value: string; label: string };
+  badge2: { value: string; label: string };
+  cardType: 'dashboard' | 'inventory' | 'delivery' | 'report';
 }
 
 const slides: SlideData[] = [
   {
     id: '1',
-    tag: 'Welcome',
+    tag: 'Enterprise Platform',
     title: 'Financial clarity,',
     titleAccent: 'delivered.',
     subtitle:
       'Enterprise accounting meets modern delivery management — all in one platform.',
-    accent: BRAND.emerald,
-    glow: BRAND.emeraldGlow,
-    illustrationType: 'logo',
+    accent: B.emerald,
+    cardTitle: 'Dashboard',
+    cardBadge: 'Live',
+    badge1: { value: '142', label: 'Active users' },
+    badge2: { value: '99.9%', label: 'Uptime' },
+    cardType: 'dashboard',
   },
   {
     id: '2',
@@ -82,9 +80,12 @@ const slides: SlideData[] = [
     titleAccent: 'in real-time.',
     subtitle:
       'Cloud-synced stock across your team. Track levels, movements, and valuations instantly.',
-    accent: BRAND.teal,
-    glow: BRAND.tealGlow,
-    illustrationType: 'grid',
+    accent: B.teal,
+    cardTitle: 'Inventory Status',
+    cardBadge: 'Synced',
+    badge1: { value: '24.6K', label: 'Total items' },
+    badge2: { value: '3', label: 'Warehouses' },
+    cardType: 'inventory',
   },
   {
     id: '3',
@@ -93,9 +94,12 @@ const slides: SlideData[] = [
     titleAccent: 'start to finish.',
     subtitle:
       'Assign routes, capture signatures, and verify deliveries — all automated.',
-    accent: BRAND.sky,
-    glow: BRAND.skyGlow,
-    illustrationType: 'route',
+    accent: B.sky,
+    cardTitle: 'Active Deliveries',
+    cardBadge: 'Live',
+    badge1: { value: '24', label: 'Active today' },
+    badge2: { value: '96%', label: 'On-time rate' },
+    cardType: 'delivery',
   },
   {
     id: '4',
@@ -104,208 +108,266 @@ const slides: SlideData[] = [
     titleAccent: 'better decisions.',
     subtitle:
       'Financial statements, P&L, balance sheets, and analytics at your fingertips.',
-    accent: BRAND.amber,
-    glow: BRAND.amberGlow,
-    illustrationType: 'chart',
+    accent: B.amber,
+    cardTitle: 'Financial Report',
+    cardBadge: 'Q4 2025',
+    badge1: { value: '17%', label: 'Growth YoY' },
+    badge2: { value: '12', label: 'Report types' },
+    cardType: 'report',
   },
 ];
 
 // ═══════════════════════════════════════
-// Illustration Components
+// Card Inner Content — Dashboard
 // ═══════════════════════════════════════
-// Each illustration is wrapped in the SAME
-// circular ring for visual consistency.
-
-interface IllustrationProps {
-  accent: string;
-}
-
-const LogoIllustration: React.FC<IllustrationProps> = ({ accent }) => (
-  <View style={[s.illustInner, { backgroundColor: accent + '15', borderColor: accent + '25' }]}>
-    <Text style={[s.logoText, { color: accent }]}>FM</Text>
-  </View>
-);
-
-const GridIllustration: React.FC<IllustrationProps> = ({ accent }) => {
-  const opacities = [0.35, 0.18, 0.28, 0.15, 1, 0.22, 0.30, 0.12, 0.20];
-  return (
-    <View style={s.gridContainer}>
-      {opacities.map((opacity, i) => (
-        <View
-          key={i}
-          style={[
-            s.gridCell,
-            {
-              backgroundColor: i === 4 ? accent : accent + Math.round(opacity * 255).toString(16).padStart(2, '0'),
-              borderColor: i === 4 ? 'transparent' : accent + '12',
-              borderWidth: i === 4 ? 0 : 1,
-            },
-          ]}
-        />
+const DashboardContent: React.FC<{ accent: string }> = ({ accent }) => (
+  <>
+    <View style={cS.metricRow}>
+      {[
+        { v: 'PKR 2.4M', l: 'Revenue', c: B.emerald },
+        { v: '847', l: 'Orders', c: B.teal },
+        { v: '96.2%', l: 'On-time', c: B.sky },
+      ].map((m, i) => (
+        <View key={i} style={cS.metricCell}>
+          <Text style={[cS.metricValue, { color: m.c }]}>{m.v}</Text>
+          <Text style={cS.metricLabel}>{m.l}</Text>
+        </View>
       ))}
     </View>
-  );
-};
-
-const RouteIllustration: React.FC<IllustrationProps> = ({ accent }) => (
-  <View style={s.routeContainer}>
-    {/* Dashed path */}
-    <View style={[s.routePathV, { borderColor: accent + '30' }]} />
-    <View style={[s.routePathH, { borderColor: accent + '30' }]} />
-    <View style={[s.routePathV2, { borderColor: accent + '30' }]} />
-    {/* Start node */}
-    <View style={[s.routeNode, s.routeNodeStart, { borderColor: accent + '40' }]}>
-      <View style={[s.routeNodeDot, { backgroundColor: accent }]} />
-    </View>
-    {/* Mid node */}
-    <View style={[s.routeNode, s.routeNodeMid, { borderColor: accent + '30' }]}>
-      <View style={[s.routeNodeDotSmall, { backgroundColor: accent + '60' }]} />
-    </View>
-    {/* End node */}
-    <View style={[s.routeNode, s.routeNodeEnd, { borderColor: accent + '40' }]}>
-      <Text style={[s.routeCheck, { color: accent }]}>{'\u2713'}</Text>
-    </View>
-  </View>
-);
-
-const ChartIllustration: React.FC<IllustrationProps> = ({ accent }) => {
-  const bars = [24, 40, 32, 52, 44, 36];
-  return (
-    <View style={s.chartContainer}>
-      {bars.map((h, i) => (
+    <View style={cS.barsRow}>
+      {[12, 20, 16, 26, 22, 30, 24, 18, 28, 20, 26, 32].map((h, i) => (
         <View
           key={i}
           style={[
-            s.chartBar,
+            cS.bar,
             {
               height: h,
-              backgroundColor: i === 3 ? accent : accent + (i % 2 === 0 ? '35' : '1A'),
+              backgroundColor:
+                i === 11 ? accent : accent + (i % 2 === 0 ? '30' : '18'),
             },
           ]}
         />
       ))}
     </View>
-  );
-};
+  </>
+);
 
-const ILLUSTRATION_MAP: Record<string, React.FC<IllustrationProps>> = {
-  logo: LogoIllustration,
-  grid: GridIllustration,
-  route: RouteIllustration,
-  chart: ChartIllustration,
+// ═══════════════════════════════════════
+// Card Inner Content — Inventory
+// ═══════════════════════════════════════
+const INV_ROWS = [
+  { name: 'Raw Materials', qty: '12,450 units', status: 'In Stock', c: B.emerald },
+  { name: 'Finished Goods', qty: '3,280 units', status: 'Low Stock', c: B.amber },
+  { name: 'Packaging', qty: '8,910 units', status: 'In Stock', c: B.emerald },
+];
+
+const InventoryContent: React.FC = () => (
+  <>
+    {INV_ROWS.map((item, i) => (
+      <View
+        key={i}
+        style={[cS.listRow, i > 0 && { borderTopWidth: 1, borderTopColor: B.w06 }]}>
+        <View>
+          <Text style={cS.listTitle}>{item.name}</Text>
+          <Text style={cS.listSub}>{item.qty}</Text>
+        </View>
+        <View style={[cS.chip, { backgroundColor: item.c + '15' }]}>
+          <Text style={[cS.chipText, { color: item.c }]}>{item.status}</Text>
+        </View>
+      </View>
+    ))}
+  </>
+);
+
+// ═══════════════════════════════════════
+// Card Inner Content — Delivery
+// ═══════════════════════════════════════
+const DEL_ROWS = [
+  { id: 'DEL-847', to: 'Ahmed Markets', status: 'In Transit', icon: '\u2192', c: B.sky },
+  { id: 'DEL-848', to: 'Super Mart Gulberg', status: 'Delivered', icon: '\u2713', c: B.emerald },
+  { id: 'DEL-849', to: 'Al-Fatah Store', status: 'Pending', icon: '\u25CB', c: B.amber },
+];
+
+const DeliveryContent: React.FC = () => (
+  <>
+    {DEL_ROWS.map((d, i) => (
+      <View
+        key={i}
+        style={[cS.delRow, i > 0 && { borderTopWidth: 1, borderTopColor: B.w06 }]}>
+        <View style={[cS.delIcon, { backgroundColor: d.c + '15' }]}>
+          <Text style={[cS.delIconText, { color: d.c }]}>{d.icon}</Text>
+        </View>
+        <View style={cS.delInfo}>
+          <Text style={cS.delName} numberOfLines={1}>{d.to}</Text>
+          <Text style={cS.delId}>{d.id}</Text>
+        </View>
+        <Text style={[cS.delStatus, { color: d.c }]}>{d.status}</Text>
+      </View>
+    ))}
+  </>
+);
+
+// ═══════════════════════════════════════
+// Card Inner Content — Report
+// ═══════════════════════════════════════
+const ReportContent: React.FC<{ accent: string }> = ({ accent }) => (
+  <>
+    <View style={cS.metricRow}>
+      {[
+        { v: 'PKR 8.2M', l: 'Revenue', c: B.emerald },
+        { v: 'PKR 1.4M', l: 'Net Profit', c: B.amber },
+      ].map((m, i) => (
+        <View key={i} style={cS.metricCell}>
+          <Text style={[cS.metricValue, { color: m.c }]}>{m.v}</Text>
+          <Text style={cS.metricLabel}>{m.l}</Text>
+        </View>
+      ))}
+    </View>
+    <View style={cS.barsRow}>
+      {[16, 22, 18, 28, 24, 32, 28, 36, 30, 38, 34, 42].map((h, i) => (
+        <View
+          key={i}
+          style={[
+            cS.bar,
+            {
+              height: h,
+              backgroundColor:
+                i >= 10 ? accent : accent + (i % 2 === 0 ? '28' : '14'),
+            },
+          ]}
+        />
+      ))}
+    </View>
+    <View style={cS.monthRow}>
+      {['Jan', 'Mar', 'Jun', 'Sep', 'Dec'].map(m => (
+        <Text key={m} style={cS.monthLabel}>{m}</Text>
+      ))}
+    </View>
+  </>
+);
+
+// ── Card content registry ──
+const CARD_MAP: Record<string, React.FC<{ accent: string }>> = {
+  dashboard: DashboardContent,
+  inventory: () => <InventoryContent />,
+  delivery: () => <DeliveryContent />,
+  report: ReportContent,
 };
 
 // ═══════════════════════════════════════
 // Main Component
 // ═══════════════════════════════════════
+type Nav = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 
-type OnboardingNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'Onboarding'
->;
-
-interface Props {
-  navigation: OnboardingNavigationProp;
-}
-
-const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
+const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const activeIndex = useAppSelector(selectCurrentPage);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
 
-  const isLastSlide = activeIndex === slides.length - 1;
-  const currentSlide = slides[activeIndex] ?? slides[0];
+  const isLast = activeIndex === slides.length - 1;
+  const current = slides[activeIndex] ?? slides[0];
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const index = Math.round(e.nativeEvent.contentOffset.x / width);
-      if (index !== activeIndex) {
-        dispatch(setCurrentPage(index));
-      }
+      const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+      if (idx !== activeIndex) dispatch(setCurrentPage(idx));
     },
     [dispatch, activeIndex],
   );
 
-  const handleSkip = () => {
+  const skip = () => {
     dispatch(setOnboardingSeen());
     navigation.replace(ROUTES.ROLE_SELECTION);
   };
 
-  const handleGetStarted = () => {
-    dispatch(setOnboardingSeen());
-    navigation.replace(ROUTES.ROLE_SELECTION);
+  const next = () => {
+    if (isLast) return skip();
+    flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
   };
 
-  const handleNext = () => {
-    if (activeIndex < slides.length - 1) {
-      flatListRef.current?.scrollToIndex({
-        index: activeIndex + 1,
-        animated: true,
-      });
-    }
-  };
-
-  // ── Render Slide ──
-  // EVERY slide uses the EXACT same layout:
-  // decorative shapes → illustration ring → tag → title → subtitle
   const renderSlide = ({ item }: { item: SlideData }) => {
-    const IllustComponent = ILLUSTRATION_MAP[item.illustrationType];
+    const CardBody = CARD_MAP[item.cardType];
+    const isDashboard = item.cardType === 'dashboard';
 
     return (
-      <View style={s.slide}>
-        {/* ── Decorative shapes (same on every slide) ── */}
-        <View style={[s.decorRect, { borderColor: BRAND.whiteBorder }]} />
-        <View style={[s.decorCircle, { borderColor: BRAND.whiteBorder }]} />
+      <View style={ms.slide}>
+        {/* Radial glow layers */}
+        <View style={[ms.glowOuter, { backgroundColor: item.accent + '0A' }]} />
+        <View style={[ms.glowInner, { backgroundColor: item.accent + '06' }]} />
 
-        <View style={s.slideContent}>
-          {/* ── Illustration Ring (consistent container) ── */}
-          <View style={s.illustrationWrapper}>
-            {/* Ambient glow */}
-            <View style={[s.illustGlow, { backgroundColor: item.glow }]} />
-            {/* Ring */}
-            <View style={[s.illustRing, { borderColor: item.accent + '20' }]}>
-              <IllustComponent accent={item.accent} />
+        {/* Decorative geometry */}
+        <View style={ms.decorRect} />
+        <View style={ms.decorCircle} />
+
+        <View style={ms.slideContent}>
+          {/* ════════════════════════════════
+              GLASS CARD — Product Preview
+             ════════════════════════════════ */}
+          <View style={ms.cardWrapper}>
+            <View style={ms.glassCard}>
+              {/* Card header */}
+              <View style={ms.cardHeader}>
+                {isDashboard ? (
+                  <View style={ms.cardHeaderLeft}>
+                    <View style={[ms.cardLogo, { backgroundColor: item.accent + '18' }]}>
+                      <Text style={[ms.cardLogoText, { color: item.accent }]}>FM</Text>
+                    </View>
+                    <View>
+                      <Text style={ms.cardTitle}>{item.cardTitle}</Text>
+                      <Text style={ms.cardTitleSub}>Today's overview</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={ms.cardTitle}>{item.cardTitle}</Text>
+                )}
+                <View style={[ms.cardBadge, { backgroundColor: item.accent + '18' }]}>
+                  <Text style={[ms.cardBadgeText, { color: item.accent }]}>{item.cardBadge}</Text>
+                </View>
+              </View>
+
+              {/* Card body */}
+              <CardBody accent={item.accent} />
+            </View>
+
+            {/* Floating badges */}
+            <View style={[ms.fBadge, ms.fBadge1, { borderColor: item.accent + '15' }]}>
+              <Text style={[ms.fBadgeVal, { color: item.accent }]}>{item.badge1.value}</Text>
+              <Text style={ms.fBadgeLbl}>{item.badge1.label}</Text>
+            </View>
+            <View style={[ms.fBadge, ms.fBadge2, { borderColor: item.accent + '15' }]}>
+              <Text style={[ms.fBadgeVal, { color: item.accent }]}>{item.badge2.value}</Text>
+              <Text style={ms.fBadgeLbl}>{item.badge2.label}</Text>
             </View>
           </View>
 
-          {/* ── Tag Pill (same structure, different color) ── */}
-          <View style={[s.tagPill, { backgroundColor: item.glow, borderColor: item.accent + '12' }]}>
-            <View style={[s.tagDot, { backgroundColor: item.accent }]} />
-            <Text style={[s.tagLabel, { color: item.accent }]}>
-              {item.tag}
-            </Text>
+          {/* Tag pill */}
+          <View style={[ms.tag, { backgroundColor: item.accent + '15', borderColor: item.accent + '12' }]}>
+            <View style={[ms.tagDot, { backgroundColor: item.accent }]} />
+            <Text style={[ms.tagText, { color: item.accent }]}>{item.tag}</Text>
           </View>
 
-          {/* ── Title (same pattern: line + accent line) ── */}
-          <Text style={s.slideTitle}>
-            {item.title}
-            {'\n'}
+          {/* Title */}
+          <Text style={ms.title}>
+            {item.title}{'\n'}
             <Text style={{ color: item.accent }}>{item.titleAccent}</Text>
           </Text>
-
-          {/* ── Subtitle ── */}
-          <Text style={s.slideSubtitle}>{item.subtitle}</Text>
+          <Text style={ms.subtitle}>{item.subtitle}</Text>
         </View>
       </View>
     );
   };
 
   return (
-    <View style={s.container}>
-      <StatusBar barStyle="light-content" backgroundColor={BRAND.navy} />
+    <View style={ms.container}>
+      <StatusBar barStyle="light-content" backgroundColor={B.navy} />
 
-      {/* ── Skip Button (consistent across all slides) ── */}
-      {!isLastSlide && (
-        <TouchableOpacity
-          style={s.skipButton}
-          onPress={handleSkip}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={s.skipText}>Skip</Text>
+      {!isLast && (
+        <TouchableOpacity style={ms.skipBtn} onPress={skip} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={ms.skipBtnText}>Skip</Text>
         </TouchableOpacity>
       )}
 
-      {/* ── Slides ── */}
       <FlatList
         ref={flatListRef}
         data={slides}
@@ -324,35 +386,20 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
         decelerationRate="fast"
       />
 
-      {/* ── Bottom Area (always dark, consistent) ── */}
-      <View style={s.bottomArea}>
-        {/* Animated dots */}
-        <View style={s.dotsRow}>
-          {slides.map((_, index) => {
-            const inputRange = [
-              (index - 1) * width,
-              index * width,
-              (index + 1) * width,
-            ];
-            const dotWidth = scrollX.interpolate({
-              inputRange,
-              outputRange: [5, 28, 5],
-              extrapolate: 'clamp',
-            });
-            const dotOpacity = scrollX.interpolate({
-              inputRange,
-              outputRange: [0.25, 1, 0.25],
-              extrapolate: 'clamp',
-            });
+      {/* Bottom */}
+      <View style={ms.bottom}>
+        <View style={ms.dotsRow}>
+          {slides.map((_, i) => {
+            const r = [(i - 1) * width, i * width, (i + 1) * width];
             return (
               <Animated.View
-                key={index}
+                key={i}
                 style={[
-                  s.dot,
+                  ms.dot,
                   {
-                    width: dotWidth,
-                    opacity: dotOpacity,
-                    backgroundColor: currentSlide.accent,
+                    width: scrollX.interpolate({ inputRange: r, outputRange: [5, 28, 5], extrapolate: 'clamp' }),
+                    opacity: scrollX.interpolate({ inputRange: r, outputRange: [0.2, 1, 0.2], extrapolate: 'clamp' }),
+                    backgroundColor: current.accent,
                   },
                 ]}
               />
@@ -360,23 +407,16 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
           })}
         </View>
 
-        {/* CTA Button — accent color follows slide */}
         <TouchableOpacity
-          style={[s.ctaButton, { backgroundColor: currentSlide.accent }]}
-          onPress={isLastSlide ? handleGetStarted : handleNext}
+          style={[ms.cta, { backgroundColor: current.accent }]}
+          onPress={next}
           activeOpacity={0.85}>
-          <Text style={s.ctaText}>
-            {isLastSlide ? 'Get Started' : 'Continue'}
-          </Text>
+          <Text style={ms.ctaText}>{isLast ? 'Get Started' : 'Continue'}</Text>
         </TouchableOpacity>
 
-        {/* Skip text on first slide */}
         {activeIndex === 0 && (
-          <TouchableOpacity
-            onPress={handleSkip}
-            style={s.skipBelow}
-            hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}>
-            <Text style={s.skipBelowText}>Skip for now</Text>
+          <TouchableOpacity onPress={skip} style={ms.skipBelow} hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}>
+            <Text style={ms.skipBelowText}>Skip for now</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -385,290 +425,91 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 // ═══════════════════════════════════════
-// Styles
+// Card Content Styles
 // ═══════════════════════════════════════
-const s = StyleSheet.create({
-  // ── Container ──
-  container: {
-    flex: 1,
-    backgroundColor: BRAND.navy,
-  },
+const cS = StyleSheet.create({
+  metricRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
+  metricCell: { flex: 1, backgroundColor: B.w03, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 6, alignItems: 'center' },
+  metricValue: { fontSize: 12, fontWeight: '700', fontFamily: typography.fontFamily },
+  metricLabel: { fontSize: 8, color: B.w50, fontFamily: typography.fontFamily, marginTop: 2 },
+  barsRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 34 },
+  bar: { flex: 1, borderRadius: 2 },
+  listRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9 },
+  listTitle: { fontSize: 12, fontWeight: '500', color: B.w70, fontFamily: typography.fontFamily },
+  listSub: { fontSize: 9, color: B.w50, fontFamily: typography.fontFamily, marginTop: 2 },
+  chip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  chipText: { fontSize: 9, fontWeight: '600', fontFamily: typography.fontFamily },
+  delRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, gap: 10 },
+  delIcon: { width: 26, height: 26, borderRadius: 7, justifyContent: 'center', alignItems: 'center' },
+  delIconText: { fontSize: 12, fontWeight: '600' },
+  delInfo: { flex: 1 },
+  delName: { fontSize: 12, fontWeight: '500', color: B.w70, fontFamily: typography.fontFamily },
+  delId: { fontSize: 9, color: B.w50, fontFamily: typography.fontFamily, marginTop: 1 },
+  delStatus: { fontSize: 9, fontWeight: '600', fontFamily: typography.fontFamily },
+  monthRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  monthLabel: { fontSize: 8, color: B.w30, fontFamily: typography.fontFamily },
+});
 
-  // ── Skip Button ──
-  skipButton: {
-    position: 'absolute',
-    top: 56,
-    right: 20,
-    zIndex: 10,
-    paddingVertical: 7,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: BRAND.whiteGhost,
-    borderWidth: 1,
-    borderColor: BRAND.whiteBorder,
-  },
-  skipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: BRAND.whiteLow,
-    fontFamily: typography.fontFamily,
-  },
+// ═══════════════════════════════════════
+// Main Styles
+// ═══════════════════════════════════════
+const ms = StyleSheet.create({
+  container: { flex: 1, backgroundColor: B.navy },
 
-  // ── Slide ──
-  slide: {
-    width,
-    flex: 1,
-    backgroundColor: BRAND.navy,
+  skipBtn: {
+    position: 'absolute', top: 56, right: 20, zIndex: 10,
+    paddingVertical: 7, paddingHorizontal: 16, borderRadius: 8,
+    backgroundColor: B.w06, borderWidth: 1, borderColor: B.w06,
   },
-  slideContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 36,
-  },
+  skipBtnText: { fontSize: 13, fontWeight: '500', color: B.w30, fontFamily: typography.fontFamily },
 
-  // ── Decorative shapes (identical on every slide) ──
-  decorRect: {
-    position: 'absolute',
-    top: '12%',
-    right: '-6%',
-    width: 90,
-    height: 90,
-    borderRadius: 24,
-    borderWidth: 1,
-    transform: [{ rotate: '15deg' }],
-  },
-  decorCircle: {
-    position: 'absolute',
-    bottom: '18%',
-    left: '-4%',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1,
-  },
+  slide: { width, flex: 1, backgroundColor: B.navy },
+  slideContent: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
 
-  // ── Illustration Wrapper (consistent ring on every slide) ──
-  illustrationWrapper: {
-    width: 160,
-    height: 160,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 36,
-  },
-  illustGlow: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-  },
-  illustRing: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  // Glow
+  glowOuter: { position: 'absolute', top: '12%', left: '10%', width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4 },
+  glowInner: { position: 'absolute', top: '18%', left: '20%', width: width * 0.6, height: width * 0.6, borderRadius: width * 0.3 },
 
-  // ── Logo Illustration ──
-  illustInner: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoText: {
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: 3,
-    fontFamily: typography.fontFamily,
-  },
+  // Decor
+  decorRect: { position: 'absolute', top: '10%', right: '-5%', width: 80, height: 80, borderRadius: 22, borderWidth: 1, borderColor: B.w06, transform: [{ rotate: '15deg' }] },
+  decorCircle: { position: 'absolute', bottom: '24%', left: '-4%', width: 48, height: 48, borderRadius: 24, borderWidth: 1, borderColor: B.w06 },
 
-  // ── Grid Illustration ──
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    width: 84,
-    gap: 6,
-  },
-  gridCell: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-  },
+  // Glass Card
+  cardWrapper: { width: '100%', maxWidth: 280, marginBottom: 32 },
+  glassCard: { backgroundColor: B.w04, borderWidth: 1, borderColor: B.w08, borderRadius: 18, padding: 16 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardLogo: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  cardLogoText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5, fontFamily: typography.fontFamily },
+  cardTitle: { fontSize: 11, fontWeight: '600', color: B.w95, fontFamily: typography.fontFamily },
+  cardTitleSub: { fontSize: 9, color: B.w50, fontFamily: typography.fontFamily, marginTop: 1 },
+  cardBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
+  cardBadgeText: { fontSize: 9, fontWeight: '600', fontFamily: typography.fontFamily },
 
-  // ── Route Illustration ──
-  routeContainer: {
-    width: 80,
-    height: 80,
-    position: 'relative',
-  },
-  routePathV: {
-    position: 'absolute',
-    left: 10,
-    top: 16,
-    width: 0,
-    height: 28,
-    borderLeftWidth: 2,
-    borderStyle: 'dashed',
-  },
-  routePathH: {
-    position: 'absolute',
-    left: 10,
-    top: 44,
-    width: 60,
-    height: 0,
-    borderTopWidth: 2,
-    borderStyle: 'dashed',
-  },
-  routePathV2: {
-    position: 'absolute',
-    right: 10,
-    top: 44,
-    width: 0,
-    height: 20,
-    borderLeftWidth: 2,
-    borderStyle: 'dashed',
-  },
-  routeNode: {
-    position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    backgroundColor: BRAND.navy,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  routeNodeStart: {
-    left: 0,
-    top: 0,
-  },
-  routeNodeMid: {
-    left: 30,
-    top: 34,
-  },
-  routeNodeEnd: {
-    right: 0,
-    bottom: 0,
-  },
-  routeNodeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  routeNodeDotSmall: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  routeCheck: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  // Floating Badges
+  fBadge: { position: 'absolute', backgroundColor: 'rgba(11,17,32,0.88)', borderWidth: 1, borderRadius: 12, paddingVertical: 7, paddingHorizontal: 11 },
+  fBadge1: { top: -10, right: -8 },
+  fBadge2: { bottom: -6, left: -6 },
+  fBadgeVal: { fontSize: 15, fontWeight: '700', fontFamily: typography.fontFamily, lineHeight: 18 },
+  fBadgeLbl: { fontSize: 9, color: B.w50, fontFamily: typography.fontFamily, marginTop: 1 },
 
-  // ── Chart Illustration ──
-  chartContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 7,
-    height: 56,
-  },
-  chartBar: {
-    width: 9,
-    borderRadius: 4,
-  },
+  // Tag
+  tag: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, borderWidth: 1, marginBottom: 20, gap: 7 },
+  tagDot: { width: 5, height: 5, borderRadius: 3 },
+  tagText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: typography.fontFamily },
 
-  // ── Tag Pill (same structure, accent changes) ──
-  tagPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginBottom: 20,
-    gap: 7,
-  },
-  tagDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-  },
-  tagLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    fontFamily: typography.fontFamily,
-  },
+  // Title
+  title: { fontSize: 28, fontWeight: '700', color: B.w95, textAlign: 'center', lineHeight: 36, marginBottom: 12, fontFamily: typography.fontFamily, letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: B.w50, textAlign: 'center', lineHeight: 22, fontFamily: typography.fontFamily, maxWidth: 300 },
 
-  // ── Title (same typography, accent changes) ──
-  slideTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: BRAND.whiteHigh,
-    textAlign: 'center',
-    lineHeight: 36,
-    marginBottom: 14,
-    fontFamily: typography.fontFamily,
-    letterSpacing: -0.5,
-  },
-
-  // ── Subtitle ──
-  slideSubtitle: {
-    fontSize: 15,
-    color: BRAND.whiteMed,
-    textAlign: 'center',
-    lineHeight: 24,
-    fontFamily: typography.fontFamily,
-    maxWidth: 300,
-  },
-
-  // ── Bottom Area (always dark) ──
-  bottomArea: {
-    paddingHorizontal: 28,
-    paddingBottom: 42,
-    alignItems: 'center',
-    backgroundColor: BRAND.navy,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    gap: 7,
-  },
-  dot: {
-    height: 5,
-    borderRadius: 3,
-  },
-  ctaButton: {
-    width: '100%',
-    height: 54,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  ctaText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    fontFamily: typography.fontFamily,
-    letterSpacing: 0.2,
-  },
-  skipBelow: {
-    marginTop: 14,
-    paddingVertical: 6,
-  },
-  skipBelowText: {
-    fontSize: 13,
-    color: BRAND.whiteLow,
-    fontWeight: '500',
-    fontFamily: typography.fontFamily,
-  },
+  // Bottom
+  bottom: { paddingHorizontal: 28, paddingBottom: 42, alignItems: 'center', backgroundColor: B.navy },
+  dotsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, gap: 7 },
+  dot: { height: 5, borderRadius: 3 },
+  cta: { width: '100%', height: 54, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  ctaText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF', fontFamily: typography.fontFamily, letterSpacing: 0.2 },
+  skipBelow: { marginTop: 14, paddingVertical: 6 },
+  skipBelowText: { fontSize: 13, color: B.w30, fontWeight: '500', fontFamily: typography.fontFamily },
 });
 
 export default OnboardingScreen;

@@ -1,5 +1,15 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
-import { persistStore, persistReducer } from 'redux-persist';
+import {
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+} from 'redux-persist';
+import autoMergeLevel2 from 'redux-persist/lib/stateReconciler/autoMergeLevel2';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Global slices ──
@@ -63,6 +73,7 @@ const persistConfig = {
   key: 'finmatrix-root',
   storage: AsyncStorage,
   whitelist: ['auth', 'company'],
+  stateReconciler: autoMergeLevel2 as any,
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
@@ -72,7 +83,7 @@ export const store = configureStore({
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
     }),
 });

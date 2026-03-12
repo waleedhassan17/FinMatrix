@@ -8,7 +8,7 @@ import { store, persistor } from './src/store/store';
 import { colors } from './src/theme';
 import AppContainer from './src/components/app-container/AppContainer';
 
-// ⚠️ DEV ONLY: Purge persisted state to re-test registration flow.
+// ⚠️ DEV ONLY: Purge persisted state so the app always starts from Onboarding.
 // Remove this line once done testing.
 persistor.purge();
 
