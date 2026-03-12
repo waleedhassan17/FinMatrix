@@ -114,7 +114,7 @@ const COAListScreen: React.FC = () => {
           a.code.toLowerCase().includes(q),
       );
     }
-    return result.sort((a, b) => a.code.localeCompare(b.code));
+    return [...result].sort((a, b) => a.code.localeCompare(b.code));
   }, [accounts, searchQuery, activeFilter]);
 
   // ── Build sections ────────────────────────────────

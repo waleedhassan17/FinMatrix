@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  ScrollView,
   TextInput,
   FlatList,
 } from 'react-native';
@@ -34,6 +33,13 @@ const VEHICLE_LABELS: Record<string, string> = {
   motorcycle: 'Motorcycle',
   van: 'Van',
   truck: 'Truck',
+};
+
+const TAB_COLORS: Record<FilterKey, string> = {
+  all: colors.primary,
+  available: colors.success,
+  busy: '#F59E0B',
+  on_leave: '#9CA3AF',
 };
 
 const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
@@ -160,7 +166,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
@@ -210,18 +216,38 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {/* Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-        {filters.map(f => (
-          <TouchableOpacity
-            key={f.key}
-            style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]}
-            onPress={() => setActiveFilter(f.key)}>
-            <Text style={[styles.filterChipText, activeFilter === f.key && styles.filterChipTextActive]}>
-              {f.label} ({f.count})
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.filterTrack}>
+        {filters.map(f => {
+          const active = activeFilter === f.key;
+          const accent = TAB_COLORS[f.key];
+          return (
+            <TouchableOpacity
+              key={f.key}
+              style={[
+                styles.filterTab,
+                active && styles.filterTabActive,
+                active && { borderLeftWidth: 3, borderLeftColor: accent },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => setActiveFilter(f.key)}>
+              <Text style={[styles.filterLabel, active && { color: accent, fontWeight: '600' as const }]}>
+                {f.label}
+              </Text>
+              <View style={[
+                styles.filterCount,
+                active && { backgroundColor: accent + '18' },
+              ]}>
+                <Text style={[
+                  styles.filterCountText,
+                  active && { color: accent },
+                ]}>
+                  {f.count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       {/* List */}
       <FlatList
@@ -267,7 +293,7 @@ const styles = StyleSheet.create({
     color: colors.white, fontSize: typography.small.fontSize, fontWeight: '600', fontFamily: typography.fontFamily,
   },
   summaryBar: {
-    flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 4,
+    flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
     gap: spacing.sm, backgroundColor: colors.white,
   },
   summaryItem: {
@@ -282,8 +308,8 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white,
-    marginHorizontal: spacing.lg, marginTop: spacing.sm + 4,
-    paddingHorizontal: spacing.md, height: 44, borderRadius: 10,
+    marginHorizontal: spacing.lg, marginTop: spacing.sm,
+    paddingHorizontal: spacing.md, height: 42, borderRadius: 10,
     borderWidth: 1, borderColor: colors.border,
   },
   searchInput: {
@@ -291,20 +317,33 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily, padding: 0,
   },
   clearIcon: { fontSize: 20, color: colors.textLight, padding: spacing.xs },
-  filterRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 4, gap: spacing.sm },
-  filterChip: {
-    paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2, borderRadius: 8,
-    borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.white,
+  filterTrack: {
+    flexDirection: 'row', marginHorizontal: spacing.lg, marginTop: spacing.sm,
+    marginBottom: spacing.xs, padding: 3, borderRadius: 12,
+    backgroundColor: colors.border + '80', gap: 3,
   },
-  filterChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + '08' },
-  filterChipText: {
-    fontSize: typography.small.fontSize, color: colors.textSecondary, fontWeight: '500', fontFamily: typography.fontFamily,
+  filterTab: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: spacing.sm, borderRadius: 10, gap: 5,
+    borderLeftWidth: 3, borderLeftColor: 'transparent',
   },
-  filterChipTextActive: { color: colors.primary },
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
+  filterTabActive: {
+    backgroundColor: colors.white,
+  },
+  filterLabel: {
+    fontSize: 12, fontWeight: '500', color: colors.textLight, fontFamily: typography.fontFamily,
+  },
+  filterCount: {
+    minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.border, paddingHorizontal: 4,
+  },
+  filterCountText: {
+    fontSize: 10, fontWeight: '600', color: colors.textLight, fontFamily: typography.fontFamily,
+  },
+  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl },
   personCard: {
     flexDirection: 'row', backgroundColor: colors.white, borderRadius: borderRadius.md + 2,
-    padding: spacing.md, marginBottom: spacing.sm + 4, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border,
   },
   avatar: {
     width: 48, height: 48, borderRadius: 14, alignItems: 'center',
