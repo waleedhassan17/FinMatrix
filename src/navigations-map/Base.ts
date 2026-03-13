@@ -1,4 +1,5 @@
 export const ROUTES = {
+  SPLASH: 'Splash',
   ONBOARDING: 'Onboarding',
   ROLE_SELECTION: 'RoleSelection',
   SIGN_IN: 'SignIn',
@@ -43,4 +44,14 @@ export const ROUTES = {
   ADD_DELIVERY_PERSONNEL: 'AddDeliveryPersonnel',
   DELIVERY_PERSONNEL_DETAIL: 'DeliveryPersonnelDetail',
   COA_LIST: 'COAList',
+  INVENTORY_LIST: 'InventoryList',
+  INVENTORY_FORM: 'InventoryForm',
+  INVENTORY_DETAIL: 'InventoryDetail',
+  ADJUSTMENT: 'Adjustment',
+  PHYSICAL_COUNT: 'PhysicalCount',
+  STOCK_TRANSFER: 'StockTransfer',
+  AGENCY_LIST: 'AgencyList',
+  AGENCY_DETAIL: 'AgencyDetail',
+  AGENCY_FORM: 'AgencyForm',
+  AGENCY_INVENTORY_SYNC: 'AgencyInventorySync',
 } as const;

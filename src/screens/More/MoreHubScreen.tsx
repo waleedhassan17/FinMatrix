@@ -39,6 +39,13 @@ const ROWS: MoreRow[] = [
     onPress: nav => nav.navigate('JEList'),
   },
   {
+    key: 'agencies',
+    icon: '🏭',
+    label: 'Warehouse Agencies',
+    subtitle: 'Manage agencies, inventory, and sync',
+    onPress: nav => nav.navigate('AgencyList'),
+  },
+  {
     key: 'company',
     icon: '🏢',
     label: 'Company Profile',

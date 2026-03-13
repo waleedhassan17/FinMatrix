@@ -525,6 +525,7 @@ export interface AuditEntry {
 
 // ─── Navigation Params ────────────────────────────────
 export type RootStackParamList = {
+  Splash: undefined;
   Onboarding: undefined;
   RoleSelection: undefined;
   SignIn: { role: UserRole };

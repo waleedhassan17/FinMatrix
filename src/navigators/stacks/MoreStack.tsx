@@ -8,6 +8,10 @@ import GLScreen from '../../screens/GeneralLedger/GLScreen';
 import JEListScreen from '../../screens/JournalEntries/JEList/JEListScreen';
 import JEFormScreen from '../../screens/JournalEntries/JEForm/JEFormScreen';
 import JEDetailScreen from '../../screens/JournalEntries/JEDetail/JEDetailScreen';
+import AgencyListScreen from '../../screens/Agency/AgencyList/AgencyListScreen';
+import AgencyDetailScreen from '../../screens/Agency/AgencyDetail/AgencyDetailScreen';
+import AgencyFormScreen from '../../screens/Agency/AgencyForm/AgencyFormScreen';
+import AgencyInventorySyncScreen from '../../screens/Agency/AgencyInventorySync/AgencyInventorySyncScreen';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
@@ -18,6 +22,10 @@ export type MoreStackParamList = {
   JEList: undefined;
   JEForm: { entryId?: string } | undefined;
   JEDetail: { entryId: string };
+  AgencyList: undefined;
+  AgencyDetail: { agencyId: string };
+  AgencyForm: { agencyId?: string } | undefined;
+  AgencyInventorySync: { agencyId: string };
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -32,6 +40,10 @@ const MoreStack: React.FC = () => (
     <Stack.Screen name="JEList" component={JEListScreen} />
     <Stack.Screen name="JEForm" component={JEFormScreen} />
     <Stack.Screen name="JEDetail" component={JEDetailScreen} />
+    <Stack.Screen name="AgencyList" component={AgencyListScreen} />
+    <Stack.Screen name="AgencyDetail" component={AgencyDetailScreen} />
+    <Stack.Screen name="AgencyForm" component={AgencyFormScreen} />
+    <Stack.Screen name="AgencyInventorySync" component={AgencyInventorySyncScreen} />
   </Stack.Navigator>
 );
 

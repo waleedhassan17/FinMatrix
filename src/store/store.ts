@@ -41,6 +41,16 @@ import { glSlice } from '../screens/GeneralLedger/glSlice';
 import { jeListSlice } from '../screens/JournalEntries/JEList/jeListSlice';
 import { jeFormSlice } from '../screens/JournalEntries/JEForm/jeFormSlice';
 import { jeDetailSlice } from '../screens/JournalEntries/JEDetail/jeDetailSlice';
+import { inventoryListSlice } from '../screens/Inventory/InventoryList/inventoryListSlice';
+import { inventoryFormSlice } from '../screens/Inventory/InventoryForm/inventoryFormSlice';
+import { inventoryDetailSlice } from '../screens/Inventory/InventoryDetail/inventoryDetailSlice';
+import { adjustmentSlice } from '../screens/Inventory/Adjustment/adjustmentSlice';
+import { physicalCountSlice } from '../screens/Inventory/PhysicalCount/physicalCountSlice';
+import { stockTransferSlice } from '../screens/Inventory/StockTransfer/stockTransferSlice';
+import { agencyListSlice } from '../screens/Agency/AgencyList/agencyListSlice';
+import { agencyDetailSlice } from '../screens/Agency/AgencyDetail/agencyDetailSlice';
+import { agencyFormSlice } from '../screens/Agency/AgencyForm/agencyFormSlice';
+import { agencyInventorySyncSlice } from '../screens/Agency/AgencyInventorySync/agencyInventorySyncSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -67,6 +77,16 @@ const rootReducer = combineReducers({
   jeList: jeListSlice.reducer,
   jeForm: jeFormSlice.reducer,
   jeDetail: jeDetailSlice.reducer,
+  inventoryList: inventoryListSlice.reducer,
+  inventoryForm: inventoryFormSlice.reducer,
+  inventoryDetail: inventoryDetailSlice.reducer,
+  adjustment: adjustmentSlice.reducer,
+  physicalCount: physicalCountSlice.reducer,
+  stockTransfer: stockTransferSlice.reducer,
+  agencyList: agencyListSlice.reducer,
+  agencyDetail: agencyDetailSlice.reducer,
+  agencyForm: agencyFormSlice.reducer,
+  agencyInventorySync: agencyInventorySyncSlice.reducer,
 });
 
 const persistConfig = {
