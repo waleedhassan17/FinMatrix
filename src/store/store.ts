@@ -18,6 +18,7 @@ import companyReducer from '../screens/Auth/companySlice';
 
 // ── App-level slices ──
 import { appContainerSlice } from '../components/app-container/appContainerSlice';
+import { realtimeMiddleware } from './realtimeMiddleware';
 
 // ── Per-screen slices ──
 import { signInSlice } from '../screens/Auth/SignIn/signInSlice';
@@ -49,6 +50,7 @@ import { createDeliveryScreenSlice } from '../screens/Delivery/Admin/CreateDeliv
 import { assignWorkSlice } from '../screens/Delivery/Admin/AssignWork/assignWorkSlice';
 import { deliveryMonitorSlice } from '../screens/Delivery/Admin/DeliveryMonitor/deliveryMonitorSlice';
 import { adminDeliveryDetailSlice } from '../screens/Delivery/Admin/AdminDeliveryDetail/adminDeliveryDetailSlice';
+import { inventoryApprovalSlice } from '../screens/Delivery/Admin/InventoryApproval/inventoryApprovalSlice';
 import { adminDashboardSlice } from '../screens/HomeScreen/adminDashboardSlice';
 import { coaListSlice } from '../screens/ChartOfAccounts/COAList/coaListSlice';
 import { coaFormSlice } from '../screens/ChartOfAccounts/COAForm/coaFormSlice';
@@ -94,11 +96,13 @@ import { poListSlice } from '../screens/PurchaseOrders/POList/poListSlice';
 import { poFormSlice } from '../screens/PurchaseOrders/POForm/poFormSlice';
 import { poDetailSlice } from '../screens/PurchaseOrders/PODetail/poDetailSlice';
 import { deliverySlice } from '../screens/Delivery/Admin/AssignDeliveries/deliverySlice';
+import { notificationCenterSlice } from '../screens/Notifications/notificationCenterSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
   company: companyReducer,
   appContainer: appContainerSlice.reducer,
+  notificationCenter: notificationCenterSlice.reducer,
   signIn: signInSlice.reducer,
   signUp: signUpSlice.reducer,
   forgotPassword: forgotPasswordSlice.reducer,
@@ -128,6 +132,7 @@ const rootReducer = combineReducers({
   assignWork: assignWorkSlice.reducer,
   deliveryMonitor: deliveryMonitorSlice.reducer,
   adminDeliveryDetail: adminDeliveryDetailSlice.reducer,
+  inventoryApproval: inventoryApprovalSlice.reducer,
   delivery: deliverySlice.reducer,
   adminDashboard: adminDashboardSlice.reducer,
   coaList: coaListSlice.reducer,
@@ -191,7 +196,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }),
+    }).concat(realtimeMiddleware),
 });
 
 export const persistor = persistStore(store);

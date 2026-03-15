@@ -23,6 +23,8 @@ import CreateDeliveryScreen from '../../screens/Delivery/Admin/CreateDelivery/Cr
 import AssignWorkScreen from '../../screens/Delivery/Admin/AssignWork/AssignWorkScreen';
 import DeliveryMonitorScreen from '../../screens/Delivery/Admin/DeliveryMonitor/DeliveryMonitorScreen';
 import AdminDeliveryDetailScreen from '../../screens/Delivery/Admin/AdminDeliveryDetail/AdminDeliveryDetailScreen';
+import InventoryApprovalScreen from '../../screens/Delivery/Admin/InventoryApproval/InventoryApprovalScreen';
+import NotificationCenterScreen from '../../screens/Notifications/NotificationCenterScreen';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
@@ -43,11 +45,13 @@ export type MoreStackParamList = {
   VendorList: undefined;
   VendorDetail: { vendorId: string };
   VendorForm: { vendorId?: string } | undefined;
+  Notifications: undefined;
   AssignDeliveries: undefined;
   CreateDelivery: undefined;
   AssignWork: undefined;
   DeliveryMonitor: undefined;
   AdminDeliveryDetail: { deliveryId: string };
+  InventoryApproval: undefined;
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -72,11 +76,13 @@ const MoreStack: React.FC = () => (
     <Stack.Screen name="VendorList" component={VendorListScreen} />
     <Stack.Screen name="VendorDetail" component={VendorDetailScreen} />
     <Stack.Screen name="VendorForm" component={VendorFormScreen} />
+    <Stack.Screen name="Notifications" component={NotificationCenterScreen} />
     <Stack.Screen name="AssignDeliveries" component={AssignDeliveriesScreen} />
     <Stack.Screen name="CreateDelivery" component={CreateDeliveryScreen} />
     <Stack.Screen name="AssignWork" component={AssignWorkScreen} />
     <Stack.Screen name="DeliveryMonitor" component={DeliveryMonitorScreen} />
     <Stack.Screen name="AdminDeliveryDetail" component={AdminDeliveryDetailScreen} />
+    <Stack.Screen name="InventoryApproval" component={InventoryApprovalScreen} />
   </Stack.Navigator>
 );
 

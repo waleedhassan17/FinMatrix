@@ -40,6 +40,13 @@ const AssignWorkScreen: React.FC<Props> = ({ navigation }) => {
       deliveryIds: assignState.selectedDeliveryIds,
       personnelId: assignState.selectedPersonnelId,
     }));
+    dispatch({
+      type: 'delivery/assignDelivery',
+      payload: {
+        deliveryIds: assignState.selectedDeliveryIds,
+        personnelId: assignState.selectedPersonnelId,
+      },
+    });
     dispatch(resetAssignWork());
     Alert.alert('Assigned', 'Selected deliveries moved to pending and notifications dispatched.');
   };

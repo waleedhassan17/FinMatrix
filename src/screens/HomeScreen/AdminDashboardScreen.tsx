@@ -24,6 +24,7 @@ import BottomSheet, {
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { useAppSelector, useAppDispatch } from '../../hooks/useReduxHooks';
 import { selectUser, signOut } from '../Auth/authSlice';
+import { selectUnreadNotificationCountForUser } from '../Notifications/notificationCenterSlice';
 import { selectActiveCompany } from '../Auth/companySlice';
 import {
   selectDashboardStats,
@@ -79,6 +80,9 @@ const AdminDashboardScreen: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const user = useAppSelector(selectUser);
+  const unreadNotifications = useAppSelector(state =>
+    selectUnreadNotificationCountForUser(state, 'admin', user?.uid),
+  );
   const company = useAppSelector(selectActiveCompany);
   const stats = useAppSelector(selectDashboardStats);
   const transactions = useAppSelector(selectRecentTransactions);
@@ -154,7 +158,7 @@ const AdminDashboardScreen: React.FC = () => {
             onPress={() => navigation.navigate('Notifications')}
           >
             <Text style={styles.bellIcon}>🔔</Text>
-            <NotificationBadge count={5} />
+            <NotificationBadge count={unreadNotifications} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.avatar}

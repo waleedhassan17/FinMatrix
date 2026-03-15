@@ -9,7 +9,8 @@ import CreateDeliveryScreen from '../../screens/Delivery/Admin/CreateDelivery/Cr
 import AssignWorkScreen from '../../screens/Delivery/Admin/AssignWork/AssignWorkScreen';
 import DeliveryMonitorScreen from '../../screens/Delivery/Admin/DeliveryMonitor/DeliveryMonitorScreen';
 import AdminDeliveryDetailScreen from '../../screens/Delivery/Admin/AdminDeliveryDetail/AdminDeliveryDetailScreen';
-import NotificationsScreen from '../../screens/Notifications/NotificationsScreen';
+import InventoryApprovalScreen from '../../screens/Delivery/Admin/InventoryApproval/InventoryApprovalScreen';
+import NotificationCenterScreen from '../../screens/Notifications/NotificationCenterScreen';
 
 export type DashboardStackParamList = {
   AdminDashboard: undefined;
@@ -22,6 +23,7 @@ export type DashboardStackParamList = {
   AssignWork: undefined;
   DeliveryMonitor: undefined;
   AdminDeliveryDetail: { deliveryId: string };
+  InventoryApproval: undefined;
 };
 
 const Stack = createNativeStackNavigator<DashboardStackParamList>();
@@ -29,7 +31,7 @@ const Stack = createNativeStackNavigator<DashboardStackParamList>();
 const DashboardStack: React.FC = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
-    <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    <Stack.Screen name="Notifications" component={NotificationCenterScreen} />
     <Stack.Screen name="DeliveryPersonnelList" component={DeliveryPersonnelListScreen} />
     <Stack.Screen name="AddDeliveryPersonnel" component={AddDeliveryPersonnelScreen} />
     <Stack.Screen name="DeliveryPersonnelDetail" component={DeliveryPersonnelDetailScreen} />
@@ -38,6 +40,7 @@ const DashboardStack: React.FC = () => (
     <Stack.Screen name="AssignWork" component={AssignWorkScreen} />
     <Stack.Screen name="DeliveryMonitor" component={DeliveryMonitorScreen} />
     <Stack.Screen name="AdminDeliveryDetail" component={AdminDeliveryDetailScreen} />
+    <Stack.Screen name="InventoryApproval" component={InventoryApprovalScreen} />
   </Stack.Navigator>
 );
 

@@ -34,6 +34,7 @@ import {
   assignSelectedDeliveries,
   autoAssignDeliveries,
 } from './deliverySlice';
+import { selectPendingApprovalCount } from '../InventoryApproval/inventoryApprovalSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import CustomInput from '../../../../Custom-Components/CustomInput';
@@ -67,6 +68,7 @@ const AssignDeliveriesScreen: React.FC = () => {
 
   const deliveries = useAppSelector(selectDeliveries);
   const personnel = useAppSelector(selectDeliveryPersonnel);
+  const pendingApprovalCount = useAppSelector(selectPendingApprovalCount);
 
   const [quickCustomerId, setQuickCustomerId] = useState('');
   const [quickPriority, setQuickPriority] = useState<'high' | 'medium' | 'low'>('medium');
@@ -138,6 +140,10 @@ const AssignDeliveriesScreen: React.FC = () => {
     }
 
     dispatch(assignSelectedDeliveries({ deliveryIds: selectedDeliveryIds, personnelId: selectedPersonnelId }));
+    dispatch({
+      type: 'delivery/assignDelivery',
+      payload: { deliveryIds: selectedDeliveryIds, personnelId: selectedPersonnelId },
+    });
     dispatch(clearSelectedDeliveries());
     Alert.alert('Assigned', 'Selected deliveries moved to pending and notifications dispatched.');
   };
@@ -326,6 +332,14 @@ const AssignDeliveriesScreen: React.FC = () => {
         {activeTab === 'approvals' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Approvals</Text>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => navigation.navigate('InventoryApproval')}
+            >
+              <Text style={styles.navButtonText}>
+                Open Inventory Approval Queue {pendingApprovalCount > 0 ? `(${pendingApprovalCount} pending)` : ''} →
+              </Text>
+            </TouchableOpacity>
             {approvalsList.map(d => (
               <TouchableOpacity
                 key={d.id}

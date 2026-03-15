@@ -3,6 +3,10 @@ import { View, Text, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { typography } from '../theme';
+import { useAppSelector } from '../hooks/useReduxHooks';
+import { selectUser } from '../screens/Auth/authSlice';
+import { selectUnreadNotificationCountForUser } from '../screens/Notifications/notificationCenterSlice';
+import NotificationBadge from '../components/NotificationBadge';
 
 import DashboardStack from './stacks/DashboardStack';
 import TransactionsStack from './stacks/TransactionsStack';
@@ -26,17 +30,26 @@ type AdminTabParamList = {
 
 const Tab = createBottomTabNavigator<AdminTabParamList>();
 
-const TabIcon: React.FC<{ label: string; focused: boolean }> = ({ label, focused }) => (
+const TabIcon: React.FC<{ label: string; focused: boolean; badgeCount?: number }> = ({
+  label,
+  focused,
+  badgeCount = 0,
+}) => (
   <View style={styles.iconWrapper}>
     {focused && <View style={styles.topIndicator} />}
     <View style={[styles.iconCircle, { backgroundColor: focused ? ACTIVE + '14' : '#F1F5F9' }]}>
       <Text style={[styles.iconText, { color: focused ? ACTIVE : INACTIVE }]}>{label}</Text>
     </View>
+    <NotificationBadge count={badgeCount} />
   </View>
 );
 
 const AdminTabNavigator: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const user = useAppSelector(selectUser);
+  const unreadCount = useAppSelector(state =>
+    selectUnreadNotificationCountForUser(state, 'admin', user?.uid),
+  );
 
   return (
     <Tab.Navigator
@@ -68,7 +81,9 @@ const AdminTabNavigator: React.FC = () => {
         component={DashboardStack}
         options={{
           tabBarLabel: 'Dashboard',
-          tabBarIcon: ({ focused }) => <TabIcon label="DSH" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon label="DSH" focused={focused} badgeCount={unreadCount} />
+          ),
         }}
       />
       <Tab.Screen

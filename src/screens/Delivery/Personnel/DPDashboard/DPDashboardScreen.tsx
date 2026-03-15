@@ -14,12 +14,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, typography, spacing, borderRadius, shadows } from '../../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectUser } from '../../../Auth/authSlice';
+import { selectUnreadNotificationCountForUser } from '../../../Notifications/notificationCenterSlice';
 import {
   selectDeliveries,
   selectDeliveryPersonnel,
   updateDeliveryStatus,
 } from '../../Admin/AssignDeliveries/deliverySlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
+import NotificationBadge from '../../../../components/NotificationBadge';
 import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DPDashboardStack';
 
 type Nav = NativeStackNavigationProp<DPDashboardStackParamList>;
@@ -53,6 +55,9 @@ const DPDashboardScreen: React.FC = () => {
   const deliveries = useAppSelector(selectDeliveries);
   const personnel = useAppSelector(selectDeliveryPersonnel);
   const userId = user?.uid ?? 'dp_002';
+  const unreadNotifications = useAppSelector(state =>
+    selectUnreadNotificationCountForUser(state, 'delivery', userId),
+  );
 
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -148,8 +153,9 @@ const DPDashboardScreen: React.FC = () => {
             <Text style={styles.name}>{user?.displayName ?? me?.displayName ?? 'Delivery Partner'}</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.bellBtn}>
+            <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('Notifications')}>
               <Text style={styles.bellText}>BELL</Text>
+              <NotificationBadge count={unreadNotifications} />
             </TouchableOpacity>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{(user?.displayName ?? me?.displayName ?? 'D').charAt(0).toUpperCase()}</Text>

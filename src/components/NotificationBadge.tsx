@@ -21,17 +21,18 @@ const NotificationBadge: React.FC<NotificationBadgeProps> = ({ count }) => {
 const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
-    top: -4,
-    right: -6,
+    top: -5,
+    right: -7,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: colors.danger,
+    backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
     borderWidth: 1.5,
     borderColor: colors.white,
+    zIndex: 10,
   },
   badgeWide: {
     minWidth: 26,

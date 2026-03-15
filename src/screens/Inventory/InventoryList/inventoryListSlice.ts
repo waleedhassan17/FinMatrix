@@ -18,6 +18,12 @@ import {
 export type StockFilter = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
 export type ViewMode = 'list' | 'grid';
 
+export interface DeliveryQuantityChange {
+  itemId: string;
+  deliveredQty: number;
+  returnedQty: number;
+}
+
 export interface InventoryListSliceState {
   items: InventoryItemData[];
   searchQuery: string;
@@ -54,6 +60,17 @@ export const inventoryListSlice = createAppSlice({
     updateItem: create.reducer((state, action: PayloadAction<InventoryItemData>) => {
       const idx = state.items.findIndex(i => i.itemId === action.payload.itemId);
       if (idx !== -1) state.items[idx] = action.payload;
+    }),
+    applyDeliveryChanges: create.reducer((state, action: PayloadAction<{ changes: DeliveryQuantityChange[] }>) => {
+      const now = new Date().toISOString();
+      action.payload.changes.forEach(change => {
+        const idx = state.items.findIndex(i => i.itemId === change.itemId);
+        if (idx === -1) return;
+        const current = state.items[idx].quantityOnHand;
+        const next = Math.max(0, current - change.deliveredQty + change.returnedQty);
+        state.items[idx].quantityOnHand = next;
+        state.items[idx].lastUpdated = now;
+      });
     }),
 
     // ── List UI reducers ────────────────────────────
@@ -151,6 +168,7 @@ export const {
   setItems,
   addItem,
   updateItem,
+  applyDeliveryChanges,
   setSearchQuery,
   setActiveFilter,
   setCategoryFilter,

@@ -3,6 +3,10 @@ import { View, Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { typography } from '../theme';
+import { useAppSelector } from '../hooks/useReduxHooks';
+import { selectUser } from '../screens/Auth/authSlice';
+import { selectUnreadNotificationCountForUser } from '../screens/Notifications/notificationCenterSlice';
+import NotificationBadge from '../components/NotificationBadge';
 
 import DPDashboardStack from './stacks/DPDashboardStack';
 import DPDeliveriesStack from './stacks/DPDeliveriesStack';
@@ -24,17 +28,26 @@ type DeliveryTabParamList = {
 
 const Tab = createBottomTabNavigator<DeliveryTabParamList>();
 
-const TabIcon: React.FC<{ label: string; focused: boolean }> = ({ label, focused }) => (
+const TabIcon: React.FC<{ label: string; focused: boolean; badgeCount?: number }> = ({
+  label,
+  focused,
+  badgeCount = 0,
+}) => (
   <View style={styles.iconWrapper}>
     {focused && <View style={styles.topIndicator} />}
     <View style={[styles.iconCircle, { backgroundColor: focused ? ACTIVE + '14' : '#F1F5F9' }]}>
       <Text style={[styles.iconText, { color: focused ? ACTIVE : INACTIVE }]}>{label}</Text>
     </View>
+    <NotificationBadge count={badgeCount} />
   </View>
 );
 
 const DeliveryTabNavigator: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const user = useAppSelector(selectUser);
+  const unreadCount = useAppSelector(state =>
+    selectUnreadNotificationCountForUser(state, 'delivery', user?.uid),
+  );
 
   return (
     <Tab.Navigator
@@ -66,7 +79,9 @@ const DeliveryTabNavigator: React.FC = () => {
         component={DPDashboardStack}
         options={{
           tabBarLabel: 'Dashboard',
-          tabBarIcon: ({ focused }) => <TabIcon label="DSH" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon label="DSH" focused={focused} badgeCount={unreadCount} />
+          ),
         }}
       />
       <Tab.Screen

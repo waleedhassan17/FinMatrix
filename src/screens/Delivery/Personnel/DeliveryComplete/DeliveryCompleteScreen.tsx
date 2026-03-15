@@ -43,6 +43,10 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!delivery || inventoryRequestSubmitted) return;
     if (!delivery.assignedTo) return;
     dispatch(submitShadowInventoryUpdateForDelivery({ deliveryId, personnelId: delivery.assignedTo }));
+    dispatch({
+      type: 'delivery/submitInventoryUpdate',
+      payload: { deliveryId, personnelId: delivery.assignedTo },
+    });
     dispatch(setInventoryRequestSubmitted(true));
   }, [delivery, inventoryRequestSubmitted, dispatch, deliveryId]);
 

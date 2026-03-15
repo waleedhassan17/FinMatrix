@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -43,6 +44,7 @@ import { formatCurrency } from '../../../utils/formatters';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_CARD_WIDTH = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2;
+type PickerType = 'category' | 'agency' | null;
 
 // ── Constants ─────────────────────────────────────────
 type FilterChip = { key: StockFilter; label: string; color: string };
@@ -105,6 +107,7 @@ const InventoryListScreen: React.FC = () => {
   const agencyFilter = useAppSelector(selectInventoryAgencyFilter);
   const viewMode = useAppSelector(selectInventoryViewMode);
   const isLoading = useAppSelector(selectInventoryIsLoading);
+  const [activePicker, setActivePicker] = React.useState<PickerType>(null);
 
   useEffect(() => {
     dispatch(fetchInventoryItems());
@@ -163,6 +166,26 @@ const InventoryListScreen: React.FC = () => {
 
   const categoryOptions = useMemo(() => buildCategoryOptions(items), [items]);
   const agencyOptions = useMemo(() => buildAgencyOptions(), []);
+
+  const selectedCategoryLabel =
+    categoryOptions.find(o => o.value === categoryFilter)?.label ?? 'All Categories';
+  const selectedAgencyLabel =
+    agencyOptions.find(o => o.value === agencyFilter)?.label ?? 'All Sources';
+
+  const pickerTitle = activePicker === 'category' ? 'Select Category' : 'Select Source';
+  const pickerOptions = activePicker === 'category' ? categoryOptions : agencyOptions;
+
+  const handlePickerSelection = useCallback(
+    (value: string) => {
+      if (activePicker === 'category') {
+        dispatch(setCategoryFilter(value));
+      } else if (activePicker === 'agency') {
+        dispatch(setAgencyFilter(value));
+      }
+      setActivePicker(null);
+    },
+    [activePicker, dispatch],
+  );
 
   const getAgencyName = useCallback((agencyId?: string) => {
     if (!agencyId) return null;
@@ -342,14 +365,10 @@ const InventoryListScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.dropdownBtn}
           activeOpacity={0.7}
-          onPress={() => {
-            const currentIdx = categoryOptions.findIndex(o => o.value === categoryFilter);
-            const nextIdx = (currentIdx + 1) % categoryOptions.length;
-            dispatch(setCategoryFilter(categoryOptions[nextIdx].value));
-          }}
+          onPress={() => setActivePicker('category')}
         >
           <Text style={styles.dropdownBtnText} numberOfLines={1}>
-            {categoryOptions.find(o => o.value === categoryFilter)?.label ?? 'All Categories'}
+            {selectedCategoryLabel}
           </Text>
           <Text style={styles.dropdownArrow}>▾</Text>
         </TouchableOpacity>
@@ -357,18 +376,60 @@ const InventoryListScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.dropdownBtn}
           activeOpacity={0.7}
-          onPress={() => {
-            const currentIdx = agencyOptions.findIndex(o => o.value === agencyFilter);
-            const nextIdx = (currentIdx + 1) % agencyOptions.length;
-            dispatch(setAgencyFilter(agencyOptions[nextIdx].value));
-          }}
+          onPress={() => setActivePicker('agency')}
         >
           <Text style={styles.dropdownBtnText} numberOfLines={1}>
-            {agencyOptions.find(o => o.value === agencyFilter)?.label ?? 'All Sources'}
+            {selectedAgencyLabel}
           </Text>
           <Text style={styles.dropdownArrow}>▾</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={activePicker !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActivePicker(null)}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setActivePicker(null)}
+        >
+          <View style={styles.pickerModal}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>{pickerTitle}</Text>
+              <TouchableOpacity onPress={() => setActivePicker(null)}>
+                <Text style={styles.pickerClose}>X</Text>
+              </TouchableOpacity>
+            </View>
+
+            {pickerOptions.map(option => {
+              const isSelected =
+                (activePicker === 'category' && option.value === categoryFilter) ||
+                (activePicker === 'agency' && option.value === agencyFilter);
+
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
+                  activeOpacity={0.7}
+                  onPress={() => handlePickerSelection(option.value)}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      isSelected && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* ── Summary Bar ── */}
       <View style={styles.summaryBar}>
@@ -586,6 +647,58 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.textLight,
     marginLeft: spacing.xs,
+  },
+
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  pickerModal: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    maxHeight: '70%',
+    ...shadows.card,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  pickerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: typography.fontFamily,
+  },
+  pickerClose: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    fontFamily: typography.fontFamily,
+  },
+  pickerOption: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  pickerOptionSelected: {
+    backgroundColor: colors.primary + '12',
+  },
+  pickerOptionText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    fontFamily: typography.fontFamily,
+  },
+  pickerOptionTextSelected: {
+    color: colors.primary,
+    fontWeight: '700',
   },
 
   // ── Summary Bar ───────────────────────────────────
