@@ -14,7 +14,6 @@ import EmailVerificationScreen from '../screens/Auth/EmailVerification/EmailVeri
 import CompanySetupScreen from '../screens/Auth/CompanySetup/CompanySetupScreen';
 import CreateCompanyScreen from '../screens/Auth/CreateCompany/CreateCompanyScreen';
 import JoinCompanyScreen from '../screens/Auth/JoinCompany/JoinCompanyScreen';
-import DeliveryOnboardingScreen from '../screens/Auth/DeliveryOnboarding/DeliveryOnboardingScreen';
 
 // Splash Overlay
 import SplashOverlay from '../screens/Splash/SplashScreen';
@@ -31,15 +30,16 @@ let splashHasPlayed = false;
 const BaseNavigator: React.FC = () => {
   const shouldShowSplash = useRef(!splashHasPlayed).current;
   const [showSplash, setShowSplash] = useState(shouldShowSplash);
-  const { isAuthenticated, hasSeenOnboarding, hasSeenDeliveryOnboarding, user } = useAppSelector(
+  const { isAuthenticated, hasSeenOnboarding, user } = useAppSelector(
     state => state.auth,
   );
   const hasCompany = Boolean(user?.companyId);
+  const isDeliveryUser = user?.role === 'delivery';
 
   // ─── Auth Flow Logic ─────────────────────────────────
   // 1. Not seen onboarding → Onboarding
   // 2. Not authenticated → RoleSelection → Sign In/Up
-  // 3. Authenticated + delivery role → DeliveryOnboarding / DeliveryTabs
+  // 3. Authenticated + delivery role → DeliveryTabs
   // 4. Authenticated, no company → CompanySetup
   // 5. Authenticated + company → AdminTabs
 
@@ -77,16 +77,9 @@ const BaseNavigator: React.FC = () => {
               component={EmailVerificationScreen}
             />
           </>
-        ) : user?.role === 'delivery' ? (
+        ) : isDeliveryUser ? (
           // ── Delivery Personnel (skip CompanySetup) ──
           <>
-            {!hasSeenDeliveryOnboarding && (
-              <Stack.Screen
-                name="DeliveryOnboarding"
-                component={DeliveryOnboardingScreen}
-                options={{ animation: 'none' }}
-              />
-            )}
             <Stack.Screen
               name="DeliveryTabs"
               component={DeliveryTabNavigator}

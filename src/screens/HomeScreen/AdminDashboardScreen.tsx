@@ -28,11 +28,11 @@ import { selectActiveCompany } from '../Auth/companySlice';
 import {
   selectDashboardStats,
   selectRecentTransactions,
-  selectDeliveryOverview,
   selectDashboardAlerts,
   selectIsRefreshing,
   refreshDashboard,
 } from './adminDashboardSlice';
+import { selectDeliverySummary } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
 import NotificationBadge from '../../components/NotificationBadge';
 import type { DashboardStackParamList } from '../../navigators/stacks/DashboardStack';
 import type { DashboardStat, RecentTransaction, DashboardAlert } from '../../dummy-data/dashboardData';
@@ -82,7 +82,7 @@ const AdminDashboardScreen: React.FC = () => {
   const company = useAppSelector(selectActiveCompany);
   const stats = useAppSelector(selectDashboardStats);
   const transactions = useAppSelector(selectRecentTransactions);
-  const delivery = useAppSelector(selectDeliveryOverview);
+  const delivery = useAppSelector(selectDeliverySummary);
   const alerts = useAppSelector(selectDashboardAlerts);
   const isRefreshing = useAppSelector(selectIsRefreshing);
 
@@ -107,18 +107,22 @@ const AdminDashboardScreen: React.FC = () => {
   }, [dispatch]);
 
   const handleQuickAction = useCallback((key: string) => {
+    if (key === 'delivery') {
+      navigation.navigate('AssignDeliveries');
+      return;
+    }
+
     const moduleMap: Record<string, string> = {
       invoice: 'Transactions',
       payment: 'Transactions',
       expense: 'Transactions',
       payroll: 'Payroll',
       inventory: 'Inventory',
-      delivery: 'Delivery',
       reports: 'Reports',
       bank: 'Reconciliation',
     };
     Alert.alert('Coming Soon', `This feature is coming in the ${moduleMap[key] ?? 'next'} module.`);
-  }, []);
+  }, [navigation]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -297,7 +301,7 @@ const AdminDashboardScreen: React.FC = () => {
         <View style={styles.deliveryCard}>
           <View style={styles.deliveryStatsRow}>
             {[
-              { label: 'Assigned', value: delivery.assigned, color: colors.primary },
+              { label: 'Assigned', value: delivery.pending + delivery.inTransit, color: colors.primary },
               { label: 'In Transit', value: delivery.inTransit, color: colors.warning },
               { label: 'Delivered', value: delivery.delivered, color: colors.success },
               { label: 'Pending', value: delivery.pending, color: colors.danger },
@@ -325,7 +329,7 @@ const AdminDashboardScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.manageDeliveriesBtn}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('DeliveryPersonnelList')}
+            onPress={() => navigation.navigate('AssignDeliveries')}
           >
             <Text style={styles.manageDeliveriesTxt}>Manage Deliveries</Text>
           </TouchableOpacity>

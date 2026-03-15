@@ -396,6 +396,7 @@ const InventoryListScreen: React.FC = () => {
       {/* ── List / Grid ── */}
       {viewMode === 'list' ? (
         <FlatList
+          key="list"
           data={filteredItems}
           keyExtractor={keyExtractor}
           renderItem={renderListItem}
@@ -413,6 +414,7 @@ const InventoryListScreen: React.FC = () => {
         />
       ) : (
         <FlatList
+          key="grid"
           data={filteredItems}
           keyExtractor={keyExtractor}
           renderItem={renderGridItem}

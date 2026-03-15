@@ -30,9 +30,25 @@ import { companySetupSlice } from '../screens/Auth/CompanySetup/companySetupSlic
 import { createCompanySlice } from '../screens/Auth/CreateCompany/createCompanySlice';
 import { joinCompanySlice } from '../screens/Auth/JoinCompany/joinCompanySlice';
 import { deliveryOnboardingSlice } from '../screens/Auth/DeliveryOnboarding/deliveryOnboardingSlice';
+import { dpDashboardSlice } from '../screens/Delivery/Personnel/DPDashboard/dpDashboardSlice';
+import { dpDeliveryListSlice } from '../screens/Delivery/Personnel/DPDeliveryList/dpDeliveryListSlice';
+import { dpDeliveryDetailSlice } from '../screens/Delivery/Personnel/DPDeliveryDetail/dpDeliveryDetailSlice';
+import { dpInventorySlice } from '../screens/Delivery/Personnel/DPInventory/dpInventorySlice';
+import { dpProfileSlice } from '../screens/Delivery/Personnel/DPProfile/dpProfileSlice';
+import { dpShadowInventorySlice } from '../screens/Delivery/Personnel/DPShadowInventory/dpShadowInventorySlice';
+import { dpHistorySlice } from '../screens/Delivery/Personnel/DPHistory/dpHistorySlice';
+import { dpSettingsSlice } from '../screens/Delivery/Personnel/DPSettings/dpSettingsSlice';
+import { dpSignatureCaptureSlice } from '../screens/Delivery/Personnel/SignatureCapture/dpSignatureCaptureSlice';
+import { dpCustomerConfirmSlice } from '../screens/Delivery/Personnel/CustomerConfirm/dpCustomerConfirmSlice';
+import { dpDeliveryCompleteSlice } from '../screens/Delivery/Personnel/DeliveryComplete/dpDeliveryCompleteSlice';
 import { deliveryPersonnelListSlice } from '../screens/Delivery/Admin/DeliveryPersonnelList/deliveryPersonnelListSlice';
 import { addDeliveryPersonnelSlice } from '../screens/Delivery/Admin/AddDeliveryPersonnel/addDeliveryPersonnelSlice';
 import { deliveryPersonnelDetailSlice } from '../screens/Delivery/Admin/DeliveryPersonnelDetail/deliveryPersonnelDetailSlice';
+import { assignDeliveriesSlice } from '../screens/Delivery/Admin/AssignDeliveries/assignDeliveriesSlice';
+import { createDeliveryScreenSlice } from '../screens/Delivery/Admin/CreateDelivery/createDeliverySlice';
+import { assignWorkSlice } from '../screens/Delivery/Admin/AssignWork/assignWorkSlice';
+import { deliveryMonitorSlice } from '../screens/Delivery/Admin/DeliveryMonitor/deliveryMonitorSlice';
+import { adminDeliveryDetailSlice } from '../screens/Delivery/Admin/AdminDeliveryDetail/adminDeliveryDetailSlice';
 import { adminDashboardSlice } from '../screens/HomeScreen/adminDashboardSlice';
 import { coaListSlice } from '../screens/ChartOfAccounts/COAList/coaListSlice';
 import { coaFormSlice } from '../screens/ChartOfAccounts/COAForm/coaFormSlice';
@@ -77,6 +93,7 @@ import { vendorCreditFormSlice } from '../screens/Bills/VendorCreditForm/vendorC
 import { poListSlice } from '../screens/PurchaseOrders/POList/poListSlice';
 import { poFormSlice } from '../screens/PurchaseOrders/POForm/poFormSlice';
 import { poDetailSlice } from '../screens/PurchaseOrders/PODetail/poDetailSlice';
+import { deliverySlice } from '../screens/Delivery/Admin/AssignDeliveries/deliverySlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -92,9 +109,26 @@ const rootReducer = combineReducers({
   createCompany: createCompanySlice.reducer,
   joinCompany: joinCompanySlice.reducer,
   deliveryOnboarding: deliveryOnboardingSlice.reducer,
+  dpDashboard: dpDashboardSlice.reducer,
+  dpDeliveryList: dpDeliveryListSlice.reducer,
+  dpDeliveryDetail: dpDeliveryDetailSlice.reducer,
+  dpInventory: dpInventorySlice.reducer,
+  dpProfile: dpProfileSlice.reducer,
+  dpShadowInventory: dpShadowInventorySlice.reducer,
+  dpHistory: dpHistorySlice.reducer,
+  dpSettings: dpSettingsSlice.reducer,
+  dpSignatureCapture: dpSignatureCaptureSlice.reducer,
+  dpCustomerConfirm: dpCustomerConfirmSlice.reducer,
+  dpDeliveryComplete: dpDeliveryCompleteSlice.reducer,
   deliveryPersonnelList: deliveryPersonnelListSlice.reducer,
   addDeliveryPersonnel: addDeliveryPersonnelSlice.reducer,
   deliveryPersonnelDetail: deliveryPersonnelDetailSlice.reducer,
+  assignDeliveries: assignDeliveriesSlice.reducer,
+  createDeliveryScreen: createDeliveryScreenSlice.reducer,
+  assignWork: assignWorkSlice.reducer,
+  deliveryMonitor: deliveryMonitorSlice.reducer,
+  adminDeliveryDetail: adminDeliveryDetailSlice.reducer,
+  delivery: deliverySlice.reducer,
   adminDashboard: adminDashboardSlice.reducer,
   coaList: coaListSlice.reducer,
   coaForm: coaFormSlice.reducer,

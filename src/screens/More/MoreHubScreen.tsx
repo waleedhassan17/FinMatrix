@@ -65,6 +65,13 @@ const ROWS: MoreRow[] = [
     onPress: nav => nav.navigate('VendorList'),
   },
   {
+    key: 'delivery_management',
+    icon: '🚚',
+    label: 'Delivery Management',
+    subtitle: 'Assign, monitor, and approve deliveries',
+    onPress: nav => nav.navigate('AssignDeliveries'),
+  },
+  {
     key: 'company',
     icon: '🏢',
     label: 'Company Profile',

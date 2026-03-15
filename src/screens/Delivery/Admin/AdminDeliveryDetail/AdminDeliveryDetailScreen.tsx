@@ -1,0 +1,675 @@
+import React, { useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Linking,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { colors, typography, spacing, borderRadius, shadows } from '../../../../theme';
+import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
+import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
+import {
+  selectDeliveries,
+  selectDeliveryPersonnel,
+  reassignDelivery,
+  cancelDelivery,
+} from '../AssignDeliveries/deliverySlice';
+import {
+  selectDetailUIState,
+  toggleReassignPanel,
+  setReassignPersonnelId,
+  toggleCancelConfirm,
+  resetDetailUIState,
+} from './adminDeliveryDetailSlice';
+import CustomButton from '../../../../Custom-Components/CustomButton';
+import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
+
+type Props = NativeStackScreenProps<MoreStackParamList, 'AdminDeliveryDetail'>;
+
+// ── Constants ────────────────────────────────────────────────────────────────
+const STATUS_COLORS: Record<string, string> = {
+  unassigned: '#64748B',
+  pending: '#D97706',
+  in_transit: '#2563EB',
+  delivered: '#059669',
+  failed: '#DC2626',
+  returned: '#EA580C',
+};
+
+const STATUS_ICONS: Record<string, string> = {
+  unassigned: '⚪',
+  pending: '🟡',
+  in_transit: '🔵',
+  delivered: '🟢',
+  failed: '🔴',
+  returned: '🟠',
+};
+
+const PRIORITY_COLORS: Record<string, string> = {
+  high: '#B91C1C',
+  medium: '#B45309',
+  low: '#0F766E',
+};
+
+// ── Component ────────────────────────────────────────────────────────────────
+const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { deliveryId } = route.params;
+  const dispatch = useAppDispatch();
+
+  const deliveries = useAppSelector(selectDeliveries);
+  const allPersonnel = useAppSelector(selectDeliveryPersonnel);
+  const uiState = useAppSelector(selectDetailUIState);
+
+  const delivery = deliveries.find(d => d.id === deliveryId);
+  const assignedPerson = allPersonnel.find(p => p.userId === delivery?.assignedTo);
+
+  const personnelOptions = useMemo(
+    () =>
+      allPersonnel
+        .filter(p => p.status === 'active' && p.userId !== delivery?.assignedTo)
+        .map(p => ({
+          label: `${p.displayName} (Load: ${p.currentLoad}/${p.maxLoad})`,
+          value: p.userId,
+        })),
+    [allPersonnel, delivery?.assignedTo],
+  );
+
+  // ── Info Row helper ──────────────────────────────────────────────────────
+  const renderInfoRow = (label: string, value: string) => (
+    <View style={styles.infoRow} key={label}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  );
+
+  // ── Not-found guard ──────────────────────────────────────────────────────
+  if (!delivery) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.back}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Delivery Detail</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <View style={styles.center}>
+          <Text style={styles.placeholderNote}>Delivery not found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const statusColor = STATUS_COLORS[delivery.status] ?? '#64748B';
+
+  // ── Handlers ────────────────────────────────────────────────────────────
+  const handleReassign = () => {
+    if (!uiState.reassignPersonnelId) {
+      Alert.alert('Select Personnel', 'Please select a delivery person to reassign to.');
+      return;
+    }
+    dispatch(reassignDelivery({ deliveryId: delivery.id, personnelId: uiState.reassignPersonnelId }));
+    dispatch(resetDetailUIState());
+    Alert.alert('Reassigned', 'Delivery has been reassigned successfully.');
+  };
+
+  const handleCancelConfirmed = () => {
+    dispatch(cancelDelivery({ deliveryId: delivery.id, reason: 'Cancelled by admin' }));
+    dispatch(resetDetailUIState());
+    Alert.alert('Cancelled', 'Delivery has been marked as failed.', [
+      { text: 'OK', onPress: () => navigation.goBack() },
+    ]);
+  };
+
+  const handleContact = () => {
+    const phone = delivery.customerPhone ?? '';
+    if (!phone) {
+      Alert.alert('No Phone', `No phone number on file for ${delivery.customerName}.`);
+      return;
+    }
+    Linking.openURL(`tel:${phone}`).catch(() =>
+      Alert.alert('Contact', `Call ${delivery.customerName} at ${phone}`),
+    );
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* ── Header ── */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.back}>‹</Text>
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.title}>{delivery.referenceNo}</Text>
+        </View>
+        <View style={[styles.headerStatusBadge, { backgroundColor: statusColor + '20' }]}>
+          <Text style={[styles.headerStatusText, { color: statusColor }]}>
+            {STATUS_ICONS[delivery.status]} {delivery.status.replace('_', ' ')}
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* ── Customer Info ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Customer</Text>
+          {renderInfoRow('Name', delivery.customerName)}
+          {renderInfoRow('Address', delivery.address ?? delivery.zone)}
+          {delivery.customerPhone && renderInfoRow('Phone', delivery.customerPhone)}
+          {renderInfoRow('Zone', delivery.zone)}
+          {renderInfoRow('Scheduled', delivery.scheduledDate)}
+          {delivery.notes && renderInfoRow('Notes', delivery.notes)}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Verification</Text>
+            <View
+              style={[
+                styles.verifyBadge,
+                {
+                  backgroundColor: delivery.customerVerified
+                    ? '#059669' + '22'
+                    : '#64748B' + '22',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.verifyText,
+                  { color: delivery.customerVerified ? '#059669' : '#64748B' },
+                ]}
+              >
+                {delivery.customerVerified ? '✓ Verified' : '— Unverified'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Priority badge ── */}
+        <View style={styles.priorityRow}>
+          <Text style={styles.infoLabel}>Priority</Text>
+          <View
+            style={[
+              styles.priorityBadge,
+              { backgroundColor: PRIORITY_COLORS[delivery.priority] + '22' },
+            ]}
+          >
+            <Text style={[styles.priorityText, { color: PRIORITY_COLORS[delivery.priority] }]}>
+              {delivery.priority.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Items List ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Items ({delivery.items.length})</Text>
+          {delivery.items.map((item, idx) => (
+            <View key={idx} style={styles.itemRow}>
+              <View style={styles.itemIndex}>
+                <Text style={styles.itemIndexText}>{idx + 1}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.itemName}>{item.itemName}</Text>
+                <Text style={styles.itemAgency}>{item.agencyName}</Text>
+              </View>
+              <Text style={styles.itemQty}>×{item.quantity}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ── Delivery Person ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Delivery Person</Text>
+          {assignedPerson ? (
+            <>
+              <View style={styles.personCard}>
+                <View style={styles.personAvatar}>
+                  <Text style={styles.personAvatarText}>
+                    {assignedPerson.displayName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.personName}>{assignedPerson.displayName}</Text>
+                  <Text style={styles.personMeta}>
+                    {assignedPerson.vehicleType} • {assignedPerson.vehicleNumber}
+                  </Text>
+                  <Text style={styles.personMeta}>
+                    Load: {assignedPerson.currentLoad}/{assignedPerson.maxLoad} • Rating:{' '}
+                    {assignedPerson.rating}★
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.personStatusBadge,
+                    {
+                      backgroundColor:
+                        assignedPerson.status === 'active' ? '#059669' + '20' : '#D97706' + '20',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: '600',
+                      color: assignedPerson.status === 'active' ? '#059669' : '#D97706',
+                    }}
+                  >
+                    {assignedPerson.status}
+                  </Text>
+                </View>
+              </View>
+              {delivery.assignedAt && (
+                <Text style={styles.assignedAt}>
+                  Assigned {new Date(delivery.assignedAt).toLocaleString()}
+                </Text>
+              )}
+            </>
+          ) : (
+            <Text style={styles.placeholderNote}>No personnel assigned</Text>
+          )}
+        </View>
+
+        {/* ── Status History Timeline ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Status History</Text>
+          {delivery.statusHistory && delivery.statusHistory.length > 0 ? (
+            delivery.statusHistory.map((entry, idx) => {
+              const isLast = idx === (delivery.statusHistory?.length ?? 0) - 1;
+              const entryColor = STATUS_COLORS[entry.status] ?? '#64748B';
+              return (
+                <View key={idx} style={styles.timelineItem}>
+                  <View style={styles.timelineLine}>
+                    <View style={[styles.timelineDot, { backgroundColor: entryColor }]} />
+                    {!isLast && <View style={styles.timelineConnector} />}
+                  </View>
+                  <View style={styles.timelineContent}>
+                    <Text style={[styles.timelineStatus, { color: entryColor }]}>
+                      {STATUS_ICONS[entry.status]}{' '}
+                      {entry.status
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, c => c.toUpperCase())}
+                    </Text>
+                    <Text style={styles.timelineTime}>
+                      {new Date(entry.timestamp).toLocaleString()}
+                    </Text>
+                    {entry.note !== undefined && (
+                      <Text style={styles.timelineNote}>{entry.note}</Text>
+                    )}
+                    {entry.updatedBy !== undefined && (
+                      <Text style={styles.timelineBy}>By: {entry.updatedBy}</Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <Text style={styles.placeholderNote}>No status history available</Text>
+          )}
+        </View>
+
+        {/* ── Signature Preview ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Signature</Text>
+          {delivery.signature ? (
+            <View style={styles.signatureBox}>
+              <Text style={styles.signatureIcon}>✍️</Text>
+              <Text style={styles.signatureLabel}>Signature on file</Text>
+              <Text style={styles.signatureSub}>{delivery.signature}</Text>
+            </View>
+          ) : (
+            <View style={[styles.signatureBox, styles.signatureEmpty]}>
+              <Text style={styles.signatureIcon}>✍️</Text>
+              <Text style={[styles.signatureLabel, { color: colors.textLight }]}>
+                No signature captured
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── Delivery Photos ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Delivery Photos</Text>
+          {delivery.photos && delivery.photos.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {delivery.photos.map((_, idx) => (
+                <View key={idx} style={styles.photoThumb}>
+                  <Text style={styles.photoThumbIcon}>📷</Text>
+                  <Text style={styles.photoThumbLabel}>Photo {idx + 1}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.photoEmpty}>
+              <Text style={styles.photoThumbIcon}>📷</Text>
+              <Text style={styles.placeholderNote}>No photos available</Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── Reassign Panel ── */}
+        {uiState.showReassignPanel && (
+          <View style={styles.actionPanel}>
+            <Text style={styles.actionPanelTitle}>Re-assign Delivery</Text>
+            {personnelOptions.length > 0 ? (
+              <>
+                <CustomDropdown
+                  label="Select Personnel"
+                  options={personnelOptions}
+                  value={uiState.reassignPersonnelId}
+                  onChange={val => dispatch(setReassignPersonnelId(val))}
+                />
+                <View style={styles.panelButtons}>
+                  <CustomButton
+                    title="Confirm Reassign"
+                    onPress={handleReassign}
+                    variant="primary"
+                    fullWidth
+                  />
+                  <TouchableOpacity
+                    style={styles.linkBtn}
+                    onPress={() => dispatch(toggleReassignPanel())}
+                  >
+                    <Text style={styles.linkBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.placeholderNote}>No other active personnel available</Text>
+                <TouchableOpacity
+                  style={styles.linkBtn}
+                  onPress={() => dispatch(toggleReassignPanel())}
+                >
+                  <Text style={styles.linkBtnText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* ── Cancel Confirm ── */}
+        {uiState.showCancelConfirm && (
+          <View style={[styles.actionPanel, styles.dangerPanel]}>
+            <Text style={[styles.actionPanelTitle, { color: '#DC2626' }]}>Cancel Delivery?</Text>
+            <Text style={styles.dangerNote}>
+              This marks the delivery as failed and cannot be undone from this screen.
+            </Text>
+            <View style={styles.panelButtons}>
+              <CustomButton
+                title="Yes, Cancel Delivery"
+                onPress={handleCancelConfirmed}
+                variant="danger"
+                fullWidth
+              />
+              <TouchableOpacity
+                style={styles.linkBtn}
+                onPress={() => dispatch(toggleCancelConfirm())}
+              >
+                <Text style={styles.linkBtnText}>Go Back</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* ── Fixed Bottom Action Bar ── */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          style={[styles.bottomBtn, { backgroundColor: colors.secondary }]}
+          onPress={() => dispatch(toggleReassignPanel())}
+        >
+          <Text style={styles.bottomBtnText}>🔄{'\n'}Re-assign</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.bottomBtn, { backgroundColor: '#DC2626' }]}
+          onPress={() => dispatch(toggleCancelConfirm())}
+        >
+          <Text style={styles.bottomBtnText}>✕{'\n'}Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.bottomBtn, { backgroundColor: colors.success }]}
+          onPress={handleContact}
+        >
+          <Text style={styles.bottomBtnText}>📞{'\n'}Contact</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+// ── Styles ───────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.cardBg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backBtn: { padding: spacing.xs },
+  back: { ...typography.h2, color: colors.primary },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  title: { ...typography.h4, color: colors.textPrimary },
+  headerStatusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+  },
+  headerStatusText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+
+  content: { padding: spacing.md, paddingBottom: spacing.xl },
+
+  // Section
+  section: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...shadows.card,
+  },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+    paddingBottom: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+
+  // Info rows
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border + '60',
+  },
+  infoLabel: { ...typography.small, color: colors.textSecondary, flex: 1 },
+  infoValue: { ...typography.small, color: colors.textPrimary, flex: 2, textAlign: 'right' },
+
+  // Priority row (outside any section card)
+  priorityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+    ...shadows.small,
+  },
+  priorityBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  priorityText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+
+  // Verify badge
+  verifyBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+  },
+  verifyText: { fontSize: 12, fontWeight: '600' },
+
+  // Items
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border + '50',
+  },
+  itemIndex: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.secondary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  itemIndexText: { fontSize: 11, fontWeight: '700', color: colors.secondary },
+  itemName: { ...typography.small, fontWeight: '600', color: colors.textPrimary },
+  itemAgency: { ...typography.caption, color: colors.textSecondary },
+  itemQty: { ...typography.body, fontWeight: '700', color: colors.primary },
+
+  // Person card
+  personCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  personAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  personAvatarText: { ...typography.h4, color: colors.primary },
+  personName: { ...typography.body, fontWeight: '600', color: colors.textPrimary },
+  personMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  personStatusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+  },
+  assignedAt: { ...typography.caption, color: colors.textLight, marginTop: spacing.xs },
+
+  // Timeline
+  timelineItem: { flexDirection: 'row', marginBottom: spacing.sm },
+  timelineLine: { alignItems: 'center', width: 24, marginRight: spacing.sm },
+  timelineDot: { width: 12, height: 12, borderRadius: 6 },
+  timelineConnector: {
+    width: 2,
+    flex: 1,
+    backgroundColor: colors.border,
+    marginTop: 2,
+    minHeight: 24,
+  },
+  timelineContent: { flex: 1, paddingBottom: spacing.sm },
+  timelineStatus: { ...typography.small, fontWeight: '600' },
+  timelineTime: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  timelineNote: { ...typography.caption, color: colors.textPrimary, marginTop: 2 },
+  timelineBy: { ...typography.caption, color: colors.textLight, marginTop: 1 },
+
+  // Signature
+  signatureBox: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.secondary + '10',
+  },
+  signatureEmpty: { backgroundColor: colors.border + '40' },
+  signatureIcon: { fontSize: 28, marginBottom: spacing.xs },
+  signatureLabel: { ...typography.small, fontWeight: '600', color: colors.textPrimary },
+  signatureSub: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
+
+  // Photos
+  photoThumb: {
+    width: 80,
+    height: 80,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.border + '60',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  photoThumbIcon: { fontSize: 24 },
+  photoThumbLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  photoEmpty: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    gap: spacing.xs,
+  },
+
+  // Placeholder note
+  placeholderNote: { ...typography.small, color: colors.textLight },
+
+  // Action panels (inline)
+  actionPanel: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...shadows.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dangerPanel: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  actionPanelTitle: { ...typography.h4, color: colors.textPrimary, marginBottom: spacing.sm },
+  dangerNote: { ...typography.small, color: '#991B1B', marginBottom: spacing.md },
+  panelButtons: { marginTop: spacing.sm, gap: spacing.sm },
+  linkBtn: { alignItems: 'center', paddingVertical: spacing.sm },
+  linkBtnText: { ...typography.small, color: colors.secondary },
+
+  // Bottom action bar
+  bottomBar: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.cardBg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  bottomBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomBtnText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+});
+
+export default AdminDeliveryDetailScreen;

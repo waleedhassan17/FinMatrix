@@ -18,6 +18,11 @@ import CustomerFormScreen from '../../screens/Customers/CustomerForm/CustomerFor
 import VendorListScreen from '../../screens/Vendors/VendorList/VendorListScreen';
 import VendorDetailScreen from '../../screens/Vendors/VendorDetail/VendorDetailScreen';
 import VendorFormScreen from '../../screens/Vendors/VendorForm/VendorFormScreen';
+import AssignDeliveriesScreen from '../../screens/Delivery/Admin/AssignDeliveries/AssignDeliveriesScreen';
+import CreateDeliveryScreen from '../../screens/Delivery/Admin/CreateDelivery/CreateDeliveryScreen';
+import AssignWorkScreen from '../../screens/Delivery/Admin/AssignWork/AssignWorkScreen';
+import DeliveryMonitorScreen from '../../screens/Delivery/Admin/DeliveryMonitor/DeliveryMonitorScreen';
+import AdminDeliveryDetailScreen from '../../screens/Delivery/Admin/AdminDeliveryDetail/AdminDeliveryDetailScreen';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
@@ -38,6 +43,11 @@ export type MoreStackParamList = {
   VendorList: undefined;
   VendorDetail: { vendorId: string };
   VendorForm: { vendorId?: string } | undefined;
+  AssignDeliveries: undefined;
+  CreateDelivery: undefined;
+  AssignWork: undefined;
+  DeliveryMonitor: undefined;
+  AdminDeliveryDetail: { deliveryId: string };
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -62,6 +72,11 @@ const MoreStack: React.FC = () => (
     <Stack.Screen name="VendorList" component={VendorListScreen} />
     <Stack.Screen name="VendorDetail" component={VendorDetailScreen} />
     <Stack.Screen name="VendorForm" component={VendorFormScreen} />
+    <Stack.Screen name="AssignDeliveries" component={AssignDeliveriesScreen} />
+    <Stack.Screen name="CreateDelivery" component={CreateDeliveryScreen} />
+    <Stack.Screen name="AssignWork" component={AssignWorkScreen} />
+    <Stack.Screen name="DeliveryMonitor" component={DeliveryMonitorScreen} />
+    <Stack.Screen name="AdminDeliveryDetail" component={AdminDeliveryDetailScreen} />
   </Stack.Navigator>
 );
 

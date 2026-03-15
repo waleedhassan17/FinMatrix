@@ -26,8 +26,10 @@ export type EstimateStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expir
 export type CreditMemoStatus = 'draft' | 'issued' | 'applied' | 'voided';
 export type DeliveryStatus =
   | 'pending'
+  | 'picked_up'
   | 'assigned'
   | 'in_transit'
+  | 'arrived'
   | 'delivered'
   | 'failed'
   | 'returned';
@@ -696,4 +698,9 @@ export type RootStackParamList = {
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;
   DeliveryPersonnelDetail: { userId: string };
+  AssignDeliveries: undefined;
+  CreateDelivery: undefined;
+  AssignWork: undefined;
+  DeliveryMonitor: undefined;
+  AdminDeliveryDetail: { deliveryId: string };
 };

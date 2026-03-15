@@ -1,0 +1,416 @@
+import type { PayloadAction } from '@reduxjs/toolkit';
+import { createAppSlice } from '@store/createAppSlice';
+import { deliveryRecords, type DeliveryItemLine, type DeliveryPriority, type DeliveryRecord, type StatusHistoryEntry } from '../../../../dummy-data/deliveries';
+import { dummyDeliveryPersonnel, type DummyDeliveryPerson } from '../../../../dummy-data/deliveryPersonnel';
+
+export interface ShadowInventoryItem {
+  personnelId: string;
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  updatedAt: string;
+}
+
+export interface InventoryUpdateRequest {
+  id: string;
+  personnelId: string;
+  itemId: string;
+  itemName: string;
+  requestedQty: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+}
+
+export interface DeliveryNotification {
+  id: string;
+  type: 'delivery_assigned' | 'delivery_status';
+  deliveryId: string;
+  personnelId?: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  isRead: boolean;
+}
+
+export interface DeliverySliceState {
+  deliveries: DeliveryRecord[];
+  deliveryPersonnel: DummyDeliveryPerson[];
+  shadowInventory: ShadowInventoryItem[];
+  inventoryUpdateRequests: InventoryUpdateRequest[];
+  notifications: DeliveryNotification[];
+}
+
+const priorityRank: Record<DeliveryPriority, number> = {
+  high: 3,
+  medium: 2,
+  low: 1,
+};
+
+const buildLoadMap = (deliveries: DeliveryRecord[]): Record<string, number> => {
+  return deliveries.reduce<Record<string, number>>((acc, d) => {
+    if (!d.assignedTo) return acc;
+    if (d.status === 'pending' || d.status === 'in_transit') {
+      acc[d.assignedTo] = (acc[d.assignedTo] ?? 0) + 1;
+    }
+    return acc;
+  }, {});
+};
+
+const initialState: DeliverySliceState = {
+  deliveries: deliveryRecords,
+  deliveryPersonnel: dummyDeliveryPersonnel,
+  shadowInventory: [
+    {
+      personnelId: 'dp_002',
+      itemId: 'aqua_001',
+      itemName: 'AquaPure Water 500ml',
+      quantity: 40,
+      updatedAt: '2026-03-15T08:00:00Z',
+    },
+    {
+      personnelId: 'dp_001',
+      itemId: 'dalda_001',
+      itemName: 'Dalda Cooking Oil 1L',
+      quantity: 12,
+      updatedAt: '2026-03-15T08:10:00Z',
+    },
+  ],
+  inventoryUpdateRequests: [
+    {
+      id: 'inv_req_001',
+      personnelId: 'dp_002',
+      itemId: 'aqua_003',
+      itemName: 'AquaPure Dispenser Bottle 19L',
+      requestedQty: 8,
+      reason: 'High demand on Zone C route',
+      status: 'pending',
+      createdAt: '2026-03-15T07:30:00Z',
+    },
+  ],
+  notifications: [],
+};
+
+export const deliverySlice = createAppSlice({
+  name: 'delivery',
+  initialState,
+  reducers: create => ({
+    createDelivery: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          customerId: string;
+          customerName: string;
+          zone: string;
+          scheduledDate: string;
+          priority: DeliveryPriority;
+          notes?: string;
+          items: DeliveryItemLine[];
+        }>,
+      ) => {
+        const now = new Date().toISOString();
+        const nextNumber = state.deliveries.length + 1001;
+        const id = `del_${String(state.deliveries.length + 1).padStart(3, '0')}`;
+        state.deliveries.unshift({
+          id,
+          referenceNo: `DEL-${nextNumber}`,
+          customerId: action.payload.customerId,
+          customerName: action.payload.customerName,
+          zone: action.payload.zone,
+          scheduledDate: action.payload.scheduledDate,
+          priority: action.payload.priority,
+          status: 'unassigned',
+          notes: action.payload.notes,
+          items: action.payload.items,
+          createdAt: now,
+          updatedAt: now,
+        });
+      },
+    ),
+
+    assignSelectedDeliveries: create.reducer(
+      (
+        state,
+        action: PayloadAction<{ deliveryIds: string[]; personnelId: string; assignedBy?: string }>,
+      ) => {
+        const { deliveryIds, personnelId } = action.payload;
+        const now = new Date().toISOString();
+
+        for (const delivery of state.deliveries) {
+          if (!deliveryIds.includes(delivery.id)) continue;
+
+          delivery.assignedTo = personnelId;
+          delivery.assignedAt = now;
+          delivery.status = 'pending';
+          delivery.updatedAt = now;
+
+          state.notifications.unshift({
+            id: `notif_${Date.now()}_${delivery.id}`,
+            type: 'delivery_assigned',
+            deliveryId: delivery.id,
+            personnelId,
+            title: 'New delivery assigned',
+            message: `${delivery.referenceNo} assigned to ${personnelId}.`,
+            createdAt: now,
+            isRead: false,
+          });
+        }
+
+        const loadMap = buildLoadMap(state.deliveries);
+        state.deliveryPersonnel = state.deliveryPersonnel.map(person => ({
+          ...person,
+          currentLoad: loadMap[person.userId] ?? 0,
+        }));
+      },
+    ),
+
+    autoAssignDeliveries: create.reducer(
+      (state, action: PayloadAction<{ deliveryIds?: string[] } | undefined>) => {
+        const targetIds = action.payload?.deliveryIds;
+        const now = new Date().toISOString();
+
+        const candidates = state.deliveries
+          .filter(d => d.status === 'unassigned' && (!targetIds || targetIds.includes(d.id)))
+          .sort((a, b) => priorityRank[b.priority] - priorityRank[a.priority]);
+
+        const loadMap = buildLoadMap(state.deliveries);
+
+        for (const delivery of candidates) {
+          const eligible = state.deliveryPersonnel
+            .filter(p => p.status === 'active' && p.zones.includes(delivery.zone))
+            .sort((a, b) => (loadMap[a.userId] ?? 0) - (loadMap[b.userId] ?? 0));
+
+          if (eligible.length === 0) continue;
+
+          const selected = eligible[0];
+          delivery.assignedTo = selected.userId;
+          delivery.assignedAt = now;
+          delivery.status = 'pending';
+          delivery.updatedAt = now;
+
+          loadMap[selected.userId] = (loadMap[selected.userId] ?? 0) + 1;
+
+          state.notifications.unshift({
+            id: `notif_${Date.now()}_${delivery.id}`,
+            type: 'delivery_assigned',
+            deliveryId: delivery.id,
+            personnelId: selected.userId,
+            title: 'Auto assignment completed',
+            message: `${delivery.referenceNo} auto-assigned to ${selected.displayName}.`,
+            createdAt: now,
+            isRead: false,
+          });
+        }
+
+        state.deliveryPersonnel = state.deliveryPersonnel.map(person => ({
+          ...person,
+          currentLoad: loadMap[person.userId] ?? 0,
+        }));
+      },
+    ),
+
+    updateDeliveryStatus: create.reducer(
+      (state, action: PayloadAction<{ deliveryId: string; status: DeliveryRecord['status']; note?: string }>) => {
+        const target = state.deliveries.find(d => d.id === action.payload.deliveryId);
+        if (!target) return;
+
+        target.status = action.payload.status;
+        target.notes = action.payload.note ?? target.notes;
+        target.updatedAt = new Date().toISOString();
+
+        if (action.payload.status === 'picked_up') target.pickedUpAt = target.updatedAt;
+        if (action.payload.status === 'in_transit') target.inTransitAt = target.updatedAt;
+        if (action.payload.status === 'arrived') target.arrivedAt = target.updatedAt;
+        if (action.payload.status === 'delivered') target.deliveredAt = target.updatedAt;
+
+        if (!target.statusHistory) target.statusHistory = [];
+        target.statusHistory.push({
+          status: action.payload.status,
+          timestamp: target.updatedAt,
+          note: action.payload.note,
+        } as StatusHistoryEntry);
+
+        state.notifications.unshift({
+          id: `notif_${Date.now()}_${target.id}`,
+          type: 'delivery_status',
+          deliveryId: target.id,
+          personnelId: target.assignedTo,
+          title: `Delivery ${action.payload.status.replace('_', ' ')}`,
+          message: `${target.referenceNo} moved to ${action.payload.status}.`,
+          createdAt: target.updatedAt,
+          isRead: false,
+        });
+      },
+    ),
+
+    markNotificationRead: create.reducer((state, action: PayloadAction<string>) => {
+      const n = state.notifications.find(item => item.id === action.payload);
+      if (n) n.isRead = true;
+    }),
+
+    reassignDelivery: create.reducer(
+      (state, action: PayloadAction<{ deliveryId: string; personnelId: string }>) => {
+        const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
+        if (!delivery) return;
+        const now = new Date().toISOString();
+        const person = state.deliveryPersonnel.find(p => p.userId === action.payload.personnelId);
+        delivery.assignedTo = action.payload.personnelId;
+        delivery.assignedAt = now;
+        delivery.status = 'pending';
+        delivery.updatedAt = now;
+        if (!delivery.statusHistory) delivery.statusHistory = [];
+        delivery.statusHistory.push({
+          status: 'pending',
+          timestamp: now,
+          note: `Reassigned to ${person?.displayName ?? action.payload.personnelId}`,
+          updatedBy: 'admin',
+        } as StatusHistoryEntry);
+        const loadMap = buildLoadMap(state.deliveries);
+        state.deliveryPersonnel = state.deliveryPersonnel.map(p => ({
+          ...p,
+          currentLoad: loadMap[p.userId] ?? 0,
+        }));
+      },
+    ),
+
+    cancelDelivery: create.reducer(
+      (state, action: PayloadAction<{ deliveryId: string; reason?: string }>) => {
+        const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
+        if (!delivery) return;
+        const now = new Date().toISOString();
+        delivery.status = 'failed';
+        delivery.notes = action.payload.reason ?? 'Cancelled by admin';
+        delivery.updatedAt = now;
+        if (!delivery.statusHistory) delivery.statusHistory = [];
+        delivery.statusHistory.push({
+          status: 'failed',
+          timestamp: now,
+          note: action.payload.reason ?? 'Cancelled by admin',
+          updatedBy: 'admin',
+        } as StatusHistoryEntry);
+        const loadMap = buildLoadMap(state.deliveries);
+        state.deliveryPersonnel = state.deliveryPersonnel.map(p => ({
+          ...p,
+          currentLoad: loadMap[p.userId] ?? 0,
+        }));
+      },
+    ),
+
+    saveDeliverySignature: create.reducer(
+      (state, action: PayloadAction<{ deliveryId: string; signatureBase64: string; signedBy: string }>) => {
+        const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
+        if (!delivery) return;
+        delivery.signatureBase64 = action.payload.signatureBase64;
+        delivery.signature = `Signed by: ${action.payload.signedBy}`;
+        delivery.updatedAt = new Date().toISOString();
+      },
+    ),
+
+    confirmCustomerReceipt: create.reducer(
+      (state, action: PayloadAction<{ deliveryId: string; verifiedBy: string }>) => {
+        const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
+        if (!delivery) return;
+        const now = new Date().toISOString();
+        delivery.customerVerified = true;
+        delivery.deliveredAt = now;
+        delivery.status = 'delivered';
+        delivery.updatedAt = now;
+        if (!delivery.statusHistory) delivery.statusHistory = [];
+        delivery.statusHistory.push({
+          status: 'delivered',
+          timestamp: now,
+          note: `Customer confirmed receipt (${action.payload.verifiedBy})`,
+          updatedBy: 'customer',
+        } as StatusHistoryEntry);
+
+        const loadMap = buildLoadMap(state.deliveries);
+        state.deliveryPersonnel = state.deliveryPersonnel.map(p => ({
+          ...p,
+          currentLoad: loadMap[p.userId] ?? 0,
+        }));
+      },
+    ),
+
+    reportDeliveryIssue: create.reducer(
+      (state, action: PayloadAction<{ deliveryId: string; note: string }>) => {
+        const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
+        if (!delivery) return;
+        const now = new Date().toISOString();
+        delivery.status = 'arrived';
+        delivery.issueNote = action.payload.note;
+        delivery.notes = action.payload.note;
+        delivery.updatedAt = now;
+        if (!delivery.statusHistory) delivery.statusHistory = [];
+        delivery.statusHistory.push({
+          status: 'arrived',
+          timestamp: now,
+          note: `Issue reported by customer: ${action.payload.note}`,
+          updatedBy: 'customer',
+        } as StatusHistoryEntry);
+      },
+    ),
+
+    submitShadowInventoryUpdateForDelivery: create.reducer(
+      (state, action: PayloadAction<{ deliveryId: string; personnelId: string }>) => {
+        const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
+        if (!delivery) return;
+        const firstItem = delivery.items[0];
+        if (!firstItem) return;
+        const now = new Date().toISOString();
+        state.inventoryUpdateRequests.unshift({
+          id: `inv_req_${Date.now()}_${delivery.id}`,
+          personnelId: action.payload.personnelId,
+          itemId: firstItem.itemId,
+          itemName: firstItem.itemName,
+          requestedQty: Math.max(1, firstItem.quantity),
+          reason: `Auto update after completed delivery ${delivery.referenceNo}`,
+          status: 'pending',
+          createdAt: now,
+        });
+      },
+    ),
+  }),
+
+  selectors: {
+    selectDeliveries: state => state.deliveries,
+    selectDeliveryPersonnel: state => state.deliveryPersonnel,
+    selectShadowInventory: state => state.shadowInventory,
+    selectInventoryUpdateRequests: state => state.inventoryUpdateRequests,
+    selectDeliveryNotifications: state => state.notifications,
+    selectUnassignedDeliveries: state => state.deliveries.filter(d => d.status === 'unassigned'),
+    selectDeliverySummary: state => {
+      const total = state.deliveries.length;
+      const pending = state.deliveries.filter(d => d.status === 'pending').length;
+      const inTransit = state.deliveries.filter(d => d.status === 'in_transit').length;
+      const delivered = state.deliveries.filter(d => d.status === 'delivered').length;
+      const failed = state.deliveries.filter(d => d.status === 'failed').length;
+      const returned = state.deliveries.filter(d => d.status === 'returned').length;
+      const unassigned = state.deliveries.filter(d => d.status === 'unassigned').length;
+      return { total, pending, inTransit, delivered, failed, returned, unassigned };
+    },
+  },
+});
+
+export const {
+  createDelivery,
+  assignSelectedDeliveries,
+  autoAssignDeliveries,
+  updateDeliveryStatus,
+  markNotificationRead,
+  reassignDelivery,
+  cancelDelivery,
+  saveDeliverySignature,
+  confirmCustomerReceipt,
+  reportDeliveryIssue,
+  submitShadowInventoryUpdateForDelivery,
+} = deliverySlice.actions;
+
+export const {
+  selectDeliveries,
+  selectDeliveryPersonnel,
+  selectShadowInventory,
+  selectInventoryUpdateRequests,
+  selectDeliveryNotifications,
+  selectUnassignedDeliveries,
+  selectDeliverySummary,
+} = deliverySlice.selectors;
