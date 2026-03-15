@@ -125,19 +125,7 @@ const JoinCompanyScreen: React.FC<Props> = ({ navigation }) => {
     dispatch(setUser({ ...user, companyId: matchedCompany.companyId }));
 
     setIsLoading(false);
-
-    if (user.role === 'delivery') {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'DeliveryOnboarding' }],
-      });
-    } else {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'AdminTabs' }],
-      });
-    }
-  }, [matchedCompany, user, dispatch, navigation]);
+  }, [matchedCompany, user, dispatch]);
 
   return (
     <SafeAreaView style={styles.container}>

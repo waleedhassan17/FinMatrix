@@ -9,14 +9,16 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 import CustomInput from '../../../Custom-Components/CustomInput';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { typography } from '../../../theme';
 import { ROUTES } from '../../../navigations-map/Base';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { setUser } from '../authSlice';
+import { setPendingUser } from '../authSlice';
 import {
   setFullName,
   setSignUpEmail,
@@ -42,12 +44,45 @@ import {
 } from '../../../models/authModel';
 import type { RootStackParamList } from '../../../types';
 
-// ═══════════════════════════════════════
-// Design Tokens
-// ═══════════════════════════════════════
-const B = {
-  navy: '#0F172A',
-  emerald: '#059669',
+// ═══════════════════════════════════════════════════════
+// Design System
+// ═══════════════════════════════════════════════════════
+const DS = {
+  navy900: '#0B1120',
+  navy800: '#0F172A',
+  navy700: '#1E293B',
+
+  green500: '#059669',
+  green400: '#10B981',
+  green50: '#ECFDF5',
+
+  slate50: '#F8FAFC',
+  slate100: '#F1F5F9',
+  slate200: '#E2E8F0',
+  slate300: '#CBD5E1',
+  slate400: '#94A3B8',
+  slate500: '#64748B',
+
+  red50: '#FEF2F2',
+  red100: '#FEE2E2',
+  red500: '#EF4444',
+  red700: '#B91C1C',
+  red900: '#7F1D1D',
+
+  amber500: '#F59E0B',
+  amber600: '#D97706',
+
+  white: '#FFFFFF',
+
+  radius: { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 },
+
+  shadowMd: {
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
@@ -68,33 +103,49 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  const headerFade = useRef(new Animated.Value(0)).current;
+  const headerSlide = useRef(new Animated.Value(-12)).current;
 
-  const passwordStrength =
-    password.length > 0 ? getPasswordStrength(password) : null;
-  const strengthInfo = passwordStrength
-    ? strengthConfig[passwordStrength]
-    : null;
+  const passwordStrength = password.length > 0 ? getPasswordStrength(password) : null;
+  const strengthInfo = passwordStrength ? strengthConfig[passwordStrength] : null;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
-
-  // ── Live progress ──
-  const filled = [fullName, email, phone, password, confirmPassword].filter(
-    v => v.length > 0,
-  ).length;
-  const progress = Math.min((filled / 5) * 100, 100);
+    Animated.stagger(120, [
+      Animated.parallel([
+        Animated.timing(headerFade, {
+          toValue: 1,
+          duration: 450,
+          useNativeDriver: true,
+        }),
+        Animated.timing(headerSlide, {
+          toValue: 0,
+          duration: 450,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, [fadeAnim, slideAnim, headerFade, headerSlide]);
 
   const triggerShake = useCallback(() => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 8, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -4, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 40, useNativeDriver: true }),
     ]).start();
   }, [shakeAnim]);
 
@@ -119,9 +170,10 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
           password,
         }),
       ).unwrap();
-      dispatch(setUser(user));
+      dispatch(setPendingUser(user));
+      navigation.navigate(ROUTES.EMAIL_VERIFICATION as any, { email: email.trim() });
     } catch {
-      // Handled by slice
+      /* handled by slice */
     }
   };
 
@@ -129,63 +181,87 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
     if (errors[field]) setErrors(p => ({ ...p, [field]: '' }));
   };
 
+  const isLoading = status === 'loading';
+
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <SafeAreaView style={s.flex} edges={['top']}>
-        <KeyboardAvoidingView
-          style={s.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar barStyle="light-content" backgroundColor={DS.navy900} />
+      <KeyboardAvoidingView
+        style={s.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={s.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}>
 
-          {/* ══════════════════════════════════
-              FIXED HEADER — Back + Progress
-             ══════════════════════════════════ */}
-          <View style={s.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <View style={s.backBtn}>
-                <Text style={s.backChar}>{'\u2039'}</Text>
+          {/* ═══════════════════════════════════
+              HEADER — Gradient panel (matches SignIn)
+             ═══════════════════════════════════ */}
+          <LinearGradient
+            colors={[DS.navy900, DS.navy800, DS.navy700]}
+            start={{ x: 0.2, y: 0 }}
+            end={{ x: 0.8, y: 1 }}
+            style={s.header}>
+
+            <View style={[s.orb, s.orbTopRight]} />
+            <View style={[s.orb, s.orbBottomLeft]} />
+
+            <SafeAreaView edges={['top']} style={s.headerInner}>
+              {/* Nav row */}
+              <View style={s.navRow}>
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+                  activeOpacity={0.7}>
+                  <View style={s.backBtn}>
+                    <Text style={s.backIcon}>{'\u2190'}</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <View style={s.rolePill}>
+                  <View style={s.rolePillDot} />
+                  <Text style={s.rolePillText}>New Account</Text>
+                </View>
               </View>
-            </TouchableOpacity>
 
-            <View style={s.progressWrap}>
-              <View style={s.progressTrack}>
-                <View style={[s.progressFill, { width: `${progress}%` }]} />
-              </View>
-            </View>
+              {/* Brand + heading */}
+              <Animated.View
+                style={{
+                  opacity: headerFade,
+                  transform: [{ translateY: headerSlide }],
+                }}>
+                <Text style={s.brand}>
+                  <Text style={s.brandFin}>Fin</Text>
+                  <Text style={s.brandMatrix}>Matrix</Text>
+                </Text>
+                <Text style={s.headerTitle}>Create your account</Text>
+                <Text style={s.headerSub}>
+                  Start managing your business finances with confidence
+                </Text>
+              </Animated.View>
+            </SafeAreaView>
+          </LinearGradient>
 
-            {/* Spacer to balance back button */}
-            <View style={{ width: 36 }} />
-          </View>
-
-          {/* ══════════════════════════════════
-              SCROLLABLE CONTENT
-             ══════════════════════════════════ */}
-          <ScrollView
-            contentContainerStyle={s.scroll}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled">
-
-            {/* Title section */}
-            <Animated.View style={[s.titleWrap, { opacity: fadeAnim }]}>
-              <View style={s.roleRow}>
-                <View style={s.roleDot} />
-                <Text style={s.roleLabel}>Administrator</Text>
-              </View>
-              <Text style={s.title}>Create your account</Text>
-              <Text style={s.subtitle}>
-                Start managing your business finances
-              </Text>
-            </Animated.View>
-
-            {/* ── Form Fields ── */}
-            <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+          {/* ═══════════════════════════════════
+              FORM CARD — Elevated surface
+             ═══════════════════════════════════ */}
+          <Animated.View
+            style={[
+              s.formCard,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { translateY: slideAnim },
+                  { translateX: shakeAnim },
+                ],
+              },
+            ]}>
               <CustomInput
                 label="Full Name"
                 value={fullName}
                 onChangeText={t => { dispatch(setFullName(t)); clear('fullName'); }}
-                placeholder="Name"
+                placeholder="Your full name"
                 error={errors.fullName}
               />
 
@@ -203,7 +279,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
                 label="Phone Number"
                 value={phone}
                 onChangeText={t => { dispatch(setPhone(t)); clear('phone'); }}
-                placeholder="+92 3XX XXXXXXX"
+                placeholder="Enter your phone number"
                 keyboardType="phone-pad"
                 error={errors.phone}
               />
@@ -217,7 +293,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
                 error={errors.password}
               />
 
-              {/* Password Strength Bar */}
+              {/* Password strength — refined bar */}
               {passwordStrength && strengthInfo && (
                 <View style={s.strengthRow}>
                   <View style={s.strengthTrack}>
@@ -231,9 +307,15 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
                       ]}
                     />
                   </View>
-                  <Text style={[s.strengthLabel, { color: strengthInfo.color }]}>
-                    {strengthInfo.label}
-                  </Text>
+                  <View
+                    style={[
+                      s.strengthPill,
+                      { backgroundColor: strengthInfo.color + '18' },
+                    ]}>
+                    <Text style={[s.strengthLabel, { color: strengthInfo.color }]}>
+                      {strengthInfo.label}
+                    </Text>
+                  </View>
                 </View>
               )}
 
@@ -245,8 +327,14 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
                 secureTextEntry
                 error={errors.confirmPassword}
               />
+          </Animated.View>
 
-              {/* ── Terms ── */}
+          {/* ═══════════════════════════════════
+              BELOW CARD — Terms, CTA, Links
+             ═══════════════════════════════════ */}
+          <View style={s.belowCard}>
+            {/* ── Terms ── */}
+            <View style={s.termsSection}>
               <TouchableOpacity
                 style={s.termsRow}
                 onPress={() => {
@@ -256,10 +344,10 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
                 activeOpacity={0.7}>
                 <View
                   style={[
-                    s.chk,
-                    acceptedTerms && { backgroundColor: B.navy, borderColor: B.navy },
+                    s.checkbox,
+                    acceptedTerms && s.checkboxActive,
                   ]}>
-                  {acceptedTerms && <Text style={s.chkMark}>{'\u2713'}</Text>}
+                  {acceptedTerms && <Text style={s.checkMark}>{'\u2713'}</Text>}
                 </View>
                 <Text style={s.termsText}>
                   I agree to the{' '}
@@ -271,168 +359,363 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
               {errors.acceptedTerms ? (
                 <Text style={s.termsErr}>{errors.acceptedTerms}</Text>
               ) : null}
+            </View>
 
-              {/* ── Error ── */}
-              {signUpError ? (
-                <View style={s.errBox}>
-                  <View style={s.errDot} />
-                  <Text style={s.errText}>{signUpError}</Text>
+            {/* Error banner */}
+            {signUpError ? (
+              <View style={s.errorBanner}>
+                <View style={s.errorIconWrap}>
+                  <Text style={s.errorIconChar}>!</Text>
                 </View>
-              ) : null}
-
-              {/* ── CTA ── */}
-              <TouchableOpacity
-                style={s.cta}
-                onPress={handleSignUp}
-                activeOpacity={0.85}
-                disabled={status === 'loading'}>
-                <Text style={s.ctaLabel}>
-                  {status === 'loading' ? 'Creating\u2026' : 'Create Account'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* ── Bottom ── */}
-              <View style={s.bottomRow}>
-                <Text style={s.bottomText}>Already have an account? </Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate(ROUTES.SIGN_IN, { role })}
-                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
-                  <Text style={s.bottomLink}>Sign in</Text>
-                </TouchableOpacity>
+                <View style={s.errorTextWrap}>
+                  <Text style={s.errorTitle}>Registration error</Text>
+                  <Text style={s.errorMsg}>{signUpError}</Text>
+                </View>
               </View>
-            </Animated.View>
+            ) : null}
+
+            {/* ── CTA ── */}
+            <TouchableOpacity
+              style={[s.cta, isLoading && s.ctaDisabled]}
+              onPress={handleSignUp}
+              activeOpacity={0.8}
+              disabled={isLoading}>
+              {isLoading ? (
+                <View style={s.ctaLoadingRow}>
+                  <ActivityIndicator size="small" color={DS.white} />
+                  <Text style={s.ctaLabel}>Creating account…</Text>
+                </View>
+              ) : (
+                <Text style={s.ctaLabel}>Create Account</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Bottom link */}
+            <View style={s.bottomRow}>
+              <Text style={s.bottomText}>Already have an account? </Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate(ROUTES.SIGN_IN, { role })}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                <Text style={s.bottomLink}>Sign in</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Security footer */}
+            <View style={s.secFooter}>
+              <View style={s.secDot} />
+              <Text style={s.secText}>Your data is encrypted and secure</Text>
+            </View>
+          </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
     </View>
   );
 };
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 // Styles
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  root: { flex: 1, backgroundColor: DS.slate50 },
   flex: { flex: 1 },
+  scroll: { flexGrow: 1 },
 
-  // ── Header ──
+  // ── Header (gradient) ──
   header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 12,
-    gap: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    position: 'relative',
+    overflow: 'hidden',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  orb: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  orbTopRight: {
+    width: 180, height: 180,
+    top: -60, right: -40,
+  },
+  orbBottomLeft: {
+    width: 100, height: 100,
+    bottom: -30, left: -20,
+  },
+  headerInner: {
+    paddingHorizontal: 24,
+    paddingBottom: 36,
+    paddingTop: 8,
+  },
+  navRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 28,
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0',
-    justifyContent: 'center', alignItems: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: DS.radius.md,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  backChar: { fontSize: 22, color: '#0F172A', fontWeight: '300', marginTop: -1 },
-  progressWrap: { flex: 1 },
-  progressTrack: {
-    height: 4, backgroundColor: '#F1F5F9', borderRadius: 2, overflow: 'hidden',
+  backIcon: {
+    fontSize: 18,
+    color: DS.white,
+    fontWeight: '400',
   },
-  progressFill: { height: 4, backgroundColor: B.navy, borderRadius: 2 },
-
-  // ── Scroll ──
-  scroll: { paddingHorizontal: 24, paddingBottom: 32 },
-
-  // ── Title ──
-  titleWrap: { paddingTop: 24, marginBottom: 24 },
-  roleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  roleDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: B.navy },
-  roleLabel: {
-    fontSize: 11, fontWeight: '600', color: '#64748B',
-    textTransform: 'uppercase', letterSpacing: 1.2,
+  rolePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: DS.radius.full,
+    gap: 6,
+  },
+  rolePillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: DS.green400,
+  },
+  rolePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
     fontFamily: typography.fontFamily,
   },
-  title: {
-    fontSize: 26, fontWeight: '700', color: '#0F172A',
-    marginBottom: 6, fontFamily: typography.fontFamily, letterSpacing: -0.5,
+  brand: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 16,
+    fontFamily: typography.fontFamily,
   },
-  subtitle: { fontSize: 14, color: '#64748B', fontFamily: typography.fontFamily },
+  brandFin: { color: DS.green400 },
+  brandMatrix: { color: DS.white },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: DS.white,
+    marginBottom: 6,
+    fontFamily: typography.fontFamily,
+    letterSpacing: -0.4,
+  },
+  headerSub: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.45)',
+    fontFamily: typography.fontFamily,
+    lineHeight: 22,
+  },
+
+  // ── Form card ──
+  formCard: {
+    backgroundColor: DS.white,
+    marginHorizontal: 16,
+    marginTop: -1,
+    borderRadius: DS.radius.xl,
+    padding: 24,
+    paddingTop: 28,
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
+  },
 
   // ── Strength ──
   strengthRow: {
-    flexDirection: 'row', alignItems: 'center',
-    marginTop: -8, marginBottom: 16, gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: -6,
+    marginBottom: 16,
+    gap: 10,
+  },
+
+  // ── Below card wrapper ──
+  belowCard: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 32,
   },
   strengthTrack: {
-    flex: 1, height: 3, backgroundColor: '#F1F5F9',
-    borderRadius: 2, overflow: 'hidden',
+    flex: 1,
+    height: 4,
+    backgroundColor: DS.slate100,
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  strengthFill: { height: '100%', borderRadius: 2 },
+  strengthFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  strengthPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
   strengthLabel: {
-    fontSize: 11, fontWeight: '600', minWidth: 50,
+    fontSize: 11,
+    fontWeight: '600',
     fontFamily: typography.fontFamily,
   },
 
   // ── Terms ──
+  termsSection: {
+    marginBottom: 20,
+  },
   termsRow: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    marginBottom: 6, marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
-  chk: {
-    width: 18, height: 18, borderRadius: 5, borderWidth: 1.5,
-    borderColor: '#E2E8F0', justifyContent: 'center',
-    alignItems: 'center', marginRight: 10, marginTop: 2,
-    backgroundColor: '#FFFFFF',
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: DS.slate300,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    marginTop: 1,
+    backgroundColor: DS.white,
   },
-  chkMark: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  checkboxActive: {
+    backgroundColor: DS.navy800,
+    borderColor: DS.navy800,
+  },
+  checkMark: {
+    color: DS.white,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: -1,
+  },
   termsText: {
-    flex: 1, fontSize: 13, color: '#64748B', lineHeight: 20,
+    flex: 1,
+    fontSize: 13,
+    color: DS.slate500,
+    lineHeight: 20,
     fontFamily: typography.fontFamily,
   },
-  termsLink: { fontWeight: '600', color: '#0F172A' },
+  termsLink: {
+    fontWeight: '700',
+    color: DS.navy800,
+  },
   termsErr: {
-    fontSize: 12, color: '#DC2626', marginBottom: 12, marginLeft: 28,
+    fontSize: 12,
+    color: DS.red500,
+    marginTop: 6,
+    marginLeft: 32,
     fontFamily: typography.fontFamily,
   },
 
-  // ── Error ──
-  errBox: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2',
-    borderRadius: 12, padding: 14, marginBottom: 16,
-    borderWidth: 1, borderColor: '#FECACA', gap: 10,
+  // ── Error banner ──
+  errorBanner: {
+    flexDirection: 'row',
+    backgroundColor: DS.red50,
+    borderRadius: DS.radius.md,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: DS.red100,
+    gap: 12,
+    alignItems: 'flex-start',
   },
-  errDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
-  errText: {
-    flex: 1, fontSize: 13, color: '#991B1B',
-    fontFamily: typography.fontFamily, lineHeight: 18,
+  errorIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: DS.red500,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-
-  // ── Security Inline Badge ──
-  secInline: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginTop: 12, marginBottom: 20,
-    paddingVertical: 10, paddingHorizontal: 14,
-    backgroundColor: '#F8FAFC', borderRadius: 10,
-    borderWidth: 1, borderColor: '#F1F5F9',
+  errorIconChar: {
+    color: DS.white,
+    fontSize: 13,
+    fontWeight: '700',
   },
-  secInlineDot: {
-    width: 6, height: 6, borderRadius: 3, backgroundColor: '#059669',
+  errorTextWrap: { flex: 1 },
+  errorTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: DS.red700,
+    fontFamily: typography.fontFamily,
+    marginBottom: 2,
   },
-  secInlineText: {
-    fontSize: 11, color: '#94A3B8', fontFamily: typography.fontFamily,
+  errorMsg: {
+    fontSize: 12,
+    color: DS.red900,
+    fontFamily: typography.fontFamily,
+    lineHeight: 18,
+    opacity: 0.85,
   },
 
   // ── CTA ──
   cta: {
-    height: 54, borderRadius: 14, backgroundColor: B.navy,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 20,
+    height: 52,
+    borderRadius: DS.radius.lg,
+    backgroundColor: DS.navy800,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 22,
+    ...DS.shadowMd,
   },
+  ctaDisabled: { opacity: 0.7 },
   ctaLabel: {
-    fontSize: 16, fontWeight: '600', color: '#FFFFFF',
-    fontFamily: typography.fontFamily, letterSpacing: 0.2,
+    fontSize: 15,
+    fontWeight: '600',
+    color: DS.white,
+    fontFamily: typography.fontFamily,
+    letterSpacing: 0.3,
+  },
+  ctaLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
 
   // ── Bottom ──
   bottomRow: {
-    flexDirection: 'row', justifyContent: 'center', paddingVertical: 4,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: 2,
+    marginBottom: 8,
   },
-  bottomText: { fontSize: 14, color: '#64748B', fontFamily: typography.fontFamily },
-  bottomLink: {
-    fontSize: 14, fontWeight: '600', color: B.navy,
+  bottomText: {
+    fontSize: 14,
+    color: DS.slate500,
     fontFamily: typography.fontFamily,
+  },
+  bottomLink: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
+  },
+
+  // ── Security ──
+  secFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  secDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: DS.green500,
+  },
+  secText: {
+    fontSize: 11,
+    color: DS.slate400,
+    fontFamily: typography.fontFamily,
+    fontWeight: '500',
   },
 });
 

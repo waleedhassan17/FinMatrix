@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Animated,
+  ActivityIndicator,
   LayoutAnimation,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { v4 as uuidv4 } from 'uuid';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { typography } from '../../../theme';
 import { ROUTES } from '../../../navigations-map/Base';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser } from '../authSlice';
@@ -35,6 +37,70 @@ import { dummyDeliveryPersonnel } from '../../../dummy-data/deliveryPersonnel';
 import type { RootStackParamList } from '../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateCompany'>;
+
+// ═══════════════════════════════════════════════════════
+// Design System — matches auth flow screens
+// ═══════════════════════════════════════════════════════
+const DS = {
+  navy900: '#0B1120',
+  navy800: '#0F172A',
+  navy700: '#1E293B',
+
+  green500: '#059669',
+  green400: '#10B981',
+  green300: '#34D399',
+  green50: '#ECFDF5',
+  greenBorder: '#A7F3D0',
+
+  blue600: '#2563EB',
+  blue500: '#3B82F6',
+  blue100: '#DBEAFE',
+  blue50: '#EFF6FF',
+
+  slate50: '#F8FAFC',
+  slate100: '#F1F5F9',
+  slate200: '#E2E8F0',
+  slate300: '#CBD5E1',
+  slate400: '#94A3B8',
+  slate500: '#64748B',
+
+  red50: '#FEF2F2',
+  red100: '#FEE2E2',
+  red500: '#EF4444',
+  red700: '#B91C1C',
+  red900: '#7F1D1D',
+
+  amber50: '#FFFBEB',
+  amber600: '#D97706',
+  amber800: '#92400E',
+  amberBorder: '#FDE68A',
+
+  white: '#FFFFFF',
+
+  radius: { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 },
+
+  shadowSm: {
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  shadowMd: {
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  shadowLg: {
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+};
 
 const INDUSTRIES = [
   { label: 'Manufacturing', value: 'Manufacturing' },
@@ -61,8 +127,36 @@ const generateInviteCode = (): string => {
   return code;
 };
 
-const STEP_LABELS = ['Company Info', 'Agencies', 'Review'];
+const STEPS: { label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { label: 'Details', icon: 'business-outline' },
+  { label: 'Agencies', icon: 'layers-outline' },
+  { label: 'Review', icon: 'checkmark-circle-outline' },
+];
 
+// ═══════════════════════════════════════════════════════
+// Step Header Configs
+// ═══════════════════════════════════════════════════════
+const STEP_HEADERS: {
+  title: string;
+  subtitle: string;
+}[] = [
+  {
+    title: 'Company Details',
+    subtitle: 'Enter your business information to get started',
+  },
+  {
+    title: 'Warehouse Agencies',
+    subtitle: 'Select agencies whose inventory you want to manage',
+  },
+  {
+    title: 'Review & Create',
+    subtitle: 'Confirm your details and launch your workspace',
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+// Screen
+// ═══════════════════════════════════════════════════════
 const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector(state => state.auth.user);
@@ -89,23 +183,16 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customAgencies, setCustomAgencies] = useState<WarehouseAgency[]>([]);
   const [customAgency, setCustomAgency] = useState({
-    name: '', type: '', description: '', address: '', contact: '',
+    name: '',
+    type: '',
+    description: '',
+    address: '',
+    contact: '',
   });
 
   // Step 3
   const [inviteCode] = useState(generateInviteCode());
   const [isCreating, setIsCreating] = useState(false);
-
-  const progressAnim = useRef(new Animated.Value(1)).current;
-
-  const animateStep = (step: number) => {
-    Animated.spring(progressAnim, {
-      toValue: step,
-      friction: 8,
-      tension: 60,
-      useNativeDriver: false,
-    }).start();
-  };
 
   const validateStep1 = (): boolean => {
     const errs: Record<string, string> = {};
@@ -132,17 +219,14 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
   const handleNext = () => {
     if (currentStep === 1 && validateStep1()) {
       setCurrentStep(2);
-      animateStep(2);
     } else if (currentStep === 2 && validateStep2()) {
       setCurrentStep(3);
-      animateStep(3);
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
-      animateStep(currentStep - 1);
       setErrors({});
     } else {
       navigation.goBack();
@@ -185,15 +269,26 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
     setCustomAgencies(prev => [...prev, newAgency]);
     setSelectedAgencyIds(prev => [...prev, newAgency.id]);
     setShowCustomForm(false);
-    setCustomAgency({ name: '', type: '', description: '', address: '', contact: '' });
+    setCustomAgency({
+      name: '',
+      type: '',
+      description: '',
+      address: '',
+      contact: '',
+    });
   };
 
   const allAgencies = [...warehouseAgencies, ...customAgencies];
-  const selectedAgencies = allAgencies.filter(a => selectedAgencyIds.includes(a.id));
-  const totalItems = selectedAgencies.reduce((sum, a) => sum + a.inventory.length, 0);
+  const selectedAgencies = allAgencies.filter(a =>
+    selectedAgencyIds.includes(a.id),
+  );
+  const totalItems = selectedAgencies.reduce(
+    (sum, a) => sum + a.inventory.length,
+    0,
+  );
 
   const handleCreate = useCallback(() => {
-    if (!user) return;
+    if (!user || isCreating) return;
     setIsCreating(true);
 
     const companyId = `company_${uuidv4().slice(0, 8)}`;
@@ -225,71 +320,243 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
       inviteCode,
       agencies: selectedAgencies,
       members: [adminMember],
-      deliveryPersonnel: [...dummyDeliveryPersonnel.map(dp => ({ ...dp, companyId }))],
+      deliveryPersonnel: [
+        ...dummyDeliveryPersonnel.map(dp => ({ ...dp, companyId })),
+      ],
       createdAt: now,
     };
 
-    dispatch(createCompany(companyData));
-    dispatch(setUser({ ...user, companyId }));
-
-    setIsCreating(false);
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'AdminTabs' as any }],
-    });
+    try {
+      dispatch(createCompany(companyData));
+      dispatch(setUser({ ...user, companyId }));
+      navigation.reset({
+        index: 0,
+        routes: [{ name: ROUTES.ADMIN_TABS as any }],
+      });
+    } catch {
+      setIsCreating(false);
+      Alert.alert('Error', 'Unable to create company. Please try again.');
+    }
   }, [
-    user, companyName, industry, street, city, stateProv, zipCode, country,
-    phone, email, website, taxId, inviteCode, selectedAgencies, dispatch, navigation,
+    user,
+    isCreating,
+    companyName,
+    industry,
+    street,
+    city,
+    stateProv,
+    zipCode,
+    country,
+    phone,
+    email,
+    website,
+    taxId,
+    inviteCode,
+    selectedAgencies,
+    dispatch,
+    navigation,
   ]);
 
-  // ── Progress Bar ──
-  const renderProgressBar = () => {
-    const progressWidth = progressAnim.interpolate({
-      inputRange: [1, 2, 3],
-      outputRange: ['33%', '66%', '100%'],
-    });
+  const stepCfg = STEP_HEADERS[currentStep - 1];
+  const progressWidth = currentStep === 1 ? '33%' : currentStep === 2 ? '66%' : '100%';
+
+  // ────────────────────────────────────────
+  // Step Indicator (below header, inside card zone)
+  // ────────────────────────────────────────
+  const renderStepIndicator = () => (
+    <View style={s.stepIndicator}>
+      {STEPS.map((step, i) => {
+        const stepNum = i + 1;
+        const isActive = currentStep === stepNum;
+        const isDone = currentStep > stepNum;
+        return (
+          <React.Fragment key={step.label}>
+            {i > 0 && (
+              <View
+                style={[
+                  s.stepConnector,
+                  isDone && s.stepConnectorDone,
+                ]}
+              />
+            )}
+            <View style={s.stepNode}>
+              <View
+                style={[
+                  s.stepCircle,
+                  isActive && s.stepCircleActive,
+                  isDone && s.stepCircleDone,
+                ]}>
+                {isDone ? (
+                  <Ionicons name="checkmark" size={14} color={DS.white} />
+                ) : (
+                  <Ionicons
+                    name={step.icon}
+                    size={14}
+                    color={isActive ? DS.white : DS.slate400}
+                  />
+                )}
+              </View>
+              <Text
+                style={[
+                  s.stepLabel,
+                  isActive && s.stepLabelActive,
+                  isDone && s.stepLabelDone,
+                ]}>
+                {step.label}
+              </Text>
+            </View>
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+
+  // ────────────────────────────────────────
+  // Progress Track
+  // ────────────────────────────────────────
+  const renderProgressTrack = () => (
+    <View style={s.progressTrackWrap}>
+      <View style={s.progressTrack}>
+        <View style={[s.progressFill, { width: progressWidth }]} />
+      </View>
+      <Text style={s.progressLabel}>
+        Step {currentStep} of {STEPS.length}
+      </Text>
+    </View>
+  );
+
+  // ────────────────────────────────────────
+  // Agency Card
+  // ────────────────────────────────────────
+  const renderAgencyCard = (agency: WarehouseAgency) => {
+    const isSelected = selectedAgencyIds.includes(agency.id);
+    const isExpanded = expandedAgencyId === agency.id;
+
     return (
-      <View style={styles.progressContainer}>
-        <View style={styles.stepsRow}>
-          {STEP_LABELS.map((label, i) => {
-            const stepNum = i + 1;
-            const isActive = currentStep >= stepNum;
-            return (
-              <View key={i} style={styles.stepItem}>
-                <View style={[styles.stepCircle, isActive && styles.stepCircleActive]}>
-                  <Text style={[styles.stepCircleText, isActive && styles.stepCircleTextActive]}>
-                    {currentStep > stepNum ? '\u2713' : stepNum}
-                  </Text>
-                </View>
-                <Text style={[styles.stepItemLabel, isActive && styles.stepItemLabelActive]}>
-                  {label}
+      <View
+        key={agency.id}
+        style={[s.agencyCard, isSelected && s.agencyCardSelected]}>
+        <TouchableOpacity
+          style={s.agencyCardHeader}
+          onPress={() => toggleAgency(agency.id)}
+          activeOpacity={0.7}>
+          {/* Checkbox */}
+          <View style={s.agencyCheckbox}>
+            {isSelected ? (
+              <View style={s.checkboxChecked}>
+                <Ionicons name="checkmark" size={14} color={DS.white} />
+              </View>
+            ) : (
+              <View style={s.checkboxUnchecked} />
+            )}
+          </View>
+
+          {/* Info */}
+          <View style={s.agencyInfo}>
+            <View style={s.agencyNameRow}>
+              <Text style={s.agencyName}>{agency.name}</Text>
+              <View
+                style={[
+                  s.typeBadge,
+                  { backgroundColor: agency.typeBadgeColor + '14' },
+                ]}>
+                <View
+                  style={[
+                    s.typeBadgeDot,
+                    { backgroundColor: agency.typeBadgeColor },
+                  ]}
+                />
+                <Text
+                  style={[
+                    s.typeBadgeText,
+                    { color: agency.typeBadgeColor },
+                  ]}>
+                  {agency.type}
                 </Text>
               </View>
-            );
-          })}
-        </View>
-        <View style={styles.progressTrack}>
-          <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
-        </View>
+            </View>
+            <Text style={s.agencyDesc} numberOfLines={2}>
+              {agency.description}
+            </Text>
+            <View style={s.agencyMeta}>
+              <View style={s.agencyMetaChip}>
+                <Ionicons
+                  name="cube-outline"
+                  size={12}
+                  color={DS.slate500}
+                />
+                <Text style={s.agencyMetaText}>
+                  {agency.inventory.length} products
+                </Text>
+              </View>
+              <View style={s.agencyMetaChip}>
+                <Ionicons
+                  name="location-outline"
+                  size={12}
+                  color={DS.slate500}
+                />
+                <Text style={s.agencyMetaText}>
+                  {agency.city}, {agency.province}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Expand toggle */}
+        <TouchableOpacity
+          style={s.expandButton}
+          onPress={() => toggleExpandAgency(agency.id)}
+          activeOpacity={0.7}>
+          <Ionicons
+            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={DS.blue600}
+            style={{ marginRight: 6 }}
+          />
+          <Text style={s.expandText}>
+            {isExpanded ? 'Hide Items' : 'Preview Items'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Inventory preview */}
+        {isExpanded && (
+          <View style={s.inventoryPreview}>
+            {agency.inventory.map((item, idx) => (
+              <View
+                key={item.id}
+                style={[
+                  s.inventoryRow,
+                  idx === agency.inventory.length - 1 && {
+                    borderBottomWidth: 0,
+                  },
+                ]}>
+                <View style={s.inventoryDot} />
+                <Text style={s.inventoryItemName}>{item.name}</Text>
+                <Text style={s.inventoryItemPrice}>
+                  PKR {item.sellingPrice.toLocaleString()}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
     );
   };
 
-  // ── Step 1 ──
+  // ────────────────────────────────────────
+  // Step 1 — Company Info
+  // ────────────────────────────────────────
   const renderStep1 = () => (
-    <ScrollView
-      contentContainerStyle={styles.stepContent}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled">
-      <Text style={styles.stepTitle}>Company Information</Text>
-      <Text style={styles.stepSubtitle}>
-        Enter your business details to get started
-      </Text>
-
+    <View style={s.stepBody}>
       <CustomInput
         label="Company Name *"
         value={companyName}
-        onChangeText={t => { setCompanyName(t); if (errors.companyName) setErrors(p => ({ ...p, companyName: '' })); }}
+        onChangeText={(t: string) => {
+          setCompanyName(t);
+          if (errors.companyName)
+            setErrors(p => ({ ...p, companyName: '' }));
+        }}
         placeholder="Enter company name"
         error={errors.companyName}
       />
@@ -302,443 +569,1170 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
         placeholder="Select industry"
       />
 
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionDividerLine} />
-        <Text style={styles.sectionHeaderText}>Address</Text>
-        <View style={styles.sectionDividerLine} />
-      </View>
-
-      <CustomInput label="Street *" value={street} onChangeText={t => { setStreet(t); if (errors.street) setErrors(p => ({ ...p, street: '' })); }} placeholder="Street address" error={errors.street} />
-
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <CustomInput label="City *" value={city} onChangeText={t => { setCity(t); if (errors.city) setErrors(p => ({ ...p, city: '' })); }} placeholder="City" error={errors.city} />
+      {/* Address section */}
+      <View style={s.sectionDivider}>
+        <View style={s.sectionDividerLine} />
+        <View style={s.sectionDividerPill}>
+          <Ionicons
+            name="location-outline"
+            size={13}
+            color={DS.slate500}
+          />
+          <Text style={s.sectionDividerText}>Address</Text>
         </View>
-        <View style={styles.halfInput}>
-          <CustomInput label="State/Province *" value={stateProv} onChangeText={t => { setStateProv(t); if (errors.state) setErrors(p => ({ ...p, state: '' })); }} placeholder="State" error={errors.state} />
+        <View style={s.sectionDividerLine} />
+      </View>
+
+      <CustomInput
+        label="Street *"
+        value={street}
+        onChangeText={(t: string) => {
+          setStreet(t);
+          if (errors.street) setErrors(p => ({ ...p, street: '' }));
+        }}
+        placeholder="Street address"
+        error={errors.street}
+      />
+
+      <View style={s.row}>
+        <View style={s.halfInput}>
+          <CustomInput
+            label="City *"
+            value={city}
+            onChangeText={(t: string) => {
+              setCity(t);
+              if (errors.city) setErrors(p => ({ ...p, city: '' }));
+            }}
+            placeholder="City"
+            error={errors.city}
+          />
+        </View>
+        <View style={s.halfInput}>
+          <CustomInput
+            label="State/Province *"
+            value={stateProv}
+            onChangeText={(t: string) => {
+              setStateProv(t);
+              if (errors.state) setErrors(p => ({ ...p, state: '' }));
+            }}
+            placeholder="State"
+            error={errors.state}
+          />
         </View>
       </View>
 
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <CustomInput label="ZIP Code *" value={zipCode} onChangeText={t => { setZipCode(t); if (errors.zipCode) setErrors(p => ({ ...p, zipCode: '' })); }} placeholder="ZIP" keyboardType="number-pad" error={errors.zipCode} />
+      <View style={s.row}>
+        <View style={s.halfInput}>
+          <CustomInput
+            label="ZIP Code *"
+            value={zipCode}
+            onChangeText={(t: string) => {
+              setZipCode(t);
+              if (errors.zipCode)
+                setErrors(p => ({ ...p, zipCode: '' }));
+            }}
+            placeholder="ZIP"
+            keyboardType="number-pad"
+            error={errors.zipCode}
+          />
         </View>
-        <View style={styles.halfInput}>
-          <CustomDropdown label="Country" options={COUNTRIES} value={country} onChange={setCountry} />
+        <View style={s.halfInput}>
+          <CustomDropdown
+            label="Country"
+            options={COUNTRIES}
+            value={country}
+            onChange={setCountry}
+          />
         </View>
       </View>
 
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionDividerLine} />
-        <Text style={styles.sectionHeaderText}>Contact</Text>
-        <View style={styles.sectionDividerLine} />
+      {/* Contact section */}
+      <View style={s.sectionDivider}>
+        <View style={s.sectionDividerLine} />
+        <View style={s.sectionDividerPill}>
+          <Ionicons
+            name="call-outline"
+            size={13}
+            color={DS.slate500}
+          />
+          <Text style={s.sectionDividerText}>Contact</Text>
+        </View>
+        <View style={s.sectionDividerLine} />
       </View>
 
-      <CustomInput label="Phone *" value={phone} onChangeText={t => { setPhone(t); if (errors.phone) setErrors(p => ({ ...p, phone: '' })); }} placeholder="+92-300-1234567" keyboardType="phone-pad" error={errors.phone} />
-      <CustomInput label="Email *" value={email} onChangeText={t => { setEmail(t); if (errors.email) setErrors(p => ({ ...p, email: '' })); }} placeholder="company@domain.com" keyboardType="email-address" autoCapitalize="none" error={errors.email} />
-      <CustomInput label="Website (optional)" value={website} onChangeText={setWebsite} placeholder="https://www.company.com" autoCapitalize="none" />
-      <CustomInput label="Tax ID / NTN (optional)" value={taxId} onChangeText={setTaxId} placeholder="1234567-8" />
-
-      <View style={styles.buttonRow}>
-        <CustomButton title="Back" onPress={handleBack} variant="secondary" size="lg" />
-        <View style={styles.buttonSpacer} />
-        <CustomButton title="Continue" onPress={handleNext} variant="primary" size="lg" />
-      </View>
-    </ScrollView>
+      <CustomInput
+        label="Phone *"
+        value={phone}
+        onChangeText={(t: string) => {
+          setPhone(t);
+          if (errors.phone) setErrors(p => ({ ...p, phone: '' }));
+        }}
+        placeholder="+92-300-1234567"
+        keyboardType="phone-pad"
+        error={errors.phone}
+      />
+      <CustomInput
+        label="Email *"
+        value={email}
+        onChangeText={(t: string) => {
+          setEmail(t);
+          if (errors.email) setErrors(p => ({ ...p, email: '' }));
+        }}
+        placeholder="company@domain.com"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        error={errors.email}
+      />
+      <CustomInput
+        label="Website (optional)"
+        value={website}
+        onChangeText={setWebsite}
+        placeholder="https://www.company.com"
+        autoCapitalize="none"
+      />
+      <CustomInput
+        label="Tax ID / NTN (optional)"
+        value={taxId}
+        onChangeText={setTaxId}
+        placeholder="1234567-8"
+      />
+    </View>
   );
 
-  // ── Agency Card ──
-  const renderAgencyCard = (agency: WarehouseAgency) => {
-    const isSelected = selectedAgencyIds.includes(agency.id);
-    const isExpanded = expandedAgencyId === agency.id;
-
-    return (
-      <React.Fragment key={agency.id}>
-        <View style={[styles.agencyCard, isSelected && styles.agencyCardSelected]}>
-          <TouchableOpacity
-            style={styles.agencyCardHeader}
-            onPress={() => toggleAgency(agency.id)}
-            activeOpacity={0.7}>
-            <View style={styles.agencyCheckbox}>
-              {isSelected ? (
-                <View style={styles.checkboxChecked}>
-                  <Text style={styles.checkmark}>{'\u2713'}</Text>
-                </View>
-              ) : (
-                <View style={styles.checkboxUnchecked} />
-              )}
-            </View>
-            <View style={styles.agencyInfo}>
-              <View style={styles.agencyNameRow}>
-                <Text style={styles.agencyName}>{agency.name}</Text>
-                <View style={[styles.typeBadge, { backgroundColor: agency.typeBadgeColor + '12' }]}>
-                  <Text style={[styles.typeBadgeText, { color: agency.typeBadgeColor }]}>{agency.type}</Text>
-                </View>
-              </View>
-              <Text style={styles.agencyDesc} numberOfLines={2}>{agency.description}</Text>
-              <View style={styles.agencyMeta}>
-                <Text style={styles.agencyMetaText}>{agency.inventory.length} products</Text>
-                <View style={styles.metaSeparator} />
-                <Text style={styles.agencyMetaText}>{agency.city}, {agency.province}</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.expandButton} onPress={() => toggleExpandAgency(agency.id)}>
-            <Text style={styles.expandText}>{isExpanded ? 'Hide Items' : 'Preview Items'}</Text>
-          </TouchableOpacity>
-
-          {isExpanded && (
-            <View style={styles.inventoryPreview}>
-              {agency.inventory.map(item => (
-                <React.Fragment key={item.id}>
-                  <View style={styles.inventoryRow}>
-                    <Text style={styles.inventoryItemName}>{item.name}</Text>
-                    <Text style={styles.inventoryItemPrice}>PKR {item.sellingPrice.toLocaleString()}</Text>
-                  </View>
-                </React.Fragment>
-              ))}
-            </View>
-          )}
-        </View>
-      </React.Fragment>
-    );
-  };
-
-  // ── Step 2 ──
+  // ────────────────────────────────────────
+  // Step 2 — Agencies
+  // ────────────────────────────────────────
   const renderStep2 = () => (
-    <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
-      <Text style={styles.stepTitle}>Connect Warehouse Agencies</Text>
-      <Text style={styles.stepSubtitle}>Select the agencies whose inventory you want to manage</Text>
-
+    <View style={s.stepBody}>
       {errors.agencies ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{errors.agencies}</Text>
+        <View style={s.errorBanner}>
+          <View style={s.errorIconWrap}>
+            <Text style={s.errorIconChar}>!</Text>
+          </View>
+          <Text style={s.errorBannerText}>{errors.agencies}</Text>
         </View>
       ) : null}
 
-      {allAgencies.map(renderAgencyCard)}
-
-      {!showCustomForm ? (
-        <TouchableOpacity
-          style={styles.addCustomButton}
-          onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setShowCustomForm(true); }}>
-          <Text style={styles.addCustomText}>+ Add Custom Agency</Text>
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.customForm}>
-          <Text style={styles.customFormTitle}>Add Custom Agency</Text>
-          <CustomInput label="Agency Name *" value={customAgency.name} onChangeText={t => setCustomAgency(p => ({ ...p, name: t }))} placeholder="Agency name" />
-          <CustomDropdown label="Type" options={[{ label: 'Manufacturing', value: 'Manufacturing' }, { label: 'Supply', value: 'Supply' }, { label: 'Distribution', value: 'Distribution' }]} value={customAgency.type} onChange={v => setCustomAgency(p => ({ ...p, type: v }))} />
-          <CustomInput label="Description" value={customAgency.description} onChangeText={t => setCustomAgency(p => ({ ...p, description: t }))} placeholder="Brief description" />
-          <CustomInput label="Address" value={customAgency.address} onChangeText={t => setCustomAgency(p => ({ ...p, address: t }))} placeholder="Agency address" />
-          <CustomInput label="Contact Phone" value={customAgency.contact} onChangeText={t => setCustomAgency(p => ({ ...p, contact: t }))} placeholder="+92-XXX-XXXXXXX" keyboardType="phone-pad" />
-          <View style={styles.buttonRow}>
-            <CustomButton title="Cancel" onPress={() => setShowCustomForm(false)} variant="secondary" size="md" />
-            <View style={styles.buttonSpacer} />
-            <CustomButton title="Add Agency" onPress={addCustomAgency} variant="primary" size="md" />
-          </View>
+      {/* Selection summary */}
+      {selectedAgencyIds.length > 0 && (
+        <View style={s.selectionSummary}>
+          <Ionicons
+            name="layers"
+            size={16}
+            color={DS.green500}
+            style={{ marginRight: 8 }}
+          />
+          <Text style={s.selectionSummaryText}>
+            {selectedAgencyIds.length} agenc
+            {selectedAgencyIds.length === 1 ? 'y' : 'ies'} selected
+          </Text>
         </View>
       )}
 
-      <View style={styles.buttonRow}>
-        <CustomButton title="Back" onPress={handleBack} variant="secondary" size="lg" />
-        <View style={styles.buttonSpacer} />
-        <CustomButton title="Continue" onPress={handleNext} variant="primary" size="lg" />
-      </View>
-    </ScrollView>
+      {allAgencies.map(renderAgencyCard)}
+
+      {/* Custom agency */}
+      {!showCustomForm ? (
+        <TouchableOpacity
+          style={s.addCustomButton}
+          onPress={() => {
+            LayoutAnimation.configureNext(
+              LayoutAnimation.Presets.easeInEaseOut,
+            );
+            setShowCustomForm(true);
+          }}
+          activeOpacity={0.7}>
+          <View style={s.addCustomIconWrap}>
+            <Ionicons name="add" size={18} color={DS.blue600} />
+          </View>
+          <Text style={s.addCustomText}>Add Custom Agency</Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={s.customForm}>
+          <View style={s.customFormHeader}>
+            <Ionicons
+              name="create-outline"
+              size={16}
+              color={DS.navy800}
+              style={{ marginRight: 8 }}
+            />
+            <Text style={s.customFormTitle}>New Custom Agency</Text>
+          </View>
+          <CustomInput
+            label="Agency Name *"
+            value={customAgency.name}
+            onChangeText={(t: string) =>
+              setCustomAgency(p => ({ ...p, name: t }))
+            }
+            placeholder="Agency name"
+          />
+          <CustomDropdown
+            label="Type"
+            options={[
+              { label: 'Manufacturing', value: 'Manufacturing' },
+              { label: 'Supply', value: 'Supply' },
+              { label: 'Distribution', value: 'Distribution' },
+            ]}
+            value={customAgency.type}
+            onChange={(v: string) =>
+              setCustomAgency(p => ({ ...p, type: v }))
+            }
+          />
+          <CustomInput
+            label="Description"
+            value={customAgency.description}
+            onChangeText={(t: string) =>
+              setCustomAgency(p => ({ ...p, description: t }))
+            }
+            placeholder="Brief description"
+          />
+          <CustomInput
+            label="Address"
+            value={customAgency.address}
+            onChangeText={(t: string) =>
+              setCustomAgency(p => ({ ...p, address: t }))
+            }
+            placeholder="Agency address"
+          />
+          <CustomInput
+            label="Contact Phone"
+            value={customAgency.contact}
+            onChangeText={(t: string) =>
+              setCustomAgency(p => ({ ...p, contact: t }))
+            }
+            placeholder="+92-XXX-XXXXXXX"
+            keyboardType="phone-pad"
+          />
+          <View style={s.buttonRow}>
+            <CustomButton
+              title="Cancel"
+              onPress={() => setShowCustomForm(false)}
+              variant="secondary"
+              size="md"
+            />
+            <View style={s.buttonSpacer} />
+            <CustomButton
+              title="Add Agency"
+              onPress={addCustomAgency}
+              variant="primary"
+              size="md"
+            />
+          </View>
+        </View>
+      )}
+    </View>
   );
 
-  // ── Step 3 ──
+  // ────────────────────────────────────────
+  // Step 3 — Review
+  // ────────────────────────────────────────
   const renderStep3 = () => (
-    <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
-      <Text style={styles.stepTitle}>Review & Create</Text>
-      <Text style={styles.stepSubtitle}>Review your company details before creating</Text>
-
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryCardTitle}>Company Details</Text>
-        <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Name</Text><Text style={styles.summaryValue}>{companyName}</Text></View>
-        {industry ? <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Industry</Text><Text style={styles.summaryValue}>{industry}</Text></View> : null}
-        <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Address</Text><Text style={styles.summaryValue}>{street}, {city}, {stateProv} {zipCode}</Text></View>
-        <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Contact</Text><Text style={styles.summaryValue}>{phone}</Text></View>
+    <View style={s.stepBody}>
+      {/* Company summary */}
+      <View style={s.summaryCard}>
+        <View style={s.summaryCardHeader}>
+          <Ionicons
+            name="business-outline"
+            size={16}
+            color={DS.navy800}
+            style={{ marginRight: 8 }}
+          />
+          <Text style={s.summaryCardTitle}>Company Details</Text>
+        </View>
+        <View style={s.summaryDivider} />
+        <SummaryRow label="Name" value={companyName} />
+        {industry ? (
+          <SummaryRow label="Industry" value={industry} />
+        ) : null}
+        <SummaryRow
+          label="Address"
+          value={`${street}, ${city}, ${stateProv} ${zipCode}`}
+        />
+        <SummaryRow label="Phone" value={phone} />
+        <SummaryRow label="Email" value={email} />
+        {website ? (
+          <SummaryRow label="Website" value={website} />
+        ) : null}
       </View>
 
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryCardTitle}>Selected Agencies ({selectedAgencies.length})</Text>
+      {/* Agencies summary */}
+      <View style={s.summaryCard}>
+        <View style={s.summaryCardHeader}>
+          <Ionicons
+            name="layers-outline"
+            size={16}
+            color={DS.navy800}
+            style={{ marginRight: 8 }}
+          />
+          <Text style={s.summaryCardTitle}>
+            Selected Agencies ({selectedAgencies.length})
+          </Text>
+        </View>
+        <View style={s.summaryDivider} />
         {selectedAgencies.map(a => (
-          <React.Fragment key={a.id}>
-            <View style={styles.agencySummaryRow}>
-              <Text style={styles.agencySummaryName}>{a.name}</Text>
-              <Text style={styles.agencySummaryItems}>{a.inventory.length} items</Text>
+          <View key={a.id} style={s.agencySummaryRow}>
+            <View style={s.agencySummaryLeft}>
+              <View
+                style={[
+                  s.agencySummaryDot,
+                  { backgroundColor: a.typeBadgeColor },
+                ]}
+              />
+              <Text style={s.agencySummaryName}>{a.name}</Text>
             </View>
-          </React.Fragment>
+            <View style={s.agencySummaryBadge}>
+              <Text style={s.agencySummaryItems}>
+                {a.inventory.length}
+              </Text>
+            </View>
+          </View>
         ))}
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total Inventory Items</Text>
-          <Text style={styles.totalValue}>{totalItems}</Text>
+        <View style={s.totalRow}>
+          <Text style={s.totalLabel}>Total Inventory Items</Text>
+          <Text style={s.totalValue}>{totalItems}</Text>
         </View>
       </View>
 
-      <View style={styles.inviteCodeCard}>
-        <Text style={styles.inviteCodeLabel}>Company Invite Code</Text>
-        <View style={styles.codeBoxesRow}>
+      {/* Invite code */}
+      <View style={s.inviteCodeCard}>
+        <View style={s.inviteIconRow}>
+          <View style={s.inviteIconCircle}>
+            <Ionicons name="people" size={22} color={DS.navy800} />
+          </View>
+        </View>
+        <Text style={s.inviteCodeLabel}>Company Invite Code</Text>
+        <View style={s.codeBoxesRow}>
           {inviteCode.split('').map((char, i) => (
-            <React.Fragment key={i}>
-              <View style={styles.codeBox}>
-                <Text style={styles.codeChar}>{char}</Text>
-              </View>
-            </React.Fragment>
+            <View key={i} style={s.codeBox}>
+              <Text style={s.codeChar}>{char}</Text>
+            </View>
           ))}
         </View>
-        <Text style={styles.inviteCodeHint}>Share this code with your team to join</Text>
+        <Text style={s.inviteCodeHint}>
+          Share this code with your team members to join
+        </Text>
       </View>
-
-      <View style={styles.buttonRow}>
-        <CustomButton title="Back" onPress={handleBack} variant="secondary" size="lg" />
-        <View style={styles.buttonSpacer} />
-        <CustomButton title="Create Company" onPress={handleCreate} variant="primary" size="lg" isLoading={isCreating} />
-      </View>
-    </ScrollView>
+    </View>
   );
 
+  // ────────────────────────────────────────
+  // Main Render
+  // ────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <View style={styles.backIconContainer}>
-              <Text style={styles.backArrow}>{'‹'}</Text>
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor={DS.navy900} />
+      <KeyboardAvoidingView
+        style={s.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={s.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}>
+          {/* ═══════════════════════════════
+              GRADIENT HEADER
+             ═══════════════════════════════ */}
+          <LinearGradient
+            colors={[DS.navy900, DS.navy800, DS.navy700]}
+            start={{ x: 0.2, y: 0 }}
+            end={{ x: 0.8, y: 1 }}
+            style={s.header}>
+            <View style={[s.orb, s.orbTopRight]} />
+            <View style={[s.orb, s.orbBottomLeft]} />
+
+            <SafeAreaView edges={['top']} style={s.headerInner}>
+              {/* Nav row */}
+              <View style={s.navRow}>
+                <TouchableOpacity
+                  onPress={handleBack}
+                  hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+                  activeOpacity={0.7}>
+                  <View style={s.backBtn}>
+                    <Text style={s.backIcon}>{'\u2190'}</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <View style={s.rolePill}>
+                  <View style={s.rolePillDot} />
+                  <Text style={s.rolePillText}>New Company</Text>
+                </View>
+              </View>
+
+              {/* Title */}
+              <Text style={s.headerTitle}>{stepCfg.title}</Text>
+              <Text style={s.headerSub}>{stepCfg.subtitle}</Text>
+
+            </SafeAreaView>
+          </LinearGradient>
+
+          {/* ═══════════════════════════════
+              MAIN CARD
+             ═══════════════════════════════ */}
+          <View style={s.cardZone}>
+            <View style={s.mainCard}>
+              {renderStepIndicator()}
+              {renderProgressTrack()}
+
+              {currentStep === 1 && renderStep1()}
+              {currentStep === 2 && renderStep2()}
+              {currentStep === 3 && renderStep3()}
+
+              {/* Action buttons */}
+              <View style={s.actionBar}>
+                <TouchableOpacity
+                  style={s.actionSecondary}
+                  onPress={handleBack}
+                  activeOpacity={0.7}>
+                  <Text style={s.actionSecondaryIcon}>{'\u2190'}</Text>
+                  <Text style={s.actionSecondaryLabel}>
+                    {currentStep === 1 ? 'Cancel' : 'Back'}
+                  </Text>
+                </TouchableOpacity>
+
+                {currentStep < 3 ? (
+                  <TouchableOpacity
+                    style={s.actionPrimary}
+                    onPress={handleNext}
+                    activeOpacity={0.8}>
+                    <Text style={s.actionPrimaryLabel}>Continue</Text>
+                    <Ionicons
+                      name="arrow-forward"
+                      size={16}
+                      color={DS.white}
+                      style={{ marginLeft: 6 }}
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[
+                      s.actionPrimary,
+                      s.actionCreate,
+                      isCreating && { opacity: 0.6 },
+                    ]}
+                    onPress={handleCreate}
+                    activeOpacity={0.8}
+                    disabled={isCreating}>
+                    {isCreating ? (
+                      <View style={s.actionPrimaryLoadingRow}>
+                        <ActivityIndicator
+                          size="small"
+                          color={DS.white}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text style={s.actionPrimaryLabel}>Creating Company...</Text>
+                      </View>
+                    ) : (
+                      <>
+                        <Ionicons
+                          name="rocket-outline"
+                          size={16}
+                          color={DS.white}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text style={s.actionPrimaryLabel}>Create Company</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Company</Text>
-          <View style={styles.headerSpacer} />
-        </View>
 
-        {renderProgressBar()}
-
-        {currentStep === 1 && renderStep1()}
-        {currentStep === 2 && renderStep2()}
-        {currentStep === 3 && renderStep3()}
+            {/* Security footer */}
+            <View style={s.secFooter}>
+              <View style={s.secDot} />
+              <Text style={s.secText}>
+                Your data is encrypted and secure
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+// ═══════════════════════════════════════════════════════
+// Summary Row Helper
+// ═══════════════════════════════════════════════════════
+const SummaryRow: React.FC<{ label: string; value: string }> = ({
+  label,
+  value,
+}) => (
+  <View style={s.summaryRow}>
+    <Text style={s.summaryLabel}>{label}</Text>
+    <Text style={s.summaryValue} numberOfLines={2}>
+      {value}
+    </Text>
+  </View>
+);
+
+// ═══════════════════════════════════════════════════════
+// Styles
+// ═══════════════════════════════════════════════════════
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: DS.slate50 },
   flex: { flex: 1 },
+  scroll: { flexGrow: 1 },
+
+  // ── Header (gradient) ──
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 4,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    position: 'relative',
+    overflow: 'hidden',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  backButton: {},
-  backIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.background,
+  orb: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  orbTopRight: { width: 180, height: 180, top: -60, right: -40 },
+  orbBottomLeft: { width: 100, height: 100, bottom: -30, left: -20 },
+  headerInner: {
+    paddingHorizontal: 24,
+    paddingBottom: 36,
+    paddingTop: 8,
+  },
+  navRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: DS.radius.md,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.06)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backArrow: { fontSize: 24, color: colors.textPrimary, marginTop: -2, fontWeight: '300' },
-  headerTitle: {
-    flex: 1, textAlign: 'center', fontSize: typography.h4.fontSize, fontWeight: '600',
-    color: colors.textPrimary, fontFamily: typography.fontFamily,
-  },
-  headerSpacer: { width: 36 },
-
-  // Progress
-  progressContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  stepsRow: {
+  backIcon: { fontSize: 18, color: DS.white, fontWeight: '400' },
+  rolePill: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm + 4,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: DS.radius.full,
+    gap: 6,
   },
-  stepItem: { alignItems: 'center', flex: 1 },
+  rolePillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: DS.green400,
+  },
+  rolePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontFamily: typography.fontFamily,
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: DS.white,
+    marginBottom: 6,
+    fontFamily: typography.fontFamily,
+    letterSpacing: -0.4,
+  },
+  headerSub: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.45)',
+    fontFamily: typography.fontFamily,
+    lineHeight: 22,
+  },
+
+  // ── Card zone ──
+  cardZone: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+    marginTop: -1,
+  },
+  mainCard: {
+    backgroundColor: DS.white,
+    borderRadius: DS.radius.xl,
+    overflow: 'hidden',
+    ...DS.shadowLg,
+  },
+
+  // ── Step indicator ──
+  stepIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 8,
+  },
+  stepNode: { alignItems: 'center', gap: 4 },
   stepCircle: {
-    width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border,
-    justifyContent: 'center', alignItems: 'center', backgroundColor: colors.white, marginBottom: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: DS.slate100,
+    borderWidth: 1.5,
+    borderColor: DS.slate200,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  stepCircleActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  stepCircleText: {
-    fontSize: 12, fontWeight: '600', color: colors.textLight, fontFamily: typography.fontFamily,
+  stepCircleActive: {
+    backgroundColor: DS.navy800,
+    borderColor: DS.navy800,
   },
-  stepCircleTextActive: { color: colors.white },
-  stepItemLabel: {
-    fontSize: typography.caption.fontSize, color: colors.textLight, fontFamily: typography.fontFamily,
+  stepCircleDone: {
+    backgroundColor: DS.green500,
+    borderColor: DS.green500,
   },
-  stepItemLabelActive: { color: colors.textPrimary, fontWeight: '500' },
+  stepLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: DS.slate400,
+    fontFamily: typography.fontFamily,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  stepLabelActive: { color: DS.navy800, fontWeight: '600' },
+  stepLabelDone: { color: DS.green500, fontWeight: '600' },
+  stepConnector: {
+    flex: 1,
+    height: 2,
+    backgroundColor: DS.slate200,
+    marginHorizontal: 10,
+    marginBottom: 18,
+    borderRadius: 1,
+  },
+  stepConnectorDone: { backgroundColor: DS.green500 },
+
+  // ── Progress track ──
+  progressTrackWrap: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
   progressTrack: {
-    height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden',
+    height: 4,
+    backgroundColor: DS.slate100,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 8,
   },
-  progressFill: { height: 4, backgroundColor: colors.primary, borderRadius: 2 },
+  progressFill: {
+    height: 4,
+    backgroundColor: DS.navy800,
+    borderRadius: 2,
+  },
+  progressLabel: {
+    fontSize: 11,
+    color: DS.slate400,
+    fontFamily: typography.fontFamily,
+    fontWeight: '500',
+    textAlign: 'right',
+  },
 
-  // Steps
-  stepContent: { padding: spacing.lg, paddingBottom: spacing.xl + 40 },
-  stepTitle: {
-    fontSize: 22, fontWeight: '700', color: colors.textPrimary,
-    marginBottom: spacing.xs, fontFamily: typography.fontFamily, letterSpacing: -0.2,
+  // ── Step body ──
+  stepBody: {
+    paddingHorizontal: 24,
+    paddingBottom: 8,
   },
-  stepSubtitle: {
-    fontSize: typography.small.fontSize, color: colors.textSecondary,
-    marginBottom: spacing.lg, lineHeight: 20, fontFamily: typography.fontFamily,
+
+  // ── Section dividers ──
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 12,
   },
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.md,
+  sectionDividerLine: { flex: 1, height: 1, backgroundColor: DS.slate200 },
+  sectionDividerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DS.slate50,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: DS.radius.full,
+    borderWidth: 1,
+    borderColor: DS.slate200,
+    gap: 5,
+    marginHorizontal: 8,
   },
-  sectionDividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  sectionHeaderText: {
-    fontSize: typography.small.fontSize, color: colors.textSecondary,
-    marginHorizontal: spacing.md, fontWeight: '500', fontFamily: typography.fontFamily,
+  sectionDividerText: {
+    fontSize: 11,
+    color: DS.slate500,
+    fontWeight: '600',
+    fontFamily: typography.fontFamily,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  row: { flexDirection: 'row', gap: spacing.sm },
+  row: { flexDirection: 'row', gap: 10 },
   halfInput: { flex: 1 },
-  buttonRow: { flexDirection: 'row', marginTop: spacing.lg },
-  buttonSpacer: { width: spacing.sm },
 
-  // Agency Cards
+  // ── Agency cards ──
   agencyCard: {
-    backgroundColor: colors.white, borderRadius: borderRadius.md + 2,
-    marginBottom: spacing.md, borderWidth: 1.5, borderColor: colors.border,
+    backgroundColor: DS.white,
+    borderRadius: DS.radius.lg,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: DS.slate200,
+    overflow: 'hidden',
   },
-  agencyCardSelected: { borderColor: colors.success },
-  agencyCardHeader: { flexDirection: 'row', padding: spacing.md },
-  agencyCheckbox: { marginRight: spacing.sm + 4, marginTop: 2 },
+  agencyCardSelected: {
+    borderColor: DS.green500,
+    backgroundColor: DS.green50 + '40',
+  },
+  agencyCardHeader: {
+    flexDirection: 'row',
+    padding: 16,
+  },
+  agencyCheckbox: { marginRight: 14, marginTop: 2 },
   checkboxUnchecked: {
-    width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: colors.border,
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: DS.slate300,
+    backgroundColor: DS.white,
   },
   checkboxChecked: {
-    width: 22, height: 22, borderRadius: 6, backgroundColor: colors.success,
-    alignItems: 'center', justifyContent: 'center',
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: DS.green500,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  checkmark: { color: colors.white, fontSize: 13, fontWeight: '700' },
   agencyInfo: { flex: 1 },
   agencyNameRow: {
-    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 6,
   },
   agencyName: {
-    fontSize: typography.body.fontSize, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily,
+    fontSize: 15,
+    fontWeight: '600',
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
   },
-  typeBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 6 },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 5,
+  },
+  typeBadgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
   typeBadgeText: {
-    fontSize: typography.caption.fontSize, fontWeight: '600', fontFamily: typography.fontFamily,
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: typography.fontFamily,
   },
   agencyDesc: {
-    fontSize: typography.small.fontSize, color: colors.textSecondary, marginBottom: spacing.sm, fontFamily: typography.fontFamily,
+    fontSize: 13,
+    color: DS.slate500,
+    marginBottom: 10,
+    fontFamily: typography.fontFamily,
+    lineHeight: 18,
   },
-  agencyMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  agencyMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  agencyMetaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   agencyMetaText: {
-    fontSize: typography.caption.fontSize, color: colors.textLight, fontFamily: typography.fontFamily,
-  },
-  metaSeparator: {
-    width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textLight,
+    fontSize: 11,
+    color: DS.slate500,
+    fontFamily: typography.fontFamily,
   },
   expandButton: {
-    borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: spacing.sm, alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: DS.slate100,
+    paddingVertical: 10,
   },
   expandText: {
-    fontSize: typography.caption.fontSize, color: colors.secondary, fontWeight: '500', fontFamily: typography.fontFamily,
+    fontSize: 12,
+    color: DS.blue600,
+    fontWeight: '600',
+    fontFamily: typography.fontFamily,
   },
   inventoryPreview: {
-    paddingHorizontal: spacing.md, paddingBottom: spacing.md, borderTopWidth: 1, borderTopColor: colors.border,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: DS.slate50,
+    borderTopWidth: 1,
+    borderTopColor: DS.slate100,
   },
   inventoryRow: {
-    flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xs + 2,
-    borderBottomWidth: 1, borderBottomColor: colors.border + '60',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: DS.slate200 + '60',
+  },
+  inventoryDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: DS.slate400,
+    marginRight: 10,
   },
   inventoryItemName: {
-    fontSize: typography.small.fontSize, color: colors.textPrimary, flex: 1, fontFamily: typography.fontFamily,
+    flex: 1,
+    fontSize: 13,
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
   },
   inventoryItemPrice: {
-    fontSize: typography.small.fontSize, color: colors.success, fontWeight: '600', fontFamily: typography.fontFamily,
-  },
-  errorBanner: {
-    backgroundColor: '#FEF2F2', borderRadius: borderRadius.sm + 2, padding: spacing.sm + 4,
-    marginBottom: spacing.md, borderWidth: 1, borderColor: '#FECACA',
-  },
-  errorBannerText: {
-    color: '#991B1B', fontSize: typography.small.fontSize, textAlign: 'center', fontFamily: typography.fontFamily,
-  },
-  addCustomButton: {
-    borderWidth: 1.5, borderColor: colors.secondary + '40', borderStyle: 'dashed',
-    borderRadius: borderRadius.md, paddingVertical: spacing.md, alignItems: 'center', marginBottom: spacing.md,
-  },
-  addCustomText: {
-    color: colors.secondary, fontSize: typography.body.fontSize, fontWeight: '600', fontFamily: typography.fontFamily,
-  },
-  customForm: {
-    backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md,
-    marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
-  },
-  customFormTitle: {
-    fontSize: typography.h4.fontSize, fontWeight: '600', color: colors.textPrimary,
-    marginBottom: spacing.md, fontFamily: typography.fontFamily,
+    fontSize: 13,
+    color: DS.green500,
+    fontWeight: '600',
+    fontFamily: typography.fontFamily,
   },
 
-  // Summary
+  // ── Selection summary ──
+  selectionSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DS.green50,
+    borderRadius: DS.radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: DS.greenBorder + '60',
+  },
+  selectionSummaryText: {
+    fontSize: 13,
+    color: DS.green500,
+    fontWeight: '600',
+    fontFamily: typography.fontFamily,
+  },
+
+  // ── Error banner ──
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DS.red50,
+    borderRadius: DS.radius.md,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: DS.red100,
+    gap: 10,
+  },
+  errorIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: DS.red500,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorIconChar: { color: DS.white, fontSize: 12, fontWeight: '700' },
+  errorBannerText: {
+    flex: 1,
+    color: DS.red900,
+    fontSize: 13,
+    fontFamily: typography.fontFamily,
+  },
+
+  // ── Add custom ──
+  addCustomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: DS.blue100,
+    borderStyle: 'dashed',
+    borderRadius: DS.radius.lg,
+    paddingVertical: 16,
+    marginBottom: 12,
+    backgroundColor: DS.blue50 + '40',
+  },
+  addCustomIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: DS.blue50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  addCustomText: {
+    color: DS.blue600,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: typography.fontFamily,
+  },
+  customForm: {
+    backgroundColor: DS.slate50,
+    borderRadius: DS.radius.lg,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: DS.slate200,
+  },
+  customFormHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  customFormTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
+  },
+  buttonRow: { flexDirection: 'row', marginTop: 12 },
+  buttonSpacer: { width: 10 },
+
+  // ── Summary cards ──
   summaryCard: {
-    backgroundColor: colors.white, borderRadius: borderRadius.md + 2, padding: spacing.md,
-    marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: DS.slate50,
+    borderRadius: DS.radius.lg,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: DS.slate100,
+  },
+  summaryCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   summaryCardTitle: {
-    fontSize: typography.h4.fontSize, fontWeight: '600', color: colors.textPrimary,
-    marginBottom: spacing.md, fontFamily: typography.fontFamily,
+    fontSize: 14,
+    fontWeight: '700',
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: DS.slate200,
+    marginBottom: 10,
+    marginTop: 10,
   },
   summaryRow: {
-    flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xs + 2,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: DS.slate200 + '60',
   },
-  summaryLabel: { fontSize: typography.small.fontSize, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  summaryLabel: {
+    fontSize: 13,
+    color: DS.slate500,
+    fontFamily: typography.fontFamily,
+  },
   summaryValue: {
-    fontSize: typography.small.fontSize, color: colors.textPrimary, fontWeight: '500',
-    flex: 1, textAlign: 'right', marginLeft: spacing.sm, fontFamily: typography.fontFamily,
+    fontSize: 13,
+    color: DS.navy800,
+    fontWeight: '500',
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 12,
+    fontFamily: typography.fontFamily,
   },
   agencySummaryRow: {
-    flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xs + 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 9,
   },
-  agencySummaryName: { fontSize: typography.small.fontSize, color: colors.textPrimary, fontFamily: typography.fontFamily },
-  agencySummaryItems: { fontSize: typography.small.fontSize, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  agencySummaryLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  agencySummaryDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 10,
+  },
+  agencySummaryName: {
+    fontSize: 13,
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
+  },
+  agencySummaryBadge: {
+    backgroundColor: DS.slate200,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: DS.radius.full,
+  },
+  agencySummaryItems: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: DS.slate500,
+    fontFamily: typography.fontFamily,
+  },
   totalRow: {
-    flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1,
-    borderTopColor: colors.border, paddingTop: spacing.sm, marginTop: spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: DS.slate200,
+    paddingTop: 12,
+    marginTop: 6,
   },
   totalLabel: {
-    fontSize: typography.body.fontSize, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily,
+    fontSize: 14,
+    fontWeight: '600',
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
   },
   totalValue: {
-    fontSize: typography.body.fontSize, fontWeight: '700', color: colors.success, fontFamily: typography.fontFamily,
+    fontSize: 14,
+    fontWeight: '700',
+    color: DS.green500,
+    fontFamily: typography.fontFamily,
   },
+
+  // ── Invite code ──
   inviteCodeCard: {
-    backgroundColor: colors.primary + '06', borderRadius: borderRadius.md + 2, padding: spacing.lg,
-    marginBottom: spacing.md, alignItems: 'center', borderWidth: 1, borderColor: colors.primary + '15',
+    backgroundColor: DS.navy800 + '06',
+    borderRadius: DS.radius.lg,
+    padding: 22,
+    marginBottom: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: DS.navy800 + '12',
+  },
+  inviteIconRow: { marginBottom: 14 },
+  inviteIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: DS.slate100,
+    borderWidth: 1,
+    borderColor: DS.slate200,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inviteCodeLabel: {
-    fontSize: typography.small.fontSize, color: colors.textSecondary, marginBottom: spacing.md, fontFamily: typography.fontFamily,
+    fontSize: 12,
+    color: DS.slate500,
+    fontFamily: typography.fontFamily,
+    marginBottom: 14,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  codeBoxesRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  codeBoxesRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   codeBox: {
-    width: 44, height: 52, borderRadius: borderRadius.sm + 2, backgroundColor: colors.white,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.primary,
+    width: 44,
+    height: 52,
+    borderRadius: DS.radius.md,
+    backgroundColor: DS.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: DS.navy800,
+    ...DS.shadowSm,
   },
   codeChar: {
-    fontSize: 22, fontWeight: '700', color: colors.primary, fontFamily: typography.fontFamily,
+    fontSize: 22,
+    fontWeight: '700',
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
   },
   inviteCodeHint: {
-    fontSize: typography.caption.fontSize, color: colors.textSecondary, textAlign: 'center', fontFamily: typography.fontFamily,
+    fontSize: 12,
+    color: DS.slate400,
+    textAlign: 'center',
+    fontFamily: typography.fontFamily,
+  },
+
+  // ── Action bar ──
+  actionBar: {
+    flexDirection: 'row',
+    padding: 20,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: DS.slate100,
+    gap: 10,
+  },
+  actionSecondary: {
+    flex: 1,
+    height: 50,
+    borderRadius: DS.radius.lg,
+    backgroundColor: DS.white,
+    borderWidth: 1.5,
+    borderColor: DS.slate200,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionSecondaryIcon: {
+    fontSize: 16,
+    color: DS.navy800,
+    marginRight: 6,
+    fontWeight: '400',
+  },
+  actionSecondaryLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
+  },
+  actionPrimary: {
+    flex: 1.4,
+    height: 50,
+    borderRadius: DS.radius.lg,
+    backgroundColor: DS.navy800,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...DS.shadowMd,
+  },
+  actionCreate: {
+    backgroundColor: DS.green500,
+  },
+  actionPrimaryLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionPrimaryLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: DS.white,
+    fontFamily: typography.fontFamily,
+    letterSpacing: 0.3,
+  },
+
+  // ── Security footer ──
+  secFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
+  },
+  secDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: DS.green500,
+  },
+  secText: {
+    fontSize: 12,
+    color: DS.slate400,
+    fontFamily: typography.fontFamily,
   },
 });
 

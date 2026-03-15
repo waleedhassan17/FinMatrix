@@ -4,6 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
+import { useAppSelector } from '../../hooks/useReduxHooks';
+import { selectCustomers } from '../Customers/CustomerList/customerListSlice';
+import { selectVendors } from '../Vendors/VendorList/vendorListSlice';
+import NotificationBadge from '../../components/NotificationBadge';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -13,6 +17,7 @@ interface MoreRow {
   icon: string;
   label: string;
   subtitle: string;
+  badgeCount?: number;
   onPress: (nav: Nav) => void;
 }
 
@@ -46,6 +51,20 @@ const ROWS: MoreRow[] = [
     onPress: nav => nav.navigate('AgencyList'),
   },
   {
+    key: 'customers',
+    icon: '👤',
+    label: 'Customers',
+    subtitle: 'Manage customers, balances, and invoices',
+    onPress: nav => nav.navigate('CustomerList'),
+  },
+  {
+    key: 'vendors',
+    icon: '🏪',
+    label: 'Vendors',
+    subtitle: 'Manage vendors, bills, and payments',
+    onPress: nav => nav.navigate('VendorList'),
+  },
+  {
     key: 'company',
     icon: '🏢',
     label: 'Company Profile',
@@ -70,6 +89,10 @@ const ROWS: MoreRow[] = [
 
 const MoreHubScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const customers = useAppSelector(selectCustomers);
+  const customerCount = customers.length;
+  const vendors = useAppSelector(selectVendors);
+  const vendorCount = vendors.length;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -86,6 +109,12 @@ const MoreHubScreen: React.FC = () => {
           >
             <View style={styles.rowIcon}>
               <Text style={styles.rowIconText}>{row.icon}</Text>
+              {row.key === 'customers' && customerCount > 0 && (
+                <NotificationBadge count={customerCount} />
+              )}
+              {row.key === 'vendors' && vendorCount > 0 && (
+                <NotificationBadge count={vendorCount} />
+              )}
             </View>
             <View style={styles.rowContent}>
               <Text style={styles.rowLabel}>{row.label}</Text>

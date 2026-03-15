@@ -19,18 +19,10 @@ const AppLogo: React.FC<AppLogoProps> = ({ size = 'md' }) => {
 
   return (
     <View style={styles.container}>
-      <View
-        style={[
-          styles.circle,
-          {
-            width: dims.circle,
-            height: dims.circle,
-            borderRadius: dims.circle / 2,
-          },
-        ]}>
-        <Text style={[styles.initials, { fontSize: dims.initials }]}>FM</Text>
-      </View>
-      <Text style={[styles.title, { fontSize: dims.title }]}>FinMatrix</Text>
+      <Text style={[styles.title, { fontSize: dims.title }]}>
+        <Text style={styles.titleFin}>Fin</Text>
+        <Text style={styles.titleMatrix}>Matrix</Text>
+      </Text>
     </View>
   );
 };
@@ -39,21 +31,15 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
   },
-  circle: {
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  initials: {
-    fontWeight: '800',
-    color: colors.white,
-    fontFamily: typography.fontFamily,
-  },
   title: {
     fontWeight: '700',
-    color: colors.primary,
     fontFamily: typography.fontFamily,
+  },
+  titleFin: {
+    color: colors.success ?? '#10B981',
+  },
+  titleMatrix: {
+    color: colors.primary,
   },
 });
 

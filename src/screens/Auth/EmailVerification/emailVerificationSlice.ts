@@ -3,10 +3,12 @@ import { createAppSlice } from '@store/createAppSlice';
 import {
   authVerifyEmail,
   authResendVerification,
+  authCheckVerificationStatus,
 } from '@network/authNetwork';
 import type {
   VerifyEmailPayload,
   ResendVerificationPayload,
+  CheckVerificationPayload,
 } from '@network/authNetwork';
 
 export interface EmailVerificationSliceState {
@@ -15,6 +17,7 @@ export interface EmailVerificationSliceState {
   error: string;
   resendStatus: 'idle' | 'loading' | 'failed';
   verifyStatus: 'idle' | 'loading' | 'failed';
+  checkStatus: 'idle' | 'loading' | 'failed';
 }
 
 const initialState: EmailVerificationSliceState = {
@@ -23,6 +26,7 @@ const initialState: EmailVerificationSliceState = {
   error: '',
   resendStatus: 'idle',
   verifyStatus: 'idle',
+  checkStatus: 'idle',
 };
 
 export const emailVerificationSlice = createAppSlice({
@@ -93,6 +97,32 @@ export const emailVerificationSlice = createAppSlice({
         },
       },
     ),
+
+    checkVerificationStatusAsync: create.asyncThunk(
+      async ({ email }: { email: string }) => {
+        const payload: CheckVerificationPayload = { email };
+        const result = await authCheckVerificationStatus({
+          checkInfo: payload,
+        });
+        return result?.data;
+      },
+      {
+        pending: state => {
+          state.checkStatus = 'loading';
+          state.error = '';
+        },
+        fulfilled: state => {
+          state.checkStatus = 'idle';
+          state.isVerified = true;
+          state.error = '';
+        },
+        rejected: (state, action) => {
+          state.checkStatus = 'failed';
+          state.error =
+            action.error.message ?? 'Failed to check verification status';
+        },
+      },
+    ),
   }),
 
   selectors: {
@@ -101,6 +131,11 @@ export const emailVerificationSlice = createAppSlice({
     selectVerificationError: state => state.error,
     selectResendStatus: state => state.resendStatus,
     selectVerifyStatus: state => state.verifyStatus,
+    selectCheckStatus: state => state.checkStatus,
+    selectCanResend: state =>
+      state.resendCooldown === 0 && state.resendStatus !== 'loading',
+    selectIsVerificationLoading: state =>
+      state.verifyStatus === 'loading' || state.checkStatus === 'loading',
   },
 });
 
@@ -111,6 +146,7 @@ export const {
   resetVerificationForm,
   resendVerificationAsync,
   verifyEmailAsync,
+  checkVerificationStatusAsync,
 } = emailVerificationSlice.actions;
 
 export const {
@@ -119,4 +155,7 @@ export const {
   selectVerificationError,
   selectResendStatus,
   selectVerifyStatus,
+  selectCheckStatus,
+  selectCanResend,
+  selectIsVerificationLoading,
 } = emailVerificationSlice.selectors;

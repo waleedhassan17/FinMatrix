@@ -43,6 +43,10 @@ export interface ResendVerificationPayload {
   email: string;
 }
 
+export interface CheckVerificationPayload {
+  email: string;
+}
+
 // In-memory store for users created via signUp or admin Quick-Add (persists during session)
 const registeredUsers: Array<{
   email: string;
@@ -322,6 +326,27 @@ export const authResendVerification = async ({
   } catch (e: any) {
     const newError = new Error(
       e.message || 'Failed to resend verification email.',
+    );
+    throw newError;
+  }
+};
+
+// ─── Check Verification Status ────────────────────────
+
+export const authCheckVerificationStatus = async ({
+  checkInfo,
+}: {
+  checkInfo: CheckVerificationPayload;
+}) => {
+  try {
+    const result = await simulateApiCall(
+      { data: { verified: true } },
+      800,
+    );
+    return result;
+  } catch (e: any) {
+    const newError = new Error(
+      e.message || 'Failed to check verification status.',
     );
     throw newError;
   }

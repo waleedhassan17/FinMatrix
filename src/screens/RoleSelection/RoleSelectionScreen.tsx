@@ -6,10 +6,9 @@ import {
   TouchableOpacity,
   StatusBar,
   ScrollView,
-  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
+import { colors, typography, spacing, shadows } from '../../theme';
 import { ROUTES } from '../../navigations-map/Base';
 import { useAppDispatch } from '../../hooks/useReduxHooks';
 import { setRole } from './roleSelectionSlice';
@@ -18,11 +17,20 @@ import type { UserRole } from '../../types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
 
+/* ── Brand Colors ───────────────────────────────────── */
 const BRAND = {
-  navy: '#0F172A',
-  navyLight: '#1E293B',
-  emerald: '#059669',
-  emeraldLight: '#10B981',
+  navy: '#1E3A5F',
+  navyDark: '#162D4A',
+  blue: '#2563EB',
+  blueLight: '#EBF0F7',
+  coral: '#E85D4A',
+  coralLight: '#FCEEED',
+  bg: '#F5F5F5',
+  card: '#FFFFFF',
+  textDark: '#1A1A1A',
+  textMid: '#555555',
+  textLight: '#999999',
+  border: '#E8E8E8',
 };
 
 type RoleSelectionNavigationProp = NativeStackNavigationProp<
@@ -34,51 +42,61 @@ interface Props {
   navigation: RoleSelectionNavigationProp;
 }
 
+/* ── Role Card ──────────────────────────────────────── */
 interface RoleCardProps {
   letter: string;
+  letterBg: string;
+  letterColor: string;
   accentColor: string;
   title: string;
   subtitle: string;
-  features: string[];
+  description: string;
   onPress: () => void;
 }
 
 const RoleCard: React.FC<RoleCardProps> = ({
   letter,
+  letterBg,
+  letterColor,
   accentColor,
   title,
   subtitle,
-  features,
+  description,
   onPress,
 }) => (
   <TouchableOpacity
-    style={styles.card}
+    style={cardStyles.wrapper}
     onPress={onPress}
-    activeOpacity={0.7}>
-    <View style={styles.cardHeader}>
-      <View style={[styles.letterCircle, { backgroundColor: accentColor + '0C' }]}>
-        <Text style={[styles.letterText, { color: accentColor }]}>{letter}</Text>
+    activeOpacity={0.75}>
+    {/* Left accent border */}
+    <View style={[cardStyles.accentBar, { backgroundColor: accentColor }]} />
+
+    <View style={cardStyles.body}>
+      {/* Letter avatar */}
+      <View style={[cardStyles.letterCircle, { backgroundColor: letterBg }]}>
+        <Text style={[cardStyles.letterText, { color: letterColor }]}>
+          {letter}
+        </Text>
       </View>
-      <View style={styles.cardHeaderText}>
-        <Text style={styles.cardTitle}>{title}</Text>
-        <Text style={[styles.cardSubtitle, { color: accentColor }]}>{subtitle}</Text>
+
+      {/* Text content */}
+      <View style={cardStyles.textBlock}>
+        <Text style={cardStyles.title}>{title}</Text>
+        <Text style={[cardStyles.subtitle, { color: accentColor }]}>
+          {subtitle}
+        </Text>
+        <Text style={cardStyles.description}>{description}</Text>
       </View>
-      <View style={[styles.arrowCircle, { backgroundColor: accentColor + '0A' }]}>
-        <Text style={[styles.arrowText, { color: accentColor }]}>{'\u203A'}</Text>
+
+      {/* Arrow */}
+      <View style={cardStyles.arrowWrap}>
+        <Text style={[cardStyles.arrow, { color: accentColor }]}>{'>'}</Text>
       </View>
-    </View>
-    <View style={styles.cardDivider} />
-    <View style={styles.featuresContainer}>
-      {features.map((feature, index) => (
-        <View key={index} style={styles.featureRow}>
-          <View style={[styles.featureDot, { backgroundColor: accentColor }]} />
-          <Text style={styles.featureText}>{feature}</Text>
-        </View>
-      ))}
     </View>
   </TouchableOpacity>
 );
 
+/* ── Main Screen ────────────────────────────────────── */
 const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
 
@@ -90,16 +108,13 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="dark-content" backgroundColor={BRAND.bg} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoInitials}>FM</Text>
-          </View>
+        {/* Logo Section */}
+        <View style={styles.logoSection}>
           <Text style={styles.logoTitle}>
             <Text style={styles.logoFin}>Fin</Text>
             <Text style={styles.logoMatrix}>Matrix</Text>
@@ -110,46 +125,43 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         {/* Heading */}
-        <View style={styles.headingContainer}>
-          <Text style={styles.headingTitle}>How will you use FinMatrix?</Text>
+        <View style={styles.headingSection}>
+          <Text style={styles.headingTitle}>Select Your Role</Text>
           <Text style={styles.headingSubtitle}>
-            Select your role to get the right experience
+            Choose how you want to access FinMatrix
           </Text>
         </View>
 
         {/* Role Cards */}
-        <View style={styles.cardsContainer}>
+        <View style={styles.cardsSection}>
           <RoleCard
             letter="A"
+            letterBg={BRAND.blueLight}
+            letterColor={BRAND.navy}
             accentColor={BRAND.navy}
             title="Administrator"
-            subtitle="Full Platform Access"
-            features={[
-              'Accounting & financial reports',
-              'Inventory management',
-              'Delivery operations',
-              'Team management',
-            ]}
+            subtitle="Full Access"
+            description="Complete control over accounting, inventory, payroll, reports, and delivery management. Manage your entire business operations."
             onPress={() => handleRoleSelect('admin')}
           />
 
           <RoleCard
             letter="D"
-            accentColor={BRAND.emerald}
+            letterBg={BRAND.coralLight}
+            letterColor={BRAND.coral}
+            accentColor={BRAND.coral}
             title="Delivery Personnel"
-            subtitle="Field Operations"
-            features={[
-              'View assigned deliveries',
-              'Update delivery status',
-              'Route management',
-              'Inventory transfers',
-            ]}
+            subtitle="Delivery Operations"
+            description="View and manage assigned deliveries, capture customer signatures, update delivery status, and sync inventory records."
             onPress={() => handleRoleSelect('delivery')}
           />
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
+          <Text style={styles.footerPowered}>
+            Powered by FinMatrix Cloud Platform
+          </Text>
           <Text style={styles.footerVersion}>Version 1.0.0</Text>
         </View>
       </ScrollView>
@@ -157,167 +169,159 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
+/* ── Card Styles ────────────────────────────────────── */
+const cardStyles = StyleSheet.create({
+  wrapper: {
+    backgroundColor: BRAND.card,
+    borderRadius: 14,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    ...shadows.card,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+  },
+  accentBar: {
+    width: 4,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+  },
+  body: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingLeft: 16,
+    paddingRight: 14,
+  },
+  letterCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  letterText: {
+    fontSize: 22,
+    fontWeight: '600',
+    fontFamily: typography.fontFamily,
+  },
+  textBlock: {
+    flex: 1,
+    marginRight: 8,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: BRAND.textDark,
+    fontFamily: typography.fontFamily,
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: typography.fontFamily,
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 13,
+    color: BRAND.textMid,
+    fontFamily: typography.fontFamily,
+    lineHeight: 19,
+  },
+  arrowWrap: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 28,
+    alignSelf: 'center',
+  },
+  arrow: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+});
+
+/* ── Main Styles ────────────────────────────────────── */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: BRAND.bg,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg + 4,
+    paddingHorizontal: 24,
   },
 
-  // Logo
-  logoContainer: {
+  /* Logo */
+  logoSection: {
     alignItems: 'center',
-    paddingTop: spacing.xl + 16,
-    marginBottom: spacing.lg + 8,
-  },
-  logoBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: BRAND.navy,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm + 4,
-  },
-  logoInitials: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.white,
-    fontFamily: typography.fontFamily,
-    letterSpacing: 1,
+    paddingTop: 40,
+    marginBottom: 36,
   },
   logoTitle: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: '700',
-    marginBottom: spacing.xs,
     fontFamily: typography.fontFamily,
+    marginBottom: 6,
   },
   logoFin: {
-    color: BRAND.emerald,
+    color: '#10B981',
   },
   logoMatrix: {
-    color: colors.textPrimary,
+    color: BRAND.textDark,
   },
   logoSubtitle: {
-    fontSize: typography.small.fontSize,
-    color: colors.textSecondary,
+    fontSize: 14,
+    color: BRAND.textMid,
     fontFamily: typography.fontFamily,
   },
 
-  // Heading
-  headingContainer: {
+  /* Heading */
+  headingSection: {
     alignItems: 'center',
-    marginBottom: spacing.lg + 8,
+    marginBottom: 28,
   },
   headingTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
+    color: BRAND.textDark,
     fontFamily: typography.fontFamily,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
+    marginBottom: 6,
   },
   headingSubtitle: {
-    fontSize: typography.small.fontSize,
-    color: colors.textSecondary,
+    fontSize: 14,
+    color: BRAND.textMid,
     fontFamily: typography.fontFamily,
   },
 
-  // Cards
-  cardsContainer: {
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md + 4,
-    padding: 0,
-    ...shadows.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md + 4,
-  },
-  letterCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  letterText: {
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: typography.fontFamily,
-  },
-  cardHeaderText: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: typography.h4.fontSize,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
-  },
-  cardSubtitle: {
-    fontSize: typography.caption.fontSize,
-    fontWeight: '600',
-    fontFamily: typography.fontFamily,
-  },
-  arrowCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arrowText: {
-    fontSize: 24,
-    fontWeight: '400',
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  featuresContainer: {
-    padding: spacing.md + 4,
-    gap: spacing.xs + 4,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  featureDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    marginRight: spacing.sm + 2,
-  },
-  featureText: {
-    fontSize: typography.small.fontSize,
-    color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
-    lineHeight: 20,
+  /* Cards */
+  cardsSection: {
+    gap: 16,
+    marginBottom: 40,
   },
 
-  // Footer
+  /* Footer */
   footer: {
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingBottom: spacing.lg,
+    paddingBottom: 24,
+  },
+  footerPowered: {
+    fontSize: 13,
+    color: BRAND.textLight,
+    fontFamily: typography.fontFamily,
+    marginBottom: 4,
   },
   footerVersion: {
-    fontSize: typography.caption.fontSize,
-    color: colors.textLight,
+    fontSize: 12,
+    color: BRAND.textLight + 'AA',
     fontFamily: typography.fontFamily,
   },
 });

@@ -1,238 +1,530 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  Animated,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { typography } from '../../../theme';
+import { useAppSelector } from '../../../hooks/useReduxHooks';
+import { selectActiveCompany } from '../companySlice';
 import { ROUTES } from '../../../navigations-map/Base';
 import type { RootStackParamList } from '../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanySetup'>;
 
+// ═══════════════════════════════════════════════════════
+// Design System — matches auth flow screens
+// ═══════════════════════════════════════════════════════
+const DS = {
+  navy900: '#0B1120',
+  navy800: '#0F172A',
+  navy700: '#1E293B',
+
+  green500: '#059669',
+  green400: '#10B981',
+  green300: '#34D399',
+  green50: '#ECFDF5',
+  greenBorder: '#A7F3D0',
+
+  blue600: '#2563EB',
+  blue500: '#3B82F6',
+  blue100: '#DBEAFE',
+  blue50: '#EFF6FF',
+
+  slate50: '#F8FAFC',
+  slate100: '#F1F5F9',
+  slate200: '#E2E8F0',
+  slate300: '#CBD5E1',
+  slate400: '#94A3B8',
+  slate500: '#64748B',
+
+  white: '#FFFFFF',
+
+  radius: { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 },
+
+  shadowMd: {
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  shadowLg: {
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+};
+
+// ═══════════════════════════════════════════════════════
+// Screen
+// ═══════════════════════════════════════════════════════
 const CompanySetupScreen: React.FC<Props> = ({ navigation }) => {
-  const card1Anim = useRef(new Animated.Value(0)).current;
-  const card2Anim = useRef(new Animated.Value(0)).current;
-  const headerAnim = useRef(new Animated.Value(0)).current;
+  const activeCompany = useAppSelector(selectActiveCompany);
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.timing(headerAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.stagger(150, [
-        Animated.spring(card1Anim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.spring(card2Anim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
-  }, [card1Anim, card2Anim, headerAnim]);
-
-  const renderCard = (
-    anim: Animated.Value,
-    letter: string,
-    title: string,
-    description: string,
-    onPress: () => void,
-    accentColor: string,
-  ) => {
-    const translateY = anim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [40, 0],
-    });
-    return (
-      <Animated.View
-        style={[
-          styles.card,
-          {
-            opacity: anim,
-            transform: [{ translateY }],
-          },
-        ]}>
-        <TouchableOpacity
-          style={styles.cardTouchable}
-          onPress={onPress}
-          activeOpacity={0.7}>
-          <View style={[styles.cardIconContainer, { backgroundColor: accentColor + '0A' }]}>
-            <View style={[styles.cardIconInner, { backgroundColor: accentColor + '15' }]}>
-              <Text style={[styles.cardIconText, { color: accentColor }]}>{letter}</Text>
-            </View>
-          </View>
-          <View style={styles.cardTextContainer}>
-            <Text style={styles.cardTitle}>{title}</Text>
-            <Text style={styles.cardDescription}>{description}</Text>
-          </View>
-          <View style={[styles.cardArrow, { backgroundColor: accentColor + '0A' }]}>
-            <Text style={[styles.arrowText, { color: accentColor }]}>{'\u203A'}</Text>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  };
+    if (activeCompany) {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: ROUTES.ADMIN_TABS as any }],
+      });
+    }
+  }, [activeCompany, navigation]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor={DS.navy900} />
+      <ScrollView
+        contentContainerStyle={s.scroll}
+        showsVerticalScrollIndicator={false}
+        bounces={false}>
+        {/* ═══════════════════════════════
+            GRADIENT HEADER
+           ═══════════════════════════════ */}
+        <LinearGradient
+          colors={[DS.navy900, DS.navy800, DS.navy700]}
+          start={{ x: 0.2, y: 0 }}
+          end={{ x: 0.8, y: 1 }}
+          style={s.header}>
+          <View style={[s.orb, s.orbTopRight]} />
+          <View style={[s.orb, s.orbBottomLeft]} />
+          <View style={[s.orb, s.orbMidLeft]} />
 
-      {/* Header */}
-      <Animated.View style={[styles.header, { opacity: headerAnim }]}>
-        <View style={styles.headerBadge}>
-          <Text style={styles.headerBadgeText}>FM</Text>
+          <SafeAreaView edges={['top']} style={s.headerInner}>
+            {/* Top bar — pill only, no back button on root setup */}
+            <View style={s.topBar}>
+              <View style={s.rolePill}>
+                <View style={s.rolePillDot} />
+                <Text style={s.rolePillText}>Getting Started</Text>
+              </View>
+            </View>
+
+            {/* Header copy */}
+            <View>
+              <Text style={s.headerTitle}>Set up your workspace</Text>
+              <Text style={s.headerSub}>
+                Create a new company or join an existing one to start managing
+                finances, inventory, and deliveries.
+              </Text>
+            </View>
+
+            <View style={s.headerTagRow}>
+              <Ionicons name="grid-outline" size={16} color={DS.green300} />
+              <Text style={s.headerTagText}>Workspace Setup</Text>
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+
+        {/* ═══════════════════════════════
+            OPTION CARDS
+           ═══════════════════════════════ */}
+        <View style={s.cardsZone}>
+          {/* Create Company Card */}
+          <View>
+            <TouchableOpacity
+              style={s.optionCard}
+              onPress={() => navigation.navigate(ROUTES.CREATE_COMPANY as any)}
+              activeOpacity={0.7}>
+              {/* Icon area */}
+              <View style={s.optionIconArea}>
+                <View style={[s.optionIconOuter, { backgroundColor: DS.navy800 + '08' }]}>
+                  <View style={[s.optionIconInner, { backgroundColor: DS.navy800 + '12' }]}>
+                    <Ionicons name="business" size={24} color={DS.navy800} />
+                  </View>
+                </View>
+              </View>
+
+              {/* Text */}
+              <View style={s.optionTextArea}>
+                <View style={s.optionTitleRow}>
+                  <Text style={s.optionTitle}>Create New Company</Text>
+                  <View style={[s.optionBadge, { backgroundColor: DS.blue50 }]}>
+                    <Text style={[s.optionBadgeText, { color: DS.blue600 }]}>New</Text>
+                  </View>
+                </View>
+                <Text style={s.optionDesc}>
+                  Register your business, set up agencies, and invite your team members
+                </Text>
+              </View>
+
+              {/* Features row */}
+              <View style={s.featureRow}>
+                <View style={s.featureChip}>
+                  <Ionicons name="layers-outline" size={12} color={DS.slate500} />
+                  <Text style={s.featureChipText}>Agencies</Text>
+                </View>
+                <View style={s.featureChip}>
+                  <Ionicons name="people-outline" size={12} color={DS.slate500} />
+                  <Text style={s.featureChipText}>Team</Text>
+                </View>
+                <View style={s.featureChip}>
+                  <Ionicons name="cube-outline" size={12} color={DS.slate500} />
+                  <Text style={s.featureChipText}>Inventory</Text>
+                </View>
+              </View>
+
+              {/* CTA */}
+              <View style={s.optionCta}>
+                <Text style={s.optionCtaLabel}>Get Started</Text>
+                <Ionicons name="arrow-forward" size={16} color={DS.white} style={{ marginLeft: 6 }} />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Divider */}
+          <View style={s.divider}>
+            <View style={s.divLine} />
+            <Text style={s.divText}>or</Text>
+            <View style={s.divLine} />
+          </View>
+
+          {/* Join Company Card */}
+          <View>
+            <TouchableOpacity
+              style={s.optionCard}
+              onPress={() => navigation.navigate(ROUTES.JOIN_COMPANY as any)}
+              activeOpacity={0.7}>
+              {/* Icon area */}
+              <View style={s.optionIconArea}>
+                <View style={[s.optionIconOuter, { backgroundColor: DS.green500 + '08' }]}>
+                  <View style={[s.optionIconInner, { backgroundColor: DS.green500 + '14' }]}>
+                    <Ionicons name="people" size={24} color={DS.green500} />
+                  </View>
+                </View>
+              </View>
+
+              {/* Text */}
+              <View style={s.optionTextArea}>
+                <View style={s.optionTitleRow}>
+                  <Text style={s.optionTitle}>Join Existing Company</Text>
+                </View>
+                <Text style={s.optionDesc}>
+                  Enter a 6-digit invite code from your admin to join an existing workspace
+                </Text>
+              </View>
+
+              {/* Code preview */}
+              <View style={s.codePreviewRow}>
+                {['_', '_', '_', '_', '_', '_'].map((c, i) => (
+                  <View key={i} style={s.codePreviewBox}>
+                    <Text style={s.codePreviewChar}>{c}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* CTA */}
+              <View style={[s.optionCtaOutline]}>
+                <Ionicons name="enter-outline" size={16} color={DS.navy800} style={{ marginRight: 6 }} />
+                <Text style={s.optionCtaOutlineLabel}>Enter Invite Code</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text style={styles.headerTitle}>Set up your workspace</Text>
-        <Text style={styles.headerSubtitle}>
-          Create a new company or join an existing one to start managing finances, inventory, and deliveries.
-        </Text>
-      </Animated.View>
 
-      {/* Cards */}
-      <View style={styles.cardsContainer}>
-        {renderCard(
-          card1Anim,
-          '+',
-          'Create New Company',
-          'Register your business and invite your team',
-          () => navigation.navigate(ROUTES.CREATE_COMPANY as any),
-          colors.primary,
-        )}
-
-        {renderCard(
-          card2Anim,
-          '#',
-          'Join Existing Company',
-          'Enter a 6-digit invite code from your admin',
-          () => navigation.navigate(ROUTES.JOIN_COMPANY as any),
-          colors.success,
-        )}
-      </View>
-    </SafeAreaView>
+        {/* Security footer */}
+        <View style={s.secFooter}>
+          <View style={s.secDot} />
+          <Text style={s.secText}>Your data is encrypted and secure</Text>
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+// ═══════════════════════════════════════════════════════
+// Styles
+// ═══════════════════════════════════════════════════════
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: DS.slate50 },
+  scroll: { flexGrow: 1 },
+
+  // ── Header (gradient) ──
   header: {
-    paddingHorizontal: spacing.lg + 4,
-    paddingTop: spacing.xl + 16,
-    paddingBottom: spacing.xl,
-    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  headerBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
+  orb: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  orbTopRight: { width: 180, height: 180, top: -60, right: -40 },
+  orbBottomLeft: { width: 100, height: 100, bottom: -30, left: -20 },
+  orbMidLeft: { width: 60, height: 60, top: 80, left: -10 },
+  headerInner: {
+    paddingHorizontal: 24,
+    paddingBottom: 36,
+    paddingTop: 8,
+  },
+  topBar: {
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md + 4,
+    marginBottom: 32,
   },
-  headerBadgeText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.white,
-    fontFamily: typography.fontFamily,
-    letterSpacing: 1,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-    fontFamily: typography.fontFamily,
-    letterSpacing: -0.3,
-  },
-  headerSubtitle: {
-    fontSize: typography.body.fontSize,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: spacing.md,
-    fontFamily: typography.fontFamily,
-  },
-  cardsContainer: {
-    flex: 1,
-    paddingHorizontal: spacing.lg + 4,
-    gap: spacing.md,
-  },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md + 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
-  },
-  cardTouchable: {
+  rolePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md + 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: DS.radius.full,
+    gap: 6,
   },
-  cardIconContainer: {
+  rolePillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: DS.green400,
+  },
+  rolePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontFamily: typography.fontFamily,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: DS.white,
+    marginBottom: 8,
+    fontFamily: typography.fontFamily,
+    letterSpacing: -0.4,
+    textAlign: 'center',
+  },
+  headerSub: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.45)',
+    fontFamily: typography.fontFamily,
+    lineHeight: 22,
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+  headerTagRow: {
+    marginTop: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: DS.radius.full,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  headerTagText: {
+    marginLeft: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    fontFamily: typography.fontFamily,
+    letterSpacing: 0.3,
+  },
+
+  // ── Cards zone ──
+  cardsZone: {
+    paddingHorizontal: 16,
+    marginTop: -1,
+    paddingBottom: 8,
+  },
+
+  // ── Option card ──
+  optionCard: {
+    backgroundColor: DS.white,
+    borderRadius: DS.radius.xl,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: DS.slate100,
+    ...DS.shadowLg,
+  },
+  optionIconArea: {
+    marginBottom: 16,
+  },
+  optionIconOuter: {
     width: 56,
     height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  cardIconInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardIconText: {
-    fontSize: 22,
+  optionIconInner: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionTextArea: {
+    marginBottom: 16,
+  },
+  optionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 6,
+  },
+  optionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
+    letterSpacing: -0.2,
+  },
+  optionBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: DS.radius.full,
+  },
+  optionBadgeText: {
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: typography.fontFamily,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  cardTextContainer: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: typography.h4.fontSize,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 4,
+  optionDesc: {
+    fontSize: 14,
+    color: DS.slate500,
     fontFamily: typography.fontFamily,
-  },
-  cardDescription: {
-    fontSize: typography.small.fontSize,
-    color: colors.textSecondary,
     lineHeight: 20,
+  },
+
+  // Feature chips
+  featureRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 18,
+  },
+  featureChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DS.slate50,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: DS.radius.full,
+    borderWidth: 1,
+    borderColor: DS.slate200,
+    gap: 5,
+  },
+  featureChipText: {
+    fontSize: 11,
+    color: DS.slate500,
+    fontWeight: '500',
     fontFamily: typography.fontFamily,
   },
-  cardArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+
+  // Code preview
+  codePreviewRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 18,
+    justifyContent: 'center',
+  },
+  codePreviewBox: {
+    width: 38,
+    height: 44,
+    borderRadius: DS.radius.md,
+    backgroundColor: DS.slate50,
+    borderWidth: 1.5,
+    borderColor: DS.slate200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  codePreviewChar: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: DS.slate300,
+    fontFamily: typography.fontFamily,
+  },
+
+  // CTAs
+  optionCta: {
+    height: 48,
+    borderRadius: DS.radius.lg,
+    backgroundColor: DS.navy800,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...DS.shadowMd,
+  },
+  optionCtaLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: DS.white,
+    fontFamily: typography.fontFamily,
+    letterSpacing: 0.3,
+  },
+  optionCtaOutline: {
+    height: 48,
+    borderRadius: DS.radius.lg,
+    backgroundColor: DS.white,
+    borderWidth: 1.5,
+    borderColor: DS.slate200,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionCtaOutlineLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: DS.navy800,
+    fontFamily: typography.fontFamily,
+    letterSpacing: 0.2,
+  },
+
+  // ── Divider ──
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 18,
+    paddingHorizontal: 8,
+  },
+  divLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: DS.slate200,
+  },
+  divText: {
+    fontSize: 11,
+    color: DS.slate400,
+    fontFamily: typography.fontFamily,
+    fontWeight: '500',
+    marginHorizontal: 14,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+
+  // ── Security footer ──
+  secFooter: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: spacing.sm,
+    gap: 8,
+    paddingVertical: 24,
   },
-  arrowText: {
-    fontSize: 24,
-    fontWeight: '400',
+  secDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: DS.green500,
+  },
+  secText: {
+    fontSize: 12,
+    color: DS.slate400,
+    fontFamily: typography.fontFamily,
   },
 });
 

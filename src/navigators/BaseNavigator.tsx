@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppSelector } from '../hooks/useReduxHooks';
-import { selectActiveCompany } from '../screens/Auth/companySlice';
 import type { RootStackParamList } from '../types';
 
 // Screens — Auth
@@ -26,12 +25,16 @@ import DeliveryTabNavigator from './DeliveryTabNavigator';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Module-level flag: splash plays only once per app cold start
+let splashHasPlayed = false;
+
 const BaseNavigator: React.FC = () => {
-  const [showSplash, setShowSplash] = useState(true);
+  const shouldShowSplash = useRef(!splashHasPlayed).current;
+  const [showSplash, setShowSplash] = useState(shouldShowSplash);
   const { isAuthenticated, hasSeenOnboarding, hasSeenDeliveryOnboarding, user } = useAppSelector(
     state => state.auth,
   );
-  const activeCompany = useAppSelector(selectActiveCompany);
+  const hasCompany = Boolean(user?.companyId);
 
   // ─── Auth Flow Logic ─────────────────────────────────
   // 1. Not seen onboarding → Onboarding
@@ -45,7 +48,8 @@ const BaseNavigator: React.FC = () => {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#0B1120' },
+          contentStyle: { backgroundColor: '#F8FAFC' },
+          animation: 'none',
         }}>
         {!isAuthenticated ? (
           // ── Unauthenticated Flow ──
@@ -57,7 +61,11 @@ const BaseNavigator: React.FC = () => {
                 options={{ animation: 'none' }}
               />
             )}
-            <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+            <Stack.Screen
+              name="RoleSelection"
+              component={RoleSelectionScreen}
+              options={{ animation: 'none' }}
+            />
             <Stack.Screen name="SignIn" component={SignInScreen} />
             <Stack.Screen name="SignUp" component={SignUpScreen} />
             <Stack.Screen
@@ -76,29 +84,60 @@ const BaseNavigator: React.FC = () => {
               <Stack.Screen
                 name="DeliveryOnboarding"
                 component={DeliveryOnboardingScreen}
+                options={{ animation: 'none' }}
               />
             )}
             <Stack.Screen
               name="DeliveryTabs"
               component={DeliveryTabNavigator}
+              options={{ animation: 'none' }}
             />
           </>
-        ) : !activeCompany ? (
-          // ── Authenticated admin but no company ──
-          <>
-            <Stack.Screen name="CompanySetup" component={CompanySetupScreen} />
-            <Stack.Screen name="CreateCompany" component={CreateCompanyScreen} />
-            <Stack.Screen name="JoinCompany" component={JoinCompanyScreen} />
-          </>
         ) : (
-          // ── Admin ──
+          // ── Admin Flow ──
           <>
-            <Stack.Screen name="AdminTabs" component={AdminTabNavigator} />
+            {hasCompany ? (
+              <Stack.Screen
+                name="AdminTabs"
+                component={AdminTabNavigator}
+                options={{ animation: 'none' }}
+              />
+            ) : (
+              <>
+                <Stack.Screen
+                  name="CompanySetup"
+                  component={CompanySetupScreen}
+                  options={{ animation: 'none' }}
+                />
+                <Stack.Screen
+                  name="CreateCompany"
+                  component={CreateCompanyScreen}
+                  options={{ animation: 'none' }}
+                />
+                <Stack.Screen
+                  name="JoinCompany"
+                  component={JoinCompanyScreen}
+                  options={{ animation: 'none' }}
+                />
+                <Stack.Screen
+                  name="AdminTabs"
+                  component={AdminTabNavigator}
+                  options={{ animation: 'none' }}
+                />
+              </>
+            )}
           </>
         )}
       </Stack.Navigator>
 
-      {showSplash && <SplashOverlay onFinish={() => setShowSplash(false)} />}
+      {showSplash && (
+        <SplashOverlay
+          onFinish={() => {
+            splashHasPlayed = true;
+            setShowSplash(false);
+          }}
+        />
+      )}
     </View>
   );
 };
@@ -106,7 +145,7 @@ const BaseNavigator: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B1120',
+    backgroundColor: '#F8FAFC',
   },
 });
 

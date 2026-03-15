@@ -18,9 +18,12 @@ export type AccountSubType =
   | 'cost_of_goods';
 export type JournalEntryStatus = 'draft' | 'posted' | 'voided';
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
-export type BillStatus = 'draft' | 'received' | 'paid' | 'overdue' | 'cancelled';
-export type PurchaseOrderStatus = 'draft' | 'sent' | 'received' | 'cancelled';
-export type SalesOrderStatus = 'draft' | 'confirmed' | 'fulfilled' | 'cancelled';
+export type PaymentMethod = 'cash' | 'cheque' | 'bank_transfer' | 'online';
+export type BillStatus = 'draft' | 'open' | 'partially_paid' | 'paid' | 'overdue';
+export type PurchaseOrderStatus = 'draft' | 'sent' | 'partially_received' | 'fully_received' | 'closed';
+export type SalesOrderStatus = 'open' | 'partially_fulfilled' | 'fulfilled' | 'closed';
+export type EstimateStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired';
+export type CreditMemoStatus = 'draft' | 'issued' | 'applied' | 'voided';
 export type DeliveryStatus =
   | 'pending'
   | 'assigned'
@@ -125,21 +128,33 @@ export interface JournalEntry {
 }
 
 // ─── Customer ─────────────────────────────────────────
-export interface Customer {
-  id: string;
-  companyId: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
+export type PaymentTerms = 'net_15' | 'net_30' | 'net_45' | 'net_60' | 'due_on_receipt' | 'custom';
+
+export interface CustomerAddress {
+  street: string;
   city: string;
   state: string;
   zipCode: string;
   country: string;
-  taxId: string;
-  contactPerson: string;
-  notes: string;
+}
+
+export interface Customer {
+  id: string;
+  companyId: string;
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  address: string;
+  billingAddress: CustomerAddress;
+  shippingAddress: CustomerAddress;
+  creditLimit: number;
+  paymentTerms: PaymentTerms;
   balance: number;
+  totalPurchases: number;
+  contactPerson: string;
+  taxId: string;
+  notes: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -162,6 +177,7 @@ export interface Vendor {
   notes: string;
   balance: number;
   paymentTerms: string;
+  defaultExpenseAccountId: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -179,6 +195,8 @@ export interface InvoiceLine {
   amount: number;
 }
 
+export type DiscountType = 'percentage' | 'fixed';
+
 export interface Invoice {
   id: string;
   companyId: string;
@@ -191,8 +209,35 @@ export interface Invoice {
   lines: InvoiceLine[];
   subtotal: number;
   taxAmount: number;
+  discountType: DiscountType;
+  discountValue: number;
+  discountAmount: number;
   total: number;
   amountPaid: number;
+  notes: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Payment ──────────────────────────────────────────
+export interface PaymentAllocation {
+  invoiceId: string;
+  invoiceNumber: string;
+  amount: number;
+}
+
+export interface Payment {
+  id: string;
+  companyId: string;
+  paymentNumber: string;
+  customerId: string;
+  customerName: string;
+  date: string;
+  method: PaymentMethod;
+  reference: string;
+  amount: number;
+  allocations: PaymentAllocation[];
   notes: string;
   createdBy: string;
   createdAt: string;
@@ -202,8 +247,8 @@ export interface Invoice {
 // ─── Bill ─────────────────────────────────────────────
 export interface BillLine {
   id: string;
-  itemId: string;
-  itemName: string;
+  accountId: string;
+  accountName: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -226,6 +271,60 @@ export interface Bill {
   total: number;
   amountPaid: number;
   notes: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Bill Payment ─────────────────────────────────────
+export interface BillPaymentAllocation {
+  billId: string;
+  billNumber: string;
+  amount: number;
+}
+
+export interface BillPayment {
+  id: string;
+  companyId: string;
+  paymentNumber: string;
+  vendorId: string;
+  vendorName: string;
+  date: string;
+  method: PaymentMethod;
+  reference: string;
+  amount: number;
+  bankAccountId: string;
+  allocations: BillPaymentAllocation[];
+  notes: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Vendor Credit ────────────────────────────────────
+export interface VendorCreditLine {
+  id: string;
+  accountId: string;
+  accountName: string;
+  description: string;
+  amount: number;
+  taxRate: number;
+}
+
+export interface VendorCredit {
+  id: string;
+  companyId: string;
+  creditNumber: string;
+  vendorId: string;
+  vendorName: string;
+  date: string;
+  lines: VendorCreditLine[];
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  appliedAmount: number;
+  notes: string;
+  status: 'draft' | 'issued' | 'applied' | 'voided';
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -270,6 +369,7 @@ export interface SalesOrderLine {
   description: string;
   quantity: number;
   unitPrice: number;
+  taxRate: number;
   amount: number;
   fulfilledQuantity: number;
 }
@@ -284,6 +384,61 @@ export interface SalesOrder {
   expectedDate: string;
   status: SalesOrderStatus;
   lines: SalesOrderLine[];
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  notes: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Estimate ─────────────────────────────────────────
+export interface Estimate {
+  id: string;
+  companyId: string;
+  estimateNumber: string;
+  customerId: string;
+  customerName: string;
+  issueDate: string;
+  expirationDate: string;
+  status: EstimateStatus;
+  lines: InvoiceLine[];
+  subtotal: number;
+  taxAmount: number;
+  discountType: DiscountType;
+  discountValue: number;
+  discountAmount: number;
+  total: number;
+  notes: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Credit Memo ──────────────────────────────────────
+export interface CreditMemoLine {
+  id: string;
+  itemId: string;
+  itemName: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate: number;
+  amount: number;
+}
+
+export interface CreditMemo {
+  id: string;
+  companyId: string;
+  creditMemoNumber: string;
+  customerId: string;
+  customerName: string;
+  issueDate: string;
+  status: CreditMemoStatus;
+  invoiceId: string | null;
+  invoiceNumber: string | null;
+  lines: CreditMemoLine[];
   subtotal: number;
   taxAmount: number;
   total: number;

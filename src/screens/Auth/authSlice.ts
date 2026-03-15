@@ -10,6 +10,7 @@ import type { User, UserRole } from '../../types';
 
 export interface AuthSliceState {
   user: User | null;
+  pendingUser: User | null;
   isAuthenticated: boolean;
   hasSeenOnboarding: boolean;
   hasSeenDeliveryOnboarding: boolean;
@@ -20,6 +21,7 @@ export interface AuthSliceState {
 
 const initialState: AuthSliceState = {
   user: null,
+  pendingUser: null,
   isAuthenticated: false,
   hasSeenOnboarding: false,
   hasSeenDeliveryOnboarding: false,
@@ -34,16 +36,22 @@ export const authSlice = createAppSlice({
   reducers: create => ({
     setUser: create.reducer((state, action: PayloadAction<User>) => {
       state.user = action.payload;
+      state.pendingUser = null;
       state.isAuthenticated = true;
       state.error = '';
     }),
+    setPendingUser: create.reducer((state, action: PayloadAction<User>) => {
+      state.pendingUser = action.payload;
+    }),
     clearUser: create.reducer(state => {
       state.user = null;
+      state.pendingUser = null;
       state.isAuthenticated = false;
       state.selectedRole = null;
     }),
     signOut: create.reducer(state => {
       state.user = null;
+      state.pendingUser = null;
       state.isAuthenticated = false;
       state.selectedRole = null;
       state.hasSeenDeliveryOnboarding = false;
@@ -78,6 +86,7 @@ export const authSlice = createAppSlice({
 
   selectors: {
     selectUser: state => state.user,
+    selectPendingUser: state => state.pendingUser,
     selectIsAuthenticated: state => state.isAuthenticated,
     selectHasSeenOnboarding: state => state.hasSeenOnboarding,
     selectHasSeenDeliveryOnboarding: state => state.hasSeenDeliveryOnboarding,
@@ -89,6 +98,7 @@ export const authSlice = createAppSlice({
 
 export const {
   setUser,
+  setPendingUser,
   clearUser,
   signOut,
   setOnboardingSeen,
@@ -101,6 +111,7 @@ export const {
 
 export const {
   selectUser,
+  selectPendingUser,
   selectIsAuthenticated,
   selectHasSeenOnboarding,
   selectHasSeenDeliveryOnboarding,

@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { WarehouseAgency } from '@dummy/warehouseAgencies';
 import type { DummyDeliveryPerson } from '@dummy/deliveryPersonnel';
+import { signOut } from './authSlice';
 
 // ─── Types ────────────────────────────────────────────
 
@@ -199,6 +200,9 @@ const companySlice = createSlice({
     setCompanyError(state, action: PayloadAction<string | null>) {
       state.error = action.payload;
     },
+  },
+  extraReducers: builder => {
+    builder.addCase(signOut, () => initialState);
   },
 });
 

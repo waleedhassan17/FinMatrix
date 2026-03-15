@@ -12,6 +12,12 @@ import AgencyListScreen from '../../screens/Agency/AgencyList/AgencyListScreen';
 import AgencyDetailScreen from '../../screens/Agency/AgencyDetail/AgencyDetailScreen';
 import AgencyFormScreen from '../../screens/Agency/AgencyForm/AgencyFormScreen';
 import AgencyInventorySyncScreen from '../../screens/Agency/AgencyInventorySync/AgencyInventorySyncScreen';
+import CustomerListScreen from '../../screens/Customers/CustomerList/CustomerListScreen';
+import CustomerDetailScreen from '../../screens/Customers/CustomerDetail/CustomerDetailScreen';
+import CustomerFormScreen from '../../screens/Customers/CustomerForm/CustomerFormScreen';
+import VendorListScreen from '../../screens/Vendors/VendorList/VendorListScreen';
+import VendorDetailScreen from '../../screens/Vendors/VendorDetail/VendorDetailScreen';
+import VendorFormScreen from '../../screens/Vendors/VendorForm/VendorFormScreen';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
@@ -26,6 +32,12 @@ export type MoreStackParamList = {
   AgencyDetail: { agencyId: string };
   AgencyForm: { agencyId?: string } | undefined;
   AgencyInventorySync: { agencyId: string };
+  CustomerList: undefined;
+  CustomerDetail: { customerId: string };
+  CustomerForm: { customerId?: string } | undefined;
+  VendorList: undefined;
+  VendorDetail: { vendorId: string };
+  VendorForm: { vendorId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -44,6 +56,12 @@ const MoreStack: React.FC = () => (
     <Stack.Screen name="AgencyDetail" component={AgencyDetailScreen} />
     <Stack.Screen name="AgencyForm" component={AgencyFormScreen} />
     <Stack.Screen name="AgencyInventorySync" component={AgencyInventorySyncScreen} />
+    <Stack.Screen name="CustomerList" component={CustomerListScreen} />
+    <Stack.Screen name="CustomerDetail" component={CustomerDetailScreen} />
+    <Stack.Screen name="CustomerForm" component={CustomerFormScreen} />
+    <Stack.Screen name="VendorList" component={VendorListScreen} />
+    <Stack.Screen name="VendorDetail" component={VendorDetailScreen} />
+    <Stack.Screen name="VendorForm" component={VendorFormScreen} />
   </Stack.Navigator>
 );
 

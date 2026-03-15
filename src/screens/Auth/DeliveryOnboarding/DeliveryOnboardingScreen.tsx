@@ -72,10 +72,6 @@ const DeliveryOnboardingScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleGetStarted = () => {
     dispatch(setDeliveryOnboardingSeen());
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'DeliveryTabs' }],
-    });
   };
 
   const renderSlide = ({ item }: { item: typeof slides[0] }) => (

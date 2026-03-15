@@ -10,7 +10,9 @@ import AppContainer from './src/components/app-container/AppContainer';
 
 // ⚠️ DEV ONLY: Purge persisted state so the app always starts from Onboarding.
 // Remove this line once done testing.
-persistor.purge();
+if (__DEV__) {
+  persistor.purge();
+}
 
 const LoadingFallback = () => (
   <View style={styles.loading}>

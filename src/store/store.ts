@@ -51,6 +51,32 @@ import { agencyListSlice } from '../screens/Agency/AgencyList/agencyListSlice';
 import { agencyDetailSlice } from '../screens/Agency/AgencyDetail/agencyDetailSlice';
 import { agencyFormSlice } from '../screens/Agency/AgencyForm/agencyFormSlice';
 import { agencyInventorySyncSlice } from '../screens/Agency/AgencyInventorySync/agencyInventorySyncSlice';
+import { customerListSlice } from '../screens/Customers/CustomerList/customerListSlice';
+import { customerFormSlice } from '../screens/Customers/CustomerForm/customerFormSlice';
+import { customerDetailSlice } from '../screens/Customers/CustomerDetail/customerDetailSlice';
+import { invoiceListSlice } from '../screens/Invoices/InvoiceList/invoiceListSlice';
+import { invoiceFormSlice } from '../screens/Invoices/InvoiceForm/invoiceFormSlice';
+import { invoiceDetailSlice } from '../screens/Invoices/InvoiceDetail/invoiceDetailSlice';
+import { receivePaymentSlice } from '../screens/Payments/ReceivePayment/receivePaymentSlice';
+import { estimateListSlice } from '../screens/Estimates/EstimateList/estimateListSlice';
+import { estimateFormSlice } from '../screens/Estimates/EstimateForm/estimateFormSlice';
+import { estimateDetailSlice } from '../screens/Estimates/EstimateDetail/estimateDetailSlice';
+import { soListSlice } from '../screens/SalesOrders/SOList/soListSlice';
+import { soFormSlice } from '../screens/SalesOrders/SOForm/soFormSlice';
+import { soDetailSlice } from '../screens/SalesOrders/SODetail/soDetailSlice';
+import { creditMemoListSlice } from '../screens/CreditMemos/CreditMemoList/creditMemoListSlice';
+import { creditMemoFormSlice } from '../screens/CreditMemos/CreditMemoForm/creditMemoFormSlice';
+import { vendorListSlice } from '../screens/Vendors/VendorList/vendorListSlice';
+import { vendorFormSlice } from '../screens/Vendors/VendorForm/vendorFormSlice';
+import { vendorDetailSlice } from '../screens/Vendors/VendorDetail/vendorDetailSlice';
+import { billListSlice } from '../screens/Bills/BillList/billListSlice';
+import { billFormSlice } from '../screens/Bills/BillForm/billFormSlice';
+import { billDetailSlice } from '../screens/Bills/BillDetail/billDetailSlice';
+import { payBillsSlice } from '../screens/Bills/PayBills/payBillsSlice';
+import { vendorCreditFormSlice } from '../screens/Bills/VendorCreditForm/vendorCreditFormSlice';
+import { poListSlice } from '../screens/PurchaseOrders/POList/poListSlice';
+import { poFormSlice } from '../screens/PurchaseOrders/POForm/poFormSlice';
+import { poDetailSlice } from '../screens/PurchaseOrders/PODetail/poDetailSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -87,6 +113,32 @@ const rootReducer = combineReducers({
   agencyDetail: agencyDetailSlice.reducer,
   agencyForm: agencyFormSlice.reducer,
   agencyInventorySync: agencyInventorySyncSlice.reducer,
+  customerList: customerListSlice.reducer,
+  customerForm: customerFormSlice.reducer,
+  customerDetail: customerDetailSlice.reducer,
+  invoiceList: invoiceListSlice.reducer,
+  invoiceForm: invoiceFormSlice.reducer,
+  invoiceDetail: invoiceDetailSlice.reducer,
+  receivePayment: receivePaymentSlice.reducer,
+  estimateList: estimateListSlice.reducer,
+  estimateForm: estimateFormSlice.reducer,
+  estimateDetail: estimateDetailSlice.reducer,
+  soList: soListSlice.reducer,
+  soForm: soFormSlice.reducer,
+  soDetail: soDetailSlice.reducer,
+  creditMemoList: creditMemoListSlice.reducer,
+  creditMemoForm: creditMemoFormSlice.reducer,
+  vendorList: vendorListSlice.reducer,
+  vendorForm: vendorFormSlice.reducer,
+  vendorDetail: vendorDetailSlice.reducer,
+  billList: billListSlice.reducer,
+  billForm: billFormSlice.reducer,
+  billDetail: billDetailSlice.reducer,
+  payBills: payBillsSlice.reducer,
+  vendorCreditForm: vendorCreditFormSlice.reducer,
+  poList: poListSlice.reducer,
+  poForm: poFormSlice.reducer,
+  poDetail: poDetailSlice.reducer,
 });
 
 const persistConfig = {

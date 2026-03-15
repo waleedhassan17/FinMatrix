@@ -12,7 +12,6 @@ import {
   Animated,
 } from 'react-native';
 import { colors, typography, spacing } from '../../theme';
-import { ROUTES } from '../../navigations-map/Base';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { setCurrentPage, selectCurrentPage } from './onboardingSlice';
 import { setOnboardingSeen } from '../Auth/authSlice';
@@ -278,7 +277,6 @@ const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
 
   const skip = () => {
     dispatch(setOnboardingSeen());
-    navigation.replace(ROUTES.ROLE_SELECTION);
   };
 
   const next = () => {
@@ -311,7 +309,7 @@ const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
                 {isDashboard ? (
                   <View style={ms.cardHeaderLeft}>
                     <View style={[ms.cardLogo, { backgroundColor: item.accent + '18' }]}>
-                      <Text style={[ms.cardLogoText, { color: item.accent }]}>FM</Text>
+                      <Text style={[ms.cardLogoText, { color: item.accent }]}>F</Text>
                     </View>
                     <View>
                       <Text style={ms.cardTitle}>{item.cardTitle}</Text>
@@ -414,11 +412,13 @@ const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
           <Text style={ms.ctaText}>{isLast ? 'Get Started' : 'Continue'}</Text>
         </TouchableOpacity>
 
-        {activeIndex === 0 && (
-          <TouchableOpacity onPress={skip} style={ms.skipBelow} hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}>
-            <Text style={ms.skipBelowText}>Skip for now</Text>
-          </TouchableOpacity>
-        )}
+        <View style={ms.skipBelowReserved}>
+          {activeIndex === 0 && (
+            <TouchableOpacity onPress={skip} style={ms.skipBelow} hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}>
+              <Text style={ms.skipBelowText}>Skip for now</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -508,7 +508,8 @@ const ms = StyleSheet.create({
   dot: { height: 5, borderRadius: 3 },
   cta: { width: '100%', height: 54, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   ctaText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF', fontFamily: typography.fontFamily, letterSpacing: 0.2 },
-  skipBelow: { marginTop: 14, paddingVertical: 6 },
+  skipBelowReserved: { height: 40, justifyContent: 'center', alignItems: 'center' },
+  skipBelow: { paddingVertical: 6 },
   skipBelowText: { fontSize: 13, color: B.w30, fontWeight: '500', fontFamily: typography.fontFamily },
 });
 

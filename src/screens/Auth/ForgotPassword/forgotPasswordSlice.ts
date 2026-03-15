@@ -93,6 +93,13 @@ export const forgotPasswordSlice = createAppSlice({
     selectForgotResendCooldown: state => state.resendCooldown,
     selectForgotPasswordStatus: state => state.status,
     selectForgotPasswordError: state => state.error,
+    selectForgotPasswordIsLoading: state => state.status === 'loading',
+    selectIsFormComplete: state => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return (
+        state.email.trim().length > 0 && emailRegex.test(state.email.trim())
+      );
+    },
   },
 });
 
@@ -114,4 +121,6 @@ export const {
   selectForgotResendCooldown,
   selectForgotPasswordStatus,
   selectForgotPasswordError,
+  selectForgotPasswordIsLoading,
+  selectIsFormComplete,
 } = forgotPasswordSlice.selectors;
