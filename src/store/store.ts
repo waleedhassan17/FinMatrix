@@ -97,12 +97,24 @@ import { poFormSlice } from '../screens/PurchaseOrders/POForm/poFormSlice';
 import { poDetailSlice } from '../screens/PurchaseOrders/PODetail/poDetailSlice';
 import { deliverySlice } from '../screens/Delivery/Admin/AssignDeliveries/deliverySlice';
 import { notificationCenterSlice } from '../screens/Notifications/notificationCenterSlice';
+import { bankAccountsSlice } from '../screens/Banking/BankAccounts/bankAccountsSlice';
+import { bankRegisterSlice } from '../screens/Banking/BankRegister/bankRegisterSlice';
+import { addTransactionSlice } from '../screens/Banking/AddTransaction/addTransactionSlice';
+import { transferSlice } from '../screens/Banking/Transfer/transferSlice';
+import { reconciliationSlice } from '../screens/Banking/Reconciliation/reconciliationSlice';
+import { reconciliationHistorySlice } from '../screens/Banking/ReconciliationHistory/reconciliationHistorySlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
   company: companyReducer,
   appContainer: appContainerSlice.reducer,
   notificationCenter: notificationCenterSlice.reducer,
+  bankAccounts: bankAccountsSlice.reducer,
+  bankRegister: bankRegisterSlice.reducer,
+  addTransaction: addTransactionSlice.reducer,
+  transfer: transferSlice.reducer,
+  reconciliation: reconciliationSlice.reducer,
+  reconciliationHistory: reconciliationHistorySlice.reducer,
   signIn: signInSlice.reducer,
   signUp: signUpSlice.reducer,
   forgotPassword: forgotPasswordSlice.reducer,

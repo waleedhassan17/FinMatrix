@@ -65,6 +65,13 @@ const ROWS: MoreRow[] = [
     onPress: nav => nav.navigate('VendorList'),
   },
   {
+    key: 'banking',
+    icon: '🏦',
+    label: 'Banking',
+    subtitle: 'Manage bank accounts, register, and transfers',
+    onPress: nav => nav.navigate('BankAccounts'),
+  },
+  {
     key: 'delivery_management',
     icon: '🚚',
     label: 'Delivery Management',

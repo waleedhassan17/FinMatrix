@@ -25,6 +25,12 @@ import DeliveryMonitorScreen from '../../screens/Delivery/Admin/DeliveryMonitor/
 import AdminDeliveryDetailScreen from '../../screens/Delivery/Admin/AdminDeliveryDetail/AdminDeliveryDetailScreen';
 import InventoryApprovalScreen from '../../screens/Delivery/Admin/InventoryApproval/InventoryApprovalScreen';
 import NotificationCenterScreen from '../../screens/Notifications/NotificationCenterScreen';
+import BankAccountsScreen from '../../screens/Banking/BankAccounts/BankAccountsScreen';
+import BankRegisterScreen from '../../screens/Banking/BankRegister/BankRegisterScreen';
+import AddTransactionScreen from '../../screens/Banking/AddTransaction/AddTransactionScreen';
+import TransferScreen from '../../screens/Banking/Transfer/TransferScreen';
+import ReconciliationScreen from '../../screens/Banking/Reconciliation/ReconciliationScreen';
+import ReconciliationHistoryScreen from '../../screens/Banking/ReconciliationHistory/ReconciliationHistoryScreen';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
@@ -52,6 +58,12 @@ export type MoreStackParamList = {
   DeliveryMonitor: undefined;
   AdminDeliveryDetail: { deliveryId: string };
   InventoryApproval: undefined;
+  BankAccounts: undefined;
+  BankRegister: { accountId: string };
+  AddTransaction: { accountId?: string } | undefined;
+  Transfer: { fromAccountId?: string } | undefined;
+  Reconciliation: { accountId?: string } | undefined;
+  ReconciliationHistory: { accountId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -83,6 +95,12 @@ const MoreStack: React.FC = () => (
     <Stack.Screen name="DeliveryMonitor" component={DeliveryMonitorScreen} />
     <Stack.Screen name="AdminDeliveryDetail" component={AdminDeliveryDetailScreen} />
     <Stack.Screen name="InventoryApproval" component={InventoryApprovalScreen} />
+    <Stack.Screen name="BankAccounts" component={BankAccountsScreen} />
+    <Stack.Screen name="BankRegister" component={BankRegisterScreen} />
+    <Stack.Screen name="AddTransaction" component={AddTransactionScreen} />
+    <Stack.Screen name="Transfer" component={TransferScreen} />
+    <Stack.Screen name="Reconciliation" component={ReconciliationScreen} />
+    <Stack.Screen name="ReconciliationHistory" component={ReconciliationHistoryScreen} />
   </Stack.Navigator>
 );
 

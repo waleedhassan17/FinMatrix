@@ -43,7 +43,14 @@ export type NotificationType =
   | 'journal_posted'
   | 'system';
 export type PayrollStatus = 'draft' | 'processed' | 'paid';
-export type BankTransactionType = 'deposit' | 'withdrawal' | 'transfer' | 'fee' | 'interest';
+export type BankTransactionType =
+  | 'deposit'
+  | 'withdrawal'
+  | 'transfer'
+  | 'fee'
+  | 'interest'
+  | 'card_charge'
+  | 'card_payment';
 
 // ─── User ─────────────────────────────────────────────
 export interface User {
@@ -618,7 +625,7 @@ export interface BankAccount {
   bankName: string;
   accountNumber: string;
   routingNumber: string;
-  accountType: 'checking' | 'savings';
+  accountType: 'checking' | 'savings' | 'credit_card';
   balance: number;
   lastReconciledDate: string | null;
   isActive: boolean;
@@ -631,13 +638,30 @@ export interface BankTransaction {
   bankAccountId: string;
   companyId: string;
   date: string;
+  payee: string;
   description: string;
   type: BankTransactionType;
   amount: number;
   balance: number;
+  memo?: string;
   reference: string;
   isReconciled: boolean;
+  transferPairId?: string;
   matchedTransactionId: string | null;
+  createdAt: string;
+}
+
+export interface BankReconciliation {
+  id: string;
+  bankAccountId: string;
+  companyId: string;
+  statementDate: string;
+  beginningBalance: number;
+  endingBalance: number;
+  clearedBalance: number;
+  difference: number;
+  clearedTransactionIds: string[];
+  adjustmentTransactionId: string | null;
   createdAt: string;
 }
 
