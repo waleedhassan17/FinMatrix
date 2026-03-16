@@ -254,6 +254,7 @@ const InvoiceListScreen: React.FC = () => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
         contentContainerStyle={styles.tabsRow}
       >
         {TABS.map(tab => {
@@ -376,9 +377,14 @@ const styles = StyleSheet.create({
   },
 
   // ── Tabs ───────────────────────────────────────
+  tabsScroll: {
+    minHeight: 44,
+  },
   tabsRow: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm + 2,
+    alignItems: 'center',
     gap: spacing.sm,
   },
   tab: {
@@ -408,7 +414,7 @@ const styles = StyleSheet.create({
   tabCountTextActive: { color: colors.white },
 
   // ── Cards ──────────────────────────────────────
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: 80 },
+  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 80 },
   card: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,

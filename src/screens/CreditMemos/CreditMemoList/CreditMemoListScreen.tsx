@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -190,7 +191,12 @@ const CreditMemoListScreen: React.FC = () => {
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabBar}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabBar}
+      >
         {STATUS_TABS.map(t => {
           const active = statusFilter === t.key;
           return (
@@ -206,7 +212,7 @@ const CreditMemoListScreen: React.FC = () => {
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
 
       {/* List */}
       {isLoading && creditMemos.length === 0 ? (
@@ -256,12 +262,13 @@ const styles = StyleSheet.create({
   summaryCard: { flex: 1, backgroundColor: colors.white, borderRadius: borderRadius.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, alignItems: 'center', ...shadows.card },
   summaryLabel: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily, marginBottom: 2 },
   summaryValue: { fontSize: 15, fontWeight: '700', fontFamily: typography.fontFamily },
-  tabBar: { flexDirection: 'row', backgroundColor: colors.white, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  tabsScroll: { minHeight: 44, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
+  tabBar: { flexDirection: 'row', paddingHorizontal: spacing.md, paddingTop: spacing.xs, paddingBottom: spacing.sm + 2, alignItems: 'center' },
   tab: { paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm, marginRight: spacing.xs },
   tabActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
   tabText: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily },
   tabTextActive: { color: colors.primary, fontWeight: '700' },
-  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xl * 3 },
+  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl * 3 },
   card: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.sm, ...shadows.card },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
   cardNumber: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },

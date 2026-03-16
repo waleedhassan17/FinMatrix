@@ -12,6 +12,7 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -151,7 +152,12 @@ const POListScreen: React.FC = () => {
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabRow}
+      >
         {STATUS_TABS.map(tab => {
           const active = filter === tab.key;
           return (
@@ -166,7 +172,7 @@ const POListScreen: React.FC = () => {
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
 
       {/* List */}
       {isLoading ? (
@@ -251,13 +257,18 @@ const styles = StyleSheet.create({
   summaryItem: { flex: 1, alignItems: 'center' },
   summaryValue: { fontSize: 16, fontWeight: '700', color: colors.primary, fontFamily: typography.fontFamily },
   summaryLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2, fontFamily: typography.fontFamily },
-  tabRow: {
-    flexDirection: 'row',
+  tabsScroll: {
+    minHeight: 44,
     backgroundColor: colors.white,
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm + 2,
+    alignItems: 'center',
   },
   tab: {
     paddingHorizontal: spacing.sm + 2,
@@ -268,7 +279,7 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: colors.primary },
   tabText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
   tabTextActive: { color: colors.white },
-  list: { padding: spacing.md, paddingBottom: 100 },
+  list: { padding: spacing.md, paddingTop: spacing.xs, paddingBottom: 100 },
   card: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,

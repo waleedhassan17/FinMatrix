@@ -194,7 +194,12 @@ const SOListScreen: React.FC = () => {
         </View>
       )}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabsRow}
+      >
         {TABS.map(tab => {
           const active = statusFilter === tab.value;
           return (
@@ -255,7 +260,14 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
   searchRow: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   searchInput: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, fontSize: 14, color: colors.textPrimary, fontFamily: typography.fontFamily },
-  tabsRow: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.sm },
+  tabsScroll: { minHeight: 44 },
+  tabsRow: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm + 2,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   tab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs + 2, borderRadius: 20, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
   tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
@@ -264,7 +276,7 @@ const styles = StyleSheet.create({
   tabCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
   tabCountText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, fontFamily: typography.fontFamily },
   tabCountTextActive: { color: colors.white },
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: 80 },
+  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 80 },
   card: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.sm, ...shadows.card },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
   cardNo: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },

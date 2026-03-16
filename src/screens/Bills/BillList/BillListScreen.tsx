@@ -219,6 +219,7 @@ const BillListScreen: React.FC = () => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
         contentContainerStyle={styles.tabsRow}
       >
         {TABS.map(tab => {
@@ -323,9 +324,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily,
   },
 
+  tabsScroll: {
+    minHeight: 44,
+  },
   tabsRow: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm + 2,
+    alignItems: 'center',
     gap: spacing.sm,
   },
   tab: {
@@ -354,7 +360,7 @@ const styles = StyleSheet.create({
   tabCountText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, fontFamily: typography.fontFamily },
   tabCountTextActive: { color: colors.white },
 
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: 80 },
+  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 80 },
   card: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
