@@ -31,6 +31,12 @@ import AddTransactionScreen from '../../screens/Banking/AddTransaction/AddTransa
 import TransferScreen from '../../screens/Banking/Transfer/TransferScreen';
 import ReconciliationScreen from '../../screens/Banking/Reconciliation/ReconciliationScreen';
 import ReconciliationHistoryScreen from '../../screens/Banking/ReconciliationHistory/ReconciliationHistoryScreen';
+import EmployeeListScreen from '../../screens/Employees/EmployeeList/EmployeeListScreen';
+import EmployeeFormScreen from '../../screens/Employees/EmployeeForm/EmployeeFormScreen';
+import EmployeeDetailScreen from '../../screens/Employees/EmployeeDetail/EmployeeDetailScreen';
+import RunPayrollScreen from '../../screens/Payroll/RunPayroll/RunPayrollScreen';
+import PayrollHistoryScreen from '../../screens/Payroll/PayrollHistory/PayrollHistoryScreen';
+import PayStubScreen from '../../screens/Payroll/PayStub/PayStubScreen';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
@@ -64,6 +70,12 @@ export type MoreStackParamList = {
   Transfer: { fromAccountId?: string } | undefined;
   Reconciliation: { accountId?: string } | undefined;
   ReconciliationHistory: { accountId?: string } | undefined;
+  EmployeeList: undefined;
+  EmployeeForm: { employeeId?: string } | undefined;
+  EmployeeDetail: { employeeId: string };
+  RunPayroll: undefined;
+  PayrollHistory: undefined;
+  PayStub: { runId: string; employeeId: string };
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -101,6 +113,12 @@ const MoreStack: React.FC = () => (
     <Stack.Screen name="Transfer" component={TransferScreen} />
     <Stack.Screen name="Reconciliation" component={ReconciliationScreen} />
     <Stack.Screen name="ReconciliationHistory" component={ReconciliationHistoryScreen} />
+    <Stack.Screen name="EmployeeList" component={EmployeeListScreen} />
+    <Stack.Screen name="EmployeeForm" component={EmployeeFormScreen} />
+    <Stack.Screen name="EmployeeDetail" component={EmployeeDetailScreen} />
+    <Stack.Screen name="RunPayroll" component={RunPayrollScreen} />
+    <Stack.Screen name="PayrollHistory" component={PayrollHistoryScreen} />
+    <Stack.Screen name="PayStub" component={PayStubScreen} />
   </Stack.Navigator>
 );
 

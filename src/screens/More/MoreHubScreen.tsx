@@ -90,7 +90,14 @@ const ROWS: MoreRow[] = [
     icon: '👥',
     label: 'Team Management',
     subtitle: 'Invite members and manage roles',
-    onPress: () => {},
+    onPress: nav => nav.navigate('EmployeeList'),
+  },
+  {
+    key: 'payroll',
+    icon: '🧾',
+    label: 'Payroll Processing',
+    subtitle: 'Run payroll, review history, and pay stubs',
+    onPress: nav => nav.navigate('PayrollHistory'),
   },
   {
     key: 'settings',

@@ -103,6 +103,12 @@ import { addTransactionSlice } from '../screens/Banking/AddTransaction/addTransa
 import { transferSlice } from '../screens/Banking/Transfer/transferSlice';
 import { reconciliationSlice } from '../screens/Banking/Reconciliation/reconciliationSlice';
 import { reconciliationHistorySlice } from '../screens/Banking/ReconciliationHistory/reconciliationHistorySlice';
+import { employeeListSlice } from '../screens/Employees/EmployeeList/employeeListSlice';
+import { employeeFormSlice } from '../screens/Employees/EmployeeForm/employeeFormSlice';
+import { employeeDetailSlice } from '../screens/Employees/EmployeeDetail/employeeDetailSlice';
+import { runPayrollSlice } from '../screens/Payroll/RunPayroll/runPayrollSlice';
+import { payrollHistorySlice } from '../screens/Payroll/PayrollHistory/payrollHistorySlice';
+import { payStubSlice } from '../screens/Payroll/PayStub/payStubSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -115,6 +121,12 @@ const rootReducer = combineReducers({
   transfer: transferSlice.reducer,
   reconciliation: reconciliationSlice.reducer,
   reconciliationHistory: reconciliationHistorySlice.reducer,
+  employeeList: employeeListSlice.reducer,
+  employeeForm: employeeFormSlice.reducer,
+  employeeDetail: employeeDetailSlice.reducer,
+  runPayroll: runPayrollSlice.reducer,
+  payrollHistory: payrollHistorySlice.reducer,
+  payStub: payStubSlice.reducer,
   signIn: signInSlice.reducer,
   signUp: signUpSlice.reducer,
   forgotPassword: forgotPasswordSlice.reducer,
