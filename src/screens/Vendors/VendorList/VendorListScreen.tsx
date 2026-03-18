@@ -17,7 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchVendors,
@@ -26,12 +27,14 @@ import {
   selectVendorStatusFilter,
   selectVendorSortField,
   selectVendorIsLoading,
+  selectVendorError,
   setSearchQuery,
   setStatusFilter,
   setSortField,
   type VendorStatusFilter,
   type VendorSortField,
 } from './vendorListSlice';
+import EmptyState from '../../../components/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency } from '../../../utils/formatters';
 import { PAYMENT_TERMS_LABELS } from '../../../models/vendorModel';
@@ -63,6 +66,7 @@ const VendorListScreen: React.FC = () => {
   const statusFilter = useAppSelector(selectVendorStatusFilter);
   const sortField = useAppSelector(selectVendorSortField);
   const isLoading = useAppSelector(selectVendorIsLoading);
+  const error = useAppSelector(selectVendorError);
   const [showSearch, setShowSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -257,15 +261,22 @@ const VendorListScreen: React.FC = () => {
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
+      ) : error && vendors.length === 0 ? (
+        <View style={styles.center}>
+          <EmptyState
+            title="Failed to Load"
+            message={error}
+            actionLabel="Retry"
+            onAction={() => dispatch(fetchVendors())}
+          />
+        </View>
       ) : filtered.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyIcon}>🏪</Text>
-          <Text style={styles.emptyText}>No vendors found</Text>
-          <CustomButton
-            title="Add Vendor"
-            onPress={() => navigation.navigate('VendorForm')}
-            variant="primary"
-            size="md"
+          <EmptyState
+            title="No Vendors Found"
+            message={searchQuery ? `No results for "${searchQuery}"` : 'Add your first vendor to get started.'}
+            actionLabel="Add Vendor"
+            onAction={() => navigation.navigate('VendorForm')}
           />
         </View>
       ) : (
@@ -311,8 +322,8 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { ...THEME.typography.labelLg, color: colors.secondary, marginBottom: spacing.xs },
+  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
 
@@ -332,8 +343,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadows.small,
   },
-  summaryValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily },
-  summaryLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
+  summaryValue: { ...THEME.typography.h3, color: colors.primary },
+  summaryLabel: { ...THEME.typography.labelSm, fontWeight: '400', color: colors.textSecondary, marginTop: 2 },
 
   // ── Search ─────────────────────────────────────
   searchRow: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
@@ -344,9 +355,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
-    fontSize: 14,
+    ...THEME.typography.bodyMd,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
 
   // ── Filter & Sort ──────────────────────────────
@@ -366,7 +376,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  chipText: { ...THEME.typography.labelMd, color: colors.textSecondary },
   chipTextActive: { color: colors.white },
   filterSpacer: { flex: 1 },
   sortChip: {
@@ -378,7 +388,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   sortChipActive: { backgroundColor: colors.secondary + '18', borderColor: colors.secondary },
-  sortChipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  sortChipText: { ...THEME.typography.labelSm, color: colors.textSecondary },
   sortChipTextActive: { color: colors.secondary },
 
   // ── Cards ──────────────────────────────────────
@@ -391,25 +401,25 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
-  cardName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  cardContact: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
+  cardName: { ...THEME.typography.h4, fontWeight: '700', color: colors.textPrimary },
+  cardContact: { ...THEME.typography.bodySm, color: colors.textSecondary, marginTop: 2 },
   statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  statusBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
+  statusBadgeText: { ...THEME.typography.labelSm, fontWeight: '700' },
 
   cardBody: { marginBottom: spacing.sm, gap: spacing.xs },
   cardInfoRow: { flexDirection: 'row', alignItems: 'center' },
   cardInfoIcon: { fontSize: 12, marginRight: spacing.xs + 2 },
-  cardInfoText: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, flex: 1 },
+  cardInfoText: { ...THEME.typography.bodySm, color: colors.textSecondary, flex: 1 },
 
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
-  cardFooterLabel: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
-  cardFooterValue: { fontSize: 15, fontWeight: '700', fontFamily: typography.fontFamily },
-  cardTerms: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  cardFooterLabel: { ...THEME.typography.labelSm, fontWeight: '400', color: colors.textLight },
+  cardFooterValue: { ...THEME.typography.h4, fontWeight: '700' },
+  cardTerms: { ...THEME.typography.bodySm, fontWeight: '600', color: colors.textSecondary },
 
   // ── Empty / Loading ────────────────────────────
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
-  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyText: { ...THEME.typography.bodyLg, color: colors.textSecondary },
 
   // ── FAB ────────────────────────────────────────
   fab: {
@@ -424,7 +434,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadows.large,
   },
-  fabIcon: { fontSize: 28, color: colors.white, fontWeight: '300', marginTop: -2 },
+  fabIcon: { ...THEME.typography.displayMd, color: colors.white, fontWeight: '400', marginTop: -2 },
 });
 
 export default VendorListScreen;

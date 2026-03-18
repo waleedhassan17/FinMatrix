@@ -22,7 +22,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchBillDetail,
@@ -400,7 +401,7 @@ const TotalsRow: React.FC<{
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  errorText: { fontSize: 15, color: colors.danger, fontFamily: typography.fontFamily },
+  errorText: { fontSize: 15, color: colors.danger, fontFamily: THEME.typography.fontFamily },
 
   header: {
     paddingHorizontal: spacing.lg,
@@ -410,11 +411,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
+  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
+  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
 
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
 
@@ -424,14 +425,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...shadows.card,
   },
-  companyName: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily, marginBottom: 2 },
-  companyMeta: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, lineHeight: 18 },
+  companyName: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
+  companyMeta: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 18 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm + 2 },
   billLabel: {
     fontSize: 22,
     fontWeight: '800',
     color: colors.primary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: 2,
     textAlign: 'center',
     marginBottom: spacing.sm,
@@ -439,19 +440,19 @@ const styles = StyleSheet.create({
 
   metaRow: { flexDirection: 'row', justifyContent: 'space-between' },
   metaCol: { alignItems: 'center', flex: 1 },
-  metaKey: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily, marginBottom: 2 },
-  metaVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  metaKey: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
+  metaVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: spacing.xs,
   },
-  vendorName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  vendorName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   tableHeader: {
     flexDirection: 'row',
@@ -459,7 +460,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1.5,
     borderBottomColor: colors.primary,
   },
-  thText: { fontSize: 11, fontWeight: '700', color: colors.primary, fontFamily: typography.fontFamily, textTransform: 'uppercase' },
+  thText: { fontSize: 11, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily, textTransform: 'uppercase' },
   thRight: { textAlign: 'right' },
   tableRow: {
     flexDirection: 'row',
@@ -469,7 +470,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   tableRowEven: { backgroundColor: colors.background },
-  tdText: { fontSize: 12, color: colors.textPrimary, fontFamily: typography.fontFamily },
+  tdText: { fontSize: 12, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   tdRight: { textAlign: 'right' },
 
   totalsBlock: { marginLeft: 'auto', width: '65%' },
@@ -479,19 +480,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xs,
   },
-  totalsLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  totalsLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   totalsLabelBold: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  totalsValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  totalsValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   totalsValueBold: { fontSize: 16, fontWeight: '800' },
   grandTotalDivider: { height: 1.5, backgroundColor: colors.primary, marginVertical: spacing.xs },
 
-  notesText: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, lineHeight: 20 },
+  notesText: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 20 },
 
   outerSectionTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
@@ -503,7 +504,7 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   emptyPaymentsIcon: { fontSize: 36, marginBottom: spacing.xs },
-  emptyPaymentsText: { fontSize: 14, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyPaymentsText: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 
   paymentCard: {
     backgroundColor: colors.white,
@@ -513,9 +514,9 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   paymentTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  paymentNumber: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  paymentDate: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
-  paymentAmount: { fontSize: 16, fontWeight: '800', color: colors.success, fontFamily: typography.fontFamily },
+  paymentNumber: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  paymentDate: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  paymentAmount: { fontSize: 16, fontWeight: '800', color: colors.success, fontFamily: THEME.typography.fontFamily },
   methodBadge: {
     marginTop: 4,
     paddingHorizontal: spacing.sm,
@@ -523,8 +524,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondary + '18',
     borderRadius: 4,
   },
-  methodBadgeText: { fontSize: 11, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
-  paymentRef: { fontSize: 12, color: colors.textLight, fontFamily: typography.fontFamily, marginTop: spacing.xs },
+  methodBadgeText: { fontSize: 11, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  paymentRef: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginTop: spacing.xs },
 
   actionBar: {
     flexDirection: 'row',

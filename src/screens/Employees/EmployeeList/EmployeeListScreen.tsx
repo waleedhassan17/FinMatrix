@@ -13,7 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchEmployees,
@@ -22,12 +23,14 @@ import {
   selectEmployeeDepartmentFilter,
   selectEmployeeSortField,
   selectEmployeeIsLoading,
+  selectEmployeeError,
   setEmployeeSearchQuery,
   setEmployeeDepartmentFilter,
   setEmployeeSortField,
   type EmployeeDepartmentFilter,
   type EmployeeSortField,
 } from './employeeListSlice';
+import EmptyState from '../../../components/EmptyState';
 import type { EmployeeRecord } from '../../../models/employeeModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 import CustomButton from '../../../Custom-Components/CustomButton';
@@ -58,6 +61,7 @@ const EmployeeListScreen: React.FC = () => {
   const departmentFilter = useAppSelector(selectEmployeeDepartmentFilter);
   const sortField = useAppSelector(selectEmployeeSortField);
   const isLoading = useAppSelector(selectEmployeeIsLoading);
+  const error = useAppSelector(selectEmployeeError);
 
   const [showSearch, setShowSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -231,6 +235,10 @@ const EmployeeListScreen: React.FC = () => {
 
       {isLoading && employees.length === 0 ? (
         <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>
+      ) : error && employees.length === 0 ? (
+        <View style={styles.center}>
+          <EmptyState title="Failed to Load" message={error} actionLabel="Retry" onAction={() => dispatch(fetchEmployees())} />
+        </View>
       ) : (
         <FlatList
           data={filtered}
@@ -239,9 +247,12 @@ const EmployeeListScreen: React.FC = () => {
           contentContainerStyle={filtered.length === 0 ? styles.emptyContent : styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
-            <View style={styles.center}>
-              <Text style={styles.emptyText}>No employees found.</Text>
-            </View>
+            <EmptyState
+              title="No Employees Found"
+              message="Add your first team member to get started."
+              actionLabel="Add Employee"
+              onAction={() => navigation.navigate('EmployeeForm')}
+            />
           }
           showsVerticalScrollIndicator={false}
         />
@@ -269,13 +280,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
     fontSize: 20,
     color: colors.textPrimary,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   searchToggle: {
     width: 36,
@@ -301,12 +312,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   summaryLabel: {
     fontSize: 11,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginTop: 2,
   },
   searchRow: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
@@ -319,7 +330,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   filterRow: { flexDirection: 'row', paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   chip: {
@@ -332,7 +343,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs,
   },
   chipActive: { backgroundColor: colors.primary + '12', borderColor: colors.primary },
-  chipText: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  chipText: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   chipTextActive: { color: colors.primary, fontWeight: '600' },
   sortChip: {
     paddingHorizontal: spacing.md,
@@ -342,7 +353,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs,
   },
   sortChipActive: { backgroundColor: colors.secondary + '12' },
-  sortChipText: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  sortChipText: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   sortChipTextActive: { color: colors.secondary, fontWeight: '600' },
   listContent: { padding: spacing.md, paddingTop: spacing.sm },
   emptyContent: { flexGrow: 1 },
@@ -356,26 +367,26 @@ const styles = StyleSheet.create({
     ...shadows.small,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
-  cardName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  cardSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2, fontFamily: typography.fontFamily },
+  cardName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  cardSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily },
   status: {
     fontSize: 11,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: 999,
     textTransform: 'capitalize',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     overflow: 'hidden',
   },
   statusActive: { backgroundColor: colors.success + '18', color: colors.success },
   statusMuted: { backgroundColor: colors.textLight + '18', color: colors.textLight },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
-  infoText: { fontSize: 12, color: colors.textSecondary, marginRight: spacing.xs, fontFamily: typography.fontFamily },
+  infoText: { fontSize: 12, color: colors.textSecondary, marginRight: spacing.xs, fontFamily: THEME.typography.fontFamily },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
-  payLabel: { fontSize: 13, color: colors.textPrimary, fontWeight: '600', fontFamily: typography.fontFamily },
+  payLabel: { fontSize: 13, color: colors.textPrimary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
   chevron: { fontSize: 20, color: colors.textLight },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyText: { color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 });
 
 export default EmployeeListScreen;

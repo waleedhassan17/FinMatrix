@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../../Custom-Components/CustomButton';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../../theme';
+import { THEME } from '../../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import {
   selectActiveCompany,
@@ -277,7 +278,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
-  emptyText: { fontSize: typography.body.fontSize, color: colors.textSecondary, marginBottom: spacing.lg, fontFamily: typography.fontFamily },
+  emptyText: { fontSize: THEME.typography.bodyLg.fontSize, color: colors.textSecondary, marginBottom: spacing.lg, fontFamily: THEME.typography.fontFamily },
   header: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm + 4, backgroundColor: colors.white,
@@ -289,8 +290,8 @@ const styles = StyleSheet.create({
   },
   backArrow: { fontSize: 24, color: colors.textPrimary, marginTop: -2, fontWeight: '300' },
   headerTitle: {
-    flex: 1, textAlign: 'center', fontSize: typography.h4.fontSize, fontWeight: '600',
-    color: colors.textPrimary, fontFamily: typography.fontFamily,
+    flex: 1, textAlign: 'center', fontSize: THEME.typography.h3.fontSize, fontWeight: '600',
+    color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
   },
   headerSpacer: { width: 36 },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xl + 40 },
@@ -303,47 +304,47 @@ const styles = StyleSheet.create({
     width: 72, height: 72, borderRadius: 20, alignItems: 'center',
     justifyContent: 'center', marginBottom: spacing.md,
   },
-  largeAvatarText: { fontSize: 26, fontWeight: '700', fontFamily: typography.fontFamily },
-  personName: { fontSize: 20, fontWeight: '600', color: colors.textPrimary, marginBottom: spacing.xs, fontFamily: typography.fontFamily },
-  personEmail: { fontSize: typography.small.fontSize, color: colors.textSecondary, marginBottom: spacing.xs, fontFamily: typography.fontFamily },
-  personPhone: { fontSize: typography.small.fontSize, color: colors.secondary, fontWeight: '500', marginBottom: spacing.sm, fontFamily: typography.fontFamily },
+  largeAvatarText: { fontSize: 26, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  personName: { fontSize: 20, fontWeight: '600', color: colors.textPrimary, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
+  personEmail: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
+  personPhone: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.secondary, fontWeight: '500', marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
   profileStatusBadge: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs, borderRadius: 8, gap: 6,
   },
   profileStatusDot: { width: 8, height: 8, borderRadius: 4 },
-  profileStatusText: { fontSize: typography.small.fontSize, fontWeight: '600', fontFamily: typography.fontFamily },
+  profileStatusText: { fontSize: THEME.typography.bodyMd.fontSize, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
 
   sectionCard: {
     backgroundColor: colors.white, borderRadius: borderRadius.md + 2, padding: spacing.md,
     marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
   },
   sectionTitle: {
-    fontSize: typography.h4.fontSize, fontWeight: '600', color: colors.textPrimary,
-    marginBottom: spacing.md, fontFamily: typography.fontFamily,
+    fontSize: THEME.typography.h3.fontSize, fontWeight: '600', color: colors.textPrimary,
+    marginBottom: spacing.md, fontFamily: THEME.typography.fontFamily,
   },
   vehicleInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
   vehicleIconBox: {
     width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primary + '0A',
     justifyContent: 'center', alignItems: 'center', marginRight: spacing.md,
   },
-  vehicleIconLetter: { fontSize: 18, fontWeight: '700', color: colors.primary, fontFamily: typography.fontFamily },
+  vehicleIconLetter: { fontSize: 18, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
   vehicleDetails: {},
-  vehicleType: { fontSize: typography.body.fontSize, fontWeight: '500', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  vehiclePlate: { fontSize: typography.body.fontSize, color: colors.textSecondary, fontWeight: '600', fontFamily: typography.fontFamily },
+  vehicleType: { fontSize: THEME.typography.bodyLg.fontSize, fontWeight: '500', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  vehiclePlate: { fontSize: THEME.typography.bodyLg.fontSize, color: colors.textSecondary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
   zonesRow: { flexDirection: 'row', gap: spacing.sm },
   zoneTag: { backgroundColor: colors.secondary + '0C', paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs, borderRadius: 6 },
-  zoneTagText: { fontSize: typography.caption.fontSize, color: colors.secondary, fontWeight: '500', fontFamily: typography.fontFamily },
+  zoneTagText: { fontSize: THEME.typography.caption.fontSize, color: colors.secondary, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
 
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   metricItem: {
     width: '47%', backgroundColor: colors.background, borderRadius: 8, padding: spacing.sm + 4,
     alignItems: 'center', borderWidth: 1, borderColor: colors.border,
   },
-  metricNumber: { fontSize: 20, fontWeight: '700', color: colors.primary, fontFamily: typography.fontFamily },
-  metricLabel: { fontSize: typography.caption.fontSize, color: colors.textSecondary, marginTop: 2, fontFamily: typography.fontFamily },
+  metricNumber: { fontSize: 20, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  metricLabel: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily },
   progressWrapper: { marginTop: spacing.xs },
-  progressLabel: { fontSize: typography.caption.fontSize, color: colors.textSecondary, marginBottom: spacing.xs, fontFamily: typography.fontFamily },
+  progressLabel: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
   progressTrack: { height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: 6, borderRadius: 3 },
 
@@ -353,7 +354,7 @@ const styles = StyleSheet.create({
   },
   toggleBtn: { flex: 1, paddingVertical: spacing.sm + 4, alignItems: 'center' },
   toggleActive: { backgroundColor: colors.primary + '08', borderBottomWidth: 2, borderBottomColor: colors.primary },
-  toggleText: { fontSize: typography.small.fontSize, color: colors.textSecondary, fontWeight: '500', fontFamily: typography.fontFamily },
+  toggleText: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
   toggleTextActive: { color: colors.primary, fontWeight: '600' },
 
   deliveryRow: {
@@ -361,18 +362,18 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   deliveryInfo: { flex: 1 },
-  deliveryCustomer: { fontSize: typography.small.fontSize, fontWeight: '500', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  deliveryTime: { fontSize: typography.caption.fontSize, color: colors.textSecondary, marginTop: 2, fontFamily: typography.fontFamily },
+  deliveryCustomer: { fontSize: THEME.typography.bodyMd.fontSize, fontWeight: '500', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  deliveryTime: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily },
   deliveryStatusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 6 },
-  deliveryStatusText: { fontSize: typography.caption.fontSize, fontWeight: '600', fontFamily: typography.fontFamily },
+  deliveryStatusText: { fontSize: THEME.typography.caption.fontSize, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
 
   historyRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  historyDate: { fontSize: typography.small.fontSize, color: colors.textPrimary, fontWeight: '500', flex: 1, fontFamily: typography.fontFamily },
-  historyDeliveries: { fontSize: typography.small.fontSize, color: colors.textSecondary, flex: 1, textAlign: 'center', fontFamily: typography.fontFamily },
-  historyOnTime: { fontSize: typography.small.fontSize, color: colors.success, fontWeight: '500', flex: 1, textAlign: 'right', fontFamily: typography.fontFamily },
+  historyDate: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textPrimary, fontWeight: '500', flex: 1, fontFamily: THEME.typography.fontFamily },
+  historyDeliveries: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, flex: 1, textAlign: 'center', fontFamily: THEME.typography.fontFamily },
+  historyOnTime: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.success, fontWeight: '500', flex: 1, textAlign: 'right', fontFamily: THEME.typography.fontFamily },
 
   actionsCard: {
     backgroundColor: colors.white, borderRadius: borderRadius.md + 2, padding: spacing.md,
@@ -386,9 +387,9 @@ const styles = StyleSheet.create({
   actionIconCircle: {
     width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xs,
   },
-  actionIconText: { fontSize: 16, fontWeight: '700', fontFamily: typography.fontFamily },
+  actionIconText: { fontSize: 16, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
   actionLabel: {
-    fontSize: 11, color: colors.textPrimary, fontWeight: '500', textAlign: 'center', fontFamily: typography.fontFamily,
+    fontSize: 11, color: colors.textPrimary, fontWeight: '500', textAlign: 'center', fontFamily: THEME.typography.fontFamily,
   },
 });
 

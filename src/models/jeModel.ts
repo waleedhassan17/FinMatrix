@@ -79,7 +79,7 @@ export const validateJournalEntryPost = (data: JEFormData): JEValidationErrors =
   const totalDebit = data.lines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0);
   const totalCredit = data.lines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0);
   if (Math.abs(totalDebit - totalCredit) >= 0.01) {
-    errors.balance = `Unbalanced: debits $${totalDebit.toFixed(2)} ≠ credits $${totalCredit.toFixed(2)}`;
+    errors.balance = `Unbalanced: debits Rs ${totalDebit.toFixed(2)} ≠ credits Rs ${totalCredit.toFixed(2)}`;
   }
 
   return errors;

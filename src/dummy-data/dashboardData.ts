@@ -39,7 +39,7 @@ export const dashboardStats: DashboardStat[] = [
   {
     id: 'revenue',
     label: 'Total Revenue',
-    value: '$48,520',
+    value: 'Rs 48,520',
     trend: '+12.5%',
     trendDirection: 'up',
     trendPositive: true,
@@ -48,7 +48,7 @@ export const dashboardStats: DashboardStat[] = [
   {
     id: 'expenses',
     label: 'Total Expenses',
-    value: '$22,340',
+    value: 'Rs 22,340',
     trend: '-3.2%',
     trendDirection: 'down',
     trendPositive: true,
@@ -57,7 +57,7 @@ export const dashboardStats: DashboardStat[] = [
   {
     id: 'profit',
     label: 'Net Profit',
-    value: '$26,180',
+    value: 'Rs 26,180',
     trend: '+18.7%',
     trendDirection: 'up',
     trendPositive: true,
@@ -66,7 +66,7 @@ export const dashboardStats: DashboardStat[] = [
   {
     id: 'cash',
     label: 'Cash on Hand',
-    value: '$34,200',
+    value: 'Rs 34,200',
     borderColor: '#F39C12',
   },
 ];
@@ -78,35 +78,35 @@ export const recentTransactions: RecentTransaction[] = [
     type: 'income',
     description: 'Invoice #INV-0042 — Acme Corp',
     date: 'Mar 12, 2026',
-    amount: '+$3,200',
+    amount: '+Rs 3,200',
   },
   {
     id: 'txn2',
     type: 'expense',
     description: 'Office Supplies — StarMart',
     date: 'Mar 11, 2026',
-    amount: '-$148',
+    amount: '-Rs 148',
   },
   {
     id: 'txn3',
     type: 'income',
     description: 'Invoice #INV-0041 — GlobalTech',
     date: 'Mar 10, 2026',
-    amount: '+$5,800',
+    amount: '+Rs 5,800',
   },
   {
     id: 'txn4',
     type: 'expense',
     description: 'Fuel — Fleet Account',
     date: 'Mar 10, 2026',
-    amount: '-$620',
+    amount: '-Rs 620',
   },
   {
     id: 'txn5',
     type: 'income',
     description: 'Payment — Delta Services',
     date: 'Mar 9, 2026',
-    amount: '+$1,450',
+    amount: '+Rs 1,450',
   },
 ];
 
@@ -128,7 +128,7 @@ export const dashboardAlerts: DashboardAlert[] = [
   },
   {
     id: 'alert2',
-    message: '5 invoices overdue ($4,200)',
+    message: '5 invoices overdue (Rs 4,200)',
     severity: 'red',
   },
   {

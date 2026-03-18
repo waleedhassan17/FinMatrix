@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { typography } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectActiveCompany } from '../companySlice';
 import { ROUTES } from '../../../navigations-map/Base';
@@ -294,21 +294,21 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
     color: DS.white,
     marginBottom: 8,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   headerSub: {
     fontSize: 15,
     color: 'rgba(255,255,255,0.45)',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 22,
     textAlign: 'center',
     paddingHorizontal: 8,
@@ -330,7 +330,7 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.9)',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: 0.3,
   },
 
@@ -380,7 +380,7 @@ const s = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.2,
   },
   optionBadge: {
@@ -391,14 +391,14 @@ const s = StyleSheet.create({
   optionBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   optionDesc: {
     fontSize: 14,
     color: DS.slate500,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 20,
   },
 
@@ -423,7 +423,7 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: DS.slate500,
     fontWeight: '500',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // Code preview
@@ -447,7 +447,7 @@ const s = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: DS.slate300,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // CTAs
@@ -464,7 +464,7 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: DS.white,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: 0.3,
   },
   optionCtaOutline: {
@@ -481,7 +481,7 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: 0.2,
   },
 
@@ -500,7 +500,7 @@ const s = StyleSheet.create({
   divText: {
     fontSize: 11,
     color: DS.slate400,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     fontWeight: '500',
     marginHorizontal: 14,
     textTransform: 'uppercase',
@@ -524,7 +524,7 @@ const s = StyleSheet.create({
   secText: {
     fontSize: 12,
     color: DS.slate400,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, typography, spacing } from '../../../../theme';
+import { colors, spacing } from '../../../../theme';
+import { THEME } from '../../../../utils/theme';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectUnassignedDeliveries, selectDeliveryPersonnel, assignSelectedDeliveries, autoAssignDeliveries } from '../AssignDeliveries/deliverySlice';
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   content: {
     padding: spacing.lg,
@@ -161,7 +162,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: spacing.sm,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   row: {
     flexDirection: 'row',
@@ -210,23 +211,23 @@ const styles = StyleSheet.create({
   rowTitle: {
     color: colors.textPrimary,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   rowSub: {
     color: colors.textSecondary,
     fontSize: 12,
     marginTop: 2,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   priority: {
     fontSize: 11,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   summary: {
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

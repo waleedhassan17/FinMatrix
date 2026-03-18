@@ -19,7 +19,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchInventoryItems,
@@ -515,10 +516,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...THEME.typography.h2,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   addBtn: {
@@ -528,10 +527,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
   },
   addBtnText: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '600',
     color: colors.white,
-    fontFamily: typography.fontFamily,
   },
 
   // ── View Toggle ───────────────────────────────────
@@ -576,10 +574,9 @@ const styles = StyleSheet.create({
   },
   searchIcon: { fontSize: 14, marginRight: spacing.sm },
   searchInput: {
+    ...THEME.typography.bodyMd,
     flex: 1,
-    fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
     paddingVertical: 0,
   },
   clearBtn: {
@@ -605,10 +602,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   chipText: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '500',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   chipTextSelected: {
     color: colors.white,
@@ -638,10 +634,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   dropdownBtnText: {
+    ...THEME.typography.caption,
     flex: 1,
-    fontSize: 12,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   dropdownArrow: {
     fontSize: 10,
@@ -671,16 +666,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   pickerTitle: {
-    fontSize: 15,
+    ...THEME.typography.h5,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   pickerClose: {
     fontSize: 14,
     fontWeight: '700',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   pickerOption: {
     paddingHorizontal: spacing.md,
@@ -692,9 +686,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary + '12',
   },
   pickerOptionText: {
-    fontSize: 14,
+    ...THEME.typography.bodyMd,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   pickerOptionTextSelected: {
     color: colors.primary,
@@ -719,15 +712,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   summaryValue: {
-    fontSize: 15,
+    ...THEME.typography.h5,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   summaryLabel: {
     fontSize: 10,
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginTop: 1,
   },
   summaryDivider: {
@@ -753,14 +745,12 @@ const styles = StyleSheet.create({
   },
   listRowLeft: { flex: 1, marginRight: spacing.sm },
   listName: {
-    fontSize: 15,
+    ...THEME.typography.h4,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   listSku: {
-    fontSize: 12,
-    color: colors.textLight,
+    ...THEME.typography.caption,
     fontFamily: 'monospace',
     marginTop: 1,
   },
@@ -771,9 +761,9 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   listCategory: {
-    fontSize: 11,
+    ...THEME.typography.labelSm,
+    fontWeight: '400',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   agencyBadge: {
     backgroundColor: colors.secondary + '15',
@@ -785,25 +775,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   listRowRight: { alignItems: 'flex-end' },
   listQty: {
-    fontSize: 20,
+    ...THEME.typography.h2,
     fontWeight: '800',
-    fontFamily: typography.fontFamily,
   },
   listUnitCost: {
     fontSize: 11,
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginTop: 1,
   },
   listTotalVal: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...THEME.typography.labelMd,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
 
   // ── Grid View ─────────────────────────────────────
@@ -833,10 +820,9 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   gridName: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
     marginBottom: 2,
   },
   gridSku: {
@@ -853,7 +839,7 @@ const styles = StyleSheet.create({
   gridQty: {
     fontSize: 13,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   statusDot: {
     width: 8,

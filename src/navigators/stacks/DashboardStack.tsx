@@ -11,10 +11,14 @@ import DeliveryMonitorScreen from '../../screens/Delivery/Admin/DeliveryMonitor/
 import AdminDeliveryDetailScreen from '../../screens/Delivery/Admin/AdminDeliveryDetail/AdminDeliveryDetailScreen';
 import InventoryApprovalScreen from '../../screens/Delivery/Admin/InventoryApproval/InventoryApprovalScreen';
 import NotificationCenterScreen from '../../screens/Notifications/NotificationCenterScreen';
+import AuditTrailScreen from '../../screens/AuditTrail/AuditTrailScreen';
+import GlobalSearchScreen from '../../screens/GlobalSearch/GlobalSearchScreen';
 
 export type DashboardStackParamList = {
   AdminDashboard: undefined;
   Notifications: undefined;
+  AuditTrail: undefined;
+  GlobalSearch: undefined;
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;
   DeliveryPersonnelDetail: { userId: string };
@@ -41,6 +45,8 @@ const DashboardStack: React.FC = () => (
     <Stack.Screen name="DeliveryMonitor" component={DeliveryMonitorScreen} />
     <Stack.Screen name="AdminDeliveryDetail" component={AdminDeliveryDetailScreen} />
     <Stack.Screen name="InventoryApproval" component={InventoryApprovalScreen} />
+    <Stack.Screen name="AuditTrail" component={AuditTrailScreen} />
+    <Stack.Screen name="GlobalSearch" component={GlobalSearchScreen} />
   </Stack.Navigator>
 );
 

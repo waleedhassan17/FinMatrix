@@ -11,12 +11,14 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchAgencies,
@@ -24,9 +26,11 @@ import {
   selectAgencySearchQuery,
   selectAgencyTypeFilter,
   selectAgencyIsLoading,
+  selectAgencyError,
   setSearchQuery,
   setTypeFilter,
 } from './agencyListSlice';
+import EmptyState from '../../../components/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency } from '../../../utils/formatters';
 import { AGENCY_TYPE_COLORS } from '../../../models/agencyModel';
@@ -52,6 +56,7 @@ const AgencyListScreen: React.FC = () => {
   const searchQuery = useAppSelector(selectAgencySearchQuery);
   const typeFilter = useAppSelector(selectAgencyTypeFilter);
   const isLoading = useAppSelector(selectAgencyIsLoading);
+  const error = useAppSelector(selectAgencyError);
 
   useFocusEffect(
     useCallback(() => {
@@ -194,10 +199,21 @@ const AgencyListScreen: React.FC = () => {
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
+      ) : error && agencies.length === 0 ? (
+        <View style={styles.center}>
+          <EmptyState
+            title="Failed to Load"
+            message={error}
+            actionLabel="Retry"
+            onAction={() => dispatch(fetchAgencies())}
+          />
+        </View>
       ) : filtered.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyIcon}>🏭</Text>
-          <Text style={styles.emptyText}>No agencies found</Text>
+          <EmptyState
+            title="No Agencies Found"
+            message={searchQuery ? `No results for "${searchQuery}"` : 'No warehouse agencies yet.'}
+          />
         </View>
       ) : (
         <FlatList
@@ -206,6 +222,9 @@ const AgencyListScreen: React.FC = () => {
           renderItem={renderCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={() => dispatch(fetchAgencies())} colors={[colors.primary]} />
+          }
         />
       )}
     </SafeAreaView>
@@ -229,8 +248,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerLeft: { flex: 1 },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   // ── Summary ───────────────────────────────────────
   summaryRow: {
@@ -248,8 +267,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadows.small,
   },
-  summaryValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily },
-  summaryLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
+  summaryValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  summaryLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
 
   // ── Search ────────────────────────────────────────
   searchRow: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
@@ -262,7 +281,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Filter chips ──────────────────────────────────
@@ -281,7 +300,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  chipText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   chipTextActive: { color: colors.white },
 
   // ── Cards ─────────────────────────────────────────
@@ -294,23 +313,23 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  cardName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, flex: 1, marginRight: spacing.sm },
+  cardName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1, marginRight: spacing.sm },
   typeBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  typeBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
+  typeBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
 
   cardRow: { flexDirection: 'row', marginBottom: spacing.sm, gap: spacing.lg },
   cardStat: {},
-  cardStatLabel: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
-  cardStatValue: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  cardStatLabel: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+  cardStatValue: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardContact: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, flex: 1 },
-  cardCity: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  cardContact: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, flex: 1 },
+  cardCity: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 
   // ── Empty / Loading ───────────────────────────────
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
-  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 });
 
 export default AgencyListScreen;

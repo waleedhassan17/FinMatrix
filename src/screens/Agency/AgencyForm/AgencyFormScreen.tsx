@@ -17,7 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAgencies, createAgency, editAgency, fetchAgencies } from '../AgencyList/agencyListSlice';
 import {
@@ -379,13 +380,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.lg },
 
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, marginBottom: spacing.sm },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
   row: { flexDirection: 'row' },
 
   // ── Inventory items ───────────────────────────────
@@ -401,8 +402,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  itemName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  itemSku: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
+  itemName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  itemSku: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
   removeBtn: { fontSize: 16, fontWeight: '700', color: colors.danger, paddingHorizontal: spacing.sm },
 
   // ── Inline form ───────────────────────────────────
@@ -415,7 +416,7 @@ const styles = StyleSheet.create({
     borderColor: colors.secondary + '40',
     ...shadows.small,
   },
-  inlineTitle: { fontSize: 14, fontWeight: '700', color: colors.secondary, fontFamily: typography.fontFamily, marginBottom: spacing.sm },
+  inlineTitle: { fontSize: 14, fontWeight: '700', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
   inlineBtnRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.sm },
 
   btnRow: { flexDirection: 'row', marginTop: spacing.lg },

@@ -11,7 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { formatCurrency } from '../../../utils/formatters';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -145,16 +146,13 @@ const styles = StyleSheet.create({
   },
   backBtn: { paddingVertical: spacing.xs },
   backText: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '600',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...THEME.typography.h2,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   listContent: { padding: spacing.lg, paddingBottom: spacing.xl },
   card: {
@@ -176,20 +174,16 @@ const styles = StyleSheet.create({
   icon: { fontSize: 22 },
   infoWrap: { flex: 1 },
   accountName: {
-    fontSize: 16,
-    fontWeight: '700',
+    ...THEME.typography.h4,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   bankName: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   accountNo: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
     marginTop: 2,
   },
   chevron: {
@@ -207,21 +201,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   balanceLabel: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   balanceValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    fontFamily: typography.fontFamily,
+    ...THEME.typography.h3,
   },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...THEME.typography.h4,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
 });
 

@@ -22,7 +22,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectVCForm,
@@ -454,13 +455,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.danger,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   scrollContent: {
@@ -472,7 +473,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.xs,
     marginTop: spacing.md,
   },
@@ -501,13 +502,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   lineError: {
     fontSize: 12,
     color: colors.danger,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   lineCard: {
@@ -527,7 +528,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.primary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   lineDeleteBtn: {
     fontSize: 16,
@@ -543,7 +544,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs + 2,
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.sm,
   },
   lineRow: { flexDirection: 'row' },
@@ -551,7 +552,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.xs / 2,
   },
   numInput: {
@@ -562,7 +563,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs + 2,
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     textAlign: 'right',
   },
   lineTotalRow: {
@@ -577,13 +578,13 @@ const styles = StyleSheet.create({
   lineTotalLabel: {
     fontSize: 12,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   lineTotalValue: {
     fontSize: 14,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   totalsCard: {
@@ -601,14 +602,14 @@ const styles = StyleSheet.create({
   totalsLabel: {
     fontSize: 13,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   totalsLabelBold: { fontWeight: '700', color: colors.textPrimary, fontSize: 14 },
   totalsValue: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   totalsValueBold: { fontWeight: '800', fontSize: 16 },
   grandDivider: {

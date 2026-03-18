@@ -78,7 +78,7 @@ const BaseNavigator: React.FC = () => {
             />
           </>
         ) : isDeliveryUser ? (
-          // ── Delivery Personnel (skip CompanySetup) ──
+          // ── Delivery Personnel → straight to home ──
           <>
             <Stack.Screen
               name="DeliveryTabs"

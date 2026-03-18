@@ -22,7 +22,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectReceivePaymentState,
@@ -487,10 +488,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.xs,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
 
@@ -499,7 +500,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.sm,
     marginTop: spacing.md,
   },
@@ -521,8 +522,8 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   emptyIcon: { fontSize: 36, marginBottom: spacing.xs },
-  emptyText: { fontSize: 14, color: colors.textSecondary, fontFamily: typography.fontFamily, textAlign: 'center' },
-  errorText: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: typography.fontFamily },
+  emptyText: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
+  errorText: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
 
   // ── Table ──────────────────────────────────────
   tableHeader: {
@@ -540,7 +541,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.primary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
   },
   thRight: { textAlign: 'right' },
@@ -557,7 +558,7 @@ const styles = StyleSheet.create({
   tableRowEven: { backgroundColor: colors.background },
   tableRowChecked: { backgroundColor: colors.success + '0C' },
 
-  tdText: { fontSize: 12, color: colors.textPrimary, fontFamily: typography.fontFamily },
+  tdText: { fontSize: 12, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   tdRight: { textAlign: 'right' },
 
   // ── Checkbox ───────────────────────────────────
@@ -592,8 +593,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xs,
   },
-  summaryLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  summaryValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  summaryLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  summaryValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   // ── Buttons ────────────────────────────────────
   btnRow: {

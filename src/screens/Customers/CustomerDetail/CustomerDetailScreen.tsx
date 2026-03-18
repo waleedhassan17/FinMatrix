@@ -17,7 +17,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectCustomers, toggleCustomerActive } from '../CustomerList/customerListSlice';
 import {
@@ -373,8 +374,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerLeft: { flex: 1, marginRight: spacing.sm },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   scrollContent: { paddingBottom: spacing.xl },
 
   // ── Top Card ───────────────────────────────────
@@ -387,14 +388,14 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   topCardRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
-  topCardLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, marginBottom: 2 },
-  topCardBalance: { fontSize: 24, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily },
-  topCardPurchases: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  topCardLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
+  topCardBalance: { fontSize: 24, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  topCardPurchases: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   creditSection: { marginBottom: spacing.sm },
   creditHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  creditLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
-  creditPercent: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  creditLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  creditPercent: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   creditBarTrack: {
     height: 8,
     backgroundColor: colors.border,
@@ -403,7 +404,7 @@ const styles = StyleSheet.create({
   },
   creditBarFill: { height: '100%', borderRadius: 4 },
   creditFooter: { marginTop: spacing.xs },
-  creditFooterText: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
+  creditFooterText: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
 
   statusBadge: {
     alignSelf: 'flex-start',
@@ -412,7 +413,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginTop: spacing.xs,
   },
-  statusBadgeText: { fontSize: 12, fontWeight: '700', fontFamily: typography.fontFamily },
+  statusBadgeText: { fontSize: 12, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
 
   // ── Action Buttons ─────────────────────────────
   actionRow: {
@@ -430,7 +431,7 @@ const styles = StyleSheet.create({
     ...shadows.small,
   },
   actionIcon: { fontSize: 22, marginBottom: spacing.xs },
-  actionLabel: { fontSize: 11, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily, textAlign: 'center' },
+  actionLabel: { fontSize: 11, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
 
   // ── Tabs ───────────────────────────────────────
   tabRow: {
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
   },
   tab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', borderRadius: 6 },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  tabText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   tabTextActive: { color: colors.white },
 
   // ── Tab Content ────────────────────────────────
@@ -463,7 +464,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.sm,
   },
   infoRow: {
@@ -472,11 +473,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs + 1,
   },
   infoIcon: { fontSize: 14, marginRight: spacing.sm, width: 22 },
-  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, width: 100 },
-  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily, flex: 1 },
+  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, width: 100 },
+  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
 
-  addressText: { fontSize: 14, color: colors.textPrimary, fontFamily: typography.fontFamily, lineHeight: 22 },
-  notesText: { fontSize: 14, color: colors.textSecondary, fontFamily: typography.fontFamily, lineHeight: 21 },
+  addressText: { fontSize: 14, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, lineHeight: 22 },
+  notesText: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 21 },
 
   // ── List Cards (Invoices / Payments) ───────────
   listCard: {
@@ -487,18 +488,18 @@ const styles = StyleSheet.create({
     ...shadows.small,
   },
   listCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  listCardTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  listCardSub: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
-  listCardAmount: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  listCardDetail: { fontSize: 12, color: colors.textLight, fontFamily: typography.fontFamily, marginTop: spacing.sm },
+  listCardTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  listCardSub: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  listCardAmount: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  listCardDetail: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginTop: spacing.sm },
 
   miniStatusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginTop: 4 },
-  miniStatusText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
+  miniStatusText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
 
   // ── Empty / Center ─────────────────────────────
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyIcon: { fontSize: 48 },
-  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 });
 
 export default CustomerDetailScreen;

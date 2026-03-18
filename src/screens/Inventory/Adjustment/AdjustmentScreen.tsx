@@ -17,7 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
@@ -268,8 +269,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.lg },
@@ -286,8 +287,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  roLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  roValue: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  roLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  roValue: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   adjRow: {
     flexDirection: 'row',
@@ -300,8 +301,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadows.small,
   },
-  adjLabel: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
-  adjValue: { fontSize: 22, fontWeight: '800', fontFamily: typography.fontFamily },
+  adjLabel: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  adjValue: { fontSize: 22, fontWeight: '800', fontFamily: THEME.typography.fontFamily },
 
   btnRow: {
     flexDirection: 'row',

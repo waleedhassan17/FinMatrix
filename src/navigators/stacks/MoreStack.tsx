@@ -37,6 +37,15 @@ import EmployeeDetailScreen from '../../screens/Employees/EmployeeDetail/Employe
 import RunPayrollScreen from '../../screens/Payroll/RunPayroll/RunPayrollScreen';
 import PayrollHistoryScreen from '../../screens/Payroll/PayrollHistory/PayrollHistoryScreen';
 import PayStubScreen from '../../screens/Payroll/PayStub/PayStubScreen';
+import TaxSettingsScreen from '../../screens/Tax/TaxSettings/TaxSettingsScreen';
+import TaxLiabilityScreen from '../../screens/Tax/TaxLiability/TaxLiabilityScreen';
+import TaxPaymentScreen from '../../screens/Tax/TaxPayment/TaxPaymentScreen';
+import SettingsScreen from '../../screens/Settings/SettingsMain/SettingsScreen';
+import CompanyProfileScreen from '../../screens/Settings/CompanyProfile/CompanyProfileScreen';
+import UserManagementScreen from '../../screens/Settings/UserManagement/UserManagementScreen';
+import CompanySwitcherScreen from '../../screens/Settings/CompanySwitcher/CompanySwitcherScreen';
+import AuditTrailScreen from '../../screens/AuditTrail/AuditTrailScreen';
+import GlobalSearchScreen from '../../screens/GlobalSearch/GlobalSearchScreen';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
@@ -76,6 +85,15 @@ export type MoreStackParamList = {
   RunPayroll: undefined;
   PayrollHistory: undefined;
   PayStub: { runId: string; employeeId: string };
+  TaxSettings: undefined;
+  TaxLiability: undefined;
+  TaxPayment: { taxRateId?: string } | undefined;
+  Settings: undefined;
+  CompanyProfile: undefined;
+  UserManagement: undefined;
+  CompanySwitcher: undefined;
+  AuditTrail: undefined;
+  GlobalSearch: undefined;
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -119,6 +137,15 @@ const MoreStack: React.FC = () => (
     <Stack.Screen name="RunPayroll" component={RunPayrollScreen} />
     <Stack.Screen name="PayrollHistory" component={PayrollHistoryScreen} />
     <Stack.Screen name="PayStub" component={PayStubScreen} />
+    <Stack.Screen name="TaxSettings" component={TaxSettingsScreen} />
+    <Stack.Screen name="TaxLiability" component={TaxLiabilityScreen} />
+    <Stack.Screen name="TaxPayment" component={TaxPaymentScreen} />
+    <Stack.Screen name="Settings" component={SettingsScreen} />
+    <Stack.Screen name="CompanyProfile" component={CompanyProfileScreen} />
+    <Stack.Screen name="UserManagement" component={UserManagementScreen} />
+    <Stack.Screen name="CompanySwitcher" component={CompanySwitcherScreen} />
+    <Stack.Screen name="AuditTrail" component={AuditTrailScreen} />
+    <Stack.Screen name="GlobalSearch" component={GlobalSearchScreen} />
   </Stack.Navigator>
 );
 

@@ -13,7 +13,8 @@ import {
   StyleSheet,
 } from 'react-native';
 import CustomDropdown from '../Custom-Components/CustomDropdown';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import { colors, spacing, borderRadius } from '../theme';
+import { THEME } from '../utils/theme';
 import { formatCurrency } from '../utils/formatters';
 
 const TAX_OPTIONS = [
@@ -140,10 +141,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   lineLabel: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '700',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   deleteBtn: {
     width: 28,
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   deleteBtnText: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '700',
     color: colors.danger,
   },
@@ -164,8 +164,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
-    fontSize: 14,
-    fontFamily: typography.fontFamily,
+    ...THEME.typography.bodyMd,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
@@ -176,10 +175,9 @@ const styles = StyleSheet.create({
   numericField: { flex: 1 },
   taxField: { flex: 1 },
   fieldLabel: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     fontWeight: '500',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
     marginBottom: spacing.xs,
   },
   numericInput: {
@@ -188,8 +186,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
-    fontSize: 14,
-    fontFamily: typography.fontFamily,
+    ...THEME.typography.bodyMd,
     color: colors.textPrimary,
     textAlign: 'right',
   },
@@ -203,16 +200,14 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   amountLabel: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '600',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   amountValue: {
-    fontSize: 15,
+    ...THEME.typography.h4,
     fontWeight: '700',
     color: colors.primary,
-    fontFamily: typography.fontFamily,
   },
 });
 

@@ -666,15 +666,53 @@ export interface BankReconciliation {
 }
 
 // ─── Tax ──────────────────────────────────────────────
+export type TaxType = 'GST' | 'WHT' | 'Income Tax' | 'Sales Tax' | 'Custom';
+
 export interface TaxRate {
   id: string;
   companyId: string;
   name: string;
   rate: number;
+  taxType: TaxType;
   description: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TaxPaymentRecord {
+  id: string;
+  companyId: string;
+  taxRateId: string;
+  taxRateName: string;
+  taxType: TaxType;
+  amount: number;
+  date: string;
+  bankAccountId: string;
+  bankAccountName: string;
+  reference: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaxLiabilityRow {
+  taxRateId: string;
+  taxName: string;
+  taxType: TaxType;
+  rate: number;
+  collected: number;
+  paid: number;
+  net: number;
+}
+
+export interface TaxLiabilityReport {
+  fromDate: string;
+  toDate: string;
+  rows: TaxLiabilityRow[];
+  totalCollected: number;
+  totalPaid: number;
+  totalNet: number;
 }
 
 // ─── Notifications ────────────────────────────────────

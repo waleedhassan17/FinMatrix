@@ -1,32 +1,21 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, typography, spacing, borderRadius } from '../../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectDeliveries, updateDeliveryStatus } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
-import CustomButton from '../../../../Custom-Components/CustomButton';
+import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'DPDeliveryDetail'>;
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: '#2563EB',
-  picked_up: '#8B5CF6',
-  in_transit: '#D97706',
-  arrived: '#0EA5E9',
-  delivered: '#059669',
-  failed: '#DC2626',
-  returned: '#7C3AED',
-  unassigned: '#6B7280',
-};
-
-const EXECUTION_STEPS: Array<{ key: string; label: string }> = [
-  { key: 'pending', label: 'Pending' },
-  { key: 'picked_up', label: 'Picked Up' },
-  { key: 'in_transit', label: 'In Transit' },
-  { key: 'arrived', label: 'Arrived' },
-  { key: 'delivered', label: 'Delivered' },
+const EXECUTION_STEPS = [
+  { key: 'pending', label: 'Pending', description: 'Awaiting pickup' },
+  { key: 'picked_up', label: 'Picked Up', description: 'Items collected' },
+  { key: 'in_transit', label: 'In Transit', description: 'On the way' },
+  { key: 'arrived', label: 'Arrived', description: 'At destination' },
+  { key: 'delivered', label: 'Delivered', description: 'Successfully completed' },
 ];
 
 const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
@@ -42,76 +31,96 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   if (!delivery) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.back}>Back</Text>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Feather name="chevron-left" size={20} color={THEME.colors.neutral700} />
           </TouchableOpacity>
-          <Text style={styles.title}>Delivery Detail</Text>
-          <View style={{ width: 40 }} />
+          <Text style={styles.headerTitle}>Delivery Detail</Text>
+          <View style={styles.headerSpacer} />
         </View>
-        <View style={styles.emptyWrap}>
-          <Text style={styles.emptyText}>Delivery not found.</Text>
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="inbox" size={28} color={THEME.colors.textTertiary} />
+          </View>
+          <Text style={styles.emptyTitle}>Delivery Not Found</Text>
+          <Text style={styles.emptySubtitle}>This delivery may have been removed or updated.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.emptyButtonText}>Go Back</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
+  const statusConfig = STATUS_CONFIG[delivery.status] ?? STATUS_CONFIG.unassigned;
+  const priorityConfig = PRIORITY_CONFIG[delivery.priority] ?? PRIORITY_CONFIG.medium;
+
   const openMap = () => {
     const target = delivery.address ?? delivery.zone;
     const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(target)}`;
-    Linking.openURL(mapUrl).catch(() => Alert.alert('Map', target));
+    Linking.openURL(mapUrl).catch(() => Alert.alert('Navigation', `Navigate to: ${target}`));
   };
 
   const callCustomer = () => {
     if (!delivery.customerPhone) {
-      Alert.alert('No phone', 'No customer phone found for this delivery.');
+      Alert.alert('No Phone', 'No customer phone number available.');
       return;
     }
-    Linking.openURL(`tel:${delivery.customerPhone}`).catch(() => Alert.alert('Phone', delivery.customerPhone));
+    Linking.openURL(`tel:${delivery.customerPhone}`).catch(() => 
+      Alert.alert('Call', delivery.customerPhone)
+    );
   };
 
   const actionConfig = (() => {
-    if (delivery.status === 'pending') {
-      return {
-        title: 'Pick Up Items',
-        handler: () => dispatch(updateDeliveryStatus({
-          deliveryId: delivery.id,
-          status: 'picked_up',
-          note: `Items picked up at ${new Date().toISOString()}`,
-        })),
-      };
+    switch (delivery.status) {
+      case 'pending':
+        return {
+          title: 'Pick Up Items',
+          subtitle: 'Collect items from warehouse',
+          icon: 'package',
+          color: THEME.colors.secondary,
+          handler: () => dispatch(updateDeliveryStatus({
+            deliveryId: delivery.id,
+            status: 'picked_up',
+            note: `Items picked up at ${new Date().toISOString()}`,
+          })),
+        };
+      case 'picked_up':
+        return {
+          title: 'Start Delivery',
+          subtitle: 'Begin your route',
+          icon: 'truck',
+          color: THEME.colors.warning,
+          handler: () => dispatch(updateDeliveryStatus({
+            deliveryId: delivery.id,
+            status: 'in_transit',
+            note: `Delivery started at ${new Date().toISOString()}`,
+          })),
+        };
+      case 'in_transit':
+        return {
+          title: 'Mark as Arrived',
+          subtitle: 'Confirm arrival at destination',
+          icon: 'map-pin',
+          color: THEME.colors.info,
+          handler: () => dispatch(updateDeliveryStatus({
+            deliveryId: delivery.id,
+            status: 'arrived',
+            note: `Arrived at location at ${new Date().toISOString()}`,
+          })),
+        };
+      case 'arrived':
+        return {
+          title: 'Capture Signature',
+          subtitle: 'Complete delivery verification',
+          icon: 'edit-3',
+          color: THEME.colors.success,
+          handler: () => navigation.navigate('SignatureCapture', { deliveryId: delivery.id }),
+        };
+      default:
+        return null;
     }
-
-    if (delivery.status === 'picked_up') {
-      return {
-        title: 'Start Delivery',
-        handler: () => dispatch(updateDeliveryStatus({
-          deliveryId: delivery.id,
-          status: 'in_transit',
-          note: `Delivery started at ${new Date().toISOString()}`,
-        })),
-      };
-    }
-
-    if (delivery.status === 'in_transit') {
-      return {
-        title: 'Arrived at Location',
-        handler: () => dispatch(updateDeliveryStatus({
-          deliveryId: delivery.id,
-          status: 'arrived',
-          note: `Arrived at location at ${new Date().toISOString()}`,
-        })),
-      };
-    }
-
-    if (delivery.status === 'arrived') {
-      return {
-        title: 'Capture Signature',
-        handler: () => navigation.navigate('SignatureCapture', { deliveryId: delivery.id }),
-      };
-    }
-
-    return null;
   })();
 
   const currentStepIndex = Math.max(
@@ -119,158 +128,725 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     0,
   );
 
-  const handleStart = () => {
-    dispatch(updateDeliveryStatus({ deliveryId: delivery.id, status: 'in_transit', note: 'Started by delivery personnel' }));
-    Alert.alert('Started', 'Delivery moved to in transit.');
-  };
-
-  const handleComplete = () => {
-    dispatch(updateDeliveryStatus({ deliveryId: delivery.id, status: 'delivered', note: 'Delivered successfully' }));
-    Alert.alert('Completed', 'Delivery marked as delivered.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>Back</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Feather name="chevron-left" size={20} color={THEME.colors.neutral700} />
         </TouchableOpacity>
-        <Text style={styles.title}>{delivery.referenceNo}</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>{delivery.referenceNo}</Text>
+          <View style={[styles.headerBadge, { backgroundColor: statusConfig.bg }]}>
+            <Text style={[styles.headerBadgeText, { color: statusConfig.color }]}>
+              {statusConfig.label}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.moreBtn}>
+          <Text style={styles.moreIcon}>⋯</Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Customer Card */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Customer</Text>
-          <Text style={styles.valueMain}>{delivery.customerName}</Text>
-          <TouchableOpacity onPress={openMap}><Text style={[styles.valueSub, styles.link]}>{delivery.address ?? delivery.zone} (Open Map)</Text></TouchableOpacity>
-          {delivery.customerPhone && <TouchableOpacity onPress={callCustomer}><Text style={[styles.valueSub, styles.link]}>{delivery.customerPhone} (Call)</Text></TouchableOpacity>}
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Delivery</Text>
-          <View style={styles.row}><Text style={styles.label}>Priority</Text><Text style={styles.value}>{delivery.priority.toUpperCase()}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Status</Text><Text style={[styles.value, { color: STATUS_COLORS[delivery.status] }]}>{delivery.status.replace('_', ' ')}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Scheduled</Text><Text style={styles.value}>{delivery.scheduledDate}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Items</Text><Text style={styles.value}>{delivery.items.length}</Text></View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Items Table</Text>
-          <View style={[styles.itemRow, styles.itemHead]}>
-            <Text style={[styles.itemName, styles.tableHead]}>Item</Text>
-            <Text style={[styles.itemQty, styles.tableHead]}>Qty</Text>
-          </View>
-          {delivery.items.map(item => (
-            <View key={item.itemId} style={styles.itemRow}>
-              <Text style={styles.itemName}>{item.itemName}</Text>
-              <Text style={styles.itemQty}>x{item.quantity}</Text>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconWrap}>
+              <Feather name="user" size={18} color={THEME.colors.primary} />
             </View>
-          ))}
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Customer Information</Text>
+              <Text style={styles.cardSubtitle}>Contact and location details</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.cardBody}>
+            <Text style={styles.customerName}>{delivery.customerName}</Text>
+            
+            <TouchableOpacity style={styles.actionRow} onPress={openMap}>
+              <View style={styles.actionRowIcon}>
+                <Feather name="map-pin" size={16} color={THEME.colors.primary} />
+              </View>
+              <View style={styles.actionRowContent}>
+                <Text style={styles.actionRowLabel}>Delivery Address</Text>
+                <Text style={styles.actionRowValue}>{delivery.address ?? delivery.zone}</Text>
+              </View>
+              <View style={styles.actionRowChevron}>
+                <Feather name="chevron-right" size={16} color={THEME.colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
+
+            {delivery.customerPhone && (
+              <TouchableOpacity style={styles.actionRow} onPress={callCustomer}>
+                <View style={[styles.actionRowIcon, { backgroundColor: THEME.colors.successLight }]}>
+                  <Feather name="phone" size={16} color={THEME.colors.success} />
+                </View>
+                <View style={styles.actionRowContent}>
+                  <Text style={styles.actionRowLabel}>Phone Number</Text>
+                  <Text style={styles.actionRowValue}>{delivery.customerPhone}</Text>
+                </View>
+                <View style={styles.actionRowChevron}>
+                  <Feather name="chevron-right" size={16} color={THEME.colors.textTertiary} />
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
+        {/* Delivery Info Card */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Notes</Text>
-          <Text style={styles.valueSub}>{delivery.notes ?? 'No notes added.'}</Text>
+          <View style={styles.cardHeader}>
+            <View style={[styles.cardIconWrap, { backgroundColor: THEME.colors.warningLight }]}>
+              <Feather name="clipboard" size={18} color={THEME.colors.warning} />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Delivery Information</Text>
+              <Text style={styles.cardSubtitle}>Order and schedule details</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.infoGrid}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>PRIORITY</Text>
+                <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.bg }]}>
+                  <Text style={[styles.priorityText, { color: priorityConfig.color }]}>
+                    {delivery.priority.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>SCHEDULED</Text>
+                <Text style={styles.infoValue}>{delivery.scheduledDate}</Text>
+              </View>
+            </View>
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>ZONE</Text>
+                <Text style={styles.infoValue}>{delivery.zone}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>TOTAL ITEMS</Text>
+                <Text style={styles.infoValue}>{delivery.items.length} items</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
+        {/* Items Card */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Status Progress</Text>
-          <View style={styles.progressTrack}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.cardIconWrap, { backgroundColor: THEME.colors.secondaryLight }]}>
+              <Feather name="package" size={18} color={THEME.colors.secondary} />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Package Contents</Text>
+              <Text style={styles.cardSubtitle}>{delivery.items.length} items to deliver</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.itemsTable}>
+            <View style={styles.tableHeader}>
+              <Text style={styles.tableHeaderCell}>Item Name</Text>
+              <Text style={[styles.tableHeaderCell, styles.tableHeaderCellRight]}>Qty</Text>
+            </View>
+            {delivery.items.map((item, index) => (
+              <View 
+                key={item.itemId} 
+                style={[styles.tableRow, index === delivery.items.length - 1 && styles.tableRowLast]}
+              >
+                <View style={styles.tableRowContent}>
+                  <View style={styles.itemBullet}>
+                    <Text style={styles.itemBulletText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.itemName}>{item.itemName}</Text>
+                </View>
+                <View style={styles.qtyBadge}>
+                  <Text style={styles.qtyText}>×{item.quantity}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Notes Card */}
+        {delivery.notes && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.cardIconWrap, { backgroundColor: THEME.colors.neutral100 }]}>
+                <Feather name="edit" size={18} color={THEME.colors.neutral600} />
+              </View>
+              <View style={styles.cardHeaderText}>
+                <Text style={styles.cardTitle}>Delivery Notes</Text>
+                <Text style={styles.cardSubtitle}>Special instructions</Text>
+              </View>
+            </View>
+            <View style={styles.cardDivider} />
+            <View style={styles.notesBody}>
+              <Text style={styles.notesText}>{delivery.notes}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Progress Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.cardIconWrap, { backgroundColor: THEME.colors.successLight }]}>
+              <Feather name="bar-chart-2" size={18} color={THEME.colors.success} />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Delivery Progress</Text>
+              <Text style={styles.cardSubtitle}>Current status timeline</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.progressTimeline}>
             {EXECUTION_STEPS.map((step, index) => {
-              const active = index <= currentStepIndex;
+              const isCompleted = index < currentStepIndex;
+              const isCurrent = index === currentStepIndex;
+              const isPending = index > currentStepIndex;
+
               return (
-                <View key={step.key} style={styles.progressStep}>
-                  <View style={[styles.progressDot, active && styles.progressDotActive]} />
-                  <Text style={[styles.progressLabel, active && styles.progressLabelActive]}>{step.label}</Text>
+                <View key={step.key} style={styles.timelineStep}>
+                  <View style={styles.timelineLeft}>
+                    <View style={[
+                      styles.timelineDot,
+                      isCompleted && styles.timelineDotCompleted,
+                      isCurrent && styles.timelineDotCurrent,
+                    ]}>
+                      {isCompleted ? (
+                        <Feather name="check" size={12} color={THEME.colors.textInverse} />
+                      ) : (
+                        <Text style={[
+                          styles.timelineDotNumber,
+                          isCurrent && styles.timelineDotNumberCurrent
+                        ]}>{index + 1}</Text>
+                      )}
+                    </View>
+                    {index < EXECUTION_STEPS.length - 1 && (
+                      <View style={[
+                        styles.timelineLine,
+                        isCompleted && styles.timelineLineCompleted
+                      ]} />
+                    )}
+                  </View>
+                  <View style={styles.timelineContent}>
+                    <Text style={[
+                      styles.timelineLabel,
+                      (isCompleted || isCurrent) && styles.timelineLabelActive
+                    ]}>{step.label}</Text>
+                    <Text style={styles.timelineDescription}>{step.description}</Text>
+                    {isCurrent && (
+                      <View style={styles.currentBadge}>
+                        <View style={styles.currentBadgeDot} />
+                        <Text style={styles.currentBadgeText}>Current Step</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
               );
             })}
           </View>
         </View>
 
-        {actionConfig && <CustomButton title={actionConfig.title} onPress={actionConfig.handler} fullWidth />}
+        {/* Action Button */}
+        {actionConfig && (
+          <TouchableOpacity 
+            style={[styles.actionButton, { backgroundColor: actionConfig.color }]}
+            onPress={actionConfig.handler}
+            activeOpacity={0.9}
+          >
+            <View style={styles.actionButtonContent}>
+              <Feather name={actionConfig.icon as any} size={24} color={THEME.colors.textInverse} />
+              <View style={styles.actionButtonText}>
+                <Text style={styles.actionButtonTitle}>{actionConfig.title}</Text>
+                <Text style={styles.actionButtonSubtitle}>{actionConfig.subtitle}</Text>
+              </View>
+            </View>
+            <View style={styles.actionButtonArrow}>
+              <Feather name="arrow-right" size={18} color={THEME.colors.textInverse} />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+  },
+
+  // Header
   header: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: THEME.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.border,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.colors.neutral50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: {
+    fontSize: 20,
+    color: THEME.colors.neutral700,
+  },
+  headerCenter: {
     alignItems: 'center',
   },
-  back: { ...typography.small, color: colors.primary, fontWeight: '700' },
-  title: { ...typography.h4, color: colors.textPrimary },
-  content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl },
-  card: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.body,
-    color: colors.textPrimary,
+  headerTitle: {
+    ...THEME.typography.h4,
     fontWeight: '700',
-    marginBottom: spacing.sm,
+    color: THEME.colors.textPrimary,
+    marginBottom: 4,
   },
-  valueMain: { ...typography.body, color: colors.textPrimary, fontWeight: '600' },
-  valueSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  link: { color: colors.secondary, textDecorationLine: 'underline' },
-  row: {
+  headerBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+  },
+  headerBadgeText: {
+    ...THEME.typography.labelSm,
+  },
+  moreBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.colors.neutral50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreIcon: {
+    fontSize: 20,
+    color: THEME.colors.neutral700,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+
+  // Scroll
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+
+  // Cards
+  card: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    marginBottom: 16,
+    ...THEME.shadows.sm,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
+  },
+  cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
+    alignItems: 'center',
+    padding: 16,
   },
-  label: { ...typography.caption, color: colors.textSecondary },
-  value: { ...typography.caption, color: colors.textPrimary, textTransform: 'capitalize' },
-  itemRow: {
+  cardIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  cardIcon: {
+    fontSize: 18,
+  },
+  cardHeaderText: {
+    flex: 1,
+  },
+  cardTitle: {
+    ...THEME.typography.h4,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+  },
+  cardSubtitle: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.borderLight,
+  },
+  cardBody: {
+    padding: 16,
+  },
+
+  // Customer Card
+  customerName: {
+    ...THEME.typography.h2,
+    color: THEME.colors.textPrimary,
+    marginBottom: 16,
+  },
+  actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: THEME.colors.neutral50,
+    borderRadius: THEME.radius.lg,
+    marginBottom: 10,
   },
-  itemHead: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#94A3B8',
+  actionRowIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: THEME.radius.md,
+    backgroundColor: THEME.colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  actionRowIconText: {
+    fontSize: 18,
+  },
+  actionRowContent: {
+    flex: 1,
+  },
+  actionRowLabel: {
+    ...THEME.typography.labelSm,
+    fontWeight: '500',
+    color: THEME.colors.textTertiary,
+    marginBottom: 2,
+  },
+  actionRowValue: {
+    ...THEME.typography.bodyMd,
+    fontWeight: '500',
+    color: THEME.colors.textPrimary,
+  },
+  actionRowChevron: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: THEME.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionRowChevronText: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.primary,
+  },
+
+  // Info Grid
+  infoGrid: {
+    padding: 16,
+    gap: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  infoItem: {
+    flex: 1,
+  },
+  infoLabel: {
+    ...THEME.typography.overline,
+    textTransform: undefined,
+    color: THEME.colors.textTertiary,
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  infoValue: {
+    ...THEME.typography.h4,
+    color: THEME.colors.textPrimary,
+  },
+  priorityBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.sm,
+  },
+  priorityText: {
+    ...THEME.typography.labelSm,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+
+  // Items Table
+  itemsTable: {
+    padding: 16,
     paddingTop: 0,
   },
-  tableHead: { fontWeight: '700', color: colors.textPrimary },
-  itemName: { ...typography.small, color: colors.textPrimary, flex: 1, marginRight: spacing.sm },
-  itemQty: { ...typography.small, color: colors.textSecondary, fontWeight: '700' },
-  progressTrack: {
-    gap: spacing.sm,
+  tableHeader: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.border,
   },
-  progressStep: {
+  tableHeaderCell: {
+    ...THEME.typography.labelSm,
+    fontWeight: '700',
+    color: THEME.colors.textTertiary,
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  tableHeaderCellRight: {
+    textAlign: 'right',
+    flex: 0,
+    width: 50,
+  },
+  tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.borderLight,
   },
-  progressDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#CBD5E1',
+  tableRowLast: {
+    borderBottomWidth: 0,
   },
-  progressDotActive: {
-    backgroundColor: '#16A34A',
+  tableRowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  progressLabel: { ...typography.caption, color: '#94A3B8' },
-  progressLabelActive: { color: '#166534', fontWeight: '700' },
-  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { ...typography.body, color: colors.textSecondary },
+  itemBullet: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: THEME.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  itemBulletText: {
+    ...THEME.typography.labelSm,
+    fontWeight: '700',
+    color: THEME.colors.textInverse,
+  },
+  itemName: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textPrimary,
+    flex: 1,
+  },
+  qtyBadge: {
+    backgroundColor: THEME.colors.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.md,
+  },
+  qtyText: {
+    ...THEME.typography.bodySm,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+
+  // Notes
+  notesBody: {
+    padding: 16,
+  },
+  notesText: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textSecondary,
+  },
+
+  // Progress Timeline
+  progressTimeline: {
+    padding: 16,
+  },
+  timelineStep: {
+    flexDirection: 'row',
+    minHeight: 64,
+  },
+  timelineLeft: {
+    width: 40,
+    alignItems: 'center',
+  },
+  timelineDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.colors.neutral200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  timelineDotCompleted: {
+    backgroundColor: THEME.colors.success,
+  },
+  timelineDotCurrent: {
+    backgroundColor: THEME.colors.primary,
+    ...THEME.shadows.sm,
+  },
+  timelineDotCheck: {
+    ...THEME.typography.bodyMd,
+    fontWeight: '700',
+    color: THEME.colors.textInverse,
+  },
+  timelineDotNumber: {
+    ...THEME.typography.caption,
+    fontWeight: '700',
+    color: THEME.colors.textTertiary,
+  },
+  timelineDotNumberCurrent: {
+    color: THEME.colors.textInverse,
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: THEME.colors.neutral200,
+    marginVertical: 4,
+  },
+  timelineLineCompleted: {
+    backgroundColor: THEME.colors.success,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingLeft: 14,
+    paddingBottom: 16,
+  },
+  timelineLabel: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.textTertiary,
+  },
+  timelineLabelActive: {
+    color: THEME.colors.textPrimary,
+  },
+  timelineDescription: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  currentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: THEME.colors.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+    alignSelf: 'flex-start',
+  },
+  currentBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.primary,
+    marginRight: 6,
+  },
+  currentBadgeText: {
+    ...THEME.typography.labelSm,
+    color: THEME.colors.primary,
+  },
+
+  // Action Button
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 18,
+    borderRadius: THEME.radius.xl,
+    ...THEME.shadows.md,
+  },
+  actionButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  actionButtonIcon: {
+    fontSize: 24,
+    marginRight: 16,
+  },
+  actionButtonText: {},
+  actionButtonTitle: {
+    ...THEME.typography.h4,
+    fontWeight: '700',
+    color: THEME.colors.textInverse,
+  },
+  actionButtonSubtitle: {
+    ...THEME.typography.bodySm,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  actionButtonArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonArrowText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: THEME.colors.textInverse,
+  },
+
+  // Empty State
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: THEME.colors.neutral100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  emptyIcon: {
+    fontSize: 36,
+  },
+  emptyTitle: {
+    ...THEME.typography.h2,
+    color: THEME.colors.textPrimary,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  emptyButton: {
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: THEME.radius.lg,
+    ...THEME.shadows.sm,
+  },
+  emptyButtonText: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.textInverse,
+  },
 });
 
 export default DPDeliveryDetailScreen;

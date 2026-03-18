@@ -18,7 +18,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, typography, spacing, borderRadius } from '../../../theme';
+import { colors, spacing, borderRadius } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectVendorFormState,
@@ -339,15 +340,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { ...THEME.typography.labelLg, color: colors.secondary, marginBottom: spacing.xs },
+  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
 
   sectionTitle: {
-    fontSize: 15,
+    ...THEME.typography.h4,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
     marginBottom: spacing.sm,
     marginTop: spacing.md,
   },

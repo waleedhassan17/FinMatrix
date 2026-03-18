@@ -19,7 +19,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import dayjs from 'dayjs';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectSOFormState,
@@ -328,23 +329,23 @@ const SOFormScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, marginBottom: spacing.sm, marginTop: spacing.md },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm, marginTop: spacing.md },
   sectionCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.xs },
   rowFields: { flexDirection: 'row' },
   linesSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.sm },
   addLineBtn: { paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs + 2, backgroundColor: colors.secondary + '18', borderRadius: 20 },
-  addLineBtnText: { fontSize: 13, fontWeight: '700', color: colors.secondary, fontFamily: typography.fontFamily },
-  lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: typography.fontFamily },
+  addLineBtnText: { fontSize: 13, fontWeight: '700', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
   totalsCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginTop: spacing.md, ...shadows.card },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs + 2 },
-  totalsLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  totalsValue: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  totalsLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  totalsValue: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   grandTotalRow: { borderTopWidth: 1.5, borderTopColor: colors.primary, marginTop: spacing.sm, paddingTop: spacing.sm },
-  grandTotalLabel: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  grandTotalValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily },
+  grandTotalLabel: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  grandTotalValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
   btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.xl },
 });
 

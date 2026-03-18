@@ -8,7 +8,8 @@ import {
   StyleSheet,
   Modal,
 } from 'react-native';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { colors, spacing, borderRadius, shadows } from '../theme';
+import { THEME } from '../utils/theme';
 
 interface DropdownOption {
   label: string;
@@ -140,11 +141,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    fontSize: typography.small.fontSize,
+    ...THEME.typography.bodyMd,
     fontWeight: '500',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
   },
   labelError: {
     color: colors.danger,
@@ -159,24 +159,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm + 4,
   },
   fieldText: {
+    ...THEME.typography.bodyLg,
     flex: 1,
-    fontSize: typography.body.fontSize,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   placeholderText: {
     color: colors.textLight,
   },
   chevron: {
-    fontSize: 16,
+    fontSize: THEME.typography.h4.fontSize,
     color: colors.textSecondary,
     marginLeft: spacing.sm,
   },
   errorText: {
-    fontSize: typography.caption.fontSize,
+    ...THEME.typography.caption,
     color: colors.danger,
     marginTop: spacing.xs,
-    fontFamily: typography.fontFamily,
   },
   overlay: {
     flex: 1,
@@ -199,11 +197,11 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   modalTitle: {
-    ...typography.h4,
+    ...THEME.typography.h3,
     color: colors.textPrimary,
   },
   closeBtn: {
-    fontSize: 20,
+    fontSize: THEME.typography.h2.fontSize,
     color: colors.textSecondary,
     padding: spacing.xs,
   },
@@ -214,9 +212,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     margin: spacing.md,
     paddingHorizontal: spacing.sm + 4,
-    fontSize: typography.body.fontSize,
+    ...THEME.typography.bodyLg,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   list: {
     paddingBottom: spacing.md,
@@ -233,26 +230,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary + '10',
   },
   optionText: {
+    ...THEME.typography.bodyLg,
     flex: 1,
-    fontSize: typography.body.fontSize,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   optionTextSelected: {
     color: colors.primary,
     fontWeight: '600',
   },
   checkmark: {
-    fontSize: 18,
-    color: colors.primary,
+    ...THEME.typography.h3,
     fontWeight: '700',
+    color: colors.primary,
   },
   emptyText: {
+    ...THEME.typography.bodyLg,
     textAlign: 'center',
     padding: spacing.lg,
     color: colors.textLight,
-    fontSize: typography.body.fontSize,
-    fontFamily: typography.fontFamily,
   },
 });
 

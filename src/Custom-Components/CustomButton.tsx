@@ -6,7 +6,8 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { colors, typography, borderRadius } from '../theme';
+import { colors, borderRadius } from '../theme';
+import { THEME } from '../utils/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'text' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
   // ── Text ──
   text: {
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   text_primary: {
     color: colors.white,
@@ -169,13 +170,13 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   textSize_sm: {
-    fontSize: 14,
+    fontSize: THEME.typography.bodyMd.fontSize,
   },
   textSize_md: {
-    fontSize: 16,
+    fontSize: THEME.typography.bodyLg.fontSize,
   },
   textSize_lg: {
-    fontSize: 18,
+    fontSize: THEME.typography.h3.fontSize,
   },
   textDisabled: {
     opacity: 0.7,

@@ -12,7 +12,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, typography, spacing, borderRadius } from '../../../theme';
+import { colors, spacing, borderRadius } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { clearPayStub, fetchPayStub, selectPayStubState } from './payStubSlice';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
@@ -119,13 +120,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   title: {
     fontSize: 20,
     color: colors.textPrimary,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   content: {
     padding: spacing.lg,
@@ -143,21 +144,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.textPrimary,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 2,
   },
   employeeMeta: {
     fontSize: 12,
     color: colors.textSecondary,
     marginBottom: 2,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   cardTitle: {
     fontSize: 14,
     color: colors.textPrimary,
     fontWeight: '700',
     marginBottom: spacing.sm,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   lineRow: {
     flexDirection: 'row',
@@ -167,13 +168,13 @@ const styles = StyleSheet.create({
   lineLabel: {
     fontSize: 13,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   lineLabelStrong: { color: colors.textPrimary, fontWeight: '700' },
   lineValue: {
     fontSize: 13,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   lineValueStrong: { fontWeight: '700' },
   positive: { color: colors.success },
@@ -184,8 +185,8 @@ const styles = StyleSheet.create({
     marginVertical: spacing.xs,
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  errorText: { color: colors.danger, fontFamily: typography.fontFamily },
-  emptyText: { color: colors.textSecondary, fontFamily: typography.fontFamily },
+  errorText: { color: colors.danger, fontFamily: THEME.typography.fontFamily },
+  emptyText: { color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 });
 
 export default PayStubScreen;

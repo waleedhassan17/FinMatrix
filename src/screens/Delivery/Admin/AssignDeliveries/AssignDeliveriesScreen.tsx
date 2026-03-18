@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, typography, spacing, borderRadius } from '../../../../theme';
+import { colors, spacing, borderRadius } from '../../../../theme';
+import { THEME } from '../../../../utils/theme';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import {
@@ -374,12 +375,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   subtitle: {
     marginTop: 2,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   dateRow: {
     paddingHorizontal: spacing.lg,
@@ -389,7 +390,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: spacing.xs,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   dateInput: {
     height: 44,
@@ -399,7 +400,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     color: colors.textPrimary,
     backgroundColor: colors.white,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   tabRow: {
     flexDirection: 'row',
@@ -422,7 +423,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     fontWeight: '600',
   },
   tabTextActive: {
@@ -450,12 +451,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   linkText: {
     color: colors.primary,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   quickFormCard: {
     borderWidth: 1,
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
   navButtonText: {
     color: colors.secondary,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   deliveryRow: {
     flexDirection: 'row',
@@ -509,12 +510,12 @@ const styles = StyleSheet.create({
   deliveryRef: {
     fontWeight: '600',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   deliveryMeta: {
     color: colors.textSecondary,
     fontSize: 12,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   priorityPill: {
     paddingHorizontal: spacing.sm,
@@ -524,11 +525,11 @@ const styles = StyleSheet.create({
   priorityText: {
     fontSize: 11,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   emptyText: {
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   personnelRow: { paddingVertical: spacing.xs, gap: spacing.sm },
   personCard: {
@@ -546,13 +547,13 @@ const styles = StyleSheet.create({
   personName: {
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   personMeta: {
     marginTop: 2,
     color: colors.textSecondary,
     fontSize: 12,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   loadTrack: {
     height: 6,
@@ -569,7 +570,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     fontSize: 12,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   actionRow: {
     marginBottom: spacing.md,
@@ -582,13 +583,13 @@ const styles = StyleSheet.create({
   simpleTitle: {
     color: colors.textPrimary,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   simpleSub: {
     color: colors.textSecondary,
     fontSize: 12,
     marginTop: 2,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

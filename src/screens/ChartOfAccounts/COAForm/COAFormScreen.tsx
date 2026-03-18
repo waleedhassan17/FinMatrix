@@ -18,7 +18,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius } from '../../../theme';
+import { colors, spacing, borderRadius } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectAccounts,
@@ -155,7 +156,7 @@ const COAFormScreen: React.FC = () => {
     const matched = subOpts.find(o => o.label === form.subTypeLabel);
     const subTypeValue = (matched?.value ?? 'current_asset') as AccountSubType;
 
-    const balanceNum = parseFloat(form.openingBalance.replace(/[$,\s]/g, '')) || 0;
+    const balanceNum = parseFloat(form.openingBalance.replace(/[^\d.-]/g, '')) || 0;
     const normalBalance: 'debit' | 'credit' =
       form.type === 'asset' || form.type === 'expense' ? 'debit' : 'credit';
 
@@ -294,10 +295,10 @@ const COAFormScreen: React.FC = () => {
             label="Opening Balance"
             value={form.openingBalance}
             onChangeText={val => updateField('openingBalance', val)}
-            placeholder="$0.00"
+            placeholder="Rs 0.00"
             keyboardType="numeric"
             error={errors.openingBalance}
-            leftIcon={<Text style={styles.dollarSign}>$</Text>}
+            leftIcon={<Text style={styles.dollarSign}>Rs</Text>}
           />
 
           {/* Is Active */}
@@ -356,13 +357,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   headerSpacer: { width: 60 },
   form: {
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -389,13 +390,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   toggleHint: {
     fontSize: 12,
     color: colors.textLight,
     marginTop: 2,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   btnRow: {
     marginTop: spacing.sm,

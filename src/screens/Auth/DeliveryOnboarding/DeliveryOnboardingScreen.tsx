@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { colors, typography, spacing, borderRadius } from '../../../theme';
+import { colors, spacing, borderRadius } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch } from '../../../hooks/useReduxHooks';
 import { setDeliveryOnboardingSeen } from '../authSlice';
 import type { RootStackParamList } from '../../../types';
@@ -202,24 +203,24 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   headerBrandLabel: {
-    fontSize: typography.caption.fontSize,
+    fontSize: THEME.typography.caption.fontSize,
     fontWeight: '600',
     color: colors.textSecondary,
     letterSpacing: 1.2,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.3,
   },
   headerSubtitle: {
-    fontSize: typography.body.fontSize,
+    fontSize: THEME.typography.bodyLg.fontSize,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   slide: {
     width,
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '800',
     color: BRAND.emerald,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   slideTitle: {
     fontSize: 22,
@@ -252,16 +253,16 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.sm + 4,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.2,
   },
   slideDesc: {
-    fontSize: typography.body.fontSize,
+    fontSize: THEME.typography.bodyLg.fontSize,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
     paddingHorizontal: spacing.sm,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   dotsContainer: {
     flexDirection: 'row',
@@ -284,10 +285,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   skipText: {
-    fontSize: typography.body.fontSize,
+    fontSize: THEME.typography.bodyLg.fontSize,
     color: colors.textSecondary,
     fontWeight: '500',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

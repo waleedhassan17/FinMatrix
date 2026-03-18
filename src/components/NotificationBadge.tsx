@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, typography } from '../theme';
+import { colors } from '../theme';
+import { THEME } from '../utils/theme';
 
 interface NotificationBadgeProps {
   count: number;
@@ -39,10 +40,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   text: {
-    fontSize: 10,
-    fontWeight: '700',
+    ...THEME.typography.overline,
     color: colors.white,
-    fontFamily: typography.fontFamily,
   },
 });
 

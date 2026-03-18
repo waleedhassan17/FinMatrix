@@ -7,7 +7,8 @@ import {
   Animated,
   ScrollView,
 } from 'react-native';
-import { colors, typography, spacing } from '../theme';
+import { colors, spacing } from '../theme';
+import { THEME } from '../utils/theme';
 
 interface Tab {
   key: string;
@@ -94,14 +95,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabText: {
-    fontSize: typography.small.fontSize,
-    fontWeight: '500',
+    ...THEME.typography.bodyMd,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   activeTabText: {
+    ...THEME.typography.labelLg,
     color: colors.primary,
-    fontWeight: '600',
   },
   underline: {
     position: 'absolute',

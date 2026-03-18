@@ -13,7 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser } from '../authSlice';
 import {
@@ -268,10 +269,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: typography.h4.fontSize,
+    fontSize: THEME.typography.h3.fontSize,
     fontWeight: '600',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   headerSpacer: { width: 36 },
   content: {
@@ -303,24 +304,24 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.sm,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: typography.small.fontSize,
+    fontSize: THEME.typography.bodyMd.fontSize,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: spacing.xl,
     paddingHorizontal: spacing.md,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   codeRow: {
     flexDirection: 'row',
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   codeBoxFilled: {
     borderColor: colors.secondary,
@@ -348,9 +349,9 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.danger,
-    fontSize: typography.small.fontSize,
+    fontSize: THEME.typography.bodyMd.fontSize,
     marginBottom: spacing.md,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   buttonContainer: {
     width: '100%',
@@ -380,20 +381,20 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: colors.primary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   confirmationName: {
-    fontSize: typography.h3.fontSize,
+    fontSize: THEME.typography.h2.fontSize,
     fontWeight: '600',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   confirmationMeta: {
-    fontSize: typography.small.fontSize,
+    fontSize: THEME.typography.bodyMd.fontSize,
     color: colors.textSecondary,
     marginBottom: spacing.sm,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   roleBadge: {
     backgroundColor: colors.primary + '0A',
@@ -405,10 +406,10 @@ const styles = StyleSheet.create({
     borderColor: colors.primary + '15',
   },
   roleBadgeText: {
-    fontSize: typography.small.fontSize,
+    fontSize: THEME.typography.bodyMd.fontSize,
     color: colors.primary,
     fontWeight: '500',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   confirmationButtons: {
     flexDirection: 'row',

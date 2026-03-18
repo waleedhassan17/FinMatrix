@@ -13,6 +13,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,7 +22,8 @@ import BottomSheet, {
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../theme';
+import { THEME } from '../../utils/theme';
 import { useAppSelector, useAppDispatch } from '../../hooks/useReduxHooks';
 import { selectUser, signOut } from '../Auth/authSlice';
 import { selectUnreadNotificationCountForUser } from '../Notifications/notificationCenterSlice';
@@ -155,6 +157,13 @@ const AdminDashboardScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.bellBtn}
             activeOpacity={0.7}
+            onPress={() => navigation.navigate('GlobalSearch')}
+          >
+            <Feather name="search" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.bellBtn}
+            activeOpacity={0.7}
             onPress={() => navigation.navigate('Notifications')}
           >
             <Text style={styles.bellIcon}>🔔</Text>
@@ -272,7 +281,7 @@ const AdminDashboardScreen: React.FC = () => {
               >
                 <Text
                   style={{
-                    fontSize: 14,
+                    ...THEME.typography.labelLg,
                     fontWeight: '700',
                     color: txn.type === 'income' ? '#2E7D32' : '#C62828',
                   }}
@@ -415,15 +424,12 @@ const styles = StyleSheet.create({
   topBarLeft: { flex: 1, marginRight: spacing.md },
   topBarRight: { flexDirection: 'row', alignItems: 'center' },
   greeting: {
-    fontSize: 14,
+    ...THEME.typography.bodyMd,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   displayName: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...THEME.typography.h2,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   bellBtn: {
     width: 40,
@@ -443,10 +449,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 14,
+    ...THEME.typography.labelLg,
     fontWeight: '700',
     color: colors.white,
-    fontFamily: typography.fontFamily,
   },
 
   // ── Company Switcher ──────────────────────────────
@@ -458,10 +463,9 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   companyName: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '600',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
   },
 
   // ── Scroll ────────────────────────────────────────
@@ -470,11 +474,10 @@ const styles = StyleSheet.create({
 
   // ── Section Titles ────────────────────────────────
   sectionTitle: {
-    fontSize: 16,
+    ...THEME.typography.h4,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.sm,
-    fontFamily: typography.fontFamily,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -483,10 +486,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   viewAllLink: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '600',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
   },
 
   // ── Financial Summary ─────────────────────────────
@@ -506,17 +508,14 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   statLabel: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
   },
   statValue: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...THEME.typography.h2,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
   },
   trendPill: {
     alignSelf: 'flex-start',
@@ -525,9 +524,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   trendText: {
-    fontSize: 11,
+    ...THEME.typography.labelSm,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
   },
 
   // ── Quick Actions ─────────────────────────────────
@@ -546,15 +544,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   quickActionAbbr: {
-    fontSize: 16,
+    ...THEME.typography.h4,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
   },
   quickActionLabel: {
-    fontSize: 11,
+    ...THEME.typography.labelSm,
     color: colors.textSecondary,
     textAlign: 'center',
-    fontFamily: typography.fontFamily,
   },
 
   // ── Recent Transactions ───────────────────────────
@@ -585,21 +581,18 @@ const styles = StyleSheet.create({
   },
   txnInfo: { flex: 1, marginRight: spacing.sm },
   txnDesc: {
-    fontSize: 14,
+    ...THEME.typography.bodyMd,
     fontWeight: '500',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   txnDate: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: colors.textLight,
     marginTop: 2,
-    fontFamily: typography.fontFamily,
   },
   txnAmount: {
-    fontSize: 14,
+    ...THEME.typography.labelLg,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
   },
 
   // ── Delivery Overview ─────────────────────────────
@@ -617,15 +610,12 @@ const styles = StyleSheet.create({
   },
   deliveryStat: { alignItems: 'center', flex: 1 },
   deliveryStatValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    ...THEME.typography.h2,
   },
   deliveryStatLabel: {
-    fontSize: 11,
+    ...THEME.typography.labelSm,
     color: colors.textSecondary,
     marginTop: 2,
-    fontFamily: typography.fontFamily,
   },
   progressBarBg: {
     height: 8,
@@ -640,10 +630,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   progressLabel: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.md,
-    fontFamily: typography.fontFamily,
   },
   manageDeliveriesBtn: {
     backgroundColor: colors.primary,
@@ -652,10 +641,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   manageDeliveriesTxt: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...THEME.typography.labelLg,
     color: colors.white,
-    fontFamily: typography.fontFamily,
   },
 
   // ── Alerts ────────────────────────────────────────
@@ -669,13 +656,12 @@ const styles = StyleSheet.create({
   },
   alertText: {
     flex: 1,
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '500',
-    fontFamily: typography.fontFamily,
   },
   alertChevron: {
+    ...THEME.typography.h3,
     fontSize: 22,
-    fontWeight: '600',
     marginLeft: spacing.sm,
   },
 
@@ -693,17 +679,14 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   sheetOptionText: {
-    fontSize: 16,
+    ...THEME.typography.bodyLg,
     fontWeight: '500',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   sheetLogout: { borderBottomWidth: 0, marginTop: spacing.xs },
   sheetLogoutText: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...THEME.typography.h4,
     color: colors.danger,
-    fontFamily: typography.fontFamily,
   },
 });
 

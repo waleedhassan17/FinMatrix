@@ -16,7 +16,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { formatCurrency } from '../../../utils/formatters';
 import {
@@ -260,14 +261,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   badge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: 10,
   },
-  badgeText: { fontSize: 12, fontWeight: '600', fontFamily: typography.fontFamily },
+  badgeText: { fontSize: 12, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
 
   scroll: { padding: spacing.md, paddingBottom: spacing.xl * 2 },
 
@@ -291,13 +292,13 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 14,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     fontWeight: '500',
   },
   infoValue: {
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     fontWeight: '600',
     flexShrink: 1,
     textAlign: 'right',
@@ -308,7 +309,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.sm,
   },
 
@@ -324,7 +325,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.white,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   thAcct: { width: 90 },
   thDesc: { flex: 1, paddingHorizontal: spacing.xs },
@@ -339,9 +340,9 @@ const styles = StyleSheet.create({
   rowEven: { backgroundColor: colors.white },
   rowOdd: { backgroundColor: colors.background },
   cellAcct: { width: 90 },
-  cellCode: { fontSize: 12, fontWeight: '700', color: colors.secondary, fontFamily: typography.fontFamily },
-  cellName: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  cell: { fontSize: 12, color: colors.textPrimary, fontFamily: typography.fontFamily },
+  cellCode: { fontSize: 12, fontWeight: '700', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  cellName: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  cell: { fontSize: 12, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   cellDesc: { flex: 1, paddingHorizontal: spacing.xs },
   cellAmt: { width: 72, textAlign: 'right' },
   debitText: { color: colors.success },
@@ -359,14 +360,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   totalsValue: {
     flex: 1,
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'right',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   unbalancedBanner: {
@@ -394,7 +395,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   actionIcon: { fontSize: 16, marginRight: spacing.xs },
-  actionLabel: { fontSize: 14, fontWeight: '600', fontFamily: typography.fontFamily },
+  actionLabel: { fontSize: 14, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
 });
 
 export default JEDetailScreen;

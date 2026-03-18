@@ -14,7 +14,8 @@ import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navig
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { formatCurrency } from '../../../utils/formatters';
 import DateRangePicker from '../../../Custom-Components/DateRangePicker';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
@@ -206,10 +207,9 @@ const styles = StyleSheet.create({
   },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   backBtn: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     fontWeight: '600',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
   },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   reconcileBtn: {
@@ -219,10 +219,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
   },
   reconcileBtnText: {
-    fontSize: 12,
+    ...THEME.typography.labelMd,
     fontWeight: '700',
     color: colors.primary,
-    fontFamily: typography.fontFamily,
   },
   transferBtn: {
     backgroundColor: colors.secondary + '1A',
@@ -231,29 +230,23 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
   },
   transferBtnText: {
-    fontSize: 12,
+    ...THEME.typography.labelMd,
     fontWeight: '700',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...THEME.typography.h3,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
     marginTop: spacing.sm,
   },
   subtitle: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
     marginTop: 2,
   },
   balance: {
-    fontSize: 24,
-    fontWeight: '800',
+    ...THEME.typography.h1,
     color: colors.primary,
-    fontFamily: typography.fontFamily,
     marginTop: spacing.xs,
   },
   filters: {
@@ -271,9 +264,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    fontSize: 14,
+    ...THEME.typography.bodyMd,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
     marginBottom: spacing.sm,
   },
   tableHeader: {
@@ -283,10 +275,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   headerCell: {
-    fontSize: 11,
-    fontWeight: '700',
+    ...THEME.typography.labelSm,
     color: colors.white,
-    fontFamily: typography.fontFamily,
   },
   row: {
     flexDirection: 'row',
@@ -297,9 +287,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   cell: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   colDate: { width: COL_DATE },
   colPayee: { flex: 1, paddingRight: spacing.xs },
@@ -318,15 +307,13 @@ const styles = StyleSheet.create({
   },
   totalItem: { flex: 1 },
   totalLabel: {
-    fontSize: 11,
+    ...THEME.typography.labelSm,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
     marginBottom: 2,
   },
   totalValue: {
-    fontSize: 14,
+    ...THEME.typography.labelLg,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
   },
   fab: {
     position: 'absolute',
@@ -344,15 +331,12 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: spacing.xl },
   emptyList: { flexGrow: 1 },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    ...THEME.typography.h4,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   emptySub: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
     marginTop: spacing.xs,
   },
 });

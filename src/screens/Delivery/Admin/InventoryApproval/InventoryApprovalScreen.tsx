@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../../theme';
+import { THEME } from '../../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import {
@@ -353,10 +354,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBg,
   },
   backBtn: { padding: spacing.xs },
-  backText: { ...typography.h2, color: colors.primary },
+  backText: { ...THEME.typography.displaySm, color: colors.primary },
   headerCenter: { flex: 1, marginHorizontal: spacing.sm },
-  title: { ...typography.h4, color: colors.textPrimary },
-  subtitle: { ...typography.caption, color: colors.textSecondary },
+  title: { ...THEME.typography.h3, color: colors.textPrimary },
+  subtitle: { ...THEME.typography.caption, color: colors.textSecondary },
   pendingBadge: {
     minWidth: 72,
     paddingVertical: spacing.xs,
@@ -365,8 +366,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warning + '20',
     alignItems: 'center',
   },
-  pendingBadgeLabel: { ...typography.caption, color: colors.warning, fontWeight: '600' },
-  pendingBadgeCount: { ...typography.body, color: colors.warning, fontWeight: '700' },
+  pendingBadgeLabel: { ...THEME.typography.caption, color: colors.warning, fontWeight: '600' },
+  pendingBadgeCount: { ...THEME.typography.bodyLg, color: colors.warning, fontWeight: '700' },
 
   content: { padding: spacing.md, paddingBottom: spacing.xl },
   filterRow: { gap: spacing.xs, marginBottom: spacing.md },
@@ -379,7 +380,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterChipText: { ...typography.small, color: colors.textSecondary, fontWeight: '600' },
+  filterChipText: { ...THEME.typography.bodyMd, color: colors.textSecondary, fontWeight: '600' },
   filterChipTextActive: { color: colors.white },
 
   card: {
@@ -399,19 +400,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: { ...typography.small, color: colors.secondary, fontWeight: '700' },
+  avatarText: { ...THEME.typography.bodyMd, color: colors.secondary, fontWeight: '700' },
   personMeta: { marginLeft: spacing.sm, flex: 1 },
-  personName: { ...typography.body, color: colors.textPrimary, fontWeight: '600' },
-  personSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  personName: { ...THEME.typography.bodyLg, color: colors.textPrimary, fontWeight: '600' },
+  personSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
   statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: borderRadius.sm },
-  statusText: { ...typography.caption, fontWeight: '700' },
+  statusText: { ...THEME.typography.caption, fontWeight: '700' },
 
   tableWrap: { borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm, overflow: 'hidden', marginBottom: spacing.sm },
   tableHead: { flexDirection: 'row', backgroundColor: colors.background },
-  tableHeadCell: { ...typography.caption, color: colors.textSecondary, fontWeight: '700', paddingVertical: 8, paddingHorizontal: 6 },
+  tableHeadCell: { ...THEME.typography.caption, color: colors.textSecondary, fontWeight: '700', paddingVertical: 8, paddingHorizontal: 6 },
   tableRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border },
   tableRowChanged: { backgroundColor: '#EAF8F1' },
-  tableCell: { ...typography.caption, color: colors.textPrimary, paddingVertical: 8, paddingHorizontal: 6 },
+  tableCell: { ...THEME.typography.caption, color: colors.textPrimary, paddingVertical: 8, paddingHorizontal: 6 },
   colItem: { flex: 2.3 },
   colSmall: { flex: 1, textAlign: 'center' },
 
@@ -423,17 +424,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondary + '1A',
     marginBottom: spacing.sm,
   },
-  proofBtnText: { ...typography.caption, color: colors.secondary, fontWeight: '600' },
+  proofBtnText: { ...THEME.typography.caption, color: colors.secondary, fontWeight: '600' },
 
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm, gap: spacing.sm },
-  metaText: { ...typography.caption, color: colors.textSecondary },
+  metaText: { ...THEME.typography.caption, color: colors.textSecondary },
 
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionBtn: { flex: 1 },
 
   reviewInfoBox: { backgroundColor: colors.background, borderRadius: borderRadius.sm, padding: spacing.sm },
-  reviewInfoText: { ...typography.caption, color: colors.textSecondary, marginBottom: 4 },
-  reviewComment: { ...typography.small, color: colors.textPrimary },
+  reviewInfoText: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: 4 },
+  reviewComment: { ...THEME.typography.bodyMd, color: colors.textPrimary },
 
   emptyState: {
     backgroundColor: colors.cardBg,
@@ -442,8 +443,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  emptyTitle: { ...typography.h4, color: colors.textPrimary },
-  emptySub: { ...typography.small, color: colors.textSecondary, marginTop: 4 },
+  emptyTitle: { ...THEME.typography.h3, color: colors.textPrimary },
+  emptySub: { ...THEME.typography.bodyMd, color: colors.textSecondary, marginTop: 4 },
 
   summaryCard: {
     backgroundColor: colors.cardBg,
@@ -452,11 +453,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadows.small,
   },
-  summaryTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '700', marginBottom: spacing.sm },
+  summaryTitle: { ...THEME.typography.bodyLg, color: colors.textPrimary, fontWeight: '700', marginBottom: spacing.sm },
   summaryRow: { marginBottom: spacing.sm },
-  summaryMain: { ...typography.small, color: colors.textPrimary, fontWeight: '600' },
-  summaryMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  summaryEmpty: { ...typography.caption, color: colors.textSecondary },
+  summaryMain: { ...THEME.typography.bodyMd, color: colors.textPrimary, fontWeight: '600' },
+  summaryMeta: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
+  summaryEmpty: { ...THEME.typography.caption, color: colors.textSecondary },
 
   modalBackdrop: {
     flex: 1,
@@ -469,9 +470,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing.md,
   },
-  modalTitle: { ...typography.h4, color: colors.textPrimary, marginBottom: spacing.xs },
-  modalSub: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.sm },
-  modalLine: { ...typography.small, color: colors.textPrimary, marginBottom: spacing.xs },
+  modalTitle: { ...THEME.typography.h3, color: colors.textPrimary, marginBottom: spacing.xs },
+  modalSub: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: spacing.sm },
+  modalLine: { ...THEME.typography.bodyMd, color: colors.textPrimary, marginBottom: spacing.xs },
   modalActionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   modalBtn: { flex: 1 },
   commentInput: {

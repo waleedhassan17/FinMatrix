@@ -6,7 +6,11 @@ import type { RootState } from '../../store/store';
 export type AdminNotificationCategory =
   | 'delivery_updates'
   | 'inventory_approvals'
-  | 'system_alerts';
+  | 'system_alerts'
+  | 'invoice_updates'
+  | 'payment_updates'
+  | 'banking_alerts'
+  | 'payroll_updates';
 
 export type DeliveryNotificationCategory =
   | 'new_assignments'
@@ -44,8 +48,81 @@ const initialState: NotificationCenterState = {
       title: 'System Check Complete',
       message: 'Daily backup and sync finished successfully.',
       routeName: 'AdminDashboard',
-      createdAt: '2026-03-16T06:30:00Z',
+      createdAt: '2026-03-18T06:30:00Z',
       isRead: false,
+    },
+    {
+      id: 'notif_seed_admin_002',
+      targetRole: 'admin',
+      category: 'invoice_updates',
+      title: 'Invoice Overdue',
+      message: 'INV-1040 for Lahore Traders is now 15 days overdue (Rs 23,500).',
+      routeName: 'InvoiceDetail',
+      routeParams: { invoiceId: 'inv-003' },
+      createdAt: '2026-03-18T08:00:00Z',
+      isRead: false,
+    },
+    {
+      id: 'notif_seed_admin_003',
+      targetRole: 'admin',
+      category: 'payment_updates',
+      title: 'Payment Received',
+      message: 'Rs 78,000 received from Al-Noor Distributors for INV-1041.',
+      routeName: 'CustomerDetail',
+      routeParams: { customerId: 'c-003' },
+      createdAt: '2026-03-18T09:15:00Z',
+      isRead: false,
+    },
+    {
+      id: 'notif_seed_admin_004',
+      targetRole: 'admin',
+      category: 'delivery_updates',
+      title: 'Delivery Completed',
+      message: 'DEL-0451 to Faisalabad marked as delivered by Usman Raza.',
+      routeName: 'AdminDeliveryDetail',
+      routeParams: { deliveryId: 'del-0451' },
+      createdAt: '2026-03-18T10:30:00Z',
+      isRead: false,
+    },
+    {
+      id: 'notif_seed_admin_005',
+      targetRole: 'admin',
+      category: 'inventory_approvals',
+      title: 'Stock Adjustment Pending',
+      message: 'ADJ-089 awaiting approval — 50 units of Copper Wire 2.5mm.',
+      routeName: 'InventoryApproval',
+      createdAt: '2026-03-18T11:00:00Z',
+      isRead: false,
+    },
+    {
+      id: 'notif_seed_admin_006',
+      targetRole: 'admin',
+      category: 'banking_alerts',
+      title: 'Low Balance Alert',
+      message: 'HBL Current Account balance dropped below Rs 50,000.',
+      routeName: 'BankAccounts',
+      createdAt: '2026-03-18T07:45:00Z',
+      isRead: true,
+    },
+    {
+      id: 'notif_seed_admin_007',
+      targetRole: 'admin',
+      category: 'payroll_updates',
+      title: 'Payroll Approved',
+      message: 'Payroll run PR-2026-03 approved — Rs 485,000 net disbursed.',
+      routeName: 'PayrollHistory',
+      createdAt: '2026-03-17T14:00:00Z',
+      isRead: true,
+    },
+    {
+      id: 'notif_seed_admin_008',
+      targetRole: 'admin',
+      category: 'system_alerts',
+      title: 'New User Joined',
+      message: 'Fatima Noor accepted the invite and joined as Admin.',
+      routeName: 'UserManagement',
+      createdAt: '2026-03-17T11:30:00Z',
+      isRead: true,
     },
     {
       id: 'notif_seed_delivery_001',
@@ -55,7 +132,19 @@ const initialState: NotificationCenterState = {
       title: 'Shift Reminder',
       message: 'Please confirm route readiness before first stop.',
       routeName: 'DPDashboard',
-      createdAt: '2026-03-16T06:45:00Z',
+      createdAt: '2026-03-18T06:45:00Z',
+      isRead: false,
+    },
+    {
+      id: 'notif_seed_delivery_002',
+      targetRole: 'delivery',
+      targetUserId: 'dp_002',
+      category: 'new_assignments',
+      title: 'New Delivery Assigned',
+      message: 'DEL-0453 to Rawalpindi — 8 items, priority: High.',
+      routeName: 'DPDeliveryDetail',
+      routeParams: { deliveryId: 'del-0453' },
+      createdAt: '2026-03-18T08:30:00Z',
       isRead: false,
     },
   ],

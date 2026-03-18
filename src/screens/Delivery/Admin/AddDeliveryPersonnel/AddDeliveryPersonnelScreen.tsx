@@ -18,7 +18,8 @@ import { v4 as uuidv4 } from 'uuid';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomInput from '../../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../../theme';
+import { THEME } from '../../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectActiveCompany, addDeliveryPersonnel, addMember } from '../../../Auth/companySlice';
 import { registerAdminCreatedPersonnel } from '../../../../network/authNetwork';
@@ -263,12 +264,12 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center',
   },
   backArrow: { fontSize: 24, color: colors.textPrimary, marginTop: -2, fontWeight: '300' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: typography.h4.fontSize, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: THEME.typography.h3.fontSize, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   headerSpacer: { width: 36 },
   tabContent: { padding: spacing.lg, paddingBottom: spacing.xl + 40 },
 
-  quickAddDesc: { fontSize: typography.small.fontSize, color: colors.textSecondary, marginBottom: spacing.lg, lineHeight: 20, fontFamily: typography.fontFamily },
-  fieldLabel: { fontSize: typography.small.fontSize, fontWeight: '500', color: colors.textPrimary, marginBottom: spacing.xs, fontFamily: typography.fontFamily },
+  quickAddDesc: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, marginBottom: spacing.lg, lineHeight: 20, fontFamily: THEME.typography.fontFamily },
+  fieldLabel: { fontSize: THEME.typography.bodyMd.fontSize, fontWeight: '500', color: colors.textPrimary, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
 
   // Username
   usernameRow: { marginBottom: spacing.md },
@@ -277,8 +278,8 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.navy + '08', borderRadius: 10,
     borderWidth: 1, borderColor: BRAND.navy + '30', paddingHorizontal: spacing.md,
   },
-  usernameText: { flex: 1, fontSize: typography.body.fontSize, fontWeight: '700', color: BRAND.navy, fontFamily: typography.fontFamily, letterSpacing: 0.5 },
-  usernameHint: { fontSize: 11, color: '#94A3B8', marginTop: 4, fontFamily: typography.fontFamily },
+  usernameText: { flex: 1, fontSize: THEME.typography.bodyLg.fontSize, fontWeight: '700', color: BRAND.navy, fontFamily: THEME.typography.fontFamily, letterSpacing: 0.5 },
+  usernameHint: { fontSize: 11, color: '#94A3B8', marginTop: 4, fontFamily: THEME.typography.fontFamily },
 
   passwordRow: { marginBottom: spacing.md },
   passwordBox: {
@@ -286,16 +287,16 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.emerald + '08', borderRadius: 10,
     borderWidth: 1, borderColor: BRAND.emerald + '30', paddingHorizontal: spacing.md,
   },
-  passwordText: { flex: 1, fontSize: typography.body.fontSize, fontWeight: '600', color: BRAND.emerald, fontFamily: typography.fontFamily, letterSpacing: 1.5 },
+  passwordText: { flex: 1, fontSize: THEME.typography.bodyLg.fontSize, fontWeight: '600', color: BRAND.emerald, fontFamily: THEME.typography.fontFamily, letterSpacing: 1.5 },
   copyButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  copyText: { fontSize: typography.small.fontSize, color: BRAND.emerald, fontWeight: '600', fontFamily: typography.fontFamily },
+  copyText: { fontSize: THEME.typography.bodyMd.fontSize, color: BRAND.emerald, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
   zonesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   zoneChip: {
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 8,
     borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.white,
   },
   zoneChipSelected: { borderColor: BRAND.emerald, backgroundColor: BRAND.emerald + '0A' },
-  zoneChipText: { fontSize: typography.small.fontSize, color: colors.textSecondary, fontWeight: '500', fontFamily: typography.fontFamily },
+  zoneChipText: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
   zoneChipTextSelected: { color: BRAND.emerald },
   sliderContainer: { marginBottom: spacing.md },
   sliderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -317,7 +318,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md, borderWidth: 1, borderColor: '#A7F3D0',
   },
   modalCheck: { fontSize: 28, color: colors.success, fontWeight: '700' },
-  modalTitle: { fontSize: typography.h4.fontSize, fontWeight: '600', color: colors.textPrimary, textAlign: 'center', marginBottom: spacing.md, fontFamily: typography.fontFamily },
+  modalTitle: { fontSize: THEME.typography.h3.fontSize, fontWeight: '600', color: colors.textPrimary, textAlign: 'center', marginBottom: spacing.md, fontFamily: THEME.typography.fontFamily },
   credentialsCard: {
     width: '100%', backgroundColor: colors.background, borderRadius: 10,
     padding: spacing.md, marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.border,
@@ -326,8 +327,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     paddingVertical: spacing.xs + 2, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  credentialLabel: { fontSize: typography.small.fontSize, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  credentialValue: { fontSize: typography.small.fontSize, color: colors.textPrimary, fontWeight: '600', fontFamily: typography.fontFamily },
+  credentialLabel: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  credentialValue: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textPrimary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
   modalButtons: { flexDirection: 'row' },
 });
 

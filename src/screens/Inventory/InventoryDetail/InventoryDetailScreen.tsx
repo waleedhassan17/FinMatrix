@@ -16,7 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
@@ -376,8 +377,8 @@ const InventoryDetailScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  notFound: { fontSize: 16, color: colors.textSecondary, marginBottom: spacing.md, fontFamily: typography.fontFamily },
-  goBack: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
+  notFound: { fontSize: 16, color: colors.textSecondary, marginBottom: spacing.md, fontFamily: THEME.typography.fontFamily },
+  goBack: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
 
   // ── Header ────────────────────────────────────────
   header: {
@@ -391,8 +392,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   headerSpacer: { width: 60 },
 
   scroll: { flex: 1 },
@@ -417,7 +418,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 2,
   },
   itemSku: {
@@ -430,7 +431,7 @@ const styles = StyleSheet.create({
   itemCategory: {
     fontSize: 13,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -441,7 +442,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   statusDot: { width: 7, height: 7, borderRadius: 4, marginRight: spacing.xs },
-  statusText: { fontSize: 12, fontWeight: '700', fontFamily: typography.fontFamily },
+  statusText: { fontSize: 12, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
   agencyBadge: {
     backgroundColor: colors.secondary + '15',
     paddingHorizontal: spacing.sm,
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Metrics ───────────────────────────────────────
@@ -473,12 +474,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   metricLabel: {
     fontSize: 10,
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginTop: 2,
   },
 
@@ -499,7 +500,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   actionBtnIcon: { fontSize: 18, marginBottom: 2 },
-  actionBtnText: { fontSize: 11, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  actionBtnText: { fontSize: 11, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   // ── Tabs ──────────────────────────────────────────
   tabBar: {
@@ -518,7 +519,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm - 2,
   },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '500', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  tabText: { fontSize: 13, fontWeight: '500', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   tabTextActive: { color: colors.white, fontWeight: '600' },
 
   // ── Info Card ─────────────────────────────────────
@@ -536,8 +537,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily, maxWidth: '55%', textAlign: 'right' },
+  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, maxWidth: '55%', textAlign: 'right' },
 
   // ── Transactions ──────────────────────────────────
   txnCard: {
@@ -559,7 +560,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
   },
   txnRow: {
@@ -571,8 +572,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   txnRowAlt: { backgroundColor: '#FAFBFC' },
-  txnDate: { fontSize: 11, fontWeight: '500', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  txnRef: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  txnDate: { fontSize: 11, fontWeight: '500', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  txnRef: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   mvTypeBadge: {
     width: 70,
     paddingHorizontal: spacing.xs + 2,
@@ -583,14 +584,14 @@ const styles = StyleSheet.create({
   mvTypeText: {
     fontSize: 10,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   mvQty: {
     width: 55,
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'right',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginRight: spacing.sm,
   },
   emptyTab: {
@@ -600,7 +601,7 @@ const styles = StyleSheet.create({
   emptyTabText: {
     fontSize: 14,
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Toggle Button ─────────────────────────────────
@@ -620,7 +621,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.danger,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   toggleBtnTextActive: {
     color: colors.success,

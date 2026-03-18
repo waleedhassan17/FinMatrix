@@ -19,7 +19,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectCMForm,
@@ -340,21 +341,21 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.danger, fontFamily: typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 14, fontWeight: '600', color: colors.danger, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, marginBottom: spacing.xs, marginTop: spacing.md },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs, marginTop: spacing.md },
   sectionCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.xs, ...shadows.card },
   rowFields: { flexDirection: 'row' },
   linesSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.xs },
   addLineBtn: { backgroundColor: colors.secondary + '18', paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.xs, borderRadius: borderRadius.sm },
-  addLineBtnText: { fontSize: 13, fontWeight: '700', color: colors.secondary, fontFamily: typography.fontFamily },
-  lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.xs, fontFamily: typography.fontFamily },
+  addLineBtnText: { fontSize: 13, fontWeight: '700', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
   totalsCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.md, ...shadows.card },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xs },
-  totalsLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  totalsLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   totalsLabelBold: { fontWeight: '700', color: colors.textPrimary, fontSize: 14 },
-  totalsValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  totalsValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   totalsValueBold: { fontWeight: '800', fontSize: 16 },
   grandDivider: { height: 1.5, backgroundColor: colors.primary, marginVertical: spacing.xs },
   actions: { flexDirection: 'row', marginTop: spacing.md },

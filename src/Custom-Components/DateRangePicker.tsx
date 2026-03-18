@@ -12,7 +12,8 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import dayjs from 'dayjs';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import { colors, spacing, borderRadius } from '../theme';
+import { THEME } from '../utils/theme';
 
 interface DatePreset {
   label: string;
@@ -146,10 +147,9 @@ const styles = StyleSheet.create({
     padding: spacing.sm + 4,
   },
   dateLabel: {
-    fontSize: typography.caption.fontSize,
+    ...THEME.typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
   },
   dateValueRow: {
     flexDirection: 'row',
@@ -160,10 +160,8 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs + 2,
   },
   dateValue: {
-    fontSize: typography.small.fontSize,
-    fontWeight: '500',
+    ...THEME.typography.bodySm,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   separator: {
     paddingHorizontal: spacing.sm,
@@ -184,10 +182,8 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   presetText: {
-    fontSize: typography.caption.fontSize,
+    ...THEME.typography.caption,
     color: colors.primary,
-    fontWeight: '500',
-    fontFamily: typography.fontFamily,
   },
   iosOverlay: {
     flex: 1,
@@ -207,10 +203,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   iosDoneText: {
-    fontSize: typography.body.fontSize,
-    fontWeight: '600',
+    ...THEME.typography.labelLg,
     color: colors.primary,
-    fontFamily: typography.fontFamily,
   },
 });
 

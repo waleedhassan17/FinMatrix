@@ -9,10 +9,13 @@ import {
   Animated,
   Alert,
   ScrollView,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, spacing, typography, borderRadius } from '../../../../theme';
+import { THEME } from '../../../../utils/theme';
+import { Feather } from '@expo/vector-icons';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import {
@@ -31,7 +34,37 @@ import AppLogo from '../../../../Custom-Components/AppLogo';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'CustomerConfirm'>;
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COMPANY_NAME = 'FinMatrix';
+
+// Icon Components for Professional Look
+const CheckIcon = ({ size = 32, color = '#FFFFFF' }) => (
+  <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <Feather name="check" size={size * 0.7} color={color} />
+  </View>
+);
+
+const DocumentIcon = () => (
+  <View style={styles.iconContainer}>
+    <View style={styles.iconDoc}>
+      <View style={styles.iconDocLine} />
+      <View style={[styles.iconDocLine, { width: 12 }]} />
+      <View style={[styles.iconDocLine, { width: 8 }]} />
+    </View>
+  </View>
+);
+
+const SignatureIcon = () => (
+  <View style={[styles.iconContainer, { backgroundColor: THEME.colors.warningLight }]}>
+    <Feather name="edit-3" size={18} color={THEME.colors.warning} />
+  </View>
+);
+
+const AlertIcon = () => (
+  <View style={[styles.iconContainer, { backgroundColor: THEME.colors.dangerLight }]}>
+    <Text style={{ fontSize: 18, color: THEME.colors.danger }}>!</Text>
+  </View>
+);
 
 const CustomerConfirmScreen: React.FC<Props> = ({ route, navigation }) => {
   const { deliveryId } = route.params;
@@ -42,21 +75,76 @@ const CustomerConfirmScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const delivery = useMemo(() => deliveries.find(d => d.id === deliveryId), [deliveries, deliveryId]);
 
-  const checkScale = useRef(new Animated.Value(0.5)).current;
+  // Animations
+  const successScale = useRef(new Animated.Value(0)).current;
+  const successOpacity = useRef(new Animated.Value(0)).current;
+  const contentTranslate = useRef(new Animated.Value(40)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const ringScale = useRef(new Animated.Value(0.8)).current;
+  const ringOpacity = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
-    Animated.spring(checkScale, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 4,
-      tension: 120,
-    }).start();
-  }, [checkScale]);
+    // Success badge animation
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(successScale, {
+          toValue: 1,
+          friction: 5,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(successOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(contentTranslate, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+
+    // Pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.05, duration: 1500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Ring animation
+    Animated.loop(
+      Animated.parallel([
+        Animated.timing(ringScale, { toValue: 1.4, duration: 2000, useNativeDriver: true }),
+        Animated.timing(ringOpacity, { toValue: 0, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   if (!delivery) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.center}><Text style={styles.message}>Delivery not found.</Text></View>
+        <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="inbox" size={28} color={THEME.colors.textTertiary} />
+          </View>
+          <Text style={styles.emptyTitle}>Delivery Not Found</Text>
+          <Text style={styles.emptySubtitle}>This delivery may have been removed or updated.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.emptyButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -69,75 +157,263 @@ const CustomerConfirmScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleIssue = () => {
     if (!issueText.trim()) {
-      Alert.alert('Issue required', 'Please describe the issue.');
+      Alert.alert('Required Field', 'Please describe the issue before submitting.');
       return;
     }
     dispatch(reportDeliveryIssue({ deliveryId, note: issueText.trim() }));
     dispatch(setIssueModalVisible(false));
-    Alert.alert('Issue Submitted', 'Issue has been saved. Delivery remains at arrived state.');
+    Alert.alert(
+      'Issue Reported',
+      'Your concern has been recorded. Our support team will review it shortly.',
+      [{ text: 'OK' }]
+    );
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.logoWrap}><AppLogo size="md" /></View>
-
-        <Animated.View style={[styles.checkCircle, { transform: [{ scale: checkScale }] }]}>
-          <Text style={styles.checkText}>✓</Text>
-        </Animated.View>
-
-        <Text style={styles.title}>Delivery Confirmed!</Text>
-        <Text style={styles.message}>
-          {delivery.customerName}, please review your delivery from {COMPANY_NAME}.
-        </Text>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Delivery Details</Text>
-          <Text style={styles.row}><Text style={styles.label}>Reference: </Text>{delivery.referenceNo}</Text>
-          <Text style={styles.row}><Text style={styles.label}>Address: </Text>{delivery.address ?? delivery.zone}</Text>
-          <Text style={styles.row}><Text style={styles.label}>Items: </Text>{delivery.items.length}</Text>
-          <Text style={styles.row}><Text style={styles.label}>Status: </Text>{delivery.status.replace('_', ' ')}</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Signature Preview</Text>
-          <View style={styles.signaturePreview}>
-            {delivery.signatureBase64 ? (
-              <Text style={styles.previewText}>Captured ({delivery.signatureBase64.slice(0, 24)}...)</Text>
-            ) : (
-              <Text style={styles.previewText}>No signature found</Text>
-            )}
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <AppLogo size="sm" />
+          <View style={styles.headerBadge}>
+            <View style={styles.headerBadgeDot} />
+            <Text style={styles.headerBadgeText}>Delivery Confirmation</Text>
           </View>
         </View>
+      </View>
 
-        <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
-          <Text style={styles.confirmBtnText}>I Confirm I Have Received All Items</Text>
-        </TouchableOpacity>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Success Badge */}
+        <View style={styles.successSection}>
+          <View style={styles.successBadgeContainer}>
+            <Animated.View style={[styles.successRing, { 
+              transform: [{ scale: ringScale }],
+              opacity: ringOpacity 
+            }]} />
+            <Animated.View style={[styles.successBadge, { 
+              transform: [{ scale: successScale }],
+              opacity: successOpacity 
+            }]}>
+              <Animated.View style={[styles.successInner, { transform: [{ scale: pulseAnim }] }]}>
+                <CheckIcon size={44} />
+              </Animated.View>
+            </Animated.View>
+          </View>
 
-        <TouchableOpacity onPress={() => dispatch(setIssueModalVisible(true))}>
-          <Text style={styles.issueLink}>Report an Issue</Text>
-        </TouchableOpacity>
+          <Animated.View style={[styles.titleSection, { 
+            opacity: contentOpacity,
+            transform: [{ translateY: contentTranslate }]
+          }]}>
+            <Text style={styles.successTitle}>Delivery Arrived</Text>
+            <Text style={styles.successSubtitle}>
+              Hello <Text style={styles.customerHighlight}>{delivery.customerName}</Text>,
+            </Text>
+            <Text style={styles.successDescription}>
+              Please review and confirm your delivery from {COMPANY_NAME}
+            </Text>
+          </Animated.View>
+        </View>
+
+        {/* Delivery Details Card */}
+        <Animated.View style={[styles.card, { 
+          opacity: contentOpacity,
+          transform: [{ translateY: contentTranslate }]
+        }]}>
+          <View style={styles.cardHeader}>
+            <DocumentIcon />
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Delivery Details</Text>
+              <Text style={styles.cardSubtitle}>Order information</Text>
+            </View>
+            <View style={styles.statusChip}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>{delivery.status.replace('_', ' ')}</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.detailsGrid}>
+            <View style={styles.detailRow}>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>REFERENCE NO.</Text>
+                <Text style={styles.detailValue}>{delivery.referenceNo}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>ITEMS</Text>
+                <Text style={styles.detailValue}>{delivery.items.length} item{delivery.items.length !== 1 ? 's' : ''}</Text>
+              </View>
+            </View>
+            <View style={styles.detailRow}>
+              <View style={[styles.detailItem, { flex: 1 }]}>
+                <Text style={styles.detailLabel}>DELIVERY ADDRESS</Text>
+                <Text style={styles.detailValue}>{delivery.address ?? delivery.zone}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Items Preview */}
+          <View style={styles.itemsPreview}>
+            <Text style={styles.itemsPreviewTitle}>Package Contents</Text>
+            <View style={styles.itemsList}>
+              {delivery.items.slice(0, 3).map((item, idx) => (
+                <View key={item.itemId} style={styles.itemRow}>
+                  <View style={styles.itemBullet}>
+                    <Text style={styles.itemBulletText}>{idx + 1}</Text>
+                  </View>
+                  <Text style={styles.itemName}>{item.itemName}</Text>
+                  <Text style={styles.itemQty}>×{item.quantity}</Text>
+                </View>
+              ))}
+              {delivery.items.length > 3 && (
+                <Text style={styles.moreItems}>+{delivery.items.length - 3} more items</Text>
+              )}
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Signature Card */}
+        <Animated.View style={[styles.card, { 
+          opacity: contentOpacity,
+          transform: [{ translateY: contentTranslate }]
+        }]}>
+          <View style={styles.cardHeader}>
+            <SignatureIcon />
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Signature Verification</Text>
+              <Text style={styles.cardSubtitle}>Proof of delivery</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.signatureBox}>
+            {delivery.signatureBase64 ? (
+              <View style={styles.signatureVerified}>
+                <View style={styles.signatureCheckWrap}>
+                  <CheckIcon size={20} color={THEME.colors.success} />
+                </View>
+                <View>
+                  <Text style={styles.signatureVerifiedTitle}>Signature Captured</Text>
+                  <Text style={styles.signatureVerifiedSub}>Digital signature on file</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.signaturePending}>
+                <View style={styles.signaturePendingIcon}>
+                  <Text style={styles.signaturePendingIconText}>—</Text>
+                </View>
+                <Text style={styles.signaturePendingText}>No signature on file</Text>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Action Buttons */}
+        <Animated.View style={[styles.actionsSection, { 
+          opacity: contentOpacity,
+          transform: [{ translateY: contentTranslate }]
+        }]}>
+          <TouchableOpacity 
+            style={styles.confirmButton}
+            onPress={handleConfirm}
+            activeOpacity={0.9}
+          >
+            <View style={styles.confirmButtonInner}>
+              <View style={styles.confirmIconWrap}>
+                <CheckIcon size={20} />
+              </View>
+              <Text style={styles.confirmButtonText}>Confirm Receipt of All Items</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.issueButton}
+            onPress={() => dispatch(setIssueModalVisible(true))}
+            activeOpacity={0.7}
+          >
+            <Feather name="alert-triangle" size={18} color={THEME.colors.danger} />
+            <Text style={styles.issueButtonText}>Report an Issue</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            By confirming, you acknowledge receipt of all items listed above.
+          </Text>
+        </View>
       </ScrollView>
 
-      <Modal visible={issueModalVisible} transparent animationType="slide" onRequestClose={() => dispatch(setIssueModalVisible(false))}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Report Issue</Text>
-            <TextInput
-              style={styles.textInput}
-              value={issueText}
-              onChangeText={text => dispatch(setIssueText(text))}
-              placeholder="Describe the issue"
-              placeholderTextColor="#94A3B8"
-              multiline
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => dispatch(setIssueModalVisible(false))}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalSubmit} onPress={handleIssue}>
-                <Text style={styles.modalSubmitText}>Submit</Text>
-              </TouchableOpacity>
+      {/* Issue Modal */}
+      <Modal 
+        visible={issueModalVisible} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => dispatch(setIssueModalVisible(false))}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <AlertIcon />
+                <View style={styles.modalHeaderText}>
+                  <Text style={styles.modalTitle}>Report an Issue</Text>
+                  <Text style={styles.modalSubtitle}>Describe what went wrong</Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.modalCloseBtn}
+                  onPress={() => dispatch(setIssueModalVisible(false))}
+                >
+                  <Feather name="x" size={18} color={THEME.colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalDivider} />
+
+              {/* Modal Body */}
+              <View style={styles.modalBody}>
+                <Text style={styles.inputLabel}>Issue Description</Text>
+                <View style={styles.textInputContainer}>
+                  <TextInput
+                    style={styles.textInput}
+                    value={issueText}
+                    onChangeText={text => dispatch(setIssueText(text))}
+                    placeholder="Please describe the issue in detail..."
+                    placeholderTextColor={THEME.colors.neutral400}
+                    multiline
+                    textAlignVertical="top"
+                    maxLength={500}
+                  />
+                </View>
+                <View style={styles.inputFooter}>
+                  <Text style={styles.inputHint}>Be as specific as possible</Text>
+                  <Text style={styles.charCount}>{issueText.length}/500</Text>
+                </View>
+              </View>
+
+              {/* Modal Actions */}
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={styles.modalCancelBtn}
+                  onPress={() => dispatch(setIssueModalVisible(false))}
+                >
+                  <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.modalSubmitBtn, !issueText.trim() && styles.modalSubmitBtnDisabled]}
+                  onPress={handleIssue}
+                  disabled={!issueText.trim()}
+                >
+                  <Text style={styles.modalSubmitBtnText}>Submit Report</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
@@ -147,98 +423,554 @@ const CustomerConfirmScreen: React.FC<Props> = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: spacing.lg, alignItems: 'center', paddingBottom: spacing.xl },
-  logoWrap: { marginBottom: spacing.md },
-  checkCircle: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
-    backgroundColor: '#16A34A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  checkText: { color: colors.white, fontSize: 44, fontWeight: '800' },
-  title: { ...typography.h2, color: '#166534', marginBottom: spacing.xs, textAlign: 'center' },
-  message: { ...typography.body, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.md },
-  card: {
-    width: '100%',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  cardTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '700', marginBottom: spacing.sm },
-  row: { ...typography.small, color: colors.textPrimary, marginBottom: spacing.xs },
-  label: { fontWeight: '700' },
-  signaturePreview: {
-    height: 68,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewText: { ...typography.caption, color: colors.textSecondary },
-  confirmBtn: {
-    width: '100%',
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: '#16A34A',
-    alignItems: 'center',
-  },
-  confirmBtnText: { ...typography.body, color: colors.white, fontWeight: '800', textAlign: 'center' },
-  issueLink: {
-    ...typography.small,
-    color: '#B91C1C',
-    marginTop: spacing.md,
-    textDecorationLine: 'underline',
-  },
-  modalBackdrop: {
+  container: {
     flex: 1,
-    backgroundColor: '#00000055',
-    justifyContent: 'flex-end',
+    backgroundColor: THEME.colors.background,
   },
-  modalCard: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: spacing.lg,
-    gap: spacing.md,
+
+  // Header
+  header: {
+    backgroundColor: THEME.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.neutral200,
+    ...THEME.shadows.sm,
   },
-  modalTitle: { ...typography.h4, color: colors.textPrimary },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.successLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
+  },
+  headerBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.success,
+    marginRight: 8,
+  },
+  headerBadgeText: {
+    ...THEME.typography.caption,
+    fontWeight: '600',
+    color: THEME.colors.success,
+    letterSpacing: 0.2,
+  },
+
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+
+  // Success Section
+  successSection: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  successBadgeContainer: {
+    position: 'relative',
+    marginBottom: 24,
+  },
+  successRing: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 2,
+    borderColor: THEME.colors.success,
+    top: -10,
+    left: -10,
+  },
+  successBadge: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: THEME.colors.successLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...THEME.shadows.lg,
+  },
+  successInner: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: THEME.colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleSection: {
+    alignItems: 'center',
+  },
+  successTitle: {
+    ...THEME.typography.displayMd,
+    color: THEME.colors.neutral900,
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  successSubtitle: {
+    ...THEME.typography.bodyLg,
+    color: THEME.colors.neutral600,
+    marginBottom: 4,
+  },
+  customerHighlight: {
+    fontWeight: '700',
+    color: THEME.colors.neutral900,
+  },
+  successDescription: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.neutral500,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+
+  // Cards
+  card: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    marginBottom: 16,
+    ...THEME.shadows.md,
+    borderWidth: 1,
+    borderColor: THEME.colors.neutral100,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconDoc: {
+    width: 20,
+    height: 24,
+    backgroundColor: THEME.colors.primary,
+    borderRadius: 3,
+    padding: 4,
+    justifyContent: 'center',
+    gap: 3,
+  },
+  iconDocLine: {
+    height: 2,
+    width: 10,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: 1,
+  },
+  cardHeaderText: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  cardTitle: {
+    ...THEME.typography.h4,
+    fontWeight: '700',
+    color: THEME.colors.neutral900,
+    letterSpacing: -0.2,
+  },
+  cardSubtitle: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.neutral500,
+    marginTop: 2,
+  },
+  statusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.successLight,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: THEME.radius.full,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.success,
+    marginRight: 6,
+  },
+  statusText: {
+    ...THEME.typography.labelSm,
+    color: THEME.colors.success,
+    textTransform: 'capitalize',
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.neutral100,
+  },
+
+  // Details Grid
+  detailsGrid: {
+    padding: 20,
+    gap: 16,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  detailItem: {
+    flex: 1,
+  },
+  detailLabel: {
+    ...THEME.typography.overline,
+    textTransform: undefined,
+    color: THEME.colors.neutral400,
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  detailValue: {
+    ...THEME.typography.h4,
+    color: THEME.colors.neutral900,
+    lineHeight: 20,
+  },
+
+  // Items Preview
+  itemsPreview: {
+    backgroundColor: THEME.colors.neutral50,
+    padding: 16,
+    margin: 16,
+    marginTop: 0,
+    borderRadius: THEME.radius.lg,
+  },
+  itemsPreviewTitle: {
+    ...THEME.typography.labelMd,
+    fontWeight: '700',
+    color: THEME.colors.neutral500,
+    letterSpacing: 0.3,
+    marginBottom: 12,
+  },
+  itemsList: {
+    gap: 10,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  itemBullet: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  itemBulletText: {
+    ...THEME.typography.overline,
+    textTransform: undefined,
+    color: THEME.colors.surface,
+  },
+  itemName: {
+    flex: 1,
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.neutral800,
+  },
+  itemQty: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.neutral600,
+  },
+  moreItems: {
+    ...THEME.typography.bodySm,
+    fontWeight: '500',
+    color: THEME.colors.primary,
+    marginTop: 4,
+    marginLeft: 32,
+  },
+
+  // Signature Box
+  signatureBox: {
+    padding: 20,
+  },
+  signatureVerified: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.successLight,
+    padding: 16,
+    borderRadius: THEME.radius.lg,
+  },
+  signatureCheckWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  signatureVerifiedTitle: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.successHover,
+  },
+  signatureVerifiedSub: {
+    ...THEME.typography.caption,
+    color: THEME.colors.success,
+    marginTop: 2,
+  },
+  signaturePending: {
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: THEME.colors.neutral50,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.neutral200,
+    borderStyle: 'dashed',
+  },
+  signaturePendingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.colors.neutral200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  signaturePendingIconText: {
+    ...THEME.typography.h2,
+    fontWeight: '400',
+    color: THEME.colors.neutral400,
+  },
+  signaturePendingText: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.neutral500,
+  },
+
+  // Actions Section
+  actionsSection: {
+    paddingTop: 8,
+    gap: 12,
+  },
+  confirmButton: {
+    borderRadius: THEME.radius.lg,
+    overflow: 'hidden',
+    ...THEME.shadows.lg,
+  },
+  confirmButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.colors.success,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+  },
+  confirmIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  confirmButtonText: {
+    ...THEME.typography.h4,
+    fontWeight: '700',
+    color: THEME.colors.surface,
+    letterSpacing: 0.2,
+  },
+  issueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.neutral200,
+  },
+  issueButtonIcon: {
+    ...THEME.typography.bodyLg,
+    marginRight: 8,
+  },
+  issueButtonText: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.danger,
+  },
+
+  // Footer
+  footer: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  footerText: {
+    ...THEME.typography.caption,
+    color: THEME.colors.neutral400,
+    textAlign: 'center',
+    maxWidth: 280,
+    lineHeight: 18,
+  },
+
+  // Empty State
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: THEME.colors.neutral100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  emptyIcon: {
+    ...THEME.typography.displayLg,
+  },
+  emptyTitle: {
+    ...THEME.typography.h2,
+    color: THEME.colors.neutral900,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.neutral500,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  emptyButton: {
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: THEME.radius.lg,
+    ...THEME.shadows.md,
+  },
+  emptyButtonText: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.surface,
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: THEME.colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalContent: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    ...THEME.shadows.xl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalHeaderText: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  modalTitle: {
+    ...THEME.typography.h3,
+    fontWeight: '700',
+    color: THEME.colors.neutral900,
+  },
+  modalSubtitle: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.neutral500,
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.colors.neutral100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseBtnText: {
+    ...THEME.typography.bodyLg,
+    color: THEME.colors.neutral600,
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.neutral100,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  inputLabel: {
+    ...THEME.typography.labelMd,
+    fontWeight: '700',
+    color: THEME.colors.neutral600,
+    letterSpacing: 0.3,
+    marginBottom: 10,
+  },
+  textInputContainer: {
+    borderWidth: 1,
+    borderColor: THEME.colors.neutral200,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.neutral50,
+  },
   textInput: {
     minHeight: 120,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    padding: spacing.md,
-    textAlignVertical: 'top',
-    color: colors.textPrimary,
+    padding: 16,
+    ...THEME.typography.h4,
+    fontWeight: '400',
+    color: THEME.colors.neutral900,
+    lineHeight: 22,
   },
-  modalButtons: { flexDirection: 'row', gap: spacing.sm },
-  modalCancel: {
+  inputFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  inputHint: {
+    ...THEME.typography.caption,
+    color: THEME.colors.neutral400,
+  },
+  charCount: {
+    ...THEME.typography.caption,
+    fontWeight: '500',
+    color: THEME.colors.neutral400,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    padding: 20,
+    paddingTop: 0,
+    gap: 12,
+  },
+  modalCancelBtn: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm,
+    paddingVertical: 14,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.neutral100,
     alignItems: 'center',
   },
-  modalCancelText: { ...typography.small, color: colors.textPrimary, fontWeight: '600' },
-  modalSubmit: {
-    flex: 1,
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    backgroundColor: '#DC2626',
+  modalCancelBtnText: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.neutral700,
   },
-  modalSubmitText: { ...typography.small, color: colors.white, fontWeight: '700' },
+  modalSubmitBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.danger,
+    alignItems: 'center',
+  },
+  modalSubmitBtnDisabled: {
+    backgroundColor: THEME.colors.neutral300,
+  },
+  modalSubmitBtnText: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.surface,
+  },
 });
 
 export default CustomerConfirmScreen;

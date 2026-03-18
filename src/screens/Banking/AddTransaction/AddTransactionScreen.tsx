@@ -13,7 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomButton from '../../../Custom-Components/CustomButton';
@@ -206,16 +207,12 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   backBtn: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...THEME.typography.labelLg,
     color: colors.danger,
-    fontFamily: typography.fontFamily,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...THEME.typography.h3,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   content: {
     padding: spacing.lg,

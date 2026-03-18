@@ -109,6 +109,31 @@ import { employeeDetailSlice } from '../screens/Employees/EmployeeDetail/employe
 import { runPayrollSlice } from '../screens/Payroll/RunPayroll/runPayrollSlice';
 import { payrollHistorySlice } from '../screens/Payroll/PayrollHistory/payrollHistorySlice';
 import { payStubSlice } from '../screens/Payroll/PayStub/payStubSlice';
+import { reportsHubSlice } from '../screens/Reports/ReportsHub/reportsHubSlice';
+import { profitLossSlice } from '../screens/Reports/ProfitLoss/profitLossSlice';
+import { balanceSheetSlice } from '../screens/Reports/BalanceSheet/balanceSheetSlice';
+import { cashFlowSlice } from '../screens/Reports/CashFlow/cashFlowSlice';
+import { trialBalanceSlice } from '../screens/Reports/TrialBalance/trialBalanceSlice';
+import { arAgingSlice } from '../screens/Reports/ARAging/arAgingSlice';
+import { inventoryValuationSlice } from '../screens/Reports/InventoryValuation/inventoryValuationSlice';
+import { analyticsDashboardSlice } from '../screens/Reports/AnalyticsDashboard/analyticsDashboardSlice';
+import { budgetListSlice } from '../screens/Reports/BudgetList/budgetListSlice';
+import { budgetFormSlice } from '../screens/Reports/BudgetForm/budgetFormSlice';
+import { budgetComparisonSlice } from '../screens/Reports/BudgetComparison/budgetComparisonSlice';
+import { deliveryDailyReportSlice } from '../screens/Reports/DeliveryDailyReport/deliveryDailyReportSlice';
+import { deliveryPerformanceSlice } from '../screens/Reports/DeliveryPerformance/deliveryPerformanceSlice';
+import { salesByCustomerSlice } from '../screens/Reports/SalesByCustomer/salesByCustomerSlice';
+import { salesByItemSlice } from '../screens/Reports/SalesByItem/salesByItemSlice';
+import { salesTaxReportSlice } from '../screens/Reports/SalesTaxReport/salesTaxReportSlice';
+import { taxSettingsSlice } from '../screens/Tax/TaxSettings/taxSettingsSlice';
+import { taxLiabilitySlice } from '../screens/Tax/TaxLiability/taxLiabilitySlice';
+import { taxPaymentSlice } from '../screens/Tax/TaxPayment/taxPaymentSlice';
+import { settingsSlice } from '../screens/Settings/SettingsMain/settingsSlice';
+import { companyProfileSlice } from '../screens/Settings/CompanyProfile/companyProfileSlice';
+import { userManagementSlice } from '../screens/Settings/UserManagement/userManagementSlice';
+import { companySwitcherSlice } from '../screens/Settings/CompanySwitcher/companySwitcherSlice';
+import { auditTrailSlice } from '../screens/AuditTrail/auditTrailSlice';
+import { globalSearchSlice } from '../screens/GlobalSearch/globalSearchSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -127,6 +152,31 @@ const rootReducer = combineReducers({
   runPayroll: runPayrollSlice.reducer,
   payrollHistory: payrollHistorySlice.reducer,
   payStub: payStubSlice.reducer,
+  reportsHub: reportsHubSlice.reducer,
+  profitLoss: profitLossSlice.reducer,
+  balanceSheet: balanceSheetSlice.reducer,
+  cashFlow: cashFlowSlice.reducer,
+  trialBalance: trialBalanceSlice.reducer,
+  arAging: arAgingSlice.reducer,
+  inventoryValuation: inventoryValuationSlice.reducer,
+  analyticsDashboard: analyticsDashboardSlice.reducer,
+  budgetList: budgetListSlice.reducer,
+  budgetForm: budgetFormSlice.reducer,
+  budgetComparison: budgetComparisonSlice.reducer,
+    deliveryDailyReport: deliveryDailyReportSlice.reducer,
+    deliveryPerformance: deliveryPerformanceSlice.reducer,
+    salesByCustomer: salesByCustomerSlice.reducer,
+    salesByItem: salesByItemSlice.reducer,
+    salesTaxReport: salesTaxReportSlice.reducer,
+    taxSettings: taxSettingsSlice.reducer,
+    taxLiability: taxLiabilitySlice.reducer,
+    taxPayment: taxPaymentSlice.reducer,
+    settings: settingsSlice.reducer,
+    companyProfile: companyProfileSlice.reducer,
+    userManagement: userManagementSlice.reducer,
+    companySwitcher: companySwitcherSlice.reducer,
+    auditTrail: auditTrailSlice.reducer,
+    globalSearch: globalSearchSlice.reducer,
   signIn: signInSlice.reducer,
   signUp: signUpSlice.reducer,
   forgotPassword: forgotPasswordSlice.reducer,

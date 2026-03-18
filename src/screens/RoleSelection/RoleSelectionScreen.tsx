@@ -8,7 +8,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { colors, spacing, shadows } from '../../theme';
+import { THEME } from '../../utils/theme';
 import { ROUTES } from '../../navigations-map/Base';
 import { useAppDispatch } from '../../hooks/useReduxHooks';
 import { setRole } from './roleSelectionSlice';
@@ -209,7 +210,7 @@ const cardStyles = StyleSheet.create({
   letterText: {
     fontSize: 22,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   textBlock: {
     flex: 1,
@@ -219,19 +220,19 @@ const cardStyles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: BRAND.textDark,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 2,
   },
   subtitle: {
     fontSize: 13,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 8,
   },
   description: {
     fontSize: 13,
     color: BRAND.textMid,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 19,
   },
   arrowWrap: {
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
   logoTitle: {
     fontSize: 32,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 6,
   },
   logoFin: {
@@ -278,7 +279,7 @@ const styles = StyleSheet.create({
   logoSubtitle: {
     fontSize: 14,
     color: BRAND.textMid,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   /* Heading */
@@ -290,14 +291,14 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: BRAND.textDark,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.2,
     marginBottom: 6,
   },
   headingSubtitle: {
     fontSize: 14,
     color: BRAND.textMid,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   /* Cards */
@@ -316,13 +317,13 @@ const styles = StyleSheet.create({
   footerPowered: {
     fontSize: 13,
     color: BRAND.textLight,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 4,
   },
   footerVersion: {
     fontSize: 12,
     color: BRAND.textLight + 'AA',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

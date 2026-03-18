@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, typography, spacing } from '../../../../theme';
+import { colors, spacing } from '../../../../theme';
+import { THEME } from '../../../../utils/theme';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { customers } from '../../../../dummy-data/customers';
 import { warehouseAgencies } from '../../../../dummy-data/warehouseAgencies';
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   content: {
     padding: spacing.lg,
@@ -242,7 +243,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: spacing.sm,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   qtyInput: {
     height: 44,
@@ -253,7 +254,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     color: colors.textPrimary,
     backgroundColor: colors.background,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   itemRow: {
     flexDirection: 'row',
@@ -265,18 +266,18 @@ const styles = StyleSheet.create({
   itemName: {
     color: colors.textPrimary,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   itemMeta: {
     color: colors.textSecondary,
     fontSize: 12,
     marginTop: 2,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   remove: {
     color: colors.danger,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, typography } from '../theme';
+import { colors } from '../theme';
+import { THEME } from '../utils/theme';
 
 type LogoSize = 'sm' | 'md' | 'lg';
 
@@ -33,7 +34,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   titleFin: {
     color: colors.success ?? '#10B981',

@@ -19,7 +19,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchEstimateDetail,
@@ -343,40 +344,40 @@ const TotalsRow: React.FC<{ label: string; value: string; bold?: boolean; valueC
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  errorText: { fontSize: 15, color: colors.danger, fontFamily: typography.fontFamily },
+  errorText: { ...THEME.typography.h4, color: colors.danger },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
+  backBtn: { ...THEME.typography.labelLg, color: colors.secondary, marginBottom: spacing.xs },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
+  badgeText: { ...THEME.typography.labelSm, fontWeight: '700' },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   invoiceCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, ...shadows.card },
-  companyName: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily, marginBottom: 2 },
-  companyMeta: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, lineHeight: 18 },
+  companyName: { ...THEME.typography.h3, fontWeight: '800', color: colors.primary, marginBottom: 2 },
+  companyMeta: { ...THEME.typography.caption, color: colors.textSecondary, lineHeight: 18 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm + 2 },
-  invoiceLabel: { fontSize: 22, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily, letterSpacing: 2, textAlign: 'center', marginBottom: spacing.sm },
+  invoiceLabel: { ...THEME.typography.displaySm, fontWeight: '800', color: colors.primary, letterSpacing: 2, textAlign: 'center', marginBottom: spacing.sm },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between' },
   metaCol: { alignItems: 'center', flex: 1 },
-  metaKey: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily, marginBottom: 2 },
-  metaVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: colors.textLight, fontFamily: typography.fontFamily, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.xs },
-  billToName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  metaKey: { ...THEME.typography.labelSm, color: colors.textLight, marginBottom: 2 },
+  metaVal: { ...THEME.typography.bodySm, fontWeight: '700', color: colors.textPrimary },
+  sectionLabel: { ...THEME.typography.labelSm, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.xs },
+  billToName: { ...THEME.typography.h4, color: colors.textPrimary },
   tableHeader: { flexDirection: 'row', paddingVertical: spacing.xs + 2, borderBottomWidth: 1.5, borderBottomColor: colors.primary },
-  thText: { fontSize: 11, fontWeight: '700', color: colors.primary, fontFamily: typography.fontFamily, textTransform: 'uppercase' },
+  thText: { ...THEME.typography.labelSm, fontWeight: '700', color: colors.primary, textTransform: 'uppercase' },
   thRight: { textAlign: 'right' },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs + 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   tableRowEven: { backgroundColor: colors.background },
-  tdText: { fontSize: 12, color: colors.textPrimary, fontFamily: typography.fontFamily },
+  tdText: { ...THEME.typography.caption, color: colors.textPrimary },
   tdRight: { textAlign: 'right' },
   totalsBlock: { marginLeft: 'auto', width: '65%' },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs },
-  totalsLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  totalsLabelBold: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  totalsValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  totalsValueBold: { fontSize: 16, fontWeight: '800' },
+  totalsLabel: { ...THEME.typography.bodySm, color: colors.textSecondary },
+  totalsLabelBold: { ...THEME.typography.labelLg, fontWeight: '700', color: colors.textPrimary },
+  totalsValue: { ...THEME.typography.bodySm, fontWeight: '600', color: colors.textPrimary },
+  totalsValueBold: { ...THEME.typography.h4, fontWeight: '800' },
   grandTotalDivider: { height: 1.5, backgroundColor: colors.primary, marginVertical: spacing.xs },
-  notesText: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, lineHeight: 20 },
+  notesText: { ...THEME.typography.bodySm, color: colors.textSecondary, lineHeight: 20 },
   actionBar: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border, ...shadows.card },
 });
 

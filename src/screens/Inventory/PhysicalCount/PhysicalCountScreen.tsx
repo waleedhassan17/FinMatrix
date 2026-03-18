@@ -17,7 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
@@ -435,8 +436,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   // ── Step indicator ────────────────────────────────
   stepRow: {
@@ -460,15 +461,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   stepCircleActive: { backgroundColor: colors.primary },
-  stepNum: { fontSize: 14, fontWeight: '700', color: colors.textLight, fontFamily: typography.fontFamily },
+  stepNum: { fontSize: 14, fontWeight: '700', color: colors.textLight, fontFamily: THEME.typography.fontFamily },
   stepNumActive: { color: colors.white },
-  stepLabel: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
+  stepLabel: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
   stepLabelActive: { color: colors.primary, fontWeight: '600' },
 
   // ── Common ────────────────────────────────────────
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.lg },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
   summaryCard: {
     backgroundColor: colors.primary + '10',
     borderRadius: borderRadius.sm,
@@ -476,7 +477,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     marginVertical: spacing.md,
   },
-  summaryText: { fontSize: 14, fontWeight: '600', color: colors.primary, fontFamily: typography.fontFamily, textAlign: 'center' },
+  summaryText: { fontSize: 14, fontWeight: '600', color: colors.primary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
 
   btnRow: { flexDirection: 'row', marginTop: spacing.lg },
   bottomBar: {
@@ -508,7 +509,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: colors.success,
   },
-  progressText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  progressText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 
   colHeader: {
     flexDirection: 'row',
@@ -518,7 +519,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  colText: { fontSize: 11, fontWeight: '700', color: colors.textLight, fontFamily: typography.fontFamily, textTransform: 'uppercase' },
+  colText: { fontSize: 11, fontWeight: '700', color: colors.textLight, fontFamily: THEME.typography.fontFamily, textTransform: 'uppercase' },
 
   countRow: {
     flexDirection: 'row',
@@ -529,15 +530,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   countLeft: { flex: 1, marginRight: spacing.xs },
-  countName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  countSku: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
+  countName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  countSku: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
   systemQty: {
     width: 52,
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   countInput: {
     width: 64,
@@ -549,7 +550,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     backgroundColor: colors.white,
   },
   varianceText: {
@@ -558,17 +559,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Step 3: Review ────────────────────────────────
-  reviewSub: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, marginBottom: spacing.md },
+  reviewSub: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.md },
   emptyVariance: {
     alignItems: 'center',
     paddingVertical: spacing.xl * 2,
   },
   emptyVarianceIcon: { fontSize: 40, marginBottom: spacing.sm },
-  emptyVarianceText: { fontSize: 15, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyVarianceText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 
   varianceCard: {
     backgroundColor: colors.white,
@@ -578,8 +579,8 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   varCardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-  varName: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  varSku: { fontSize: 12, color: colors.textLight, fontFamily: typography.fontFamily },
+  varName: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  varSku: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
   varBadge: {
     fontSize: 16,
     fontWeight: '800',
@@ -587,10 +588,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: 8,
     overflow: 'hidden',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   varCardBottom: { flexDirection: 'row', gap: spacing.lg },
-  varDetail: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  varDetail: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 });
 
 export default PhysicalCountScreen;

@@ -20,7 +20,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchCreditMemos,
@@ -31,7 +32,9 @@ import {
   selectCMSearchQuery,
   selectCMStatusFilter,
   selectCMIsLoading,
+  selectCMError,
 } from './creditMemoListSlice';
+import EmptyState from '../../../components/EmptyState';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 
 import type { CreditMemo, CreditMemoStatus } from '../../../types';
@@ -71,6 +74,7 @@ const CreditMemoListScreen: React.FC = () => {
   const searchQuery = useAppSelector(selectCMSearchQuery);
   const statusFilter = useAppSelector(selectCMStatusFilter);
   const isLoading = useAppSelector(selectCMIsLoading);
+  const error = useAppSelector(selectCMError);
   const [refreshing, setRefreshing] = React.useState(false);
 
   useFocusEffect(useCallback(() => { dispatch(fetchCreditMemos()); }, [dispatch]));
@@ -217,6 +221,10 @@ const CreditMemoListScreen: React.FC = () => {
       {/* List */}
       {isLoading && creditMemos.length === 0 ? (
         <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>
+      ) : error && creditMemos.length === 0 ? (
+        <View style={styles.center}>
+          <EmptyState title="Failed to Load" message={error} actionLabel="Retry" onAction={() => dispatch(fetchCreditMemos())} />
+        </View>
       ) : (
         <FlatList
           data={filtered}
@@ -226,11 +234,12 @@ const CreditMemoListScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
           ListEmptyComponent={
-            <View style={styles.center}>
-              <Text style={styles.emptyIcon}>📋</Text>
-              <Text style={styles.emptyTitle}>No Credit Memos</Text>
-              <Text style={styles.emptySubtitle}>Create a credit memo to get started</Text>
-            </View>
+            <EmptyState
+              title="No Credit Memos"
+              message="Create a credit memo to get started."
+              actionLabel="Create Credit Memo"
+              onAction={() => navigation.navigate('CreditMemoForm')}
+            />
           }
         />
       )}
@@ -253,35 +262,35 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: spacing.xl * 2 },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
   newBtn: { backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2, borderRadius: borderRadius.sm },
-  newBtnText: { fontSize: 13, fontWeight: '700', color: colors.white, fontFamily: typography.fontFamily },
-  title: { fontSize: 22, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, marginBottom: spacing.sm },
-  search: { backgroundColor: colors.background, borderRadius: borderRadius.sm, paddingHorizontal: spacing.md, paddingVertical: 10, fontSize: 14, fontFamily: typography.fontFamily, color: colors.textPrimary, borderWidth: 1, borderColor: colors.border },
+  newBtnText: { fontSize: 13, fontWeight: '700', color: colors.white, fontFamily: THEME.typography.fontFamily },
+  title: { fontSize: 22, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
+  search: { backgroundColor: colors.background, borderRadius: borderRadius.sm, paddingHorizontal: spacing.md, paddingVertical: 10, fontSize: 14, fontFamily: THEME.typography.fontFamily, color: colors.textPrimary, borderWidth: 1, borderColor: colors.border },
   summaryRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
   summaryCard: { flex: 1, backgroundColor: colors.white, borderRadius: borderRadius.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, alignItems: 'center', ...shadows.card },
-  summaryLabel: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily, marginBottom: 2 },
-  summaryValue: { fontSize: 15, fontWeight: '700', fontFamily: typography.fontFamily },
+  summaryLabel: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
+  summaryValue: { fontSize: 15, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
   tabsScroll: { minHeight: 44, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
   tabBar: { flexDirection: 'row', paddingHorizontal: spacing.md, paddingTop: spacing.xs, paddingBottom: spacing.sm + 2, alignItems: 'center' },
   tab: { paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm, marginRight: spacing.xs },
   tabActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
-  tabText: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  tabText: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   tabTextActive: { color: colors.primary, fontWeight: '700' },
   listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl * 3 },
   card: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.sm, ...shadows.card },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  cardNumber: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  cardNumber: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   cardBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 6 },
-  cardBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
-  cardCustomer: { fontSize: 14, color: colors.textSecondary, fontFamily: typography.fontFamily, marginBottom: 2 },
-  cardInvoiceRef: { fontSize: 12, color: colors.textLight, fontFamily: typography.fontFamily, fontStyle: 'italic', marginBottom: spacing.xs },
+  cardBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  cardCustomer: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
+  cardInvoiceRef: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily, fontStyle: 'italic', marginBottom: spacing.xs },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xs },
-  cardDate: { fontSize: 12, color: colors.textLight, fontFamily: typography.fontFamily },
-  cardTotal: { fontSize: 16, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily },
+  cardDate: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+  cardTotal: { fontSize: 16, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
   emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  emptySubtitle: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: spacing.xs },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  emptySubtitle: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: spacing.xs },
   fab: { position: 'absolute', bottom: spacing.xl, right: spacing.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', ...shadows.large },
   fabText: { fontSize: 28, color: colors.white, fontWeight: '300', marginTop: -2 },
 });

@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   TextInputProps,
 } from 'react-native';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import { colors, spacing, borderRadius } from '../theme';
+import { THEME } from '../utils/theme';
 
 interface CustomInputProps extends Omit<TextInputProps, 'style'> {
   label: string;
@@ -99,11 +100,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    fontSize: typography.small.fontSize,
+    ...THEME.typography.bodyMd,
     fontWeight: '500',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
   },
   labelError: {
     color: colors.danger,
@@ -131,9 +131,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: typography.body.fontSize,
+    ...THEME.typography.bodyLg,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
     height: '100%',
   },
   inputWithLeftIcon: {
@@ -155,13 +154,12 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   eyeIcon: {
-    fontSize: 18,
+    fontSize: THEME.typography.h3.fontSize,
   },
   errorText: {
-    fontSize: typography.caption.fontSize,
+    ...THEME.typography.caption,
     color: colors.danger,
     marginTop: spacing.xs,
-    fontFamily: typography.fontFamily,
   },
 });
 

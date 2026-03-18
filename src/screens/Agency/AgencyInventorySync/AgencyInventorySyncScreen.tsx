@@ -19,7 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAgencies } from '../AgencyList/agencyListSlice';
 import {
@@ -366,8 +367,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, flex: 1, textAlign: 'center' },
+  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1, textAlign: 'center' },
 
   agencyBar: {
     backgroundColor: colors.primary + '0A',
@@ -376,8 +377,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  agencyName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  agencyMeta: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
+  agencyName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  agencyMeta: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
 
   summaryRow: {
     flexDirection: 'row',
@@ -393,8 +394,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
   },
-  summaryVal: { fontSize: 20, fontWeight: '800', fontFamily: typography.fontFamily },
-  summaryLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
+  summaryVal: { fontSize: 20, fontWeight: '800', fontFamily: THEME.typography.fontFamily },
+  summaryLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
 
   searchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   searchInput: {
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -425,9 +426,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   chipActive: { backgroundColor: colors.secondary, borderColor: colors.secondary },
-  chipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  chipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   chipTextActive: { color: colors.white },
-  selectAllText: { fontSize: 12, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
+  selectAllText: { fontSize: 12, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
 
   // ── Row card ───────────────────────────────────────
   rowCard: {
@@ -455,15 +456,15 @@ const styles = StyleSheet.create({
   checkboxChecked: { backgroundColor: colors.secondary, borderColor: colors.secondary },
   checkmark: { fontSize: 13, fontWeight: '700', color: colors.white },
 
-  rowName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  rowSku: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
+  rowName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  rowSku: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
 
   qtyCol: { alignItems: 'center', width: 48 },
-  qtyLabel: { fontSize: 9, color: colors.textLight, fontFamily: typography.fontFamily, textTransform: 'uppercase' },
-  qtyValue: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  qtyLabel: { fontSize: 9, color: colors.textLight, fontFamily: THEME.typography.fontFamily, textTransform: 'uppercase' },
+  qtyValue: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   statusBadge: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8, minWidth: 55, alignItems: 'center' },
-  statusText: { fontSize: 9, fontWeight: '700', fontFamily: typography.fontFamily },
+  statusText: { fontSize: 9, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
 
   // ── Bottom bar ─────────────────────────────────────
   bottomBar: {
@@ -490,7 +491,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     zIndex: 1,
   },
-  syncingText: { fontSize: 14, fontWeight: '600', color: colors.white, fontFamily: typography.fontFamily },
+  syncingText: { fontSize: 14, fontWeight: '600', color: colors.white, fontFamily: THEME.typography.fontFamily },
 });
 
 export default AgencyInventorySyncScreen;

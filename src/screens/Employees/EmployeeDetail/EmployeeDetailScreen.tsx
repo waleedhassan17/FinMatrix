@@ -11,7 +11,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { fetchEmployees, selectEmployees } from '../EmployeeList/employeeListSlice';
 import {
@@ -178,9 +179,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 14, color: colors.primary, fontWeight: '600', marginBottom: spacing.xs, fontFamily: typography.fontFamily },
-  headerTitle: { fontSize: 20, color: colors.textPrimary, fontWeight: '700', fontFamily: typography.fontFamily },
-  headerSub: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 14, color: colors.primary, fontWeight: '600', marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 20, color: colors.textPrimary, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  headerSub: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   scrollContent: { padding: spacing.lg },
   topCard: {
     backgroundColor: colors.white,
@@ -194,8 +195,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadows.small,
   },
-  topLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  topValue: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginTop: 2, fontFamily: typography.fontFamily },
+  topLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  topValue: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginTop: 2, fontFamily: THEME.typography.fontFamily },
   status: {
     fontSize: 12,
     textTransform: 'capitalize',
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     overflow: 'hidden',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   tabRow: {
     flexDirection: 'row',
@@ -218,7 +219,7 @@ const styles = StyleSheet.create({
   },
   tab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center' },
   tabActive: { backgroundColor: colors.primary + '14' },
-  tabText: { color: colors.textSecondary, fontFamily: typography.fontFamily, fontSize: 12, fontWeight: '600' },
+  tabText: { color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, fontSize: 12, fontWeight: '600' },
   tabTextActive: { color: colors.primary },
   card: {
     backgroundColor: colors.white,
@@ -233,13 +234,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.sm,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
-  infoLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  infoValue: { fontSize: 12, color: colors.textPrimary, fontWeight: '600', fontFamily: typography.fontFamily, maxWidth: '60%', textAlign: 'right' },
+  infoLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  infoValue: { fontSize: 12, color: colors.textPrimary, fontWeight: '600', fontFamily: THEME.typography.fontFamily, maxWidth: '60%', textAlign: 'right' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
-  emptyText: { color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyText: { color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 });
 
 export default EmployeeDetailScreen;

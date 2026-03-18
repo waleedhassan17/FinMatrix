@@ -17,7 +17,8 @@ import { useNavigation } from '@react-navigation/native';
 import dayjs from 'dayjs';
 import quarterOfYear from 'dayjs/plugin/quarterOfYear';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../theme';
+import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
   fetchGLEntries,
@@ -349,10 +350,9 @@ const styles = StyleSheet.create({
   backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   topTitle: {
     flex: 1,
-    fontSize: 18,
+    ...THEME.typography.h3,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   exportBtn: {
     paddingHorizontal: spacing.md,
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     backgroundColor: colors.secondary + '14',
   },
-  exportText: { fontSize: 14, fontWeight: '600', color: colors.secondary },
+  exportText: { ...THEME.typography.labelLg, color: colors.secondary },
 
   // ── Filters ──
   filters: {
@@ -382,10 +382,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   headerCell: {
-    fontSize: 11,
+    ...THEME.typography.labelSm,
     fontWeight: '700',
     color: colors.white,
-    fontFamily: typography.fontFamily,
   },
 
   // ── Table row ──
@@ -397,9 +396,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   cell: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
 
   // ── Column widths ──
@@ -427,31 +425,26 @@ const styles = StyleSheet.create({
     borderTopColor: colors.danger,
   },
   footerLabel: {
-    fontSize: 12,
+    ...THEME.typography.labelMd,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   footerValue: {
-    fontSize: 12,
+    ...THEME.typography.labelMd,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
   },
 
   // ── Empty ──
   empty: { alignItems: 'center', paddingTop: spacing.xl * 2 },
   emptyIcon: { fontSize: 48, marginBottom: spacing.md },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...THEME.typography.h3,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
     marginBottom: spacing.xs,
   },
   emptySubtitle: {
-    fontSize: 14,
+    ...THEME.typography.bodyMd,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   emptyList: { flexGrow: 1 },
 });

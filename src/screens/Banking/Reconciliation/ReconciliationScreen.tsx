@@ -12,7 +12,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -334,9 +335,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  backBtn: { color: colors.secondary, fontWeight: '600', fontFamily: typography.fontFamily },
-  title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  linkBtn: { color: colors.primary, fontWeight: '700', fontFamily: typography.fontFamily },
+  backBtn: { color: colors.secondary, fontWeight: '600' },
+  title: { ...THEME.typography.h3, color: colors.textPrimary },
+  linkBtn: { color: colors.primary, fontWeight: '700' },
   stepRow: {
     flexDirection: 'row',
     gap: spacing.xs,
@@ -356,7 +357,7 @@ const styles = StyleSheet.create({
   },
   stepPillActive: { backgroundColor: colors.primary + '16', borderColor: colors.primary },
   stepPillDone: { backgroundColor: colors.success + '16', borderColor: colors.success },
-  stepText: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  stepText: { ...THEME.typography.caption, color: colors.textSecondary },
   stepTextActive: { color: colors.primary, fontWeight: '700' },
   content: { padding: spacing.md, paddingBottom: spacing.xl * 2 },
   card: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, ...shadows.card },
@@ -367,12 +368,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadows.card,
   },
-  calcLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: spacing.xs },
-  calcValue: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  diffValue: { fontSize: 20, fontWeight: '800', fontFamily: typography.fontFamily },
+  calcLabel: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
+  calcValue: { ...THEME.typography.h2, color: colors.textPrimary },
+  diffValue: { ...THEME.typography.h2, fontWeight: '800' },
   balancedText: { color: colors.success },
   unbalancedText: { color: colors.danger },
-  badge: { marginTop: spacing.sm, fontSize: 13, fontWeight: '700', fontFamily: typography.fontFamily },
+  badge: { marginTop: spacing.sm, ...THEME.typography.bodySm, fontWeight: '700' },
   badgeBalanced: { color: colors.success },
   badgeUnbalanced: { color: colors.danger },
   sectionCard: {
@@ -382,7 +383,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadows.card,
   },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, marginBottom: spacing.sm },
+  sectionTitle: { ...THEME.typography.labelLg, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm },
   txRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -403,17 +404,17 @@ const styles = StyleSheet.create({
   checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
   checkboxTick: { color: colors.white, fontWeight: '700' },
   txContent: { flex: 1 },
-  txPayee: { fontSize: 13, color: colors.textPrimary, fontFamily: typography.fontFamily, fontWeight: '600' },
-  txMeta: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  txAmount: { fontSize: 13, color: colors.textPrimary, fontFamily: typography.fontFamily, fontWeight: '700' },
-  empty: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  txPayee: { ...THEME.typography.bodySm, fontWeight: '600', color: colors.textPrimary },
+  txMeta: { ...THEME.typography.labelSm, color: colors.textSecondary },
+  txAmount: { ...THEME.typography.bodySm, fontWeight: '700', color: colors.textPrimary },
+  empty: { ...THEME.typography.caption, color: colors.textSecondary },
   actionRow: { flexDirection: 'row', marginTop: spacing.sm },
   actionHalf: { flex: 1 },
   actionColumn: { gap: spacing.sm },
-  finishTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  finishSub: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, marginBottom: spacing.md },
+  finishTitle: { ...THEME.typography.h3, color: colors.textPrimary },
+  finishSub: { ...THEME.typography.bodySm, color: colors.textSecondary, marginBottom: spacing.md },
   inlineBack: { marginTop: spacing.md, alignSelf: 'center' },
-  inlineBackText: { color: colors.secondary, fontWeight: '600', fontFamily: typography.fontFamily },
+  inlineBackText: { color: colors.secondary, fontWeight: '600' },
   loadingOverlay: { paddingVertical: spacing.md, alignItems: 'center' },
 });
 

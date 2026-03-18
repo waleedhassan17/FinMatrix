@@ -16,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomInput from '../../../Custom-Components/CustomInput';
-import { typography } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   setForgotEmail,
@@ -556,7 +556,7 @@ const sentS = StyleSheet.create({
     fontSize: 14,
     color: DS.navy800,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   stepsCard: {
     backgroundColor: DS.slate50,
@@ -593,7 +593,7 @@ const sentS = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: DS.slate500,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 19,
   },
   timerCard: {
@@ -610,7 +610,7 @@ const sentS = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: DS.amber800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 19,
   },
   resendHit: { alignSelf: 'center', paddingVertical: 6 },
@@ -618,7 +618,7 @@ const sentS = StyleSheet.create({
     fontSize: 13,
     color: DS.navy800,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   resendOff: { color: DS.slate400, fontWeight: '500' },
 });
@@ -702,20 +702,20 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: '700',
     color: DS.white,
     marginBottom: 6,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.4,
   },
   headerSub: {
     fontSize: 15,
     color: 'rgba(255,255,255,0.45)',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 22,
   },
 
@@ -736,7 +736,7 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.9)',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: 0.3,
   },
 
@@ -766,7 +766,7 @@ const s = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: DS.slate500,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 19,
   },
 
@@ -800,13 +800,13 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: DS.red700,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 2,
   },
   errorMsg: {
     fontSize: 12,
     color: DS.red900,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 18,
     opacity: 0.85,
   },
@@ -827,7 +827,7 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: DS.white,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: 0.3,
   },
   ctaLoadingRow: {
@@ -857,7 +857,7 @@ const s = StyleSheet.create({
   divText: {
     fontSize: 11,
     color: DS.slate400,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     fontWeight: '500',
     marginHorizontal: 14,
     textTransform: 'uppercase',
@@ -887,7 +887,7 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Security footer ──
@@ -906,7 +906,7 @@ const s = StyleSheet.create({
   secText: {
     fontSize: 12,
     color: DS.slate400,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

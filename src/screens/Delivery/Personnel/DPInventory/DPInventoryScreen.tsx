@@ -1,326 +1,750 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, typography, spacing } from '../../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectUser } from '../../../Auth/authSlice';
-import { selectShadowInventory, selectInventoryUpdateRequests } from '../../Admin/AssignDeliveries/deliverySlice';
-import type { DPInventoryStackParamList } from '../../../../navigators/stacks/DPInventoryStack';
 import {
-  selectDPInventoryState,
-  setDPInventoryRequestSearchTerm,
-  setDPInventoryRequestSortBy,
-  setDPInventoryRequestStatusFilter,
+  selectInventoryUpdateRequests,
+  selectDeliveryPersonnel,
+} from '../../Admin/AssignDeliveries/deliverySlice';
+import {
+  selectDPInventoryUI,
+  setInventorySearchTerm,
+  setInventorySortBy,
+  setInventoryCategory,
 } from './dpInventorySlice';
+import { shadowInventoryRecords } from '../../../../dummy-data/shadowInventory';
+import type { DPInventoryStackParamList } from '../../../../navigators/stacks/DPInventoryStack';
+import { Feather } from '@expo/vector-icons';
+import { THEME } from '../../../../utils/theme';
 
 type Props = NativeStackScreenProps<DPInventoryStackParamList, 'DPInventory'>;
 
-const STATUS_FILTERS = ['all', 'pending', 'approved', 'rejected'] as const;
-const REQUEST_SORTS = [
-  { key: 'newest', label: 'Newest' },
-  { key: 'oldest', label: 'Oldest' },
-  { key: 'qty_high', label: 'Qty High-Low' },
-  { key: 'qty_low', label: 'Qty Low-High' },
+const SORT_OPTIONS = [
+  { key: 'name', label: 'Name', icon: 'type' },
+  { key: 'qty', label: 'Quantity', icon: 'package' },
+  { key: 'status', label: 'Status', icon: 'bar-chart-2' },
 ] as const;
+
+const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
+  synced: { color: THEME.colors.success, bg: THEME.colors.successLight, icon: 'check' },
+  pending: { color: THEME.colors.warning, bg: THEME.colors.warningLight, icon: 'clock' },
+  rejected: { color: THEME.colors.danger, bg: THEME.colors.dangerLight, icon: 'x' },
+};
 
 const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUser);
-  const shadowInventory = useAppSelector(selectShadowInventory);
-  const updateRequests = useAppSelector(selectInventoryUpdateRequests);
-  const { requestSearchTerm, requestStatusFilter, requestSortBy } = useAppSelector(selectDPInventoryState);
+  const personnel = useAppSelector(selectDeliveryPersonnel);
+  const requests = useAppSelector(selectInventoryUpdateRequests);
+  const { searchTerm, sortBy, category } = useAppSelector(selectDPInventoryUI);
   const userId = user?.uid ?? 'dp_002';
 
-  const myInventory = useMemo(
-    () => shadowInventory.filter(item => item.personnelId === userId),
-    [shadowInventory, userId],
-  );
+  const me = useMemo(() => personnel.find(p => p.userId === userId), [personnel, userId]);
 
-  const myRequests = useMemo(() => {
-    const filtered = updateRequests
-      .filter(req => req.personnelId === userId)
-      .filter(req => {
-        if (requestStatusFilter === 'all') {
-          return true;
-        }
-        return req.status === requestStatusFilter;
-      })
-      .filter(req => {
-        if (!requestSearchTerm.trim()) {
-          return true;
-        }
-        const text = requestSearchTerm.trim().toLowerCase();
-        return req.itemName.toLowerCase().includes(text) || req.reason.toLowerCase().includes(text);
-      });
+  const items = useMemo(() => {
+    let filtered = shadowInventoryRecords.filter(item => item.personnelId === userId);
+
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        item => item.itemName.toLowerCase().includes(search) || item.itemId.toLowerCase().includes(search),
+      );
+    }
 
     return [...filtered].sort((a, b) => {
-      if (requestSortBy === 'oldest') {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      switch (sortBy) {
+        case 'qty':
+          return b.currentQty - a.currentQty;
+        case 'status':
+          const statusOrder = { pending: 0, synced: 1, rejected: 2 };
+          return (statusOrder[a.status] ?? 1) - (statusOrder[b.status] ?? 1);
+        default:
+          return a.itemName.localeCompare(b.itemName);
       }
-      if (requestSortBy === 'qty_high') {
-        return b.requestedQty - a.requestedQty;
-      }
-      if (requestSortBy === 'qty_low') {
-        return a.requestedQty - b.requestedQty;
-      }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [updateRequests, userId, requestStatusFilter, requestSearchTerm, requestSortBy]);
+  }, [searchTerm, sortBy, userId]);
 
-  const pendingRequests = myRequests.filter(req => req.status === 'pending').length;
+  const myRequests = useMemo(
+    () => requests.filter(r => r.personnelId === userId).slice(0, 5),
+    [requests, userId],
+  );
+
+  const stats = useMemo(() => ({
+    total: items.length,
+    synced: items.filter(i => i.status === 'synced').length,
+    pending: items.filter(i => i.status === 'pending').length,
+    rejected: items.filter(i => i.status === 'rejected').length,
+    totalQty: items.reduce((sum, i) => sum + i.currentQty, 0),
+  }), [items]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Inventory</Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.heading}>My Inventory Copy</Text>
-          <Text style={styles.subtitle}>Track original vs current quantities and inspect change logs.</Text>
-          <View style={styles.quickStats}>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{myInventory.length}</Text>
-              <Text style={styles.statLabel}>Items</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{pendingRequests}</Text>
-              <Text style={styles.statLabel}>Pending Updates</Text>
-            </View>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>Inventory</Text>
+            <Text style={styles.headerSubtitle}>Manage your assigned items</Text>
           </View>
-          <TouchableOpacity style={styles.primaryAction} onPress={() => navigation.navigate('DPShadowInventory')}>
-            <Text style={styles.primaryActionText}>Open Shadow Inventory</Text>
+          <TouchableOpacity 
+            style={styles.shadowBtn}
+            onPress={() => navigation.navigate('DPShadowInventory')}
+          >
+            <Feather name="clipboard" size={14} color={THEME.colors.primary} style={{ marginRight: 6 }} />
+            <Text style={styles.shadowBtnText}>Shadow</Text>
           </TouchableOpacity>
         </View>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.heading}>Recent Update Requests</Text>
-          <Text style={styles.subtitle}>Latest request statuses from warehouse review queue.</Text>
-
-          <TextInput
-            value={requestSearchTerm}
-            onChangeText={text => dispatch(setDPInventoryRequestSearchTerm(text))}
-            placeholder="Search by item or reason"
-            placeholderTextColor="#94A3B8"
-            style={styles.searchInput}
-          />
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersRow}>
-            {STATUS_FILTERS.map(status => {
-              const active = requestStatusFilter === status;
-              return (
-                <TouchableOpacity
-                  key={status}
-                  style={[styles.filterChip, active && styles.filterChipActive]}
-                  onPress={() => dispatch(setDPInventoryRequestStatusFilter(status))}
-                >
-                  <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{status}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersRow}>
-            {REQUEST_SORTS.map(sort => {
-              const active = requestSortBy === sort.key;
-              return (
-                <TouchableOpacity
-                  key={sort.key}
-                  style={[styles.filterChip, active && styles.sortChipActive]}
-                  onPress={() => dispatch(setDPInventoryRequestSortBy(sort.key))}
-                >
-                  <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{sort.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {myRequests.slice(0, 4).map(req => (
-            <View key={req.id} style={styles.row}>
-              <View>
-                <Text style={styles.rowTitle}>{req.itemName}</Text>
-                <Text style={styles.requestMeta}>Requested qty: {req.requestedQty}</Text>
-              </View>
-              <Text
-                style={[
-                  styles.requestStatus,
-                  req.status === 'approved'
-                    ? styles.statusApproved
-                    : req.status === 'rejected'
-                      ? styles.statusRejected
-                      : styles.statusPending,
-                ]}
-              >
-                {req.status}
-              </Text>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Quick Stats */}
+        <View style={styles.statsGrid}>
+          <View style={[styles.statCard, styles.statCardPrimary]}>
+            <View style={styles.statIconWrap}>
+              <Feather name="package" size={20} color={THEME.colors.primary} />
             </View>
-          ))}
-          {!!myRequests.length && (
-            <Text style={styles.resultsHint}>Showing {Math.min(4, myRequests.length)} of {myRequests.length} matching requests.</Text>
-          )}
-          {!myRequests.length && <Text style={styles.empty}>No inventory requests found.</Text>}
+            <View style={styles.statInfo}>
+              <Text style={styles.statValue}>{stats.total}</Text>
+              <Text style={styles.statLabel}>Total Items</Text>
+            </View>
+          </View>
+          <View style={[styles.statCard, styles.statCardSecondary]}>
+            <View style={styles.statIconWrap}>
+              <Feather name="hash" size={20} color={THEME.colors.secondary} />
+            </View>
+            <View style={styles.statInfo}>
+              <Text style={styles.statValue}>{stats.totalQty}</Text>
+              <Text style={styles.statLabel}>Total Quantity</Text>
+            </View>
+          </View>
         </View>
+
+        <View style={styles.statsRow}>
+          <View style={[styles.miniStat, { borderLeftColor: THEME.colors.success }]}>
+            <Text style={[styles.miniStatValue, { color: THEME.colors.success }]}>{stats.synced}</Text>
+            <Text style={styles.miniStatLabel}>Synced</Text>
+          </View>
+          <View style={[styles.miniStat, { borderLeftColor: THEME.colors.warning }]}>
+            <Text style={[styles.miniStatValue, { color: THEME.colors.warning }]}>{stats.pending}</Text>
+            <Text style={styles.miniStatLabel}>Pending</Text>
+          </View>
+          <View style={[styles.miniStat, { borderLeftColor: THEME.colors.danger }]}>
+            <Text style={[styles.miniStatValue, { color: THEME.colors.danger }]}>{stats.rejected}</Text>
+            <Text style={styles.miniStatLabel}>Rejected</Text>
+          </View>
+        </View>
+
+        {/* Search & Sort Card */}
+        <View style={styles.filterCard}>
+          <View style={styles.searchContainer}>
+            <View style={styles.searchIcon}>
+              <Feather name="search" size={14} color={THEME.colors.textTertiary} />
+            </View>
+            <TextInput
+              value={searchTerm}
+              onChangeText={text => dispatch(setInventorySearchTerm(text))}
+              placeholder="Search items..."
+              placeholderTextColor={THEME.colors.textTertiary}
+              style={styles.searchInput}
+            />
+            {searchTerm.length > 0 && (
+              <TouchableOpacity 
+                style={styles.clearBtn}
+                onPress={() => dispatch(setInventorySearchTerm(''))}
+              >
+                <Feather name="x" size={14} color={THEME.colors.textTertiary} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.sortRow}>
+            <Text style={styles.sortLabel}>Sort by:</Text>
+            {SORT_OPTIONS.map(option => (
+              <TouchableOpacity
+                key={option.key}
+                style={[styles.sortChip, sortBy === option.key && styles.sortChipActive]}
+                onPress={() => dispatch(setInventorySortBy(option.key))}
+              >
+                <Feather name={option.icon as any} size={10} color={sortBy === option.key ? THEME.colors.textInverse : THEME.colors.textSecondary} style={{ marginRight: 4 }} />
+                <Text style={[
+                  styles.sortChipText,
+                  sortBy === option.key && styles.sortChipTextActive,
+                ]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Inventory Items Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconWrap}>
+              <Feather name="clipboard" size={18} color={THEME.colors.primary} />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Inventory Items</Text>
+              <Text style={styles.cardSubtitle}>{items.length} items found</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          {items.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconWrap}>
+                <Feather name="inbox" size={28} color={THEME.colors.textTertiary} />
+              </View>
+              <Text style={styles.emptyTitle}>No Items Found</Text>
+              <Text style={styles.emptyText}>Try adjusting your search</Text>
+            </View>
+          ) : (
+            <View style={styles.itemsList}>
+              {items.map((item, index) => {
+                const config = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.pending;
+                const diff = item.currentQty - item.originalQty;
+
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.itemCard, index === items.length - 1 && styles.itemCardLast]}
+                    onPress={() => navigation.navigate('DPShadowInventory')}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.itemHeader}>
+                      <Text style={styles.itemName}>{item.itemName}</Text>
+                      <View style={[styles.itemBadge, { backgroundColor: config.bg }]}>
+                        <Feather name={config.icon as any} size={10} color={config.color} style={{ marginRight: 4 }} />
+                        <Text style={[styles.itemBadgeText, { color: config.color }]}>{item.status}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.itemDetails}>
+                      <View style={styles.qtyBlock}>
+                        <Text style={styles.qtyLabel}>Original</Text>
+                        <Text style={styles.qtyValue}>{item.originalQty}</Text>
+                      </View>
+                      <View style={styles.qtyArrow}>
+                        <Feather name="arrow-right" size={16} color={THEME.colors.textTertiary} />
+                      </View>
+                      <View style={styles.qtyBlock}>
+                        <Text style={styles.qtyLabel}>Current</Text>
+                        <Text style={styles.qtyValue}>{item.currentQty}</Text>
+                      </View>
+                      <View style={[
+                        styles.diffBadge,
+                        diff > 0 ? styles.diffPositive : diff < 0 ? styles.diffNegative : styles.diffNeutral,
+                      ]}>
+                        <Text style={[
+                          styles.diffText,
+                          diff > 0 ? styles.diffTextPositive : diff < 0 ? styles.diffTextNegative : styles.diffTextNeutral,
+                        ]}>
+                          {diff > 0 ? '+' : ''}{diff}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.itemFooter}>
+                      <Text style={styles.changesText}>
+                        {item.changesToday.length} change{item.changesToday.length !== 1 ? 's' : ''} today
+                      </Text>
+                      <Text style={styles.viewLink}>View <Feather name="arrow-right" size={12} color={THEME.colors.primary} /></Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
+        {/* Pending Requests Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.cardIconWrap, { backgroundColor: THEME.colors.warningLight }]}>
+              <Feather name="edit" size={18} color={THEME.colors.warning} />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Pending Requests</Text>
+              <Text style={styles.cardSubtitle}>Awaiting warehouse approval</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          {myRequests.length === 0 ? (
+            <View style={styles.emptyStateSmall}>
+              <Text style={styles.emptyTextSmall}>No pending requests</Text>
+            </View>
+          ) : (
+            <View style={styles.requestsList}>
+              {myRequests.map((req, index) => {
+                const config = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
+                return (
+                  <View 
+                    key={req.id}
+                    style={[styles.requestItem, index === myRequests.length - 1 && styles.requestItemLast]}
+                  >
+                    <View style={styles.requestInfo}>
+                      <Text style={styles.requestName}>{req.itemName}</Text>
+                      <Text style={styles.requestQty}>Requested: {req.requestedQty}</Text>
+                    </View>
+                    <View style={[styles.requestBadge, { backgroundColor: config.bg }]}>
+                      <Text style={[styles.requestBadgeText, { color: config.color }]}>{req.status}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8ECF0',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#0F172A',
-    fontFamily: typography.fontFamily,
-  },
-  content: { padding: spacing.lg, paddingBottom: spacing.xl },
-  section: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  heading: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    lineHeight: 20,
-    marginBottom: spacing.sm,
-    fontFamily: typography.fontFamily,
-  },
-  quickStats: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  statBox: {
+  container: {
     flex: 1,
-    borderRadius: 10,
-    backgroundColor: '#F1F5F9',
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
+    backgroundColor: THEME.colors.background,
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+
+  // Header
+  header: {
+    backgroundColor: THEME.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.border,
   },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
-  },
-  primaryAction: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-  },
-  primaryActionText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontFamily: typography.fontFamily,
-  },
-  row: {
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  rowTitle: {
-    fontSize: 14,
+  headerTitle: {
+    ...THEME.typography.h1,
+    color: THEME.colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  shadowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.primaryLight,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: THEME.radius.full,
+  },
+  shadowBtnIcon: {
+    fontSize: THEME.typography.bodyMd.fontSize,
+    marginRight: 6,
+  },
+  shadowBtnText: {
+    ...THEME.typography.bodySm,
     fontWeight: '600',
-    color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    color: THEME.colors.primary,
   },
-  rowValue: {
-    color: colors.secondary,
+
+  // Scroll
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+
+  // Stats Grid
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  statCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: THEME.radius.xl,
+    ...THEME.shadows.sm,
+    borderWidth: 1,
+  },
+  statCardPrimary: {
+    backgroundColor: THEME.colors.primaryLighter,
+    borderColor: THEME.colors.primaryLight,
+  },
+  statCardSecondary: {
+    backgroundColor: THEME.colors.secondaryLight,
+    borderColor: '#D4CCFF',
+  },
+  statIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: THEME.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  statIcon: {
+    fontSize: THEME.typography.h2.fontSize,
+  },
+  statInfo: {},
+  statValue: {
+    ...THEME.typography.h2,
+    color: THEME.colors.textPrimary,
+  },
+  statLabel: {
+    ...THEME.typography.labelSm,
+    fontWeight: '400',
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  miniStat: {
+    flex: 1,
+    backgroundColor: THEME.colors.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: THEME.radius.lg,
+    borderLeftWidth: 3,
+    ...THEME.shadows.xs,
+  },
+  miniStatValue: {
+    ...THEME.typography.h3,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+  },
+  miniStatLabel: {
+    ...THEME.typography.labelSm,
+    fontWeight: '400',
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+
+  // Filter Card
+  filterCard: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    padding: 16,
+    marginBottom: 16,
+    ...THEME.shadows.sm,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.neutral50,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchIconText: {
+    fontSize: THEME.typography.bodyMd.fontSize,
   },
   searchInput: {
-    backgroundColor: '#F8FAFC',
+    flex: 1,
+    paddingVertical: 12,
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textPrimary,
+  },
+  clearBtn: {
+    padding: 4,
+  },
+  clearBtnText: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textTertiary,
+  },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sortLabel: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginRight: 4,
+  },
+  sortChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
+    backgroundColor: THEME.colors.neutral50,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  filtersRow: {
-    marginBottom: spacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-    marginRight: spacing.xs,
-  },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    borderColor: THEME.colors.border,
   },
   sortChipActive: {
-    backgroundColor: '#0EA5E9',
-    borderColor: '#0EA5E9',
+    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primary,
   },
-  filterChipText: {
-    fontSize: 12,
-    color: colors.textSecondary,
+  sortChipIcon: {
+    fontSize: THEME.typography.overline.fontSize,
+    marginRight: 4,
+  },
+  sortChipText: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+  },
+  sortChipTextActive: {
+    color: THEME.colors.textInverse,
+    fontWeight: '600',
+  },
+
+  // Card
+  card: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    marginBottom: 16,
+    ...THEME.shadows.sm,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  cardIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  cardIcon: {
+    fontSize: THEME.typography.h3.fontSize,
+  },
+  cardHeaderText: {
+    flex: 1,
+  },
+  cardTitle: {
+    ...THEME.typography.h4,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+  },
+  cardSubtitle: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.borderLight,
+  },
+
+  // Items List
+  itemsList: {
+    padding: 12,
+  },
+  itemCard: {
+    backgroundColor: THEME.colors.neutral50,
+    borderRadius: THEME.radius.lg,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  itemCardLast: {
+    marginBottom: 0,
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  itemName: {
+    ...THEME.typography.h5,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+    flex: 1,
+    marginRight: 8,
+  },
+  itemBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.sm,
+  },
+  itemBadgeIcon: {
+    fontSize: THEME.typography.overline.fontSize,
+    marginRight: 4,
+  },
+  itemBadgeText: {
+    ...THEME.typography.overline,
+    fontWeight: '600',
     textTransform: 'capitalize',
-    fontFamily: typography.fontFamily,
   },
-  filterChipTextActive: {
-    color: colors.white,
+  itemDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  qtyBlock: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  qtyLabel: {
+    ...THEME.typography.overline,
+    fontWeight: '400',
+    textTransform: undefined,
+    color: THEME.colors.textTertiary,
+    marginBottom: 2,
+  },
+  qtyValue: {
+    ...THEME.typography.h3,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+  },
+  qtyArrow: {
+    paddingHorizontal: 12,
+  },
+  qtyArrowText: {
+    fontSize: THEME.typography.h4.fontSize,
+    color: THEME.colors.textTertiary,
+  },
+  diffBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.sm,
+  },
+  diffPositive: {
+    backgroundColor: THEME.colors.successLight,
+  },
+  diffNegative: {
+    backgroundColor: THEME.colors.dangerLight,
+  },
+  diffNeutral: {
+    backgroundColor: THEME.colors.neutral100,
+  },
+  diffText: {
+    ...THEME.typography.labelMd,
     fontWeight: '700',
   },
-  requestMeta: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+  diffTextPositive: {
+    color: THEME.colors.success,
   },
-  requestStatus: {
+  diffTextNegative: {
+    color: THEME.colors.danger,
+  },
+  diffTextNeutral: {
+    color: THEME.colors.textTertiary,
+  },
+  itemFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.border,
+  },
+  changesText: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+  },
+  viewLink: {
+    ...THEME.typography.labelMd,
+    color: THEME.colors.primary,
+  },
+
+  // Empty States
+  emptyState: {
+    padding: 48,
+    alignItems: 'center',
+  },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: THEME.colors.neutral100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyIcon: {
+    ...THEME.typography.displayMd,
+  },
+  emptyTitle: {
+    ...THEME.typography.h4,
+    color: THEME.colors.textPrimary,
+    marginBottom: 4,
+  },
+  emptyText: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textSecondary,
+  },
+  emptyStateSmall: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyTextSmall: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textTertiary,
+  },
+
+  // Requests List
+  requestsList: {
+    padding: 12,
+  },
+  requestItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.borderLight,
+  },
+  requestItemLast: {
+    borderBottomWidth: 0,
+  },
+  requestInfo: {},
+  requestName: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.textPrimary,
+  },
+  requestQty: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  requestBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.sm,
+  },
+  requestBadgeText: {
+    ...THEME.typography.overline,
+    fontWeight: '600',
     textTransform: 'capitalize',
-    fontWeight: '700',
-    fontSize: 12,
-    fontFamily: typography.fontFamily,
-  },
-  statusApproved: { color: '#16A34A' },
-  statusRejected: { color: '#DC2626' },
-  statusPending: { color: '#D97706' },
-  resultsHint: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    fontFamily: typography.fontFamily,
-  },
-  empty: {
-    color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
 });
 

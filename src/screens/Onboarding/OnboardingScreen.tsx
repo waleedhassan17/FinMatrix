@@ -11,7 +11,8 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
-import { colors, typography, spacing } from '../../theme';
+import { colors, spacing } from '../../theme';
+import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { setCurrentPage, selectCurrentPage } from './onboardingSlice';
 import { setOnboardingSeen } from '../Auth/authSlice';
@@ -430,24 +431,24 @@ const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
 const cS = StyleSheet.create({
   metricRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
   metricCell: { flex: 1, backgroundColor: B.w03, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 6, alignItems: 'center' },
-  metricValue: { fontSize: 12, fontWeight: '700', fontFamily: typography.fontFamily },
-  metricLabel: { fontSize: 8, color: B.w50, fontFamily: typography.fontFamily, marginTop: 2 },
+  metricValue: { fontSize: 12, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  metricLabel: { fontSize: 8, color: B.w50, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
   barsRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 34 },
   bar: { flex: 1, borderRadius: 2 },
   listRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9 },
-  listTitle: { fontSize: 12, fontWeight: '500', color: B.w70, fontFamily: typography.fontFamily },
-  listSub: { fontSize: 9, color: B.w50, fontFamily: typography.fontFamily, marginTop: 2 },
+  listTitle: { fontSize: 12, fontWeight: '500', color: B.w70, fontFamily: THEME.typography.fontFamily },
+  listSub: { fontSize: 9, color: B.w50, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
   chip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  chipText: { fontSize: 9, fontWeight: '600', fontFamily: typography.fontFamily },
+  chipText: { fontSize: 9, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
   delRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, gap: 10 },
   delIcon: { width: 26, height: 26, borderRadius: 7, justifyContent: 'center', alignItems: 'center' },
   delIconText: { fontSize: 12, fontWeight: '600' },
   delInfo: { flex: 1 },
-  delName: { fontSize: 12, fontWeight: '500', color: B.w70, fontFamily: typography.fontFamily },
-  delId: { fontSize: 9, color: B.w50, fontFamily: typography.fontFamily, marginTop: 1 },
-  delStatus: { fontSize: 9, fontWeight: '600', fontFamily: typography.fontFamily },
+  delName: { fontSize: 12, fontWeight: '500', color: B.w70, fontFamily: THEME.typography.fontFamily },
+  delId: { fontSize: 9, color: B.w50, fontFamily: THEME.typography.fontFamily, marginTop: 1 },
+  delStatus: { fontSize: 9, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
   monthRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  monthLabel: { fontSize: 8, color: B.w30, fontFamily: typography.fontFamily },
+  monthLabel: { fontSize: 8, color: B.w30, fontFamily: THEME.typography.fontFamily },
 });
 
 // ═══════════════════════════════════════
@@ -461,7 +462,7 @@ const ms = StyleSheet.create({
     paddingVertical: 7, paddingHorizontal: 16, borderRadius: 8,
     backgroundColor: B.w06, borderWidth: 1, borderColor: B.w06,
   },
-  skipBtnText: { fontSize: 13, fontWeight: '500', color: B.w30, fontFamily: typography.fontFamily },
+  skipBtnText: { fontSize: 13, fontWeight: '500', color: B.w30, fontFamily: THEME.typography.fontFamily },
 
   slide: { width, flex: 1, backgroundColor: B.navy },
   slideContent: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
@@ -480,37 +481,37 @@ const ms = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardLogo: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  cardLogoText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5, fontFamily: typography.fontFamily },
-  cardTitle: { fontSize: 11, fontWeight: '600', color: B.w95, fontFamily: typography.fontFamily },
-  cardTitleSub: { fontSize: 9, color: B.w50, fontFamily: typography.fontFamily, marginTop: 1 },
+  cardLogoText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5, fontFamily: THEME.typography.fontFamily },
+  cardTitle: { fontSize: 11, fontWeight: '600', color: B.w95, fontFamily: THEME.typography.fontFamily },
+  cardTitleSub: { fontSize: 9, color: B.w50, fontFamily: THEME.typography.fontFamily, marginTop: 1 },
   cardBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
-  cardBadgeText: { fontSize: 9, fontWeight: '600', fontFamily: typography.fontFamily },
+  cardBadgeText: { fontSize: 9, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
 
   // Floating Badges
   fBadge: { position: 'absolute', backgroundColor: 'rgba(11,17,32,0.88)', borderWidth: 1, borderRadius: 12, paddingVertical: 7, paddingHorizontal: 11 },
   fBadge1: { top: -10, right: -8 },
   fBadge2: { bottom: -6, left: -6 },
-  fBadgeVal: { fontSize: 15, fontWeight: '700', fontFamily: typography.fontFamily, lineHeight: 18 },
-  fBadgeLbl: { fontSize: 9, color: B.w50, fontFamily: typography.fontFamily, marginTop: 1 },
+  fBadgeVal: { fontSize: 15, fontWeight: '700', fontFamily: THEME.typography.fontFamily, lineHeight: 18 },
+  fBadgeLbl: { fontSize: 9, color: B.w50, fontFamily: THEME.typography.fontFamily, marginTop: 1 },
 
   // Tag
   tag: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, borderWidth: 1, marginBottom: 20, gap: 7 },
   tagDot: { width: 5, height: 5, borderRadius: 3 },
-  tagText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: typography.fontFamily },
+  tagText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: THEME.typography.fontFamily },
 
   // Title
-  title: { fontSize: 28, fontWeight: '700', color: B.w95, textAlign: 'center', lineHeight: 36, marginBottom: 12, fontFamily: typography.fontFamily, letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, color: B.w50, textAlign: 'center', lineHeight: 22, fontFamily: typography.fontFamily, maxWidth: 300 },
+  title: { fontSize: 28, fontWeight: '700', color: B.w95, textAlign: 'center', lineHeight: 36, marginBottom: 12, fontFamily: THEME.typography.fontFamily, letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: B.w50, textAlign: 'center', lineHeight: 22, fontFamily: THEME.typography.fontFamily, maxWidth: 300 },
 
   // Bottom
   bottom: { paddingHorizontal: 28, paddingBottom: 42, alignItems: 'center', backgroundColor: B.navy },
   dotsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, gap: 7 },
   dot: { height: 5, borderRadius: 3 },
   cta: { width: '100%', height: 54, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  ctaText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF', fontFamily: typography.fontFamily, letterSpacing: 0.2 },
+  ctaText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily, letterSpacing: 0.2 },
   skipBelowReserved: { height: 40, justifyContent: 'center', alignItems: 'center' },
   skipBelow: { paddingVertical: 6 },
-  skipBelowText: { fontSize: 13, color: B.w30, fontWeight: '500', fontFamily: typography.fontFamily },
+  skipBelowText: { fontSize: 13, color: B.w30, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
 });
 
 export default OnboardingScreen;

@@ -40,7 +40,8 @@ import {
 import { formatCurrency } from '../../../utils/formatters';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import dayjs from 'dayjs';
 import type { PurchaseOrderStatus } from '../../../types';
 
@@ -352,8 +353,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  back: { fontSize: 15, color: colors.danger, fontWeight: '600', fontFamily: typography.fontFamily },
-  title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  back: { fontSize: 15, color: colors.danger, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
+  title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   scroll: { padding: spacing.md },
   row: { flexDirection: 'row', gap: spacing.sm },
   half: { flex: 1 },
@@ -364,14 +365,14 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.xs,
     marginTop: spacing.md,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   miniLabel: {
     fontSize: 11,
     fontWeight: '600',
     color: colors.textLight,
     marginBottom: 2,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   input: {
     backgroundColor: colors.white,
@@ -382,7 +383,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   inputError: { borderColor: colors.danger },
   sectionHeader: {
@@ -392,9 +393,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  addLine: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
-  errorText: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: typography.fontFamily },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  addLine: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  errorText: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
   lineCard: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
@@ -408,7 +409,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  lineNum: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  lineNum: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   removeLine: { fontSize: 16, color: colors.danger, fontWeight: '700' },
   lineInput: {
     backgroundColor: colors.background,
@@ -418,14 +419,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textPrimary,
     marginTop: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   lineAmount: {
     fontSize: 13,
     fontWeight: '700',
     color: colors.primary,
     marginTop: spacing.sm,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   totalsCard: {
     backgroundColor: colors.white,
@@ -445,9 +446,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     paddingTop: spacing.sm,
   },
-  totalLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  totalValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  totalLabelBold: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  totalValueBold: { fontSize: 15, fontWeight: '700', color: colors.primary, fontFamily: typography.fontFamily },
+  totalLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  totalValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  totalLabelBold: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  totalValueBold: { fontSize: 15, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
   actions: { marginTop: spacing.lg },
 });

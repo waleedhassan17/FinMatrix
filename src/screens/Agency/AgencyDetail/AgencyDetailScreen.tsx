@@ -17,7 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAgencies } from '../AgencyList/agencyListSlice';
 import {
@@ -424,8 +425,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, flex: 1, textAlign: 'center' },
+  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1, textAlign: 'center' },
 
   // ── Info Card ─────────────────────────────────────
   infoCard: {
@@ -437,13 +438,13 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   infoTop: { flexDirection: 'row', marginBottom: spacing.sm },
-  infoName: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
+  infoName: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
   typeBadge: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  typeBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
-  infoDesc: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, marginBottom: spacing.sm },
+  typeBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  infoDesc: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.xs + 2, gap: spacing.xs },
   infoLabel: { fontSize: 14 },
-  infoValue: { fontSize: 13, color: colors.textPrimary, fontFamily: typography.fontFamily, flex: 1 },
+  infoValue: { fontSize: 13, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
 
   statRow: { flexDirection: 'row', marginTop: spacing.sm, gap: spacing.sm },
   statBox: {
@@ -453,8 +454,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     alignItems: 'center',
   },
-  statValue: { fontSize: 13, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily },
-  statLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
+  statValue: { fontSize: 13, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  statLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
 
   // ── Tabs ──────────────────────────────────────────
   tabRow: {
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
   },
   tab: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm + 2 },
   tabActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.textLight, fontFamily: typography.fontFamily },
+  tabText: { fontSize: 13, fontWeight: '600', color: colors.textLight, fontFamily: THEME.typography.fontFamily },
   tabTextActive: { color: colors.primary },
 
   // ── Inventory Tab ─────────────────────────────────
@@ -480,7 +481,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     fontSize: 13,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   sortRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.xs },
   sortChip: {
@@ -492,7 +493,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   sortChipActive: { backgroundColor: colors.secondary + '15', borderColor: colors.secondary },
-  sortChipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  sortChipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   sortChipTextActive: { color: colors.secondary },
 
   invRow: {
@@ -504,11 +505,11 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     backgroundColor: colors.white,
   },
-  invName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  invSku: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
+  invName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  invSku: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
   invRight: { alignItems: 'flex-end' },
-  invQty: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  invValue: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  invQty: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  invValue: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 
   // ── Deliveries Tab ────────────────────────────────
   delCard: {
@@ -519,14 +520,14 @@ const styles = StyleSheet.create({
     ...shadows.small,
   },
   delTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  delRef: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  delRef: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   delStatusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  delStatusText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
+  delStatusText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
   delBottom: { flexDirection: 'row', gap: spacing.lg },
-  delDetail: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  delDetail: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 
   // ── Analytics Tab ─────────────────────────────────
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily, marginBottom: spacing.sm },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
   analyticsStatRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   analyticsStat: {
     flex: 1,
@@ -536,14 +537,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadows.small,
   },
-  analyticsStatVal: { fontSize: 16, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily },
-  analyticsStatLbl: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
+  analyticsStatVal: { fontSize: 16, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  analyticsStatLbl: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
 
   barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-  barLabel: { width: 90, fontSize: 11, color: colors.textPrimary, fontFamily: typography.fontFamily },
+  barLabel: { width: 90, fontSize: 11, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   barTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: colors.border, overflow: 'hidden', marginHorizontal: spacing.xs },
   barFill: { height: 10, borderRadius: 5, backgroundColor: colors.secondary },
-  barValue: { width: 80, fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily, textAlign: 'right' },
+  barValue: { width: 80, fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'right' },
 
   catRow: {
     flexDirection: 'row',
@@ -556,14 +557,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs + 2,
     ...shadows.small,
   },
-  catName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  catName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   catRight: { alignItems: 'flex-end' },
-  catQty: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
-  catValue: { fontSize: 12, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  catQty: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+  catValue: { fontSize: 12, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   // ── Common ────────────────────────────────────────
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: spacing.xl * 2 },
-  emptyText: { fontSize: 14, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyText: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 });
 
 export default AgencyDetailScreen;

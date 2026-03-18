@@ -20,7 +20,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchBills,
@@ -28,10 +29,12 @@ import {
   selectBillSearchQuery,
   selectBillStatusFilter,
   selectBillIsLoading,
+  selectBillError,
   setSearchQuery,
   setStatusFilter,
   type BillStatusFilter,
 } from './billListSlice';
+import EmptyState from '../../../components/EmptyState';
 import { BILL_STATUS_COLORS, BILL_STATUS_LABELS } from '../../../models/billModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { Bill, BillStatus } from '../../../types';
@@ -50,6 +53,7 @@ const BillListScreen: React.FC = () => {
   const searchQuery = useAppSelector(selectBillSearchQuery);
   const statusFilter = useAppSelector(selectBillStatusFilter);
   const isLoading = useAppSelector(selectBillIsLoading);
+  const error = useAppSelector(selectBillError);
   const [searchOpen, setSearchOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -161,6 +165,16 @@ const BillListScreen: React.FC = () => {
     );
   }
 
+  if (error && bills.length === 0) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.center}>
+          <EmptyState title="Failed to Load" message={error} actionLabel="Retry" onAction={() => dispatch(fetchBills())} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* ── Header ──────────────────────────────── */}
@@ -253,10 +267,12 @@ const BillListScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
         }
         ListEmptyComponent={
-          <View style={styles.center}>
-            <Text style={styles.emptyIcon}>📄</Text>
-            <Text style={styles.emptyText}>No bills found</Text>
-          </View>
+          <EmptyState
+            title="No Bills Found"
+            message={searchQuery ? `No results for "${searchQuery}"` : 'Create your first bill to get started.'}
+            actionLabel="Create Bill"
+            onAction={() => navigation.navigate('BillForm')}
+          />
         }
       />
 
@@ -288,8 +304,8 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
 
@@ -308,8 +324,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadows.small,
   },
-  summaryValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily },
-  summaryLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
+  summaryValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  summaryLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
 
   searchRow: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   searchInput: {
@@ -321,7 +337,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   tabsScroll: {
@@ -345,7 +361,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   tabTextActive: { color: colors.white },
   tabCount: {
     marginLeft: spacing.xs,
@@ -357,7 +373,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
-  tabCountText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  tabCountText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   tabCountTextActive: { color: colors.white },
 
   listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 80 },
@@ -369,13 +385,13 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
-  cardBillNo: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  cardVendor: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
+  cardBillNo: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  cardVendor: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
+  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
 
   cardDates: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
-  dateText: { fontSize: 12, color: colors.textLight, fontFamily: typography.fontFamily },
+  dateText: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
 
   cardBottom: {
     flexDirection: 'row',
@@ -385,12 +401,12 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingTop: spacing.sm,
   },
-  amtLabel: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
-  amtValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  amtLabel: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+  amtValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
-  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 
   fab: {
     position: 'absolute',

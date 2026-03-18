@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../../theme';
+import { THEME } from '../../../../utils/theme';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectDeliveries, selectDeliveryPersonnel } from '../AssignDeliveries/deliverySlice';
@@ -312,8 +313,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   backBtn: { padding: spacing.xs },
-  back: { ...typography.h2, color: colors.primary },
-  title: { ...typography.h4, color: colors.textPrimary },
+  back: { ...THEME.typography.displaySm, color: colors.primary },
+  title: { ...THEME.typography.h3, color: colors.textPrimary },
 
   content: { padding: spacing.md, paddingBottom: spacing.xl },
 
@@ -329,8 +330,8 @@ const styles = StyleSheet.create({
   },
   statItem: { alignItems: 'center', flex: 1 },
   statDot: { width: 8, height: 8, borderRadius: 4, marginBottom: 2 },
-  statCount: { ...typography.h4, color: colors.textPrimary },
-  statLabel: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
+  statCount: { ...THEME.typography.h3, color: colors.textPrimary },
+  statLabel: { ...THEME.typography.caption, color: colors.textSecondary, textAlign: 'center' },
 
   // Map
   mapPlaceholder: {
@@ -344,8 +345,8 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   mapIcon: { fontSize: 36, marginBottom: spacing.sm },
-  mapTitle: { ...typography.h4, color: colors.textPrimary, marginBottom: spacing.xs },
-  mapSub: { ...typography.caption, color: colors.textSecondary },
+  mapTitle: { ...THEME.typography.h3, color: colors.textPrimary, marginBottom: spacing.xs },
+  mapSub: { ...THEME.typography.caption, color: colors.textSecondary },
 
   // Sort
   sortRow: {
@@ -354,7 +355,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     gap: spacing.xs,
   },
-  sortLabel: { ...typography.small, color: colors.textSecondary },
+  sortLabel: { ...THEME.typography.bodyMd, color: colors.textSecondary },
   sortChip: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
@@ -364,7 +365,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBg,
   },
   sortChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  sortChipText: { ...typography.caption, color: colors.textSecondary },
+  sortChipText: { ...THEME.typography.caption, color: colors.textSecondary },
   sortChipTextActive: { color: colors.white, fontWeight: '600' },
 
   // Filter Chips
@@ -378,12 +379,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.cardBg,
   },
-  filterChipText: { ...typography.caption, color: colors.textSecondary },
+  filterChipText: { ...THEME.typography.caption, color: colors.textSecondary },
   filterChipTextActive: { color: colors.white, fontWeight: '600' },
 
   // Feed
   feedHeader: {
-    ...typography.small,
+    ...THEME.typography.bodyMd,
     color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
@@ -405,8 +406,8 @@ const styles = StyleSheet.create({
   cardLeftGroup: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   statusIcon: { fontSize: 22, marginRight: spacing.sm },
   cardInfo: { flex: 1 },
-  cardCustomer: { ...typography.body, fontWeight: '600', color: colors.textPrimary },
-  cardAddress: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  cardCustomer: { ...THEME.typography.bodyLg, fontWeight: '600', color: colors.textPrimary },
+  cardAddress: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
 
   priorityBadge: {
     paddingHorizontal: spacing.sm,
@@ -422,7 +423,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, flex: 1 },
-  metaChip: { ...typography.caption, color: colors.textSecondary },
+  metaChip: { ...THEME.typography.caption, color: colors.textSecondary },
   cardRightGroup: { alignItems: 'flex-end' },
   statusBadge: {
     paddingHorizontal: spacing.sm,
@@ -430,7 +431,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
   },
   statusText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
-  elapsed: { ...typography.caption, color: colors.textLight, marginTop: 4 },
+  elapsed: { ...THEME.typography.caption, color: colors.textLight, marginTop: 4 },
 
   cardFooter: {
     flexDirection: 'row',
@@ -441,13 +442,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  refNo: { ...typography.caption, color: colors.textLight },
-  chevron: { ...typography.h3, color: colors.textLight },
+  refNo: { ...THEME.typography.caption, color: colors.textLight },
+  chevron: { ...THEME.typography.h2, color: colors.textLight },
 
   // Empty state
   empty: { alignItems: 'center', paddingVertical: spacing.xl },
   emptyIcon: { fontSize: 48, marginBottom: spacing.md },
-  emptyText: { ...typography.body, color: colors.textSecondary },
+  emptyText: { ...THEME.typography.bodyLg, color: colors.textSecondary },
 });
 
 export default DeliveryMonitorScreen;

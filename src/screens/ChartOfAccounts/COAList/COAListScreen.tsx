@@ -20,7 +20,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchAccounts,
@@ -69,7 +70,7 @@ const formatBalance = (balance: number): string => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return balance < 0 ? `-$${formatted}` : `$${formatted}`;
+  return balance < 0 ? `-Rs ${formatted}` : `Rs ${formatted}`;
 };
 
 interface Section {
@@ -383,7 +384,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   addBtn: {
     backgroundColor: colors.primary,
@@ -395,7 +396,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.white,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Search ────────────────────────────────────────
@@ -419,7 +420,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     paddingVertical: 0,
   },
   clearBtn: {
@@ -455,7 +456,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   chipTextSelected: {
     color: colors.white,
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginRight: spacing.sm,
   },
   countBadge: {
@@ -488,13 +489,13 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 11,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   sectionTotal: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Account Row ───────────────────────────────────
@@ -522,7 +523,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     flexShrink: 1,
   },
   dimmedText: { color: colors.textLight },
@@ -537,13 +538,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#DC2626',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   accountRight: { alignItems: 'flex-end' },
   accountBalance: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 4,
   },
   editBtn: {
@@ -556,7 +557,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.secondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Empty & List ──────────────────────────────────

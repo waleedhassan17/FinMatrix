@@ -16,7 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAccounts, toggleAccount } from '../COAList/coaListSlice';
 import {
@@ -58,7 +59,7 @@ const formatBalance = (balance: number): string => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return balance < 0 ? `-$${formatted}` : `$${formatted}`;
+  return balance < 0 ? `-Rs ${formatted}` : `Rs ${formatted}`;
 };
 
 // ═══════════════════════════════════════════════════════
@@ -301,8 +302,8 @@ const COADetailScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  notFound: { fontSize: 16, color: colors.textSecondary, marginBottom: spacing.md, fontFamily: typography.fontFamily },
-  goBack: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
+  notFound: { fontSize: 16, color: colors.textSecondary, marginBottom: spacing.md, fontFamily: THEME.typography.fontFamily },
+  goBack: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
 
   // ── Header ────────────────────────────────────────
   header: {
@@ -316,8 +317,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   headerSpacer: { width: 60 },
 
   scroll: { flex: 1 },
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   typeBadge: {
     paddingHorizontal: spacing.sm + 2,
@@ -360,13 +361,13 @@ const styles = StyleSheet.create({
   typeBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   subType: {
     fontSize: 13,
     color: colors.textSecondary,
     marginBottom: spacing.sm,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   topCardFooter: {
     flexDirection: 'row',
@@ -378,8 +379,8 @@ const styles = StyleSheet.create({
   },
   statusRow: { flexDirection: 'row', alignItems: 'center' },
   statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: spacing.xs },
-  statusText: { fontSize: 13, fontWeight: '500', color: colors.textSecondary, fontFamily: typography.fontFamily },
-  balanceValue: { fontSize: 22, fontWeight: '700', fontFamily: typography.fontFamily },
+  statusText: { fontSize: 13, fontWeight: '500', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  balanceValue: { fontSize: 22, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
 
   // ── Action Buttons ────────────────────────────────
   actionRow: {
@@ -403,7 +404,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success + '08',
   },
   actionBtnIcon: { fontSize: 16, marginRight: spacing.xs },
-  actionBtnText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  actionBtnText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   actionBtnTextActive: { color: colors.success },
 
   // ── Tabs ──────────────────────────────────────────
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm - 2,
   },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 14, fontWeight: '500', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  tabText: { fontSize: 14, fontWeight: '500', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   tabTextActive: { color: colors.white, fontWeight: '600' },
 
   // ── Transactions ──────────────────────────────────
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
   },
   txnRow: {
@@ -458,13 +459,13 @@ const styles = StyleSheet.create({
   },
   txnRowAlt: { backgroundColor: '#FAFBFC' },
   txnLeft: { width: 72 },
-  txnDate: { fontSize: 11, fontWeight: '500', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  txnRef: { fontSize: 10, color: colors.textLight, fontFamily: typography.fontFamily },
-  txnMemo: { flex: 1, fontSize: 12, color: colors.textPrimary, marginHorizontal: spacing.xs, fontFamily: typography.fontFamily },
-  txnAmount: { width: 62, fontSize: 12, fontWeight: '600', textAlign: 'right', fontFamily: typography.fontFamily, color: colors.textSecondary },
+  txnDate: { fontSize: 11, fontWeight: '500', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  txnRef: { fontSize: 10, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+  txnMemo: { flex: 1, fontSize: 12, color: colors.textPrimary, marginHorizontal: spacing.xs, fontFamily: THEME.typography.fontFamily },
+  txnAmount: { width: 62, fontSize: 12, fontWeight: '600', textAlign: 'right', fontFamily: THEME.typography.fontFamily, color: colors.textSecondary },
   txnDebit: { color: colors.success },
   txnCredit: { color: colors.danger },
-  txnRunning: { width: 70, fontSize: 12, fontWeight: '600', textAlign: 'right', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  txnRunning: { width: 70, fontSize: 12, fontWeight: '600', textAlign: 'right', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   // ── Info ──────────────────────────────────────────
   infoCard: {
@@ -481,8 +482,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily, maxWidth: '60%', textAlign: 'right' },
+  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, maxWidth: '60%', textAlign: 'right' },
 });
 
 export default COADetailScreen;

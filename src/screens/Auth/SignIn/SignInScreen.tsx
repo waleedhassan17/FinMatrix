@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import CustomInput from '../../../Custom-Components/CustomInput';
-import { typography } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { ROUTES } from '../../../navigations-map/Base';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser } from '../authSlice';
@@ -545,13 +545,13 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   brand: {
     fontSize: 22,
     fontWeight: '700',
     marginBottom: 16,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   brandFin: { color: DS.green400 },
   brandMatrix: { color: DS.white },
@@ -560,13 +560,13 @@ const s = StyleSheet.create({
     fontWeight: '700',
     color: DS.white,
     marginBottom: 6,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.4,
   },
   headerSub: {
     fontSize: 15,
     color: 'rgba(255,255,255,0.45)',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 22,
   },
 
@@ -610,14 +610,14 @@ const s = StyleSheet.create({
   remLabel: {
     fontSize: 13,
     color: DS.slate500,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     fontWeight: '500',
   },
   forgotLabel: {
     fontSize: 13,
     fontWeight: '600',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Error banner ──
@@ -650,13 +650,13 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: DS.red700,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 2,
   },
   errorMsg: {
     fontSize: 12,
     color: DS.red900,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 18,
     opacity: 0.85,
   },
@@ -681,7 +681,7 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: DS.white,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: 0.3,
   },
   ctaLoadingRow: {
@@ -721,13 +721,13 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#065F46',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 3,
   },
   infoBody: {
     fontSize: 12,
     color: '#065F46',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 19,
     opacity: 0.8,
   },
@@ -741,13 +741,13 @@ const s = StyleSheet.create({
   bottomText: {
     fontSize: 14,
     color: DS.slate500,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   bottomLink: {
     fontSize: 14,
     fontWeight: '700',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Dev banner ──
@@ -774,12 +774,12 @@ const s = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   devText: {
     fontSize: 13,
     color: '#92400E',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Security footer ──
@@ -799,7 +799,7 @@ const s = StyleSheet.create({
   secText: {
     fontSize: 11,
     color: DS.slate400,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     fontWeight: '500',
   },
 });

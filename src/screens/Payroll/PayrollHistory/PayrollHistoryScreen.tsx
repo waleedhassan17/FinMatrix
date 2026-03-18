@@ -15,7 +15,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchPayrollHistory,
@@ -292,13 +293,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   content: {
     padding: spacing.lg,
@@ -322,13 +323,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textPrimary,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   cardSub: {
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 2,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   status: {
     fontSize: 11,
@@ -339,15 +340,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     textTransform: 'capitalize',
     overflow: 'hidden',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   metricsRow: {
     marginTop: spacing.sm,
     flexDirection: 'row',
   },
   metricItem: { flex: 1 },
-  metricLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  metricValue: { fontSize: 13, color: colors.textPrimary, fontWeight: '600', marginTop: 2, fontFamily: typography.fontFamily },
+  metricLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  metricValue: { fontSize: 13, color: colors.textPrimary, fontWeight: '600', marginTop: 2, fontFamily: THEME.typography.fontFamily },
   metricValueHighlight: { color: colors.success },
   cardActions: {
     marginTop: spacing.sm,
@@ -366,7 +367,7 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   drilldown: {
     marginTop: spacing.sm,
@@ -379,25 +380,25 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontWeight: '700',
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   rowLine: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.xs,
   },
-  rowName: { fontSize: 12, color: colors.textPrimary, fontFamily: typography.fontFamily, fontWeight: '600' },
-  rowSub: { fontSize: 11, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  rowValue: { fontSize: 12, color: colors.textPrimary, marginRight: spacing.sm, fontFamily: typography.fontFamily },
+  rowName: { fontSize: 12, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, fontWeight: '600' },
+  rowSub: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  rowValue: { fontSize: 12, color: colors.textPrimary, marginRight: spacing.sm, fontFamily: THEME.typography.fontFamily },
   stubBtn: {
     backgroundColor: colors.primary + '14',
     borderRadius: 999,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
   },
-  stubBtnText: { fontSize: 11, color: colors.primary, fontWeight: '700', fontFamily: typography.fontFamily },
+  stubBtnText: { fontSize: 11, color: colors.primary, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
-  emptyText: { color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyText: { color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 });
 
 export default PayrollHistoryScreen;

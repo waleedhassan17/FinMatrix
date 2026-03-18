@@ -18,7 +18,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchJournalEntries,
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   addBtn: {
     paddingHorizontal: spacing.md,
@@ -273,7 +274,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: 14,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     color: colors.textPrimary,
   },
 
@@ -303,7 +304,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   chipTextActive: { color: colors.white },
 
@@ -329,24 +330,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   badge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: 10,
   },
-  badgeText: { fontSize: 12, fontWeight: '600', fontFamily: typography.fontFamily },
+  badgeText: { fontSize: 12, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
   cardDate: {
     fontSize: 13,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.xs,
   },
   cardMemo: {
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.sm,
   },
   cardBottom: {
@@ -358,12 +359,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.primary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   cardLines: {
     fontSize: 12,
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

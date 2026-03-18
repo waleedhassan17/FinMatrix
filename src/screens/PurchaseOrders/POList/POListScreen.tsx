@@ -28,11 +28,14 @@ import {
   selectSearchQuery,
   selectStatusFilter,
   selectIsLoading,
+  selectError,
 } from './poListSlice';
+import EmptyState from '../../../components/EmptyState';
 import { PO_STATUS_LABELS, PO_STATUS_COLORS } from '../../../models/purchaseOrderModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
 
+import { THEME } from '../../../utils/theme';
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 
 const STATUS_TABS: { key: PurchaseOrderStatus | 'all'; label: string }[] = [
@@ -51,6 +54,7 @@ const POListScreen: React.FC = () => {
   const search = useAppSelector(selectSearchQuery);
   const filter = useAppSelector(selectStatusFilter);
   const isLoading = useAppSelector(selectIsLoading);
+  const error = useAppSelector(selectError);
   const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
@@ -177,6 +181,10 @@ const POListScreen: React.FC = () => {
       {/* List */}
       {isLoading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing.xl }} />
+      ) : error && filtered.length === 0 ? (
+        <View style={styles.empty}>
+          <EmptyState title="Failed to Load" message={error} actionLabel="Retry" onAction={() => dispatch(fetchPurchaseOrders())} />
+        </View>
       ) : (
         <FlatList
           data={filtered}
@@ -191,13 +199,12 @@ const POListScreen: React.FC = () => {
             />
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>📝</Text>
-              <Text style={styles.emptyTitle}>No purchase orders</Text>
-              <Text style={styles.emptySubtitle}>
-                Tap + to create your first purchase order
-              </Text>
-            </View>
+            <EmptyState
+              title="No Purchase Orders"
+              message="Create your first purchase order to get started."
+              actionLabel="Create PO"
+              onAction={() => navigation.navigate('POForm')}
+            />
           }
         />
       )}
@@ -229,8 +236,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  back: { fontSize: 17, color: colors.secondary, fontWeight: '600', fontFamily: typography.fontFamily },
-  title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  back: { fontSize: 17, color: colors.secondary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
+  title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   searchIcon: { fontSize: 18 },
   searchBar: {
     backgroundColor: colors.white,
@@ -244,7 +251,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   summaryBar: {
     flexDirection: 'row',
@@ -255,8 +262,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   summaryItem: { flex: 1, alignItems: 'center' },
-  summaryValue: { fontSize: 16, fontWeight: '700', color: colors.primary, fontFamily: typography.fontFamily },
-  summaryLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2, fontFamily: typography.fontFamily },
+  summaryValue: { fontSize: 16, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  summaryLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily },
   tabsScroll: {
     minHeight: 44,
     backgroundColor: colors.white,
@@ -277,7 +284,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs,
   },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  tabText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   tabTextActive: { color: colors.white },
   list: { padding: spacing.md, paddingTop: spacing.xs, paddingBottom: 100 },
   card: {
@@ -289,17 +296,17 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardNumber: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  cardNumber: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 6 },
-  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
-  cardVendor: { fontSize: 13, color: colors.textSecondary, marginTop: 4, fontFamily: typography.fontFamily },
+  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  cardVendor: { fontSize: 13, color: colors.textSecondary, marginTop: 4, fontFamily: THEME.typography.fontFamily },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
-  cardDate: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
-  cardTotal: { fontSize: 15, fontWeight: '700', color: colors.primary, fontFamily: typography.fontFamily },
+  cardDate: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+  cardTotal: { fontSize: 15, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
   empty: { alignItems: 'center', marginTop: spacing.xl * 2 },
   emptyIcon: { fontSize: 48, marginBottom: spacing.md },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  emptySubtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 4, fontFamily: typography.fontFamily },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  emptySubtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 4, fontFamily: THEME.typography.fontFamily },
   fab: {
     position: 'absolute',
     bottom: spacing.lg,

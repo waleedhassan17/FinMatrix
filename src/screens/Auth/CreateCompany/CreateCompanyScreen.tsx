@@ -20,7 +20,7 @@ import { v4 as uuidv4 } from 'uuid';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
-import { typography } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { ROUTES } from '../../../navigations-map/Base';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser } from '../authSlice';
@@ -1131,20 +1131,20 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: '700',
     color: DS.white,
     marginBottom: 6,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.4,
   },
   headerSub: {
     fontSize: 15,
     color: 'rgba(255,255,255,0.45)',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 22,
   },
 
@@ -1193,7 +1193,7 @@ const s = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
     color: DS.slate400,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -1229,7 +1229,7 @@ const s = StyleSheet.create({
   progressLabel: {
     fontSize: 11,
     color: DS.slate400,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     fontWeight: '500',
     textAlign: 'right',
   },
@@ -1264,7 +1264,7 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: DS.slate500,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -1317,7 +1317,7 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   typeBadge: {
     flexDirection: 'row',
@@ -1335,13 +1335,13 @@ const s = StyleSheet.create({
   typeBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   agencyDesc: {
     fontSize: 13,
     color: DS.slate500,
     marginBottom: 10,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     lineHeight: 18,
   },
   agencyMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -1353,7 +1353,7 @@ const s = StyleSheet.create({
   agencyMetaText: {
     fontSize: 11,
     color: DS.slate500,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   expandButton: {
     flexDirection: 'row',
@@ -1367,7 +1367,7 @@ const s = StyleSheet.create({
     fontSize: 12,
     color: DS.blue600,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   inventoryPreview: {
     paddingHorizontal: 16,
@@ -1394,13 +1394,13 @@ const s = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   inventoryItemPrice: {
     fontSize: 13,
     color: DS.green500,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Selection summary ──
@@ -1419,7 +1419,7 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: DS.green500,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Error banner ──
@@ -1447,7 +1447,7 @@ const s = StyleSheet.create({
     flex: 1,
     color: DS.red900,
     fontSize: 13,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Add custom ──
@@ -1476,7 +1476,7 @@ const s = StyleSheet.create({
     color: DS.blue600,
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   customForm: {
     backgroundColor: DS.slate50,
@@ -1495,7 +1495,7 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   buttonRow: { flexDirection: 'row', marginTop: 12 },
   buttonSpacer: { width: 10 },
@@ -1518,7 +1518,7 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   summaryDivider: {
     height: 1,
@@ -1536,7 +1536,7 @@ const s = StyleSheet.create({
   summaryLabel: {
     fontSize: 13,
     color: DS.slate500,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   summaryValue: {
     fontSize: 13,
@@ -1545,7 +1545,7 @@ const s = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
     marginLeft: 12,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   agencySummaryRow: {
     flexDirection: 'row',
@@ -1567,7 +1567,7 @@ const s = StyleSheet.create({
   agencySummaryName: {
     fontSize: 13,
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   agencySummaryBadge: {
     backgroundColor: DS.slate200,
@@ -1579,7 +1579,7 @@ const s = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: DS.slate500,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   totalRow: {
     flexDirection: 'row',
@@ -1593,13 +1593,13 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   totalValue: {
     fontSize: 14,
     fontWeight: '700',
     color: DS.green500,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Invite code ──
@@ -1626,7 +1626,7 @@ const s = StyleSheet.create({
   inviteCodeLabel: {
     fontSize: 12,
     color: DS.slate500,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 14,
     fontWeight: '500',
     textTransform: 'uppercase',
@@ -1648,13 +1648,13 @@ const s = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   inviteCodeHint: {
     fontSize: 12,
     color: DS.slate400,
     textAlign: 'center',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Action bar ──
@@ -1687,7 +1687,7 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: DS.navy800,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   actionPrimary: {
     flex: 1.4,
@@ -1711,7 +1711,7 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: DS.white,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
     letterSpacing: 0.3,
   },
 
@@ -1732,7 +1732,7 @@ const s = StyleSheet.create({
   secText: {
     fontSize: 12,
     color: DS.slate400,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

@@ -36,8 +36,9 @@ import { receivePOItemsAPI, updatePOStatusAPI } from '../../../network/purchaseO
 import { PO_STATUS_LABELS, PO_STATUS_COLORS } from '../../../models/purchaseOrderModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
 
+import { THEME } from '../../../utils/theme';
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type RouteProps = NativeStackScreenProps<TransactionsStackParamList, 'PODetail'>['route'];
 
@@ -341,13 +342,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  back: { fontSize: 17, color: colors.secondary, fontWeight: '600', fontFamily: typography.fontFamily },
-  title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  editBtn: { fontSize: 15, color: colors.secondary, fontWeight: '600', fontFamily: typography.fontFamily },
+  back: { fontSize: 17, color: colors.secondary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
+  title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  editBtn: { fontSize: 15, color: colors.secondary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
   scroll: { padding: spacing.md },
   statusRow: { alignItems: 'flex-start', marginBottom: spacing.sm },
   statusBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 8 },
-  statusText: { fontSize: 13, fontWeight: '700', fontFamily: typography.fontFamily },
+  statusText: { fontSize: 13, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
   card: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
@@ -360,15 +361,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.sm,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing.xs + 1,
   },
-  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   tableHeader: {
     flexDirection: 'row',
     borderBottomWidth: 1,
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
     marginBottom: spacing.xs,
   },
-  th: { fontSize: 11, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', fontFamily: typography.fontFamily },
+  th: { fontSize: 11, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', fontFamily: THEME.typography.fontFamily },
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -384,20 +385,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  td: { fontSize: 13, color: colors.textPrimary, fontFamily: typography.fontFamily },
-  tdBold: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  tdSub: { fontSize: 11, color: colors.textLight, fontFamily: typography.fontFamily },
+  td: { fontSize: 13, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  tdBold: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  tdSub: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing.xs,
   },
   totalRowBold: { borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.xs, paddingTop: spacing.sm },
-  totalLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily },
-  totalValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  totalLabelBold: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  totalValueBold: { fontSize: 15, fontWeight: '700', color: colors.primary, fontFamily: typography.fontFamily },
-  notesText: { fontSize: 13, color: colors.textSecondary, lineHeight: 20, fontFamily: typography.fontFamily },
+  totalLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  totalValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  totalLabelBold: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  totalValueBold: { fontSize: 15, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  notesText: { fontSize: 13, color: colors.textSecondary, lineHeight: 20, fontFamily: THEME.typography.fontFamily },
   // ─── Receiving ──────
   receiveCard: {
     backgroundColor: colors.white,
@@ -414,8 +415,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  receiveTitle: { fontSize: 15, fontWeight: '700', color: colors.secondary, fontFamily: typography.fontFamily },
-  receiveCancel: { fontSize: 14, color: colors.danger, fontWeight: '600', fontFamily: typography.fontFamily },
+  receiveTitle: { fontSize: 15, fontWeight: '700', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  receiveCancel: { fontSize: 14, color: colors.danger, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
   recTableHeader: {
     flexDirection: 'row',
     borderBottomWidth: 1,
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
     marginBottom: spacing.xs,
   },
-  recTh: { fontSize: 10, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', fontFamily: typography.fontFamily },
+  recTh: { fontSize: 10, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', fontFamily: THEME.typography.fontFamily },
   recRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  recTd: { fontSize: 13, color: colors.textPrimary, fontFamily: typography.fontFamily },
+  recTd: { fontSize: 13, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   recInput: {
     backgroundColor: colors.background,
     borderRadius: borderRadius.sm,
@@ -442,7 +443,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
     textAlign: 'center',
     width: 60,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   actionBar: { marginTop: spacing.md },
 });

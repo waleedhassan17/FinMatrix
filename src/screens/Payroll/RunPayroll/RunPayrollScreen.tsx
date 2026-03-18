@@ -15,7 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PieChart } from 'react-native-chart-kit';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   PAYROLL_PERIOD_OPTIONS,
@@ -276,13 +277,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   stepRow: {
     flexDirection: 'row',
@@ -311,7 +312,7 @@ const styles = StyleSheet.create({
   stepText: {
     fontSize: 10,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   stepTextActive: {
     color: colors.textPrimary,
@@ -322,7 +323,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   content: { padding: spacing.lg, paddingTop: spacing.sm },
   card: {
@@ -338,13 +339,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: spacing.md,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   periodText: {
     fontSize: 13,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   tableHeader: {
     flexDirection: 'row',
@@ -359,7 +360,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   tableRow: {
     flexDirection: 'row',
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     fontSize: 12,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   employeeCell: {
     minWidth: 170,
@@ -404,13 +405,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textPrimary,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   totalValue: {
     fontSize: 14,
     color: colors.success,
     fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   actionRow: {
     marginTop: spacing.md,
@@ -433,14 +434,14 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   statValue: {
     fontSize: 14,
     color: colors.textPrimary,
     fontWeight: '600',
     marginTop: 2,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
   statValueStrong: {
     color: colors.success,
@@ -449,7 +450,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.success,
     marginBottom: spacing.sm,
-    fontFamily: typography.fontFamily,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

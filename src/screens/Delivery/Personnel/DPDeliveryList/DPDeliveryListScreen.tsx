@@ -1,96 +1,182 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../../theme';
 import { useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectUser } from '../../../Auth/authSlice';
 import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
-import type { DeliveryRecord } from '../../../../dummy-data/deliveries';
+import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'DPDeliveries'>;
 
-const PRIORITY_COLORS: Record<string, string> = {
-  high: '#B91C1C',
-  medium: '#B45309',
-  low: '#0F766E',
+type Delivery = ReturnType<typeof selectDeliveries>[number];
+
+const DeliveryCard: React.FC<{
+  delivery: Delivery;
+  onPress: () => void;
+}> = ({ delivery, onPress }) => {
+  const statusConfig = STATUS_CONFIG[delivery.status] ?? STATUS_CONFIG.unassigned;
+  const priorityConfig = PRIORITY_CONFIG[delivery.priority] ?? PRIORITY_CONFIG.medium;
+
+  return (
+    <TouchableOpacity 
+      style={styles.deliveryCard} 
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.deliveryCardHeader}>
+        <View style={styles.deliveryCardInfo}>
+          <View style={styles.customerRow}>
+            <Text style={styles.customerName}>{delivery.customerName}</Text>
+            <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.bg }]}>
+              <Text style={[styles.priorityBadgeText, { color: priorityConfig.color }]}>
+                {delivery.priority.toUpperCase()}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.referenceNo}>{delivery.referenceNo}</Text>
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+          <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
+            {statusConfig.label}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.deliveryCardBody}>
+        <View style={styles.detailRow}>
+          <Feather name="map-pin" size={13} color={THEME.colors.textTertiary} style={styles.detailFeatherIcon} />
+          <Text style={styles.detailText} numberOfLines={1}>
+            {delivery.address ?? delivery.zone}
+          </Text>
+        </View>
+        <View style={styles.detailRowDivider} />
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Feather name="package" size={12} color={THEME.colors.textTertiary} />
+            <Text style={styles.metaText}> {delivery.items.length} items</Text>
+          </View>
+          <View style={styles.metaDot} />
+          <View style={styles.metaItem}>
+            <Feather name="calendar" size={12} color={THEME.colors.textTertiary} />
+            <Text style={styles.metaText}> {delivery.scheduledDate}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.deliveryCardFooter}>
+        <Text style={styles.viewDetailsText}>View Details</Text>
+        <View style={styles.arrowCircle}>
+          <Feather name="arrow-right" size={12} color={THEME.colors.primary} />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: '#2563EB',
-  picked_up: '#8B5CF6',
-  in_transit: '#D97706',
-  arrived: '#0EA5E9',
-  delivered: '#059669',
-  failed: '#DC2626',
-  returned: '#7C3AED',
-  unassigned: '#6B7280',
-};
-
-const elapsedLabel = (from: string): string => {
-  const mins = Math.floor((Date.now() - new Date(from).getTime()) / 60000);
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.floor(hrs / 24)}d`;
-};
-
-const DeliveryCard: React.FC<{ delivery: DeliveryRecord; onPress: () => void }> = ({ delivery, onPress }) => (
-  <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-    <View style={styles.rowBetween}>
-      <Text style={styles.customer} numberOfLines={1}>{delivery.customerName}</Text>
-      <View style={[styles.priorityPill, { backgroundColor: PRIORITY_COLORS[delivery.priority] + '22' }]}>
-        <Text style={[styles.priorityText, { color: PRIORITY_COLORS[delivery.priority] }]}>{delivery.priority.toUpperCase()}</Text>
+const SectionCard: React.FC<{
+  title: string;
+  icon: React.ComponentProps<typeof Feather>['name'];
+  count: number;
+  color: string;
+  children: React.ReactNode;
+  emptyText?: string;
+}> = ({ title, icon, count, color, children, emptyText }) => (
+  <View style={styles.sectionCard}>
+    <View style={styles.sectionHeader}>
+      <View style={[styles.sectionIconWrap, { backgroundColor: `${color}15` }]}>
+        <Feather name={icon} size={16} color={color} />
+      </View>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={[styles.sectionCount, { backgroundColor: `${color}15` }]}>
+        <Text style={[styles.sectionCountText, { color }]}>{count}</Text>
       </View>
     </View>
-
-    <Text style={styles.address} numberOfLines={1}>{delivery.address ?? delivery.zone}</Text>
-
-    <View style={styles.metaRow}>
-      <Text style={styles.metaText}>{delivery.items.length} items</Text>
-      <Text style={[styles.statusText, { color: STATUS_COLORS[delivery.status] }]}>{delivery.status.replace('_', ' ')}</Text>
-      <Text style={styles.metaText}>{elapsedLabel(delivery.updatedAt)} ago</Text>
-    </View>
-  </TouchableOpacity>
+    {count === 0 ? (
+      <View style={styles.emptySection}>
+        <Feather name="inbox" size={20} color={THEME.colors.textDisabled} />
+        <Text style={styles.emptySectionText}>{emptyText ?? 'No deliveries'}</Text>
+      </View>
+    ) : (
+      <View style={styles.sectionContent}>{children}</View>
+    )}
+  </View>
 );
 
 const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
   const user = useAppSelector(selectUser);
-  const allDeliveries = useAppSelector(selectDeliveries);
+  const deliveries = useAppSelector(selectDeliveries);
   const userId = user?.uid ?? 'dp_002';
 
   const myDeliveries = useMemo(
-    () => allDeliveries.filter(d => d.assignedTo === userId),
-    [allDeliveries, userId],
+    () => deliveries.filter(d => d.assignedTo === userId),
+    [deliveries, userId],
   );
 
-  const inProgress = useMemo(
-    () => myDeliveries.filter(d => d.status === 'picked_up' || d.status === 'in_transit' || d.status === 'arrived'),
-    [myDeliveries],
-  );
+  const { inProgress, pending, completed } = useMemo(() => {
+    const inProgress = myDeliveries.filter(d =>
+      ['picked_up', 'in_transit', 'arrived'].includes(d.status),
+    );
+    const pending = myDeliveries.filter(d => d.status === 'pending');
+    const completed = myDeliveries.filter(d => d.status === 'delivered');
+    return { inProgress, pending, completed };
+  }, [myDeliveries]);
 
-  const upNext = useMemo(
-    () => myDeliveries.filter(d => d.status === 'pending').sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()),
-    [myDeliveries],
-  );
-
-  const completed = useMemo(
-    () => myDeliveries.filter(d => d.status === 'delivered').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
-    [myDeliveries],
-  );
+  const totalActive = inProgress.length + pending.length;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>My Deliveries</Text>
-        <Text style={styles.subtitle}>{myDeliveries.length} assigned</Text>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>My Deliveries</Text>
+            <Text style={styles.headerSubtitle}>Manage your assigned deliveries</Text>
+          </View>
+          <View style={styles.headerBadge}>
+            <View style={styles.headerBadgeDot} />
+            <Text style={styles.headerBadgeText}>{totalActive} Active</Text>
+          </View>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>In Progress</Text>
-          {inProgress.length === 0 && <Text style={styles.emptyText}>No in-progress deliveries</Text>}
+      {/* Quick Stats */}
+      <View style={styles.quickStats}>
+        <View style={[styles.quickStatItem, styles.quickStatPending]}>
+          <Feather name="clock" size={14} color={THEME.colors.primary} style={{ marginBottom: 4 }} />
+          <Text style={styles.quickStatValue}>{pending.length}</Text>
+          <Text style={styles.quickStatLabel}>Pending</Text>
+        </View>
+        <View style={[styles.quickStatItem, styles.quickStatInProgress]}>
+          <Feather name="truck" size={14} color={THEME.colors.warning} style={{ marginBottom: 4 }} />
+          <Text style={styles.quickStatValue}>{inProgress.length}</Text>
+          <Text style={styles.quickStatLabel}>In Progress</Text>
+        </View>
+        <View style={[styles.quickStatItem, styles.quickStatCompleted]}>
+          <Feather name="check-circle" size={14} color={THEME.colors.success} style={{ marginBottom: 4 }} />
+          <Text style={styles.quickStatValue}>{completed.length}</Text>
+          <Text style={styles.quickStatLabel}>Completed</Text>
+        </View>
+      </View>
+
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* In Progress Section */}
+        <SectionCard
+          title="In Progress"
+          icon="truck"
+          count={inProgress.length}
+          color={THEME.colors.warning}
+          emptyText="No deliveries in progress"
+        >
           {inProgress.map(delivery => (
             <DeliveryCard
               key={delivery.id}
@@ -98,126 +184,338 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
               onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: delivery.id })}
             />
           ))}
-        </View>
+        </SectionCard>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Up Next</Text>
-          {upNext.length === 0 && <Text style={styles.emptyText}>No upcoming pending deliveries</Text>}
-          {upNext.map(delivery => (
+        {/* Pending Section */}
+        <SectionCard
+          title="Up Next"
+          icon="clock"
+          count={pending.length}
+          color={THEME.colors.primary}
+          emptyText="No pending deliveries"
+        >
+          {pending.map(delivery => (
             <DeliveryCard
               key={delivery.id}
               delivery={delivery}
               onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: delivery.id })}
             />
           ))}
-        </View>
+        </SectionCard>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Completed</Text>
-          {completed.length === 0 && <Text style={styles.emptyText}>No completed deliveries yet</Text>}
-          {completed.map(delivery => (
+        {/* Completed Section */}
+        <SectionCard
+          title="Completed Today"
+          icon="check-circle"
+          count={completed.slice(0, 5).length}
+          color={THEME.colors.success}
+          emptyText="No completed deliveries yet"
+        >
+          {completed.slice(0, 5).map(delivery => (
             <DeliveryCard
               key={delivery.id}
               delivery={delivery}
               onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: delivery.id })}
             />
           ))}
-        </View>
+          {completed.length > 5 && (
+            <TouchableOpacity style={styles.viewAllLink}>
+              <Text style={styles.viewAllText}>View all {completed.length} completed</Text>
+              <Feather name="chevron-right" size={14} color={THEME.colors.primary} />
+            </TouchableOpacity>
+          )}
+        </SectionCard>
+
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+  },
+
+  // Header
   header: {
-    backgroundColor: colors.white,
+    backgroundColor: THEME.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    borderBottomColor: THEME.colors.border,
   },
-  title: {
-    ...typography.h3,
-    color: colors.textPrimary,
-  },
-  subtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
-    gap: spacing.md,
-  },
-  section: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    ...shadows.small,
-  },
-  sectionTitle: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '700',
-    marginBottom: spacing.sm,
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    backgroundColor: '#FCFDFF',
-  },
-  rowBetween: {
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: spacing.sm,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  customer: {
-    ...typography.body,
-    color: colors.textPrimary,
+  headerTitle: {
+    ...THEME.typography.h2,
+    color: THEME.colors.textPrimary,
+  },
+  headerSubtitle: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
+  },
+  headerBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.primary,
+    marginRight: 8,
+  },
+  headerBadgeText: {
+    ...THEME.typography.labelMd,
+    color: THEME.colors.primary,
+  },
+
+  // Quick Stats
+  quickStats: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+    backgroundColor: THEME.colors.surface,
+  },
+  quickStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+  },
+  quickStatPending: {
+    backgroundColor: THEME.colors.primaryLighter,
+    borderColor: THEME.colors.primaryLight,
+  },
+  quickStatInProgress: {
+    backgroundColor: THEME.colors.warningLighter,
+    borderColor: THEME.colors.warningLight,
+  },
+  quickStatCompleted: {
+    backgroundColor: THEME.colors.successLighter,
+    borderColor: THEME.colors.successLight,
+  },
+  quickStatValue: {
+    ...THEME.typography.h2,
+    color: THEME.colors.textPrimary,
+  },
+  quickStatLabel: {
+    ...THEME.typography.overline,
     fontWeight: '600',
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+
+  // Scroll
+  scrollView: {
     flex: 1,
   },
-  address: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
+  scrollContent: {
+    padding: 16,
+  },
+
+  // Section Card
+  sectionCard: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    marginBottom: 16,
+    ...THEME.shadows.sm,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
+    overflow: 'hidden',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.borderLight,
+  },
+  sectionIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: THEME.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  sectionTitle: {
+    ...THEME.typography.h4,
+    fontWeight: '700',
+    flex: 1,
+    color: THEME.colors.textPrimary,
+  },
+  sectionCount: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+  },
+  sectionCountText: {
+    ...THEME.typography.bodySm,
+    fontWeight: '700',
+  },
+  sectionContent: {
+    padding: 12,
+  },
+  emptySection: {
+    padding: 32,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptySectionText: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.textTertiary,
+  },
+
+  // Delivery Card
+  deliveryCard: {
+    backgroundColor: THEME.colors.neutral25,
+    borderRadius: THEME.radius.lg,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    overflow: 'hidden',
+  },
+  deliveryCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 14,
+    paddingBottom: 10,
+  },
+  deliveryCardInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  customerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  customerName: {
+    ...THEME.typography.h5,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+  },
+  priorityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: THEME.radius.xs,
+  },
+  priorityBadgeText: {
+    ...THEME.typography.overline,
+    fontSize: 9,
+    textTransform: undefined,
+    letterSpacing: 0.5,
+  },
+  referenceNo: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: THEME.radius.full,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  statusBadgeText: {
+    ...THEME.typography.labelSm,
+  },
+  deliveryCardBody: {
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  detailFeatherIcon: {
+    marginRight: 8,
+    width: 20,
+  },
+  detailText: {
+    ...THEME.typography.bodySm,
+    flex: 1,
+    color: THEME.colors.textSecondary,
+  },
+  detailRowDivider: {
+    height: 8,
   },
   metaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.sm,
+    alignItems: 'center',
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   metaText: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    ...THEME.typography.caption,
+    color: THEME.colors.textTertiary,
   },
-  statusText: {
-    ...typography.caption,
-    textTransform: 'capitalize',
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: THEME.colors.neutral300,
+    marginHorizontal: 8,
+  },
+  deliveryCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: THEME.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.borderLight,
+  },
+  viewDetailsText: {
+    ...THEME.typography.bodySm,
     fontWeight: '600',
+    color: THEME.colors.primary,
   },
-  priorityPill: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 999,
+  arrowCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: THEME.colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  priorityText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.4,
+
+  // View All Link
+  viewAllLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    gap: 4,
   },
-  emptyText: {
-    ...typography.caption,
-    color: colors.textLight,
-    paddingVertical: spacing.sm,
+  viewAllText: {
+    ...THEME.typography.bodySm,
+    fontWeight: '600',
+    color: THEME.colors.primary,
   },
 });
 

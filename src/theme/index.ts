@@ -1,3 +1,8 @@
+/**
+ * @deprecated Legacy theme – use THEME from '../utils/theme' for all typography.
+ * colors, spacing, borderRadius, and shadows are still used from here.
+ * The `typography` export below is no longer referenced by any screen.
+ */
 import { Platform } from 'react-native';
 
 export const colors = {

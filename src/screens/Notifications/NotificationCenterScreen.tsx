@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 import type { UserRole } from '../../types';
-import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../theme';
+import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { selectUser, selectSelectedRole } from '../Auth/authSlice';
 import {
@@ -28,18 +30,23 @@ type RoleCategoryConfig = {
   key: NotificationCategory;
   title: string;
   borderColor: string;
+  icon: keyof typeof Feather.glyphMap;
 };
 
 const ADMIN_CATEGORIES: RoleCategoryConfig[] = [
-  { key: 'delivery_updates', title: 'Delivery Updates', borderColor: '#2E75B6' },
-  { key: 'inventory_approvals', title: 'Inventory Approvals', borderColor: '#F59E0B' },
-  { key: 'system_alerts', title: 'System Alerts', borderColor: '#DC2626' },
+  { key: 'invoice_updates', title: 'Invoice Updates', borderColor: '#D97706', icon: 'file-text' },
+  { key: 'payment_updates', title: 'Payment Updates', borderColor: '#059669', icon: 'credit-card' },
+  { key: 'delivery_updates', title: 'Delivery Updates', borderColor: '#2E75B6', icon: 'truck' },
+  { key: 'inventory_approvals', title: 'Inventory Approvals', borderColor: '#F59E0B', icon: 'package' },
+  { key: 'banking_alerts', title: 'Banking Alerts', borderColor: '#7C3AED', icon: 'dollar-sign' },
+  { key: 'payroll_updates', title: 'Payroll Updates', borderColor: '#0891B2', icon: 'briefcase' },
+  { key: 'system_alerts', title: 'System Alerts', borderColor: '#DC2626', icon: 'alert-triangle' },
 ];
 
 const DELIVERY_CATEGORIES: RoleCategoryConfig[] = [
-  { key: 'new_assignments', title: 'New Assignments', borderColor: '#1B3A5C' },
-  { key: 'approval_results', title: 'Approval Results', borderColor: '#F59E0B' },
-  { key: 'general', title: 'General', borderColor: '#6B7280' },
+  { key: 'new_assignments', title: 'New Assignments', borderColor: '#1B3A5C', icon: 'clipboard' },
+  { key: 'approval_results', title: 'Approval Results', borderColor: '#F59E0B', icon: 'check-circle' },
+  { key: 'general', title: 'General', borderColor: '#6B7280', icon: 'bell' },
 ];
 
 const NotificationCenterScreen: React.FC = () => {
@@ -81,26 +88,45 @@ const NotificationCenterScreen: React.FC = () => {
   const handleTapNotification = (item: AppNotification) => {
     dispatch(markNotificationRead(item.id));
 
-    if (role === 'admin') {
-      if (item.category === 'delivery_updates') {
-        if (item.routeName === 'AdminDeliveryDetail' && item.routeParams?.deliveryId) {
-          navigation.navigate('AdminDeliveryDetail', { deliveryId: item.routeParams.deliveryId });
-        } else {
-          navigation.navigate('DeliveryMonitor');
-        }
+    // If the notification carries an explicit routeName, try it directly
+    if (item.routeName) {
+      try {
+        navigation.navigate(item.routeName as any, item.routeParams ?? {});
         return;
-      }
-      if (item.category === 'inventory_approvals') {
-        navigation.navigate('InventoryApproval');
-        return;
-      }
-      navigation.navigate('AdminDashboard');
-      return;
+      } catch { /* fall through to category-based routing */ }
     }
 
+    if (role === 'admin') {
+      switch (item.category) {
+        case 'delivery_updates':
+          navigation.navigate('DeliveryMonitor' as any);
+          return;
+        case 'inventory_approvals':
+          navigation.navigate('InventoryApproval' as any);
+          return;
+        case 'invoice_updates':
+          navigation.navigate('InvoiceList' as any);
+          return;
+        case 'payment_updates':
+          navigation.navigate('ReceivePayment' as any);
+          return;
+        case 'banking_alerts':
+          navigation.navigate('BankAccounts' as any);
+          return;
+        case 'payroll_updates':
+          navigation.navigate('PayrollHistory' as any);
+          return;
+        case 'system_alerts':
+        default:
+          navigation.navigate('AdminDashboard' as any);
+          return;
+      }
+    }
+
+    // Delivery role routing
     if (item.category === 'new_assignments') {
       if (item.routeParams?.deliveryId) {
-        navigation.navigate('DPDeliveryDetail', { deliveryId: item.routeParams.deliveryId });
+        navigation.navigate('DPDeliveryDetail' as any, { deliveryId: item.routeParams.deliveryId });
       } else {
         navigation.getParent()?.navigate('DPDeliveriesStack');
       }
@@ -112,7 +138,7 @@ const NotificationCenterScreen: React.FC = () => {
       return;
     }
 
-    navigation.navigate('DPDashboard');
+    navigation.navigate('DPDashboard' as any);
   };
 
   return (
@@ -124,7 +150,7 @@ const NotificationCenterScreen: React.FC = () => {
         </View>
         <View style={styles.headerRight}>
           <View style={styles.badgeWrap}>
-            <Text style={styles.bell}>BELL</Text>
+            <Feather name="bell" size={16} color={colors.textSecondary} />
             <NotificationBadge count={unreadCount} />
           </View>
           <TouchableOpacity style={styles.markBtn} onPress={handleMarkAllRead}>
@@ -146,7 +172,10 @@ const NotificationCenterScreen: React.FC = () => {
       >
         {notificationsByCategory.map(section => (
           <View key={section.key} style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <View style={styles.sectionHeader}>
+              <Feather name={section.icon} size={14} color={section.borderColor} />
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+            </View>
 
             {section.items.length === 0 && (
               <View style={styles.emptyCard}>
@@ -197,8 +226,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   titleWrap: { flex: 1, marginRight: spacing.sm },
-  title: { ...typography.h3, color: colors.textPrimary },
-  subtitle: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  title: { ...THEME.typography.h2, color: colors.textPrimary },
+  subtitle: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
   headerRight: { alignItems: 'flex-end', gap: spacing.xs },
   badgeWrap: {
     width: 32,
@@ -211,7 +240,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     backgroundColor: '#F8FAFC',
   },
-  bell: { fontSize: 8, color: colors.textSecondary, fontWeight: '700' },
+
   markBtn: {
     borderWidth: 1,
     borderColor: colors.primary,
@@ -219,15 +248,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
   },
-  markBtnText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
+  markBtnText: { ...THEME.typography.caption, color: colors.primary, fontWeight: '700' },
 
   content: { padding: spacing.md, paddingBottom: spacing.xl },
   sectionWrap: { marginBottom: spacing.md },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
   sectionTitle: {
-    ...typography.small,
+    ...THEME.typography.bodyMd,
     color: colors.textSecondary,
     fontWeight: '700',
-    marginBottom: spacing.sm,
     letterSpacing: 0.3,
   },
   emptyCard: {
@@ -237,7 +271,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing.md,
   },
-  emptyText: { ...typography.caption, color: colors.textSecondary },
+  emptyText: { ...THEME.typography.caption, color: colors.textSecondary },
 
   card: {
     backgroundColor: colors.white,
@@ -257,11 +291,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     gap: spacing.sm,
   },
-  cardTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '700', flex: 1 },
-  cardTime: { ...typography.caption, color: colors.textLight },
-  cardMessage: { ...typography.small, color: colors.textSecondary, lineHeight: 20 },
+  cardTitle: { ...THEME.typography.bodyLg, color: colors.textPrimary, fontWeight: '700', flex: 1 },
+  cardTime: { ...THEME.typography.caption, color: colors.textLight },
+  cardMessage: { ...THEME.typography.bodyMd, color: colors.textSecondary, lineHeight: 20 },
   unreadLabel: {
-    ...typography.caption,
+    ...THEME.typography.caption,
     color: colors.primary,
     fontWeight: '700',
     marginTop: spacing.xs,

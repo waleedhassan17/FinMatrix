@@ -8,7 +8,7 @@ import {
   Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { typography } from '../../theme';
+import { THEME } from '../../utils/theme';
 
 // ═══════════════════════════════════════
 // Design Tokens (pixel-perfect match)
@@ -369,9 +369,7 @@ const $ = StyleSheet.create({
     marginBottom: 12,
   },
   wordmark: {
-    fontSize: 36,
-    fontWeight: '700',
-    fontFamily: typography.fontFamily,
+    ...THEME.typography.displayLg,
     letterSpacing: -1,
   },
   wordFin: {
@@ -383,9 +381,8 @@ const $ = StyleSheet.create({
 
   // ── Tagline ──
   tagline: {
-    fontSize: 14,
+    ...THEME.typography.bodyMd,
     color: B.w40,
-    fontFamily: typography.fontFamily,
     letterSpacing: 0.56,
   },
 
@@ -416,9 +413,8 @@ const $ = StyleSheet.create({
     alignItems: 'center',
   },
   versionText: {
-    fontSize: 11,
+    ...THEME.typography.labelSm,
     color: B.w20,
-    fontFamily: typography.fontFamily,
     letterSpacing: 0.66,
   },
 });

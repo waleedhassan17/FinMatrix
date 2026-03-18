@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../../theme';
+import { THEME } from '../../../../utils/theme';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import {
@@ -461,9 +462,9 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   backBtn: { padding: spacing.xs },
-  back: { ...typography.h2, color: colors.primary },
+  back: { ...THEME.typography.displaySm, color: colors.primary },
   headerCenter: { flex: 1, alignItems: 'center' },
-  title: { ...typography.h4, color: colors.textPrimary },
+  title: { ...THEME.typography.h3, color: colors.textPrimary },
   headerStatusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
@@ -482,7 +483,7 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   sectionTitle: {
-    ...typography.h4,
+    ...THEME.typography.h3,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
     paddingBottom: spacing.xs,
@@ -499,8 +500,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border + '60',
   },
-  infoLabel: { ...typography.small, color: colors.textSecondary, flex: 1 },
-  infoValue: { ...typography.small, color: colors.textPrimary, flex: 2, textAlign: 'right' },
+  infoLabel: { ...THEME.typography.bodyMd, color: colors.textSecondary, flex: 1 },
+  infoValue: { ...THEME.typography.bodyMd, color: colors.textPrimary, flex: 2, textAlign: 'right' },
 
   // Priority row (outside any section card)
   priorityRow: {
@@ -547,9 +548,9 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   itemIndexText: { fontSize: 11, fontWeight: '700', color: colors.secondary },
-  itemName: { ...typography.small, fontWeight: '600', color: colors.textPrimary },
-  itemAgency: { ...typography.caption, color: colors.textSecondary },
-  itemQty: { ...typography.body, fontWeight: '700', color: colors.primary },
+  itemName: { ...THEME.typography.bodyMd, fontWeight: '600', color: colors.textPrimary },
+  itemAgency: { ...THEME.typography.caption, color: colors.textSecondary },
+  itemQty: { ...THEME.typography.bodyLg, fontWeight: '700', color: colors.primary },
 
   // Person card
   personCard: {
@@ -566,15 +567,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  personAvatarText: { ...typography.h4, color: colors.primary },
-  personName: { ...typography.body, fontWeight: '600', color: colors.textPrimary },
-  personMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  personAvatarText: { ...THEME.typography.h3, color: colors.primary },
+  personName: { ...THEME.typography.bodyLg, fontWeight: '600', color: colors.textPrimary },
+  personMeta: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
   personStatusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: borderRadius.sm,
   },
-  assignedAt: { ...typography.caption, color: colors.textLight, marginTop: spacing.xs },
+  assignedAt: { ...THEME.typography.caption, color: colors.textLight, marginTop: spacing.xs },
 
   // Timeline
   timelineItem: { flexDirection: 'row', marginBottom: spacing.sm },
@@ -588,10 +589,10 @@ const styles = StyleSheet.create({
     minHeight: 24,
   },
   timelineContent: { flex: 1, paddingBottom: spacing.sm },
-  timelineStatus: { ...typography.small, fontWeight: '600' },
-  timelineTime: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  timelineNote: { ...typography.caption, color: colors.textPrimary, marginTop: 2 },
-  timelineBy: { ...typography.caption, color: colors.textLight, marginTop: 1 },
+  timelineStatus: { ...THEME.typography.bodyMd, fontWeight: '600' },
+  timelineTime: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
+  timelineNote: { ...THEME.typography.caption, color: colors.textPrimary, marginTop: 2 },
+  timelineBy: { ...THEME.typography.caption, color: colors.textLight, marginTop: 1 },
 
   // Signature
   signatureBox: {
@@ -602,8 +603,8 @@ const styles = StyleSheet.create({
   },
   signatureEmpty: { backgroundColor: colors.border + '40' },
   signatureIcon: { fontSize: 28, marginBottom: spacing.xs },
-  signatureLabel: { ...typography.small, fontWeight: '600', color: colors.textPrimary },
-  signatureSub: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
+  signatureLabel: { ...THEME.typography.bodyMd, fontWeight: '600', color: colors.textPrimary },
+  signatureSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 4 },
 
   // Photos
   photoThumb: {
@@ -616,7 +617,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   photoThumbIcon: { fontSize: 24 },
-  photoThumbLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  photoThumbLabel: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
   photoEmpty: {
     alignItems: 'center',
     paddingVertical: spacing.md,
@@ -624,7 +625,7 @@ const styles = StyleSheet.create({
   },
 
   // Placeholder note
-  placeholderNote: { ...typography.small, color: colors.textLight },
+  placeholderNote: { ...THEME.typography.bodyMd, color: colors.textLight },
 
   // Action panels (inline)
   actionPanel: {
@@ -640,11 +641,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
   },
-  actionPanelTitle: { ...typography.h4, color: colors.textPrimary, marginBottom: spacing.sm },
-  dangerNote: { ...typography.small, color: '#991B1B', marginBottom: spacing.md },
+  actionPanelTitle: { ...THEME.typography.h3, color: colors.textPrimary, marginBottom: spacing.sm },
+  dangerNote: { ...THEME.typography.bodyMd, color: '#991B1B', marginBottom: spacing.md },
   panelButtons: { marginTop: spacing.sm, gap: spacing.sm },
   linkBtn: { alignItems: 'center', paddingVertical: spacing.sm },
-  linkBtnText: { ...typography.small, color: colors.secondary },
+  linkBtnText: { ...THEME.typography.bodyMd, color: colors.secondary },
 
   // Bottom action bar
   bottomBar: {

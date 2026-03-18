@@ -16,7 +16,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectVendors, toggleVendorActive } from '../VendorList/vendorListSlice';
 import { selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
@@ -338,8 +339,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerLeft: { flex: 1, marginRight: spacing.sm },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { ...THEME.typography.labelLg, color: colors.secondary, marginBottom: spacing.xs },
+  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
   scrollContent: { paddingBottom: spacing.xl },
 
   // ── Top Card ───────────────────────────────────
@@ -352,8 +353,8 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   topCardRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
-  topCardLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, marginBottom: 2 },
-  topCardBalance: { fontSize: 24, fontWeight: '800', color: colors.primary, fontFamily: typography.fontFamily },
+  topCardLabel: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: 2 },
+  topCardBalance: { ...THEME.typography.h1, color: colors.primary },
 
   statusBadge: {
     alignSelf: 'flex-start',
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginTop: spacing.xs,
   },
-  statusBadgeText: { fontSize: 12, fontWeight: '700', fontFamily: typography.fontFamily },
+  statusBadgeText: { ...THEME.typography.caption, fontWeight: '700' },
 
   // ── Action Buttons ─────────────────────────────
   actionRow: {
@@ -380,7 +381,7 @@ const styles = StyleSheet.create({
     ...shadows.small,
   },
   actionIcon: { fontSize: 22, marginBottom: spacing.xs },
-  actionLabel: { fontSize: 11, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily, textAlign: 'center' },
+  actionLabel: { ...THEME.typography.labelSm, color: colors.textPrimary, textAlign: 'center' },
 
   // ── Tabs ───────────────────────────────────────
   tabRow: {
@@ -395,7 +396,7 @@ const styles = StyleSheet.create({
   },
   tab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', borderRadius: 6 },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, fontFamily: typography.fontFamily },
+  tabText: { ...THEME.typography.labelLg, color: colors.textSecondary },
   tabTextActive: { color: colors.white },
 
   // ── Tab Content ────────────────────────────────
@@ -410,10 +411,9 @@ const styles = StyleSheet.create({
     ...shadows.small,
   },
   infoCardTitle: {
-    fontSize: 15,
+    ...THEME.typography.h4,
     fontWeight: '700',
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
     marginBottom: spacing.sm,
   },
   infoRow: {
@@ -422,11 +422,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs + 1,
   },
   infoIcon: { fontSize: 14, marginRight: spacing.sm, width: 22 },
-  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, width: 100 },
-  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily, flex: 1 },
+  infoLabel: { ...THEME.typography.bodySm, color: colors.textSecondary, width: 100 },
+  infoValue: { ...THEME.typography.bodySm, fontWeight: '600', color: colors.textPrimary, flex: 1 },
 
-  addressText: { fontSize: 14, color: colors.textPrimary, fontFamily: typography.fontFamily, lineHeight: 22 },
-  notesText: { fontSize: 14, color: colors.textSecondary, fontFamily: typography.fontFamily, lineHeight: 21 },
+  addressText: { ...THEME.typography.bodyMd, color: colors.textPrimary, lineHeight: 22 },
+  notesText: { ...THEME.typography.bodyMd, color: colors.textSecondary, lineHeight: 21 },
 
   // ── List Cards (Bills / Payments) ──────────────
   listCard: {
@@ -437,18 +437,18 @@ const styles = StyleSheet.create({
     ...shadows.small,
   },
   listCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  listCardTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  listCardSub: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: 2 },
-  listCardAmount: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  listCardDetail: { fontSize: 12, color: colors.textLight, fontFamily: typography.fontFamily, marginTop: spacing.sm },
+  listCardTitle: { ...THEME.typography.h4, fontWeight: '700', color: colors.textPrimary },
+  listCardSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
+  listCardAmount: { ...THEME.typography.h4, fontWeight: '700', color: colors.textPrimary },
+  listCardDetail: { ...THEME.typography.caption, color: colors.textLight, marginTop: spacing.sm },
 
   miniStatusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginTop: 4 },
-  miniStatusText: { fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily },
+  miniStatusText: { ...THEME.typography.labelSm, fontWeight: '700' },
 
   // ── Empty / Center ─────────────────────────────
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  emptyIcon: { fontSize: 48 },
-  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyIcon: { ...THEME.typography.displayLg, fontSize: 48 },
+  emptyText: { ...THEME.typography.h4, fontWeight: '400', color: colors.textSecondary },
 });
 
 export default VendorDetailScreen;

@@ -8,7 +8,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../theme';
+import { THEME } from '../../utils/theme';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -154,21 +155,18 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...THEME.typography.h2,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
   },
   scrollContent: {
     paddingBottom: spacing.xl,
   },
   sectionHeader: {
-    fontSize: 13,
-    fontWeight: '700',
+    ...THEME.typography.caption,
+    fontWeight: '600',
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.xs,
@@ -202,20 +200,17 @@ const styles = StyleSheet.create({
   rowIconText: { fontSize: 19 },
   rowContent: { flex: 1, marginRight: spacing.sm },
   rowLabel: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...THEME.typography.h4,
     color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
     marginBottom: 1,
   },
   rowLabelDisabled: { color: colors.textSecondary },
   rowSubtitle: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
   },
   chevron: {
-    fontSize: 22,
+    ...THEME.typography.h2,
     fontWeight: '600',
     color: colors.textLight,
   },
@@ -226,10 +221,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   soonBadgeText: {
-    fontSize: 10,
+    ...THEME.typography.overline,
     fontWeight: '700',
     color: colors.textLight,
-    fontFamily: typography.fontFamily,
   },
 });
 

@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, typography, spacing, borderRadius, shadows } from '../../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../../theme';
+import { THEME } from '../../../../utils/theme';
 import { ROUTES } from '../../../../navigations-map/Base';
+import EmptyState from '../../../../components/EmptyState';
 import { useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectActiveCompany } from '../../../Auth/companySlice';
 import { dummyDeliveryPersonnel, type DummyDeliveryPerson } from '../../../../dummy-data/deliveryPersonnel';
@@ -257,12 +259,12 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyCircle}>
-              <Text style={styles.emptyIcon}>0</Text>
-            </View>
-            <Text style={styles.emptyText}>No personnel found</Text>
-          </View>
+          <EmptyState
+            title="No Personnel Found"
+            message={searchQuery ? 'Try a different search term.' : 'Add your first delivery team member.'}
+            actionLabel={searchQuery ? undefined : '+ Add Personnel'}
+            onAction={searchQuery ? undefined : () => navigation.navigate(ROUTES.ADD_DELIVERY_PERSONNEL as any)}
+          />
         }
       />
     </SafeAreaView>
@@ -282,15 +284,15 @@ const styles = StyleSheet.create({
   },
   backArrow: { fontSize: 24, color: colors.textPrimary, marginTop: -2, fontWeight: '300' },
   headerTitle: {
-    flex: 1, textAlign: 'center', fontSize: typography.h4.fontSize, fontWeight: '600',
-    color: colors.textPrimary, fontFamily: typography.fontFamily,
+    flex: 1, textAlign: 'center', fontSize: THEME.typography.h3.fontSize, fontWeight: '600',
+    color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
   },
   addButton: {
     backgroundColor: colors.primary, paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2, borderRadius: 8,
   },
   addButtonText: {
-    color: colors.white, fontSize: typography.small.fontSize, fontWeight: '600', fontFamily: typography.fontFamily,
+    color: colors.white, fontSize: THEME.typography.bodyMd.fontSize, fontWeight: '600', fontFamily: THEME.typography.fontFamily,
   },
   summaryBar: {
     flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
@@ -301,10 +303,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border,
   },
   summaryNumber: {
-    fontSize: 20, fontWeight: '700', fontFamily: typography.fontFamily,
+    fontSize: 20, fontWeight: '700', fontFamily: THEME.typography.fontFamily,
   },
   summaryLabel: {
-    fontSize: typography.caption.fontSize, color: colors.textSecondary, marginTop: 2, fontFamily: typography.fontFamily,
+    fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily,
   },
   searchContainer: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white,
@@ -313,8 +315,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
   },
   searchInput: {
-    flex: 1, fontSize: typography.small.fontSize, color: colors.textPrimary,
-    fontFamily: typography.fontFamily, padding: 0,
+    flex: 1, fontSize: THEME.typography.bodyMd.fontSize, color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily, padding: 0,
   },
   clearIcon: { fontSize: 20, color: colors.textLight, padding: spacing.xs },
   filterTrack: {
@@ -331,14 +333,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   filterLabel: {
-    fontSize: 12, fontWeight: '500', color: colors.textLight, fontFamily: typography.fontFamily,
+    fontSize: 12, fontWeight: '500', color: colors.textLight, fontFamily: THEME.typography.fontFamily,
   },
   filterCount: {
     minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center',
     backgroundColor: colors.border, paddingHorizontal: 4,
   },
   filterCountText: {
-    fontSize: 10, fontWeight: '600', color: colors.textLight, fontFamily: typography.fontFamily,
+    fontSize: 10, fontWeight: '600', color: colors.textLight, fontFamily: THEME.typography.fontFamily,
   },
   listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl },
   personCard: {
@@ -349,45 +351,45 @@ const styles = StyleSheet.create({
     width: 48, height: 48, borderRadius: 14, alignItems: 'center',
     justifyContent: 'center', marginRight: spacing.sm + 4,
   },
-  avatarText: { fontSize: 16, fontWeight: '700', fontFamily: typography.fontFamily },
+  avatarText: { fontSize: 16, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
   personInfo: { flex: 1 },
   nameRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs,
   },
   personName: {
-    fontSize: 15, fontWeight: '600', color: colors.textPrimary, fontFamily: typography.fontFamily, flex: 1,
+    fontSize: 15, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1,
   },
   statusBadge: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm,
     paddingVertical: 2, borderRadius: 6, gap: 4, marginLeft: spacing.xs,
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 11, fontWeight: '500', fontFamily: typography.fontFamily },
+  statusText: { fontSize: 11, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
   vehicleRow: {
     flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs, gap: spacing.xs,
   },
-  vehicleLabel: { fontSize: typography.caption.fontSize, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  vehicleLabel: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   vehicleSeparator: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textLight },
-  vehicleNumber: { fontSize: typography.caption.fontSize, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  vehicleNumber: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   loadContainer: { marginBottom: spacing.xs },
-  loadLabel: { fontSize: typography.caption.fontSize, color: colors.textSecondary, marginBottom: 3, fontFamily: typography.fontFamily },
+  loadLabel: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginBottom: 3, fontFamily: THEME.typography.fontFamily },
   loadTrack: { height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden' },
   loadFill: { height: 4, borderRadius: 2 },
   bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  ratingText: { fontSize: typography.caption.fontSize, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  ratingText: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   zonesRow: { flexDirection: 'row', gap: spacing.xs },
   zoneTag: {
     backgroundColor: colors.secondary + '0C', paddingHorizontal: spacing.xs + 2,
     paddingVertical: 1, borderRadius: 4,
   },
-  zoneText: { fontSize: 10, color: colors.secondary, fontWeight: '500', fontFamily: typography.fontFamily },
+  zoneText: { fontSize: 10, color: colors.secondary, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
   emptyContainer: { alignItems: 'center', paddingTop: spacing.xl * 2 },
   emptyCircle: {
     width: 64, height: 64, borderRadius: 32, backgroundColor: colors.border + '40',
     justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md,
   },
   emptyIcon: { fontSize: 24, fontWeight: '700', color: colors.textLight },
-  emptyText: { fontSize: typography.body.fontSize, color: colors.textSecondary, fontFamily: typography.fontFamily },
+  emptyText: { fontSize: THEME.typography.bodyLg.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 });
 
 export default DeliveryPersonnelListScreen;

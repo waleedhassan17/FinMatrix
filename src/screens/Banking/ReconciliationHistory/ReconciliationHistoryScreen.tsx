@@ -11,7 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, typography, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { fetchBankAccounts, selectBankAccounts } from '../BankAccounts/bankAccountsSlice';
@@ -116,8 +117,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  backBtn: { color: colors.secondary, fontWeight: '600', fontFamily: typography.fontFamily },
-  title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
+  backBtn: { color: colors.secondary, ...THEME.typography.labelLg },
+  title: { ...THEME.typography.h3, color: colors.textPrimary },
   list: { padding: spacing.md, paddingBottom: spacing.xl },
   card: {
     backgroundColor: colors.white,
@@ -127,19 +128,19 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  accountText: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  badge: { fontSize: 11, fontWeight: '700', paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 10, overflow: 'hidden' },
+  accountText: { flex: 1, ...THEME.typography.bodyMd, fontWeight: '700', color: colors.textPrimary },
+  badge: { ...THEME.typography.labelSm, fontWeight: '700', paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 10, overflow: 'hidden' },
   badgeGood: { backgroundColor: colors.success + '20', color: colors.success },
   badgeBad: { backgroundColor: colors.warning + '22', color: colors.warning },
-  dateText: { fontSize: 12, color: colors.textSecondary, fontFamily: typography.fontFamily, marginBottom: spacing.xs },
-  metaText: { fontSize: 12, color: colors.textPrimary, fontFamily: typography.fontFamily },
-  diffText: { fontSize: 13, fontWeight: '700', fontFamily: typography.fontFamily, marginTop: spacing.xs },
+  dateText: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: spacing.xs },
+  metaText: { ...THEME.typography.caption, color: colors.textPrimary },
+  diffText: { ...THEME.typography.bodySm, fontWeight: '700', marginTop: spacing.xs },
   good: { color: colors.success },
   bad: { color: colors.danger },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   emptyList: { flexGrow: 1 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: typography.fontFamily },
-  emptySub: { fontSize: 13, color: colors.textSecondary, fontFamily: typography.fontFamily, marginTop: spacing.xs, textAlign: 'center' },
+  emptyTitle: { ...THEME.typography.h4, color: colors.textPrimary },
+  emptySub: { ...THEME.typography.bodySm, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' },
 });
 
 export default ReconciliationHistoryScreen;

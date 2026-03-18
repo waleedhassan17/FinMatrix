@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, spacing, typography, borderRadius } from '../../../../theme';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectDPSettings, setPushNotifications, setSmsNotifications, setEmailNotifications } from './dpSettingsSlice';
+import { THEME } from '../../../../utils/theme';
 
 type Props = NativeStackScreenProps<DPProfileStackParamList, 'DPSettings'>;
 
@@ -15,96 +16,495 @@ const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>Back</Text></TouchableOpacity>
-        <Text style={styles.title}>Settings</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Feather name="chevron-left" size={20} color={THEME.colors.neutral700} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Settings</Text>
+          <Text style={styles.headerSubtitle}>Manage your preferences</Text>
+        </View>
+        <View style={styles.headerSpacer} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Notifications Card */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Notification Preferences</Text>
-
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Push Notifications</Text>
-            <Switch value={settings.pushNotifications} onValueChange={v => { dispatch(setPushNotifications(v)); }} />
+          <View style={styles.cardHeader}>
+            <View style={[styles.cardIconWrap, { backgroundColor: THEME.colors.warningLight }]}>
+              <Feather name="bell" size={20} color={THEME.colors.warning} />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Notifications</Text>
+              <Text style={styles.cardSubtitle}>Manage how you receive alerts</Text>
+            </View>
           </View>
 
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>SMS Notifications</Text>
-            <Switch value={settings.smsNotifications} onValueChange={v => { dispatch(setSmsNotifications(v)); }} />
-          </View>
+          <View style={styles.cardDivider} />
 
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Email Notifications</Text>
-            <Switch value={settings.emailNotifications} onValueChange={v => { dispatch(setEmailNotifications(v)); }} />
+          <View style={styles.settingsList}>
+            <View style={styles.settingItem}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.settingIconWrap, { backgroundColor: THEME.colors.primaryLight }]}>
+                  <Feather name="smartphone" size={18} color={THEME.colors.primary} />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Push Notifications</Text>
+                  <Text style={styles.settingHint}>Receive instant alerts on your device</Text>
+                </View>
+              </View>
+              <Switch
+                value={settings.pushNotifications}
+                onValueChange={v => { dispatch(setPushNotifications(v)); }}
+                trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.primaryLight }}
+                thumbColor={settings.pushNotifications ? THEME.colors.primary : THEME.colors.neutral50}
+              />
+            </View>
+
+            <View style={styles.settingDivider} />
+
+            <View style={styles.settingItem}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.settingIconWrap, { backgroundColor: THEME.colors.successLight }]}>
+                  <Feather name="message-square" size={18} color={THEME.colors.success} />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>SMS Notifications</Text>
+                  <Text style={styles.settingHint}>Get text messages for updates</Text>
+                </View>
+              </View>
+              <Switch
+                value={settings.smsNotifications}
+                onValueChange={v => { dispatch(setSmsNotifications(v)); }}
+                trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.successLight }}
+                thumbColor={settings.smsNotifications ? THEME.colors.success : THEME.colors.neutral50}
+              />
+            </View>
+
+            <View style={styles.settingDivider} />
+
+            <View style={styles.settingItem}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.settingIconWrap, { backgroundColor: THEME.colors.warningLight }]}>
+                  <Feather name="mail" size={18} color={THEME.colors.warning} />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Email Notifications</Text>
+                  <Text style={styles.settingHint}>Receive daily summaries via email</Text>
+                </View>
+              </View>
+              <Switch
+                value={settings.emailNotifications}
+                onValueChange={v => { dispatch(setEmailNotifications(v)); }}
+                trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.warningLight }}
+                thumbColor={settings.emailNotifications ? THEME.colors.warning : THEME.colors.neutral50}
+              />
+            </View>
           </View>
         </View>
 
-        <TouchableOpacity style={styles.actionRow} onPress={() => Alert.alert('Change Password', 'Password reset flow coming soon.') }>
-          <Text style={styles.actionLabel}>Change Password</Text>
-          <Text style={styles.arrow}>›</Text>
-        </TouchableOpacity>
+        {/* Account Security Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.cardIconWrap, { backgroundColor: THEME.colors.secondaryLight }]}>
+              <Feather name="lock" size={20} color={THEME.colors.secondary} />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Account & Security</Text>
+              <Text style={styles.cardSubtitle}>Manage account settings</Text>
+            </View>
+          </View>
 
-        <TouchableOpacity style={styles.actionRow} onPress={() => Alert.alert('Help', 'Contact support@finmatrix.pk') }>
-          <Text style={styles.actionLabel}>Help</Text>
-          <Text style={styles.arrow}>›</Text>
-        </TouchableOpacity>
+          <View style={styles.cardDivider} />
 
-        <TouchableOpacity style={styles.actionRow} onPress={() => Alert.alert('About', 'FinMatrix Delivery v1.0') }>
-          <Text style={styles.actionLabel}>About</Text>
-          <Text style={styles.arrow}>›</Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.actionsList}>
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={() => Alert.alert('Change Password', 'Password reset functionality coming soon.')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.infoLight }]}>
+                  <Feather name="key" size={16} color={THEME.colors.info} />
+                </View>
+                <Text style={styles.actionLabel}>Change Password</Text>
+              </View>
+              <View style={styles.actionArrow}>
+                <Feather name="chevron-right" size={14} color={THEME.colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.actionDivider} />
+
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={() => Alert.alert('Two-Factor Authentication', '2FA setup coming soon.')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.successLight }]}>
+                  <Feather name="shield" size={16} color={THEME.colors.success} />
+                </View>
+                <Text style={styles.actionLabel}>Two-Factor Authentication</Text>
+              </View>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusBadgeText}>Off</Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.actionDivider} />
+
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={() => Alert.alert('Active Sessions', 'Session management coming soon.')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.secondaryLight }]}>
+                  <Feather name="monitor" size={16} color={THEME.colors.secondary} />
+                </View>
+                <Text style={styles.actionLabel}>Active Sessions</Text>
+              </View>
+              <View style={styles.actionArrow}>
+                <Feather name="chevron-right" size={14} color={THEME.colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Support Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.cardIconWrap, { backgroundColor: THEME.colors.infoLight }]}>
+              <Feather name="life-buoy" size={20} color={THEME.colors.info} />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>Support & Info</Text>
+              <Text style={styles.cardSubtitle}>Get help and learn more</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.actionsList}>
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={() => Alert.alert('Help Center', 'Contact support@finmatrix.pk for assistance.')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.warningLight }]}>
+                  <Feather name="help-circle" size={16} color={THEME.colors.warning} />
+                </View>
+                <Text style={styles.actionLabel}>Help Center</Text>
+              </View>
+              <View style={styles.actionArrow}>
+                <Feather name="chevron-right" size={14} color={THEME.colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.actionDivider} />
+
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={() => Alert.alert('Privacy Policy', 'View our privacy policy at finmatrix.pk/privacy')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.neutral100 }]}>
+                  <Feather name="file-text" size={16} color={THEME.colors.neutral600} />
+                </View>
+                <Text style={styles.actionLabel}>Privacy Policy</Text>
+              </View>
+              <View style={styles.actionArrow}>
+                <Feather name="chevron-right" size={14} color={THEME.colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.actionDivider} />
+
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={() => Alert.alert('About FinMatrix', 'FinMatrix Delivery v1.0\n\nBuilt for delivery excellence.')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.primaryLight }]}>
+                  <Feather name="info" size={16} color={THEME.colors.primary} />
+                </View>
+                <Text style={styles.actionLabel}>About App</Text>
+              </View>
+              <View style={styles.versionBadge}>
+                <Text style={styles.versionBadgeText}>v1.0</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* App Info Footer */}
+        <View style={styles.appInfo}>
+          <View style={styles.appInfoLogo}>
+            <Text style={styles.appInfoLogoText}>FM</Text>
+          </View>
+          <Text style={styles.appInfoName}>FinMatrix Delivery</Text>
+          <Text style={styles.appInfoVersion}>Version 1.0.0 (Build 2026.03)</Text>
+          <Text style={styles.appInfoCopyright}>© 2026 FinMatrix. All rights reserved.</Text>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+  },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.white,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: THEME.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: THEME.colors.border,
   },
-  back: { ...typography.small, color: colors.primary, fontWeight: '700' },
-  title: { ...typography.h4, color: colors.textPrimary },
-  content: { padding: spacing.md, gap: spacing.sm },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.colors.neutral50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: {
+    ...THEME.typography.h2,
+    color: THEME.colors.neutral700,
+  },
+  headerCenter: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    ...THEME.typography.h3,
+    color: THEME.colors.textPrimary,
+  },
+  headerSubtitle: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+
+  // Card
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    marginBottom: 16,
+    ...THEME.shadows.sm,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    borderColor: THEME.colors.borderLight,
+    overflow: 'hidden',
   },
-  sectionTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '700', marginBottom: spacing.sm },
-  row: {
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  cardIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: THEME.radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  cardIcon: {
+    fontSize: THEME.typography.h2.fontSize,
+  },
+  cardHeaderText: {
+    flex: 1,
+  },
+  cardTitle: {
+    ...THEME.typography.h4,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+  },
+  cardSubtitle: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.borderLight,
+  },
+
+  // Settings List
+  settingsList: {
+    padding: 16,
+  },
+  settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingVertical: 8,
   },
-  rowLabel: { ...typography.small, color: colors.textPrimary },
-  actionRow: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 16,
+  },
+  settingIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: THEME.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  settingIcon: {
+    fontSize: THEME.typography.h3.fontSize,
+  },
+  settingInfo: {
+    flex: 1,
+  },
+  settingLabel: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.textPrimary,
+  },
+  settingHint: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  settingDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.borderLight,
+    marginVertical: 12,
+    marginLeft: 54,
+  },
+
+  // Actions List
+  actionsList: {
+    padding: 12,
+  },
+  actionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
   },
-  actionLabel: { ...typography.small, color: colors.textPrimary, fontWeight: '600' },
-  arrow: { ...typography.h4, color: colors.textSecondary },
+  actionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: THEME.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  actionIcon: {
+    fontSize: THEME.typography.h3.fontSize,
+  },
+  actionLabel: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.textPrimary,
+  },
+  actionDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.borderLight,
+    marginLeft: 54,
+  },
+  actionArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: THEME.colors.neutral50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionArrowText: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textTertiary,
+  },
+  statusBadge: {
+    backgroundColor: THEME.colors.neutral100,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+  },
+  statusBadgeText: {
+    ...THEME.typography.labelSm,
+    color: THEME.colors.textSecondary,
+  },
+  versionBadge: {
+    backgroundColor: THEME.colors.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+  },
+  versionBadgeText: {
+    ...THEME.typography.labelSm,
+    color: THEME.colors.primary,
+  },
+
+  // App Info Footer
+  appInfo: {
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 8,
+  },
+  appInfoLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    ...THEME.shadows.sm,
+  },
+  appInfoLogoText: {
+    ...THEME.typography.h3,
+    fontWeight: '700',
+    color: THEME.colors.textInverse,
+  },
+  appInfoName: {
+    ...THEME.typography.labelLg,
+    color: THEME.colors.textSecondary,
+  },
+  appInfoVersion: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textTertiary,
+    marginTop: 4,
+  },
+  appInfoCopyright: {
+    ...THEME.typography.labelSm,
+    fontWeight: '400',
+    color: THEME.colors.textDisabled,
+    marginTop: 8,
+  },
 });
 
 export default DPSettingsScreen;

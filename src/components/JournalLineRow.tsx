@@ -12,7 +12,8 @@ import {
   StyleSheet,
 } from 'react-native';
 import CustomDropdown from '../Custom-Components/CustomDropdown';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import { colors, spacing, borderRadius } from '../theme';
+import { THEME } from '../utils/theme';
 
 interface AccountOption {
   label: string;
@@ -173,8 +174,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   deleteBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...THEME.typography.labelLg,
     color: colors.danger,
   },
   fieldsRow: {
@@ -188,8 +188,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
-    fontSize: 14,
-    fontFamily: typography.fontFamily,
+    ...THEME.typography.bodyMd,
     color: colors.textPrimary,
   },
   amountField: { width: 90 },
@@ -199,8 +198,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
-    fontSize: 14,
-    fontFamily: typography.fontFamily,
+    ...THEME.typography.bodyMd,
     color: colors.textPrimary,
     textAlign: 'right',
   },
@@ -208,10 +206,9 @@ const styles = StyleSheet.create({
   creditHighlight: { borderColor: colors.danger, backgroundColor: colors.danger + '08' },
   amountDisabled: { backgroundColor: colors.background, color: colors.textLight },
   errorText: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: colors.danger,
     marginTop: spacing.xs,
-    fontFamily: typography.fontFamily,
   },
 });
 

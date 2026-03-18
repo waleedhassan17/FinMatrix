@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import CustomButton from '../Custom-Components/CustomButton';
-import { colors, typography, spacing } from '../theme';
+import { colors, spacing } from '../theme';
+import { THEME } from '../utils/theme';
 
 interface EmptyStateProps {
   title: string;
@@ -55,19 +56,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   icon: {
-    fontSize: 36,
+    fontSize: THEME.typography.displayLg.fontSize,
   },
   title: {
-    ...typography.h3,
+    ...THEME.typography.h2,
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   message: {
-    ...typography.body,
+    ...THEME.typography.bodyLg,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
     marginBottom: spacing.lg,
   },
   actionWrapper: {
