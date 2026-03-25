@@ -8,6 +8,7 @@ import { signOut } from '../../../Auth/authSlice';
 import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
 import { THEME } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPProfileStackParamList, 'DPProfile'>;
 
@@ -29,7 +30,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -37,6 +38,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <ScrollView 
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -55,7 +57,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.userEmail}>{user?.email ?? 'delivery@finmatrix.pk'}</Text>
 
           <View style={styles.roleBadge}>
-            <Feather name="truck" size={12} color={THEME.colors.primary} />
+            <Feather name="truck" size={12} color={DP_BRAND.primary} />
             <Text style={styles.roleText}>Delivery Personnel</Text>
           </View>
 
@@ -76,8 +78,8 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
         {/* Account Info Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <View style={[styles.cardIconWrap, { backgroundColor: THEME.colors.primaryLight }]}>
-              <Feather name="user" size={18} color={THEME.colors.primary} />
+            <View style={[styles.cardIconWrap, { backgroundColor: DP_BRAND.primarySoft }]}>
+              <Feather name="user" size={18} color={DP_BRAND.primary} />
             </View>
             <View style={styles.cardHeaderText}>
               <Text style={styles.cardTitle}>Account Information</Text>
@@ -121,8 +123,8 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.metricsGrid}>
             <View style={styles.metricItem}>
-              <View style={[styles.metricIconWrap, { backgroundColor: THEME.colors.primaryLight }]}>
-                <Feather name="package" size={18} color={THEME.colors.primary} />
+              <View style={[styles.metricIconWrap, { backgroundColor: DP_BRAND.primarySoft }]}>
+                <Feather name="package" size={18} color={DP_BRAND.primary} />
               </View>
               <Text style={styles.metricValue}>{totalDeliveries}</Text>
               <Text style={styles.metricLabel}>Total Deliveries</Text>
@@ -159,8 +161,8 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
             activeOpacity={0.7}
           >
             <View style={styles.menuLeft}>
-              <View style={[styles.menuIconWrap, { backgroundColor: THEME.colors.primaryLight }]}>
-                <Feather name="file-text" size={16} color={THEME.colors.primary} />
+              <View style={[styles.menuIconWrap, { backgroundColor: DP_BRAND.primarySoft }]}>
+                <Feather name="file-text" size={16} color={DP_BRAND.primary} />
               </View>
               <View>
                 <Text style={styles.menuLabel}>Delivery History</Text>
@@ -237,26 +239,29 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: DP_BRAND.primary,
   },
 
   // Header
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: THEME.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    backgroundColor: DP_BRAND.primary,
   },
   headerTitle: {
     ...THEME.typography.h2,
-    color: THEME.colors.textPrimary,
+    color: DP_BRAND.white,
     letterSpacing: -0.3,
   },
 
+  scrollView: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+  },
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
+    backgroundColor: THEME.colors.background,
   },
 
   // Profile Card
@@ -280,7 +285,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     alignItems: 'center',
     justifyContent: 'center',
     ...THEME.shadows.md,
@@ -314,7 +319,7 @@ const styles = StyleSheet.create({
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: THEME.radius.full,
@@ -324,7 +329,7 @@ const styles = StyleSheet.create({
   roleText: {
     ...THEME.typography.bodySm,
     fontWeight: '600',
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
   quickActions: {
     flexDirection: 'row',

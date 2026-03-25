@@ -14,8 +14,8 @@ import DPDeliveriesStack from './stacks/DPDeliveriesStack';
 import DPInventoryStack from './stacks/DPInventoryStack';
 import DPProfileStack from './stacks/DPProfileStack';
 
-// ── Design Tokens (aligned with AdminTabNavigator) ──
-const ACTIVE = '#1B3A5C';
+// ── Design Tokens (Delivery Personnel orange brand) ──
+const ACTIVE = '#F8651D';
 const INACTIVE = '#999999';
 const TAB_HEIGHT = 72;
 
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconPillActive: {
-    backgroundColor: '#E7EEF6',
+    backgroundColor: '#FFF3EC',
   },
 });
 

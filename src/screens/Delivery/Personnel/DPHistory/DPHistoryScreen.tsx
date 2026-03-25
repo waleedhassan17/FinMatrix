@@ -17,6 +17,7 @@ import {
 } from './dpHistorySlice';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
 import { THEME, STATUS_CONFIG } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPProfileStackParamList, 'DPHistory'>;
 
@@ -113,12 +114,12 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
       
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Feather name="chevron-left" size={20} color={THEME.colors.neutral700} />
+          <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Delivery History</Text>
@@ -342,7 +343,7 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: DP_BRAND.primary,
   },
 
   // Header
@@ -350,17 +351,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: THEME.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: DP_BRAND.primary,
   },
   backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: THEME.colors.neutral50,
+    backgroundColor: DP_BRAND.headerOverlay,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -374,11 +373,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...THEME.typography.h3,
     fontWeight: '700',
-    color: THEME.colors.textPrimary,
+    color: DP_BRAND.white,
   },
   headerSubtitle: {
     ...THEME.typography.caption,
-    color: THEME.colors.textSecondary,
+    color: DP_BRAND.headerTextSecondary,
     marginTop: 2,
   },
   headerSpacer: {
@@ -388,6 +387,7 @@ const styles = StyleSheet.create({
   // Scroll
   scrollView: {
     flex: 1,
+    backgroundColor: THEME.colors.background,
   },
   scrollContent: {
     padding: 16,
@@ -423,8 +423,8 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   filterChipActive: {
-    backgroundColor: THEME.colors.primary,
-    borderColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
+    borderColor: DP_BRAND.primary,
   },
   filterChipText: {
     ...THEME.typography.bodySm,
@@ -485,8 +485,8 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   statusFilterChipActive: {
-    backgroundColor: THEME.colors.primaryLight,
-    borderColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primarySoft,
+    borderColor: DP_BRAND.primary,
   },
   statusFilterIcon: {
     ...THEME.typography.caption,
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
   },
   statusFilterTextActive: {
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
     fontWeight: '600',
   },
 
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: THEME.radius.md,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
   },
   pageBtnDisabled: {
     backgroundColor: THEME.colors.neutral200,

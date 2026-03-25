@@ -23,6 +23,7 @@ import {
 } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DPDashboardStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Nav = NativeStackNavigationProp<DPDashboardStackParamList>;
 
@@ -168,7 +169,7 @@ const DPDashboardScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -181,7 +182,7 @@ const DPDashboardScreen: React.FC = () => {
             style={styles.notificationBtn}
             onPress={() => navigation.navigate('Notifications')}
           >
-            <Feather name="bell" size={20} color={THEME.colors.neutral700} />
+            <Feather name="bell" size={20} color={DP_BRAND.white} />
             {unreadNotifications > 0 && (
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationBadgeText}>
@@ -217,7 +218,7 @@ const DPDashboardScreen: React.FC = () => {
           <View style={styles.progressHeader}>
             <View style={styles.progressTitleRow}>
               <View style={styles.progressIconWrap}>
-                <Feather name="trending-up" size={16} color={THEME.colors.primary} />
+                <Feather name="trending-up" size={16} color={DP_BRAND.primary} />
               </View>
               <View>
                 <Text style={styles.progressTitle}>Today's Progress</Text>
@@ -282,7 +283,7 @@ const DPDashboardScreen: React.FC = () => {
               onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: nextDelivery.id })}
             >
               <Text style={styles.sectionLink}>View Details</Text>
-              <Feather name="chevron-right" size={14} color={THEME.colors.primary} />
+              <Feather name="chevron-right" size={14} color={DP_BRAND.primary} />
             </TouchableOpacity>
           )}
         </View>
@@ -355,7 +356,7 @@ const DPDashboardScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Recent Activity</Text>
           <TouchableOpacity style={styles.sectionLinkBtn}>
             <Text style={styles.sectionLink}>View All</Text>
-            <Feather name="chevron-right" size={14} color={THEME.colors.primary} />
+            <Feather name="chevron-right" size={14} color={DP_BRAND.primary} />
           </TouchableOpacity>
         </View>
 
@@ -433,7 +434,7 @@ const DPDashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: DP_BRAND.primary,
   },
 
   // Header
@@ -444,17 +445,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 12,
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: DP_BRAND.primary,
   },
   headerLeft: {},
   greeting: {
     ...THEME.typography.bodySm,
-    color: THEME.colors.textSecondary,
+    color: DP_BRAND.headerTextSecondary,
     marginBottom: 2,
   },
   userName: {
     ...THEME.typography.h2,
-    color: THEME.colors.textPrimary,
+    color: DP_BRAND.white,
   },
   headerRight: {
     flexDirection: 'row',
@@ -465,11 +466,11 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: THEME.colors.neutral50,
+    backgroundColor: DP_BRAND.headerOverlay,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: DP_BRAND.headerOverlayBorder,
   },
   notificationBadge: {
     position: 'absolute',
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 5,
     borderWidth: 2,
-    borderColor: THEME.colors.surface,
+    borderColor: DP_BRAND.primary,
   },
   notificationBadgeText: {
     ...THEME.typography.overline,
@@ -494,7 +495,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.headerOverlaySolid,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -508,15 +509,13 @@ const styles = StyleSheet.create({
   dateStrip: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: THEME.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    backgroundColor: DP_BRAND.primary,
   },
   dateBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: THEME.colors.neutral50,
+    backgroundColor: DP_BRAND.headerOverlaySolid,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: THEME.radius.full,
@@ -525,18 +524,19 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: THEME.colors.success,
+    backgroundColor: DP_BRAND.white,
     marginRight: 8,
   },
   dateText: {
     ...THEME.typography.caption,
     fontWeight: '500',
-    color: THEME.colors.textSecondary,
+    color: 'rgba(255,255,255,0.9)',
   },
 
   // Scroll
   scrollView: {
     flex: 1,
+    backgroundColor: THEME.colors.background,
   },
   scrollContent: {
     padding: 16,
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: THEME.radius.md,
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   progressPercentage: {
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: THEME.radius.md,
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
   progressPercentageText: {
     ...THEME.typography.h4,
     fontWeight: '700',
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
   progressBarContainer: {
     height: 6,
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     borderRadius: 3,
   },
 
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
   sectionLink: {
     ...THEME.typography.bodySm,
     fontWeight: '600',
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
 
   // Next Delivery Card
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     paddingVertical: 14,
     borderRadius: THEME.radius.lg,
     gap: 8,

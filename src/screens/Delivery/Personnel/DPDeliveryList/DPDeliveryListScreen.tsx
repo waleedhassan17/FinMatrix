@@ -8,6 +8,7 @@ import { selectUser } from '../../../Auth/authSlice';
 import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'DPDeliveries'>;
 
@@ -70,7 +71,7 @@ const DeliveryCard: React.FC<{
       <View style={styles.deliveryCardFooter}>
         <Text style={styles.viewDetailsText}>View Details</Text>
         <View style={styles.arrowCircle}>
-          <Feather name="arrow-right" size={12} color={THEME.colors.primary} />
+          <Feather name="arrow-right" size={12} color={DP_BRAND.primary} />
         </View>
       </View>
     </TouchableOpacity>
@@ -129,7 +130,7 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -191,7 +192,7 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
           title="Up Next"
           icon="clock"
           count={pending.length}
-          color={THEME.colors.primary}
+          color={DP_BRAND.primary}
           emptyText="No pending deliveries"
         >
           {pending.map(delivery => (
@@ -221,7 +222,7 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
           {completed.length > 5 && (
             <TouchableOpacity style={styles.viewAllLink}>
               <Text style={styles.viewAllText}>View all {completed.length} completed</Text>
-              <Feather name="chevron-right" size={14} color={THEME.colors.primary} />
+              <Feather name="chevron-right" size={14} color={DP_BRAND.primary} />
             </TouchableOpacity>
           )}
         </SectionCard>
@@ -235,14 +236,12 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: DP_BRAND.primary,
   },
 
   // Header
   header: {
-    backgroundColor: THEME.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    backgroundColor: DP_BRAND.primary,
   },
   headerContent: {
     flexDirection: 'row',
@@ -253,17 +252,17 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...THEME.typography.h2,
-    color: THEME.colors.textPrimary,
+    color: DP_BRAND.white,
   },
   headerSubtitle: {
     ...THEME.typography.bodySm,
-    color: THEME.colors.textSecondary,
+    color: DP_BRAND.headerTextSecondary,
     marginTop: 2,
   },
   headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.headerOverlaySolid,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: THEME.radius.full,
@@ -272,12 +271,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.white,
     marginRight: 8,
   },
   headerBadgeText: {
     ...THEME.typography.labelMd,
-    color: THEME.colors.primary,
+    color: DP_BRAND.white,
   },
 
   // Quick Stats
@@ -321,6 +320,7 @@ const styles = StyleSheet.create({
   // Scroll
   scrollView: {
     flex: 1,
+    backgroundColor: THEME.colors.background,
   },
   scrollContent: {
     padding: 16,
@@ -493,13 +493,13 @@ const styles = StyleSheet.create({
   viewDetailsText: {
     ...THEME.typography.bodySm,
     fontWeight: '600',
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
   arrowCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     ...THEME.typography.bodySm,
     fontWeight: '600',
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
 });
 

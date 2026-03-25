@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, StatusBar, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,6 +15,7 @@ import {
   setInventoryRequestSubmitted,
 } from './dpDeliveryCompleteSlice';
 import { THEME } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'DeliveryComplete'>;
 
@@ -183,7 +184,11 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
         ))}
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+      >
         {/* Success Badge */}
         <View style={styles.badgeContainer}>
           <Animated.View style={[styles.ring, { transform: [{ scale: ringScale1 }], opacity: ringOpacity1 }]} />
@@ -215,7 +220,7 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
         }]}>
           <View style={styles.cardHeader}>
             <View style={styles.cardIconWrap}>
-              <Feather name="clipboard" size={20} color={THEME.colors.primary} />
+              <Feather name="clipboard" size={20} color={DP_BRAND.primary} />
             </View>
             <Text style={styles.cardTitle}>Delivery Summary</Text>
           </View>
@@ -273,7 +278,7 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
           transform: [{ translateY: contentSlide }] 
         }]}>
           <View style={styles.statCard}>
-            <Feather name="package" size={20} color={THEME.colors.primary} style={{ marginBottom: 4 }} />
+            <Feather name="package" size={20} color={DP_BRAND.primary} style={{ marginBottom: 4 }} />
             <Text style={styles.statValue}>{delivery.items.length}</Text>
             <Text style={styles.statLabel}>Items</Text>
           </View>
@@ -296,7 +301,7 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
         }]}>
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => navigation.navigate('DPDeliveries')}
+            onPress={() => navigation.popToTop()}
             activeOpacity={0.9}
           >
             <Text style={styles.primaryButtonText}>Back to Deliveries</Text>
@@ -305,7 +310,7 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           </TouchableOpacity>
         </Animated.View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -316,10 +321,12 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.successLighter,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 32,
   },
 
   // Confetti
@@ -328,7 +335,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
+    height: SCREEN_HEIGHT * 0.35,
     overflow: 'hidden',
     zIndex: 1,
     pointerEvents: 'none',
@@ -418,7 +425,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: THEME.radius.lg,
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -541,7 +548,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     paddingVertical: 16,
     borderRadius: THEME.radius.lg,
     ...THEME.shadows.md,

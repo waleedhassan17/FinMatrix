@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { Feather } from '@expo/vector-icons';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
@@ -548,14 +549,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: THEME.radius.lg,
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconDoc: {
     width: 20,
     height: 24,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     borderRadius: 3,
     padding: 4,
     justifyContent: 'center',
@@ -658,7 +659,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -680,7 +681,7 @@ const styles = StyleSheet.create({
   moreItems: {
     ...THEME.typography.bodySm,
     fontWeight: '500',
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
     marginTop: 4,
     marginLeft: 32,
   },
@@ -839,7 +840,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   emptyButton: {
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: THEME.radius.lg,

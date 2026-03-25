@@ -18,6 +18,7 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks'
 import { selectDeliveries, saveDeliverySignature } from '../../Admin/AssignDeliveries/deliverySlice';
 import { resetSignatureState, setHasDrawn } from './dpSignatureCaptureSlice';
 import { THEME } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'SignatureCapture'>;
 
@@ -114,10 +115,10 @@ const SignatureCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
   if (!delivery) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+        <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Feather name="chevron-left" size={20} color={THEME.colors.neutral700} />
+            <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Capture Signature</Text>
           <View style={styles.headerSpacer} />
@@ -138,12 +139,12 @@ const SignatureCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
       
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Feather name="chevron-left" size={20} color={THEME.colors.neutral700} />
+          <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Customer Signature</Text>
@@ -253,7 +254,7 @@ const SignatureCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
             '• Ask the customer to sign clearly inside the white box\n• Use a finger to draw the signature\n• Tap "Clear" to start over if needed\n• Press "Confirm Signature" when done'
           )}
         >
-          <Feather name="help-circle" size={16} color={THEME.colors.primary} />
+          <Feather name="help-circle" size={16} color={DP_BRAND.primary} />
           <Text style={styles.helpText}>Need help capturing?</Text>
         </TouchableOpacity>
       </View>
@@ -264,7 +265,7 @@ const SignatureCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: DP_BRAND.primary,
   },
 
   // Header
@@ -272,17 +273,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: THEME.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: DP_BRAND.primary,
   },
   backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: THEME.colors.neutral50,
+    backgroundColor: DP_BRAND.headerOverlay,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -296,11 +295,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...THEME.typography.h3,
     fontWeight: '700',
-    color: THEME.colors.textPrimary,
+    color: DP_BRAND.white,
   },
   headerSubtitle: {
     ...THEME.typography.caption,
-    color: THEME.colors.textSecondary,
+    color: DP_BRAND.headerTextSecondary,
     marginTop: 2,
   },
   headerSpacer: {
@@ -310,6 +309,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+    backgroundColor: THEME.colors.background,
   },
 
   // Customer Card
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     marginRight: 8,
   },
   canvasLabelText: {
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   clearLinkText: {
     ...THEME.typography.bodySm,
     fontWeight: '600',
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
   canvas: {
     flex: 1,
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
   helpText: {
     ...THEME.typography.bodyMd,
     fontWeight: '500',
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
 
   // Empty State
@@ -574,6 +574,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
+    backgroundColor: THEME.colors.background,
   },
   emptyIconWrap: {
     width: 80,
@@ -600,7 +601,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   emptyButton: {
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: THEME.radius.lg,

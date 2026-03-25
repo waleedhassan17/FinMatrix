@@ -18,6 +18,7 @@ import { shadowInventoryRecords } from '../../../../dummy-data/shadowInventory';
 import type { DPInventoryStackParamList } from '../../../../navigators/stacks/DPInventoryStack';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPInventoryStackParamList, 'DPInventory'>;
 
@@ -81,7 +82,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -94,7 +95,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.shadowBtn}
             onPress={() => navigation.navigate('DPShadowInventory')}
           >
-            <Feather name="clipboard" size={14} color={THEME.colors.primary} style={{ marginRight: 6 }} />
+            <Feather name="clipboard" size={14} color={DP_BRAND.white} style={{ marginRight: 6 }} />
             <Text style={styles.shadowBtnText}>Shadow</Text>
           </TouchableOpacity>
         </View>
@@ -109,7 +110,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.statCardPrimary]}>
             <View style={styles.statIconWrap}>
-              <Feather name="package" size={20} color={THEME.colors.primary} />
+              <Feather name="package" size={20} color={DP_BRAND.primary} />
             </View>
             <View style={styles.statInfo}>
               <Text style={styles.statValue}>{stats.total}</Text>
@@ -189,7 +190,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.cardIconWrap}>
-              <Feather name="clipboard" size={18} color={THEME.colors.primary} />
+              <Feather name="clipboard" size={18} color={DP_BRAND.primary} />
             </View>
             <View style={styles.cardHeaderText}>
               <Text style={styles.cardTitle}>Inventory Items</Text>
@@ -257,7 +258,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
                       <Text style={styles.changesText}>
                         {item.changesToday.length} change{item.changesToday.length !== 1 ? 's' : ''} today
                       </Text>
-                      <Text style={styles.viewLink}>View <Feather name="arrow-right" size={12} color={THEME.colors.primary} /></Text>
+                      <Text style={styles.viewLink}>View <Feather name="arrow-right" size={12} color={DP_BRAND.primary} /></Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -316,14 +317,12 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: DP_BRAND.primary,
   },
 
   // Header
   header: {
-    backgroundColor: THEME.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    backgroundColor: DP_BRAND.primary,
   },
   headerContent: {
     flexDirection: 'row',
@@ -334,18 +333,18 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...THEME.typography.h1,
-    color: THEME.colors.textPrimary,
+    color: DP_BRAND.white,
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     ...THEME.typography.bodySm,
-    color: THEME.colors.textSecondary,
+    color: DP_BRAND.headerTextSecondary,
     marginTop: 2,
   },
   shadowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.headerOverlaySolid,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: THEME.radius.full,
@@ -357,12 +356,13 @@ const styles = StyleSheet.create({
   shadowBtnText: {
     ...THEME.typography.bodySm,
     fontWeight: '600',
-    color: THEME.colors.primary,
+    color: DP_BRAND.white,
   },
 
   // Scroll
   scrollView: {
     flex: 1,
+    backgroundColor: THEME.colors.background,
   },
   scrollContent: {
     padding: 16,
@@ -384,8 +384,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statCardPrimary: {
-    backgroundColor: THEME.colors.primaryLighter,
-    borderColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
+    borderColor: DP_BRAND.primaryBorder,
   },
   statCardSecondary: {
     backgroundColor: THEME.colors.secondaryLight,
@@ -499,8 +499,8 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.border,
   },
   sortChipActive: {
-    backgroundColor: THEME.colors.primary,
-    borderColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
+    borderColor: DP_BRAND.primary,
   },
   sortChipIcon: {
     fontSize: THEME.typography.overline.fontSize,
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: THEME.radius.lg,
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
   },
   viewLink: {
     ...THEME.typography.labelMd,
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
 
   // Empty States

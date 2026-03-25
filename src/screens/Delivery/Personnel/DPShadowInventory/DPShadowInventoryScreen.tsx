@@ -16,6 +16,7 @@ import {
   setShadowInventorySortBy,
 } from './dpShadowInventorySlice';
 import { THEME } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPInventoryStackParamList, 'DPShadowInventory'>;
 
@@ -81,12 +82,12 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
       
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Feather name="chevron-left" size={20} color={THEME.colors.neutral700} />
+          <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Shadow Inventory</Text>
@@ -99,7 +100,7 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
             'This is your local copy of inventory used during deliveries. Changes sync to the warehouse after approval.'
           )}
         >
-          <Feather name="info" size={18} color={THEME.colors.textSecondary} />
+          <Feather name="info" size={18} color={DP_BRAND.white} />
         </TouchableOpacity>
       </View>
 
@@ -110,8 +111,8 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
       >
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { backgroundColor: THEME.colors.primaryLighter, borderColor: THEME.colors.primaryLight }]}>
-            <Feather name="package" size={18} color={THEME.colors.primary} style={{ marginBottom: 4 }} />
+          <View style={[styles.statCard, { backgroundColor: DP_BRAND.primarySoft, borderColor: DP_BRAND.primaryBorder }]}>
+            <Feather name="package" size={18} color={DP_BRAND.primary} style={{ marginBottom: 4 }} />
             <Text style={styles.statValue}>{stats.total}</Text>
             <Text style={styles.statLabel}>Items</Text>
           </View>
@@ -177,7 +178,7 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.cardIconWrap}>
-              <Feather name="clipboard" size={18} color={THEME.colors.primary} />
+              <Feather name="clipboard" size={18} color={DP_BRAND.primary} />
             </View>
             <View style={styles.cardHeaderText}>
               <Text style={styles.cardTitle}>Inventory Items</Text>
@@ -253,7 +254,7 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
                           {item.changesToday.length} change{item.changesToday.length !== 1 ? 's' : ''} today
                         </Text>
                       </View>
-                      <Text style={styles.viewLink}>View Log <Feather name="arrow-right" size={12} color={THEME.colors.primary} /></Text>
+                      <Text style={styles.viewLink}>View Log <Feather name="arrow-right" size={12} color={DP_BRAND.primary} /></Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -339,7 +340,7 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
             
             <View style={styles.modalHeader}>
               <View style={styles.modalIconWrap}>
-                <Feather name="edit" size={28} color={THEME.colors.primary} />
+                <Feather name="edit" size={28} color={DP_BRAND.primary} />
               </View>
               <Text style={styles.modalTitle}>{selectedItem?.itemName ?? 'Change Log'}</Text>
               <Text style={styles.modalSubtitle}>Today's inventory changes</Text>
@@ -399,7 +400,7 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: DP_BRAND.primary,
   },
 
   // Header
@@ -407,17 +408,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: THEME.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: DP_BRAND.primary,
   },
   backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: THEME.colors.neutral50,
+    backgroundColor: DP_BRAND.headerOverlay,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -431,18 +430,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...THEME.typography.h3,
     fontWeight: '700',
-    color: THEME.colors.textPrimary,
+    color: DP_BRAND.white,
   },
   headerSubtitle: {
     ...THEME.typography.caption,
-    color: THEME.colors.textSecondary,
+    color: DP_BRAND.headerTextSecondary,
     marginTop: 2,
   },
   infoBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: THEME.colors.neutral50,
+    backgroundColor: DP_BRAND.headerOverlay,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -452,6 +451,7 @@ const styles = StyleSheet.create({
 
   scrollView: {
     flex: 1,
+    backgroundColor: THEME.colors.background,
   },
   scrollContent: {
     padding: 16,
@@ -536,8 +536,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   sortChipActive: {
-    backgroundColor: THEME.colors.primary,
-    borderColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
+    borderColor: DP_BRAND.primary,
   },
   sortChipIcon: {
     ...THEME.typography.overline,
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: THEME.radius.lg,
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
   },
   viewLink: {
     ...THEME.typography.labelMd,
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
 
   // Submit Button
@@ -878,7 +878,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -959,7 +959,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.danger,
   },
   modalCloseBtn: {
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     borderRadius: THEME.radius.lg,
     paddingVertical: 14,
     alignItems: 'center',

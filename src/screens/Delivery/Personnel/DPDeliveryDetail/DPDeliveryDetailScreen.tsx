@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks'
 import { selectDeliveries, updateDeliveryStatus } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'DPDeliveryDetail'>;
 
@@ -31,10 +32,10 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   if (!delivery) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+        <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Feather name="chevron-left" size={20} color={THEME.colors.neutral700} />
+            <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Delivery Detail</Text>
           <View style={styles.headerSpacer} />
@@ -130,12 +131,12 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
       
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Feather name="chevron-left" size={20} color={THEME.colors.neutral700} />
+          <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>{delivery.referenceNo}</Text>
@@ -159,7 +160,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.cardIconWrap}>
-              <Feather name="user" size={18} color={THEME.colors.primary} />
+              <Feather name="user" size={18} color={DP_BRAND.primary} />
             </View>
             <View style={styles.cardHeaderText}>
               <Text style={styles.cardTitle}>Customer Information</Text>
@@ -174,7 +175,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             
             <TouchableOpacity style={styles.actionRow} onPress={openMap}>
               <View style={styles.actionRowIcon}>
-                <Feather name="map-pin" size={16} color={THEME.colors.primary} />
+                <Feather name="map-pin" size={16} color={DP_BRAND.primary} />
               </View>
               <View style={styles.actionRowContent}>
                 <Text style={styles.actionRowLabel}>Delivery Address</Text>
@@ -393,7 +394,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: DP_BRAND.primary,
   },
 
   // Header
@@ -401,17 +402,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: THEME.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: DP_BRAND.primary,
   },
   backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: THEME.colors.neutral50,
+    backgroundColor: DP_BRAND.headerOverlay,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -425,7 +424,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...THEME.typography.h4,
     fontWeight: '700',
-    color: THEME.colors.textPrimary,
+    color: DP_BRAND.white,
     marginBottom: 4,
   },
   headerBadge: {
@@ -440,13 +439,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: THEME.colors.neutral50,
+    backgroundColor: DP_BRAND.headerOverlay,
     alignItems: 'center',
     justifyContent: 'center',
   },
   moreIcon: {
     fontSize: 20,
-    color: THEME.colors.neutral700,
+    color: DP_BRAND.white,
   },
   headerSpacer: {
     width: 40,
@@ -455,6 +454,7 @@ const styles = StyleSheet.create({
   // Scroll
   scrollView: {
     flex: 1,
+    backgroundColor: THEME.colors.background,
   },
   scrollContent: {
     padding: 16,
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: THEME.radius.lg,
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: THEME.radius.md,
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -638,7 +638,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   qtyBadge: {
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: THEME.radius.md,
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
   qtyText: {
     ...THEME.typography.bodySm,
     fontWeight: '700',
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
 
   // Notes
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.success,
   },
   timelineDotCurrent: {
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     ...THEME.shadows.sm,
   },
   timelineDotCheck: {
@@ -745,7 +745,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
-    backgroundColor: THEME.colors.primaryLight,
+    backgroundColor: DP_BRAND.primarySoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: THEME.radius.full,
@@ -755,12 +755,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     marginRight: 6,
   },
   currentBadgeText: {
     ...THEME.typography.labelSm,
-    color: THEME.colors.primary,
+    color: DP_BRAND.primary,
   },
 
   // Action Button
@@ -812,6 +812,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
+    backgroundColor: THEME.colors.background,
   },
   emptyIconWrap: {
     width: 80,
@@ -837,7 +838,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: DP_BRAND.primary,
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: THEME.radius.lg,
