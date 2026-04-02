@@ -1,9 +1,45 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — COA Validation Model
+// FinMatrix — COA Model
 // ═══════════════════════════════════════════════════════
+// Defines the expected shape of the COA data used by the app.
 
-import type { AccountType } from '../types';
+import type { AccountType, AccountSubType } from '../types';
 import { isAccountNumberInRange, getSubTypeRange } from '../utils/accountNumberUtils';
+
+// ─── API Response Types (match backend contract) ─────
+
+export interface COAApiAccount {
+  id: string;
+  companyId: string;
+  code: string;
+  name: string;
+  type: AccountType;
+  subType: AccountSubType;
+  description: string;
+  parentId: string | null;
+  isActive: boolean;
+  isSystemAccount: boolean;
+  balance: number;
+  normalBalance: 'debit' | 'credit';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface COAApiResponse {
+  success: boolean;
+  data: {
+    accounts: COAApiAccount[];
+  };
+}
+
+export interface COAApiSingleResponse {
+  success: boolean;
+  data: {
+    account: COAApiAccount;
+  };
+}
+
+// ─── Form helpers (used by COAFormScreen) ────────────
 
 export interface ValidationErrors {
   [key: string]: string;
