@@ -2,12 +2,13 @@
 // FinMatrix — General Ledger Slice (createAppSlice)
 // ═══════════════════════════════════════════════════════
 // Co-located with GLScreen.tsx
-// Owns GL entries, date range, account filter, loading.
+// Flow: Screen → Slice → Network → Serializer (in fulfilled) → Screen
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { JournalEntry } from '../../types';
-import { generalLedgerData } from '../../dummy-data/generalLedger';
+import { getLedgerEntriesAPI } from '../../network/glNetwork';
+import { glSerializer } from '../../serializers/glSerializer';
+import type { GLApiEntry } from '../../models/glModel';
 
 export interface GLDateRange {
   fromDate: string; // ISO string
@@ -15,12 +16,17 @@ export interface GLDateRange {
 }
 
 export interface GLSliceState {
-  entries: JournalEntry[];
-  filteredEntries: JournalEntry[];
+  entries: GLApiEntry[];
   dateRange: GLDateRange;
   selectedAccountId: string; // '' = All Accounts
   isLoading: boolean;
   error: string;
+  totalDebits: number;
+  totalCredits: number;
+  isBalanced: boolean;
+  page: number;
+  totalPages: number;
+  totalEntries: number;
 }
 
 const now = new Date();
@@ -29,28 +35,17 @@ const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOStrin
 
 const initialState: GLSliceState = {
   entries: [],
-  filteredEntries: [],
   dateRange: { fromDate: startOfMonth, toDate: endOfMonth },
   selectedAccountId: '',
   isLoading: false,
   error: '',
+  totalDebits: 0,
+  totalCredits: 0,
+  isBalanced: true,
+  page: 1,
+  totalPages: 1,
+  totalEntries: 0,
 };
-
-function applyFilters(
-  entries: JournalEntry[],
-  dateRange: GLDateRange,
-  accountId: string,
-): JournalEntry[] {
-  return entries.filter(e => {
-    const d = e.date;
-    const inRange = d >= dateRange.fromDate.slice(0, 10) && d <= dateRange.toDate.slice(0, 10);
-    if (!inRange) return false;
-    if (accountId) {
-      return e.lines.some(l => l.accountId === accountId);
-    }
-    return true;
-  });
-}
 
 export const glSlice = createAppSlice({
   name: 'gl',
@@ -58,28 +53,36 @@ export const glSlice = createAppSlice({
   reducers: create => ({
     setDateRange: create.reducer((state, action: PayloadAction<GLDateRange>) => {
       state.dateRange = action.payload;
-      state.filteredEntries = applyFilters(state.entries, state.dateRange, state.selectedAccountId);
     }),
     setSelectedAccountId: create.reducer((state, action: PayloadAction<string>) => {
       state.selectedAccountId = action.payload;
-      state.filteredEntries = applyFilters(state.entries, state.dateRange, state.selectedAccountId);
     }),
     resetGL: create.reducer(state => {
       state.selectedAccountId = '';
       state.dateRange = { fromDate: startOfMonth, toDate: endOfMonth };
-      state.filteredEntries = applyFilters(state.entries, state.dateRange, '');
     }),
     fetchGLEntries: create.asyncThunk(
-      async () => {
-        // simulate network delay
-        await new Promise(r => setTimeout(r, 600));
-        return generalLedgerData;
+      async (_arg, thunkAPI) => {
+        const root = thunkAPI.getState() as { gl: GLSliceState };
+        const { dateRange, selectedAccountId } = root.gl;
+        const response = await getLedgerEntriesAPI({
+          startDate: dateRange.fromDate.slice(0, 10),
+          endDate: dateRange.toDate.slice(0, 10),
+          ...(selectedAccountId ? { accountId: selectedAccountId } : {}),
+        });
+        return response;
       },
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => {
-          state.entries = action.payload;
-          state.filteredEntries = applyFilters(action.payload, state.dateRange, state.selectedAccountId);
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const data = glSerializer(action.payload);
+          state.entries = data.entries;
+          state.totalDebits = data.totalDebits;
+          state.totalCredits = data.totalCredits;
+          state.isBalanced = data.isBalanced;
+          state.page = data.page;
+          state.totalPages = data.totalPages;
+          state.totalEntries = data.totalEntries;
           state.isLoading = false;
         },
         rejected: (state, action) => {
@@ -91,20 +94,24 @@ export const glSlice = createAppSlice({
   }),
   selectors: {
     selectGLEntries: state => state.entries,
-    selectFilteredEntries: state => state.filteredEntries,
     selectDateRange: state => state.dateRange,
     selectSelectedAccountId: state => state.selectedAccountId,
     selectGLIsLoading: state => state.isLoading,
     selectGLError: state => state.error,
+    selectGLTotals: state => ({
+      totalDebits: state.totalDebits,
+      totalCredits: state.totalCredits,
+      isBalanced: state.isBalanced,
+    }),
   },
 });
 
 export const { setDateRange, setSelectedAccountId, resetGL, fetchGLEntries } = glSlice.actions;
 export const {
   selectGLEntries,
-  selectFilteredEntries,
   selectDateRange,
   selectSelectedAccountId,
   selectGLIsLoading,
   selectGLError,
+  selectGLTotals,
 } = glSlice.selectors;
