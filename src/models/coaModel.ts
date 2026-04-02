@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import type { AccountType } from '../types';
+import { isAccountNumberInRange, getSubTypeRange } from '../utils/accountNumberUtils';
 
 export interface ValidationErrors {
   [key: string]: string;
@@ -83,6 +84,22 @@ export const validateAccount = (
     !editingId
   ) {
     errors.code = 'Account number already exists';
+  } else if (data.type && !/^\d+$/.test(data.code.trim())) {
+    errors.code = 'Account number must be numeric';
+  } else if (data.type && data.code.trim()) {
+    // Validate the code falls within the allowed range for its type/sub-type
+    const inRange = isAccountNumberInRange(
+      data.code.trim(),
+      data.type as AccountType,
+      data.subTypeLabel || undefined,
+    );
+    if (!inRange) {
+      const [min, max] = getSubTypeRange(
+        data.type as AccountType,
+        data.subTypeLabel || undefined,
+      );
+      errors.code = `Must be between ${min} and ${max} for this category`;
+    }
   }
 
   // Name

@@ -46,6 +46,9 @@ import {
 } from '../../../models/coaModel';
 import type { AccountType, AccountSubType } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+import {
+  getAvailableAccountNumbers,
+} from '../../../utils/accountNumberUtils';
 
 type FormRoute = RouteProp<MoreStackParamList, 'COAForm'>;
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -89,36 +92,12 @@ const COAFormScreen: React.FC = () => {
     return () => { dispatch(resetCoaForm()); };
   }, [existing, dispatch]);
 
-  // ── Auto-suggest next account number ──────────────
-  useEffect(() => {
-    if (!isEdit && !form.code && form.type) {
-      const prefixMap: Record<string, string> = {
-        asset: '1', liability: '2', equity: '3', revenue: '4', expense: '5',
-      };
-      const prefix = prefixMap[form.type] ?? '1';
-      const sameType = accounts
-        .filter(a => a.code.startsWith(prefix))
-        .map(a => parseInt(a.code, 10))
-        .filter(n => !isNaN(n));
-      const max = sameType.length > 0 ? Math.max(...sameType) : parseInt(`${prefix}000`, 10);
-      const next = (max + 10).toString();
-      dispatch(setFormField({ key: 'code', value: next }));
-    }
-  }, [form.type, isEdit, accounts, form.code, dispatch]);
-
   // ── Derived ───────────────────────────────────────
   const subTypeOptions = useMemo(() => {
     if (!form.type) return [];
     const opts = SUB_TYPE_OPTIONS[form.type as AccountType] ?? [];
     return opts.map(o => ({ label: o.label, value: o.label }));
   }, [form.type]);
-
-  const parentOptions = useMemo(() => {
-    if (!form.type) return [];
-    return accounts
-      .filter(a => a.type === form.type && a.id !== editingId)
-      .map(a => ({ label: `${a.code} — ${a.name}`, value: a.id }));
-  }, [form.type, accounts, editingId]);
 
   const existingCodes = useMemo(
     () => accounts.filter(a => a.id !== editingId).map(a => a.code),
@@ -138,8 +117,21 @@ const COAFormScreen: React.FC = () => {
       dispatch(setFormField({ key: 'type', value: val }));
       dispatch(setFormField({ key: 'subTypeLabel', value: '' }));
       dispatch(setFormField({ key: 'parentId', value: '' }));
+      // Always auto-assign the first available number for the new type
+      const options = getAvailableAccountNumbers(val as AccountType, undefined, accounts);
+      dispatch(setFormField({ key: 'code', value: options.length > 0 ? options[0].value : '' }));
     },
-    [dispatch],
+    [dispatch, accounts],
+  );
+
+  // When sub-type changes, auto-assign the best number for the refined range
+  const handleSubTypeChange = useCallback(
+    (val: string) => {
+      dispatch(setFormField({ key: 'subTypeLabel', value: val }));
+      const options = getAvailableAccountNumbers(form.type as AccountType, val || undefined, accounts);
+      dispatch(setFormField({ key: 'code', value: options.length > 0 ? options[0].value : '' }));
+    },
+    [dispatch, form.type, accounts],
   );
 
   const handleSave = useCallback(async () => {
@@ -230,25 +222,6 @@ const COAFormScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Account Number */}
-          <CustomInput
-            label="Account Number *"
-            value={form.code}
-            onChangeText={val => updateField('code', val)}
-            placeholder="e.g. 1050"
-            error={errors.code}
-            keyboardType="numeric"
-          />
-
-          {/* Account Name */}
-          <CustomInput
-            label="Account Name *"
-            value={form.name}
-            onChangeText={val => updateField('name', val)}
-            placeholder="e.g. Petty Cash"
-            error={errors.name}
-          />
-
           {/* Type */}
           <CustomDropdown
             label="Account Type *"
@@ -264,22 +237,32 @@ const COAFormScreen: React.FC = () => {
             label="Sub Type *"
             options={subTypeOptions}
             value={form.subTypeLabel}
-            onChange={val => updateField('subTypeLabel', val)}
+            onChange={handleSubTypeChange}
             placeholder={form.type ? 'Select sub type...' : 'Select type first'}
             error={errors.subTypeLabel}
           />
 
-          {/* Parent Account */}
-          {parentOptions.length > 0 && (
-            <CustomDropdown
-              label="Parent Account (optional)"
-              options={[{ label: 'None', value: '' }, ...parentOptions]}
-              value={form.parentId}
-              onChange={val => updateField('parentId', val)}
-              placeholder="None"
-              searchable
-            />
-          )}
+          {/* Account Number (read-only, auto-generated) */}
+          <View style={styles.codeDisplay}>
+            <Text style={styles.codeLabel}>Account Number</Text>
+            <View style={styles.codeValueRow}>
+              <Text style={form.code ? styles.codeValue : styles.codePlaceholder}>
+                {form.code || 'Select type & sub type above'}
+              </Text>
+            </View>
+            <Text style={styles.codeHelperText}>
+              Auto-generated based on account type &amp; sub type
+            </Text>
+          </View>
+
+          {/* Account Name */}
+          <CustomInput
+            label="Account Name *"
+            value={form.name}
+            onChangeText={val => updateField('name', val)}
+            placeholder="e.g. Petty Cash"
+            error={errors.name}
+          />
 
           {/* Description */}
           <CustomInput
@@ -400,6 +383,42 @@ const styles = StyleSheet.create({
   },
   btnRow: {
     marginTop: spacing.sm,
+  },
+  codeDisplay: {
+    marginBottom: spacing.md,
+  },
+  codeLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 6,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  codeValueRow: {
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  codeValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  codePlaceholder: {
+    fontSize: 14,
+    color: colors.textLight,
+    fontStyle: 'italic',
+    fontFamily: THEME.typography.fontFamily,
+  },
+  codeHelperText: {
+    fontSize: 11,
+    color: colors.textLight,
+    marginTop: 4,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 
