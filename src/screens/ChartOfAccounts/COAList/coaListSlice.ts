@@ -2,23 +2,26 @@
 // FinMatrix — COA List Slice (createAppSlice pattern)
 // ═══════════════════════════════════════════════════════
 // Co-located with COAListScreen.tsx
+// Flow: Screen → Slice → Network → Serializer (in fulfilled) → Screen
 // Owns all COA account data + CRUD thunks + list UI state.
 // Other COA screens import data selectors/thunks from here.
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { Account, AccountType } from '../../../types';
+import type { AccountType } from '../../../types';
 import {
   getAccountsAPI,
   createAccountAPI,
   updateAccountAPI,
   toggleAccountAPI,
 } from '../../../network/coaNetwork';
+import { coaListSerializer, coaSingleSerializer } from '../../../serializers/coaSerializer';
+import type { COAApiAccount } from '../../../models/coaModel';
 
 export type COAFilter = 'all' | AccountType;
 
 export interface COAListSliceState {
-  accounts: Account[];
+  accounts: COAApiAccount[];
   searchQuery: string;
   activeFilter: COAFilter;
   isLoading: boolean;
@@ -38,13 +41,13 @@ export const coaListSlice = createAppSlice({
   initialState,
   reducers: create => ({
     // ── Account data reducers ───────────────────────
-    setAccounts: create.reducer((state, action: PayloadAction<Account[]>) => {
+    setAccounts: create.reducer((state, action: PayloadAction<COAApiAccount[]>) => {
       state.accounts = action.payload;
     }),
-    addAccount: create.reducer((state, action: PayloadAction<Account>) => {
+    addAccount: create.reducer((state, action: PayloadAction<COAApiAccount>) => {
       state.accounts.push(action.payload);
     }),
-    updateAccount: create.reducer((state, action: PayloadAction<Account>) => {
+    updateAccount: create.reducer((state, action: PayloadAction<COAApiAccount>) => {
       const idx = state.accounts.findIndex(a => a.id === action.payload.id);
       if (idx !== -1) state.accounts[idx] = action.payload;
     }),
@@ -69,11 +72,15 @@ export const coaListSlice = createAppSlice({
 
     // ── Async thunks ────────────────────────────────
     fetchAccounts: create.asyncThunk(
-      async () => getAccountsAPI(),
+      async () => {
+        const response = await getAccountsAPI();
+        return response;
+      },
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => {
-          state.accounts = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const data = coaListSerializer(action.payload);
+          state.accounts = data.accounts;
           state.isLoading = false;
         },
         rejected: (state, action) => {
@@ -83,28 +90,40 @@ export const coaListSlice = createAppSlice({
       },
     ),
     createAccount: create.asyncThunk(
-      async (data: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => createAccountAPI(data),
+      async (data: Record<string, any>) => {
+        const response = await createAccountAPI(data);
+        return response;
+      },
       {
-        fulfilled: (state, action) => {
-          state.accounts.push(action.payload);
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const { account } = coaSingleSerializer(action.payload);
+          state.accounts.push(account);
         },
       },
     ),
     editAccount: create.asyncThunk(
-      async ({ id, data }: { id: string; data: Partial<Account> }) => updateAccountAPI(id, data),
+      async ({ id, data }: { id: string; data: Record<string, any> }) => {
+        const response = await updateAccountAPI(id, data);
+        return response;
+      },
       {
-        fulfilled: (state, action) => {
-          const idx = state.accounts.findIndex(a => a.id === action.payload.id);
-          if (idx !== -1) state.accounts[idx] = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const { account } = coaSingleSerializer(action.payload);
+          const idx = state.accounts.findIndex(a => a.id === account.id);
+          if (idx !== -1) state.accounts[idx] = account;
         },
       },
     ),
     toggleAccount: create.asyncThunk(
-      async (id: string) => toggleAccountAPI(id),
+      async (id: string) => {
+        const response = await toggleAccountAPI(id);
+        return response;
+      },
       {
-        fulfilled: (state, action) => {
-          const idx = state.accounts.findIndex(a => a.id === action.payload.id);
-          if (idx !== -1) state.accounts[idx] = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const { account } = coaSingleSerializer(action.payload);
+          const idx = state.accounts.findIndex(a => a.id === account.id);
+          if (idx !== -1) state.accounts[idx] = account;
         },
       },
     ),
