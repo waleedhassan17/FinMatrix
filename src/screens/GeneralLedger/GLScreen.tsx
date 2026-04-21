@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 import quarterOfYear from 'dayjs/plugin/quarterOfYear';
 
@@ -24,31 +25,21 @@ import {
   fetchGLEntries,
   setDateRange,
   setSelectedAccountId,
-  selectFilteredEntries,
+  selectGLEntries,
   selectDateRange,
   selectSelectedAccountId,
   selectGLIsLoading,
+  selectGLTotals,
 } from './glSlice';
 import { selectAccounts, fetchAccounts } from '../ChartOfAccounts/COAList/coaListSlice';
+import { selectJEEntries, fetchJournalEntries } from '../JournalEntries/JEList/jeListSlice';
+import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 import DateRangePicker from '../../Custom-Components/DateRangePicker';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import { formatCurrency } from '../../utils/formatters';
-import type { JournalEntry, JournalEntryLine } from '../../types';
+import type { GLApiEntry } from '../../models/glModel';
 
 dayjs.extend(quarterOfYear);
-
-// ─── Flat row type for table ─────────────────────────
-interface LedgerRow {
-  key: string;
-  entryId: string;
-  date: string;
-  ref: string;
-  description: string;
-  accountCode: string;
-  accountName: string;
-  debit: number;
-  credit: number;
-}
 
 // ─── Date presets ────────────────────────────────────
 const buildPresets = () => {
@@ -77,52 +68,37 @@ const buildPresets = () => {
   ];
 };
 
-// ─── Flatten entries into ledger rows ────────────────
-const flattenEntries = (
-  entries: JournalEntry[],
-  accountId: string,
-): LedgerRow[] => {
-  const rows: LedgerRow[] = [];
-  for (const e of entries) {
-    const lines: JournalEntryLine[] = accountId
-      ? e.lines.filter(l => l.accountId === accountId)
-      : e.lines;
-    for (const l of lines) {
-      rows.push({
-        key: l.id,
-        entryId: e.id,
-        date: e.date,
-        ref: e.entryNumber,
-        description: l.description || e.description,
-        accountCode: l.accountCode,
-        accountName: l.accountName,
-        debit: l.debit,
-        credit: l.credit,
-      });
-    }
-  }
-  return rows;
-};
-
 // ─── Component ───────────────────────────────────────
 const GLScreen: React.FC = () => {
   const dispatch = useAppDispatch();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<MoreStackParamList>>();
 
-  const filteredEntries = useAppSelector(selectFilteredEntries);
+  const filteredEntries = useAppSelector(selectGLEntries);
   const dateRange = useAppSelector(selectDateRange);
   const selectedAccountId = useAppSelector(selectSelectedAccountId);
   const isLoading = useAppSelector(selectGLIsLoading);
   const accounts = useAppSelector(selectAccounts);
+  const { totalDebits: sliceTotalDebits, totalCredits: sliceTotalCredits, isBalanced: sliceIsBalanced } = useAppSelector(selectGLTotals);
+  const jeEntries = useAppSelector(selectJEEntries);
 
   const presets = useMemo(() => buildPresets(), []);
   const fromDate = useMemo(() => new Date(dateRange.fromDate), [dateRange.fromDate]);
   const toDate = useMemo(() => new Date(dateRange.toDate), [dateRange.toDate]);
 
+  // Fetch accounts for dropdown
   useEffect(() => {
-    dispatch(fetchGLEntries());
     if (accounts.length === 0) dispatch(fetchAccounts());
   }, [dispatch, accounts.length]);
+
+  // Pre-load JE entries so detail screen can look them up
+  useEffect(() => {
+    if (jeEntries.length === 0) dispatch(fetchJournalEntries());
+  }, [dispatch, jeEntries.length]);
+
+  // Re-fetch ledger entries whenever filters change
+  useEffect(() => {
+    dispatch(fetchGLEntries());
+  }, [dispatch, dateRange.fromDate, dateRange.toDate, selectedAccountId]);
 
   // ── Account dropdown options ──────────────────────
   const accountOptions = useMemo(() => {
@@ -132,24 +108,15 @@ const GLScreen: React.FC = () => {
     return [{ label: 'All Accounts', value: '' }, ...opts];
   }, [accounts]);
 
-  // ── Flat rows + totals ────────────────────────────
-  const rows = useMemo(
-    () => flattenEntries(filteredEntries, selectedAccountId),
-    [filteredEntries, selectedAccountId],
-  );
+  // ── Entries come pre-flattened from the API ────────
+  const rows = filteredEntries;
 
-  const totalDebit = useMemo(() => rows.reduce((s, r) => s + r.debit, 0), [rows]);
-  const totalCredit = useMemo(() => rows.reduce((s, r) => s + r.credit, 0), [rows]);
-  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+  const totalDebit = sliceTotalDebits;
+  const totalCredit = sliceTotalCredits;
+  const isBalanced = sliceIsBalanced;
 
-  // ── Running balance ───────────────────────────────
-  const rowsWithBalance = useMemo(() => {
-    let balance = 0;
-    return rows.map(r => {
-      balance += r.debit - r.credit;
-      return { ...r, balance };
-    });
-  }, [rows]);
+  // ── Running balance (already computed by API) ─────
+  const rowsWithBalance = rows;
 
   // ── Handlers ──────────────────────────────────────
   const handleFromChange = useCallback(
@@ -168,30 +135,33 @@ const GLScreen: React.FC = () => {
   const handleExport = useCallback(() => {
     // placeholder
   }, []);
-  const handleRowPress = useCallback((_entryId: string) => {
-    // placeholder — navigate to JE detail
-  }, []);
+  const handleRowPress = useCallback(
+    (entryId: string) => {
+      navigation.navigate('JEDetail', { entryId });
+    },
+    [navigation],
+  );
 
   // ── Row renderer ──────────────────────────────────
   const renderRow = useCallback(
-    ({ item, index }: { item: typeof rowsWithBalance[0]; index: number }) => {
+    ({ item, index }: { item: GLApiEntry; index: number }) => {
       const bg = index % 2 === 0 ? colors.white : colors.background;
       return (
         <TouchableOpacity
           style={[styles.row, { backgroundColor: bg }]}
           activeOpacity={0.6}
-          onPress={() => handleRowPress(item.entryId)}>
+          onPress={() => handleRowPress(item.sourceId)}>
           <Text style={[styles.cell, styles.cellDate]}>
             {dayjs(item.date).format('MM/DD')}
           </Text>
           <Text style={[styles.cell, styles.cellRef]} numberOfLines={1}>
-            {item.ref}
+            {item.reference}
           </Text>
           <Text style={[styles.cell, styles.cellDesc]} numberOfLines={1}>
             {item.description}
           </Text>
           <Text style={[styles.cell, styles.cellAcct]} numberOfLines={1}>
-            {item.accountCode}
+            {item.accountNumber}
           </Text>
           <Text
             style={[
@@ -311,7 +281,7 @@ const GLScreen: React.FC = () => {
       <FlatList
         data={rowsWithBalance}
         renderItem={renderRow}
-        keyExtractor={item => item.key}
+        keyExtractor={item => item.entryId}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={rows.length > 0 ? renderFooter : null}
         refreshControl={
