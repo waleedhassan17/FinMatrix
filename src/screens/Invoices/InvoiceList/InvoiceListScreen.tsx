@@ -202,10 +202,15 @@ const InvoiceListScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Text style={styles.backBtn}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Invoices</Text>
+          <View style={styles.headerTitleRow}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backBtn}
+              activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Invoices</Text>
+          </View>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.searchToggle}>
@@ -349,7 +354,9 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
@@ -364,11 +371,13 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1,
     backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm + 4,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.sm,
     alignItems: 'center',
     ...shadows.small,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   summaryValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
   summaryLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
@@ -425,13 +434,15 @@ const styles = StyleSheet.create({
   tabCountTextActive: { color: colors.white },
 
   // ── Cards ──────────────────────────────────────
-  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 80 },
+  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl * 3 },
   card: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
-    ...shadows.card,
+    ...shadows.small,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
   cardInvNo: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
@@ -462,16 +473,16 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,
-    bottom: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: spacing.xl + spacing.md,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.large,
+    ...shadows.small,
   },
-  fabIcon: { fontSize: 28, color: colors.white, fontWeight: '300', marginTop: -2 },
+  fabIcon: { fontSize: 24, color: colors.white, fontWeight: '300', marginTop: -1 },
 });
 
 export default InvoiceListScreen;

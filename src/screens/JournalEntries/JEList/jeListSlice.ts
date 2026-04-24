@@ -2,12 +2,23 @@
 // FinMatrix — JE List Slice (createAppSlice)
 // ═══════════════════════════════════════════════════════
 // Co-located with JEListScreen.tsx
-// Owns JE entries data, filter, search, CRUD thunks.
+// Flow: Screen → Slice → Network → Serializer (in fulfilled) → Screen
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { JournalEntry, JournalEntryStatus } from '../../../types';
-import { journalEntriesData } from '../../../dummy-data/journalEntries';
+import {
+  getJournalEntriesAPI,
+  createJournalEntryAPI,
+  updateJournalEntryAPI,
+  voidJournalEntryAPI,
+  postJournalEntryAPI,
+} from '../../../network/jeNetwork';
+import {
+  jeListSerializer,
+  jeSingleSerializer,
+  toJEApiEntry,
+} from '../../../serializers/jeSerializer';
 
 export type JEFilter = 'all' | JournalEntryStatus;
 
@@ -17,6 +28,9 @@ export interface JEListSliceState {
   activeFilter: JEFilter;
   isLoading: boolean;
   error: string;
+  page: number;
+  totalPages: number;
+  totalEntries: number;
 }
 
 const initialState: JEListSliceState = {
@@ -25,10 +39,10 @@ const initialState: JEListSliceState = {
   activeFilter: 'all',
   isLoading: false,
   error: '',
+  page: 1,
+  totalPages: 1,
+  totalEntries: 0,
 };
-
-// In-memory mutable copy for create/update/void
-let entriesStore: JournalEntry[] = [...journalEntriesData];
 
 export const jeListSlice = createAppSlice({
   name: 'jeList',
@@ -46,14 +60,15 @@ export const jeListSlice = createAppSlice({
     }),
 
     fetchJournalEntries: create.asyncThunk(
-      async () => {
-        await new Promise(r => setTimeout(r, 500));
-        return [...entriesStore];
-      },
+      async () => getJournalEntriesAPI(),
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => {
-          state.entries = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const data = jeListSerializer(action.payload);
+          state.entries = data.entries;
+          state.page = data.page;
+          state.totalPages = data.totalPages;
+          state.totalEntries = data.totalEntries;
           state.isLoading = false;
         },
         rejected: (state, action) => {
@@ -64,62 +79,47 @@ export const jeListSlice = createAppSlice({
     ),
 
     createJournalEntry: create.asyncThunk(
-      async (entry: JournalEntry) => {
-        await new Promise(r => setTimeout(r, 300));
-        entriesStore.push(entry);
-        return entry;
-      },
+      async (entry: JournalEntry) => createJournalEntryAPI(toJEApiEntry(entry)),
       {
-        fulfilled: (state, action) => { state.entries.push(action.payload); },
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const entry = jeSingleSerializer(action.payload);
+          if (entry) state.entries.push(entry);
+        },
       },
     ),
 
     updateJournalEntry: create.asyncThunk(
-      async (entry: JournalEntry) => {
-        await new Promise(r => setTimeout(r, 300));
-        const idx = entriesStore.findIndex(e => e.id === entry.id);
-        if (idx !== -1) entriesStore[idx] = entry;
-        return entry;
-      },
+      async (entry: JournalEntry) => updateJournalEntryAPI(toJEApiEntry(entry)),
       {
-        fulfilled: (state, action) => {
-          const idx = state.entries.findIndex(e => e.id === action.payload.id);
-          if (idx !== -1) state.entries[idx] = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const entry = jeSingleSerializer(action.payload);
+          if (!entry) return;
+          const idx = state.entries.findIndex(e => e.id === entry.id);
+          if (idx !== -1) state.entries[idx] = entry;
         },
       },
     ),
 
     voidJournalEntry: create.asyncThunk(
-      async (id: string) => {
-        await new Promise(r => setTimeout(r, 300));
-        const idx = entriesStore.findIndex(e => e.id === id);
-        if (idx !== -1) {
-          entriesStore[idx] = { ...entriesStore[idx], status: 'voided', updatedAt: new Date().toISOString() };
-        }
-        return entriesStore[idx];
-      },
+      async (id: string) => voidJournalEntryAPI(id),
       {
-        fulfilled: (state, action) => {
-          const idx = state.entries.findIndex(e => e.id === action.payload.id);
-          if (idx !== -1) state.entries[idx] = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const entry = jeSingleSerializer(action.payload);
+          if (!entry) return;
+          const idx = state.entries.findIndex(e => e.id === entry.id);
+          if (idx !== -1) state.entries[idx] = entry;
         },
       },
     ),
 
     postJournalEntry: create.asyncThunk(
-      async (id: string) => {
-        await new Promise(r => setTimeout(r, 300));
-        const now = new Date().toISOString();
-        const idx = entriesStore.findIndex(e => e.id === id);
-        if (idx !== -1) {
-          entriesStore[idx] = { ...entriesStore[idx], status: 'posted', postedAt: now, approvedBy: 'user-001', updatedAt: now };
-        }
-        return entriesStore[idx];
-      },
+      async (id: string) => postJournalEntryAPI(id),
       {
-        fulfilled: (state, action) => {
-          const idx = state.entries.findIndex(e => e.id === action.payload.id);
-          if (idx !== -1) state.entries[idx] = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const entry = jeSingleSerializer(action.payload);
+          if (!entry) return;
+          const idx = state.entries.findIndex(e => e.id === entry.id);
+          if (idx !== -1) state.entries[idx] = entry;
         },
       },
     ),

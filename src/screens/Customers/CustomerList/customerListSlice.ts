@@ -12,6 +12,10 @@ import {
   deleteCustomerAPI,
   toggleCustomerActiveAPI,
 } from '../../../network/customerNetwork';
+import {
+  customerListSerializer,
+  customerSingleSerializer,
+} from '../../../serializers/customerSerializer';
 
 export type CustomerStatusFilter = 'all' | 'active' | 'inactive';
 export type CustomerSortField = 'name' | 'balance' | 'recent';
@@ -23,6 +27,9 @@ export interface CustomerListSliceState {
   sortField: CustomerSortField;
   isLoading: boolean;
   error: string;
+  page: number;
+  totalPages: number;
+  totalCustomers: number;
 }
 
 const initialState: CustomerListSliceState = {
@@ -32,6 +39,9 @@ const initialState: CustomerListSliceState = {
   sortField: 'name',
   isLoading: false,
   error: '',
+  page: 1,
+  totalPages: 1,
+  totalCustomers: 0,
 };
 
 export const customerListSlice = createAppSlice({
@@ -58,13 +68,17 @@ export const customerListSlice = createAppSlice({
       state.error = '';
     }),
 
-    // ── Async thunks ────────────────────────────────
+    // ── Async thunks (flow: Network → Serializer → State) ──
     fetchCustomers: create.asyncThunk(
       async () => getCustomersAPI(),
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => {
-          state.customers = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const data = customerListSerializer(action.payload);
+          state.customers = data.customers;
+          state.page = data.page;
+          state.totalPages = data.totalPages;
+          state.totalCustomers = data.totalCustomers;
           state.isLoading = false;
         },
         rejected: (state, action) => {
@@ -77,8 +91,9 @@ export const customerListSlice = createAppSlice({
       async (data: Omit<Customer, 'id' | 'balance' | 'totalPurchases' | 'createdAt' | 'updatedAt'>) =>
         createCustomerAPI(data),
       {
-        fulfilled: (state, action) => {
-          state.customers.push(action.payload);
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const customer = customerSingleSerializer(action.payload);
+          if (customer) state.customers.push(customer);
         },
       },
     ),
@@ -86,9 +101,11 @@ export const customerListSlice = createAppSlice({
       async ({ id, data }: { id: string; data: Partial<Customer> }) =>
         updateCustomerAPI(id, data),
       {
-        fulfilled: (state, action) => {
-          const idx = state.customers.findIndex(c => c.id === action.payload.id);
-          if (idx !== -1) state.customers[idx] = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const customer = customerSingleSerializer(action.payload);
+          if (!customer) return;
+          const idx = state.customers.findIndex(c => c.id === customer.id);
+          if (idx !== -1) state.customers[idx] = customer;
         },
       },
     ),
@@ -98,7 +115,7 @@ export const customerListSlice = createAppSlice({
         return id;
       },
       {
-        fulfilled: (state, action) => {
+        fulfilled: (state, action: PayloadAction<string>) => {
           state.customers = state.customers.filter(c => c.id !== action.payload);
         },
       },
@@ -106,9 +123,11 @@ export const customerListSlice = createAppSlice({
     toggleCustomerActive: create.asyncThunk(
       async (id: string) => toggleCustomerActiveAPI(id),
       {
-        fulfilled: (state, action) => {
-          const idx = state.customers.findIndex(c => c.id === action.payload.id);
-          if (idx !== -1) state.customers[idx] = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const customer = customerSingleSerializer(action.payload);
+          if (!customer) return;
+          const idx = state.customers.findIndex(c => c.id === customer.id);
+          if (idx !== -1) state.customers[idx] = customer;
         },
       },
     ),

@@ -164,10 +164,15 @@ const CustomerFormScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isEditing ? 'Edit Customer' : 'Add Customer'}</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            activeOpacity={0.7}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{isEditing ? 'Edit Customer' : 'Add Customer'}</Text>
+        </View>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -398,7 +403,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
 

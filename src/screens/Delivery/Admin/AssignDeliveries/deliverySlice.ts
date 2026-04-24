@@ -1,4 +1,5 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import { deliveryRecords, type DeliveryItemLine, type DeliveryPriority, type DeliveryRecord, type StatusHistoryEntry } from '../../../../dummy-data/deliveries';
 import { dummyDeliveryPersonnel, type DummyDeliveryPerson } from '../../../../dummy-data/deliveryPersonnel';
@@ -377,17 +378,37 @@ export const deliverySlice = createAppSlice({
     selectShadowInventory: state => state.shadowInventory,
     selectInventoryUpdateRequests: state => state.inventoryUpdateRequests,
     selectDeliveryNotifications: state => state.notifications,
-    selectUnassignedDeliveries: state => state.deliveries.filter(d => d.status === 'unassigned'),
-    selectDeliverySummary: state => {
-      const total = state.deliveries.length;
-      const pending = state.deliveries.filter(d => d.status === 'pending').length;
-      const inTransit = state.deliveries.filter(d => d.status === 'in_transit').length;
-      const delivered = state.deliveries.filter(d => d.status === 'delivered').length;
-      const failed = state.deliveries.filter(d => d.status === 'failed').length;
-      const returned = state.deliveries.filter(d => d.status === 'returned').length;
-      const unassigned = state.deliveries.filter(d => d.status === 'unassigned').length;
-      return { total, pending, inTransit, delivered, failed, returned, unassigned };
-    },
+    // ── Memoized selectors ───────────────────────────
+    // These derive new references (array/object) so they must be
+    // memoized, otherwise every unrelated state update causes a
+    // new reference and triggers needless re-renders.
+    selectUnassignedDeliveries: createSelector(
+      [(state: DeliverySliceState) => state.deliveries],
+      deliveries => deliveries.filter(d => d.status === 'unassigned'),
+    ),
+    selectDeliverySummary: createSelector(
+      [(state: DeliverySliceState) => state.deliveries],
+      deliveries => {
+        let total = deliveries.length;
+        let pending = 0;
+        let inTransit = 0;
+        let delivered = 0;
+        let failed = 0;
+        let returned = 0;
+        let unassigned = 0;
+        for (const d of deliveries) {
+          switch (d.status) {
+            case 'pending': pending++; break;
+            case 'in_transit': inTransit++; break;
+            case 'delivered': delivered++; break;
+            case 'failed': failed++; break;
+            case 'returned': returned++; break;
+            case 'unassigned': unassigned++; break;
+          }
+        }
+        return { total, pending, inTransit, delivered, failed, returned, unassigned };
+      },
+    ),
   },
 });
 

@@ -30,12 +30,27 @@ import {
   selectInvoiceDetail,
   selectInvoicePayments,
   selectInvoiceDetailLoading,
+  selectInvoiceDetailSending,
   selectInvoiceDetailError,
+  sendInvoice,
 } from './invoiceDetailSlice';
-import { fetchInvoices } from '../InvoiceList/invoiceListSlice';
-import { updateInvoiceAPI } from '../../../network/invoiceNetwork';
+import {
+  fetchInvoices,
+  selectInvoices,
+  upsertInvoice,
+} from '../InvoiceList/invoiceListSlice';
+import {
+  fetchCustomers,
+  selectCustomers,
+} from '../../Customers/CustomerList/customerListSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
+import {
+  shareInvoiceViaWhatsApp,
+  shareInvoicePdf,
+  openWhatsAppChat,
+  sanitizePhoneForWhatsApp,
+} from '../../../utils/invoiceShare';
 import type { InvoiceStatus, Payment } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
@@ -78,15 +93,30 @@ const InvoiceDetailScreen: React.FC = () => {
   const invoice = useAppSelector(selectInvoiceDetail);
   const payments = useAppSelector(selectInvoicePayments);
   const isLoading = useAppSelector(selectInvoiceDetailLoading);
+  const isSending = useAppSelector(selectInvoiceDetailSending);
   const error = useAppSelector(selectInvoiceDetailError);
+  const customers = useAppSelector(selectCustomers);
+  const invoicesList = useAppSelector(selectInvoices);
 
   const [refreshing, setRefreshing] = React.useState(false);
 
-  // ── Load data ───────────────────────────────────
+  // ── Load data ───────────────────────────────
   useEffect(() => {
     dispatch(fetchInvoiceDetail(invoiceId));
+    // Customers are needed for the Bill-To block on the PDF
+    // and for the WhatsApp phone-number lookup.
+    if (customers.length === 0) dispatch(fetchCustomers());
     return () => { dispatch(resetInvoiceDetail()); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceId, dispatch]);
+
+  // Resolve the customer record that matches this invoice.
+  const customer = useMemo(
+    () => customers.find(c => c.id === invoice?.customerId) || null,
+    [customers, invoice?.customerId],
+  );
+  const customerHasWhatsApp = !!sanitizePhoneForWhatsApp(customer?.phone);
+  void invoicesList;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -100,18 +130,52 @@ const InvoiceDetailScreen: React.FC = () => {
     [invoice],
   );
 
-  // ── Actions ─────────────────────────────────────
-  const handleSendInvoice = useCallback(async () => {
+  // ── Actions ─────────────────────────────────
+
+  /** After a successful share we transition the invoice to
+   *  "sent" on the backend and refresh the list behind the
+   *  scenes so the status badge updates everywhere. */
+  const markAsSentOnBackend = useCallback(
+    async (channel: 'whatsapp' | 'email' | 'share', toPhone?: string) => {
+      if (!invoice) return;
+      const action = await dispatch(
+        sendInvoice({ id: invoice.id, channel, toPhone }),
+      );
+      // Keep the list slice in sync without a full re-fetch.
+      const payload: any = (action as any)?.payload;
+      const updated = payload?.data?.invoice;
+      if (updated) dispatch(upsertInvoice(updated));
+      else dispatch(fetchInvoices());
+    },
+    [dispatch, invoice],
+  );
+
+  const handleSendViaWhatsApp = useCallback(async () => {
     if (!invoice) return;
-    try {
-      await updateInvoiceAPI(invoice.id, { status: 'sent' });
-      await dispatch(fetchInvoiceDetail(invoiceId));
-      await dispatch(fetchInvoices());
-      Alert.alert('Sent', `${invoice.invoiceNumber} has been marked as sent.`);
-    } catch {
-      Alert.alert('Error', 'Failed to send invoice.');
+    const result = await shareInvoiceViaWhatsApp({ invoice, customer });
+    if (result.shared) {
+      await markAsSentOnBackend(
+        'whatsapp',
+        sanitizePhoneForWhatsApp(customer?.phone) || undefined,
+      );
     }
-  }, [invoice, invoiceId, dispatch]);
+  }, [invoice, customer, markAsSentOnBackend]);
+
+  const handleSharePdf = useCallback(async () => {
+    if (!invoice) return;
+    const result = await shareInvoicePdf({ invoice, customer });
+    if (result.shared && invoice.status === 'draft') {
+      await markAsSentOnBackend('share');
+    }
+  }, [invoice, customer, markAsSentOnBackend]);
+
+  const handleOpenWhatsAppChat = useCallback(async () => {
+    if (!invoice) return;
+    const result = await openWhatsAppChat({ invoice, customer });
+    if (!result.opened) {
+      Alert.alert('WhatsApp', result.reason || 'Could not open WhatsApp.');
+    }
+  }, [invoice, customer]);
 
   // ── Loading / Error states ──────────────────────
   if (isLoading && !invoice) {
@@ -144,11 +208,16 @@ const InvoiceDetailScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>{invoice.invoiceNumber}</Text>
+          <View style={styles.headerTitleWrap}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backBtn}
+              activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{invoice.invoiceNumber}</Text>
+          </View>
           <View style={[styles.badge, { backgroundColor: statusCol + '18' }]}>
             <Text style={[styles.badgeText, { color: statusCol }]}>
               {STATUS_LABEL[invoice.status]}
@@ -204,11 +273,11 @@ const InvoiceDetailScreen: React.FC = () => {
 
           {/* Table header */}
           <View style={styles.tableHeader}>
-            <Text style={[styles.thText, { flex: 2 }]}>Description</Text>
-            <Text style={[styles.thText, styles.thRight, { flex: 0.6 }]}>Qty</Text>
-            <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Rate</Text>
-            <Text style={[styles.thText, styles.thRight, { flex: 0.6 }]}>Tax</Text>
-            <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Amount</Text>
+            <Text style={[styles.thText, { flex: 2.5 }]}>Description</Text>
+            <Text style={[styles.thText, styles.thRight, { flex: 0.5 }]}>Qty</Text>
+            <Text style={[styles.thText, styles.thRight, { flex: 0.9 }]}>Rate</Text>
+            <Text style={[styles.thText, styles.thRight, { flex: 0.5 }]}>Tax</Text>
+            <Text style={[styles.thText, styles.thRight, { flex: 1.1 }]}>Amount</Text>
           </View>
 
           {/* Table rows */}
@@ -217,15 +286,15 @@ const InvoiceDetailScreen: React.FC = () => {
               key={line.id}
               style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven]}
             >
-              <View style={{ flex: 2 }}>
+              <View style={{ flex: 2.5 }}>
                 <Text style={styles.tdText} numberOfLines={2}>{line.description || line.itemName}</Text>
               </View>
-              <Text style={[styles.tdText, styles.tdRight, { flex: 0.6 }]}>{line.quantity}</Text>
-              <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>
+              <Text style={[styles.tdText, styles.tdRight, { flex: 0.5 }]}>{line.quantity}</Text>
+              <Text style={[styles.tdText, styles.tdRight, { flex: 0.9 }]}>
                 {formatCurrency(line.unitPrice, 'Rs ')}
               </Text>
-              <Text style={[styles.tdText, styles.tdRight, { flex: 0.6 }]}>{line.taxRate}%</Text>
-              <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>
+              <Text style={[styles.tdText, styles.tdRight, { flex: 0.5 }]}>{line.taxRate}%</Text>
+              <Text style={[styles.tdText, styles.tdRight, { flex: 1.1 }]}>
                 {formatCurrency(line.amount, 'Rs ')}
               </Text>
             </View>
@@ -275,7 +344,6 @@ const InvoiceDetailScreen: React.FC = () => {
         <Text style={styles.outerSectionTitle}>Payment History</Text>
         {payments.length === 0 ? (
           <View style={styles.emptyPayments}>
-            <Text style={styles.emptyPaymentsIcon}>💰</Text>
             <Text style={styles.emptyPaymentsText}>No payments recorded yet</Text>
           </View>
         ) : (
@@ -304,34 +372,64 @@ const InvoiceDetailScreen: React.FC = () => {
         <View style={{ height: spacing.xl * 3 }} />
       </ScrollView>
 
-      {/* ── Action Bar ────────────────────────────── */}
+      {/* ── Action Bar ──────────────────────────────── */}
       <View style={styles.actionBar}>
+        {/* Draft: Edit + primary "Send via WhatsApp" */}
         {invoice.status === 'draft' && (
           <>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={styles.actionSecondary}>
               <CustomButton
                 title="Edit"
                 onPress={() => navigation.navigate('InvoiceForm', { invoiceId: invoice.id })}
                 variant="secondary"
-                size="lg"
+                size="sm"
                 fullWidth
               />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={styles.actionShare}>
               <CustomButton
-                title="Send"
-                onPress={handleSendInvoice}
-                variant="primary"
-                size="lg"
+                title="Share PDF"
+                onPress={handleSharePdf}
+                variant="text"
+                size="sm"
                 fullWidth
+              />
+            </View>
+            <View style={styles.actionPrimary}>
+              <CustomButton
+                title={isSending ? 'Sending…' : 'WhatsApp'}
+                onPress={handleSendViaWhatsApp}
+                variant="primary"
+                size="sm"
+                fullWidth
+                disabled={isSending}
               />
             </View>
           </>
         )}
 
+        {/* Sent / overdue: Record Payment primary, WhatsApp resend + share secondary */}
         {(invoice.status === 'sent' || invoice.status === 'overdue') && (
           <>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={styles.actionShare}>
+              <CustomButton
+                title="Share PDF"
+                onPress={handleSharePdf}
+                variant="text"
+                size="sm"
+                fullWidth
+              />
+            </View>
+            <View style={styles.actionSecondary}>
+              <CustomButton
+                title={customerHasWhatsApp ? 'Remind' : 'WhatsApp'}
+                onPress={customerHasWhatsApp ? handleOpenWhatsAppChat : handleSendViaWhatsApp}
+                variant="secondary"
+                size="sm"
+                fullWidth
+              />
+            </View>
+            <View style={styles.actionPrimary}>
               <CustomButton
                 title="Record Payment"
                 onPress={() =>
@@ -341,32 +439,35 @@ const InvoiceDetailScreen: React.FC = () => {
                   })
                 }
                 variant="primary"
-                size="lg"
-                fullWidth
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton
-                title="Edit"
-                onPress={() => navigation.navigate('InvoiceForm', { invoiceId: invoice.id })}
-                variant="secondary"
-                size="lg"
+                size="sm"
                 fullWidth
               />
             </View>
           </>
         )}
 
-        {invoice.status === 'paid' && (
-          <View style={{ flex: 1 }}>
-            <CustomButton
-              title="View Payments"
-              onPress={() => {}}
-              variant="secondary"
-              size="lg"
-              fullWidth
-            />
-          </View>
+        {/* Paid / cancelled: share PDF only */}
+        {(invoice.status === 'paid' || invoice.status === 'cancelled') && (
+          <>
+            <View style={styles.actionSecondary}>
+              <CustomButton
+                title="Share PDF"
+                onPress={handleSharePdf}
+                variant="secondary"
+                size="sm"
+                fullWidth
+              />
+            </View>
+            <View style={styles.actionPrimary}>
+              <CustomButton
+                title="New Invoice"
+                onPress={() => navigation.navigate('InvoiceForm')}
+                variant="primary"
+                size="sm"
+                fullWidth
+              />
+            </View>
+          </>
         )}
       </View>
     </SafeAreaView>
@@ -413,14 +514,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.secondary,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.xs,
-  },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerTitleWrap: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: spacing.sm },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
   badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
@@ -432,7 +529,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     padding: spacing.md,
-    ...shadows.card,
+    ...shadows.small,
   },
   companyName: {
     fontSize: 18,
@@ -538,19 +635,19 @@ const styles = StyleSheet.create({
   emptyPayments: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
-    padding: spacing.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
     alignItems: 'center',
-    ...shadows.card,
+    ...shadows.small,
   },
-  emptyPaymentsIcon: { fontSize: 36, marginBottom: spacing.xs },
-  emptyPaymentsText: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  emptyPaymentsText: { fontSize: 13, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
 
   paymentCard: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
-    ...shadows.card,
+    ...shadows.small,
   },
   paymentTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   paymentNumber: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
@@ -569,13 +666,18 @@ const styles = StyleSheet.create({
   // ── Action Bar ─────────────────────────────────
   actionBar: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm - 2,
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    ...shadows.card,
+    gap: spacing.xs,
+    ...shadows.small,
   },
+  actionPrimary: { flex: 1.4 },
+  actionSecondary: { flex: 1 },
+  actionShare: { flex: 1 },
 });
 
 export default InvoiceDetailScreen;

@@ -185,10 +185,15 @@ const CustomerListScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Text style={styles.backBtn}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Customers</Text>
+          <View style={styles.headerTitleRow}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backBtn}
+              activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Customers</Text>
+          </View>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.searchToggle}>
@@ -330,7 +335,9 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },

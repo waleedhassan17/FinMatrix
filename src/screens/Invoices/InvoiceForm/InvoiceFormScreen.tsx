@@ -241,12 +241,17 @@ const InvoiceFormScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isEditing ? `Edit ${form.invoiceNumber}` : 'New Invoice'}
-        </Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            activeOpacity={0.7}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {isEditing ? `Edit ${form.invoiceNumber}` : 'New Invoice'}
+          </Text>
+        </View>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -408,17 +413,17 @@ const InvoiceFormScreen: React.FC = () => {
                 title="Save Draft"
                 onPress={() => handleSave('draft')}
                 variant="secondary"
-                size="lg"
+                size="sm"
                 fullWidth
                 isLoading={form.isSaving}
               />
             </View>
             <View style={{ flex: 1 }}>
               <CustomButton
-                title="Send"
+                title="Save & Send"
                 onPress={() => handleSave('sent')}
                 variant="primary"
-                size="lg"
+                size="sm"
                 fullWidth
                 isLoading={form.isSaving}
               />
@@ -443,23 +448,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
 
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: colors.textLight,
     fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.sm,
     marginTop: spacing.md,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   sectionCard: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.xs,
+    ...shadows.small,
   },
   rowFields: { flexDirection: 'row' },
 
@@ -496,7 +506,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginTop: spacing.md,
-    ...shadows.card,
+    ...shadows.small,
   },
   totalsRow: {
     flexDirection: 'row',
@@ -519,7 +529,7 @@ const styles = StyleSheet.create({
   btnRow: {
     flexDirection: 'row',
     marginTop: spacing.lg,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
 });
 

@@ -142,10 +142,15 @@ const CustomerDetailScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Text style={styles.backBtn}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>{customer.name}</Text>
+          <View style={styles.headerTitleRow}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backBtn}
+              activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle} numberOfLines={1}>{customer.name}</Text>
+          </View>
         </View>
         <CustomButton
           title="Edit"
@@ -374,8 +379,10 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerLeft: { flex: 1, marginRight: spacing.sm },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { flex: 1, fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   scrollContent: { paddingBottom: spacing.xl },
 
   // ── Top Card ───────────────────────────────────

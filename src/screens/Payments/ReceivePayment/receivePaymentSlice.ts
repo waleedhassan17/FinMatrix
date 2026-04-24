@@ -8,6 +8,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Invoice, PaymentMethod } from '../../../types';
 import { getInvoicesAPI } from '../../../network/invoiceNetwork';
+import { invoiceListSerializer } from '../../../serializers/invoiceSerializer';
 
 // ── Outstanding invoice row (used in the allocations table) ────
 export interface OutstandingRow {
@@ -173,25 +174,29 @@ export const receivePaymentSlice = createAppSlice({
 
     // ── Async thunks ────────────────────────────────
     fetchAllInvoicesForPayment: create.asyncThunk(
-      async () => getInvoicesAPI(),
+      async () => {
+        const envelope = await getInvoicesAPI();
+        return invoiceListSerializer(envelope);
+      },
       {
         pending: state => { state.isLoadingInvoices = true; },
         fulfilled: (state, action) => {
-          state.allInvoices = action.payload;
+          const invoices = action.payload.invoices;
+          state.allInvoices = invoices;
           state.isLoadingInvoices = false;
 
           // If customer already selected, rebuild rows
           if (state.customerId) {
-            const custInvoices = action.payload
+            const custInvoices = invoices
               .filter(
-                inv =>
+                (inv: Invoice) =>
                   inv.customerId === state.customerId &&
                   (inv.status === 'sent' || inv.status === 'overdue') &&
                   inv.total - inv.amountPaid > 0,
               )
-              .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+              .sort((a: Invoice, b: Invoice) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
-            state.outstandingRows = custInvoices.map(inv => ({
+            state.outstandingRows = custInvoices.map((inv: Invoice) => ({
               invoiceId: inv.id,
               invoiceNumber: inv.invoiceNumber,
               dueDate: inv.dueDate,

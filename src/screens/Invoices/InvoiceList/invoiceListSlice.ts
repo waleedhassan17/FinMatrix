@@ -1,11 +1,19 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Invoice List Slice (createAppSlice pattern)
 // ═══════════════════════════════════════════════════════
+// Flow: Screen → Slice → Network → Serializer (in fulfilled) → Screen
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Invoice, InvoiceStatus } from '../../../types';
-import { getInvoicesAPI, deleteInvoiceAPI } from '../../../network/invoiceNetwork';
+import {
+  getInvoicesAPI,
+  deleteInvoiceAPI,
+} from '../../../network/invoiceNetwork';
+import {
+  invoiceListSerializer,
+  invoiceSingleSerializer,
+} from '../../../serializers/invoiceSerializer';
 
 export type InvoiceStatusFilter = 'all' | InvoiceStatus;
 
@@ -15,6 +23,9 @@ export interface InvoiceListSliceState {
   statusFilter: InvoiceStatusFilter;
   isLoading: boolean;
   error: string;
+  page: number;
+  totalPages: number;
+  totalInvoices: number;
 }
 
 const initialState: InvoiceListSliceState = {
@@ -23,6 +34,9 @@ const initialState: InvoiceListSliceState = {
   statusFilter: 'all',
   isLoading: false,
   error: '',
+  page: 1,
+  totalPages: 1,
+  totalInvoices: 0,
 };
 
 export const invoiceListSlice = createAppSlice({
@@ -44,14 +58,25 @@ export const invoiceListSlice = createAppSlice({
       state.isLoading = false;
       state.error = '';
     }),
+    // Upsert a single invoice — used after an action (send, edit)
+    // updates one item without refetching the whole list.
+    upsertInvoice: create.reducer((state, action: PayloadAction<Invoice>) => {
+      const idx = state.invoices.findIndex(i => i.id === action.payload.id);
+      if (idx === -1) state.invoices.push(action.payload);
+      else state.invoices[idx] = action.payload;
+    }),
 
-    // ── Async thunks ────────────────────────────────
+    // ── Async thunks (flow: Network → Serializer → State) ──
     fetchInvoices: create.asyncThunk(
       async () => getInvoicesAPI(),
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => {
-          state.invoices = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const data = invoiceListSerializer(action.payload);
+          state.invoices = data.invoices;
+          state.page = data.page;
+          state.totalPages = data.totalPages;
+          state.totalInvoices = data.totalInvoices;
           state.isLoading = false;
         },
         rejected: (state, action) => {
@@ -66,7 +91,7 @@ export const invoiceListSlice = createAppSlice({
         return id;
       },
       {
-        fulfilled: (state, action) => {
+        fulfilled: (state, action: PayloadAction<string>) => {
           state.invoices = state.invoices.filter(i => i.id !== action.payload);
         },
       },
@@ -82,11 +107,16 @@ export const invoiceListSlice = createAppSlice({
   },
 });
 
+// Exported for consumers who want to apply the serializer locally
+// (e.g. after a send-invoice call returns a single updated entity).
+export { invoiceSingleSerializer };
+
 export const {
   setInvoices,
   setSearchQuery,
   setStatusFilter,
   resetInvoiceList,
+  upsertInvoice,
   fetchInvoices,
   removeInvoice,
 } = invoiceListSlice.actions;

@@ -92,7 +92,10 @@ const SplashOverlay: React.FC<SplashOverlayProps> = ({ onFinish }) => {
         Animated.timing(lineOpacity, {
           toValue: 1,
           duration: 300,
-          useNativeDriver: true,
+          // Must match the width spring above (JS driver). Width is not
+          // supported by the native animated module, so both animated
+          // nodes on the same <Animated.View> must use the JS driver.
+          useNativeDriver: false,
         }),
       ]).start();
     }, TM.LINE);

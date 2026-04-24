@@ -99,3 +99,46 @@ export const validateCustomer = (data: CustomerFormData): ValidationErrors => {
 
   return errors;
 };
+
+// ═══════════════════════════════════════════════════════
+// Raw API entity types (what the backend returns)
+// ═══════════════════════════════════════════════════════
+// The network layer returns these raw shapes, and the
+// serializer converts them to UI-ready `Customer` objects.
+
+export interface CustomerApiAddress {
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+}
+
+export interface CustomerApiEntity {
+  id: string;
+  companyId: string;
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  address: string;
+  billingAddress: CustomerApiAddress;
+  shippingAddress: CustomerApiAddress;
+  balance: number;
+  creditLimit: number;
+  totalPurchases: number;
+  paymentTerms: PaymentTerms;
+  contactPerson: string;
+  taxId: string;
+  notes: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerApiPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}

@@ -1,9 +1,75 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Customer Serializer
 // ═══════════════════════════════════════════════════════
+// Sits BETWEEN network and slice.
+// Takes the raw API response and returns a clean,
+// UI-ready data structure with inline field mapping.
 
 import type { Customer, PaymentTerms } from '../types';
-import type { CustomerFormData } from '../models/customerModel';
+import type { CustomerApiEntity, CustomerFormData } from '../models/customerModel';
+
+// ─── Serialized outputs for the slice ────────────────
+
+export interface SerializedCustomerList {
+  customers: Customer[];
+  page: number;
+  totalPages: number;
+  totalCustomers: number;
+}
+
+// ─── Raw entity → UI Customer ────────────────────────
+
+export const mapCustomer = (raw: Partial<CustomerApiEntity>): Customer => {
+  const emptyAddress = { street: '', city: '', state: '', zipCode: '', country: 'Pakistan' };
+  return {
+    id: raw.id ?? '',
+    companyId: raw.companyId ?? '',
+    name: raw.name ?? '',
+    company: raw.company ?? '',
+    email: raw.email ?? '',
+    phone: raw.phone ?? '',
+    address: raw.address ?? '',
+    billingAddress: { ...emptyAddress, ...(raw.billingAddress ?? {}) },
+    shippingAddress: { ...emptyAddress, ...(raw.shippingAddress ?? {}) },
+    balance: typeof raw.balance === 'number' ? raw.balance : 0,
+    creditLimit: typeof raw.creditLimit === 'number' ? raw.creditLimit : 0,
+    totalPurchases: typeof raw.totalPurchases === 'number' ? raw.totalPurchases : 0,
+    paymentTerms: (raw.paymentTerms ?? 'net_30') as PaymentTerms,
+    contactPerson: raw.contactPerson ?? '',
+    taxId: raw.taxId ?? '',
+    notes: raw.notes ?? '',
+    isActive: raw.isActive ?? true,
+    createdAt: raw.createdAt ?? '',
+    updatedAt: raw.updatedAt ?? '',
+  };
+};
+
+// ─── List serializer ─────────────────────────────────
+
+export function customerListSerializer(payload: any): SerializedCustomerList {
+  const data = payload?.data || {};
+  const rawCustomers: any[] = data.customers || [];
+  const pagination = data.pagination || {};
+
+  return {
+    customers: rawCustomers.map(mapCustomer),
+    page: pagination.page ?? 1,
+    totalPages: pagination.totalPages ?? 1,
+    totalCustomers: pagination.total ?? rawCustomers.length,
+  };
+}
+
+// ─── Single-customer serializer ──────────────────────
+
+export function customerSingleSerializer(payload: any): Customer | null {
+  const raw = payload?.data?.customer;
+  if (!raw) return null;
+  return mapCustomer(raw);
+}
+
+// ═══════════════════════════════════════════════════════
+// Form ↔ API helpers (kept from existing implementation)
+// ═══════════════════════════════════════════════════════
 
 /**
  * Converts a Customer object from API into form-ready data for editing.

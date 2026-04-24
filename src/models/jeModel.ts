@@ -111,3 +111,47 @@ export const createEmptyLine = (): JEFormLine => ({
   debit: '',
   credit: '',
 });
+
+// ═══════════════════════════════════════════════════════
+// Raw API entity types (what the backend returns)
+// ═══════════════════════════════════════════════════════
+// These mirror the GL model pattern: the network layer
+// returns these raw shapes, and the serializer converts
+// them to UI-ready `JournalEntry` objects.
+
+export type JEApiStatus = 'draft' | 'posted' | 'voided';
+
+export interface JEApiLine {
+  id: string;
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  debit: number;
+  credit: number;
+  description: string;
+}
+
+export interface JEApiEntry {
+  id: string;
+  companyId: string;
+  entryNumber: string;
+  date: string;
+  description: string;
+  reference: string;
+  status: JEApiStatus;
+  lines: JEApiLine[];
+  totalDebit: number;
+  totalCredit: number;
+  createdBy: string;
+  approvedBy: string | null;
+  postedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JEApiPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
