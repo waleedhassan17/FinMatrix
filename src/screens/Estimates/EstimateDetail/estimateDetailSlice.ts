@@ -2,9 +2,11 @@
 // FinMatrix — Estimate Detail Slice
 // ═══════════════════════════════════════════════════════
 
+import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Estimate } from '../../../types';
 import { getEstimateByIdAPI } from '../../../network/estimateNetwork';
+import { estimateSingleSerializer } from '../../../serializers/estimateSerializer';
 
 export interface EstimateDetailSliceState {
   estimate: Estimate | null;
@@ -30,13 +32,12 @@ export const estimateDetailSlice = createAppSlice({
 
     fetchEstimateDetail: create.asyncThunk(
       async (estimateId: string) => {
-        const estimate = await getEstimateByIdAPI(estimateId);
-        return { estimate };
+        return await getEstimateByIdAPI(estimateId);
       },
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => {
-          state.estimate = action.payload.estimate;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          state.estimate = estimateSingleSerializer(action.payload);
           state.isLoading = false;
         },
         rejected: (state, action) => {

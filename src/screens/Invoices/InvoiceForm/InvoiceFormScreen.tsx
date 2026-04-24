@@ -42,6 +42,8 @@ import {
   selectInvoices,
   fetchInvoices,
 } from '../InvoiceList/invoiceListSlice';
+import { selectEstimates } from '../../Estimates/EstimateList/estimateListSlice';
+import { selectSalesOrders } from '../../SalesOrders/SOList/soListSlice';
 import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
 import { createInvoiceAPI, updateInvoiceAPI } from '../../../network/invoiceNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
@@ -69,8 +71,12 @@ const InvoiceFormScreen: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const editingId = route.params?.invoiceId;
+  const fromEstimateId = route.params?.fromEstimateId;
+  const fromSOId = route.params?.fromSOId;
   const isEditing = !!editingId;
   const invoices = useAppSelector(selectInvoices);
+  const estimates = useAppSelector(selectEstimates);
+  const salesOrders = useAppSelector(selectSalesOrders);
   const customers = useAppSelector(selectCustomers);
   const form = useAppSelector(selectInvoiceFormState);
 
@@ -120,13 +126,49 @@ const InvoiceFormScreen: React.FC = () => {
           }),
         );
       }
+    } else if (fromEstimateId) {
+      const est = estimates.find(e => e.id === fromEstimateId);
+      if (est) {
+        dispatch(setField({ key: 'invoiceNumber', value: generateInvoiceNumber() }));
+        dispatch(setCustomer({ id: est.customerId, name: est.customerName }));
+        dispatch(setField({ key: 'issueDate', value: dayjs().format('YYYY-MM-DD') }));
+        dispatch(setField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
+        dispatch(setField({ key: 'notes', value: est.notes }));
+        dispatch(setField({ key: 'discountType', value: est.discountType }));
+        dispatch(setField({ key: 'discountValue', value: String(est.discountValue) }));
+        est.lines.forEach(() => dispatch(addLine()));
+        est.lines.forEach((l, idx) => {
+          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'description', value: l.description || l.itemName }));
+          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'quantity', value: String(l.quantity) }));
+          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'unitPrice', value: String(l.unitPrice) }));
+          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'taxRate', value: String(l.taxRate) }));
+        });
+        dispatch(calculateTotals());
+      }
+    } else if (fromSOId) {
+      const so = salesOrders.find(s => s.id === fromSOId);
+      if (so) {
+        dispatch(setField({ key: 'invoiceNumber', value: generateInvoiceNumber() }));
+        dispatch(setCustomer({ id: so.customerId, name: so.customerName }));
+        dispatch(setField({ key: 'issueDate', value: dayjs().format('YYYY-MM-DD') }));
+        dispatch(setField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
+        dispatch(setField({ key: 'notes', value: so.notes }));
+        so.lines.forEach(() => dispatch(addLine()));
+        so.lines.forEach((l, idx) => {
+          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'description', value: l.description || l.itemName }));
+          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'quantity', value: String(l.quantity) }));
+          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'unitPrice', value: String(l.unitPrice) }));
+          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'taxRate', value: String(l.taxRate) }));
+        });
+        dispatch(calculateTotals());
+      }
     } else {
       dispatch(setField({ key: 'invoiceNumber', value: generateInvoiceNumber() }));
       dispatch(setField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
     }
 
     return () => { dispatch(resetInvoiceForm()); };
-  }, [isEditing, editingId, invoices, dispatch, generateInvoiceNumber]);
+  }, [isEditing, editingId, fromEstimateId, fromSOId, invoices, estimates, salesOrders, dispatch, generateInvoiceNumber, form.lines]);
 
   // ── Customer change handler (also sets due date from terms) ──
   const handleCustomerChange = useCallback(

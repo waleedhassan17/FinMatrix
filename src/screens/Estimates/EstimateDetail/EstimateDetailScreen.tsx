@@ -113,29 +113,30 @@ const EstimateDetailScreen: React.FC = () => {
   }, [estimate, estimateId, dispatch]);
 
   const handleConvertToInvoice = useCallback(() => {
+    if (!estimate) return;
     Alert.alert('Convert to Invoice', 'This estimate will be used to create a new invoice.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Convert',
         onPress: () => {
-          // Navigate to InvoiceForm — the conversion is conceptual for now
-          navigation.navigate('InvoiceForm');
+          navigation.navigate('InvoiceForm', { fromEstimateId: estimate.id });
         },
       },
     ]);
-  }, [navigation]);
+  }, [navigation, estimate]);
 
   const handleConvertToSO = useCallback(() => {
+    if (!estimate) return;
     Alert.alert('Convert to Sales Order', 'This estimate will be used to create a new sales order.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Convert',
         onPress: () => {
-          navigation.navigate('SOForm');
+          navigation.navigate('SOForm', { fromEstimateId: estimate.id });
         },
       },
     ]);
-  }, [navigation]);
+  }, [navigation, estimate]);
 
   // ── Loading / Error ─────────────────────────────
   if (isLoading && !estimate) {
@@ -165,11 +166,13 @@ const EstimateDetailScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>{estimate.estimateNumber}</Text>
+          <View style={styles.headerTitleWrap}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{estimate.estimateNumber}</Text>
+          </View>
           <View style={[styles.badge, { backgroundColor: statusCol + '18' }]}>
             <Text style={[styles.badgeText, { color: statusCol }]}>
               {STATUS_LABEL[estimate.status]}
@@ -268,16 +271,16 @@ const EstimateDetailScreen: React.FC = () => {
       <View style={styles.actionBar}>
         {estimate.status === 'draft' && (
           <>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={styles.actionSecondary}>
               <CustomButton
                 title="Edit"
                 onPress={() => navigation.navigate('EstimateForm', { estimateId: estimate.id })}
                 variant="secondary"
-                size="lg"
+                size="sm"
                 fullWidth
               />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={styles.actionPrimary}>
               <CustomButton
                 title="Send"
                 onPress={async () => {
@@ -287,7 +290,7 @@ const EstimateDetailScreen: React.FC = () => {
                   Alert.alert('Sent', `${estimate.estimateNumber} has been sent.`);
                 }}
                 variant="primary"
-                size="lg"
+                size="sm"
                 fullWidth
               />
             </View>
@@ -296,33 +299,33 @@ const EstimateDetailScreen: React.FC = () => {
 
         {estimate.status === 'sent' && (
           <>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <CustomButton title="Accept" onPress={handleMarkAccepted} variant="primary" size="lg" fullWidth />
+            <View style={styles.actionSecondary}>
+              <CustomButton title="Decline" onPress={handleMarkDeclined} variant="secondary" size="sm" fullWidth />
             </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton title="Decline" onPress={handleMarkDeclined} variant="danger" size="lg" fullWidth />
+            <View style={styles.actionPrimary}>
+              <CustomButton title="Accept" onPress={handleMarkAccepted} variant="primary" size="sm" fullWidth />
             </View>
           </>
         )}
 
         {estimate.status === 'accepted' && (
           <>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <CustomButton title="Convert to Invoice" onPress={handleConvertToInvoice} variant="primary" size="lg" fullWidth />
+            <View style={styles.actionSecondary}>
+              <CustomButton title="Convert to SO" onPress={handleConvertToSO} variant="secondary" size="sm" fullWidth />
             </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton title="Convert to SO" onPress={handleConvertToSO} variant="secondary" size="lg" fullWidth />
+            <View style={styles.actionPrimary}>
+              <CustomButton title="Convert to Invoice" onPress={handleConvertToInvoice} variant="primary" size="sm" fullWidth />
             </View>
           </>
         )}
 
         {(estimate.status === 'declined' || estimate.status === 'expired') && (
-          <View style={{ flex: 1 }}>
+          <View style={styles.actionPrimary}>
             <CustomButton
               title="Edit & Resend"
               onPress={() => navigation.navigate('EstimateForm', { estimateId: estimate.id })}
-              variant="secondary"
-              size="lg"
+              variant="primary"
+              size="sm"
               fullWidth
             />
           </View>
@@ -346,13 +349,20 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   errorText: { ...THEME.typography.h4, color: colors.danger },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backBtn: { ...THEME.typography.labelLg, color: colors.secondary, marginBottom: spacing.xs },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
+  headerTitleWrap: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: spacing.sm },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
   badgeText: { ...THEME.typography.labelSm, fontWeight: '700' },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  invoiceCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, ...shadows.card },
+  invoiceCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    ...shadows.small,
+  },
   companyName: { ...THEME.typography.h3, fontWeight: '800', color: colors.primary, marginBottom: 2 },
   companyMeta: { ...THEME.typography.caption, color: colors.textSecondary, lineHeight: 18 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm + 2 },
@@ -378,7 +388,19 @@ const styles = StyleSheet.create({
   totalsValueBold: { ...THEME.typography.h4, fontWeight: '800' },
   grandTotalDivider: { height: 1.5, backgroundColor: colors.primary, marginVertical: spacing.xs },
   notesText: { ...THEME.typography.bodySm, color: colors.textSecondary, lineHeight: 20 },
-  actionBar: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border, ...shadows.card },
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm - 2,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.xs,
+    ...shadows.small,
+  },
+  actionPrimary: { flex: 1.4 },
+  actionSecondary: { flex: 1 },
 });
 
 export default EstimateDetailScreen;

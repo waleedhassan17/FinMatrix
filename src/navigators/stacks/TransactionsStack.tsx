@@ -25,14 +25,14 @@ import PODetailScreen from '../../screens/PurchaseOrders/PODetail/PODetailScreen
 export type TransactionsStackParamList = {
   TransactionsHub: undefined;
   InvoiceList: undefined;
-  InvoiceForm: { invoiceId?: string } | undefined;
+  InvoiceForm: { invoiceId?: string; fromEstimateId?: string; fromSOId?: string } | undefined;
   InvoiceDetail: { invoiceId: string };
   ReceivePayment: { customerId?: string; invoiceId?: string } | undefined;
   EstimateList: undefined;
   EstimateForm: { estimateId?: string } | undefined;
   EstimateDetail: { estimateId: string };
   SOList: undefined;
-  SOForm: { soId?: string } | undefined;
+  SOForm: { soId?: string; fromEstimateId?: string } | undefined;
   SODetail: { soId: string };
   CreditMemoList: undefined;
   CreditMemoForm: { creditMemoId?: string } | undefined;

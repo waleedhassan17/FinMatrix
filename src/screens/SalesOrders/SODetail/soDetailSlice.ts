@@ -2,9 +2,11 @@
 // FinMatrix — Sales Order Detail Slice
 // ═══════════════════════════════════════════════════════
 
+import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { SalesOrder } from '../../../types';
 import { getSalesOrderByIdAPI } from '../../../network/salesOrderNetwork';
+import { salesOrderSingleSerializer } from '../../../serializers/salesOrderSerializer';
 
 export interface SODetailSliceState {
   salesOrder: SalesOrder | null;
@@ -30,13 +32,12 @@ export const soDetailSlice = createAppSlice({
 
     fetchSODetail: create.asyncThunk(
       async (soId: string) => {
-        const salesOrder = await getSalesOrderByIdAPI(soId);
-        return { salesOrder };
+        return await getSalesOrderByIdAPI(soId);
       },
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => {
-          state.salesOrder = action.payload.salesOrder;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          state.salesOrder = salesOrderSingleSerializer(action.payload);
           state.isLoading = false;
         },
         rejected: (state, action) => {

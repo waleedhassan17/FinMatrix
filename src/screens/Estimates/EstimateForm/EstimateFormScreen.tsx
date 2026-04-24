@@ -217,12 +217,14 @@ const EstimateFormScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isEditing ? `Edit ${form.estimateNumber}` : 'New Estimate'}
-        </Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {isEditing ? `Edit ${form.estimateNumber}` : 'New Estimate'}
+          </Text>
+        </View>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -375,17 +377,17 @@ const EstimateFormScreen: React.FC = () => {
                 title="Save Draft"
                 onPress={() => handleSave('draft')}
                 variant="secondary"
-                size="lg"
+                size="sm"
                 fullWidth
                 isLoading={form.isSaving}
               />
             </View>
             <View style={{ flex: 1 }}>
               <CustomButton
-                title="Send"
+                title="Save & Send"
                 onPress={() => handleSave('sent')}
                 variant="primary"
-                size="lg"
+                size="sm"
                 fullWidth
                 isLoading={form.isSaving}
               />
@@ -401,24 +403,47 @@ const EstimateFormScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backBtn: { ...THEME.typography.labelLg, color: colors.secondary, marginBottom: spacing.xs },
-  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
-  sectionTitle: { ...THEME.typography.h4, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm, marginTop: spacing.md },
-  sectionCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.xs },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textLight,
+    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sectionCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.xs,
+    ...shadows.small,
+  },
   rowFields: { flexDirection: 'row' },
   linesSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.sm },
   addLineBtn: { paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs + 2, backgroundColor: colors.secondary + '18', borderRadius: 20 },
   addLineBtnText: { ...THEME.typography.bodySm, fontWeight: '700', color: colors.secondary },
   lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm },
-  totalsCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginTop: spacing.md, ...shadows.card },
+  totalsCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    ...shadows.small,
+  },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs + 2 },
   totalsLabel: { ...THEME.typography.bodyMd, color: colors.textSecondary },
   totalsValue: { ...THEME.typography.labelLg, color: colors.textPrimary },
   grandTotalRow: { borderTopWidth: 1.5, borderTopColor: colors.primary, marginTop: spacing.sm, paddingTop: spacing.sm },
   grandTotalLabel: { ...THEME.typography.h4, color: colors.textPrimary },
   grandTotalValue: { ...THEME.typography.h3, color: colors.primary },
-  btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.xl },
+  btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.md },
 });
 
 export default EstimateFormScreen;

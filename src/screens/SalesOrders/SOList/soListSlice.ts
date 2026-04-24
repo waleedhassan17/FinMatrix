@@ -1,11 +1,16 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Sales Order List Slice
+// FinMatrix — Sales Order List Slice (createAppSlice pattern)
 // ═══════════════════════════════════════════════════════
+// Flow: Screen → Slice → Network → Serializer (in fulfilled) → Screen
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { SalesOrder, SalesOrderStatus } from '../../../types';
 import { getSalesOrdersAPI, deleteSalesOrderAPI } from '../../../network/salesOrderNetwork';
+import {
+  salesOrderListSerializer,
+  salesOrderSingleSerializer,
+} from '../../../serializers/salesOrderSerializer';
 
 export type SOStatusFilter = 'all' | SalesOrderStatus;
 
@@ -15,6 +20,9 @@ export interface SOListSliceState {
   statusFilter: SOStatusFilter;
   isLoading: boolean;
   error: string;
+  page: number;
+  totalPages: number;
+  totalSalesOrders: number;
 }
 
 const initialState: SOListSliceState = {
@@ -23,6 +31,9 @@ const initialState: SOListSliceState = {
   statusFilter: 'all',
   isLoading: false,
   error: '',
+  page: 1,
+  totalPages: 1,
+  totalSalesOrders: 0,
 };
 
 export const soListSlice = createAppSlice({
@@ -43,14 +54,27 @@ export const soListSlice = createAppSlice({
       state.statusFilter = 'all';
       state.isLoading = false;
       state.error = '';
+      state.page = 1;
+      state.totalPages = 1;
+      state.totalSalesOrders = 0;
+    }),
+    // Upsert a single sales order — used after an action without refetching the whole list.
+    upsertSalesOrder: create.reducer((state, action: PayloadAction<SalesOrder>) => {
+      const idx = state.salesOrders.findIndex(s => s.id === action.payload.id);
+      if (idx === -1) state.salesOrders.push(action.payload);
+      else state.salesOrders[idx] = action.payload;
     }),
 
     fetchSalesOrders: create.asyncThunk(
       async () => getSalesOrdersAPI(),
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => {
-          state.salesOrders = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const data = salesOrderListSerializer(action.payload);
+          state.salesOrders = data.salesOrders;
+          state.page = data.page;
+          state.totalPages = data.totalPages;
+          state.totalSalesOrders = data.totalSalesOrders;
           state.isLoading = false;
         },
         rejected: (state, action) => {
@@ -81,11 +105,15 @@ export const soListSlice = createAppSlice({
   },
 });
 
+// Exported for consumers who want to apply the serializer locally
+export { salesOrderSingleSerializer };
+
 export const {
   setSalesOrders,
   setSOSearchQuery,
   setSOStatusFilter,
   resetSOList,
+  upsertSalesOrder,
   fetchSalesOrders,
   removeSalesOrder,
 } = soListSlice.actions;

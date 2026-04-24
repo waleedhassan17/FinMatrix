@@ -168,10 +168,12 @@ const EstimateListScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Text style={styles.backBtn}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Estimates</Text>
+          <View style={styles.headerTitleRow}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Estimates</Text>
+          </View>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.searchToggle}>
@@ -305,12 +307,24 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  backBtn: { ...THEME.typography.labelLg, color: colors.secondary, marginBottom: spacing.xs },
-  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
   summaryRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.sm },
-  summaryCard: { flex: 1, backgroundColor: colors.white, borderRadius: borderRadius.sm, paddingVertical: spacing.sm + 4, paddingHorizontal: spacing.sm, alignItems: 'center', ...shadows.small },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    ...shadows.small,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   summaryValue: { ...THEME.typography.h3, fontWeight: '800', color: colors.primary },
   summaryLabel: { ...THEME.typography.labelSm, fontWeight: '400', color: colors.textSecondary, marginTop: 2 },
   searchRow: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
@@ -331,8 +345,16 @@ const styles = StyleSheet.create({
   tabCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
   tabCountText: { ...THEME.typography.labelSm, fontWeight: '700', color: colors.textSecondary },
   tabCountTextActive: { color: colors.white },
-  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 80 },
-  card: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.sm, ...shadows.card },
+  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl * 3 },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...shadows.small,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
   cardNo: { ...THEME.typography.h4, fontWeight: '700', color: colors.textPrimary },
   cardCustomer: { ...THEME.typography.bodySm, color: colors.textSecondary, marginTop: 2 },
@@ -346,8 +368,19 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
   emptyText: { ...THEME.typography.h4, fontWeight: 'normal', color: colors.textSecondary },
-  fab: { position: 'absolute', right: spacing.lg, bottom: spacing.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', ...shadows.large },
-  fabIcon: { ...THEME.typography.displayMd, color: colors.white, fontWeight: '300', marginTop: -2 },
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: spacing.xl + spacing.md,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.small,
+  },
+  fabIcon: { fontSize: 24, color: colors.white, fontWeight: '300', marginTop: -1 },
 });
 
 export default EstimateListScreen;

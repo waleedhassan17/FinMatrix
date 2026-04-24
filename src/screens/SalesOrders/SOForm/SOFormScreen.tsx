@@ -40,6 +40,7 @@ import {
   selectSalesOrders,
   fetchSalesOrders,
 } from '../SOList/soListSlice';
+import { selectEstimates } from '../../Estimates/EstimateList/estimateListSlice';
 import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
 import { createSalesOrderAPI, updateSalesOrderAPI } from '../../../network/salesOrderNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
@@ -60,8 +61,10 @@ const SOFormScreen: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const editingId = route.params?.soId;
+  const fromEstimateId = route.params?.fromEstimateId;
   const isEditing = !!editingId;
   const salesOrders = useAppSelector(selectSalesOrders);
+  const estimates = useAppSelector(selectEstimates);
   const customers = useAppSelector(selectCustomers);
   const form = useAppSelector(selectSOFormState);
 
@@ -104,13 +107,31 @@ const SOFormScreen: React.FC = () => {
           }),
         );
       }
+    } else if (fromEstimateId) {
+      const est = estimates.find(e => e.id === fromEstimateId);
+      if (est) {
+        dispatch(setSOField({ key: 'soNumber', value: generateSONumber() }));
+        dispatch(setSOCustomer({ id: est.customerId, name: est.customerName }));
+        dispatch(setSOField({ key: 'orderDate', value: dayjs().format('YYYY-MM-DD') }));
+        dispatch(setSOField({ key: 'expectedDate', value: dayjs().add(14, 'day').format('YYYY-MM-DD') }));
+        dispatch(setSOField({ key: 'notes', value: est.notes }));
+        est.lines.forEach(() => dispatch(addSOLine()));
+        est.lines.forEach((l, idx) => {
+          dispatch(updateSOLine({ id: form.lines[idx]?.id ?? l.id, field: 'description', value: l.description || l.itemName }));
+          dispatch(updateSOLine({ id: form.lines[idx]?.id ?? l.id, field: 'quantity', value: String(l.quantity) }));
+          dispatch(updateSOLine({ id: form.lines[idx]?.id ?? l.id, field: 'unitPrice', value: String(l.unitPrice) }));
+          dispatch(updateSOLine({ id: form.lines[idx]?.id ?? l.id, field: 'taxRate', value: String(l.taxRate) }));
+          dispatch(updateSOLine({ id: form.lines[idx]?.id ?? l.id, field: 'fulfilledQuantity', value: '0' }));
+        });
+        dispatch(calculateSOTotals());
+      }
     } else {
       dispatch(setSOField({ key: 'soNumber', value: generateSONumber() }));
       dispatch(setSOField({ key: 'expectedDate', value: dayjs().add(14, 'day').format('YYYY-MM-DD') }));
     }
 
     return () => { dispatch(resetSOForm()); };
-  }, [isEditing, editingId, salesOrders, dispatch, generateSONumber]);
+  }, [isEditing, editingId, fromEstimateId, salesOrders, estimates, dispatch, generateSONumber, form.lines]);
 
   const handleCustomerChange = useCallback(
     (custId: string) => {
@@ -201,12 +222,14 @@ const SOFormScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isEditing ? `Edit ${form.soNumber}` : 'New Sales Order'}
-        </Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {isEditing ? `Edit ${form.soNumber}` : 'New Sales Order'}
+          </Text>
+        </View>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -314,7 +337,7 @@ const SOFormScreen: React.FC = () => {
                 title={isEditing ? 'Update Order' : 'Create Order'}
                 onPress={() => handleSave('open')}
                 variant="primary"
-                size="lg"
+                size="sm"
                 fullWidth
                 isLoading={form.isSaving}
               />
@@ -329,24 +352,47 @@ const SOFormScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm, marginTop: spacing.md },
-  sectionCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.xs },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textLight,
+    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sectionCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.xs,
+    ...shadows.small,
+  },
   rowFields: { flexDirection: 'row' },
   linesSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.sm },
   addLineBtn: { paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs + 2, backgroundColor: colors.secondary + '18', borderRadius: 20 },
   addLineBtnText: { fontSize: 13, fontWeight: '700', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
   lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
-  totalsCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginTop: spacing.md, ...shadows.card },
+  totalsCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    ...shadows.small,
+  },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs + 2 },
   totalsLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   totalsValue: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   grandTotalRow: { borderTopWidth: 1.5, borderTopColor: colors.primary, marginTop: spacing.sm, paddingTop: spacing.sm },
   grandTotalLabel: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   grandTotalValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.xl },
+  btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.md },
 });
 
 export default SOFormScreen;

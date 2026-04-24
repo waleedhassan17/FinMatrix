@@ -108,11 +108,12 @@ const SODetailScreen: React.FC = () => {
   }, [so, soId, dispatch]);
 
   const handleCreateInvoice = useCallback(() => {
+    if (!so) return;
     Alert.alert('Create Invoice', 'Create an invoice from this fulfilled sales order?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Create', onPress: () => navigation.navigate('InvoiceForm') },
+      { text: 'Create', onPress: () => navigation.navigate('InvoiceForm', { fromSOId: so.id }) },
     ]);
-  }, [navigation]);
+  }, [navigation, so]);
 
   const handleCloseOrder = useCallback(async () => {
     if (!so) return;
@@ -159,11 +160,13 @@ const SODetailScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>{so.soNumber}</Text>
+          <View style={styles.headerTitleWrap}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{so.soNumber}</Text>
+          </View>
           <View style={[styles.badge, { backgroundColor: statusCol + '18' }]}>
             <Text style={[styles.badgeText, { color: statusCol }]}>{STATUS_LABEL[so.status]}</Text>
           </View>
@@ -266,40 +269,40 @@ const SODetailScreen: React.FC = () => {
       <View style={styles.actionBar}>
         {so.status === 'open' && (
           <>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <CustomButton title="Edit" onPress={() => navigation.navigate('SOForm', { soId: so.id })} variant="secondary" size="lg" fullWidth />
+            <View style={styles.actionSecondary}>
+              <CustomButton title="Edit" onPress={() => navigation.navigate('SOForm', { soId: so.id })} variant="secondary" size="sm" fullWidth />
             </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton title="Mark Fulfilled" onPress={handleMarkFulfilled} variant="primary" size="lg" fullWidth />
+            <View style={styles.actionPrimary}>
+              <CustomButton title="Mark Fulfilled" onPress={handleMarkFulfilled} variant="primary" size="sm" fullWidth />
             </View>
           </>
         )}
 
         {so.status === 'partially_fulfilled' && (
           <>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <CustomButton title="Mark Fulfilled" onPress={handleMarkFulfilled} variant="primary" size="lg" fullWidth />
+            <View style={styles.actionSecondary}>
+              <CustomButton title="Create Invoice" onPress={handleCreateInvoice} variant="secondary" size="sm" fullWidth />
             </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton title="Create Invoice" onPress={handleCreateInvoice} variant="secondary" size="lg" fullWidth />
+            <View style={styles.actionPrimary}>
+              <CustomButton title="Mark Fulfilled" onPress={handleMarkFulfilled} variant="primary" size="sm" fullWidth />
             </View>
           </>
         )}
 
         {so.status === 'fulfilled' && (
           <>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <CustomButton title="Create Invoice" onPress={handleCreateInvoice} variant="primary" size="lg" fullWidth />
+            <View style={styles.actionSecondary}>
+              <CustomButton title="Close Order" onPress={handleCloseOrder} variant="secondary" size="sm" fullWidth />
             </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton title="Close Order" onPress={handleCloseOrder} variant="danger" size="lg" fullWidth />
+            <View style={styles.actionPrimary}>
+              <CustomButton title="Create Invoice" onPress={handleCreateInvoice} variant="primary" size="sm" fullWidth />
             </View>
           </>
         )}
 
         {so.status === 'closed' && (
-          <View style={{ flex: 1 }}>
-            <CustomButton title="Order Closed" onPress={() => {}} variant="secondary" size="lg" fullWidth disabled />
+          <View style={styles.actionPrimary}>
+            <CustomButton title="Order Closed" onPress={() => {}} variant="secondary" size="sm" fullWidth disabled />
           </View>
         )}
       </View>
@@ -319,13 +322,20 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   errorText: { fontSize: 15, color: colors.danger, fontFamily: THEME.typography.fontFamily },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerTitleWrap: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: spacing.sm },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
   badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  invoiceCard: { backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, ...shadows.card },
+  invoiceCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    ...shadows.small,
+  },
   companyName: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
   companyMeta: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 18 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm + 2 },
@@ -355,7 +365,19 @@ const styles = StyleSheet.create({
   totalsValueBold: { fontSize: 16, fontWeight: '800' },
   grandTotalDivider: { height: 1.5, backgroundColor: colors.primary, marginVertical: spacing.xs },
   notesText: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 20 },
-  actionBar: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border, ...shadows.card },
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm - 2,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.xs,
+    ...shadows.small,
+  },
+  actionPrimary: { flex: 1.4 },
+  actionSecondary: { flex: 1 },
 });
 
 export default SODetailScreen;
