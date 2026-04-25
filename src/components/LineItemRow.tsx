@@ -1,19 +1,20 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Reusable Line Item Row Component
-// Used in Invoice (and future Bill / PO / SO) forms.
+// Used in Invoice / Credit Memo / Estimate / SO / PO forms.
 // Auto-calculates line amount = qty × unitPrice.
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Modal,
+  FlatList,
 } from 'react-native';
-import CustomDropdown from '../Custom-Components/CustomDropdown';
-import { colors, spacing, borderRadius } from '../theme';
+import { colors, spacing, borderRadius, shadows } from '../theme';
 import { THEME } from '../utils/theme';
 import { formatCurrency } from '../utils/formatters';
 
@@ -53,12 +54,17 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
   canDelete,
   index,
 }) => {
+  const [taxPickerOpen, setTaxPickerOpen] = useState(false);
+
   const sanitizeNumeric = useCallback(
     (v: string, cb: (s: string) => void) => {
       cb(v.replace(/[^0-9.]/g, ''));
     },
     [],
   );
+
+  const taxLabel =
+    TAX_OPTIONS.find(o => o.value === taxRate)?.label ?? `${taxRate} %`;
 
   return (
     <View style={styles.container}>
@@ -81,7 +87,8 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
         placeholderTextColor={colors.textLight}
       />
 
-      {/* Qty + Unit Price row */}
+      {/* Qty + Rate + Tax row — all three columns share identical
+          label typography and field height for visual consistency. */}
       <View style={styles.numericRow}>
         <View style={styles.numericField}>
           <Text style={styles.fieldLabel}>Qty</Text>
@@ -105,14 +112,16 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
             keyboardType="decimal-pad"
           />
         </View>
-        <View style={styles.taxField}>
-          <CustomDropdown
-            label="Tax"
-            options={TAX_OPTIONS}
-            value={taxRate}
-            onChange={onTaxRateChange}
-            placeholder="Tax"
-          />
+        <View style={styles.numericField}>
+          <Text style={styles.fieldLabel}>Tax</Text>
+          <TouchableOpacity
+            style={styles.taxTrigger}
+            onPress={() => setTaxPickerOpen(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.taxTriggerText}>{taxLabel}</Text>
+            <Text style={styles.taxChevron}>▾</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -121,6 +130,55 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
         <Text style={styles.amountLabel}>Line Total</Text>
         <Text style={styles.amountValue}>{formatCurrency(lineAmount, 'Rs ')}</Text>
       </View>
+
+      {/* Tax picker modal — lightweight, scoped to this row */}
+      <Modal
+        visible={taxPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTaxPickerOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.taxOverlay}
+          activeOpacity={1}
+          onPress={() => setTaxPickerOpen(false)}
+        >
+          <View style={styles.taxModal}>
+            <View style={styles.taxModalHeader}>
+              <Text style={styles.taxModalTitle}>Select Tax Rate</Text>
+              <TouchableOpacity onPress={() => setTaxPickerOpen(false)}>
+                <Text style={styles.taxModalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={TAX_OPTIONS}
+              keyExtractor={o => o.value}
+              renderItem={({ item }) => {
+                const selected = item.value === taxRate;
+                return (
+                  <TouchableOpacity
+                    style={[styles.taxOption, selected && styles.taxOptionSelected]}
+                    onPress={() => {
+                      onTaxRateChange(item.value);
+                      setTaxPickerOpen(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.taxOptionText,
+                        selected && styles.taxOptionTextSelected,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                    {selected && <Text style={styles.taxOptionCheck}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -173,7 +231,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   numericField: { flex: 1 },
-  taxField: { flex: 1 },
   fieldLabel: {
     ...THEME.typography.caption,
     fontWeight: '500',
@@ -189,6 +246,29 @@ const styles = StyleSheet.create({
     ...THEME.typography.bodyMd,
     color: colors.textPrimary,
     textAlign: 'right',
+  },
+  // Tax trigger mirrors numericInput exactly — same height,
+  // padding, border, and typography — so the three columns
+  // sit on a perfectly aligned row.
+  taxTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.white,
+  },
+  taxTriggerText: {
+    ...THEME.typography.bodyMd,
+    color: colors.textPrimary,
+  },
+  taxChevron: {
+    ...THEME.typography.caption,
+    color: colors.textSecondary,
+    marginLeft: spacing.xs,
   },
   amountRow: {
     flexDirection: 'row',
@@ -206,6 +286,51 @@ const styles = StyleSheet.create({
   },
   amountValue: {
     ...THEME.typography.h4,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+
+  // Tax picker modal
+  taxOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  taxModal: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.lg,
+    maxHeight: '60%',
+    ...shadows.large,
+  },
+  taxModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  taxModalTitle: { ...THEME.typography.h4, color: colors.textPrimary },
+  taxModalClose: {
+    ...THEME.typography.h3,
+    color: colors.textSecondary,
+    paddingHorizontal: spacing.xs,
+  },
+  taxOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  taxOptionSelected: { backgroundColor: colors.primary + '10' },
+  taxOptionText: { ...THEME.typography.bodyLg, color: colors.textPrimary },
+  taxOptionTextSelected: { color: colors.primary, fontWeight: '600' },
+  taxOptionCheck: {
+    ...THEME.typography.h3,
     fontWeight: '700',
     color: colors.primary,
   },

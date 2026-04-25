@@ -247,6 +247,8 @@ export interface Payment {
   reference: string;
   amount: number;
   allocations: PaymentAllocation[];
+  /** Portion of `amount` not allocated to any invoice — kept as a customer credit for future use. */
+  creditAmount: number;
   notes: string;
   createdBy: string;
   createdAt: string;

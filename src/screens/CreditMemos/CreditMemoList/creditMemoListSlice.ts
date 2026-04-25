@@ -1,11 +1,17 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Credit Memo List Slice (createAppSlice pattern)
+// FinMatrix — Credit Memo List Slice (createAppSlice)
 // ═══════════════════════════════════════════════════════
+// Flow: Screen → Slice → Network → Serializer (in fulfilled) → Screen
+// Mirrors the GL slice architecture.
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { CreditMemo, CreditMemoStatus } from '../../../types';
-import { getCreditMemosAPI, deleteCreditMemoAPI } from '../../../network/creditMemoNetwork';
+import {
+  getCreditMemosAPI,
+  deleteCreditMemoAPI,
+} from '../../../network/creditMemoNetwork';
+import { creditMemoListSerializer } from '../../../serializers/creditMemoSerializer';
 
 export type CreditMemoStatusFilter = 'all' | CreditMemoStatus;
 
@@ -15,6 +21,9 @@ export interface CreditMemoListSliceState {
   statusFilter: CreditMemoStatusFilter;
   isLoading: boolean;
   error: string;
+  page: number;
+  totalPages: number;
+  totalCreditMemos: number;
 }
 
 const initialState: CreditMemoListSliceState = {
@@ -23,6 +32,9 @@ const initialState: CreditMemoListSliceState = {
   statusFilter: 'all',
   isLoading: false,
   error: '',
+  page: 1,
+  totalPages: 1,
+  totalCreditMemos: 0,
 };
 
 export const creditMemoListSlice = createAppSlice({
@@ -38,19 +50,33 @@ export const creditMemoListSlice = createAppSlice({
     setCMStatusFilter: create.reducer((state, action: PayloadAction<CreditMemoStatusFilter>) => {
       state.statusFilter = action.payload;
     }),
+    /** Upsert a single memo — used after create/apply/refund without
+     *  refetching the whole list. */
+    upsertCreditMemo: create.reducer((state, action: PayloadAction<CreditMemo>) => {
+      const idx = state.creditMemos.findIndex(c => c.id === action.payload.id);
+      if (idx === -1) state.creditMemos.unshift(action.payload);
+      else state.creditMemos[idx] = action.payload;
+    }),
     resetCreditMemoList: create.reducer(state => {
       state.searchQuery = '';
       state.statusFilter = 'all';
       state.isLoading = false;
       state.error = '';
+      state.page = 1;
+      state.totalPages = 1;
+      state.totalCreditMemos = 0;
     }),
 
     fetchCreditMemos: create.asyncThunk(
       async () => getCreditMemosAPI(),
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => {
-          state.creditMemos = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const data = creditMemoListSerializer(action.payload);
+          state.creditMemos = data.creditMemos;
+          state.page = data.page;
+          state.totalPages = data.totalPages;
+          state.totalCreditMemos = data.totalCreditMemos;
           state.isLoading = false;
         },
         rejected: (state, action) => {
@@ -59,6 +85,7 @@ export const creditMemoListSlice = createAppSlice({
         },
       },
     ),
+
     removeCreditMemo: create.asyncThunk(
       async (id: string) => {
         await deleteCreditMemoAPI(id);
@@ -85,6 +112,7 @@ export const {
   setCreditMemos,
   setCMSearchQuery,
   setCMStatusFilter,
+  upsertCreditMemo,
   resetCreditMemoList,
   fetchCreditMemos,
   removeCreditMemo,

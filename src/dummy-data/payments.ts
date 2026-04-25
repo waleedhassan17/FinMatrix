@@ -7,7 +7,11 @@
 
 import type { Payment } from '../types';
 
-export const payments: Payment[] = [
+// Seed type intentionally omits `creditAmount` — the network
+// layer defaults it to 0 for legacy seed records.
+type PaymentSeed = Omit<Payment, 'creditAmount'>;
+
+export const payments: PaymentSeed[] = [
   // ── 1  Bank transfer – partial on INV-0001 ────────
   {
     id: 'pay_001',
