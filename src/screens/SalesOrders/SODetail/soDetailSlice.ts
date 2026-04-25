@@ -5,18 +5,20 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { SalesOrder } from '../../../types';
-import { getSalesOrderByIdAPI } from '../../../network/salesOrderNetwork';
+import { getSalesOrderByIdAPI, sendSalesOrderAPI } from '../../../network/salesOrderNetwork';
 import { salesOrderSingleSerializer } from '../../../serializers/salesOrderSerializer';
 
 export interface SODetailSliceState {
   salesOrder: SalesOrder | null;
   isLoading: boolean;
+  isSending: boolean;
   error: string;
 }
 
 const initialState: SODetailSliceState = {
   salesOrder: null,
   isLoading: false,
+  isSending: false,
   error: '',
 };
 
@@ -27,6 +29,7 @@ export const soDetailSlice = createAppSlice({
     resetSODetail: create.reducer(state => {
       state.salesOrder = null;
       state.isLoading = false;
+      state.isSending = false;
       state.error = '';
     }),
 
@@ -46,14 +49,44 @@ export const soDetailSlice = createAppSlice({
         },
       },
     ),
+
+    // Marks sales order as sent via WhatsApp / email / generic share.
+    sendSalesOrder: create.asyncThunk(
+      async (args: {
+        id: string;
+        channel: 'whatsapp' | 'email' | 'share';
+        toPhone?: string;
+      }) => sendSalesOrderAPI(args.id, { channel: args.channel, toPhone: args.toPhone }),
+      {
+        pending: state => {
+          state.isSending = true;
+          state.error = '';
+        },
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const updated = salesOrderSingleSerializer(action.payload);
+          if (updated) state.salesOrder = updated;
+          state.isSending = false;
+        },
+        rejected: (state, action) => {
+          state.isSending = false;
+          state.error = action.error?.message ?? 'Failed to record sales order send';
+        },
+      },
+    ),
   }),
 
   selectors: {
     selectSODetail: state => state.salesOrder,
     selectSODetailLoading: state => state.isLoading,
     selectSODetailError: state => state.error,
+    selectSODetailSending: state => state.isSending,
   },
 });
 
-export const { resetSODetail, fetchSODetail } = soDetailSlice.actions;
-export const { selectSODetail, selectSODetailLoading, selectSODetailError } = soDetailSlice.selectors;
+export const { resetSODetail, fetchSODetail, sendSalesOrder } = soDetailSlice.actions;
+export const {
+  selectSODetail,
+  selectSODetailLoading,
+  selectSODetailError,
+  selectSODetailSending,
+} = soDetailSlice.selectors;

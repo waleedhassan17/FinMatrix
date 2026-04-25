@@ -36,6 +36,11 @@ export interface SalesOrderApiEntity {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  // Optional delivery metadata tracked when we share the
+  // sales order (e.g. via WhatsApp). Backend-agnostic.
+  sentAt?: string;
+  sentChannel?: 'whatsapp' | 'email' | 'share' | null;
+  sentToPhone?: string;
 }
 
 // ─── Pagination envelope ─────────────────────────────

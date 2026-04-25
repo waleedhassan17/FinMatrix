@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Estimate Detail Screen
-// Actions: Convert to Invoice, Convert to SO, Mark Declined
+// Actions: Share PDF, Mark Accepted / Declined
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -28,11 +28,18 @@ import {
   selectEstimateDetail,
   selectEstimateDetailLoading,
   selectEstimateDetailError,
+  sendEstimate,
 } from './estimateDetailSlice';
-import { fetchEstimates } from '../EstimateList/estimateListSlice';
+import { estimateSingleSerializer } from '../../../serializers/estimateSerializer';
+import { fetchEstimates, upsertEstimate } from '../EstimateList/estimateListSlice';
+import {
+  fetchCustomers,
+  selectCustomers,
+} from '../../Customers/CustomerList/customerListSlice';
 import { updateEstimateAPI } from '../../../network/estimateNetwork';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { shareEstimatePdf } from '../../../utils/estimateShare';
 import type { EstimateStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
@@ -65,12 +72,23 @@ const EstimateDetailScreen: React.FC = () => {
   const estimate = useAppSelector(selectEstimateDetail);
   const isLoading = useAppSelector(selectEstimateDetailLoading);
   const error = useAppSelector(selectEstimateDetailError);
+  const customers = useAppSelector(selectCustomers);
   const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
     dispatch(fetchEstimateDetail(estimateId));
+    // Customers are needed for the Bill-To block on the PDF
+    // and for the WhatsApp phone-number lookup.
+    if (customers.length === 0) dispatch(fetchCustomers());
     return () => { dispatch(resetEstimateDetail()); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estimateId, dispatch]);
+
+  // Resolve the customer record that matches this estimate.
+  const customer = useMemo(
+    () => customers.find(c => c.id === estimate?.customerId) || null,
+    [customers, estimate?.customerId],
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -79,6 +97,39 @@ const EstimateDetailScreen: React.FC = () => {
   }, [estimateId, dispatch]);
 
   // ── Actions ─────────────────────────────────────
+
+  /** After a successful share we transition the estimate to
+   *  "sent" on the backend and refresh the list behind the
+   *  scenes so the status badge updates everywhere. */
+  const markAsSentOnBackend = useCallback(
+    async (channel: 'whatsapp' | 'email' | 'share', toPhone?: string) => {
+      if (!estimate) return;
+      const action = await dispatch(
+        sendEstimate({ id: estimate.id, channel, toPhone }),
+      );
+      // Keep the list slice in sync without a full re-fetch —
+      // matches the Invoice pattern and avoids triggering
+      // the list's loading cycle.
+      const payload: any = (action as any)?.payload;
+      const updatedRaw = payload?.data?.estimate;
+      if (updatedRaw) {
+        const updated = estimateSingleSerializer(payload);
+        if (updated) dispatch(upsertEstimate(updated));
+      } else {
+        dispatch(fetchEstimates());
+      }
+    },
+    [dispatch, estimate],
+  );
+
+  const handleSharePdf = useCallback(async () => {
+    if (!estimate) return;
+    const result = await shareEstimatePdf({ estimate, customer });
+    if (result.shared && estimate.status === 'draft') {
+      await markAsSentOnBackend('share');
+    }
+  }, [estimate, customer, markAsSentOnBackend]);
+
   const handleMarkAccepted = useCallback(async () => {
     if (!estimate) return;
     try {
@@ -111,32 +162,6 @@ const EstimateDetailScreen: React.FC = () => {
       },
     ]);
   }, [estimate, estimateId, dispatch]);
-
-  const handleConvertToInvoice = useCallback(() => {
-    if (!estimate) return;
-    Alert.alert('Convert to Invoice', 'This estimate will be used to create a new invoice.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Convert',
-        onPress: () => {
-          navigation.navigate('InvoiceForm', { fromEstimateId: estimate.id });
-        },
-      },
-    ]);
-  }, [navigation, estimate]);
-
-  const handleConvertToSO = useCallback(() => {
-    if (!estimate) return;
-    Alert.alert('Convert to Sales Order', 'This estimate will be used to create a new sales order.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Convert',
-        onPress: () => {
-          navigation.navigate('SOForm', { fromEstimateId: estimate.id });
-        },
-      },
-    ]);
-  }, [navigation, estimate]);
 
   // ── Loading / Error ─────────────────────────────
   if (isLoading && !estimate) {
@@ -269,6 +294,7 @@ const EstimateDetailScreen: React.FC = () => {
 
       {/* Action Bar */}
       <View style={styles.actionBar}>
+        {/* Draft: Edit + Share */}
         {estimate.status === 'draft' && (
           <>
             <View style={styles.actionSecondary}>
@@ -281,24 +307,17 @@ const EstimateDetailScreen: React.FC = () => {
               />
             </View>
             <View style={styles.actionPrimary}>
-              <CustomButton
-                title="Send"
-                onPress={async () => {
-                  await updateEstimateAPI(estimate.id, { status: 'sent' });
-                  await dispatch(fetchEstimateDetail(estimateId));
-                  await dispatch(fetchEstimates());
-                  Alert.alert('Sent', `${estimate.estimateNumber} has been sent.`);
-                }}
-                variant="primary"
-                size="sm"
-                fullWidth
-              />
+              <CustomButton title="Share" onPress={handleSharePdf} variant="primary" size="sm" fullWidth />
             </View>
           </>
         )}
 
+        {/* Sent: Share + Decline + Accept */}
         {estimate.status === 'sent' && (
           <>
+            <View style={styles.actionSecondary}>
+              <CustomButton title="Share" onPress={handleSharePdf} variant="secondary" size="sm" fullWidth />
+            </View>
             <View style={styles.actionSecondary}>
               <CustomButton title="Decline" onPress={handleMarkDeclined} variant="secondary" size="sm" fullWidth />
             </View>
@@ -308,27 +327,29 @@ const EstimateDetailScreen: React.FC = () => {
           </>
         )}
 
+        {/* Accepted: Share only */}
         {estimate.status === 'accepted' && (
-          <>
-            <View style={styles.actionSecondary}>
-              <CustomButton title="Convert to SO" onPress={handleConvertToSO} variant="secondary" size="sm" fullWidth />
-            </View>
-            <View style={styles.actionPrimary}>
-              <CustomButton title="Convert to Invoice" onPress={handleConvertToInvoice} variant="primary" size="sm" fullWidth />
-            </View>
-          </>
+          <View style={styles.actionPrimary}>
+            <CustomButton title="Share" onPress={handleSharePdf} variant="primary" size="sm" fullWidth />
+          </View>
         )}
 
+        {/* Declined / Expired: Share + Edit & Resend */}
         {(estimate.status === 'declined' || estimate.status === 'expired') && (
-          <View style={styles.actionPrimary}>
-            <CustomButton
-              title="Edit & Resend"
-              onPress={() => navigation.navigate('EstimateForm', { estimateId: estimate.id })}
-              variant="primary"
-              size="sm"
-              fullWidth
-            />
-          </View>
+          <>
+            <View style={styles.actionSecondary}>
+              <CustomButton title="Share" onPress={handleSharePdf} variant="secondary" size="sm" fullWidth />
+            </View>
+            <View style={styles.actionPrimary}>
+              <CustomButton
+                title="Edit & Resend"
+                onPress={() => navigation.navigate('EstimateForm', { estimateId: estimate.id })}
+                variant="primary"
+                size="sm"
+                fullWidth
+              />
+            </View>
+          </>
         )}
       </View>
     </SafeAreaView>
@@ -401,6 +422,7 @@ const styles = StyleSheet.create({
   },
   actionPrimary: { flex: 1.4 },
   actionSecondary: { flex: 1 },
+  actionShare: { flex: 1 },
 });
 
 export default EstimateDetailScreen;

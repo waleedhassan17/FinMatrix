@@ -157,5 +157,41 @@ export const deleteSalesOrderAPI = async (id: string): Promise<any> => {
   return simulateApiCall({ success: true, data: { id } }, 400);
 };
 
+/**
+ * POST /api/v1/sales-orders/:id/send
+ *
+ * Records that a sales order was sent to the customer (via
+ * WhatsApp / email / generic share). The real backend would
+ * additionally enqueue a notification / audit log entry.
+ */
+export const sendSalesOrderAPI = async (
+  id: string,
+  meta: { channel: 'whatsapp' | 'email' | 'share'; toPhone?: string },
+): Promise<any> => {
+  const idx = soStore.findIndex(s => s.id === id);
+  if (idx === -1) throw new Error('Sales order not found');
+
+  soStore[idx] = {
+    ...soStore[idx],
+    sentAt: new Date().toISOString(),
+    sentChannel: meta.channel,
+    sentToPhone: meta.toPhone,
+    updatedAt: new Date().toISOString(),
+  };
+
+  return simulateApiCall(
+    {
+      success: true,
+      data: {
+        salesOrder: {
+          ...soStore[idx],
+          lines: soStore[idx].lines.map(l => ({ ...l })),
+        },
+      },
+    },
+    400,
+  );
+};
+
 // Keep reference to silence unused import warning in some configs
 void API_BASE_URL;

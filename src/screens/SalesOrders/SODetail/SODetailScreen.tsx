@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Sales Order Detail Screen
-// Actions: Create Invoice (fulfilled), Mark Items Fulfilled
+// Actions: Share PDF, Mark Fulfilled, Close Order
 // Shows ordered vs fulfilled per line.
 // ═══════════════════════════════════════════════════════
 
@@ -29,11 +29,18 @@ import {
   selectSODetail,
   selectSODetailLoading,
   selectSODetailError,
+  sendSalesOrder,
 } from './soDetailSlice';
-import { fetchSalesOrders } from '../SOList/soListSlice';
+import { fetchSalesOrders, upsertSalesOrder } from '../SOList/soListSlice';
+import { salesOrderSingleSerializer } from '../../../serializers/salesOrderSerializer';
+import {
+  fetchCustomers,
+  selectCustomers,
+} from '../../Customers/CustomerList/customerListSlice';
 import { updateSalesOrderAPI } from '../../../network/salesOrderNetwork';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { shareSalesOrderPdf } from '../../../utils/salesOrderShare';
 import type { SalesOrderStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
@@ -64,12 +71,23 @@ const SODetailScreen: React.FC = () => {
   const so = useAppSelector(selectSODetail);
   const isLoading = useAppSelector(selectSODetailLoading);
   const error = useAppSelector(selectSODetailError);
+  const customers = useAppSelector(selectCustomers);
   const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
     dispatch(fetchSODetail(soId));
+    // Customers are needed for the Bill-To block on the PDF
+    // and for the WhatsApp phone-number lookup.
+    if (customers.length === 0) dispatch(fetchCustomers());
     return () => { dispatch(resetSODetail()); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [soId, dispatch]);
+
+  // Resolve the customer record that matches this sales order.
+  const customer = useMemo(
+    () => customers.find(c => c.id === so?.customerId) || null,
+    [customers, so?.customerId],
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -84,6 +102,37 @@ const SODetailScreen: React.FC = () => {
     const totalFulfilled = so.lines.reduce((s, l) => s + l.fulfilledQuantity, 0);
     return { totalOrdered, totalFulfilled, pct: totalOrdered > 0 ? Math.round(totalFulfilled / totalOrdered * 100) : 0 };
   }, [so]);
+
+  // ── WhatsApp / PDF sharing ────────────────────────
+
+  const markAsSentOnBackend = useCallback(
+    async (channel: 'whatsapp' | 'email' | 'share', toPhone?: string) => {
+      if (!so) return;
+      const action = await dispatch(
+        sendSalesOrder({ id: so.id, channel, toPhone }),
+      );
+      // Keep the list slice in sync without a full re-fetch —
+      // matches the Invoice pattern and avoids triggering
+      // the list's loading cycle.
+      const payload: any = (action as any)?.payload;
+      const updatedRaw = payload?.data?.salesOrder;
+      if (updatedRaw) {
+        const updated = salesOrderSingleSerializer(payload);
+        if (updated) dispatch(upsertSalesOrder(updated));
+      } else {
+        dispatch(fetchSalesOrders());
+      }
+    },
+    [dispatch, so],
+  );
+
+  const handleSharePdf = useCallback(async () => {
+    if (!so) return;
+    const result = await shareSalesOrderPdf({ salesOrder: so, customer });
+    if (result.shared) {
+      await markAsSentOnBackend('share');
+    }
+  }, [so, customer, markAsSentOnBackend]);
 
   // ── Mark all fulfilled ──────────────────────────
   const handleMarkFulfilled = useCallback(async () => {
@@ -106,14 +155,6 @@ const SODetailScreen: React.FC = () => {
       },
     ]);
   }, [so, soId, dispatch]);
-
-  const handleCreateInvoice = useCallback(() => {
-    if (!so) return;
-    Alert.alert('Create Invoice', 'Create an invoice from this fulfilled sales order?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Create', onPress: () => navigation.navigate('InvoiceForm', { fromSOId: so.id }) },
-    ]);
-  }, [navigation, so]);
 
   const handleCloseOrder = useCallback(async () => {
     if (!so) return;
@@ -267,21 +308,26 @@ const SODetailScreen: React.FC = () => {
 
       {/* Action Bar */}
       <View style={styles.actionBar}>
+        {/* Open: Edit + Share + Mark Fulfilled */}
         {so.status === 'open' && (
           <>
             <View style={styles.actionSecondary}>
               <CustomButton title="Edit" onPress={() => navigation.navigate('SOForm', { soId: so.id })} variant="secondary" size="sm" fullWidth />
             </View>
+            <View style={styles.actionSecondary}>
+              <CustomButton title="Share" onPress={handleSharePdf} variant="secondary" size="sm" fullWidth />
+            </View>
             <View style={styles.actionPrimary}>
               <CustomButton title="Mark Fulfilled" onPress={handleMarkFulfilled} variant="primary" size="sm" fullWidth />
             </View>
           </>
         )}
 
+        {/* Partially fulfilled: Share + Mark Fulfilled */}
         {so.status === 'partially_fulfilled' && (
           <>
             <View style={styles.actionSecondary}>
-              <CustomButton title="Create Invoice" onPress={handleCreateInvoice} variant="secondary" size="sm" fullWidth />
+              <CustomButton title="Share" onPress={handleSharePdf} variant="secondary" size="sm" fullWidth />
             </View>
             <View style={styles.actionPrimary}>
               <CustomButton title="Mark Fulfilled" onPress={handleMarkFulfilled} variant="primary" size="sm" fullWidth />
@@ -289,20 +335,22 @@ const SODetailScreen: React.FC = () => {
           </>
         )}
 
+        {/* Fulfilled: Share + Close Order */}
         {so.status === 'fulfilled' && (
           <>
             <View style={styles.actionSecondary}>
-              <CustomButton title="Close Order" onPress={handleCloseOrder} variant="secondary" size="sm" fullWidth />
+              <CustomButton title="Share" onPress={handleSharePdf} variant="secondary" size="sm" fullWidth />
             </View>
             <View style={styles.actionPrimary}>
-              <CustomButton title="Create Invoice" onPress={handleCreateInvoice} variant="primary" size="sm" fullWidth />
+              <CustomButton title="Close Order" onPress={handleCloseOrder} variant="primary" size="sm" fullWidth />
             </View>
           </>
         )}
 
+        {/* Closed: Share only */}
         {so.status === 'closed' && (
           <View style={styles.actionPrimary}>
-            <CustomButton title="Order Closed" onPress={() => {}} variant="secondary" size="sm" fullWidth disabled />
+            <CustomButton title="Share" onPress={handleSharePdf} variant="primary" size="sm" fullWidth />
           </View>
         )}
       </View>
@@ -378,6 +426,7 @@ const styles = StyleSheet.create({
   },
   actionPrimary: { flex: 1.4 },
   actionSecondary: { flex: 1 },
+  actionShare: { flex: 1 },
 });
 
 export default SODetailScreen;

@@ -157,5 +157,47 @@ export const deleteEstimateAPI = async (id: string): Promise<any> => {
   return simulateApiCall({ success: true, data: { id } }, 400);
 };
 
+/**
+ * POST /api/v1/estimates/:id/send
+ *
+ * Records that an estimate was sent to the customer (via
+ * WhatsApp / email / generic share). The real backend would
+ * additionally enqueue a notification / audit log entry.
+ */
+export const sendEstimateAPI = async (
+  id: string,
+  meta: { channel: 'whatsapp' | 'email' | 'share'; toPhone?: string },
+): Promise<any> => {
+  const idx = estimateStore.findIndex(e => e.id === id);
+  if (idx === -1) throw new Error('Estimate not found');
+
+  // If the estimate is still a draft, transition to "sent" automatically
+  const nextStatus = estimateStore[idx].status === 'draft'
+    ? 'sent'
+    : estimateStore[idx].status;
+
+  estimateStore[idx] = {
+    ...estimateStore[idx],
+    status: nextStatus,
+    sentAt: new Date().toISOString(),
+    sentChannel: meta.channel,
+    sentToPhone: meta.toPhone,
+    updatedAt: new Date().toISOString(),
+  };
+
+  return simulateApiCall(
+    {
+      success: true,
+      data: {
+        estimate: {
+          ...estimateStore[idx],
+          lines: estimateStore[idx].lines.map(l => ({ ...l })),
+        },
+      },
+    },
+    400,
+  );
+};
+
 // Keep reference to silence unused import warning in some configs
 void API_BASE_URL;
