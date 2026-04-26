@@ -1,8 +1,64 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Purchase Order Model
+// FinMatrix — Purchase Order Model & Validation
 // ═══════════════════════════════════════════════════════
+// Mirrors `billModel.ts` / `glModel.ts`:
+//   • API entity types describing the raw backend shape
+//   • Pagination envelope
+//   • Query params for the list endpoint
+// Plus the existing form-validation helpers used by the form screen.
 
-import type { PurchaseOrderStatus } from '../types';
+import type { PurchaseOrder, PurchaseOrderLine, PurchaseOrderStatus } from '../types';
+
+// ─── Raw API entity (backend shape) ──────────────────
+export interface PurchaseOrderApiLineEntity {
+  id: string;
+  itemId: string;
+  itemName: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  receivedQuantity: number;
+}
+
+export interface PurchaseOrderApiEntity {
+  id: string;
+  companyId: string;
+  poNumber: string;
+  vendorId: string;
+  vendorName: string;
+  orderDate: string;
+  expectedDate: string;
+  status: PurchaseOrderStatus;
+  lines: PurchaseOrderApiLineEntity[];
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  notes: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Pagination envelope ─────────────────────────────
+export interface PurchaseOrderApiPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+// ─── Query params for list endpoint ──────────────────
+export interface PurchaseOrderQueryParams {
+  search?: string;
+  status?: 'all' | PurchaseOrderStatus;
+  vendorId?: string;
+  page?: number;
+  limit?: number;
+}
+
+// ─── Re-export the canonical UI types for convenience ─
+export type { PurchaseOrder, PurchaseOrderLine };
 
 export const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
   draft: 'Draft',

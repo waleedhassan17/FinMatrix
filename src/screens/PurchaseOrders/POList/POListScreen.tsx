@@ -1,5 +1,10 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — PO List Screen
+// Mirrors Bills / Sales Orders / Estimates list UX:
+//   • Always-rendered FlatList
+//   • Initial centered loader only when (isLoading && items=0)
+//   • Pull-to-refresh via separate `refreshing` state
+//   • Pill status tabs, summary cards, FAB, "+ New" sm button
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -10,307 +15,403 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   RefreshControl,
+  ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
-import type { PurchaseOrder, PurchaseOrderStatus } from '../../../types';
+
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchPurchaseOrders,
-  setSearchQuery,
-  setStatusFilter,
   selectItems,
   selectSearchQuery,
   selectStatusFilter,
   selectIsLoading,
   selectError,
+  selectCounts,
+  selectListTotals,
+  setSearchQuery,
+  setStatusFilter,
+  type POStatusFilter,
 } from './poListSlice';
 import EmptyState from '../../../components/EmptyState';
-import { PO_STATUS_LABELS, PO_STATUS_COLORS } from '../../../models/purchaseOrderModel';
+import CustomButton from '../../../Custom-Components/CustomButton';
+import { PO_STATUS_COLORS, PO_STATUS_LABELS } from '../../../models/purchaseOrderModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import type { PurchaseOrder } from '../../../types';
+import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
-import { THEME } from '../../../utils/theme';
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
-
-const STATUS_TABS: { key: PurchaseOrderStatus | 'all'; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'draft', label: 'Draft' },
-  { key: 'sent', label: 'Sent' },
-  { key: 'partially_received', label: 'Partial' },
-  { key: 'fully_received', label: 'Received' },
-  { key: 'closed', label: 'Closed' },
-];
 
 const POListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
+
   const items = useAppSelector(selectItems);
-  const search = useAppSelector(selectSearchQuery);
-  const filter = useAppSelector(selectStatusFilter);
+  const searchQuery = useAppSelector(selectSearchQuery);
+  const statusFilter = useAppSelector(selectStatusFilter);
   const isLoading = useAppSelector(selectIsLoading);
   const error = useAppSelector(selectError);
-  const [showSearch, setShowSearch] = useState(false);
+  const counts = useAppSelector(selectCounts);
+  const totals = useAppSelector(selectListTotals);
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     dispatch(fetchPurchaseOrders());
   }, [dispatch]);
 
-  const filtered = useMemo(() => {
-    let list = items;
-    if (filter !== 'all') list = list.filter(po => po.status === filter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        po =>
-          po.poNumber.toLowerCase().includes(q) ||
-          po.vendorName.toLowerCase().includes(q),
-      );
-    }
-    return list;
-  }, [items, filter, search]);
+  // Re-fetch whenever filter/search changes
+  useEffect(() => {
+    dispatch(fetchPurchaseOrders());
+  }, [statusFilter, searchQuery, dispatch]);
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: items.length };
-    items.forEach(po => {
-      c[po.status] = (c[po.status] || 0) + 1;
-    });
-    return c;
-  }, [items]);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await dispatch(fetchPurchaseOrders());
+    setRefreshing(false);
+  }, [dispatch]);
 
-  const totalValue = useMemo(
-    () => filtered.reduce((s, po) => s + po.total, 0),
-    [filtered],
-  );
+  const TABS: { label: string; value: POStatusFilter; count: number }[] = [
+    { label: 'All', value: 'all', count: counts.all },
+    { label: 'Draft', value: 'draft', count: counts.draft },
+    { label: 'Sent', value: 'sent', count: counts.sent },
+    { label: 'Partial', value: 'partially_received', count: counts.partially_received },
+    { label: 'Received', value: 'fully_received', count: counts.fully_received },
+    { label: 'Closed', value: 'closed', count: counts.closed },
+  ];
 
-  const renderItem = useCallback(
-    ({ item }: { item: PurchaseOrder }) => (
-      <TouchableOpacity
-        style={[styles.card, { borderLeftColor: PO_STATUS_COLORS[item.status] }]}
-        activeOpacity={0.7}
-        onPress={() => navigation.navigate('PODetail', { poId: item.id })}
-      >
-        <View style={styles.cardTop}>
-          <Text style={styles.cardNumber}>{item.poNumber}</Text>
-          <View
-            style={[styles.badge, { backgroundColor: PO_STATUS_COLORS[item.status] + '18' }]}
-          >
-            <Text style={[styles.badgeText, { color: PO_STATUS_COLORS[item.status] }]}>
-              {PO_STATUS_LABELS[item.status]}
-            </Text>
+  // ── Render card ─────────────────────────────────
+  const renderCard = useCallback(
+    ({ item }: { item: PurchaseOrder }) => {
+      const statusColor = PO_STATUS_COLORS[item.status];
+      const totalQty = item.lines.reduce((s, l) => s + l.quantity, 0);
+      const totalReceived = item.lines.reduce((s, l) => s + l.receivedQuantity, 0);
+
+      return (
+        <TouchableOpacity
+          style={[styles.card, { borderLeftWidth: 4, borderLeftColor: statusColor }]}
+          activeOpacity={0.6}
+          onPress={() => navigation.navigate('PODetail', { poId: item.id })}
+        >
+          <View style={styles.cardTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardPONo}>{item.poNumber}</Text>
+              <Text style={styles.cardVendor}>{item.vendorName}</Text>
+            </View>
+            <View style={[styles.badge, { backgroundColor: statusColor + '18' }]}>
+              <Text style={[styles.badgeText, { color: statusColor }]}>
+                {PO_STATUS_LABELS[item.status]}
+              </Text>
+            </View>
           </View>
-        </View>
-        <Text style={styles.cardVendor}>{item.vendorName}</Text>
-        <View style={styles.cardBottom}>
-          <Text style={styles.cardDate}>
-            Order: {formatDate(item.orderDate)}  •  Expected: {formatDate(item.expectedDate)}
-          </Text>
-          <Text style={styles.cardTotal}>{formatCurrency(item.total, 'Rs ')}</Text>
-        </View>
-      </TouchableOpacity>
-    ),
+
+          <View style={styles.cardDates}>
+            <Text style={styles.dateText}>Ordered: {formatDate(item.orderDate)}</Text>
+            <Text style={styles.dateText}>Expected: {formatDate(item.expectedDate)}</Text>
+          </View>
+
+          <View style={styles.cardBottom}>
+            <View>
+              <Text style={styles.amtLabel}>Total</Text>
+              <Text style={styles.amtValue}>{formatCurrency(item.total, 'Rs ')}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.amtLabel}>Received</Text>
+              <Text
+                style={[
+                  styles.amtValue,
+                  totalReceived === totalQty && totalQty > 0 && { color: colors.success },
+                  totalReceived > 0 && totalReceived < totalQty && { color: colors.warning },
+                ]}
+              >
+                {totalReceived} / {totalQty}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    },
     [navigation],
   );
 
+  // ── Initial loading state ───────────────────────
+  // Critical: only show fullscreen loader on FIRST load; never
+  // hide the FlatList during background re-fetches (which used
+  // to leave a stuck spinner with no visible data).
+  if (isLoading && items.length === 0 && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {renderHeader()}
+        {renderSummary()}
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error && items.length === 0) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {renderHeader()}
+        <View style={styles.center}>
+          <EmptyState
+            title="Failed to Load"
+            message={error}
+            actionLabel="Retry"
+            onAction={() => dispatch(fetchPurchaseOrders())}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  function renderHeader() {
+    return (
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Purchase Orders</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.searchToggle} onPress={() => setSearchOpen(p => !p)}>
+              <Text style={styles.searchToggleIcon}>🔍</Text>
+            </TouchableOpacity>
+            <CustomButton
+              title="+ New"
+              onPress={() => navigation.navigate('POForm')}
+              variant="primary"
+              size="sm"
+            />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  function renderSummary() {
+    return (
+      <View style={styles.summaryRow}>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{totals.totalPOs}</Text>
+          <Text style={styles.summaryLabel}>Orders</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{formatCurrency(totals.totalValue, 'Rs ')}</Text>
+          <Text style={styles.summaryLabel}>Total Value</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>‹ Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Purchase Orders</Text>
-        <TouchableOpacity onPress={() => setShowSearch(v => !v)}>
-          <Text style={styles.searchIcon}>🔍</Text>
-        </TouchableOpacity>
-      </View>
+      {renderHeader()}
+      {renderSummary()}
 
-      {/* Search */}
-      {showSearch && (
-        <View style={styles.searchBar}>
+      {/* ── Search ──────────────────────────────── */}
+      {searchOpen && (
+        <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search POs..."
+            value={searchQuery}
+            onChangeText={v => dispatch(setSearchQuery(v))}
+            placeholder="Search purchase orders…"
             placeholderTextColor={colors.textLight}
-            value={search}
-            onChangeText={t => dispatch(setSearchQuery(t))}
+            autoFocus
           />
         </View>
       )}
 
-      {/* Summary */}
-      <View style={styles.summaryBar}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{filtered.length}</Text>
-          <Text style={styles.summaryLabel}>Orders</Text>
-        </View>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{formatCurrency(totalValue, 'Rs ')}</Text>
-          <Text style={styles.summaryLabel}>Total Value</Text>
-        </View>
-      </View>
-
-      {/* Tabs */}
+      {/* ── Filter Tabs ─────────────────────────── */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.tabsScroll}
-        contentContainerStyle={styles.tabRow}
+        contentContainerStyle={styles.tabsRow}
       >
-        {STATUS_TABS.map(tab => {
-          const active = filter === tab.key;
+        {TABS.map(tab => {
+          const active = statusFilter === tab.value;
           return (
             <TouchableOpacity
-              key={tab.key}
+              key={tab.value}
               style={[styles.tab, active && styles.tabActive]}
-              onPress={() => dispatch(setStatusFilter(tab.key))}
+              onPress={() => dispatch(setStatusFilter(tab.value))}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                {tab.label} ({counts[tab.key] || 0})
-              </Text>
+              <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
+              <View style={[styles.tabCount, active && styles.tabCountActive]}>
+                <Text style={[styles.tabCountText, active && styles.tabCountTextActive]}>
+                  {tab.count}
+                </Text>
+              </View>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      {/* List */}
-      {isLoading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing.xl }} />
-      ) : error && filtered.length === 0 ? (
-        <View style={styles.empty}>
-          <EmptyState title="Failed to Load" message={error} actionLabel="Retry" onAction={() => dispatch(fetchPurchaseOrders())} />
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={po => po.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoading}
-              onRefresh={() => dispatch(fetchPurchaseOrders())}
-            />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              title="No Purchase Orders"
-              message="Create your first purchase order to get started."
-              actionLabel="Create PO"
-              onAction={() => navigation.navigate('POForm')}
-            />
-          }
-        />
-      )}
+      {/* ── List ────────────────────────────────── */}
+      <FlatList
+        data={items}
+        keyExtractor={i => i.id}
+        renderItem={renderCard}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+        }
+        ListEmptyComponent={
+          <EmptyState
+            title="No Purchase Orders"
+            message={searchQuery ? `No results for "${searchQuery}"` : 'Create your first PO to get started.'}
+            actionLabel="Create PO"
+            onAction={() => navigation.navigate('POForm')}
+          />
+        }
+      />
 
-      {/* FAB */}
+      {/* ── FAB ─────────────────────────────────── */}
       <TouchableOpacity
         style={styles.fab}
-        activeOpacity={0.85}
+        activeOpacity={0.8}
         onPress={() => navigation.navigate('POForm')}
       >
-        <Text style={styles.fabText}>＋</Text>
+        <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
 };
 
-export default POListScreen;
-
-// ─── Styles ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  back: { fontSize: 17, color: colors.secondary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
-  title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  searchIcon: { fontSize: 18 },
-  searchBar: {
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  searchToggle: { padding: spacing.xs },
+  searchToggleIcon: { fontSize: 18 },
+
+  summaryRow: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
   },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    ...shadows.small,
+  },
+  summaryValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  summaryLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+
+  searchRow: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   searchInput: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     fontSize: 14,
     color: colors.textPrimary,
     fontFamily: THEME.typography.fontFamily,
   },
-  summaryBar: {
-    flexDirection: 'row',
-    backgroundColor: colors.white,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  summaryItem: { flex: 1, alignItems: 'center' },
-  summaryValue: { fontSize: 16, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  summaryLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily },
-  tabsScroll: {
-    minHeight: 44,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  tabRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.sm,
+
+  tabsScroll: { minHeight: 44 },
+  tabsRow: {
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm + 2,
     alignItems: 'center',
+    gap: spacing.sm,
   },
   tab: {
-    paddingHorizontal: spacing.sm + 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm + 4,
     paddingVertical: spacing.xs + 2,
-    borderRadius: borderRadius.sm,
-    marginRight: spacing.xs,
+    borderRadius: 20,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   tabTextActive: { color: colors.white },
-  list: { padding: spacing.md, paddingTop: spacing.xs, paddingBottom: 100 },
+  tabCount: {
+    marginLeft: spacing.xs,
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    minWidth: 22,
+    alignItems: 'center',
+  },
+  tabCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  tabCountText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  tabCountTextActive: { color: colors.white },
+
+  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 80 },
   card: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     padding: spacing.md,
-    marginBottom: spacing.sm + 2,
-    borderLeftWidth: 4,
-    ...shadows.card,
+    marginBottom: spacing.sm,
+    ...shadows.small,
   },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardNumber: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  badge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 6 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
+  cardPONo: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  cardVendor: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
   badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
-  cardVendor: { fontSize: 13, color: colors.textSecondary, marginTop: 4, fontFamily: THEME.typography.fontFamily },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
-  cardDate: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
-  cardTotal: { fontSize: 15, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  empty: { alignItems: 'center', marginTop: spacing.xl * 2 },
-  emptyIcon: { fontSize: 48, marginBottom: spacing.md },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  emptySubtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 4, fontFamily: THEME.typography.fontFamily },
+
+  cardDates: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
+  dateText: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+
+  cardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
+  },
+  amtLabel: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+  amtValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
+
   fab: {
     position: 'absolute',
-    bottom: spacing.lg,
     right: spacing.lg,
+    bottom: spacing.lg,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -319,5 +420,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadows.large,
   },
-  fabText: { fontSize: 28, color: colors.white, marginTop: -2 },
+  fabIcon: { fontSize: 28, color: colors.white, fontWeight: '300', marginTop: -2 },
 });
+
+export default POListScreen;

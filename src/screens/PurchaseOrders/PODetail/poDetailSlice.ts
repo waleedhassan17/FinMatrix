@@ -1,117 +1,179 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — PO Detail Slice
+// FinMatrix — Purchase Order Detail Slice (createAppSlice)
 // ═══════════════════════════════════════════════════════
+// Co-located with PODetailScreen.tsx. Owns:
+//   • the currently-viewed PO
+//   • the receiving-mode UI state (line-item receiving qty editing)
+//   • status transition + receive-items async thunks
+// Mirrors `billDetailSlice.ts`.
 
-import type { PurchaseOrder } from '../../../types';
-import { createAppSlice } from '../../../store/createAppSlice';
-import { getPurchaseOrderByIdAPI } from '../../../network/purchaseOrderNetwork';
+import type { PayloadAction } from '@reduxjs/toolkit';
+import { createAppSlice } from '@store/createAppSlice';
+import type { PurchaseOrder, PurchaseOrderStatus } from '../../../types';
+import {
+  getPurchaseOrderByIdAPI,
+  updatePOStatusAPI,
+  receivePOItemsAPI,
+} from '../../../network/purchaseOrderNetwork';
+import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 
-interface ReceivingLine {
+// ─── Receiving-mode line state ───────────────────────
+export interface ReceivingLine {
   lineId: string;
   itemName: string;
   ordered: number;
   previouslyReceived: number;
-  receivingQty: number;
   remaining: number;
+  receivingQty: number;
 }
 
-interface PODetailState {
+export interface PODetailSliceState {
   item: PurchaseOrder | null;
   isLoading: boolean;
-  error: string | null;
+  error: string;
+
   receivingMode: boolean;
   receivingLines: ReceivingLine[];
   isReceiving: boolean;
+
+  isUpdatingStatus: boolean;
 }
 
-const initialState: PODetailState = {
+const initialState: PODetailSliceState = {
   item: null,
   isLoading: false,
-  error: null,
+  error: '',
   receivingMode: false,
   receivingLines: [],
   isReceiving: false,
+  isUpdatingStatus: false,
 };
+
+const buildReceivingLines = (po: PurchaseOrder): ReceivingLine[] =>
+  po.lines.map(l => ({
+    lineId: l.id,
+    itemName: l.itemName,
+    ordered: l.quantity,
+    previouslyReceived: l.receivedQuantity,
+    remaining: Math.max(0, l.quantity - l.receivedQuantity),
+    receivingQty: 0,
+  }));
 
 export const poDetailSlice = createAppSlice({
   name: 'poDetail',
   initialState,
   reducers: create => ({
-    fetchPODetail: create.asyncThunk(
-      async (id: string) => getPurchaseOrderByIdAPI(id),
-      {
-        pending: state => {
-          state.isLoading = true;
-          state.error = null;
-        },
-        fulfilled: (state, action) => {
-          state.isLoading = false;
-          state.item = action.payload;
-        },
-        rejected: (state, action) => {
-          state.isLoading = false;
-          state.error = action.error?.message ?? 'Failed to load PO';
-        },
-      },
-    ),
     enterReceivingMode: create.reducer(state => {
       if (!state.item) return;
       state.receivingMode = true;
-      state.receivingLines = state.item.lines.map(l => ({
-        lineId: l.id,
-        itemName: l.itemName,
-        ordered: l.quantity,
-        previouslyReceived: l.receivedQuantity,
-        receivingQty: 0,
-        remaining: l.quantity - l.receivedQuantity,
-      }));
+      state.receivingLines = buildReceivingLines(state.item);
     }),
     exitReceivingMode: create.reducer(state => {
       state.receivingMode = false;
       state.receivingLines = [];
-    }),
-    setReceivingQty: create.reducer<{ lineId: string; qty: number }>((state, action) => {
-      const line = state.receivingLines.find(l => l.lineId === action.payload.lineId);
-      if (line) {
-        line.receivingQty = Math.max(0, Math.min(action.payload.qty, line.remaining));
-      }
-    }),
-    setIsReceiving: create.reducer<boolean>((state, action) => {
-      state.isReceiving = action.payload;
-    }),
-    updatePOAfterReceive: create.reducer<PurchaseOrder>((state, action) => {
-      state.item = action.payload;
-      state.receivingMode = false;
-      state.receivingLines = [];
       state.isReceiving = false;
     }),
-    clearDetail: create.reducer(() => initialState),
+    setReceivingQty: create.reducer(
+      (state, action: PayloadAction<{ lineId: string; qty: number }>) => {
+        const rl = state.receivingLines.find(r => r.lineId === action.payload.lineId);
+        if (rl) {
+          rl.receivingQty = Math.min(
+            Math.max(0, action.payload.qty),
+            rl.remaining,
+          );
+        }
+      },
+    ),
+    setIsReceiving: create.reducer((state, action: PayloadAction<boolean>) => {
+      state.isReceiving = action.payload;
+    }),
+
+    clearDetail: create.reducer(state => {
+      Object.assign(state, initialState);
+    }),
+
+    // ── Async thunks ────────────────────────────────
+
+    fetchPODetail: create.asyncThunk(
+      async (id: string) => getPurchaseOrderByIdAPI(id),
+      {
+        pending: state => { state.isLoading = true; state.error = ''; },
+        fulfilled: (state, action: PayloadAction<any>) => {
+          state.isLoading = false;
+          state.item = purchaseOrderSingleSerializer(action.payload);
+        },
+        rejected: (state, action) => {
+          state.isLoading = false;
+          state.error = action.error?.message ?? 'Failed to load purchase order';
+        },
+      },
+    ),
+
+    /** PATCH status — for Send / Close / Cancel transitions. */
+    updatePOStatus: create.asyncThunk(
+      async ({ id, status }: { id: string; status: PurchaseOrderStatus }) =>
+        updatePOStatusAPI(id, status),
+      {
+        pending: state => { state.isUpdatingStatus = true; },
+        fulfilled: (state, action: PayloadAction<any>) => {
+          state.isUpdatingStatus = false;
+          const updated = purchaseOrderSingleSerializer(action.payload);
+          if (updated) state.item = updated;
+        },
+        rejected: state => { state.isUpdatingStatus = false; },
+      },
+    ),
+
+    /** POST /receive — record received quantities and transition status. */
+    receivePOItems: create.asyncThunk(
+      async (
+        { id, receipts }: {
+          id: string;
+          receipts: { lineId: string; receivingQty: number }[];
+        },
+      ) => receivePOItemsAPI(id, receipts),
+      {
+        pending: state => { state.isReceiving = true; },
+        fulfilled: (state, action: PayloadAction<any>) => {
+          state.isReceiving = false;
+          state.receivingMode = false;
+          state.receivingLines = [];
+          const updated = purchaseOrderSingleSerializer(action.payload);
+          if (updated) state.item = updated;
+        },
+        rejected: state => { state.isReceiving = false; },
+      },
+    ),
   }),
+
   selectors: {
     selectItem: s => s.item,
     selectIsLoading: s => s.isLoading,
-    selectError: s => s.error,
+    selectDetailError: s => s.error,
     selectReceivingMode: s => s.receivingMode,
     selectReceivingLines: s => s.receivingLines,
     selectIsReceiving: s => s.isReceiving,
+    selectIsUpdatingStatus: s => s.isUpdatingStatus,
   },
 });
 
 export const {
-  fetchPODetail,
   enterReceivingMode,
   exitReceivingMode,
   setReceivingQty,
   setIsReceiving,
-  updatePOAfterReceive,
   clearDetail,
+  fetchPODetail,
+  updatePOStatus,
+  receivePOItems,
 } = poDetailSlice.actions;
 
 export const {
   selectItem,
   selectIsLoading,
-  selectError,
+  selectDetailError,
   selectReceivingMode,
   selectReceivingLines,
   selectIsReceiving,
+  selectIsUpdatingStatus,
 } = poDetailSlice.selectors;

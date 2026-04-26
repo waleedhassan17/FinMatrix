@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — PO Form Screen
+// FinMatrix — PO Form Screen (Create / Edit)
+// Activity Diagram step: "Create PO: Select Vendor, Add Items + Qty"
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -11,391 +12,413 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
+  selectPOFormState,
   setField,
   setVendor,
   setErrors,
-  setIsSaving,
   addLine,
   removeLine,
   updateLine,
   setLineItem,
-  loadForEdit,
   resetForm,
+  savePurchaseOrder,
+  fetchPOForEdit,
 } from './poFormSlice';
+import { selectItems as selectPOs, upsertPurchaseOrder, fetchPurchaseOrders } from '../POList/poListSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
-import { fetchInventoryItems, selectInventoryItems } from '../../Inventory/InventoryList/inventoryListSlice';
-import { validatePO } from '../../../models/purchaseOrderModel';
-import {
-  createPurchaseOrderAPI,
-  updatePurchaseOrderAPI,
-  getPurchaseOrderByIdAPI,
-} from '../../../network/purchaseOrderNetwork';
-import { formatCurrency } from '../../../utils/formatters';
+import { inventoryItemsData } from '../../../dummy-data/inventoryItems';
+import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
-import { THEME } from '../../../utils/theme';
-import dayjs from 'dayjs';
+import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
+import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
-type RouteProps = NativeStackScreenProps<TransactionsStackParamList, 'POForm'>['route'];
+type FormRoute = RouteProp<TransactionsStackParamList, 'POForm'>;
 
+// ═══════════════════════════════════════════════════════
 const POFormScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
-  const route = useRoute<RouteProps>();
+  const route = useRoute<FormRoute>();
   const dispatch = useAppDispatch();
-  const editingPoId = route.params?.poId;
 
-  const form = useAppSelector(s => s.poForm);
+  const editingId = route.params?.poId;
+  const isEditing = !!editingId;
+  const pos = useAppSelector(selectPOs);
   const vendors = useAppSelector(selectVendors);
-  const inventoryItems = useAppSelector(selectInventoryItems);
+  const form = useAppSelector(selectPOFormState);
+  const hydratedRef = React.useRef(false);
 
-  useEffect(() => {
-    dispatch(resetForm());
-    dispatch(fetchVendors());
-    dispatch(fetchInventoryItems());
-    if (editingPoId) {
-      getPurchaseOrderByIdAPI(editingPoId).then(po => dispatch(loadForEdit(po)));
-    }
-  }, [dispatch, editingPoId]);
-
-  // Auto-generate PO number for new POs
-  useEffect(() => {
-    if (!editingPoId && !form.poNumber) {
-      dispatch(setField({ key: 'poNumber', value: `PO-${String(Date.now()).slice(-4)}` }));
-      dispatch(setField({ key: 'orderDate', value: dayjs().format('YYYY-MM-DD') }));
-      dispatch(setField({ key: 'expectedDate', value: dayjs().add(14, 'day').format('YYYY-MM-DD') }));
-    }
-  }, [dispatch, editingPoId, form.poNumber]);
-
+  // ── Vendor / item dropdown options ──────────────
   const vendorOptions = useMemo(
-    () => (vendors as any[]).filter(v => v.isActive).map(v => ({ label: v.name, value: v.id })),
+    () => vendors.filter(v => v.isActive).map(v => ({ label: v.name, value: v.id })),
     [vendors],
   );
 
-  const inventoryOptions = useMemo(
+  const itemOptions = useMemo(
     () =>
-      (inventoryItems as any[])
-        .filter((i: any) => i.isActive)
-        .map((i: any) => ({
-          label: `${i.name} (${i.sku})`,
-          value: i.itemId,
-          unitCost: i.unitCost,
-          name: i.name,
-          description: i.description,
-        })),
-    [inventoryItems],
+      inventoryItemsData
+        .filter(i => i.isActive)
+        .map(i => ({ label: `${i.sku} — ${i.name}`, value: i.itemId })),
+    [],
   );
 
+  // ── Auto-generate PO number ─────────────────────
+  const generatePONumber = useCallback(() => {
+    const maxNum = pos.reduce((max, p) => {
+      const m = p.poNumber.match(/PO-(?:\d{4}-)?(\d+)/);
+      return m ? Math.max(max, parseInt(m[1], 10)) : max;
+    }, 0);
+    return `PO-${new Date().getFullYear()}-${String(maxNum + 1).padStart(3, '0')}`;
+  }, [pos]);
+
+  // ── Hydrate ONCE per mount ──────────────────────
+  // Edit mode: fetch via dedicated thunk so deep-links work
+  // even when the list slice is empty. New mode: prefill defaults.
+  useEffect(() => {
+    dispatch(fetchVendors());
+
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    if (isEditing && editingId) {
+      dispatch(fetchPOForEdit(editingId));
+    } else {
+      dispatch(setField({ key: 'poNumber', value: generatePONumber() }));
+      const expected = new Date();
+      expected.setDate(expected.getDate() + 14);
+      dispatch(setField({ key: 'expectedDate', value: expected.toISOString().slice(0, 10) }));
+    }
+
+    return () => { dispatch(resetForm()); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, editingId, dispatch]);
+
+  // ── Vendor change ───────────────────────────────
+  const handleVendorChange = useCallback(
+    (vendorId: string) => {
+      const vendor = vendors.find(v => v.id === vendorId);
+      if (!vendor) return;
+      dispatch(setVendor({ id: vendor.id, name: vendor.name }));
+    },
+    [vendors, dispatch],
+  );
+
+  // ── Item change for a line ──────────────────────
+  const handleItemChange = useCallback(
+    (lineId: string, itemId: string) => {
+      const item = inventoryItemsData.find(i => i.itemId === itemId);
+      if (!item) return;
+      dispatch(
+        setLineItem({
+          id: lineId,
+          itemId: item.itemId,
+          itemName: item.name,
+          description: item.description,
+          unitPrice: String(item.unitCost),
+        }),
+      );
+    },
+    [dispatch],
+  );
+
+  // ── Validation ──────────────────────────────────
+  const validate = useCallback((): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!form.vendorId) errs.vendorId = 'Select a vendor';
+    if (!form.poNumber.trim()) errs.poNumber = 'PO number is required';
+    if (!form.orderDate) errs.orderDate = 'Order date is required';
+    if (!form.expectedDate) errs.expectedDate = 'Expected date is required';
+    if (form.lines.length === 0) errs.lines = 'At least one line item is required';
+    const hasEmptyLine = form.lines.some(
+      l => !l.itemId || !(parseFloat(l.quantity) > 0),
+    );
+    if (hasEmptyLine) errs.lines = 'All line items must have an item and quantity';
+    return errs;
+  }, [form]);
+
+  // ── Save ────────────────────────────────────────
   const handleSave = useCallback(
-    async (status: PurchaseOrderStatus) => {
-      const data = { ...form };
-      const errs = validatePO(data);
-      if (Object.keys(errs).length > 0) {
-        dispatch(setErrors(errs));
+    async (saveStatus: PurchaseOrderStatus = 'draft') => {
+      const validationErrors = validate();
+      if (Object.keys(validationErrors).length > 0) {
+        dispatch(setErrors(validationErrors));
+        Alert.alert('Validation Error', Object.values(validationErrors)[0]);
         return;
       }
-      dispatch(setIsSaving(true));
+
       try {
-        const po = {
-          id: form.editingId || `po_${Date.now()}`,
-          companyId: 'comp_001',
-          poNumber: form.poNumber,
-          vendorId: form.vendorId,
-          vendorName: form.vendorName,
-          orderDate: form.orderDate,
-          expectedDate: form.expectedDate,
-          status,
-          lines: form.lines
-            .filter(l => l.itemId && parseFloat(l.quantity) > 0)
-            .map(l => ({
-              id: l.id,
-              itemId: l.itemId,
-              itemName: l.itemName,
-              description: l.description,
-              quantity: parseFloat(l.quantity) || 0,
-              unitPrice: parseFloat(l.unitPrice) || 0,
-              amount: l.amount,
-              receivedQuantity: 0,
-            })),
-          subtotal: form.subtotal,
-          taxAmount: form.taxAmount,
-          total: form.total,
-          notes: form.notes,
-          createdBy: 'user_001',
-          createdAt: form.editingId ? undefined! as string : new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        if (form.editingId) {
-          await updatePurchaseOrderAPI(po as any);
-        } else {
-          await createPurchaseOrderAPI(po as any);
-        }
-        navigation.goBack();
+        const result: any = await dispatch(savePurchaseOrder(saveStatus));
+        if (result.error) throw new Error(result.error.message);
+        const saved = result.payload;
+        if (saved) dispatch(upsertPurchaseOrder(saved));
+        await dispatch(fetchPurchaseOrders());
+
+        const action = isEditing ? 'updated' : 'created';
+        const status = saveStatus === 'sent' ? 'and sent to vendor' : 'as draft';
+        Alert.alert(
+          isEditing ? 'PO Updated' : 'PO Created',
+          `${form.poNumber} has been ${action} ${status}.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }],
+        );
       } catch {
-        Alert.alert('Error', 'Failed to save purchase order.');
-      } finally {
-        dispatch(setIsSaving(false));
+        Alert.alert('Error', 'Failed to save purchase order. Please try again.');
       }
     },
-    [dispatch, form, navigation],
+    [form, isEditing, dispatch, navigation, validate],
   );
 
+  // ═════════════════════════════════════════════════════
+  // RENDER
+  // ═════════════════════════════════════════════════════
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => { dispatch(resetForm()); navigation.goBack(); }}>
-          <Text style={styles.back}>✕ Cancel</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{editingPoId ? 'Edit PO' : 'New Purchase Order'}</Text>
-        <View style={{ width: 60 }} />
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {isEditing ? `Edit ${form.poNumber}` : 'New Purchase Order'}
+          </Text>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Vendor */}
-        <CustomDropdown
-          label="Vendor"
-          options={vendorOptions}
-          value={form.vendorId}
-          onChange={val => {
-            const v = (vendors as any[]).find((x: any) => x.id === val);
-            if (v) dispatch(setVendor({ id: v.id, name: v.name }));
-          }}
-          placeholder="Select vendor"
-          error={form.errors.vendorId}
-          searchable
-        />
-
-        {/* PO Number + Dates */}
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <Text style={styles.label}>PO Number</Text>
-            <TextInput
-              style={styles.input}
-              value={form.poNumber}
-              onChangeText={v => dispatch(setField({ key: 'poNumber', value: v }))}
-              placeholderTextColor={colors.textLight}
-            />
-          </View>
-          <View style={styles.half}>
-            <Text style={styles.label}>Order Date</Text>
-            <TextInput
-              style={styles.input}
-              value={form.orderDate}
-              onChangeText={v => dispatch(setField({ key: 'orderDate', value: v }))}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textLight}
-            />
-          </View>
-        </View>
-
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <Text style={styles.label}>Expected Date</Text>
-            <TextInput
-              style={[styles.input, form.errors.expectedDate ? styles.inputError : null]}
-              value={form.expectedDate}
-              onChangeText={v => dispatch(setField({ key: 'expectedDate', value: v }))}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textLight}
-            />
-          </View>
-          <View style={styles.half} />
-        </View>
-
-        {/* Line Items */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Line Items</Text>
-          <TouchableOpacity onPress={() => dispatch(addLine())}>
-            <Text style={styles.addLine}>＋ Add Line</Text>
-          </TouchableOpacity>
-        </View>
-        {form.errors.lines && <Text style={styles.errorText}>{form.errors.lines}</Text>}
-
-        {form.lines.map((line, idx) => (
-          <View key={line.id} style={styles.lineCard}>
-            <View style={styles.lineHeader}>
-              <Text style={styles.lineNum}>#{idx + 1}</Text>
-              {form.lines.length > 1 && (
-                <TouchableOpacity onPress={() => dispatch(removeLine(line.id))}>
-                  <Text style={styles.removeLine}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* ── PO Details ─────────────────────────── */}
+          <Text style={styles.sectionTitle}>PO Details</Text>
+          <View style={styles.sectionCard}>
             <CustomDropdown
-              label="Item"
-              options={inventoryOptions}
-              value={line.itemId}
-              onChange={val => {
-                const item = inventoryOptions.find((o: any) => o.value === val);
-                if (item) {
-                  dispatch(
-                    setLineItem({
-                      id: line.id,
-                      itemId: item.value,
-                      itemName: item.name,
-                      description: item.description,
-                      unitPrice: String(item.unitCost),
-                    }),
-                  );
-                }
-              }}
-              placeholder="Select item"
+              label="Vendor *"
+              options={vendorOptions}
+              value={form.vendorId}
+              onChange={handleVendorChange}
+              placeholder="Select vendor…"
+              error={form.errors.vendorId}
               searchable
             />
-            <TextInput
-              style={styles.lineInput}
-              placeholder="Description"
-              placeholderTextColor={colors.textLight}
-              value={line.description}
-              onChangeText={v => dispatch(updateLine({ id: line.id, field: 'description', value: v }))}
+            <CustomInput
+              label="PO #"
+              value={form.poNumber}
+              onChangeText={v => dispatch(setField({ key: 'poNumber', value: v }))}
+              placeholder="PO-0000"
+              error={form.errors.poNumber}
+              disabled={isEditing}
             />
-            <View style={styles.row}>
-              <View style={styles.third}>
-                <Text style={styles.miniLabel}>Qty</Text>
-                <TextInput
-                  style={styles.lineInput}
-                  value={line.quantity}
-                  onChangeText={v => dispatch(updateLine({ id: line.id, field: 'quantity', value: v }))}
-                  keyboardType="numeric"
-                  placeholderTextColor={colors.textLight}
+            <View style={styles.rowFields}>
+              <View style={{ flex: 1, marginRight: spacing.sm }}>
+                <CustomInput
+                  label="Order Date *"
+                  value={form.orderDate}
+                  onChangeText={v => dispatch(setField({ key: 'orderDate', value: v }))}
+                  placeholder="YYYY-MM-DD"
+                  error={form.errors.orderDate}
                 />
               </View>
-              <View style={styles.third}>
-                <Text style={styles.miniLabel}>Unit Price</Text>
-                <TextInput
-                  style={styles.lineInput}
-                  value={line.unitPrice}
-                  onChangeText={v => dispatch(updateLine({ id: line.id, field: 'unitPrice', value: v }))}
-                  keyboardType="numeric"
-                  placeholderTextColor={colors.textLight}
+              <View style={{ flex: 1 }}>
+                <CustomInput
+                  label="Expected Date *"
+                  value={form.expectedDate}
+                  onChangeText={v => dispatch(setField({ key: 'expectedDate', value: v }))}
+                  placeholder="YYYY-MM-DD"
+                  error={form.errors.expectedDate}
                 />
-              </View>
-              <View style={styles.third}>
-                <Text style={styles.miniLabel}>Amount</Text>
-                <Text style={styles.lineAmount}>{formatCurrency(line.amount, 'Rs ')}</Text>
               </View>
             </View>
           </View>
-        ))}
 
-        {/* Totals */}
-        <View style={styles.totalsCard}>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Subtotal</Text>
-            <Text style={styles.totalValue}>{formatCurrency(form.subtotal, 'Rs ')}</Text>
+          {/* ── Line Items ─────────────────────────── */}
+          <View style={styles.linesSectionHeader}>
+            <Text style={styles.sectionTitle}>Items</Text>
+            <TouchableOpacity style={styles.addLineBtn} onPress={() => dispatch(addLine())}>
+              <Text style={styles.addLineBtnText}>+ Add Item</Text>
+            </TouchableOpacity>
           </View>
-          <View style={[styles.totalRow, styles.totalRowBold]}>
-            <Text style={styles.totalLabelBold}>Total</Text>
-            <Text style={styles.totalValueBold}>{formatCurrency(form.total, 'Rs ')}</Text>
+          {!!form.errors.lines && (
+            <Text style={styles.lineError}>{form.errors.lines}</Text>
+          )}
+
+          {form.lines.map((line, idx) => (
+            <View key={line.id} style={styles.lineCard}>
+              <View style={styles.lineHeader}>
+                <Text style={styles.lineLabel}>Item {idx + 1}</Text>
+                {form.lines.length > 1 && (
+                  <TouchableOpacity
+                    style={styles.lineDeleteBtn}
+                    onPress={() => dispatch(removeLine(line.id))}
+                  >
+                    <Text style={styles.lineDeleteText}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <CustomDropdown
+                label="Item *"
+                options={itemOptions}
+                value={line.itemId}
+                onChange={v => handleItemChange(line.id, v)}
+                placeholder="Select item…"
+                searchable
+              />
+
+              <TextInput
+                style={styles.descInput}
+                value={line.description}
+                onChangeText={v => dispatch(updateLine({ id: line.id, field: 'description', value: v }))}
+                placeholder="Description"
+                placeholderTextColor={colors.textLight}
+              />
+
+              <View style={styles.lineNumRow}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <Text style={styles.fieldLabel}>Quantity</Text>
+                  <TextInput
+                    style={styles.numericInput}
+                    value={line.quantity}
+                    onChangeText={v =>
+                      dispatch(updateLine({ id: line.id, field: 'quantity', value: v.replace(/[^0-9.]/g, '') }))
+                    }
+                    placeholder="0"
+                    placeholderTextColor={colors.textLight}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>Unit Price (Rs)</Text>
+                  <TextInput
+                    style={styles.numericInput}
+                    value={line.unitPrice}
+                    onChangeText={v =>
+                      dispatch(updateLine({ id: line.id, field: 'unitPrice', value: v.replace(/[^0-9.]/g, '') }))
+                    }
+                    placeholder="0"
+                    placeholderTextColor={colors.textLight}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.lineTotal}>
+                Line Total: {formatCurrency(line.amount, 'Rs ')}
+              </Text>
+            </View>
+          ))}
+
+          {/* ── Totals ─────────────────────────────── */}
+          <View style={styles.totalsCard}>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Subtotal</Text>
+              <Text style={styles.totalsValue}>{formatCurrency(form.subtotal, 'Rs ')}</Text>
+            </View>
+            <View style={[styles.totalsRow, styles.grandTotalRow]}>
+              <Text style={styles.grandTotalLabel}>Total</Text>
+              <Text style={styles.grandTotalValue}>{formatCurrency(form.total, 'Rs ')}</Text>
+            </View>
           </View>
-        </View>
 
-        {/* Notes */}
-        <Text style={styles.label}>Notes</Text>
-        <TextInput
-          style={[styles.input, { height: 72, textAlignVertical: 'top' }]}
-          value={form.notes}
-          onChangeText={v => dispatch(setField({ key: 'notes', value: v }))}
-          multiline
-          placeholder="Optional notes..."
-          placeholderTextColor={colors.textLight}
-        />
+          {/* ── Notes ──────────────────────────────── */}
+          <Text style={styles.sectionTitle}>Notes</Text>
+          <View style={styles.sectionCard}>
+            <CustomInput
+              label="Notes (Optional)"
+              value={form.notes}
+              onChangeText={v => dispatch(setField({ key: 'notes', value: v }))}
+              placeholder="Additional notes…"
+              multiline
+            />
+          </View>
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          <CustomButton
-            title="Save as Draft"
-            onPress={() => handleSave('draft')}
-            variant="secondary"
-            size="lg"
-            fullWidth
-            isLoading={form.isSaving}
-          />
-          <View style={{ height: spacing.sm }} />
-          <CustomButton
-            title="Send"
-            onPress={() => handleSave('sent')}
-            variant="primary"
-            size="lg"
-            fullWidth
-            isLoading={form.isSaving}
-          />
-        </View>
-
-        <View style={{ height: spacing.xl * 2 }} />
-      </ScrollView>
+          {/* ── Actions (matches Estimates / SO / Bills) ─ */}
+          <View style={styles.btnRow}>
+            <View style={{ flex: 1, marginRight: spacing.sm }}>
+              <CustomButton
+                title="Save Draft"
+                onPress={() => handleSave('draft')}
+                variant="secondary"
+                size="sm"
+                fullWidth
+                isLoading={form.isSaving}
+                disabled={form.isSaving}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <CustomButton
+                title={isEditing ? 'Update & Send' : 'Save & Send'}
+                onPress={() => handleSave('sent')}
+                variant="primary"
+                size="sm"
+                fullWidth
+                isLoading={form.isSaving}
+                disabled={form.isSaving}
+              />
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-export default POFormScreen;
-
-// ─── Styles ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  back: { fontSize: 15, color: colors.danger, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
-  title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  scroll: { padding: spacing.md },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  half: { flex: 1 },
-  third: { flex: 1 },
-  label: {
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
+
+  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
+
+  sectionTitle: {
     fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-    marginTop: spacing.md,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  miniLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.textLight,
-    marginBottom: 2,
     fontFamily: THEME.typography.fontFamily,
-  },
-  input: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: 14,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  inputError: { borderColor: colors.danger },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.lg,
     marginBottom: spacing.sm,
+    marginTop: spacing.md,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  addLine: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
-  errorText: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
+  sectionCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.xs,
+    ...shadows.small,
+  },
+  rowFields: { flexDirection: 'row' },
+
+  linesSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.sm },
+  addLineBtn: { paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs + 2, backgroundColor: colors.secondary + '18', borderRadius: 20 },
+  addLineBtnText: { fontSize: 13, fontWeight: '700', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
+
   lineCard: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
@@ -403,31 +426,45 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     ...shadows.small,
   },
-  lineHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  lineNum: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  removeLine: { fontSize: 16, color: colors.danger, fontWeight: '700' },
-  lineInput: {
+  lineHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
+  lineLabel: { fontSize: 12, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', letterSpacing: 0.5, fontFamily: THEME.typography.fontFamily },
+  lineDeleteBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.danger + '18', justifyContent: 'center', alignItems: 'center' },
+  lineDeleteText: { fontSize: 14, fontWeight: '700', color: colors.danger },
+
+  descInput: {
     backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.sm,
     fontSize: 13,
     color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
     marginTop: spacing.xs,
+  },
+  lineNumRow: { flexDirection: 'row', marginTop: spacing.sm },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  numericInput: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.sm,
+    fontSize: 14,
+    color: colors.textPrimary,
     fontFamily: THEME.typography.fontFamily,
   },
-  lineAmount: {
+  lineTotal: {
     fontSize: 13,
     fontWeight: '700',
     color: colors.primary,
-    marginTop: spacing.sm,
     fontFamily: THEME.typography.fontFamily,
+    textAlign: 'right',
+    marginTop: spacing.sm,
   },
+
   totalsCard: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
@@ -435,20 +472,23 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     ...shadows.small,
   },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
-  },
-  totalRowBold: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    marginTop: spacing.xs,
+  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs },
+  totalsLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  totalsValue: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  grandTotalRow: {
+    borderTopWidth: 1.5,
+    borderTopColor: colors.primary,
+    marginTop: spacing.sm,
     paddingTop: spacing.sm,
   },
-  totalLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  totalValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  totalLabelBold: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  totalValueBold: { fontSize: 15, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  actions: { marginTop: spacing.lg },
+  grandTotalLabel: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  grandTotalValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+
+  btnRow: {
+    flexDirection: 'row',
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+  },
 });
+
+export default POFormScreen;

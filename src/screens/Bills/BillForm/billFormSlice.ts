@@ -13,7 +13,9 @@ import {
   updateBillAPI,
   getBillByIdAPI,
 } from '../../../network/billNetwork';
+import { getPurchaseOrderByIdAPI } from '../../../network/purchaseOrderNetwork';
 import { billSingleSerializer } from '../../../serializers/billSerializer';
+import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 
 // ── Line item (form representation — string values for inputs) ──
 export interface BillFormLine {
@@ -270,6 +272,47 @@ export const billFormSlice = createAppSlice({
         },
       },
     ),
+
+    /** Activity-diagram: "Tap Convert to Bill" → "Bill created — JE: DR
+     *  Inventory, CR AP". Pre-populates the bill form from a PO: copies
+     *  vendor, references PO# in notes, and creates one bill line per
+     *  PO line targeting the Inventory account (acct-1200). The user
+     *  can then review and Save & Open to post the JE. */
+    fetchBillFromPO: create.asyncThunk(
+      async (poId: string) => getPurchaseOrderByIdAPI(poId),
+      {
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const po = purchaseOrderSingleSerializer(action.payload);
+          if (!po) return;
+          // Brand-new bill — clear any prior edit context.
+          state.isEditMode = false;
+          state.editId = '';
+          state.vendorId = po.vendorId;
+          state.vendorName = po.vendorName;
+          state.notes = po.notes
+            ? `Converted from ${po.poNumber}. ${po.notes}`
+            : `Converted from ${po.poNumber}.`;
+          // Use the line-item amounts as-is (received quantity * unit price
+          // would be more accurate; activity diagram says "Inventory
+          // quantities updated" implying the goods are in stock at this point).
+          state.lines = po.lines
+            .filter(l => l.receivedQuantity > 0 || l.quantity > 0)
+            .map(l => ({
+              id: `bfl_${nextLineId++}_${Date.now()}`,
+              accountId: 'acct-1200',
+              accountName: 'Inventory',
+              description: `${l.itemName}${l.description ? ` — ${l.description}` : ''} (Qty ${l.receivedQuantity || l.quantity} @ ${l.unitPrice})`,
+              amount: String(
+                Math.round((l.receivedQuantity || l.quantity) * l.unitPrice * 100) / 100,
+              ),
+              taxRate: '0',
+            }));
+          if (state.lines.length === 0) state.lines = [freshLine()];
+          state.errors = {};
+          recalc(state);
+        },
+      },
+    ),
   }),
 
   selectors: {
@@ -295,6 +338,7 @@ export const {
   resetBillForm,
   saveBill,
   fetchBillForEdit,
+  fetchBillFromPO,
 } = billFormSlice.actions;
 
 export const {

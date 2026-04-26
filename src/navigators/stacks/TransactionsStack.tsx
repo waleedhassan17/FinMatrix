@@ -37,7 +37,7 @@ export type TransactionsStackParamList = {
   CreditMemoList: undefined;
   CreditMemoForm: { creditMemoId?: string } | undefined;
   BillList: undefined;
-  BillForm: { billId?: string } | undefined;
+  BillForm: { billId?: string; fromPOId?: string } | undefined;
   BillDetail: { billId: string };
   PayBills: { vendorId?: string; billId?: string } | undefined;
   VendorCreditForm: { creditId?: string } | undefined;

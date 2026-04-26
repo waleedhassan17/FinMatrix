@@ -1,5 +1,11 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — PO Detail Screen
+// Activity Diagram steps:
+//   • Open PO, tap "Receive Items"
+//   • Enter received qty for each line
+//   • Save — Received Qty updated
+//   • Fully received? → Tap "Convert to Bill"
+//   • Bill created — JE: DR Inventory, CR AP
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect } from 'react';
@@ -10,374 +16,566 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchPODetail,
+  updatePOStatus,
+  receivePOItems,
   enterReceivingMode,
   exitReceivingMode,
   setReceivingQty,
-  setIsReceiving,
-  updatePOAfterReceive,
   clearDetail,
   selectItem,
   selectIsLoading,
+  selectDetailError,
   selectReceivingMode,
   selectReceivingLines,
   selectIsReceiving,
+  selectIsUpdatingStatus,
 } from './poDetailSlice';
-import { receivePOItemsAPI, updatePOStatusAPI } from '../../../network/purchaseOrderNetwork';
-import { PO_STATUS_LABELS, PO_STATUS_COLORS } from '../../../models/purchaseOrderModel';
-import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { upsertPurchaseOrder } from '../POList/poListSlice';
+import { PO_STATUS_COLORS, PO_STATUS_LABELS } from '../../../models/purchaseOrderModel';
+import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { formatCurrency, formatDate } from '../../../utils/formatters';
+import type { PurchaseOrderStatus } from '../../../types';
+import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
-import { THEME } from '../../../utils/theme';
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
-type RouteProps = NativeStackScreenProps<TransactionsStackParamList, 'PODetail'>['route'];
+type DetailRoute = RouteProp<TransactionsStackParamList, 'PODetail'>;
 
+// ═══════════════════════════════════════════════════════
 const PODetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
-  const route = useRoute<RouteProps>();
+  const route = useRoute<DetailRoute>();
   const dispatch = useAppDispatch();
+  const poId = route.params.poId;
+
   const po = useAppSelector(selectItem);
   const isLoading = useAppSelector(selectIsLoading);
+  const error = useAppSelector(selectDetailError);
   const receivingMode = useAppSelector(selectReceivingMode);
   const receivingLines = useAppSelector(selectReceivingLines);
   const isReceiving = useAppSelector(selectIsReceiving);
+  const isUpdatingStatus = useAppSelector(selectIsUpdatingStatus);
+
+  const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
-    dispatch(fetchPODetail(route.params.poId));
+    dispatch(fetchPODetail(poId));
     return () => { dispatch(clearDetail()); };
-  }, [dispatch, route.params.poId]);
+  }, [poId, dispatch]);
 
-  const handleReceive = useCallback(async () => {
-    const linesToReceive = receivingLines.filter(l => l.receivingQty > 0);
-    if (linesToReceive.length === 0) {
-      Alert.alert('Nothing to receive', 'Enter quantities for at least one line.');
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await dispatch(fetchPODetail(poId));
+    setRefreshing(false);
+  }, [poId, dispatch]);
+
+  // ── Status transition helper ────────────────
+  const transitionStatus = useCallback(
+    async (status: PurchaseOrderStatus, message: string) => {
+      if (!po) return;
+      const result: any = await dispatch(updatePOStatus({ id: po.id, status }));
+      if (result.error) {
+        Alert.alert('Error', 'Failed to update purchase order.');
+        return;
+      }
+      const updated = purchaseOrderSingleSerializer(result.payload);
+      if (updated) dispatch(upsertPurchaseOrder(updated));
+      Alert.alert('Success', message);
+    },
+    [po, dispatch],
+  );
+
+  const handleSend = useCallback(
+    () => po && transitionStatus('sent', `${po.poNumber} has been sent to ${po.vendorName}.`),
+    [po, transitionStatus],
+  );
+
+  const handleClose = useCallback(() => {
+    if (!po) return;
+    Alert.alert(
+      'Close Purchase Order',
+      `Mark ${po.poNumber} as closed? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Close',
+          style: 'destructive',
+          onPress: () => transitionStatus('closed', `${po.poNumber} has been closed.`),
+        },
+      ],
+    );
+  }, [po, transitionStatus]);
+
+  // ── Receiving flow ──────────────────────────
+  const handleSaveReceive = useCallback(async () => {
+    if (!po) return;
+    const receipts = receivingLines
+      .filter(rl => rl.receivingQty > 0)
+      .map(rl => ({ lineId: rl.lineId, receivingQty: rl.receivingQty }));
+    if (receipts.length === 0) {
+      Alert.alert('Nothing to Receive', 'Enter received quantities for at least one line.');
       return;
     }
-    dispatch(setIsReceiving(true));
-    try {
-      const updated = await receivePOItemsAPI(
-        po!.id,
-        linesToReceive.map(l => ({ lineId: l.lineId, receivingQty: l.receivingQty })),
-      );
-      dispatch(updatePOAfterReceive(updated));
-      Alert.alert('Success', 'Items received successfully.');
-    } catch {
-      Alert.alert('Error', 'Failed to receive items.');
-      dispatch(setIsReceiving(false));
+    const result: any = await dispatch(receivePOItems({ id: po.id, receipts }));
+    if (result.error) {
+      Alert.alert('Error', 'Failed to record received items.');
+      return;
     }
-  }, [dispatch, po, receivingLines]);
+    const updated = purchaseOrderSingleSerializer(result.payload);
+    if (updated) {
+      dispatch(upsertPurchaseOrder(updated));
+      const allReceived = updated.lines.every(l => l.receivedQuantity >= l.quantity);
+      Alert.alert(
+        'Items Received',
+        allReceived
+          ? 'All items have been fully received. You can now Convert to Bill.'
+          : 'Received quantities have been recorded.',
+      );
+    }
+  }, [po, receivingLines, dispatch]);
 
+  // Activity diagram step: "Tap Convert to Bill" → "Bill created — JE: DR Inventory, CR AP"
   const handleConvertToBill = useCallback(() => {
     if (!po) return;
-    navigation.navigate('BillForm', { fromPO: po.id } as any);
-  }, [navigation, po]);
+    navigation.navigate('BillForm', { fromPOId: po.id });
+  }, [po, navigation]);
 
-  const handleSend = useCallback(async () => {
-    if (!po) return;
-    try {
-      await updatePOStatusAPI(po.id, 'sent');
-      dispatch(fetchPODetail(po.id));
-      Alert.alert('Sent', 'Purchase order has been marked as sent.');
-    } catch {
-      Alert.alert('Error', 'Failed to update status.');
-    }
-  }, [dispatch, po]);
-
-  const handleClose = useCallback(async () => {
-    if (!po) return;
-    Alert.alert('Close PO', 'Are you sure you want to close this purchase order?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Close',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await updatePOStatusAPI(po.id, 'closed');
-            dispatch(fetchPODetail(po.id));
-          } catch {
-            Alert.alert('Error', 'Failed to close PO.');
-          }
-        },
-      },
-    ]);
-  }, [dispatch, po]);
-
-  if (isLoading || !po) {
+  // ── Loading / Error ─────────────────────────────
+  if (isLoading && !po) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing.xl * 3 }} />
+        {renderHeader(navigation, 'Purchase Order')}
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       </SafeAreaView>
     );
   }
 
-  const statusColor = PO_STATUS_COLORS[po.status];
+  if (error || !po) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {renderHeader(navigation, 'Purchase Order')}
+        <View style={styles.center}>
+          <Text style={styles.errorText}>{error || 'Purchase order not found'}</Text>
+          <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="secondary" size="md" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
+  const statusCol = PO_STATUS_COLORS[po.status];
+  const isFullyReceived = po.status === 'fully_received';
+  const canReceive = po.status === 'sent' || po.status === 'partially_received';
+  const canConvertToBill = po.status === 'fully_received' || po.status === 'partially_received';
+
+  // ═════════════════════════════════════════════════════
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>‹ Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{po.poNumber}</Text>
-        {(po.status === 'draft' || po.status === 'sent') && (
-          <TouchableOpacity onPress={() => navigation.navigate('POForm', { poId: po.id })}>
-            <Text style={styles.editBtn}>Edit</Text>
-          </TouchableOpacity>
-        )}
-        {po.status !== 'draft' && po.status !== 'sent' && <View style={{ width: 40 }} />}
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Status Badge */}
-        <View style={styles.statusRow}>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + '18' }]}>
-            <Text style={[styles.statusText, { color: statusColor }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle} numberOfLines={1}>{po.poNumber}</Text>
+          </View>
+          <View style={[styles.badge, { backgroundColor: statusCol + '18' }]}>
+            <Text style={[styles.badgeText, { color: statusCol }]}>
               {PO_STATUS_LABELS[po.status]}
             </Text>
           </View>
         </View>
+      </View>
 
-        {/* Info Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Purchase Order Details</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Vendor</Text>
-            <Text style={styles.infoValue}>{po.vendorName}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>PO Number</Text>
-            <Text style={styles.infoValue}>{po.poNumber}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Order Date</Text>
-            <Text style={styles.infoValue}>{formatDate(po.orderDate)}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Expected Date</Text>
-            <Text style={styles.infoValue}>{formatDate(po.expectedDate)}</Text>
-          </View>
-        </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+        }
+      >
+        {/* ── PO Card ─────────────────────────── */}
+        <View style={styles.poCard}>
+          <Text style={styles.companyName}>FinMatrix Corp.</Text>
+          <Text style={styles.companyMeta}>Office 23, Gulberg III, Lahore, Pakistan</Text>
+          <Text style={styles.companyMeta}>info@finmatrix.pk  •  +92 42 3578 0001</Text>
 
-        {/* Line Items */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Line Items</Text>
-          {/* Table header */}
-          <View style={styles.tableHeader}>
-            <Text style={[styles.th, { flex: 2 }]}>Item</Text>
-            <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>Qty</Text>
-            <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>Received</Text>
-            <Text style={[styles.th, { flex: 1.2, textAlign: 'right' }]}>Amount</Text>
-          </View>
-          {po.lines.map(line => (
-            <View key={line.id} style={styles.tableRow}>
-              <View style={{ flex: 2 }}>
-                <Text style={styles.tdBold}>{line.itemName}</Text>
-                <Text style={styles.tdSub}>{line.description}</Text>
-              </View>
-              <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{line.quantity}</Text>
-              <Text
-                style={[
-                  styles.td,
-                  { flex: 1, textAlign: 'right' },
-                  line.receivedQuantity >= line.quantity && { color: colors.success },
-                  line.receivedQuantity > 0 && line.receivedQuantity < line.quantity && { color: colors.warning },
-                ]}
-              >
-                {line.receivedQuantity}
-              </Text>
-              <Text style={[styles.tdBold, { flex: 1.2, textAlign: 'right' }]}>
-                {formatCurrency(line.amount, 'Rs ')}
-              </Text>
+          <View style={styles.divider} />
+
+          <Text style={styles.poLabel}>PURCHASE ORDER</Text>
+
+          <View style={styles.metaRow}>
+            <View style={styles.metaCol}>
+              <Text style={styles.metaKey}>PO #</Text>
+              <Text style={styles.metaVal}>{po.poNumber}</Text>
             </View>
-          ))}
-        </View>
-
-        {/* Totals */}
-        <View style={styles.card}>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Subtotal</Text>
-            <Text style={styles.totalValue}>{formatCurrency(po.subtotal, 'Rs ')}</Text>
-          </View>
-          <View style={[styles.totalRow, styles.totalRowBold]}>
-            <Text style={styles.totalLabelBold}>Total</Text>
-            <Text style={styles.totalValueBold}>{formatCurrency(po.total, 'Rs ')}</Text>
-          </View>
-        </View>
-
-        {/* Notes */}
-        {po.notes ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Notes</Text>
-            <Text style={styles.notesText}>{po.notes}</Text>
-          </View>
-        ) : null}
-
-        {/* ═══ Receive Items Mode ═══ */}
-        {receivingMode && (
-          <View style={styles.receiveCard}>
-            <View style={styles.receiveHeader}>
-              <Text style={styles.receiveTitle}>Receive Items</Text>
-              <TouchableOpacity onPress={() => dispatch(exitReceivingMode())}>
-                <Text style={styles.receiveCancel}>Cancel</Text>
-              </TouchableOpacity>
+            <View style={styles.metaCol}>
+              <Text style={styles.metaKey}>Order Date</Text>
+              <Text style={styles.metaVal}>{formatDate(po.orderDate)}</Text>
             </View>
-
-            {/* Receiving table header */}
-            <View style={styles.recTableHeader}>
-              <Text style={[styles.recTh, { flex: 2 }]}>Item</Text>
-              <Text style={[styles.recTh, { flex: 0.8, textAlign: 'center' }]}>Ordered</Text>
-              <Text style={[styles.recTh, { flex: 0.8, textAlign: 'center' }]}>Prev</Text>
-              <Text style={[styles.recTh, { flex: 1, textAlign: 'center' }]}>Receiving</Text>
+            <View style={styles.metaCol}>
+              <Text style={styles.metaKey}>Expected</Text>
+              <Text style={styles.metaVal}>{formatDate(po.expectedDate)}</Text>
             </View>
+          </View>
 
-            {receivingLines.map(rl => (
-              <View key={rl.lineId} style={styles.recRow}>
-                <Text style={[styles.recTd, { flex: 2 }]} numberOfLines={1}>
-                  {rl.itemName}
-                </Text>
-                <Text style={[styles.recTd, { flex: 0.8, textAlign: 'center' }]}>{rl.ordered}</Text>
-                <Text style={[styles.recTd, { flex: 0.8, textAlign: 'center' }]}>
-                  {rl.previouslyReceived}
-                </Text>
-                <View style={{ flex: 1, alignItems: 'center' }}>
-                  {rl.remaining > 0 ? (
+          <View style={styles.divider} />
+
+          <Text style={styles.sectionLabel}>Vendor</Text>
+          <Text style={styles.vendorName}>{po.vendorName}</Text>
+
+          <View style={styles.divider} />
+
+          {/* ── Items Table (or Receiving Editor) ──── */}
+          {receivingMode ? (
+            <>
+              <Text style={styles.sectionLabel}>Receive Items</Text>
+              {receivingLines.map(rl => (
+                <View key={rl.lineId} style={styles.receivingRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.receivingItemName}>{rl.itemName}</Text>
+                    <Text style={styles.receivingMeta}>
+                      Ordered: {rl.ordered} • Received: {rl.previouslyReceived} • Remaining: {rl.remaining}
+                    </Text>
+                  </View>
+                  <View style={styles.receivingInputWrap}>
                     <TextInput
-                      style={styles.recInput}
-                      value={rl.receivingQty > 0 ? String(rl.receivingQty) : ''}
+                      style={styles.receivingInput}
+                      value={String(rl.receivingQty || '')}
                       onChangeText={v =>
-                        dispatch(
-                          setReceivingQty({
-                            lineId: rl.lineId,
-                            qty: parseInt(v, 10) || 0,
-                          }),
-                        )
+                        dispatch(setReceivingQty({ lineId: rl.lineId, qty: parseInt(v.replace(/[^0-9]/g, ''), 10) || 0 }))
                       }
-                      keyboardType="numeric"
                       placeholder="0"
                       placeholderTextColor={colors.textLight}
+                      keyboardType="number-pad"
+                      editable={rl.remaining > 0}
                     />
-                  ) : (
-                    <Text style={[styles.recTd, { color: colors.success, fontWeight: '700' }]}>✓</Text>
-                  )}
+                    <Text style={styles.receivingMaxText}>/ {rl.remaining}</Text>
+                  </View>
                 </View>
+              ))}
+            </>
+          ) : (
+            <>
+              <Text style={styles.sectionLabel}>Items</Text>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.thText, { flex: 2 }]}>Item</Text>
+                <Text style={[styles.thText, styles.thRight, { flex: 0.6 }]}>Qty</Text>
+                <Text style={[styles.thText, styles.thRight, { flex: 0.7 }]}>Recvd</Text>
+                <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Rate</Text>
+                <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Amount</Text>
               </View>
-            ))}
+              {po.lines.map((line, idx) => (
+                <View
+                  key={line.id}
+                  style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven]}
+                >
+                  <View style={{ flex: 2 }}>
+                    <Text style={styles.tdText} numberOfLines={1}>{line.itemName}</Text>
+                    {!!line.description && (
+                      <Text style={styles.tdSub} numberOfLines={1}>{line.description}</Text>
+                    )}
+                  </View>
+                  <Text style={[styles.tdText, styles.tdRight, { flex: 0.6 }]}>{line.quantity}</Text>
+                  <Text
+                    style={[
+                      styles.tdText,
+                      styles.tdRight,
+                      { flex: 0.7 },
+                      line.receivedQuantity >= line.quantity && { color: colors.success, fontWeight: '700' },
+                      line.receivedQuantity > 0 && line.receivedQuantity < line.quantity && { color: colors.warning, fontWeight: '700' },
+                    ]}
+                  >
+                    {line.receivedQuantity}
+                  </Text>
+                  <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>
+                    {formatCurrency(line.unitPrice, 'Rs ')}
+                  </Text>
+                  <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>
+                    {formatCurrency(line.amount, 'Rs ')}
+                  </Text>
+                </View>
+              ))}
+            </>
+          )}
 
-            <CustomButton
-              title="Confirm Receive"
-              onPress={handleReceive}
-              variant="primary"
-              size="lg"
-              fullWidth
-              isLoading={isReceiving}
-            />
+          <View style={styles.divider} />
+
+          {/* ── Totals ──────────────────────────── */}
+          <View style={styles.totalsBlock}>
+            <TotalsRow label="Subtotal" value={formatCurrency(po.subtotal, 'Rs ')} />
+            {po.taxAmount > 0 && (
+              <TotalsRow label="Tax" value={formatCurrency(po.taxAmount, 'Rs ')} />
+            )}
+            <View style={styles.grandTotalDivider} />
+            <TotalsRow label="Total" value={formatCurrency(po.total, 'Rs ')} bold />
           </View>
-        )}
 
-        {/* ═══ Action Bar ═══ */}
-        {!receivingMode && (
-          <View style={styles.actionBar}>
-            {po.status === 'draft' && (
-              <CustomButton title="Send to Vendor" onPress={handleSend} variant="primary" size="lg" fullWidth />
-            )}
-            {(po.status === 'sent' || po.status === 'partially_received') && (
-              <>
-                <CustomButton
-                  title="Receive Items"
-                  onPress={() => dispatch(enterReceivingMode())}
-                  variant="primary"
-                  size="lg"
-                  fullWidth
-                />
-                <View style={{ height: spacing.sm }} />
-              </>
-            )}
-            {(po.status === 'fully_received' || po.status === 'partially_received') && (
-              <>
-                <CustomButton
-                  title="Convert to Bill"
-                  onPress={handleConvertToBill}
-                  variant="secondary"
-                  size="lg"
-                  fullWidth
-                />
-                <View style={{ height: spacing.sm }} />
-              </>
-            )}
-            {po.status !== 'closed' && po.status !== 'draft' && (
-              <CustomButton title="Close PO" onPress={handleClose} variant="secondary" size="lg" fullWidth />
-            )}
-          </View>
-        )}
+          {!!po.notes && !receivingMode && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.sectionLabel}>Notes</Text>
+              <Text style={styles.notesText}>{po.notes}</Text>
+            </>
+          )}
+        </View>
 
-        <View style={{ height: spacing.xl * 2 }} />
+        <View style={{ height: spacing.xl * 3 }} />
       </ScrollView>
+
+      {/* ── Action Bar (matches Estimates / SO / Bills) ── */}
+      <View style={styles.actionBar}>
+        {receivingMode ? (
+          <>
+            <View style={styles.actionSecondary}>
+              <CustomButton
+                title="Cancel"
+                onPress={() => dispatch(exitReceivingMode())}
+                variant="secondary"
+                size="sm"
+                fullWidth
+                disabled={isReceiving}
+              />
+            </View>
+            <View style={styles.actionPrimary}>
+              <CustomButton
+                title="Save Received"
+                onPress={handleSaveReceive}
+                variant="primary"
+                size="sm"
+                fullWidth
+                isLoading={isReceiving}
+                disabled={isReceiving}
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            {/* Draft: Edit + Send */}
+            {po.status === 'draft' && (
+              <>
+                <View style={styles.actionSecondary}>
+                  <CustomButton
+                    title="Edit"
+                    onPress={() => navigation.navigate('POForm', { poId: po.id })}
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                  />
+                </View>
+                <View style={styles.actionPrimary}>
+                  <CustomButton
+                    title="Send to Vendor"
+                    onPress={handleSend}
+                    variant="primary"
+                    size="sm"
+                    fullWidth
+                    isLoading={isUpdatingStatus}
+                    disabled={isUpdatingStatus}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* Sent / Partially received: Receive + Convert + Close */}
+            {canReceive && (
+              <>
+                {canConvertToBill && (
+                  <View style={styles.actionSecondary}>
+                    <CustomButton
+                      title="To Bill"
+                      onPress={handleConvertToBill}
+                      variant="secondary"
+                      size="sm"
+                      fullWidth
+                    />
+                  </View>
+                )}
+                <View style={styles.actionSecondary}>
+                  <CustomButton
+                    title="Close"
+                    onPress={handleClose}
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                    disabled={isUpdatingStatus}
+                  />
+                </View>
+                <View style={styles.actionPrimary}>
+                  <CustomButton
+                    title="Receive Items"
+                    onPress={() => dispatch(enterReceivingMode())}
+                    variant="primary"
+                    size="sm"
+                    fullWidth
+                  />
+                </View>
+              </>
+            )}
+
+            {/* Fully received: Convert to Bill + Close */}
+            {isFullyReceived && (
+              <>
+                <View style={styles.actionSecondary}>
+                  <CustomButton
+                    title="Close"
+                    onPress={handleClose}
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                    disabled={isUpdatingStatus}
+                  />
+                </View>
+                <View style={styles.actionPrimary}>
+                  <CustomButton
+                    title="Convert to Bill"
+                    onPress={handleConvertToBill}
+                    variant="primary"
+                    size="sm"
+                    fullWidth
+                  />
+                </View>
+              </>
+            )}
+
+            {/* Closed: read-only */}
+            {po.status === 'closed' && (
+              <View style={styles.actionPrimary}>
+                <CustomButton
+                  title="View Bills"
+                  onPress={() => navigation.navigate('BillList')}
+                  variant="primary"
+                  size="sm"
+                  fullWidth
+                />
+              </View>
+            )}
+          </>
+        )}
+      </View>
     </SafeAreaView>
   );
 };
 
-export default PODetailScreen;
+// ─── Helpers ─────────────────────────────────────────
+function renderHeader(navigation: Nav, title: string) {
+  return (
+    <View style={styles.header}>
+      <View style={styles.headerRow}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
 
-// ─── Styles ──────────────────────────────────────────
+const TotalsRow: React.FC<{
+  label: string;
+  value: string;
+  bold?: boolean;
+  valueColor?: string;
+}> = ({ label, value, bold, valueColor }) => (
+  <View style={styles.totalsRow}>
+    <Text style={[styles.totalsLabel, bold && styles.totalsLabelBold]}>{label}</Text>
+    <Text
+      style={[
+        styles.totalsValue,
+        bold && styles.totalsValueBold,
+        valueColor ? { color: valueColor } : undefined,
+      ]}
+    >
+      {value}
+    </Text>
+  </View>
+);
+
+// ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
+  errorText: { fontSize: 15, color: colors.danger, fontFamily: THEME.typography.fontFamily },
+
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  back: { fontSize: 17, color: colors.secondary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
-  title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  editBtn: { fontSize: 15, color: colors.secondary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
-  scroll: { padding: spacing.md },
-  statusRow: { alignItems: 'flex-start', marginBottom: spacing.sm },
-  statusBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 8 },
-  statusText: { fontSize: 13, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
-  card: {
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: spacing.sm },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
+  badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
+  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+
+  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+
+  poCard: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     padding: spacing.md,
-    marginBottom: spacing.sm + 2,
-    ...shadows.card,
+    ...shadows.small,
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
+  companyName: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
+  companyMeta: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 18 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm + 2 },
+  poLabel: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.primary,
     fontFamily: THEME.typography.fontFamily,
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs + 1,
-  },
-  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  tableHeader: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: spacing.xs,
+
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  metaCol: { alignItems: 'center', flex: 1 },
+  metaKey: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
+  metaVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textLight,
+    fontFamily: THEME.typography.fontFamily,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
     marginBottom: spacing.xs,
   },
-  th: { fontSize: 11, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', fontFamily: THEME.typography.fontFamily },
+  vendorName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+
+  tableHeader: {
+    flexDirection: 'row',
+    paddingVertical: spacing.xs + 2,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.primary,
+  },
+  thText: { fontSize: 11, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily, textTransform: 'uppercase' },
+  thRight: { textAlign: 'right' },
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -385,65 +583,66 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  td: { fontSize: 13, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  tdBold: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  tdSub: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
-  },
-  totalRowBold: { borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.xs, paddingTop: spacing.sm },
-  totalLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  totalValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  totalLabelBold: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  totalValueBold: { fontSize: 15, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  notesText: { fontSize: 13, color: colors.textSecondary, lineHeight: 20, fontFamily: THEME.typography.fontFamily },
-  // ─── Receiving ──────
-  receiveCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm + 2,
-    borderWidth: 2,
-    borderColor: colors.secondary,
-    ...shadows.card,
-  },
-  receiveHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  receiveTitle: { fontSize: 15, fontWeight: '700', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
-  receiveCancel: { fontSize: 14, color: colors.danger, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
-  recTableHeader: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  recTh: { fontSize: 10, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', fontFamily: THEME.typography.fontFamily },
-  recRow: {
+  tableRowEven: { backgroundColor: colors.background },
+  tdText: { fontSize: 12, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  tdSub: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginTop: 1 },
+  tdRight: { textAlign: 'right' },
+
+  // Receiving mode
+  receivingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  recTd: { fontSize: 13, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  recInput: {
+  receivingItemName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  receivingMeta: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  receivingInputWrap: { flexDirection: 'row', alignItems: 'center', marginLeft: spacing.sm },
+  receivingInput: {
+    width: 56,
     backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xs + 2,
     fontSize: 14,
     fontWeight: '700',
-    color: colors.primary,
-    textAlign: 'center',
-    width: 60,
+    color: colors.textPrimary,
     fontFamily: THEME.typography.fontFamily,
+    textAlign: 'center',
   },
-  actionBar: { marginTop: spacing.md },
+  receivingMaxText: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginLeft: spacing.xs },
+
+  totalsBlock: { marginLeft: 'auto', width: '65%' },
+  totalsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  totalsLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  totalsLabelBold: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  totalsValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  totalsValueBold: { fontSize: 16, fontWeight: '800' },
+  grandTotalDivider: { height: 1.5, backgroundColor: colors.primary, marginVertical: spacing.xs },
+
+  notesText: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 20 },
+
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm - 2,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.xs,
+    ...shadows.small,
+  },
+  actionPrimary: { flex: 1.4 },
+  actionSecondary: { flex: 1 },
 });
+
+export default PODetailScreen;
