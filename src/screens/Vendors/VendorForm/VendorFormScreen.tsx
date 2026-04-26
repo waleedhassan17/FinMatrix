@@ -18,29 +18,23 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, spacing, borderRadius } from '../../../theme';
+import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectVendorFormState,
   setField,
   setErrors,
-  setIsSaving,
-  loadVendorForEdit,
   resetVendorForm,
+  saveVendor,
+  fetchVendorForEdit,
 } from './vendorFormSlice';
-import {
-  selectVendors,
-  fetchVendors,
-  createVendor,
-  editVendor,
-} from '../VendorList/vendorListSlice';
+import { fetchVendors, upsertVendor } from '../VendorList/vendorListSlice';
 import { selectAccounts, fetchAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { validateVendor, PAYMENT_TERMS_OPTIONS } from '../../../models/vendorModel';
-import type { PaymentTerms } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -56,9 +50,9 @@ const VendorFormScreen: React.FC = () => {
 
   const editingId = route.params?.vendorId;
   const isEditing = !!editingId;
-  const vendors = useAppSelector(selectVendors);
   const form = useAppSelector(selectVendorFormState);
   const accounts = useAppSelector(selectAccounts);
+  const hydratedRef = React.useRef(false);
 
   // ── Expense account options ─────────────────────
   const expenseAccountOptions = useMemo(
@@ -70,30 +64,22 @@ const VendorFormScreen: React.FC = () => {
   );
 
   // ── Load COA accounts + vendor for edit on mount ─
+  // Hydrate ONCE per mount via the dedicated fetch thunk so
+  // deep-links work and subsequent list refetches don't
+  // overwrite the user's in-progress edits.
   useEffect(() => {
     dispatch(fetchAccounts());
-    if (isEditing) {
-      const vendor = vendors.find(v => v.id === editingId);
-      if (vendor) {
-        dispatch(loadVendorForEdit({
-          name: vendor.name,
-          contactPerson: vendor.contactPerson,
-          email: vendor.email,
-          phone: vendor.phone,
-          address: vendor.address,
-          city: vendor.city,
-          state: vendor.state,
-          zipCode: vendor.zipCode,
-          country: vendor.country,
-          paymentTerms: vendor.paymentTerms as PaymentTerms | '',
-          taxId: vendor.taxId,
-          defaultExpenseAccountId: vendor.defaultExpenseAccountId,
-          notes: vendor.notes,
-        }));
-      }
+
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    if (isEditing && editingId) {
+      dispatch(fetchVendorForEdit(editingId));
     }
+
     return () => { dispatch(resetVendorForm()); };
-  }, [isEditing, editingId, vendors, dispatch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, editingId, dispatch]);
 
   // ── Field update helper ─────────────────────────
   const updateField = useCallback(
@@ -125,45 +111,22 @@ const VendorFormScreen: React.FC = () => {
       return;
     }
 
-    dispatch(setIsSaving(true));
     try {
-      const payload = {
-        companyId: 'comp_001',
-        name: form.name.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        address: form.address.trim(),
-        city: form.city.trim(),
-        state: form.state.trim(),
-        zipCode: form.zipCode.trim(),
-        country: form.country.trim() || 'Pakistan',
-        taxId: form.taxId.trim(),
-        contactPerson: form.contactPerson.trim(),
-        notes: form.notes.trim(),
-        paymentTerms: form.paymentTerms as string,
-        defaultExpenseAccountId: form.defaultExpenseAccountId,
-        isActive: true,
-      };
-
-      if (isEditing) {
-        await dispatch(editVendor({ id: editingId!, data: payload })).unwrap();
-      } else {
-        await dispatch(createVendor(payload)).unwrap();
-      }
-
+      const result: any = await dispatch(saveVendor());
+      if (result.error) throw new Error(result.error.message);
+      const saved = result.payload;
+      if (saved) dispatch(upsertVendor(saved));
       await dispatch(fetchVendors());
 
       Alert.alert(
         isEditing ? 'Vendor Updated' : 'Vendor Created',
-        `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`,
+        `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully. Now available for Bills & POs.`,
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
     } catch {
       Alert.alert('Error', 'Failed to save vendor. Please try again.');
-    } finally {
-      dispatch(setIsSaving(false));
     }
-  }, [form, isEditing, editingId, dispatch, navigation]);
+  }, [form, isEditing, dispatch, navigation]);
 
   // ═════════════════════════════════════════════════════
   // RENDER
@@ -172,8 +135,8 @@ const VendorFormScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{isEditing ? 'Edit Vendor' : 'Add Vendor'}</Text>
       </View>
@@ -299,29 +262,32 @@ const VendorFormScreen: React.FC = () => {
             />
           </View>
 
-          {/* ── Action Buttons ───────────────────────── */}
-          <View style={styles.btnRow}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <CustomButton
-                title="Cancel"
-                onPress={() => navigation.goBack()}
-                variant="secondary"
-                size="lg"
-                fullWidth
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton
-                title={isEditing ? 'Update' : 'Create'}
-                onPress={handleSave}
-                variant="primary"
-                size="lg"
-                fullWidth
-                isLoading={form.isSaving}
-              />
-            </View>
-          </View>
+          <View style={{ height: spacing.xl * 2 }} />
         </ScrollView>
+
+        {/* ── Sticky Action Bar ────────────────────── */}
+        <View style={styles.actionBar}>
+          <View style={styles.actionSecondary}>
+            <CustomButton
+              title="Cancel"
+              onPress={() => navigation.goBack()}
+              variant="secondary"
+              size="sm"
+              fullWidth
+            />
+          </View>
+          <View style={styles.actionPrimary}>
+            <CustomButton
+              title={isEditing ? 'Update Vendor' : 'Save Vendor'}
+              onPress={handleSave}
+              variant="primary"
+              size="sm"
+              fullWidth
+              isLoading={form.isSaving}
+              disabled={form.isSaving}
+            />
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -333,6 +299,8 @@ const VendorFormScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
@@ -340,9 +308,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { ...THEME.typography.labelLg, color: colors.secondary, marginBottom: spacing.xs },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
+  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg },
 
   sectionTitle: {
     ...THEME.typography.h4,
@@ -356,15 +325,26 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.small,
   },
 
   rowFields: { flexDirection: 'row' },
 
-  btnRow: {
+  actionBar: {
     flexDirection: 'row',
-    marginTop: spacing.lg,
-    marginBottom: spacing.xl,
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+    ...shadows.small,
   },
+  actionSecondary: { flex: 1 },
+  actionPrimary: { flex: 1.4 },
 });
 
 export default VendorFormScreen;

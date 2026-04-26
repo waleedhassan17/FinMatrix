@@ -1,8 +1,67 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Bill Model & Validation
 // ═══════════════════════════════════════════════════════
+// Mirrors `glModel.ts`:
+//   • API entity types describing the raw backend shape
+//   • Pagination envelope
+//   • Query params for the list endpoint
+// Plus the existing form-validation helpers used by the form screen.
 
-import type { BillStatus } from '../types';
+import type { Bill, BillLine, BillStatus } from '../types';
+
+// ─── Raw API entity (backend shape) ──────────────────
+// 1-to-1 with the `Bill` UI type today; defined separately so
+// future backend-only fields can be added without leaking into UI.
+export interface BillApiLineEntity {
+  id: string;
+  accountId: string;
+  accountName: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate: number;
+  amount: number;
+}
+
+export interface BillApiEntity {
+  id: string;
+  companyId: string;
+  billNumber: string;
+  vendorId: string;
+  vendorName: string;
+  issueDate: string;
+  dueDate: string;
+  status: BillStatus;
+  lines: BillApiLineEntity[];
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  amountPaid: number;
+  notes: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Pagination envelope ─────────────────────────────
+export interface BillApiPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+// ─── Query params for list endpoint ──────────────────
+export interface BillQueryParams {
+  search?: string;
+  status?: 'all' | BillStatus;
+  vendorId?: string;
+  page?: number;
+  limit?: number;
+}
+
+// ─── Re-export the canonical UI types for convenience ─
+export type { Bill, BillLine };
 
 export interface ValidationErrors {
   [key: string]: string;

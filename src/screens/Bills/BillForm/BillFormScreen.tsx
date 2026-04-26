@@ -31,19 +31,18 @@ import {
   setBillField,
   setBillVendor,
   setBillErrors,
-  setBillIsSaving,
   addBillLine,
   removeBillLine,
   updateBillLine,
   setBillLineAccount,
   calculateBillTotals,
-  loadBillForEdit,
   resetBillForm,
+  saveBill,
+  fetchBillForEdit,
   type BillFormLine,
 } from './billFormSlice';
-import { selectBills, fetchBills } from '../BillList/billListSlice';
+import { selectBills, fetchBills, upsertBill } from '../BillList/billListSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
-import { createBillAPI, updateBillAPI } from '../../../network/billNetwork';
 import { chartOfAccountsData } from '../../../dummy-data/chartOfAccounts';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -75,6 +74,7 @@ const BillFormScreen: React.FC = () => {
   const bills = useAppSelector(selectBills);
   const vendors = useAppSelector(selectVendors);
   const form = useAppSelector(selectBillFormState);
+  const hydratedRef = React.useRef(false);
 
   // ── Vendor dropdown options ─────────────────────
   const vendorOptions = useMemo(
@@ -103,40 +103,28 @@ const BillFormScreen: React.FC = () => {
     return `BILL-${String(maxNum + 1).padStart(4, '0')}`;
   }, [bills]);
 
-  // ── Load data on mount ──────────────────────────
+  // ── Load data on mount ──────────────────
+  // Hydrate ONCE per mount: edit mode uses the dedicated
+  // fetchBillForEdit thunk so deep-links work even when the
+  // list slice hasn't been hydrated; new-bill mode generates
+  // sensible defaults. Subsequent list refetches will NOT
+  // overwrite the user's in-progress edits.
   useEffect(() => {
     dispatch(fetchVendors());
 
-    if (isEditing) {
-      const bill = bills.find(b => b.id === editingId);
-      if (bill) {
-        dispatch(
-          loadBillForEdit({
-            billNumber: bill.billNumber,
-            vendorId: bill.vendorId,
-            vendorName: bill.vendorName,
-            issueDate: bill.issueDate.slice(0, 10),
-            dueDate: bill.dueDate.slice(0, 10),
-            status: bill.status,
-            notes: bill.notes,
-            lines: bill.lines.map(l => ({
-              id: l.id,
-              accountId: l.accountId,
-              accountName: l.accountName,
-              description: l.description,
-              amount: String(l.amount),
-              taxRate: String(l.taxRate),
-            })),
-          }),
-        );
-      }
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    if (isEditing && editingId) {
+      dispatch(fetchBillForEdit(editingId));
     } else {
       dispatch(setBillField({ key: 'billNumber', value: generateBillNumber() }));
       dispatch(setBillField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
     }
 
     return () => { dispatch(resetBillForm()); };
-  }, [isEditing, editingId, bills, dispatch, generateBillNumber]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, editingId, dispatch]);
 
   // ── Vendor change handler ───────────────────────
   const handleVendorChange = useCallback(
@@ -192,56 +180,25 @@ const BillFormScreen: React.FC = () => {
         return;
       }
 
-      dispatch(setBillIsSaving(true));
       dispatch(calculateBillTotals());
 
       try {
-        const payload = {
-          companyId: 'comp_001',
-          billNumber: form.billNumber,
-          vendorId: form.vendorId,
-          vendorName: form.vendorName,
-          issueDate: new Date(form.issueDate).toISOString(),
-          dueDate: new Date(form.dueDate).toISOString(),
-          status: saveStatus,
-          lines: form.lines.map(l => ({
-            id: l.id,
-            accountId: l.accountId,
-            accountName: l.accountName,
-            description: l.description,
-            quantity: 1,
-            unitPrice: parseFloat(l.amount) || 0,
-            taxRate: parseFloat(l.taxRate) || 0,
-            amount: parseFloat(l.amount) || 0,
-          })),
-          subtotal: form.subtotal,
-          taxAmount: form.taxAmount,
-          total: form.total,
-          amountPaid: 0,
-          notes: form.notes,
-          createdBy: 'admin_001',
-        };
-
-        if (isEditing) {
-          await updateBillAPI(editingId!, payload);
-        } else {
-          await createBillAPI(payload);
-        }
-
+        const result: any = await dispatch(saveBill(saveStatus));
+        if (result.error) throw new Error(result.error.message);
+        const saved = result.payload;
+        if (saved) dispatch(upsertBill(saved));
         await dispatch(fetchBills());
 
         Alert.alert(
           isEditing ? 'Bill Updated' : 'Bill Created',
-          `${form.billNumber} has been ${isEditing ? 'updated' : 'created'} as ${saveStatus}.`,
+          `${form.billNumber} has been ${isEditing ? 'updated' : 'created'} as ${saveStatus}. JE posted: DR Expense, CR AP.`,
           [{ text: 'OK', onPress: () => navigation.goBack() }],
         );
       } catch {
         Alert.alert('Error', 'Failed to save bill. Please try again.');
-      } finally {
-        dispatch(setBillIsSaving(false));
       }
     },
-    [form, isEditing, editingId, dispatch, navigation, validate],
+    [form, isEditing, dispatch, navigation, validate],
   );
 
   // ═════════════════════════════════════════════════════
@@ -320,10 +277,10 @@ const BillFormScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
+        <Text style={styles.headerTitle} numberOfLines={1}>
           {isEditing ? `Edit ${form.billNumber}` : 'New Bill'}
         </Text>
       </View>
@@ -421,26 +378,28 @@ const BillFormScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* ── Action Buttons ───────────────────────── */}
+          {/* ── Actions (inline, matches Estimates/SO pattern) ─ */}
           <View style={styles.btnRow}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
               <CustomButton
                 title="Save Draft"
                 onPress={() => handleSave('draft')}
                 variant="secondary"
-                size="lg"
+                size="sm"
                 fullWidth
                 isLoading={form.isSaving}
+                disabled={form.isSaving}
               />
             </View>
             <View style={{ flex: 1 }}>
               <CustomButton
-                title="Open"
+                title={isEditing ? 'Update & Open' : 'Save & Open'}
                 onPress={() => handleSave('open')}
                 variant="primary"
-                size="lg"
+                size="sm"
                 fullWidth
                 isLoading={form.isSaving}
+                disabled={form.isSaving}
               />
             </View>
           </View>
@@ -456,6 +415,8 @@ const BillFormScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
@@ -463,9 +424,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
+  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg },
 
   sectionTitle: {
     fontSize: 15,
@@ -600,7 +562,7 @@ const styles = StyleSheet.create({
   btnRow: {
     flexDirection: 'row',
     marginTop: spacing.lg,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
 });
 

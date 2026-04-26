@@ -1,17 +1,30 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Bill Detail Slice (createAppSlice pattern)
+// FinMatrix — Bill Detail Slice (createAppSlice)
 // ═══════════════════════════════════════════════════════
+// Owns:
+//   • Bill detail fetch (single bill) + payment history
+//   • Status transitions (mark-open / void) — flows through serializer
+// Mirrors GL/Vendor/Credit-Memo slice architecture.
 
+import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { Bill, BillPayment } from '../../../types';
-import { getBillByIdAPI } from '../../../network/billNetwork';
-import { getBillPaymentsByBillAPI } from '../../../network/billNetwork';
+import type { Bill, BillPayment, BillStatus } from '../../../types';
+import {
+  getBillByIdAPI,
+  getBillPaymentsByBillAPI,
+  updateBillAPI,
+} from '../../../network/billNetwork';
+import {
+  billSingleSerializer,
+  billPaymentsSerializer,
+} from '../../../serializers/billSerializer';
 
 export interface BillDetailSliceState {
   bill: Bill | null;
   payments: BillPayment[];
   isLoading: boolean;
   error: string;
+  isUpdatingStatus: boolean;
 }
 
 const initialState: BillDetailSliceState = {
@@ -19,6 +32,7 @@ const initialState: BillDetailSliceState = {
   payments: [],
   isLoading: false,
   error: '',
+  isUpdatingStatus: false,
 };
 
 export const billDetailSlice = createAppSlice({
@@ -26,26 +40,23 @@ export const billDetailSlice = createAppSlice({
   initialState,
   reducers: create => ({
     resetBillDetail: create.reducer(state => {
-      state.bill = null;
-      state.payments = [];
-      state.isLoading = false;
-      state.error = '';
+      Object.assign(state, initialState);
     }),
 
     fetchBillDetail: create.asyncThunk(
       async (billId: string) => {
-        const [bill, payments] = await Promise.all([
+        const [billEnv, paymentsEnv] = await Promise.all([
           getBillByIdAPI(billId),
           getBillPaymentsByBillAPI(billId),
         ]);
-        return { bill, payments };
+        return {
+          bill: billSingleSerializer(billEnv),
+          payments: billPaymentsSerializer(paymentsEnv),
+        };
       },
       {
-        pending: state => {
-          state.isLoading = true;
-          state.error = '';
-        },
-        fulfilled: (state, action) => {
+        pending: state => { state.isLoading = true; state.error = ''; },
+        fulfilled: (state, action: PayloadAction<{ bill: Bill | null; payments: BillPayment[] }>) => {
           state.bill = action.payload.bill;
           state.payments = action.payload.payments;
           state.isLoading = false;
@@ -56,6 +67,21 @@ export const billDetailSlice = createAppSlice({
         },
       },
     ),
+
+    /** Generic status transition (mark-open, void, etc.) */
+    updateBillStatus: create.asyncThunk(
+      async ({ id, status }: { id: string; status: BillStatus }) =>
+        updateBillAPI(id, { status }),
+      {
+        pending: state => { state.isUpdatingStatus = true; },
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const b = billSingleSerializer(action.payload);
+          if (b) state.bill = b;
+          state.isUpdatingStatus = false;
+        },
+        rejected: state => { state.isUpdatingStatus = false; },
+      },
+    ),
   }),
 
   selectors: {
@@ -63,12 +89,14 @@ export const billDetailSlice = createAppSlice({
     selectBillPayments: state => state.payments,
     selectBillDetailLoading: state => state.isLoading,
     selectBillDetailError: state => state.error,
+    selectBillDetailIsUpdatingStatus: state => state.isUpdatingStatus,
   },
 });
 
 export const {
   resetBillDetail,
   fetchBillDetail,
+  updateBillStatus,
 } = billDetailSlice.actions;
 
 export const {
@@ -76,4 +104,5 @@ export const {
   selectBillPayments,
   selectBillDetailLoading,
   selectBillDetailError,
+  selectBillDetailIsUpdatingStatus,
 } = billDetailSlice.selectors;

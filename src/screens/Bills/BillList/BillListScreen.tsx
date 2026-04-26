@@ -35,6 +35,7 @@ import {
   type BillStatusFilter,
 } from './billListSlice';
 import EmptyState from '../../../components/EmptyState';
+import CustomButton from '../../../Custom-Components/CustomButton';
 import { BILL_STATUS_COLORS, BILL_STATUS_LABELS } from '../../../models/billModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { Bill, BillStatus } from '../../../types';
@@ -177,12 +178,12 @@ const BillListScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* ── Header ──────────────────────────────── */}
+      {/* ── Header ────────────────────────── */}
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-              <Text style={styles.backBtn}>← Back</Text>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Bills</Text>
           </View>
@@ -190,9 +191,12 @@ const BillListScreen: React.FC = () => {
             <TouchableOpacity style={styles.searchToggle} onPress={() => setSearchOpen(p => !p)}>
               <Text style={styles.searchToggleIcon}>🔍</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('BillForm')} activeOpacity={0.7}>
-              <Text style={[styles.backBtn, { marginBottom: 0 }]}>+ New</Text>
-            </TouchableOpacity>
+            <CustomButton
+              title="+ New"
+              onPress={() => navigation.navigate('BillForm')}
+              variant="primary"
+              size="sm"
+            />
           </View>
         </View>
       </View>
@@ -302,9 +306,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerLeft: { flex: 1 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },

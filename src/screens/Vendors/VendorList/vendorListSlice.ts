@@ -1,6 +1,9 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Vendor List Slice (createAppSlice pattern)
+// FinMatrix — Vendor List Slice (createAppSlice)
 // ═══════════════════════════════════════════════════════
+// Co-located with VendorListScreen.tsx
+// Flow: Screen → Slice → Network → Serializer (in fulfilled) → Screen
+// Mirrors `glSlice.ts`.
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
@@ -12,6 +15,7 @@ import {
   deleteVendorAPI,
   toggleVendorActiveAPI,
 } from '../../../network/vendorNetwork';
+import { vendorListSerializer, vendorSingleSerializer } from '../../../serializers/vendorSerializer';
 
 export type VendorStatusFilter = 'all' | 'active' | 'inactive';
 export type VendorSortField = 'name' | 'balance' | 'recent';
@@ -23,6 +27,12 @@ export interface VendorListSliceState {
   sortField: VendorSortField;
   isLoading: boolean;
   error: string;
+  page: number;
+  totalPages: number;
+  totalVendors: number;
+  activeCount: number;
+  inactiveCount: number;
+  totalBalance: number;
 }
 
 const initialState: VendorListSliceState = {
@@ -32,6 +42,12 @@ const initialState: VendorListSliceState = {
   sortField: 'name',
   isLoading: false,
   error: '',
+  page: 1,
+  totalPages: 1,
+  totalVendors: 0,
+  activeCount: 0,
+  inactiveCount: 0,
+  totalBalance: 0,
 };
 
 export const vendorListSlice = createAppSlice({
@@ -50,6 +66,13 @@ export const vendorListSlice = createAppSlice({
     setSortField: create.reducer((state, action: PayloadAction<VendorSortField>) => {
       state.sortField = action.payload;
     }),
+    /** Upsert a single vendor — used after create/edit/toggle without
+     *  refetching the whole list. */
+    upsertVendor: create.reducer((state, action: PayloadAction<Vendor>) => {
+      const idx = state.vendors.findIndex(v => v.id === action.payload.id);
+      if (idx === -1) state.vendors.push(action.payload);
+      else state.vendors[idx] = action.payload;
+    }),
     resetVendorList: create.reducer(state => {
       state.searchQuery = '';
       state.statusFilter = 'all';
@@ -60,11 +83,26 @@ export const vendorListSlice = createAppSlice({
 
     // ── Async thunks ────────────────────────────────
     fetchVendors: create.asyncThunk(
-      async () => getVendorsAPI(),
+      async (_arg, thunkAPI) => {
+        const root = thunkAPI.getState() as { vendorList: VendorListSliceState };
+        const { searchQuery, statusFilter, sortField } = root.vendorList;
+        return getVendorsAPI({
+          ...(searchQuery ? { search: searchQuery } : {}),
+          status: statusFilter,
+          sort: sortField,
+        });
+      },
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => {
-          state.vendors = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const data = vendorListSerializer(action.payload);
+          state.vendors = data.vendors;
+          state.page = data.page;
+          state.totalPages = data.totalPages;
+          state.totalVendors = data.totalVendors;
+          state.activeCount = data.activeCount;
+          state.inactiveCount = data.inactiveCount;
+          state.totalBalance = data.totalBalance;
           state.isLoading = false;
         },
         rejected: (state, action) => {
@@ -73,12 +111,14 @@ export const vendorListSlice = createAppSlice({
         },
       },
     ),
+
     createVendor: create.asyncThunk(
       async (data: Omit<Vendor, 'id' | 'balance' | 'createdAt' | 'updatedAt'>) =>
         createVendorAPI(data),
       {
-        fulfilled: (state, action) => {
-          state.vendors.push(action.payload);
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const v = vendorSingleSerializer(action.payload);
+          if (v) state.vendors.push(v);
         },
       },
     ),
@@ -86,9 +126,11 @@ export const vendorListSlice = createAppSlice({
       async ({ id, data }: { id: string; data: Partial<Vendor> }) =>
         updateVendorAPI(id, data),
       {
-        fulfilled: (state, action) => {
-          const idx = state.vendors.findIndex(v => v.id === action.payload.id);
-          if (idx !== -1) state.vendors[idx] = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const v = vendorSingleSerializer(action.payload);
+          if (!v) return;
+          const idx = state.vendors.findIndex(x => x.id === v.id);
+          if (idx !== -1) state.vendors[idx] = v;
         },
       },
     ),
@@ -106,9 +148,11 @@ export const vendorListSlice = createAppSlice({
     toggleVendorActive: create.asyncThunk(
       async (id: string) => toggleVendorActiveAPI(id),
       {
-        fulfilled: (state, action) => {
-          const idx = state.vendors.findIndex(v => v.id === action.payload.id);
-          if (idx !== -1) state.vendors[idx] = action.payload;
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const v = vendorSingleSerializer(action.payload);
+          if (!v) return;
+          const idx = state.vendors.findIndex(x => x.id === v.id);
+          if (idx !== -1) state.vendors[idx] = v;
         },
       },
     ),
@@ -121,6 +165,12 @@ export const vendorListSlice = createAppSlice({
     selectVendorSortField: state => state.sortField,
     selectVendorIsLoading: state => state.isLoading,
     selectVendorError: state => state.error,
+    selectVendorTotals: state => ({
+      totalVendors: state.totalVendors,
+      activeCount: state.activeCount,
+      inactiveCount: state.inactiveCount,
+      totalBalance: state.totalBalance,
+    }),
   },
 });
 
@@ -129,6 +179,7 @@ export const {
   setSearchQuery,
   setStatusFilter,
   setSortField,
+  upsertVendor,
   resetVendorList,
   fetchVendors,
   createVendor,
@@ -144,4 +195,5 @@ export const {
   selectVendorSortField,
   selectVendorIsLoading,
   selectVendorError,
+  selectVendorTotals,
 } = vendorListSlice.selectors;

@@ -32,10 +32,11 @@ import {
   selectBillPayments,
   selectBillDetailLoading,
   selectBillDetailError,
+  updateBillStatus,
 } from './billDetailSlice';
-import { fetchBills } from '../BillList/billListSlice';
-import { updateBillAPI } from '../../../network/billNetwork';
+import { fetchBills, upsertBill } from '../BillList/billListSlice';
 import { BILL_STATUS_COLORS, BILL_STATUS_LABELS } from '../../../models/billModel';
+import { billSingleSerializer } from '../../../serializers/billSerializer';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { BillStatus, BillPayment } from '../../../types';
@@ -83,7 +84,25 @@ const BillDetailScreen: React.FC = () => {
     [bill],
   );
 
-  // ── Void action ─────────────────────────────────
+  // ── Status transition helper ────────────────
+  const transitionStatus = useCallback(
+    async (status: BillStatus) => {
+      if (!bill) return false;
+      const result: any = await dispatch(updateBillStatus({ id: bill.id, status }));
+      if (result.error) {
+        Alert.alert('Error', `Failed to update bill status.`);
+        return false;
+      }
+      // Keep list slice in sync without refetching everything.
+      const updated = billSingleSerializer(result.payload);
+      if (updated) dispatch(upsertBill(updated));
+      else await dispatch(fetchBills());
+      return true;
+    },
+    [bill, dispatch],
+  );
+
+  // ── Void action ─────────────────────────
   const handleVoid = useCallback(async () => {
     if (!bill) return;
     Alert.alert(
@@ -95,32 +114,20 @@ const BillDetailScreen: React.FC = () => {
           text: 'Void',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await updateBillAPI(bill.id, { status: 'draft' as BillStatus });
-              await dispatch(fetchBillDetail(billId));
-              await dispatch(fetchBills());
-              Alert.alert('Voided', `${bill.billNumber} has been voided.`);
-            } catch {
-              Alert.alert('Error', 'Failed to void bill.');
-            }
+            const ok = await transitionStatus('draft' as BillStatus);
+            if (ok) Alert.alert('Voided', `${bill.billNumber} has been voided.`);
           },
         },
       ],
     );
-  }, [bill, billId, dispatch]);
+  }, [bill, transitionStatus]);
 
-  // ── Open action (mark as open) ──────────────────
+  // ── Open action (mark as open) ──────────────
   const handleOpen = useCallback(async () => {
     if (!bill) return;
-    try {
-      await updateBillAPI(bill.id, { status: 'open' as BillStatus });
-      await dispatch(fetchBillDetail(billId));
-      await dispatch(fetchBills());
-      Alert.alert('Opened', `${bill.billNumber} has been marked as Open.`);
-    } catch {
-      Alert.alert('Error', 'Failed to open bill.');
-    }
-  }, [bill, billId, dispatch]);
+    const ok = await transitionStatus('open' as BillStatus);
+    if (ok) Alert.alert('Opened', `${bill.billNumber} has been marked as Open.`);
+  }, [bill, transitionStatus]);
 
   // ── Loading / Error ─────────────────────────────
   if (isLoading && !bill) {
@@ -153,11 +160,13 @@ const BillDetailScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>{bill.billNumber}</Text>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle} numberOfLines={1}>{bill.billNumber}</Text>
+          </View>
           <View style={[styles.badge, { backgroundColor: statusCol + '18' }]}>
             <Text style={[styles.badgeText, { color: statusCol }]}>
               {BILL_STATUS_LABELS[bill.status]}
@@ -294,25 +303,25 @@ const BillDetailScreen: React.FC = () => {
         <View style={{ height: spacing.xl * 3 }} />
       </ScrollView>
 
-      {/* ── Action Bar ────────────────────────────── */}
+      {/* ── Action Bar (matches Estimates/SO) ────────── */}
       <View style={styles.actionBar}>
         {bill.status === 'draft' && (
           <>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={styles.actionSecondary}>
               <CustomButton
                 title="Edit"
                 onPress={() => navigation.navigate('BillForm', { billId: bill.id })}
                 variant="secondary"
-                size="lg"
+                size="sm"
                 fullWidth
               />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={styles.actionPrimary}>
               <CustomButton
-                title="Open"
+                title="Mark Open"
                 onPress={handleOpen}
                 variant="primary"
-                size="lg"
+                size="sm"
                 fullWidth
               />
             </View>
@@ -321,9 +330,27 @@ const BillDetailScreen: React.FC = () => {
 
         {(bill.status === 'open' || bill.status === 'overdue' || bill.status === 'partially_paid') && (
           <>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={styles.actionSecondary}>
               <CustomButton
-                title="Pay"
+                title="Edit"
+                onPress={() => navigation.navigate('BillForm', { billId: bill.id })}
+                variant="secondary"
+                size="sm"
+                fullWidth
+              />
+            </View>
+            <View style={styles.actionSecondary}>
+              <CustomButton
+                title="Void"
+                onPress={handleVoid}
+                variant="secondary"
+                size="sm"
+                fullWidth
+              />
+            </View>
+            <View style={styles.actionPrimary}>
+              <CustomButton
+                title="Pay Bill"
                 onPress={() =>
                   navigation.navigate('PayBills', {
                     vendorId: bill.vendorId,
@@ -331,25 +358,7 @@ const BillDetailScreen: React.FC = () => {
                   })
                 }
                 variant="primary"
-                size="lg"
-                fullWidth
-              />
-            </View>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <CustomButton
-                title="Edit"
-                onPress={() => navigation.navigate('BillForm', { billId: bill.id })}
-                variant="secondary"
-                size="lg"
-                fullWidth
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton
-                title="Void"
-                onPress={handleVoid}
-                variant="secondary"
-                size="lg"
+                size="sm"
                 fullWidth
               />
             </View>
@@ -357,12 +366,12 @@ const BillDetailScreen: React.FC = () => {
         )}
 
         {bill.status === 'paid' && (
-          <View style={{ flex: 1 }}>
+          <View style={styles.actionPrimary}>
             <CustomButton
               title="View Payments"
               onPress={() => {}}
-              variant="secondary"
-              size="lg"
+              variant="primary"
+              size="sm"
               fullWidth
             />
           </View>
@@ -411,9 +420,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: spacing.sm },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
   badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
 
@@ -529,13 +540,17 @@ const styles = StyleSheet.create({
 
   actionBar: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm - 2,
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    ...shadows.card,
+    gap: spacing.xs,
+    ...shadows.small,
   },
+  actionPrimary: { flex: 1.4 },
+  actionSecondary: { flex: 1 },
 });
 
 export default BillDetailScreen;

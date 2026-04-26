@@ -9,6 +9,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Bill, PaymentMethod } from '../../../types';
 import { getBillsAPI } from '../../../network/billNetwork';
+import { billListSerializer } from '../../../serializers/billSerializer';
 
 export interface OutstandingBillRow {
   billId: string;
@@ -167,10 +168,11 @@ export const payBillsSlice = createAppSlice({
       {
         pending: state => { state.isLoadingBills = true; },
         fulfilled: (state, action) => {
-          state.allBills = action.payload;
+          const { bills } = billListSerializer(action.payload);
+          state.allBills = bills;
           state.isLoadingBills = false;
           if (state.vendorId) {
-            state.outstandingRows = buildRows(action.payload, state.vendorId);
+            state.outstandingRows = buildRows(bills, state.vendorId);
           }
         },
         rejected: state => { state.isLoadingBills = false; },

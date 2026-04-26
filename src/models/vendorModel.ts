@@ -1,8 +1,59 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Vendor Model & Validation
 // ═══════════════════════════════════════════════════════
+// Mirrors `glModel.ts`:
+//   • API entity types describing the raw backend shape
+//   • Pagination envelope
+//   • Query params for the list endpoint
+// Plus the existing form-validation helpers used by the form screen.
 
-import type { PaymentTerms } from '../types';
+import type { PaymentTerms, Vendor } from '../types';
+
+// ─── Raw API entity (backend shape) ──────────────────
+// 1-to-1 with the `Vendor` UI type today; defined separately so
+// future backend-only fields (e.g. version stamps) can be added
+// without leaking into the UI layer.
+export interface VendorApiEntity {
+  id: string;
+  companyId: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  taxId: string;
+  contactPerson: string;
+  notes: string;
+  balance: number;
+  paymentTerms: string;
+  defaultExpenseAccountId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Pagination envelope ─────────────────────────────
+export interface VendorApiPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+// ─── Query params for list endpoint ──────────────────
+export interface VendorQueryParams {
+  search?: string;
+  status?: 'all' | 'active' | 'inactive';
+  sort?: 'name' | 'balance' | 'recent';
+  page?: number;
+  limit?: number;
+}
+
+// ─── Re-export the canonical UI type for convenience ─
+export type { Vendor };
 
 export interface ValidationErrors {
   [key: string]: string;

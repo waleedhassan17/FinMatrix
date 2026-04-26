@@ -1,11 +1,19 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Bill Form Slice (createAppSlice pattern)
-// Manages form state, line items, and auto-calculations.
+// FinMatrix — Bill Form Slice (createAppSlice)
 // ═══════════════════════════════════════════════════════
+// Owns form state, line items, auto-totals, AND the save
+// thunk that posts via the network + serializer pipeline.
+// Mirrors GL/Vendor/Credit-Memo slice architecture.
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { BillStatus } from '../../../types';
+import type { Bill, BillStatus } from '../../../types';
+import {
+  createBillAPI,
+  updateBillAPI,
+  getBillByIdAPI,
+} from '../../../network/billNetwork';
+import { billSingleSerializer } from '../../../serializers/billSerializer';
 
 // ── Line item (form representation — string values for inputs) ──
 export interface BillFormLine {
@@ -31,6 +39,9 @@ export interface BillFormSliceState {
   total: number;
   errors: Record<string, string>;
   isSaving: boolean;
+  saveError: string;
+  isEditMode: boolean;
+  editId: string;
 }
 
 let nextLineId = 1;
@@ -57,6 +68,9 @@ const initialState: BillFormSliceState = {
   total: 0,
   errors: {},
   isSaving: false,
+  saveError: '',
+  isEditMode: false,
+  editId: '',
 };
 
 function recalc(state: BillFormSliceState) {
@@ -72,6 +86,36 @@ function recalc(state: BillFormSliceState) {
   state.taxAmount = Math.round(tax * 100) / 100;
   state.total = Math.round((sub + tax) * 100) / 100;
 }
+
+// Save payload builder — Activity step "Save — JE: DR Expense, CR AP".
+const buildSavePayload = (
+  state: BillFormSliceState,
+  saveStatus: BillStatus,
+): Omit<Bill, 'id' | 'createdAt' | 'updatedAt'> => ({
+  companyId: 'comp_001',
+  billNumber: state.billNumber.trim(),
+  vendorId: state.vendorId,
+  vendorName: state.vendorName,
+  issueDate: new Date(state.issueDate).toISOString(),
+  dueDate: new Date(state.dueDate).toISOString(),
+  status: saveStatus,
+  lines: state.lines.map(l => ({
+    id: l.id,
+    accountId: l.accountId,
+    accountName: l.accountName,
+    description: l.description,
+    quantity: 1,
+    unitPrice: parseFloat(l.amount) || 0,
+    taxRate: parseFloat(l.taxRate) || 0,
+    amount: parseFloat(l.amount) || 0,
+  })),
+  subtotal: state.subtotal,
+  taxAmount: state.taxAmount,
+  total: state.total,
+  amountPaid: 0,
+  notes: state.notes,
+  createdBy: 'admin_001',
+});
 
 export const billFormSlice = createAppSlice({
   name: 'billForm',
@@ -143,6 +187,7 @@ export const billFormSlice = createAppSlice({
         status: BillStatus;
         notes: string;
         lines: BillFormLine[];
+        editId?: string;
       }>) => {
         const d = action.payload;
         state.billNumber = d.billNumber;
@@ -155,6 +200,10 @@ export const billFormSlice = createAppSlice({
         state.lines = d.lines;
         state.errors = {};
         state.isSaving = false;
+        if (d.editId) {
+          state.isEditMode = true;
+          state.editId = d.editId;
+        }
         recalc(state);
       },
     ),
@@ -162,6 +211,65 @@ export const billFormSlice = createAppSlice({
     resetBillForm: create.reducer(state => {
       Object.assign(state, { ...initialState, lines: [freshLine()] });
     }),
+
+    // ── Async thunks ────────────────────────────────
+
+    /** Activity step: "Save — JE: DR Expense, CR AP" */
+    saveBill: create.asyncThunk(
+      async (saveStatus: BillStatus, thunkAPI) => {
+        const root = thunkAPI.getState() as { billForm: BillFormSliceState };
+        const f = root.billForm;
+        const payload = buildSavePayload(f, saveStatus);
+        const envelope = f.isEditMode && f.editId
+          ? await updateBillAPI(f.editId, payload)
+          : await createBillAPI(payload);
+        return billSingleSerializer(envelope);
+      },
+      {
+        pending: state => { state.isSaving = true; state.saveError = ''; },
+        fulfilled: (state, action: PayloadAction<Bill | null>) => {
+          state.isSaving = false;
+          if (action.payload) {
+            state.editId = action.payload.id;
+            state.isEditMode = true;
+          }
+        },
+        rejected: (state, action) => {
+          state.isSaving = false;
+          state.saveError = action.error?.message ?? 'Failed to save bill';
+        },
+      },
+    ),
+
+    /** Loads an existing bill into the form for editing. */
+    fetchBillForEdit: create.asyncThunk(
+      async (id: string) => getBillByIdAPI(id),
+      {
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const b = billSingleSerializer(action.payload);
+          if (!b) return;
+          state.isEditMode = true;
+          state.editId = b.id;
+          state.billNumber = b.billNumber;
+          state.vendorId = b.vendorId;
+          state.vendorName = b.vendorName;
+          state.issueDate = b.issueDate.slice(0, 10);
+          state.dueDate = b.dueDate.slice(0, 10);
+          state.status = b.status;
+          state.notes = b.notes;
+          state.lines = b.lines.map(l => ({
+            id: l.id,
+            accountId: l.accountId,
+            accountName: l.accountName,
+            description: l.description,
+            amount: String(l.amount),
+            taxRate: String(l.taxRate),
+          }));
+          state.errors = {};
+          recalc(state);
+        },
+      },
+    ),
   }),
 
   selectors: {
@@ -169,6 +277,7 @@ export const billFormSlice = createAppSlice({
     selectBillFormLines: state => state.lines,
     selectBillFormErrors: state => state.errors,
     selectBillFormIsSaving: state => state.isSaving,
+    selectBillFormIsEditMode: state => state.isEditMode,
   },
 });
 
@@ -184,6 +293,8 @@ export const {
   calculateBillTotals,
   loadBillForEdit,
   resetBillForm,
+  saveBill,
+  fetchBillForEdit,
 } = billFormSlice.actions;
 
 export const {
@@ -191,4 +302,5 @@ export const {
   selectBillFormLines,
   selectBillFormErrors,
   selectBillFormIsSaving,
+  selectBillFormIsEditMode,
 } = billFormSlice.selectors;

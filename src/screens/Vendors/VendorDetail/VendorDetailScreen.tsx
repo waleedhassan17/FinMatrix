@@ -19,17 +19,22 @@ import type { RouteProp } from '@react-navigation/native';
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { selectVendors, toggleVendorActive } from '../VendorList/vendorListSlice';
+import { selectVendors, upsertVendor } from '../VendorList/vendorListSlice';
 import { selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
 import {
+  selectVendorDetail,
   selectVendorDetailTab,
+  selectVendorDetailStatus,
   setActiveTab,
   resetVendorDetail,
+  fetchVendorDetail,
+  toggleActiveOnDetail,
   type VendorDetailTab,
 } from './vendorDetailSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { PAYMENT_TERMS_LABELS } from '../../../models/vendorModel';
+import { vendorSingleSerializer } from '../../../serializers/vendorSerializer';
 import type { PaymentTerms, Vendor } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
@@ -95,8 +100,12 @@ const VendorDetailScreen: React.FC = () => {
   const vendors = useAppSelector(selectVendors);
   const accounts = useAppSelector(selectAccounts);
   const activeTab = useAppSelector(selectVendorDetailTab);
+  const detailVendor = useAppSelector(selectVendorDetail);
+  const detailStatus = useAppSelector(selectVendorDetailStatus);
 
-  const vendor = vendors.find(v => v.id === route.params.vendorId);
+  // Prefer the detail-slice copy (always API-fresh) and fall back
+  // to the list copy if the detail fetch is still in flight.
+  const vendor = detailVendor ?? vendors.find(v => v.id === route.params.vendorId);
 
   const expenseAccountName = useMemo(() => {
     if (!vendor?.defaultExpenseAccountId) return '';
@@ -105,16 +114,23 @@ const VendorDetailScreen: React.FC = () => {
   }, [vendor, accounts]);
 
   React.useEffect(() => {
+    dispatch(fetchVendorDetail(route.params.vendorId));
     return () => { dispatch(resetVendorDetail()); };
-  }, [dispatch]);
+  }, [dispatch, route.params.vendorId]);
 
   if (!vendor) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.center}>
-          <Text style={styles.emptyIcon}>🏪</Text>
-          <Text style={styles.emptyText}>Vendor not found</Text>
-          <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="primary" size="md" />
+          {detailStatus === 'loading' ? (
+            <Text style={styles.emptyText}>Loading vendor…</Text>
+          ) : (
+            <>
+              <Text style={styles.emptyIcon}>🏪</Text>
+              <Text style={styles.emptyText}>Vendor not found</Text>
+              <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="primary" size="md" />
+            </>
+          )}
         </View>
       </SafeAreaView>
     );
@@ -131,7 +147,12 @@ const VendorDetailScreen: React.FC = () => {
     Alert.alert('Send Statement', `Account statement for ${vendor.name} sent successfully (simulated).`);
   };
   const handleToggleActive = async () => {
-    await dispatch(toggleVendorActive(vendor.id));
+    const result: any = await dispatch(toggleActiveOnDetail(vendor.id));
+    if (!result.error && result.payload) {
+      // Keep the list slice in sync so the badge updates everywhere.
+      const updated = vendorSingleSerializer(result.payload);
+      if (updated) dispatch(upsertVendor(updated));
+    }
   };
 
   return (
@@ -139,8 +160,8 @@ const VendorDetailScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Text style={styles.backBtn}>← Back</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <Text style={styles.backIcon}>‹</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>{vendor.name}</Text>
         </View>
@@ -338,9 +359,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerLeft: { flex: 1, marginRight: spacing.sm },
-  backBtn: { ...THEME.typography.labelLg, color: colors.secondary, marginBottom: spacing.xs },
-  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
+  headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', marginRight: spacing.sm },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary, flex: 1 },
   scrollContent: { paddingBottom: spacing.xl },
 
   // ── Top Card ───────────────────────────────────

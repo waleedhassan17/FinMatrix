@@ -123,7 +123,10 @@ const VendorListScreen: React.FC = () => {
   // ── Render card ─────────────────────────────────
   const renderCard = ({ item: vendor }: { item: Vendor }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={[
+        styles.card,
+        { borderLeftColor: vendor.isActive ? colors.success : colors.textLight, borderLeftWidth: 4 },
+      ]}
       activeOpacity={0.7}
       onPress={() => navigation.navigate('VendorDetail', { vendorId: vendor.id })}
     >
@@ -177,8 +180,8 @@ const VendorListScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Text style={styles.backBtn}>← Back</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <Text style={styles.backIcon}>‹</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Vendors</Text>
         </View>
@@ -320,9 +323,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerLeft: { flex: 1 },
+  headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  backBtn: { ...THEME.typography.labelLg, color: colors.secondary, marginBottom: spacing.xs },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
@@ -398,7 +402,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
-    ...shadows.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.small,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
   cardName: { ...THEME.typography.h4, fontWeight: '700', color: colors.textPrimary },

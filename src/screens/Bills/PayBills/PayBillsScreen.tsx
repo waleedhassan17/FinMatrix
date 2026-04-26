@@ -247,10 +247,10 @@ const PayBillsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pay Bills</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>Pay Bills</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -432,15 +432,16 @@ const PayBillsScreen: React.FC = () => {
             />
           </View>
 
-          {/* ── Save Button ──────────────────────── */}
+          {/* ── Actions (matches Estimates/SO) ────────── */}
           <View style={styles.btnRow}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
               <CustomButton
                 title="Cancel"
                 onPress={() => navigation.goBack()}
                 variant="secondary"
-                size="lg"
+                size="sm"
                 fullWidth
+                disabled={form.isSaving}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -448,9 +449,10 @@ const PayBillsScreen: React.FC = () => {
                 title="Record Payment"
                 onPress={handleSave}
                 variant="primary"
-                size="lg"
+                size="sm"
                 fullWidth
                 isLoading={form.isSaving}
+                disabled={form.isSaving}
               />
             </View>
           </View>
@@ -483,6 +485,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
@@ -490,8 +494,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 14, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
 
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
 
@@ -585,7 +590,7 @@ const styles = StyleSheet.create({
   btnRow: {
     flexDirection: 'row',
     marginTop: spacing.lg,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
 });
 
