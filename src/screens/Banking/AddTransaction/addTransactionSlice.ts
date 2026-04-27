@@ -7,6 +7,7 @@ import {
   createBankTransactionAPI,
   type CreateBankTransactionPayload,
 } from '../../../network/bankingNetwork';
+import { bankTransactionSingleSerializer } from '../../../serializers/bankingSerializer';
 
 export interface AddTransactionState {
   isSaving: boolean;
@@ -28,7 +29,10 @@ export const addTransactionSlice = createAppSlice({
     }),
 
     createBankTransaction: create.asyncThunk(
-      async (payload: CreateBankTransactionPayload) => createBankTransactionAPI(payload),
+      async (payload: CreateBankTransactionPayload) => {
+        const envelope = await createBankTransactionAPI(payload);
+        return bankTransactionSingleSerializer(envelope);
+      },
       {
         pending: state => {
           state.isSaving = true;

@@ -7,6 +7,7 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { TaxRate, TaxType, BankAccount } from '../../../types';
 import { getTaxRatesAPI, createTaxPaymentAPI } from '../../../network/taxNetwork';
 import { getBankAccountsAPI } from '../../../network/bankingNetwork';
+import { bankAccountListSerializer } from '../../../serializers/bankingSerializer';
 
 export interface TaxPaymentForm {
   taxRateId: string;
@@ -66,11 +67,11 @@ export const taxPaymentSlice = createAppSlice({
 
     loadTaxPaymentDeps: create.asyncThunk(
       async () => {
-        const [rates, accounts] = await Promise.all([
+        const [rates, accountsEnvelope] = await Promise.all([
           getTaxRatesAPI(),
           getBankAccountsAPI(),
         ]);
-        return { rates, accounts };
+        return { rates, accounts: bankAccountListSerializer(accountsEnvelope) };
       },
       {
         pending: state => { state.isLoading = true; state.error = ''; },

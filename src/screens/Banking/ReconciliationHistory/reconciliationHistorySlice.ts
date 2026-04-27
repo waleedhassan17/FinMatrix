@@ -6,6 +6,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { BankReconciliation } from '../../../types';
 import { getReconciliationHistoryAPI } from '../../../network/bankingNetwork';
+import { bankReconciliationListSerializer } from '../../../serializers/bankingSerializer';
 
 export interface ReconciliationHistoryState {
   history: BankReconciliation[];
@@ -30,7 +31,10 @@ export const reconciliationHistorySlice = createAppSlice({
     }),
 
     fetchReconciliationHistory: create.asyncThunk(
-      async (accountId?: string) => getReconciliationHistoryAPI(accountId),
+      async (accountId?: string) => {
+        const envelope = await getReconciliationHistoryAPI(accountId);
+        return bankReconciliationListSerializer(envelope);
+      },
       {
         pending: state => {
           state.isLoading = true;

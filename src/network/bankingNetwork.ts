@@ -7,36 +7,27 @@ import { bankAccounts as seedBankAccounts } from '../dummy-data/bankAccounts';
 import { bankTransactions as seedBankTransactions } from '../dummy-data/bankTransactions';
 import { bankReconciliations as seedBankReconciliations } from '../dummy-data/bankReconciliations';
 import { journalEntriesData } from '../dummy-data/journalEntries';
-import type { BankAccount, BankReconciliation, BankTransaction, BankTransactionType, JournalEntry } from '../types';
+import type { BankAccount, BankReconciliation, BankTransaction, JournalEntry } from '../types';
+import type {
+  ApiEnvelope,
+  BankAccountListResponse,
+  BankAccountSingleResponse,
+  BankReconciliationListResponse,
+  BankReconciliationSingleResponse,
+  BankTransactionListResponse,
+  BankTransactionSingleResponse,
+  CreateBankReconciliationPayload,
+  CreateBankTransactionPayload,
+  TransferFundsPayload,
+  TransferFundsResponse,
+} from '../models/bankingModel';
 
-export interface CreateBankTransactionPayload {
-  bankAccountId: string;
-  date: string;
-  payee: string;
-  description: string;
-  type: BankTransactionType;
-  amount: number;
-  memo?: string;
-  reference?: string;
-  isReconciled?: boolean;
-}
-
-export interface TransferFundsPayload {
-  fromAccountId: string;
-  toAccountId: string;
-  amount: number;
-  date: string;
-  memo?: string;
-}
-
-export interface CreateBankReconciliationPayload {
-  bankAccountId: string;
-  statementDate: string;
-  beginningBalance: number;
-  endingBalance: number;
-  clearedTransactionIds: string[];
-  adjustmentTransactionId?: string | null;
-}
+// Re-export payload types for backward compatibility with existing imports.
+export type {
+  CreateBankTransactionPayload,
+  TransferFundsPayload,
+  CreateBankReconciliationPayload,
+} from '../models/bankingModel';
 
 let accountsStore: BankAccount[] = seedBankAccounts.map(a => ({ ...a }));
 let transactionsStore: BankTransaction[] = seedBankTransactions.map(t => {
@@ -171,20 +162,30 @@ function appendTransferJournalEntry(
   return entry;
 }
 
-export const getBankAccountsAPI = async (): Promise<BankAccount[]> =>
-  simulateApiCall(accountsStore.map(cloneAccount), 500);
+export const getBankAccountsAPI = async (): Promise<
+  ApiEnvelope<BankAccountListResponse>
+> =>
+  simulateApiCall(
+    { success: true, data: { accounts: accountsStore.map(cloneAccount) } },
+    500,
+  );
 
-export const getBankTransactionsAPI = async (bankAccountId?: string): Promise<BankTransaction[]> => {
+export const getBankTransactionsAPI = async (
+  bankAccountId?: string,
+): Promise<ApiEnvelope<BankTransactionListResponse>> => {
   const rows = bankAccountId
     ? transactionsStore.filter(t => t.bankAccountId === bankAccountId)
     : transactionsStore;
   const sorted = sortByDateThenId(rows).reverse();
-  return simulateApiCall(sorted.map(cloneTx), 650);
+  return simulateApiCall(
+    { success: true, data: { transactions: sorted.map(cloneTx) } },
+    650,
+  );
 };
 
 export const createBankTransactionAPI = async (
   payload: CreateBankTransactionPayload,
-): Promise<BankTransaction> => {
+): Promise<ApiEnvelope<BankTransactionSingleResponse>> => {
   const isoDate = new Date(payload.date).toISOString();
   const tx: BankTransaction = {
     id: `bt_${Date.now()}`,
@@ -210,12 +211,15 @@ export const createBankTransactionAPI = async (
   const created = transactionsStore.find(t => t.id === tx.id);
   if (!created) throw new Error('Unable to create transaction');
 
-  return simulateApiCall(cloneTx(created), 500);
+  return simulateApiCall(
+    { success: true, data: { transaction: cloneTx(created) } },
+    500,
+  );
 };
 
 export const transferFundsAPI = async (
   payload: TransferFundsPayload,
-): Promise<{ fromTransaction: BankTransaction; toTransaction: BankTransaction; journalEntry: JournalEntry }> => {
+): Promise<ApiEnvelope<TransferFundsResponse>> => {
   if (payload.fromAccountId === payload.toAccountId) {
     throw new Error('From and To accounts must be different.');
   }
@@ -284,9 +288,12 @@ export const transferFundsAPI = async (
 
   return simulateApiCall(
     {
-      fromTransaction: cloneTx(refreshedFrom),
-      toTransaction: cloneTx(refreshedTo),
-      journalEntry,
+      success: true,
+      data: {
+        fromTransaction: cloneTx(refreshedFrom),
+        toTransaction: cloneTx(refreshedTo),
+        journalEntry,
+      },
     },
     650,
   );
@@ -295,7 +302,7 @@ export const transferFundsAPI = async (
 export const getUnreconciledTransactionsAPI = async (
   bankAccountId: string,
   statementDate: string,
-): Promise<BankTransaction[]> => {
+): Promise<ApiEnvelope<BankTransactionListResponse>> => {
   const cutoff = new Date(statementDate);
   const rows = sortByDateThenId(
     transactionsStore.filter(
@@ -305,22 +312,28 @@ export const getUnreconciledTransactionsAPI = async (
         new Date(t.date) <= cutoff,
     ),
   );
-  return simulateApiCall(rows.map(cloneTx), 500);
+  return simulateApiCall(
+    { success: true, data: { transactions: rows.map(cloneTx) } },
+    500,
+  );
 };
 
 export const getReconciliationHistoryAPI = async (
   bankAccountId?: string,
-): Promise<BankReconciliation[]> => {
+): Promise<ApiEnvelope<BankReconciliationListResponse>> => {
   const rows = bankAccountId
     ? reconciliationsStore.filter(r => r.bankAccountId === bankAccountId)
     : reconciliationsStore;
   const sorted = [...rows].sort((a, b) => b.statementDate.localeCompare(a.statementDate));
-  return simulateApiCall(sorted.map(cloneReconciliation), 500);
+  return simulateApiCall(
+    { success: true, data: { reconciliations: sorted.map(cloneReconciliation) } },
+    500,
+  );
 };
 
 export const createBankReconciliationAPI = async (
   payload: CreateBankReconciliationPayload,
-): Promise<BankReconciliation> => {
+): Promise<ApiEnvelope<BankReconciliationSingleResponse>> => {
   const selected = transactionsStore.filter(
     tx => tx.bankAccountId === payload.bankAccountId && payload.clearedTransactionIds.includes(tx.id),
   );
@@ -357,5 +370,20 @@ export const createBankReconciliationAPI = async (
   };
 
   reconciliationsStore.push(rec);
-  return simulateApiCall(cloneReconciliation(rec), 600);
+  return simulateApiCall(
+    { success: true, data: { reconciliation: cloneReconciliation(rec) } },
+    600,
+  );
+};
+
+// Single-account fetcher (used after mutations to refresh a single account).
+export const getBankAccountByIdAPI = async (
+  id: string,
+): Promise<ApiEnvelope<BankAccountSingleResponse>> => {
+  const account = accountsStore.find(a => a.id === id);
+  if (!account) throw new Error('Bank account not found');
+  return simulateApiCall(
+    { success: true, data: { account: cloneAccount(account) } },
+    300,
+  );
 };

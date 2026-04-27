@@ -6,6 +6,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { BankAccount } from '../../../types';
 import { getBankAccountsAPI } from '../../../network/bankingNetwork';
+import { bankAccountListSerializer } from '../../../serializers/bankingSerializer';
 
 export interface BankAccountsState {
   accounts: BankAccount[];
@@ -30,7 +31,10 @@ export const bankAccountsSlice = createAppSlice({
     }),
 
     fetchBankAccounts: create.asyncThunk(
-      async () => getBankAccountsAPI(),
+      async () => {
+        const envelope = await getBankAccountsAPI();
+        return bankAccountListSerializer(envelope);
+      },
       {
         pending: state => {
           state.isLoading = true;

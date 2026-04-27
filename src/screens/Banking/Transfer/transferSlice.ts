@@ -7,6 +7,7 @@ import {
   transferFundsAPI,
   type TransferFundsPayload,
 } from '../../../network/bankingNetwork';
+import { transferFundsSerializer } from '../../../serializers/bankingSerializer';
 
 export interface TransferState {
   isSaving: boolean;
@@ -28,7 +29,10 @@ export const transferSlice = createAppSlice({
     }),
 
     createTransfer: create.asyncThunk(
-      async (payload: TransferFundsPayload) => transferFundsAPI(payload),
+      async (payload: TransferFundsPayload) => {
+        const envelope = await transferFundsAPI(payload);
+        return transferFundsSerializer(envelope);
+      },
       {
         pending: state => {
           state.isSaving = true;

@@ -2,10 +2,11 @@
 // FinMatrix — Bank Register Slice (createAppSlice pattern)
 // ═══════════════════════════════════════════════════════
 
-import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { BankTransaction } from '../../../types';
 import { getBankTransactionsAPI } from '../../../network/bankingNetwork';
+import { bankTransactionListSerializer } from '../../../serializers/bankingSerializer';
 
 export interface BankRegisterDateRange {
   fromDate: string;
@@ -61,7 +62,10 @@ export const bankRegisterSlice = createAppSlice({
     }),
 
     fetchBankRegisterTransactions: create.asyncThunk(
-      async (accountId: string) => getBankTransactionsAPI(accountId),
+      async (accountId: string) => {
+        const envelope = await getBankTransactionsAPI(accountId);
+        return bankTransactionListSerializer(envelope);
+      },
       {
         pending: state => {
           state.isLoading = true;
@@ -84,54 +88,65 @@ export const bankRegisterSlice = createAppSlice({
     selectBankRegisterDateRange: state => state.dateRange,
     selectBankRegisterIsLoading: state => state.isLoading,
     selectBankRegisterError: state => state.error,
-    selectFilteredBankRegisterTransactions: state => {
-      const from = state.dateRange.fromDate.slice(0, 10);
-      const to = state.dateRange.toDate.slice(0, 10);
-      const q = state.searchQuery.trim().toLowerCase();
+    selectFilteredBankRegisterTransactions: createSelector(
+      [
+        (state: BankRegisterState) => state.transactions,
+        (state: BankRegisterState) => state.dateRange,
+        (state: BankRegisterState) => state.searchQuery,
+      ],
+      (transactions, dateRange, searchQuery) => {
+        const from = dateRange.fromDate.slice(0, 10);
+        const to = dateRange.toDate.slice(0, 10);
+        const q = searchQuery.trim().toLowerCase();
+        return transactions.filter(tx => {
+          const day = tx.date.slice(0, 10);
+          if (day < from || day > to) return false;
+          if (!q) return true;
+          return (
+            tx.payee.toLowerCase().includes(q) ||
+            tx.description.toLowerCase().includes(q) ||
+            tx.reference.toLowerCase().includes(q)
+          );
+        });
+      },
+    ),
+    selectBankRegisterTotals: createSelector(
+      [
+        (state: BankRegisterState) => state.transactions,
+        (state: BankRegisterState) => state.dateRange,
+        (state: BankRegisterState) => state.searchQuery,
+      ],
+      (transactions, dateRange, searchQuery) => {
+        const from = dateRange.fromDate.slice(0, 10);
+        const to = dateRange.toDate.slice(0, 10);
+        const q = searchQuery.trim().toLowerCase();
+        const filtered = transactions.filter(tx => {
+          const day = tx.date.slice(0, 10);
+          if (day < from || day > to) return false;
+          if (!q) return true;
+          return (
+            tx.payee.toLowerCase().includes(q) ||
+            tx.description.toLowerCase().includes(q) ||
+            tx.reference.toLowerCase().includes(q)
+          );
+        });
 
-      return state.transactions.filter(tx => {
-        const inRange = tx.date.slice(0, 10) >= from && tx.date.slice(0, 10) <= to;
-        if (!inRange) return false;
-
-        if (!q) return true;
-        return (
-          tx.payee.toLowerCase().includes(q) ||
-          tx.description.toLowerCase().includes(q) ||
-          tx.reference.toLowerCase().includes(q)
+        const totals = filtered.reduce(
+          (acc, tx) => {
+            const signed = getSignedTransactionAmount(tx);
+            if (signed >= 0) acc.deposits += signed;
+            if (signed < 0) acc.payments += Math.abs(signed);
+            return acc;
+          },
+          { deposits: 0, payments: 0 },
         );
-      });
-    },
-    selectBankRegisterTotals: state => {
-      const from = state.dateRange.fromDate.slice(0, 10);
-      const to = state.dateRange.toDate.slice(0, 10);
-      const q = state.searchQuery.trim().toLowerCase();
 
-      const filtered = state.transactions.filter(tx => {
-        const inRange = tx.date.slice(0, 10) >= from && tx.date.slice(0, 10) <= to;
-        if (!inRange) return false;
-        if (!q) return true;
-        return (
-          tx.payee.toLowerCase().includes(q) ||
-          tx.description.toLowerCase().includes(q) ||
-          tx.reference.toLowerCase().includes(q)
-        );
-      });
-
-      const totals = filtered.reduce(
-        (acc, tx) => {
-          const signed = getSignedTransactionAmount(tx);
-          if (signed >= 0) acc.deposits += signed;
-          if (signed < 0) acc.payments += Math.abs(signed);
-          return acc;
-        },
-        { deposits: 0, payments: 0 },
-      );
-
-      return {
-        ...totals,
-        net: totals.deposits - totals.payments,
-      };
-    },
+        return {
+          ...totals,
+          net: totals.deposits - totals.payments,
+        };
+      },
+    ),
   },
 });
 
