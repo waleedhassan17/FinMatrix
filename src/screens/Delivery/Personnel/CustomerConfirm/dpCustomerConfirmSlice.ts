@@ -1,3 +1,12 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — DP Customer Confirm Slice (Delivery Execution flow)
+// ═══════════════════════════════════════════════════════
+// Co-located with CustomerConfirmScreen.tsx
+// Owns ONLY UI state (issue modal visibility, issue text).
+// Confirmation/issue persistence flows through the canonical delivery slice's
+// `confirmCustomerReceipt` / `reportDeliveryIssue` reducers; for full GL
+// pipeline use `updateDeliveryStatusAPI` from network/deliveryNetwork.ts.
+
 import { createAppSlice } from '@store/createAppSlice';
 
 export interface DPCustomerConfirmSliceState {

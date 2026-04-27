@@ -1,3 +1,17 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — DP Shadow Inventory Slice (Shadow Inventory & Approvals flow)
+// ═══════════════════════════════════════════════════════
+// Co-located with DPShadowInventoryScreen.tsx
+// Owns ONLY UI state (search, sort, change-log modal).
+//
+// Architecture (mirrors GL):
+//   • models/deliveryModel.ts        — ShadowInventoryRecord type
+//   • network/deliveryNetwork.ts     — getShadowInventoryAPI(personnelId)
+//   • serializers/deliverySerializer.ts — shadowInventoryListSerializer
+//   • Approval requests are owned by `inventoryApprovalSlice.ts` which
+//     exposes `fetchApprovalRequests` / `approveRequestAsync` /
+//     `rejectRequestAsync` (full GL pipeline).
+
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 

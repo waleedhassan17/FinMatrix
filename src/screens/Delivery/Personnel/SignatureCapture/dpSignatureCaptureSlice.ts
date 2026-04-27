@@ -1,3 +1,12 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — DP Signature Capture Slice (Delivery Execution flow)
+// ═══════════════════════════════════════════════════════
+// Co-located with SignatureCaptureScreen.tsx
+// Owns ONLY UI state (hasDrawn flag).
+// Signature persistence flows through the canonical delivery slice's
+// `saveDeliverySignature` reducer; for full GL pipeline use
+// `updateDeliveryAPI` from network/deliveryNetwork.ts.
+
 import { createAppSlice } from '@store/createAppSlice';
 
 export interface DPSignatureCaptureSliceState {

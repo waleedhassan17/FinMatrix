@@ -1,8 +1,33 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Delivery Slice (canonical data owner)
+// ═══════════════════════════════════════════════════════
+// Co-located with AssignDeliveriesScreen.tsx but read by 18+ Delivery
+// screens (Admin + Personnel sub-modules).
+//
+// Architecture (mirrors GL):
+//   Screen → Slice → Network → Serializer (in fulfilled) → Screen
+//   • models/deliveryModel.ts        — entity types, validation
+//   • network/deliveryNetwork.ts     — envelope-wrapped CRUD APIs
+//   • serializers/deliverySerializer.ts — raw envelope → UI types
+//
+// Existing synchronous reducers (createDelivery, assignSelectedDeliveries,
+// updateDeliveryStatus, …) are kept intact for backward-compatibility with
+// the screens that depend on them. The `fetchDeliveries` async thunk below
+// demonstrates the full GL pipeline; new code should prefer it.
+
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import { deliveryRecords, type DeliveryItemLine, type DeliveryPriority, type DeliveryRecord, type StatusHistoryEntry } from '../../../../dummy-data/deliveries';
 import { dummyDeliveryPersonnel, type DummyDeliveryPerson } from '../../../../dummy-data/deliveryPersonnel';
+import {
+  getDeliveriesAPI,
+  getDeliveryPersonnelAPI,
+} from '../../../../network/deliveryNetwork';
+import {
+  deliveryListSerializer,
+  personnelListSerializer,
+} from '../../../../serializers/deliverySerializer';
 
 export interface ShadowInventoryItem {
   personnelId: string;
@@ -370,6 +395,28 @@ export const deliverySlice = createAppSlice({
         });
       },
     ),
+
+    // ── Async thunks (GL pipeline: network → serializer → state) ──
+    /** Fetch latest deliveries from the API and refresh state. */
+    fetchDeliveries: create.asyncThunk(
+      async () => getDeliveriesAPI(),
+      {
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const serialized = deliveryListSerializer(action.payload);
+          state.deliveries = serialized.deliveries;
+        },
+      },
+    ),
+    /** Fetch latest delivery personnel from the API and refresh state. */
+    fetchDeliveryPersonnel: create.asyncThunk(
+      async () => getDeliveryPersonnelAPI(),
+      {
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const serialized = personnelListSerializer(action.payload);
+          state.deliveryPersonnel = serialized.personnel;
+        },
+      },
+    ),
   }),
 
   selectors: {
@@ -424,6 +471,8 @@ export const {
   confirmCustomerReceipt,
   reportDeliveryIssue,
   submitShadowInventoryUpdateForDelivery,
+  fetchDeliveries,
+  fetchDeliveryPersonnel,
 } = deliverySlice.actions;
 
 export const {

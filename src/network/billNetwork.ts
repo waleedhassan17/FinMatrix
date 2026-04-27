@@ -4,14 +4,13 @@
 // Base path: /api/v1/bills
 // The Bill list/single endpoints return envelopes
 // `{ success, data: { ... } }` (mirrors glNetwork).
-// BillPayment & VendorCredit endpoints retain their original
-// signatures because consumer screens (PayBills, VendorCreditForm)
-// haven't been migrated yet.
+// BillPayment endpoints retain their original signatures because
+// PayBills hasn't been migrated yet.
 
 import { simulateApiCall } from './apiHelpers';
 import { bills as seedBills } from '../dummy-data/bills';
 import { billPayments as seedBillPayments } from '../dummy-data/billPayments';
-import type { Bill, BillPayment, VendorCredit } from '../types';
+import type { Bill, BillPayment } from '../types';
 import type {
   BillApiEntity,
   BillApiPagination,
@@ -245,63 +244,4 @@ export const createBillPaymentAPI = async (
   return simulateApiCall(newPayment, 600);
 };
 
-// ═══════════════════════════════════════════════════════
-// Vendor Credit APIs (legacy signatures — direct values)
-// Used by VendorCreditFormScreen which hasn't been migrated yet.
-// ═══════════════════════════════════════════════════════
-let vendorCreditStore: VendorCredit[] = [];
-
-export const getVendorCreditsAPI = async (): Promise<VendorCredit[]> =>
-  simulateApiCall(
-    vendorCreditStore.map(c => ({
-      ...c,
-      lines: c.lines.map(l => ({ ...l })),
-    })),
-    800,
-  );
-
-export const getVendorCreditByIdAPI = async (
-  id: string,
-): Promise<VendorCredit> => {
-  const credit = vendorCreditStore.find(c => c.id === id);
-  if (!credit) throw new Error('Vendor credit not found');
-  return simulateApiCall(
-    { ...credit, lines: credit.lines.map(l => ({ ...l })) },
-    400,
-  );
-};
-
-export const createVendorCreditAPI = async (
-  data: Omit<VendorCredit, 'id' | 'createdAt' | 'updatedAt'>,
-): Promise<VendorCredit> => {
-  const newCredit: VendorCredit = {
-    ...data,
-    lines: data.lines.map(l => ({ ...l })),
-    id: `vcr_${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  vendorCreditStore.push(newCredit);
-  return simulateApiCall(newCredit, 600);
-};
-
-export const updateVendorCreditAPI = async (
-  id: string,
-  data: Partial<VendorCredit>,
-): Promise<VendorCredit> => {
-  const idx = vendorCreditStore.findIndex(c => c.id === id);
-  if (idx === -1) throw new Error('Vendor credit not found');
-  vendorCreditStore[idx] = {
-    ...vendorCreditStore[idx],
-    ...data,
-    lines: (data.lines ?? vendorCreditStore[idx].lines).map(l => ({ ...l })),
-    updatedAt: new Date().toISOString(),
-  };
-  return simulateApiCall(
-    {
-      ...vendorCreditStore[idx],
-      lines: vendorCreditStore[idx].lines.map(l => ({ ...l })),
-    },
-    600,
-  );
-};
+// Vendor Credit APIs moved to `network/vendorCreditNetwork.ts`

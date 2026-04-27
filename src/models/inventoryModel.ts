@@ -1,6 +1,41 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Inventory Validation Model
+// FinMatrix — Inventory Model & Validation
 // ═══════════════════════════════════════════════════════
+// Mirrors `glModel.ts` / `billModel.ts`:
+//   • API entity types describing the raw backend shape
+//   • Pagination envelope
+//   • Query params for the list endpoint
+// Plus the existing form-validation helpers used by the form screen.
+
+import type { InventoryItemData } from '../dummy-data/inventoryItems';
+
+// ─── Raw API entity (backend shape) ──────────────────
+// 1-to-1 with the `InventoryItemData` UI type today; defined as an alias
+// so future backend-only fields can be added without leaking into UI.
+export type InventoryApiEntity = InventoryItemData;
+
+// ─── Pagination envelope ─────────────────────────────
+export interface InventoryApiPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+// ─── Query params for list endpoint ──────────────────
+export type StockFilterParam = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
+
+export interface InventoryQueryParams {
+  search?: string;
+  stockFilter?: StockFilterParam;
+  category?: string;
+  agencyId?: string;
+  page?: number;
+  limit?: number;
+}
+
+// ─── Re-export the canonical UI type for convenience ─
+export type { InventoryItemData };
 
 export interface ValidationErrors {
   [key: string]: string;

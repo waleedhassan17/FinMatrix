@@ -1,3 +1,11 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — DP Delivery Complete Slice (Delivery Execution flow)
+// ═══════════════════════════════════════════════════════
+// Co-located with DeliveryCompleteScreen.tsx
+// Owns ONLY UI state (inventory-request submitted flag).
+// Underlying inventory update request is created via the canonical
+// delivery slice + network/deliveryNetwork.ts (mirrors GL).
+
 import { createAppSlice } from '@store/createAppSlice';
 
 export interface DPDeliveryCompleteSliceState {
