@@ -5,14 +5,12 @@ import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
-import {
-  selectDeliveries,
-  submitShadowInventoryUpdateForDelivery,
-} from '../../Admin/AssignDeliveries/deliverySlice';
+import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import {
   selectInventoryRequestSubmitted,
   resetDeliveryCompleteState,
   setInventoryRequestSubmitted,
+  submitDeliveryComplete,
 } from './dpDeliveryCompleteSlice';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
@@ -135,8 +133,7 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
 
   useEffect(() => {
     if (!delivery || inventoryRequestSubmitted || !delivery.assignedTo) return;
-    dispatch(submitShadowInventoryUpdateForDelivery({ deliveryId, personnelId: delivery.assignedTo }));
-    dispatch({ type: 'delivery/submitInventoryUpdate', payload: { deliveryId, personnelId: delivery.assignedTo } });
+    dispatch(submitDeliveryComplete({ deliveryId, personnelId: delivery.assignedTo }));
     dispatch(setInventoryRequestSubmitted(true));
   }, [delivery, inventoryRequestSubmitted, dispatch, deliveryId]);
 

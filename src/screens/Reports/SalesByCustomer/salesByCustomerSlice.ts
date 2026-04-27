@@ -1,8 +1,10 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { SalesByCustomerReport, ReportDateRange } from '../../../models/reportModel';
+import type { ReportDateRange } from '../../../models/reportModel';
 import { getYtdRange } from '../../../models/reportModel';
-import { getSalesByCustomerAPI } from '../../../network/reportNetwork';
+import type { SalesByCustomerReport } from '../../../models/salesByCustomerModel';
+import { getSalesByCustomerAPI } from '../../../network/salesByCustomerNetwork';
+import { salesByCustomerSerializer } from '../../../serializers/salesByCustomerSerializer';
 
 export type SalesByCustomerSortField = 'customerName' | 'invoiceCount' | 'totalSales' | 'avgOrder';
 export type SortDir = 'asc' | 'desc';
@@ -43,7 +45,7 @@ export const salesByCustomerSlice = createAppSlice({
       },
     ),
     fetchSalesByCustomer: create.asyncThunk(
-      async (range: ReportDateRange) => getSalesByCustomerAPI(range),
+      async (range: ReportDateRange) => salesByCustomerSerializer(await getSalesByCustomerAPI(range)),
       {
         pending: state => {
           state.isLoading = true;

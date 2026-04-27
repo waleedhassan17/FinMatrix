@@ -1,6 +1,7 @@
 import { createAppSlice } from '@store/createAppSlice';
 import type { PayStub } from '../../../models/payrollModel';
 import { getPayStubAPI } from '../../../network/payrollNetwork';
+import { payStubSerializer } from '../../../serializers/payrollSerializer';
 
 interface PayStubState {
   stub: PayStub | null;
@@ -24,8 +25,10 @@ export const payStubSlice = createAppSlice({
     }),
 
     fetchPayStub: create.asyncThunk(
-      async ({ runId, employeeId }: { runId: string; employeeId: string }) =>
-        getPayStubAPI(runId, employeeId),
+      async ({ runId, employeeId }: { runId: string; employeeId: string }) => {
+        const envelope = await getPayStubAPI(runId, employeeId);
+        return payStubSerializer(envelope);
+      },
       {
         pending: state => {
           state.isLoading = true;

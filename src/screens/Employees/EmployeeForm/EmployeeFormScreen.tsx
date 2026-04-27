@@ -36,6 +36,7 @@ import {
   DEPARTMENT_OPTIONS,
   EMPLOYMENT_TYPE_OPTIONS,
   PAY_TYPE_OPTIONS,
+  PAY_FREQUENCY_OPTIONS,
   STATUS_OPTIONS,
 } from '../../../models/employeeModel';
 import type { EmployeeDepartment } from '../../../models/employeeModel';
@@ -81,12 +82,15 @@ const EmployeeFormScreen: React.FC = () => {
       fullName: form.fullName,
       email: form.email,
       phone: form.phone,
+      address: form.address,
+      taxId: form.taxId,
       department: form.department,
       position: form.position,
       employmentType: form.employmentType,
       status: form.status,
       startDate: form.startDate,
       payType: form.payType,
+      payFrequency: form.payFrequency,
       salaryAmount: form.salaryAmount,
       hourlyRate: form.hourlyRate,
       hoursPerWeek: form.hoursPerWeek,
@@ -125,12 +129,15 @@ const EmployeeFormScreen: React.FC = () => {
         fullName: form.fullName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
+        address: form.address.trim(),
+        taxId: form.taxId.trim(),
         department,
         position: form.position.trim(),
         employmentType: form.employmentType,
         status: form.status,
         startDate: form.startDate,
         payType: form.payType,
+        payFrequency: form.payFrequency,
         salaryAmount: form.payType === 'salary' ? salaryAmount : 0,
         hourlyRate: form.payType === 'hourly' ? hourlyRate : 0,
         hoursPerWeek: form.payType === 'hourly' ? hoursPerWeek : 40,
@@ -203,11 +210,27 @@ const EmployeeFormScreen: React.FC = () => {
               error={form.errors.email}
             />
             <CustomInput
-              label="Phone"
+              label="Phone *"
               value={form.phone}
               onChangeText={v => updateField('phone', v)}
               keyboardType="phone-pad"
               placeholder="+92-300-1234567"
+              error={form.errors.phone}
+            />
+            <CustomInput
+              label="Address *"
+              value={form.address}
+              onChangeText={v => updateField('address', v)}
+              placeholder="House / street / city"
+              multiline
+              error={form.errors.address}
+            />
+            <CustomInput
+              label="Tax ID *"
+              value={form.taxId}
+              onChangeText={v => updateField('taxId', v)}
+              placeholder="CNIC / NTN / SSN"
+              error={form.errors.taxId}
             />
             <CustomDropdown
               label="Department *"
@@ -237,7 +260,7 @@ const EmployeeFormScreen: React.FC = () => {
               onChange={v => updateField('status', v)}
             />
             <CustomInput
-              label="Start Date *"
+              label="Hire Date *"
               value={form.startDate}
               onChangeText={v => updateField('startDate', v)}
               placeholder="YYYY-MM-DD"
@@ -252,6 +275,13 @@ const EmployeeFormScreen: React.FC = () => {
               options={PAY_TYPE_OPTIONS}
               value={form.payType}
               onChange={v => updateField('payType', v)}
+            />
+            <CustomDropdown
+              label="Pay Frequency *"
+              options={PAY_FREQUENCY_OPTIONS}
+              value={form.payFrequency}
+              onChange={v => updateField('payFrequency', v)}
+              error={form.errors.payFrequency}
             />
             {form.payType === 'salary' ? (
               <CustomInput

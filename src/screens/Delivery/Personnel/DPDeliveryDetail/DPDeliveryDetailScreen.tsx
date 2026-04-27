@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
-import { selectDeliveries, updateDeliveryStatus } from '../../Admin/AssignDeliveries/deliverySlice';
+import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
+import { updateDeliveryExecutionStatus } from './dpDeliveryDetailSlice';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
@@ -81,7 +82,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           subtitle: 'Collect items from warehouse',
           icon: 'package',
           color: THEME.colors.secondary,
-          handler: () => dispatch(updateDeliveryStatus({
+          handler: () => dispatch(updateDeliveryExecutionStatus({
             deliveryId: delivery.id,
             status: 'picked_up',
             note: `Items picked up at ${new Date().toISOString()}`,
@@ -93,7 +94,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           subtitle: 'Begin your route',
           icon: 'truck',
           color: THEME.colors.warning,
-          handler: () => dispatch(updateDeliveryStatus({
+          handler: () => dispatch(updateDeliveryExecutionStatus({
             deliveryId: delivery.id,
             status: 'in_transit',
             note: `Delivery started at ${new Date().toISOString()}`,
@@ -105,7 +106,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           subtitle: 'Confirm arrival at destination',
           icon: 'map-pin',
           color: THEME.colors.info,
-          handler: () => dispatch(updateDeliveryStatus({
+          handler: () => dispatch(updateDeliveryExecutionStatus({
             deliveryId: delivery.id,
             status: 'arrived',
             note: `Arrived at location at ${new Date().toISOString()}`,

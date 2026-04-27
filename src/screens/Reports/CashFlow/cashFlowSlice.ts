@@ -1,11 +1,12 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import {
-  type CashFlowReport,
   type ReportDateRange,
   getDefaultReportRange,
 } from '../../../models/reportModel';
-import { getCashFlowReportAPI } from '../../../network/reportNetwork';
+import type { CashFlowReport } from '../../../models/cashFlowModel';
+import { getCashFlowReportAPI } from '../../../network/cashFlowNetwork';
+import { cashFlowSerializer } from '../../../serializers/cashFlowSerializer';
 
 interface CashFlowState {
   range: ReportDateRange;
@@ -29,7 +30,7 @@ export const cashFlowSlice = createAppSlice({
       state.range = action.payload;
     }),
     fetchCashFlowReport: create.asyncThunk(
-      async (range: ReportDateRange) => getCashFlowReportAPI(range),
+      async (range: ReportDateRange) => cashFlowSerializer(await getCashFlowReportAPI(range)),
       {
         pending: state => {
           state.isLoading = true;

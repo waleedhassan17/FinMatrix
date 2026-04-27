@@ -19,7 +19,8 @@ import {
   selectSalesTaxReportState,
 } from './salesTaxReportSlice';
 import { formatCurrency } from '../../../utils/formatters';
-import type { ReportDateRange, SalesTaxRow } from '../../../models/reportModel';
+import type { ReportDateRange } from '../../../models/reportModel';
+import type { SalesTaxRow } from '../../../models/salesTaxReportModel';
 
 const PERIOD_OPTIONS: { label: string; range: ReportDateRange }[] = [
   {

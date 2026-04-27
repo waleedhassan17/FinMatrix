@@ -1,8 +1,10 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { SalesTaxReport, ReportDateRange } from '../../../models/reportModel';
+import type { ReportDateRange } from '../../../models/reportModel';
 import { getYtdRange } from '../../../models/reportModel';
-import { getSalesTaxReportAPI } from '../../../network/reportNetwork';
+import type { SalesTaxReport } from '../../../models/salesTaxReportModel';
+import { getSalesTaxReportAPI } from '../../../network/salesTaxReportNetwork';
+import { salesTaxReportSerializer } from '../../../serializers/salesTaxReportSerializer';
 
 interface SalesTaxReportState {
   report: SalesTaxReport | null;
@@ -26,7 +28,7 @@ export const salesTaxReportSlice = createAppSlice({
       state.range = action.payload;
     }),
     fetchSalesTaxReport: create.asyncThunk(
-      async (range: ReportDateRange) => getSalesTaxReportAPI(range),
+      async (range: ReportDateRange) => salesTaxReportSerializer(await getSalesTaxReportAPI(range)),
       {
         pending: state => {
           state.isLoading = true;

@@ -1,6 +1,7 @@
 import { createAppSlice } from '@store/createAppSlice';
-import type { InventoryValuationReport } from '../../../models/reportModel';
-import { getInventoryValuationReportAPI } from '../../../network/reportNetwork';
+import type { InventoryValuationReport } from '../../../models/inventoryValuationModel';
+import { getInventoryValuationReportAPI } from '../../../network/inventoryValuationNetwork';
+import { inventoryValuationSerializer } from '../../../serializers/inventoryValuationSerializer';
 
 interface InventoryValuationState {
   report: InventoryValuationReport | null;
@@ -19,7 +20,7 @@ export const inventoryValuationSlice = createAppSlice({
   initialState,
   reducers: create => ({
     fetchInventoryValuationReport: create.asyncThunk(
-      async () => getInventoryValuationReportAPI(),
+      async () => inventoryValuationSerializer(await getInventoryValuationReportAPI()),
       {
         pending: state => {
           state.isLoading = true;

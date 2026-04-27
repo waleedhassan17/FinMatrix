@@ -152,6 +152,7 @@ const PayrollHistoryScreen: React.FC = () => {
     async (runId: string) => {
       try {
         const detailed = await dispatch(fetchPayrollRunDetail(runId)).unwrap();
+        if (!detailed) throw new Error('Payroll run details unavailable');
         const csv = buildPayrollRunCsv(detailed);
 
         const safeDate = detailed.payDate.replace(/[^0-9-]/g, '');

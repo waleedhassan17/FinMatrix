@@ -1,8 +1,31 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Agency Model & Validation
 // ═══════════════════════════════════════════════════════
+// API contract + UI form contract for the Agency feature.
+// Mirrors the GL / Banking / Employees / Payroll pattern.
+
+import type { WarehouseAgency, AgencyInventoryItem } from '../dummy-data/warehouseAgencies';
 
 export type AgencyType = 'Manufacturing' | 'Supply' | 'Distribution';
+
+// ─── API entity & envelope types ─────────────────────
+export type AgencyApi = WarehouseAgency;
+export type AgencyInventoryItemApi = AgencyInventoryItem;
+
+export interface ApiEnvelope<T> {
+  success: boolean;
+  data: T;
+}
+
+export interface AgencyListResponse {
+  agencies: AgencyApi[];
+}
+export interface AgencySingleResponse {
+  agency: AgencyApi;
+}
+export interface AgencyDeleteResponse {
+  id: string;
+}
 
 export interface ValidationErrors {
   [key: string]: string;

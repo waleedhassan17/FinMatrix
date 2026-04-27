@@ -2,6 +2,10 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { PayrollRunRecord } from '../../../models/payrollModel';
 import { getPayrollRunByIdAPI, getPayrollRunsAPI } from '../../../network/payrollNetwork';
+import {
+  payrollRunListSerializer,
+  payrollRunSingleSerializer,
+} from '../../../serializers/payrollSerializer';
 
 interface PayrollHistoryState {
   runs: PayrollRunRecord[];
@@ -33,7 +37,10 @@ export const payrollHistorySlice = createAppSlice({
     }),
 
     fetchPayrollHistory: create.asyncThunk(
-      async () => getPayrollRunsAPI(),
+      async () => {
+        const envelope = await getPayrollRunsAPI();
+        return payrollRunListSerializer(envelope);
+      },
       {
         pending: state => {
           state.isLoading = true;
@@ -51,7 +58,10 @@ export const payrollHistorySlice = createAppSlice({
     ),
 
     fetchPayrollRunDetail: create.asyncThunk(
-      async (runId: string) => getPayrollRunByIdAPI(runId),
+      async (runId: string) => {
+        const envelope = await getPayrollRunByIdAPI(runId);
+        return payrollRunSingleSerializer(envelope);
+      },
       {
         pending: state => {
           state.isLoadingDetail = true;

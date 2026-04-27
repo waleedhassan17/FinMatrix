@@ -19,8 +19,8 @@ import { selectUnreadNotificationCountForUser } from '../../../Notifications/not
 import {
   selectDeliveries,
   selectDeliveryPersonnel,
-  updateDeliveryStatus,
 } from '../../Admin/AssignDeliveries/deliverySlice';
+import { startDelivery } from './dpDashboardSlice';
 import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DPDashboardStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
@@ -145,9 +145,8 @@ const DPDashboardScreen: React.FC = () => {
     if (!nextDelivery) return;
     if (nextDelivery.status === 'pending') {
       dispatch(
-        updateDeliveryStatus({
+        startDelivery({
           deliveryId: nextDelivery.id,
-          status: 'in_transit',
           note: 'Started from dashboard',
         }),
       );

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,8 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchEmployees,
   selectEmployees,
+  selectFilteredEmployees,
+  selectEmployeeSummary,
   selectEmployeeSearchQuery,
   selectEmployeeDepartmentFilter,
   selectEmployeeSortField,
@@ -57,6 +59,8 @@ const EmployeeListScreen: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const employees = useAppSelector(selectEmployees);
+  const filtered = useAppSelector(selectFilteredEmployees);
+  const { total, active: activeCount, monthlyPayroll } = useAppSelector(selectEmployeeSummary);
   const searchQuery = useAppSelector(selectEmployeeSearchQuery);
   const departmentFilter = useAppSelector(selectEmployeeDepartmentFilter);
   const sortField = useAppSelector(selectEmployeeSortField);
@@ -78,45 +82,6 @@ const EmployeeListScreen: React.FC = () => {
     setRefreshing(false);
   }, [dispatch]);
 
-  const filtered = useMemo(() => {
-    let list = employees;
-
-    if (departmentFilter !== 'all') {
-      list = list.filter(e => e.department === departmentFilter);
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(
-        e =>
-          e.fullName.toLowerCase().includes(q) ||
-          e.employeeCode.toLowerCase().includes(q) ||
-          e.email.toLowerCase().includes(q) ||
-          e.position.toLowerCase().includes(q),
-      );
-    }
-
-    list = [...list].sort((a, b) => {
-      switch (sortField) {
-        case 'name':
-          return a.fullName.localeCompare(b.fullName);
-        case 'department':
-          return a.department.localeCompare(b.department);
-        case 'recent':
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        default:
-          return 0;
-      }
-    });
-
-    return list;
-  }, [employees, departmentFilter, searchQuery, sortField]);
-
-  const activeCount = employees.filter(e => e.status === 'active').length;
-  const monthlyPayroll = employees.reduce((sum, e) => {
-    if (e.payType === 'salary') return sum + e.salaryAmount;
-    return sum + e.hourlyRate * e.hoursPerWeek * 4;
-  }, 0);
 
   const renderCard = ({ item }: { item: EmployeeRecord }) => (
     <TouchableOpacity
@@ -175,7 +140,7 @@ const EmployeeListScreen: React.FC = () => {
 
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>{employees.length}</Text>
+          <Text style={styles.summaryValue}>{total}</Text>
           <Text style={styles.summaryLabel}>Total</Text>
         </View>
         <View style={styles.summaryCard}>

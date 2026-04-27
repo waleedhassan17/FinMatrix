@@ -4,10 +4,15 @@ import { employees as seedEmployees } from '../dummy-data/employees';
 import { journalEntriesData } from '../dummy-data/journalEntries';
 import type { EmployeeRecord } from '../models/employeeModel';
 import type {
-  PayrollRunInput,
-  PayrollRunRecord,
-  PayrollWorksheetRow,
+  ApiEnvelope,
   PayStub,
+  PayStubResponse,
+  PayrollRunInput,
+  PayrollRunListResponse,
+  PayrollRunRecord,
+  PayrollRunSingleResponse,
+  PayrollWorksheetResponse,
+  PayrollWorksheetRow,
 } from '../models/payrollModel';
 import { calculatePayrollTotals, recalculatePayrollRow } from '../models/payrollModel';
 import type { JournalEntry } from '../types';
@@ -138,22 +143,40 @@ const appendPayrollJournalEntry = (run: PayrollRunRecord): JournalEntry => {
   return entry;
 };
 
-export const getPayrollRunsAPI = async (): Promise<PayrollRunRecord[]> => {
+export const getPayrollRunsAPI = async (): Promise<
+  ApiEnvelope<PayrollRunListResponse>
+> => {
   const sorted = [...payrollStore].sort((a, b) => b.payDate.localeCompare(a.payDate));
-  return simulateApiCall(sorted.map(cloneRun), 500);
+  return simulateApiCall(
+    { success: true, data: { runs: sorted.map(cloneRun) } },
+    500,
+  );
 };
 
-export const getPayrollRunByIdAPI = async (runId: string): Promise<PayrollRunRecord> => {
+export const getPayrollRunByIdAPI = async (
+  runId: string,
+): Promise<ApiEnvelope<PayrollRunSingleResponse>> => {
   const run = payrollStore.find(r => r.id === runId);
   if (!run) throw new Error('Payroll run not found');
-  return simulateApiCall(cloneRun(run), 450);
+  return simulateApiCall(
+    { success: true, data: { run: cloneRun(run) } },
+    450,
+  );
 };
 
-export const getPayrollWorksheetAPI = async (_periodStart: string, _periodEnd: string): Promise<PayrollWorksheetRow[]> => {
-  return simulateApiCall(getWorksheetSeed(), 500);
+export const getPayrollWorksheetAPI = async (
+  _periodStart: string,
+  _periodEnd: string,
+): Promise<ApiEnvelope<PayrollWorksheetResponse>> => {
+  return simulateApiCall(
+    { success: true, data: { worksheet: getWorksheetSeed() } },
+    500,
+  );
 };
 
-export const processPayrollRunAPI = async (input: PayrollRunInput): Promise<PayrollRunRecord> => {
+export const processPayrollRunAPI = async (
+  input: PayrollRunInput,
+): Promise<ApiEnvelope<PayrollRunSingleResponse>> => {
   const worksheetSeed = getWorksheetSeed();
 
   const worksheet = worksheetSeed.map(seedRow => {
@@ -189,10 +212,16 @@ export const processPayrollRunAPI = async (input: PayrollRunInput): Promise<Payr
   run.journalEntryId = journalEntry.id;
 
   payrollStore.unshift(run);
-  return simulateApiCall(cloneRun(run), 750);
+  return simulateApiCall(
+    { success: true, data: { run: cloneRun(run) } },
+    750,
+  );
 };
 
-export const getPayStubAPI = async (runId: string, employeeId: string): Promise<PayStub> => {
+export const getPayStubAPI = async (
+  runId: string,
+  employeeId: string,
+): Promise<ApiEnvelope<PayStubResponse>> => {
   const run = payrollStore.find(r => r.id === runId);
   if (!run) throw new Error('Payroll run not found');
 
@@ -244,5 +273,8 @@ export const getPayStubAPI = async (runId: string, employeeId: string): Promise<
     ytdNet: round2(ytdNet),
   };
 
-  return simulateApiCall(stub, 450);
+  return simulateApiCall(
+    { success: true, data: { stub } },
+    450,
+  );
 };

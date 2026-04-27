@@ -1,7 +1,8 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { ARAgingReport } from '../../../models/reportModel';
-import { getARAgingReportAPI } from '../../../network/reportNetwork';
+import type { ARAgingReport } from '../../../models/arAgingModel';
+import { getARAgingReportAPI } from '../../../network/arAgingNetwork';
+import { arAgingSerializer } from '../../../serializers/arAgingSerializer';
 
 interface ARAgingState {
   asOfDate: string;
@@ -25,7 +26,7 @@ export const arAgingSlice = createAppSlice({
       state.asOfDate = action.payload;
     }),
     fetchARAgingReport: create.asyncThunk(
-      async (asOfDate: string) => getARAgingReportAPI(asOfDate),
+      async (asOfDate: string) => arAgingSerializer(await getARAgingReportAPI(asOfDate)),
       {
         pending: state => {
           state.isLoading = true;

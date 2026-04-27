@@ -21,7 +21,7 @@ import {
   selectDeliveryPerformanceState,
 } from './deliveryPerformanceSlice';
 import { getLastNDaysRange } from '../../../models/reportModel';
-import type { DeliveryPerformanceRow } from '../../../models/reportModel';
+import type { DeliveryPerformanceRow } from '../../../models/deliveryPerformanceModel';
 
 const CHART_WIDTH = Dimensions.get('window').width - spacing.md * 4;
 

@@ -13,6 +13,11 @@ import {
   updateAgencyAPI,
   deleteAgencyAPI,
 } from '../../../network/agencyNetwork';
+import {
+  agencyDeleteSerializer,
+  agencyListSerializer,
+  agencySingleSerializer,
+} from '../../../serializers/agencySerializer';
 
 export interface AgencyListSliceState {
   agencies: WarehouseAgency[];
@@ -52,7 +57,10 @@ export const agencyListSlice = createAppSlice({
 
     // ── Async thunks ────────────────────────────────
     fetchAgencies: create.asyncThunk(
-      async () => getAgenciesAPI(),
+      async () => {
+        const envelope = await getAgenciesAPI();
+        return agencyListSerializer(envelope);
+      },
       {
         pending: state => { state.isLoading = true; state.error = ''; },
         fulfilled: (state, action) => {
@@ -66,27 +74,33 @@ export const agencyListSlice = createAppSlice({
       },
     ),
     createAgency: create.asyncThunk(
-      async (data: Omit<WarehouseAgency, 'id' | 'productCount'>) => createAgencyAPI(data),
+      async (data: Omit<WarehouseAgency, 'id' | 'productCount'>) => {
+        const envelope = await createAgencyAPI(data);
+        return agencySingleSerializer(envelope);
+      },
       {
         fulfilled: (state, action) => {
-          state.agencies.push(action.payload);
+          if (action.payload) state.agencies.push(action.payload);
         },
       },
     ),
     editAgency: create.asyncThunk(
-      async ({ id, data }: { id: string; data: Partial<WarehouseAgency> }) =>
-        updateAgencyAPI(id, data),
+      async ({ id, data }: { id: string; data: Partial<WarehouseAgency> }) => {
+        const envelope = await updateAgencyAPI(id, data);
+        return agencySingleSerializer(envelope);
+      },
       {
         fulfilled: (state, action) => {
-          const idx = state.agencies.findIndex(a => a.id === action.payload.id);
+          if (!action.payload) return;
+          const idx = state.agencies.findIndex(a => a.id === action.payload!.id);
           if (idx !== -1) state.agencies[idx] = action.payload;
         },
       },
     ),
     removeAgency: create.asyncThunk(
       async (id: string) => {
-        await deleteAgencyAPI(id);
-        return id;
+        const envelope = await deleteAgencyAPI(id);
+        return agencyDeleteSerializer(envelope) || id;
       },
       {
         fulfilled: (state, action) => {

@@ -7,6 +7,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import { syncAgencyInventoryAPI } from '../../../network/agencyNetwork';
+import { agencySingleSerializer } from '../../../serializers/agencySerializer';
 
 export type SyncStatus = 'synced' | 'mismatch' | 'agency_only' | 'system_only';
 
@@ -84,8 +85,10 @@ export const agencyInventorySyncSlice = createAppSlice({
 
     // ── Async thunks ────────────────────────────────
     syncSelectedItems: create.asyncThunk(
-      async ({ agencyId, itemIds }: { agencyId: string; itemIds: string[] }) =>
-        syncAgencyInventoryAPI(agencyId, itemIds),
+      async ({ agencyId, itemIds }: { agencyId: string; itemIds: string[] }) => {
+        const envelope = await syncAgencyInventoryAPI(agencyId, itemIds);
+        return agencySingleSerializer(envelope);
+      },
       {
         pending: state => { state.isSyncing = true; state.error = ''; },
         fulfilled: state => { state.isSyncing = false; },

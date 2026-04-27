@@ -22,16 +22,6 @@ const initialCategories: ReportHubCategory[] = [
     icon: 'AR',
     items: [
       { key: 'ar-aging', title: 'Aging', icon: 'AG', target: 'ARAging' },
-      { key: 'ar-balance', title: 'Customer Balance', icon: 'CB', target: null },
-    ],
-  },
-  {
-    key: 'ap',
-    title: 'Accounts Payable',
-    icon: 'AP',
-    items: [
-      { key: 'ap-aging', title: 'Aging', icon: 'AG', target: null },
-      { key: 'ap-balance', title: 'Vendor Balance', icon: 'VB', target: null },
     ],
   },
   {
@@ -40,7 +30,6 @@ const initialCategories: ReportHubCategory[] = [
     icon: 'INV',
     items: [
       { key: 'inv-valuation', title: 'Valuation', icon: 'VAL', target: 'InventoryValuation' },
-      { key: 'inv-stock', title: 'Stock Status', icon: 'STK', target: null },
     ],
   },
   {
@@ -52,12 +41,6 @@ const initialCategories: ReportHubCategory[] = [
       { key: 'sales-by-item', title: 'Sales by Item', icon: 'SI', target: 'SalesByItem' },
       { key: 'sales-tax', title: 'Tax Report', icon: 'TAX', target: 'SalesTaxReport' },
     ],
-  },
-  {
-    key: 'payroll',
-    title: 'Payroll',
-    icon: 'PAY',
-    items: [{ key: 'payroll-overview', title: 'Payroll Overview', icon: 'PRO', target: null }],
   },
   {
     key: 'delivery',
@@ -100,15 +83,11 @@ export const { selectReportCategories } = reportsHubSlice.selectors;
 
 export const selectReportStats = createSelector(
   selectReportCategories,
-  (categories): { total: number; ready: number; planned: number; categoryCount: number } => {
+  (categories): { total: number; ready: number; categoryCount: number } => {
     let total = 0;
-    let ready = 0;
-    categories.forEach(c =>
-      c.items.forEach(i => {
-        total++;
-        if (i.target) ready++;
-      }),
-    );
-    return { total, ready, planned: total - ready, categoryCount: categories.length };
+    categories.forEach(c => {
+      total += c.items.length;
+    });
+    return { total, ready: total, categoryCount: categories.length };
   },
 );

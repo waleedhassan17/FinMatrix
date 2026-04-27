@@ -1,12 +1,13 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import {
-  type ProfitLossReport,
   type ReportDateRange,
   getComparisonRange,
   getDefaultReportRange,
 } from '../../../models/reportModel';
-import { getProfitLossReportAPI } from '../../../network/reportNetwork';
+import type { ProfitLossReport } from '../../../models/profitLossModel';
+import { getProfitLossReportAPI } from '../../../network/profitLossNetwork';
+import { profitLossSerializer } from '../../../serializers/profitLossSerializer';
 
 interface ProfitLossState {
   range: ReportDateRange;
@@ -41,7 +42,9 @@ export const profitLossSlice = createAppSlice({
         const comparisonRange = payload.comparisonEnabled
           ? getComparisonRange(payload.range)
           : undefined;
-        return getProfitLossReportAPI(payload.range, comparisonRange);
+        return profitLossSerializer(
+          await getProfitLossReportAPI(payload.range, comparisonRange),
+        );
       },
       {
         pending: state => {

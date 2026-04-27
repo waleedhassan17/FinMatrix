@@ -1,3 +1,11 @@
+// ─── API envelope (GL pattern) ────────────────────────────────────────────────
+// Every budget network function returns `{ success, data }`. Matching
+// serializer in src/serializers/budgetSerializer.ts unwraps `data` for slices.
+export interface ApiEnvelope<T> {
+  success: boolean;
+  data: T;
+}
+
 export const MONTH_KEYS = [
   'jan',
   'feb',
@@ -97,6 +105,12 @@ export const calculateLineTotal = (monthly: BudgetMonthlyAmounts): number =>
 
 export const calculateBudgetTotal = (lines: BudgetAccountLine[]): number =>
   round2(lines.reduce((sum, line) => sum + line.total, 0));
+
+// ─── Envelope response type aliases ──────────────────────────────────────────
+export type BudgetListResponse = ApiEnvelope<AnnualBudget[]>;
+export type BudgetSingleResponse = ApiEnvelope<AnnualBudget>;
+export type BudgetCopyResponse = ApiEnvelope<AnnualBudget | null>;
+export type BudgetComparisonResponse = ApiEnvelope<BudgetComparisonResult>;
 
 export const distributeEvenly = (annualAmount: number): BudgetMonthlyAmounts => {
   const normalized = Math.max(0, annualAmount);

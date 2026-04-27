@@ -1,6 +1,7 @@
 import { createAppSlice } from '@store/createAppSlice';
-import type { AnalyticsDashboardData } from '../../../models/reportModel';
-import { getAnalyticsDashboardAPI } from '../../../network/reportNetwork';
+import type { AnalyticsDashboardData } from '../../../models/analyticsDashboardModel';
+import { getAnalyticsDashboardAPI } from '../../../network/analyticsDashboardNetwork';
+import { analyticsDashboardSerializer } from '../../../serializers/analyticsDashboardSerializer';
 
 interface AnalyticsDashboardState {
   data: AnalyticsDashboardData | null;
@@ -18,7 +19,7 @@ export const analyticsDashboardSlice = createAppSlice({
   name: 'analyticsDashboard',
   initialState,
   reducers: create => ({
-    fetchAnalyticsDashboard: create.asyncThunk(async () => getAnalyticsDashboardAPI(), {
+    fetchAnalyticsDashboard: create.asyncThunk(async () => analyticsDashboardSerializer(await getAnalyticsDashboardAPI()), {
       pending: state => {
         state.isLoading = true;
         state.error = '';

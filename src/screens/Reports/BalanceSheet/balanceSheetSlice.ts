@@ -1,7 +1,8 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { BalanceSheetReport } from '../../../models/reportModel';
-import { getBalanceSheetReportAPI } from '../../../network/reportNetwork';
+import type { BalanceSheetReport } from '../../../models/balanceSheetModel';
+import { getBalanceSheetReportAPI } from '../../../network/balanceSheetNetwork';
+import { balanceSheetSerializer } from '../../../serializers/balanceSheetSerializer';
 
 interface BalanceSheetState {
   asOfDate: string;
@@ -27,7 +28,7 @@ export const balanceSheetSlice = createAppSlice({
       state.asOfDate = action.payload;
     }),
     fetchBalanceSheetReport: create.asyncThunk(
-      async (asOfDate: string) => getBalanceSheetReportAPI(asOfDate),
+      async (asOfDate: string) => balanceSheetSerializer(await getBalanceSheetReportAPI(asOfDate)),
       {
         pending: state => {
           state.isLoading = true;

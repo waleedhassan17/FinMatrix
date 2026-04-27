@@ -19,17 +19,15 @@ import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { Feather } from '@expo/vector-icons';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
-import {
-  confirmCustomerReceipt,
-  reportDeliveryIssue,
-  selectDeliveries,
-} from '../../Admin/AssignDeliveries/deliverySlice';
+import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import {
   selectIssueModalVisible,
   selectIssueText,
   setIssueModalVisible,
   setIssueText,
   resetCustomerConfirmState,
+  confirmReceipt,
+  reportIssue,
 } from './dpCustomerConfirmSlice';
 import AppLogo from '../../../../Custom-Components/AppLogo';
 
@@ -151,7 +149,7 @@ const CustomerConfirmScreen: React.FC<Props> = ({ route, navigation }) => {
   }
 
   const handleConfirm = () => {
-    dispatch(confirmCustomerReceipt({ deliveryId, verifiedBy: delivery.customerName }));
+    dispatch(confirmReceipt({ deliveryId, verifiedBy: delivery.customerName }));
     dispatch(resetCustomerConfirmState());
     navigation.replace('DeliveryComplete', { deliveryId });
   };
@@ -161,8 +159,7 @@ const CustomerConfirmScreen: React.FC<Props> = ({ route, navigation }) => {
       Alert.alert('Required Field', 'Please describe the issue before submitting.');
       return;
     }
-    dispatch(reportDeliveryIssue({ deliveryId, note: issueText.trim() }));
-    dispatch(setIssueModalVisible(false));
+    dispatch(reportIssue({ deliveryId, note: issueText.trim() }));
     Alert.alert(
       'Issue Reported',
       'Your concern has been recorded. Our support team will review it shortly.',

@@ -1,8 +1,10 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { SalesByItemReport, ReportDateRange } from '../../../models/reportModel';
+import type { ReportDateRange } from '../../../models/reportModel';
 import { getYtdRange } from '../../../models/reportModel';
-import { getSalesByItemAPI } from '../../../network/reportNetwork';
+import type { SalesByItemReport } from '../../../models/salesByItemModel';
+import { getSalesByItemAPI } from '../../../network/salesByItemNetwork';
+import { salesByItemSerializer } from '../../../serializers/salesByItemSerializer';
 
 export type SalesByItemSortField = 'itemName' | 'qtySold' | 'revenue' | 'profitMargin';
 export type SortDir = 'asc' | 'desc';
@@ -41,7 +43,7 @@ export const salesByItemSlice = createAppSlice({
       }
     }),
     fetchSalesByItem: create.asyncThunk(
-      async (range: ReportDateRange) => getSalesByItemAPI(range),
+      async (range: ReportDateRange) => salesByItemSerializer(await getSalesByItemAPI(range)),
       {
         pending: state => {
           state.isLoading = true;

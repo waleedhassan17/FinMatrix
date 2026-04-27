@@ -2,6 +2,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { BudgetComparisonResult } from '../../../models/budgetModel';
 import { getBudgetComparisonAPI } from '../../../network/budgetNetwork';
+import { budgetComparisonSerializer } from '../../../serializers/budgetSerializer';
 
 interface BudgetComparisonState {
   budgetId: string;
@@ -24,7 +25,7 @@ export const budgetComparisonSlice = createAppSlice({
     setBudgetComparisonBudgetId: create.reducer((state, action: PayloadAction<string>) => {
       state.budgetId = action.payload;
     }),
-    fetchBudgetComparison: create.asyncThunk(async (budgetId: string) => getBudgetComparisonAPI(budgetId), {
+    fetchBudgetComparison: create.asyncThunk(async (budgetId: string) => budgetComparisonSerializer(await getBudgetComparisonAPI(budgetId)), {
       pending: state => {
         state.isLoading = true;
         state.error = '';

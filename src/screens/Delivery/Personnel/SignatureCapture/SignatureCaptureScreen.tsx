@@ -15,8 +15,8 @@ import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
-import { selectDeliveries, saveDeliverySignature } from '../../Admin/AssignDeliveries/deliverySlice';
-import { resetSignatureState, setHasDrawn } from './dpSignatureCaptureSlice';
+import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
+import { resetSignatureState, setHasDrawn, saveSignature } from './dpSignatureCaptureSlice';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
@@ -103,7 +103,7 @@ const SignatureCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!hasDrawn || !delivery) return;
     const payload = JSON.stringify({ deliveryId, strokes });
     const signatureBase64 = encodeBase64(payload);
-    dispatch(saveDeliverySignature({
+    dispatch(saveSignature({
       deliveryId,
       signatureBase64,
       signedBy: delivery.customerName,

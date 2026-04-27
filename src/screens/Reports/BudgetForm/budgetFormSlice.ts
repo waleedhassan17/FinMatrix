@@ -10,6 +10,10 @@ import {
   distributeEvenly,
 } from '../../../models/budgetModel';
 import { copyBudgetFromLastYearAPI, getBudgetByIdAPI, saveBudgetAPI } from '../../../network/budgetNetwork';
+import {
+  budgetCopySerializer,
+  budgetSingleSerializer,
+} from '../../../serializers/budgetSerializer';
 
 interface BudgetFormState {
   budget: AnnualBudget | null;
@@ -80,21 +84,21 @@ export const budgetFormSlice = createAppSlice({
 
       state.budget.lines.push(line);
     }),
-    loadBudgetForEdit: create.asyncThunk(async (budgetId: string) => getBudgetByIdAPI(budgetId), {
+    loadBudgetForEdit: create.asyncThunk(async (budgetId: string) => budgetSingleSerializer(await getBudgetByIdAPI(budgetId)), {
       pending: state => {
         state.isLoading = true;
         state.error = '';
       },
       fulfilled: (state, action) => {
         state.isLoading = false;
-        state.budget = withTotals(action.payload);
+        state.budget = action.payload ? withTotals(action.payload) : null;
       },
       rejected: (state, action) => {
         state.isLoading = false;
         state.error = action.error?.message ?? 'Failed to load budget';
       },
     }),
-    copyFromLastYear: create.asyncThunk(async (fiscalYear: number) => copyBudgetFromLastYearAPI(fiscalYear), {
+    copyFromLastYear: create.asyncThunk(async (fiscalYear: number) => budgetCopySerializer(await copyBudgetFromLastYearAPI(fiscalYear)), {
       fulfilled: (state, action) => {
         if (!state.budget || !action.payload) return;
 
@@ -111,14 +115,16 @@ export const budgetFormSlice = createAppSlice({
         });
       },
     }),
-    saveBudget: create.asyncThunk(async (budget: AnnualBudget) => saveBudgetAPI(withTotals(budget)), {
+    saveBudget: create.asyncThunk(async (budget: AnnualBudget) => budgetSingleSerializer(await saveBudgetAPI(withTotals(budget))), {
       pending: state => {
         state.isSaving = true;
         state.error = '';
       },
       fulfilled: (state, action) => {
         state.isSaving = false;
-        state.budget = withTotals(action.payload);
+        if (action.payload) {
+          state.budget = withTotals(action.payload);
+        }
       },
       rejected: (state, action) => {
         state.isSaving = false;

@@ -8,6 +8,10 @@ import {
   type PayrollWorksheetRow,
 } from '../../../models/payrollModel';
 import { getPayrollWorksheetAPI, processPayrollRunAPI } from '../../../network/payrollNetwork';
+import {
+  payrollRunSingleSerializer,
+  payrollWorksheetSerializer,
+} from '../../../serializers/payrollSerializer';
 
 type PayrollStep = 1 | 2 | 3 | 4;
 
@@ -21,6 +25,7 @@ interface RunPayrollState {
   isLoadingWorksheet: boolean;
   isProcessing: boolean;
   error: string;
+  // Serializer may return null when payload is malformed; UI guards this.
   processedRun: PayrollRunRecord | null;
 }
 
@@ -68,8 +73,10 @@ export const runPayrollSlice = createAppSlice({
     resetRunPayroll: create.reducer(() => initialState),
 
     loadPayrollWorksheet: create.asyncThunk(
-      async ({ periodStart, periodEnd }: { periodStart: string; periodEnd: string }) =>
-        getPayrollWorksheetAPI(periodStart, periodEnd),
+      async ({ periodStart, periodEnd }: { periodStart: string; periodEnd: string }) => {
+        const envelope = await getPayrollWorksheetAPI(periodStart, periodEnd);
+        return payrollWorksheetSerializer(envelope);
+      },
       {
         pending: state => {
           state.isLoadingWorksheet = true;
@@ -95,7 +102,10 @@ export const runPayrollSlice = createAppSlice({
           payDate: string;
           worksheet: Array<{ employeeId: string; hours: number }>;
         },
-      ) => processPayrollRunAPI(payload),
+      ) => {
+        const envelope = await processPayrollRunAPI(payload);
+        return payrollRunSingleSerializer(envelope);
+      },
       {
         pending: state => {
           state.isProcessing = true;

@@ -1,3 +1,20 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Payroll Model
+// ═══════════════════════════════════════════════════════
+// Defines the API contract + UI worksheet contract for the
+// Payroll feature. Mirrors the GL / Banking / Employees pattern:
+// Model → Serializer → Network → Slice → Screen.
+//
+// Backed by activity diagram "Run Payroll":
+//   Step 1: Select Pay Period (Weekly / Bi-weekly / Monthly)
+//   Step 2: Review Payroll Worksheet per employee
+//          → Verify hours for hourly employees
+//          → Adjustments needed?  Yes → Edit hours / amounts
+//   Step 3: Review Totals (gross, taxes, deductions, net)
+//   Step 4: Confirm & Process
+//          → JE: DR Salary + Tax Exp / CR Payroll Liabilities + Cash
+//          → Pay stubs generated for each employee
+
 import type { PayrollStatus } from '../types';
 
 export interface PayrollPeriodOption {
@@ -84,6 +101,28 @@ export interface PayrollTotals {
   benefits: number;
   deductions: number;
   net: number;
+}
+
+// ─── API entity & envelope types ─────────────────────
+export type PayrollRunApi = PayrollRunRecord;
+export type PayStubApi = PayStub;
+
+export interface ApiEnvelope<T> {
+  success: boolean;
+  data: T;
+}
+
+export interface PayrollRunListResponse {
+  runs: PayrollRunApi[];
+}
+export interface PayrollRunSingleResponse {
+  run: PayrollRunApi;
+}
+export interface PayrollWorksheetResponse {
+  worksheet: PayrollWorksheetRow[];
+}
+export interface PayStubResponse {
+  stub: PayStubApi;
 }
 
 export const PAYROLL_PERIOD_OPTIONS: PayrollPeriodOption[] = [

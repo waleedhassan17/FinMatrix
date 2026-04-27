@@ -8,6 +8,7 @@ import type {
   EmploymentStatus,
   EmploymentType,
   EmployeeDepartment,
+  PayFrequency,
   PayType,
   EmployeeRecord,
 } from '../../../models/employeeModel';
@@ -16,12 +17,15 @@ export interface EmployeeFormState {
   fullName: string;
   email: string;
   phone: string;
+  address: string;
+  taxId: string;
   department: EmployeeDepartment | '';
   position: string;
   employmentType: EmploymentType;
   status: EmploymentStatus;
   startDate: string;
   payType: PayType;
+  payFrequency: PayFrequency;
   salaryAmount: string;
   hourlyRate: string;
   hoursPerWeek: string;
@@ -41,12 +45,15 @@ const initialState: EmployeeFormState = {
   fullName: '',
   email: '',
   phone: '',
+  address: '',
+  taxId: '',
   department: '',
   position: '',
   employmentType: 'full_time',
   status: 'active',
   startDate: new Date().toISOString().slice(0, 10),
   payType: 'salary',
+  payFrequency: 'monthly',
   salaryAmount: '',
   hourlyRate: '',
   hoursPerWeek: '40',
@@ -84,12 +91,15 @@ export const employeeFormSlice = createAppSlice({
       state.fullName = e.fullName;
       state.email = e.email;
       state.phone = e.phone;
+      state.address = e.address ?? '';
+      state.taxId = e.taxId ?? '';
       state.department = e.department;
       state.position = e.position;
       state.employmentType = e.employmentType;
       state.status = e.status;
       state.startDate = e.startDate;
       state.payType = e.payType;
+      state.payFrequency = e.payFrequency ?? 'monthly';
       state.salaryAmount = e.salaryAmount ? String(e.salaryAmount) : '';
       state.hourlyRate = e.hourlyRate ? String(e.hourlyRate) : '';
       state.hoursPerWeek = String(e.hoursPerWeek || 40);

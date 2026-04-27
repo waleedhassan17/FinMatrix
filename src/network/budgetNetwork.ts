@@ -6,11 +6,17 @@ import {
   MONTH_KEYS,
   type AnnualBudget,
   type BudgetAccountLine,
+  type BudgetComparisonResponse,
   type BudgetComparisonResult,
+  type BudgetCopyResponse,
+  type BudgetListResponse,
   type BudgetMonthlyAmounts,
+  type BudgetSingleResponse,
   calculateLineTotal,
   round2,
 } from '../models/budgetModel';
+
+const envelope = <T,>(data: T): { success: true; data: T } => ({ success: true, data });
 
 let budgetStore: AnnualBudget[] = budgetsData.map(budget => ({
   ...budget,
@@ -75,20 +81,20 @@ const accountActualByMonth = (accountId: string, fiscalYear: number): BudgetMont
   return monthly;
 };
 
-export const getBudgetsAPI = async (): Promise<AnnualBudget[]> => {
+export const getBudgetsAPI = async (): Promise<BudgetListResponse> => {
   const sorted = [...budgetStore].sort((a, b) => b.fiscalYear - a.fiscalYear);
-  return simulateApiCall(sorted.map(cloneBudget), 420);
+  return simulateApiCall(envelope<AnnualBudget[]>(sorted.map(cloneBudget)), 420);
 };
 
-export const getBudgetByIdAPI = async (budgetId: string): Promise<AnnualBudget> => {
+export const getBudgetByIdAPI = async (budgetId: string): Promise<BudgetSingleResponse> => {
   const found = budgetStore.find(budget => budget.id === budgetId);
   if (!found) {
     throw new Error('Budget not found');
   }
-  return simulateApiCall(cloneBudget(found), 350);
+  return simulateApiCall(envelope<AnnualBudget>(cloneBudget(found)), 350);
 };
 
-export const saveBudgetAPI = async (budget: AnnualBudget): Promise<AnnualBudget> => {
+export const saveBudgetAPI = async (budget: AnnualBudget): Promise<BudgetSingleResponse> => {
   const normalizedLines: BudgetAccountLine[] = budget.lines.map(line => {
     const monthly = { ...line.monthly };
     return {
@@ -114,15 +120,15 @@ export const saveBudgetAPI = async (budget: AnnualBudget): Promise<AnnualBudget>
     });
   }
 
-  return simulateApiCall(cloneBudget(next), 480);
+  return simulateApiCall(envelope<AnnualBudget>(cloneBudget(next)), 480);
 };
 
-export const copyBudgetFromLastYearAPI = async (fiscalYear: number): Promise<AnnualBudget | null> => {
+export const copyBudgetFromLastYearAPI = async (fiscalYear: number): Promise<BudgetCopyResponse> => {
   const prior = budgetStore.find(budget => budget.fiscalYear === fiscalYear - 1);
-  return simulateApiCall(prior ? cloneBudget(prior) : null, 300);
+  return simulateApiCall(envelope<AnnualBudget | null>(prior ? cloneBudget(prior) : null), 300);
 };
 
-export const getBudgetComparisonAPI = async (budgetId: string): Promise<BudgetComparisonResult> => {
+export const getBudgetComparisonAPI = async (budgetId: string): Promise<BudgetComparisonResponse> => {
   const budget = budgetStore.find(item => item.id === budgetId);
   if (!budget) {
     throw new Error('Budget not found');
@@ -168,5 +174,5 @@ export const getBudgetComparisonAPI = async (budgetId: string): Promise<BudgetCo
     },
   };
 
-  return simulateApiCall(result, 500);
+  return simulateApiCall(envelope<BudgetComparisonResult>(result), 500);
 };

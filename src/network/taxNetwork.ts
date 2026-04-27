@@ -12,6 +12,14 @@ import type {
   TaxLiabilityRow,
   TaxType,
 } from '../types';
+import type {
+  ApiEnvelope,
+  TaxLiabilityResponse,
+  TaxPaymentSingleResponse,
+  TaxRateDeleteResponse,
+  TaxRateListResponse,
+  TaxRateSingleResponse,
+} from '../models/taxModel';
 
 // In-memory stores (reset on app reload, simulates a real API)
 let rateStore: TaxRate[] = seedRates.map(r => ({ ...r }));
@@ -19,18 +27,28 @@ let paymentStore: TaxPaymentRecord[] = seedPayments.map(p => ({ ...p }));
 
 // ── Tax Rates ──────────────────────────────────────────
 
-export const getTaxRatesAPI = async (): Promise<TaxRate[]> =>
-  simulateApiCall(rateStore.map(r => ({ ...r })), 600);
+export const getTaxRatesAPI = async (): Promise<
+  ApiEnvelope<TaxRateListResponse>
+> =>
+  simulateApiCall(
+    { success: true, data: { rates: rateStore.map(r => ({ ...r })) } },
+    600,
+  );
 
-export const getTaxRateByIdAPI = async (id: string): Promise<TaxRate> => {
+export const getTaxRateByIdAPI = async (
+  id: string,
+): Promise<ApiEnvelope<TaxRateSingleResponse>> => {
   const rate = rateStore.find(r => r.id === id);
   if (!rate) throw new Error('Tax rate not found');
-  return simulateApiCall({ ...rate }, 400);
+  return simulateApiCall(
+    { success: true, data: { rate: { ...rate } } },
+    400,
+  );
 };
 
 export const createTaxRateAPI = async (
   data: Omit<TaxRate, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>,
-): Promise<TaxRate> => {
+): Promise<ApiEnvelope<TaxRateSingleResponse>> => {
   const newRate: TaxRate = {
     ...data,
     id: `tax_${Date.now()}`,
@@ -39,34 +57,47 @@ export const createTaxRateAPI = async (
     updatedAt: new Date().toISOString(),
   };
   rateStore.push(newRate);
-  return simulateApiCall({ ...newRate }, 600);
+  return simulateApiCall(
+    { success: true, data: { rate: { ...newRate } } },
+    600,
+  );
 };
 
 export const updateTaxRateAPI = async (
   id: string,
   data: Partial<Omit<TaxRate, 'id' | 'companyId' | 'createdAt'>>,
-): Promise<TaxRate> => {
+): Promise<ApiEnvelope<TaxRateSingleResponse>> => {
   const idx = rateStore.findIndex(r => r.id === id);
   if (idx === -1) throw new Error('Tax rate not found');
   rateStore[idx] = { ...rateStore[idx], ...data, updatedAt: new Date().toISOString() };
-  return simulateApiCall({ ...rateStore[idx] }, 600);
+  return simulateApiCall(
+    { success: true, data: { rate: { ...rateStore[idx] } } },
+    600,
+  );
 };
 
-export const deleteTaxRateAPI = async (id: string): Promise<{ success: boolean }> => {
+export const deleteTaxRateAPI = async (
+  id: string,
+): Promise<ApiEnvelope<TaxRateDeleteResponse>> => {
   const idx = rateStore.findIndex(r => r.id === id);
   if (idx === -1) throw new Error('Tax rate not found');
   rateStore.splice(idx, 1);
-  return simulateApiCall({ success: true }, 400);
+  return simulateApiCall({ success: true, data: { id } }, 400);
 };
 
 // ── Tax Payments ───────────────────────────────────────
 
-export const getTaxPaymentsAPI = async (): Promise<TaxPaymentRecord[]> =>
-  simulateApiCall(paymentStore.map(p => ({ ...p })), 600);
+export const getTaxPaymentsAPI = async (): Promise<
+  ApiEnvelope<{ payments: TaxPaymentRecord[] }>
+> =>
+  simulateApiCall(
+    { success: true, data: { payments: paymentStore.map(p => ({ ...p })) } },
+    600,
+  );
 
 export const createTaxPaymentAPI = async (
   data: Omit<TaxPaymentRecord, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>,
-): Promise<TaxPaymentRecord> => {
+): Promise<ApiEnvelope<TaxPaymentSingleResponse>> => {
   const newPayment: TaxPaymentRecord = {
     ...data,
     id: `txpay_${Date.now()}`,
@@ -75,7 +106,10 @@ export const createTaxPaymentAPI = async (
     updatedAt: new Date().toISOString(),
   };
   paymentStore.push(newPayment);
-  return simulateApiCall({ ...newPayment }, 600);
+  return simulateApiCall(
+    { success: true, data: { payment: { ...newPayment } } },
+    600,
+  );
 };
 
 // ── Tax Liability (Computed) ───────────────────────────
@@ -93,7 +127,7 @@ const DUMMY_COLLECTED: Record<string, number> = {
 export const getTaxLiabilityAPI = async (
   fromDate: string,
   toDate: string,
-): Promise<TaxLiabilityReport> => {
+): Promise<ApiEnvelope<TaxLiabilityResponse>> => {
   await simulateApiCall(null, 800);
 
   const paymentsInRange = paymentStore.filter(p => p.date >= fromDate && p.date <= toDate + 'T23:59:59Z');
@@ -123,5 +157,13 @@ export const getTaxLiabilityAPI = async (
   const totalPaid = rows.reduce((s, r) => s + r.paid, 0);
   const totalNet = totalCollected - totalPaid;
 
-  return { fromDate, toDate, rows, totalCollected, totalPaid, totalNet };
+  const report: TaxLiabilityReport = {
+    fromDate,
+    toDate,
+    rows,
+    totalCollected,
+    totalPaid,
+    totalNet,
+  };
+  return { success: true, data: { report } };
 };

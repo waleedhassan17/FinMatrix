@@ -114,7 +114,9 @@ const EmployeeDetailScreen: React.FC = () => {
             <InfoRow label="Employment" value={employee.employmentType.replace('_', ' ')} />
             <InfoRow label="Email" value={employee.email} />
             <InfoRow label="Phone" value={employee.phone || '-'} />
-            <InfoRow label="Start Date" value={formatDate(employee.startDate)} />
+            <InfoRow label="Address" value={employee.address || '-'} />
+            <InfoRow label="Tax ID" value={employee.taxId || '-'} />
+            <InfoRow label="Hire Date" value={formatDate(employee.startDate)} />
             <InfoRow label="Bank" value={`${employee.banking.bankName} (${employee.banking.accountNumber})`} />
             {!!employee.notes && <InfoRow label="Notes" value={employee.notes} />}
           </View>
@@ -122,6 +124,18 @@ const EmployeeDetailScreen: React.FC = () => {
 
         {activeTab === 'pay' && (
           <>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Pay Setup</Text>
+              <InfoRow label="Pay Type" value={employee.payType === 'salary' ? 'Salary' : 'Hourly'} />
+              <InfoRow
+                label="Pay Frequency"
+                value={
+                  employee.payFrequency === 'biweekly'
+                    ? 'Bi-weekly'
+                    : employee.payFrequency.charAt(0).toUpperCase() + employee.payFrequency.slice(1)
+                }
+              />
+            </View>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Deductions</Text>
               <InfoRow label="Tax" value={formatCurrency(employee.deductions.tax, 'Rs ')} />

@@ -1,7 +1,8 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { DeliveryDailyReport } from '../../../models/reportModel';
-import { getDeliveryDailyReportAPI } from '../../../network/reportNetwork';
+import type { DeliveryDailyReport } from '../../../models/deliveryDailyReportModel';
+import { getDeliveryDailyReportAPI } from '../../../network/deliveryDailyReportNetwork';
+import { deliveryDailyReportSerializer } from '../../../serializers/deliveryDailyReportSerializer';
 
 interface DeliveryDailyReportState {
   report: DeliveryDailyReport | null;
@@ -25,7 +26,7 @@ export const deliveryDailyReportSlice = createAppSlice({
       state.date = action.payload;
     }),
     fetchDeliveryDailyReport: create.asyncThunk(
-      async (date: string) => getDeliveryDailyReportAPI(date),
+      async (date: string) => deliveryDailyReportSerializer(await getDeliveryDailyReportAPI(date)),
       {
         pending: state => {
           state.isLoading = true;

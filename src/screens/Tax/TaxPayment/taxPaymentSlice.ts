@@ -8,6 +8,10 @@ import type { TaxRate, TaxType, BankAccount } from '../../../types';
 import { getTaxRatesAPI, createTaxPaymentAPI } from '../../../network/taxNetwork';
 import { getBankAccountsAPI } from '../../../network/bankingNetwork';
 import { bankAccountListSerializer } from '../../../serializers/bankingSerializer';
+import {
+  taxPaymentSingleSerializer,
+  taxRateListSerializer,
+} from '../../../serializers/taxSerializer';
 
 export interface TaxPaymentForm {
   taxRateId: string;
@@ -67,11 +71,14 @@ export const taxPaymentSlice = createAppSlice({
 
     loadTaxPaymentDeps: create.asyncThunk(
       async () => {
-        const [rates, accountsEnvelope] = await Promise.all([
+        const [ratesEnvelope, accountsEnvelope] = await Promise.all([
           getTaxRatesAPI(),
           getBankAccountsAPI(),
         ]);
-        return { rates, accounts: bankAccountListSerializer(accountsEnvelope) };
+        return {
+          rates: taxRateListSerializer(ratesEnvelope),
+          accounts: bankAccountListSerializer(accountsEnvelope),
+        };
       },
       {
         pending: state => { state.isLoading = true; state.error = ''; },
@@ -100,7 +107,7 @@ export const taxPaymentSlice = createAppSlice({
         const { form, taxRates, bankAccounts } = s;
         const rate    = taxRates.find(r => r.id === form.taxRateId);
         const account = bankAccounts.find(a => a.id === form.bankAccountId);
-        return createTaxPaymentAPI({
+        const envelope = await createTaxPaymentAPI({
           taxRateId:       form.taxRateId,
           taxRateName:     rate?.name ?? '',
           taxType:         (rate?.taxType ?? 'GST') as TaxType,
@@ -111,6 +118,7 @@ export const taxPaymentSlice = createAppSlice({
           reference:       form.reference.trim(),
           notes:           form.notes.trim(),
         });
+        return taxPaymentSingleSerializer(envelope);
       },
       {
         pending:   state => { state.isSaving = true; state.error = ''; },

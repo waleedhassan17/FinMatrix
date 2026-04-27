@@ -11,6 +11,11 @@ import {
   updateTaxRateAPI,
   deleteTaxRateAPI,
 } from '../../../network/taxNetwork';
+import {
+  taxRateDeleteSerializer,
+  taxRateListSerializer,
+  taxRateSingleSerializer,
+} from '../../../serializers/taxSerializer';
 
 export interface TaxRateForm {
   name: string;
@@ -84,7 +89,10 @@ export const taxSettingsSlice = createAppSlice({
     }),
 
     fetchTaxRates: create.asyncThunk(
-      async () => getTaxRatesAPI(),
+      async () => {
+        const envelope = await getTaxRatesAPI();
+        return taxRateListSerializer(envelope);
+      },
       {
         pending:   state => { state.isLoading = true; state.error = ''; },
         fulfilled: (state, action) => { state.rates = action.payload; state.isLoading = false; },
@@ -103,17 +111,18 @@ export const taxSettingsSlice = createAppSlice({
           description: form.description.trim(),
           isActive: form.isActive,
         };
-        if (editingId) {
-          return updateTaxRateAPI(editingId, data);
-        }
-        return createTaxRateAPI(data);
+        const envelope = editingId
+          ? await updateTaxRateAPI(editingId, data)
+          : await createTaxRateAPI(data);
+        return taxRateSingleSerializer(envelope);
       },
       {
         pending: state => { state.isSaving = true; state.error = ''; },
         fulfilled: (state, action) => {
           state.isSaving = false;
           state.modalVisible = false;
-          const idx = state.rates.findIndex(r => r.id === action.payload.id);
+          if (!action.payload) return;
+          const idx = state.rates.findIndex(r => r.id === action.payload!.id);
           if (idx >= 0) {
             state.rates[idx] = action.payload;
           } else {
@@ -132,11 +141,13 @@ export const taxSettingsSlice = createAppSlice({
         const s = (getState() as { taxSettings: TaxSettingsState }).taxSettings;
         const rate = s.rates.find(r => r.id === rateId);
         if (!rate) throw new Error('Tax rate not found');
-        return updateTaxRateAPI(rateId, { isActive: !rate.isActive });
+        const envelope = await updateTaxRateAPI(rateId, { isActive: !rate.isActive });
+        return taxRateSingleSerializer(envelope);
       },
       {
         fulfilled: (state, action) => {
-          const idx = state.rates.findIndex(r => r.id === action.payload.id);
+          if (!action.payload) return;
+          const idx = state.rates.findIndex(r => r.id === action.payload!.id);
           if (idx >= 0) state.rates[idx] = action.payload;
         },
         rejected: (state, action) => { state.error = action.error?.message ?? 'Toggle failed'; },
@@ -144,7 +155,10 @@ export const taxSettingsSlice = createAppSlice({
     ),
 
     removeTaxRate: create.asyncThunk(
-      async (rateId: string) => { await deleteTaxRateAPI(rateId); return rateId; },
+      async (rateId: string) => {
+        const envelope = await deleteTaxRateAPI(rateId);
+        return taxRateDeleteSerializer(envelope) || rateId;
+      },
       {
         fulfilled: (state, action) => {
           state.rates = state.rates.filter(r => r.id !== action.payload);

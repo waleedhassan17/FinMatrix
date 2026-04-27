@@ -20,7 +20,7 @@ import {
   setDeliveryDailyDate,
   selectDeliveryDailyReportState,
 } from './deliveryDailyReportSlice';
-import type { DeliveryPersonnelStat } from '../../../models/reportModel';
+import type { DeliveryPersonnelStat } from '../../../models/deliveryDailyReportModel';
 
 const CHART_WIDTH = Dimensions.get('window').width - spacing.md * 4;
 const PIE_COLORS = ['#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444'];

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   TextInput,
   Platform,
 } from 'react-native';
@@ -44,18 +43,10 @@ const P = {
   borderCard: '#E0E7EF',
 
   readyDot: '#1B5E92',
-  soonDot: '#B0BAC6',
   readyBg: '#EBF3FA',
   readyBorder: '#C8DCF0',
-  soonBg: '#F1F4F8',
-  soonBorder: '#E0E5EC',
-  soonText: '#7A8A9B',
 
   accentReady: '#1B5E92',
-  accentSoon: '#D0D7DF',
-
-  progressTrack: '#E3E9F0',
-  progressFill: '#1B5E92',
 };
 
 /* ───────────────────── category icons ───────────────────── */
@@ -63,10 +54,8 @@ const P = {
 const CATEGORY_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   financial: 'bar-chart-2',
   ar: 'arrow-down-left',
-  ap: 'arrow-up-right',
   inventory: 'package',
   sales: 'trending-up',
-  payroll: 'users',
   delivery: 'truck',
 };
 
@@ -96,15 +85,8 @@ const ReportsHubScreen: React.FC = () => {
   }, [categories, search]);
 
   const handlePress = useCallback(
-    (item: { title: string; target: string | null }) => {
-      if (item.target) {
-        navigation.navigate(item.target as any);
-      } else {
-        Alert.alert(
-          'Coming Soon',
-          `${item.title} report is on the roadmap and will be available in a future update.`,
-        );
-      }
+    (item: { title: string; target: string }) => {
+      navigation.navigate(item.target as any);
     },
     [navigation],
   );
@@ -163,94 +145,66 @@ const ReportsHubScreen: React.FC = () => {
           </View>
         )}
 
-        {filtered.map(category => {
-          const readyCount = category.items.filter(i => i.target).length;
-          const pct = Math.round((readyCount / category.items.length) * 100);
+        {filtered.map(category => (
+          <View key={category.key} style={styles.card}>
+            {/* Card header */}
+            <View style={styles.cardHeader}>
+              <View style={styles.catIcon}>
+                <Feather name={getCatIcon(category.key)} size={15} color={P.brand} />
+              </View>
+              <View style={styles.catInfo}>
+                <Text style={styles.catTitle}>{category.title}</Text>
+                <Text style={styles.catMeta}>
+                  {category.items.length} report{category.items.length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            </View>
 
-          return (
-            <View key={category.key} style={styles.card}>
-              {/* Card header */}
-              <View style={styles.cardHeader}>
-                <View style={styles.catIcon}>
-                  <Feather name={getCatIcon(category.key)} size={15} color={P.brand} />
+            <View style={styles.cardDivider} />
+
+            {/* Items */}
+            {category.items.map((item, idx) => (
+              <TouchableOpacity
+                key={item.key}
+                activeOpacity={0.6}
+                style={[
+                  styles.itemRow,
+                  idx < category.items.length - 1 && styles.itemRowBordered,
+                ]}
+                onPress={() => handlePress(item)}
+              >
+                <View
+                  style={[styles.itemAccent, { backgroundColor: P.accentReady }]}
+                />
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>{item.title}</Text>
+                  <Text style={styles.itemSub}>View report</Text>
                 </View>
-                <View style={styles.catInfo}>
-                  <Text style={styles.catTitle}>{category.title}</Text>
-                  <Text style={styles.catMeta}>
-                    {readyCount} of {category.items.length} available
+
+                <View
+                  style={[
+                    styles.badge,
+                    { backgroundColor: P.readyBg, borderColor: P.readyBorder },
+                  ]}
+                >
+                  <View
+                    style={[styles.badgeDot, { backgroundColor: P.readyDot }]}
+                  />
+                  <Text style={[styles.badgeText, { color: P.textOnBrand }]}>
+                    Ready
                   </Text>
                 </View>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${pct}%` }]} />
-                </View>
-              </View>
 
-              <View style={styles.cardDivider} />
-
-              {/* Items */}
-              {category.items.map((item, idx) => {
-                const isReady = !!item.target;
-                return (
-                  <TouchableOpacity
-                    key={item.key}
-                    activeOpacity={0.6}
-                    style={[
-                      styles.itemRow,
-                      idx < category.items.length - 1 && styles.itemRowBordered,
-                      !isReady && styles.itemRowMuted,
-                    ]}
-                    onPress={() => handlePress(item)}
-                  >
-                    <View
-                      style={[
-                        styles.itemAccent,
-                        { backgroundColor: isReady ? P.accentReady : P.accentSoon },
-                      ]}
-                    />
-                    <View style={styles.itemContent}>
-                      <Text style={styles.itemTitle}>{item.title}</Text>
-                      <Text style={styles.itemSub}>
-                        {isReady ? 'View report' : 'Coming soon'}
-                      </Text>
-                    </View>
-
-                    <View
-                      style={[
-                        styles.badge,
-                        {
-                          backgroundColor: isReady ? P.readyBg : P.soonBg,
-                          borderColor: isReady ? P.readyBorder : P.soonBorder,
-                        },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.badgeDot,
-                          { backgroundColor: isReady ? P.readyDot : P.soonDot },
-                        ]}
-                      />
-                      <Text
-                        style={[
-                          styles.badgeText,
-                          { color: isReady ? P.textOnBrand : P.soonText },
-                        ]}
-                      >
-                        {isReady ? 'Ready' : 'Soon'}
-                      </Text>
-                    </View>
-
-                    <Feather
-                      name={isReady ? 'chevron-right' : 'lock'}
-                      size={isReady ? 16 : 13}
-                      color={isReady ? P.textTertiary : P.accentSoon}
-                      style={{ marginLeft: 6 }}
-                    />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          );
-        })}
+                <Feather
+                  name="chevron-right"
+                  size={16}
+                  color={P.textTertiary}
+                  style={{ marginLeft: 6 }}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        ))}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -362,19 +316,6 @@ const styles = StyleSheet.create({
     marginTop: 1,
     color: P.textTertiary,
   },
-  progressTrack: {
-    width: 40,
-    height: 3.5,
-    borderRadius: 2,
-    backgroundColor: P.progressTrack,
-    overflow: 'hidden',
-    marginLeft: 8,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-    backgroundColor: P.progressFill,
-  },
   cardDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: P.borderLight,
@@ -391,7 +332,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: P.borderLight,
   },
-  itemRowMuted: { opacity: 0.6 },
   itemAccent: { width: 3, alignSelf: 'stretch' },
   itemContent: {
     flex: 1,

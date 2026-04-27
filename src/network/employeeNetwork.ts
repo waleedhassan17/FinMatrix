@@ -4,7 +4,14 @@
 
 import { simulateApiCall } from './apiHelpers';
 import { employees as seedEmployees } from '../dummy-data/employees';
-import type { EmployeeRecord } from '../models/employeeModel';
+import type {
+  ApiEnvelope,
+  CreateEmployeePayload,
+  EmployeeListResponse,
+  EmployeeRecord,
+  EmployeeSingleResponse,
+  UpdateEmployeePayload,
+} from '../models/employeeModel';
 
 let employeeStore: EmployeeRecord[] = seedEmployees.map(e => ({
   ...e,
@@ -22,18 +29,28 @@ const cloneEmployee = (e: EmployeeRecord): EmployeeRecord => ({
   recentPayStubs: e.recentPayStubs.map(s => ({ ...s })),
 });
 
-export const getEmployeesAPI = async (): Promise<EmployeeRecord[]> =>
-  simulateApiCall(employeeStore.map(cloneEmployee), 700);
+export const getEmployeesAPI = async (): Promise<
+  ApiEnvelope<EmployeeListResponse>
+> =>
+  simulateApiCall(
+    { success: true, data: { employees: employeeStore.map(cloneEmployee) } },
+    700,
+  );
 
-export const getEmployeeByIdAPI = async (id: string): Promise<EmployeeRecord> => {
+export const getEmployeeByIdAPI = async (
+  id: string,
+): Promise<ApiEnvelope<EmployeeSingleResponse>> => {
   const employee = employeeStore.find(e => e.id === id);
   if (!employee) throw new Error('Employee not found');
-  return simulateApiCall(cloneEmployee(employee), 450);
+  return simulateApiCall(
+    { success: true, data: { employee: cloneEmployee(employee) } },
+    450,
+  );
 };
 
 export const createEmployeeAPI = async (
-  data: Omit<EmployeeRecord, 'id' | 'createdAt' | 'updatedAt'>,
-): Promise<EmployeeRecord> => {
+  data: CreateEmployeePayload,
+): Promise<ApiEnvelope<EmployeeSingleResponse>> => {
   const now = new Date().toISOString();
   const newEmployee: EmployeeRecord = {
     ...data,
@@ -46,13 +63,16 @@ export const createEmployeeAPI = async (
     recentPayStubs: data.recentPayStubs.map(s => ({ ...s })),
   };
   employeeStore.push(newEmployee);
-  return simulateApiCall(cloneEmployee(newEmployee), 600);
+  return simulateApiCall(
+    { success: true, data: { employee: cloneEmployee(newEmployee) } },
+    600,
+  );
 };
 
 export const updateEmployeeAPI = async (
   id: string,
-  data: Partial<EmployeeRecord>,
-): Promise<EmployeeRecord> => {
+  data: UpdateEmployeePayload,
+): Promise<ApiEnvelope<EmployeeSingleResponse>> => {
   const idx = employeeStore.findIndex(e => e.id === id);
   if (idx === -1) throw new Error('Employee not found');
 
@@ -68,5 +88,11 @@ export const updateEmployeeAPI = async (
     updatedAt: new Date().toISOString(),
   };
 
-  return simulateApiCall(cloneEmployee(employeeStore[idx]), 600);
+  return simulateApiCall(
+    { success: true, data: { employee: cloneEmployee(employeeStore[idx]) } },
+    600,
+  );
 };
+
+// Re-export payload types for slice import convenience.
+export type { CreateEmployeePayload, UpdateEmployeePayload } from '../models/employeeModel';

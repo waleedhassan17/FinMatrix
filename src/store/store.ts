@@ -267,7 +267,12 @@ export const store = configureStore({
   reducer: persistedReducer,
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
+      // Dev-only safety scans. The store has grown large enough that the
+      // default 32ms warn threshold is too tight, so we widen it. These
+      // middlewares are stripped from production builds automatically.
+      immutableCheck: { warnAfter: 128 },
       serializableCheck: {
+        warnAfter: 128,
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
     }).concat(realtimeMiddleware),

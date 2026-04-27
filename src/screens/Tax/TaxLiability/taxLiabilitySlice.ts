@@ -7,6 +7,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { TaxLiabilityRow, TaxLiabilityReport } from '../../../types';
 import { getTaxLiabilityAPI } from '../../../network/taxNetwork';
+import { taxLiabilitySerializer } from '../../../serializers/taxSerializer';
 
 export interface DateRange {
   from: string;
@@ -42,7 +43,10 @@ export const taxLiabilitySlice = createAppSlice({
     }),
 
     fetchTaxLiability: create.asyncThunk(
-      async ({ from, to }: DateRange) => getTaxLiabilityAPI(from, to),
+      async ({ from, to }: DateRange) => {
+        const envelope = await getTaxLiabilityAPI(from, to);
+        return taxLiabilitySerializer(envelope);
+      },
       {
         pending:   state => { state.isLoading = true; state.error = ''; },
         fulfilled: (state, action: PayloadAction<TaxLiabilityReport>) => {

@@ -1,6 +1,7 @@
 import { createAppSlice } from '@store/createAppSlice';
 import type { AnnualBudget } from '../../../models/budgetModel';
 import { getBudgetsAPI } from '../../../network/budgetNetwork';
+import { budgetListSerializer } from '../../../serializers/budgetSerializer';
 
 interface BudgetListState {
   budgets: AnnualBudget[];
@@ -18,7 +19,7 @@ export const budgetListSlice = createAppSlice({
   name: 'budgetList',
   initialState,
   reducers: create => ({
-    fetchBudgetList: create.asyncThunk(async () => getBudgetsAPI(), {
+    fetchBudgetList: create.asyncThunk(async () => budgetListSerializer(await getBudgetsAPI()), {
       pending: state => {
         state.isLoading = true;
         state.error = '';

@@ -1,7 +1,8 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { TrialBalanceReport } from '../../../models/reportModel';
-import { getTrialBalanceReportAPI } from '../../../network/reportNetwork';
+import type { TrialBalanceReport } from '../../../models/trialBalanceModel';
+import { getTrialBalanceReportAPI } from '../../../network/trialBalanceNetwork';
+import { trialBalanceSerializer } from '../../../serializers/trialBalanceSerializer';
 
 interface TrialBalanceState {
   asOfDate: string;
@@ -25,7 +26,7 @@ export const trialBalanceSlice = createAppSlice({
       state.asOfDate = action.payload;
     }),
     fetchTrialBalanceReport: create.asyncThunk(
-      async (asOfDate: string) => getTrialBalanceReportAPI(asOfDate),
+      async (asOfDate: string) => trialBalanceSerializer(await getTrialBalanceReportAPI(asOfDate)),
       {
         pending: state => {
           state.isLoading = true;

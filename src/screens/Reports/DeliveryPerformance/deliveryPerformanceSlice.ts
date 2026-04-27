@@ -1,8 +1,10 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { DeliveryPerformanceReport, ReportDateRange } from '../../../models/reportModel';
+import type { ReportDateRange } from '../../../models/reportModel';
 import { getLastNDaysRange } from '../../../models/reportModel';
-import { getDeliveryPerformanceAPI } from '../../../network/reportNetwork';
+import type { DeliveryPerformanceReport } from '../../../models/deliveryPerformanceModel';
+import { getDeliveryPerformanceAPI } from '../../../network/deliveryPerformanceNetwork';
+import { deliveryPerformanceSerializer } from '../../../serializers/deliveryPerformanceSerializer';
 
 interface DeliveryPerformanceState {
   report: DeliveryPerformanceReport | null;
@@ -26,7 +28,7 @@ export const deliveryPerformanceSlice = createAppSlice({
       state.range = action.payload;
     }),
     fetchDeliveryPerformance: create.asyncThunk(
-      async (range: ReportDateRange) => getDeliveryPerformanceAPI(range),
+      async (range: ReportDateRange) => deliveryPerformanceSerializer(await getDeliveryPerformanceAPI(range)),
       {
         pending: state => {
           state.isLoading = true;
