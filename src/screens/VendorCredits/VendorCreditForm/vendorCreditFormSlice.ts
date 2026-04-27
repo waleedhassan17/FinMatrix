@@ -1,11 +1,20 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Vendor Credit Form Slice
-// Credit from vendor against open bills.
+// FinMatrix — Vendor Credit Form Slice (createAppSlice)
 // ═══════════════════════════════════════════════════════
+// Co-located with VendorCreditFormScreen.tsx
+// Flow: Screen → Slice → Network → Serializer (in fulfilled) → Screen
+// Mirrors `billFormSlice.ts` / `glSlice.ts`.
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { VendorCredit } from '../../../types';
+import type { VendorCreditStatus } from '../../../models/vendorCreditModel';
+import {
+  createVendorCreditAPI,
+  updateVendorCreditAPI,
+  getVendorCreditByIdAPI,
+} from '../../../network/vendorCreditNetwork';
+import { vendorCreditSingleSerializer } from '../../../serializers/vendorCreditSerializer';
 
 export interface VCFormLine {
   id: string;
@@ -21,7 +30,7 @@ export interface VendorCreditFormState {
   vendorId: string;
   vendorName: string;
   date: string;
-  status: string;
+  status: VendorCreditStatus;
   notes: string;
   lines: VCFormLine[];
   subtotal: number;
@@ -29,6 +38,7 @@ export interface VendorCreditFormState {
   total: number;
   errors: Record<string, string>;
   isSaving: boolean;
+  saveError: string;
   isEditMode: boolean;
   editId: string;
 }
@@ -71,6 +81,7 @@ const initialState: VendorCreditFormState = {
   total: 0,
   errors: {},
   isSaving: false,
+  saveError: '',
   isEditMode: false,
   editId: '',
 };
@@ -105,11 +116,6 @@ export const vendorCreditFormSlice = createAppSlice({
         state.errors = action.payload;
       },
     ),
-    setVCIsSaving: create.reducer(
-      (state, action: PayloadAction<boolean>) => {
-        state.isSaving = action.payload;
-      },
-    ),
 
     addVCLine: create.reducer(state => {
       state.lines.push(emptyLine());
@@ -140,32 +146,93 @@ export const vendorCreditFormSlice = createAppSlice({
       Object.assign(state, t);
     }),
 
-    loadVendorCreditForEdit: create.reducer(
-      (state, action: PayloadAction<VendorCredit>) => {
-        const vc = action.payload;
-        state.isEditMode = true;
-        state.editId = vc.id;
-        state.creditNumber = vc.creditNumber;
-        state.vendorId = vc.vendorId;
-        state.vendorName = vc.vendorName;
-        state.date = vc.date.slice(0, 10);
-        state.status = vc.status;
-        state.notes = vc.notes;
-        state.lines = vc.lines.map(l => ({
-          id: l.id,
-          accountId: l.accountId,
-          accountName: l.accountName,
-          description: l.description,
-          amount: String(l.amount),
-          taxRate: String(l.taxRate),
-        }));
-        const t = recalcVC(state.lines);
-        Object.assign(state, t);
-        state.errors = {};
+    resetVendorCreditForm: create.reducer(() => initialState),
+
+    // ── Async thunks ────────────────────────────────
+
+    /** Save (create or update) the vendor credit. Mirrors saveBill /
+     *  savePurchaseOrder so the screen only needs to dispatch one
+     *  action. Routes through network → serializer pipeline. */
+    saveVendorCredit: create.asyncThunk(
+      async (
+        saveStatus: VendorCreditStatus,
+        thunkAPI,
+      ): Promise<VendorCredit | null> => {
+        const root = thunkAPI.getState() as { vendorCreditForm: VendorCreditFormState };
+        const f = root.vendorCreditForm;
+        const payload = {
+          companyId: 'comp_001',
+          creditNumber: f.creditNumber,
+          vendorId: f.vendorId,
+          vendorName: f.vendorName,
+          date: new Date(f.date).toISOString(),
+          lines: f.lines.map(l => ({
+            id: l.id,
+            accountId: l.accountId,
+            accountName: l.accountName,
+            description: l.description,
+            amount: parseFloat(l.amount) || 0,
+            taxRate: parseFloat(l.taxRate) || 0,
+          })),
+          subtotal: f.subtotal,
+          taxAmount: f.taxAmount,
+          total: f.total,
+          appliedAmount: 0,
+          notes: f.notes,
+          status: saveStatus,
+          createdBy: 'admin_001',
+        };
+        const envelope = f.isEditMode && f.editId
+          ? await updateVendorCreditAPI(f.editId, payload)
+          : await createVendorCreditAPI(payload);
+        return vendorCreditSingleSerializer(envelope);
+      },
+      {
+        pending: state => { state.isSaving = true; state.saveError = ''; },
+        fulfilled: (state, action: PayloadAction<VendorCredit | null>) => {
+          state.isSaving = false;
+          if (action.payload?.id) {
+            state.editId = action.payload.id;
+            state.isEditMode = true;
+            state.status = action.payload.status;
+          }
+        },
+        rejected: (state, action) => {
+          state.isSaving = false;
+          state.saveError = action.error?.message ?? 'Failed to save vendor credit';
+        },
       },
     ),
 
-    resetVendorCreditForm: create.reducer(() => initialState),
+    /** Loads an existing vendor credit into the form for editing. */
+    fetchVendorCreditForEdit: create.asyncThunk(
+      async (id: string) => getVendorCreditByIdAPI(id),
+      {
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const vc = vendorCreditSingleSerializer(action.payload);
+          if (!vc) return;
+          state.isEditMode = true;
+          state.editId = vc.id;
+          state.creditNumber = vc.creditNumber;
+          state.vendorId = vc.vendorId;
+          state.vendorName = vc.vendorName;
+          state.date = vc.date.slice(0, 10);
+          state.status = vc.status;
+          state.notes = vc.notes;
+          state.lines = vc.lines.map(l => ({
+            id: l.id,
+            accountId: l.accountId,
+            accountName: l.accountName,
+            description: l.description,
+            amount: String(l.amount),
+            taxRate: String(l.taxRate),
+          }));
+          const t = recalcVC(state.lines);
+          Object.assign(state, t);
+          state.errors = {};
+        },
+      },
+    ),
   }),
 
   selectors: {
@@ -173,6 +240,7 @@ export const vendorCreditFormSlice = createAppSlice({
     selectVCLines: state => state.lines,
     selectVCErrors: state => state.errors,
     selectVCIsSaving: state => state.isSaving,
+    selectVCSaveError: state => state.saveError,
     selectVCIsEditMode: state => state.isEditMode,
   },
 });
@@ -181,14 +249,14 @@ export const {
   setVCField,
   setVCVendor,
   setVCErrors,
-  setVCIsSaving,
   addVCLine,
   removeVCLine,
   updateVCLine,
   setVCLineAccount,
   calculateVCTotals,
-  loadVendorCreditForEdit,
   resetVendorCreditForm,
+  saveVendorCredit,
+  fetchVendorCreditForEdit,
 } = vendorCreditFormSlice.actions;
 
 export const {
@@ -196,5 +264,6 @@ export const {
   selectVCLines,
   selectVCErrors,
   selectVCIsSaving,
+  selectVCSaveError,
   selectVCIsEditMode,
 } = vendorCreditFormSlice.selectors;

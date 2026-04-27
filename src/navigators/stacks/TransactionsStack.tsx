@@ -17,7 +17,7 @@ import BillListScreen from '../../screens/Bills/BillList/BillListScreen';
 import BillFormScreen from '../../screens/Bills/BillForm/BillFormScreen';
 import BillDetailScreen from '../../screens/Bills/BillDetail/BillDetailScreen';
 import PayBillsScreen from '../../screens/Bills/PayBills/PayBillsScreen';
-import VendorCreditFormScreen from '../../screens/Bills/VendorCreditForm/VendorCreditFormScreen';
+import VendorCreditFormScreen from '../../screens/VendorCredits/VendorCreditForm/VendorCreditFormScreen';
 import POListScreen from '../../screens/PurchaseOrders/POList/POListScreen';
 import POFormScreen from '../../screens/PurchaseOrders/POForm/POFormScreen';
 import PODetailScreen from '../../screens/PurchaseOrders/PODetail/PODetailScreen';

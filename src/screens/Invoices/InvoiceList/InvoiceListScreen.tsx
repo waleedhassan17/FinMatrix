@@ -72,6 +72,7 @@ const InvoiceListScreen: React.FC = () => {
   const error = useAppSelector(selectInvoiceError);
   const [showSearch, setShowSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const initialLoading = isLoading && invoices.length === 0;
 
   useFocusEffect(
     useCallback(() => {
@@ -245,8 +246,8 @@ const InvoiceListScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Search */}
-      {showSearch && (
+      {/* Search — hidden during initial load to keep loader centered */}
+      {showSearch && !initialLoading && (
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
@@ -259,7 +260,8 @@ const InvoiceListScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Filter tabs */}
+      {/* Filter tabs — hidden during initial load */}
+      {!initialLoading && (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -287,6 +289,7 @@ const InvoiceListScreen: React.FC = () => {
           );
         })}
       </ScrollView>
+      )}
 
       {/* List */}
       {isLoading && invoices.length === 0 ? (

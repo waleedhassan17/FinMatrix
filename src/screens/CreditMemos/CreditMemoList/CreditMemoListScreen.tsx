@@ -77,6 +77,7 @@ const CreditMemoListScreen: React.FC = () => {
   const statusFilter = useAppSelector(selectCMStatusFilter);
   const isLoading = useAppSelector(selectCMIsLoading);
   const error = useAppSelector(selectCMError);
+  const initialLoading = isLoading && creditMemos.length === 0;
   const [refreshing, setRefreshing] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
@@ -219,8 +220,8 @@ const CreditMemoListScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Search */}
-      {showSearch && (
+      {/* Search — hidden during initial load to keep loader centered */}
+      {showSearch && !initialLoading && (
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
@@ -233,7 +234,8 @@ const CreditMemoListScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Pill-style tabs */}
+      {/* Pill-style tabs — hidden during initial load */}
+      {!initialLoading && (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -261,6 +263,7 @@ const CreditMemoListScreen: React.FC = () => {
           );
         })}
       </ScrollView>
+      )}
 
       {/* List */}
       {isLoading && creditMemos.length === 0 ? (

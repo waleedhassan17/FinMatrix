@@ -32,13 +32,12 @@ import {
   distributePayBillAmount,
   preselectBill,
   setPayBillErrors,
-  setPayBillIsSaving,
   resetPayBills,
   fetchAllBillsForPayment,
+  savePayment,
 } from './payBillsSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
 import { fetchBills } from '../BillList/billListSlice';
-import { createBillPaymentAPI, updateBillAPI } from '../../../network/billNetwork';
 import { chartOfAccountsData } from '../../../dummy-data/chartOfAccounts';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -184,48 +183,21 @@ const PayBillsScreen: React.FC = () => {
       if (!proceed) return;
     }
 
-    dispatch(setPayBillIsSaving(true));
+    const allocations = form.outstandingRows
+      .filter(r => r.allocated > 0)
+      .map(r => ({
+        billId: r.billId,
+        billNumber: r.billNumber,
+        amount: r.allocated,
+      }));
 
     try {
-      const allocations = form.outstandingRows
-        .filter(r => r.allocated > 0)
-        .map(r => ({
-          billId: r.billId,
-          billNumber: r.billNumber,
-          amount: r.allocated,
-        }));
-
-      await createBillPaymentAPI({
-        companyId: 'comp_001',
-        paymentNumber: form.reference || generatePaymentNumber(),
-        vendorId: form.vendorId,
-        vendorName: form.vendorName,
-        date: new Date(form.paymentDate).toISOString(),
-        method: form.method,
-        reference: form.reference,
-        amount: paymentAmount,
-        bankAccountId: form.bankAccountId,
-        allocations,
-        notes: form.notes,
-        createdBy: 'admin_001',
-      });
-
-      // Update each allocated bill's amountPaid and status
-      for (const alloc of allocations) {
-        const bill = form.allBills.find(b => b.id === alloc.billId);
-        if (bill) {
-          const newAmountPaid = bill.amountPaid + alloc.amount;
-          const newStatus = newAmountPaid >= bill.total
-            ? 'paid'
-            : newAmountPaid > 0
-              ? 'partially_paid'
-              : bill.status;
-          await updateBillAPI(bill.id, {
-            amountPaid: newAmountPaid,
-            status: newStatus as any,
-          });
-        }
-      }
+      await dispatch(
+        savePayment({
+          paymentNumber: form.reference || generatePaymentNumber(),
+          allocations,
+        }),
+      ).unwrap();
 
       await dispatch(fetchBills());
 
@@ -236,8 +208,6 @@ const PayBillsScreen: React.FC = () => {
       );
     } catch {
       Alert.alert('Error', 'Failed to record payment. Please try again.');
-    } finally {
-      dispatch(setPayBillIsSaving(false));
     }
   }, [form, paymentAmount, overpayment, totalAllocated, dispatch, navigation, validate, generatePaymentNumber]);
 

@@ -5,6 +5,7 @@
 // Flow: Screen → Slice → Network → Serializer (in fulfilled) → Screen
 
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import { getLedgerEntriesAPI } from '../../network/glNetwork';
 import { glSerializer } from '../../serializers/glSerializer';
@@ -98,11 +99,9 @@ export const glSlice = createAppSlice({
     selectSelectedAccountId: state => state.selectedAccountId,
     selectGLIsLoading: state => state.isLoading,
     selectGLError: state => state.error,
-    selectGLTotals: state => ({
-      totalDebits: state.totalDebits,
-      totalCredits: state.totalCredits,
-      isBalanced: state.isBalanced,
-    }),
+    selectGLTotalDebits: state => state.totalDebits,
+    selectGLTotalCredits: state => state.totalCredits,
+    selectGLIsBalanced: state => state.isBalanced,
   },
 });
 
@@ -113,5 +112,17 @@ export const {
   selectSelectedAccountId,
   selectGLIsLoading,
   selectGLError,
-  selectGLTotals,
+  selectGLTotalDebits,
+  selectGLTotalCredits,
+  selectGLIsBalanced,
 } = glSlice.selectors;
+
+/** Memoized — returns a stable object reference unless inputs change. */
+export const selectGLTotals = createSelector(
+  [selectGLTotalDebits, selectGLTotalCredits, selectGLIsBalanced],
+  (totalDebits, totalCredits, isBalanced) => ({
+    totalDebits,
+    totalCredits,
+    isBalanced,
+  }),
+);

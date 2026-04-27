@@ -7,8 +7,12 @@
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { Bill, PaymentMethod } from '../../../types';
-import { getBillsAPI } from '../../../network/billNetwork';
+import type { Bill, BillPayment, BillStatus, PaymentMethod } from '../../../types';
+import {
+  getBillsAPI,
+  createBillPaymentAPI,
+  updateBillAPI,
+} from '../../../network/billNetwork';
 import { billListSerializer } from '../../../serializers/billSerializer';
 
 export interface OutstandingBillRow {
@@ -178,6 +182,64 @@ export const payBillsSlice = createAppSlice({
         rejected: state => { state.isLoadingBills = false; },
       },
     ),
+
+    /** Activity step: "Confirm Payment → JE: DR AP, CR Cash for each
+     *  vendor → Bills marked Paid, AP & Cash updated".
+     *  Creates the BillPayment then patches every allocated bill's
+     *  amountPaid + status. Centralises what used to live in the
+     *  screen so PayBillsScreen only has to dispatch one action. */
+    savePayment: create.asyncThunk(
+      async (
+        args: {
+          paymentNumber: string;
+          allocations: { billId: string; billNumber: string; amount: number }[];
+        },
+        thunkAPI,
+      ): Promise<BillPayment> => {
+        const root = thunkAPI.getState() as { payBills: PayBillsSliceState };
+        const f = root.payBills;
+        const amountNumeric = parseFloat(f.amount) || 0;
+
+        const payment = await createBillPaymentAPI({
+          companyId: 'comp_001',
+          paymentNumber: args.paymentNumber,
+          vendorId: f.vendorId,
+          vendorName: f.vendorName,
+          date: new Date(f.paymentDate).toISOString(),
+          method: f.method,
+          reference: f.reference,
+          amount: amountNumeric,
+          bankAccountId: f.bankAccountId,
+          allocations: args.allocations,
+          notes: f.notes,
+          createdBy: 'admin_001',
+        });
+
+        // Patch each allocated bill's amountPaid + status.
+        for (const alloc of args.allocations) {
+          const bill = f.allBills.find(b => b.id === alloc.billId);
+          if (!bill) continue;
+          const newAmountPaid = Math.round((bill.amountPaid + alloc.amount) * 100) / 100;
+          const newStatus: BillStatus =
+            newAmountPaid >= bill.total
+              ? 'paid'
+              : newAmountPaid > 0
+                ? 'partially_paid'
+                : bill.status;
+          await updateBillAPI(bill.id, {
+            amountPaid: newAmountPaid,
+            status: newStatus,
+          });
+        }
+
+        return payment;
+      },
+      {
+        pending: state => { state.isSaving = true; },
+        fulfilled: state => { state.isSaving = false; },
+        rejected: state => { state.isSaving = false; },
+      },
+    ),
   }),
 
   selectors: {
@@ -199,6 +261,7 @@ export const {
   setPayBillIsSaving,
   resetPayBills,
   fetchAllBillsForPayment,
+  savePayment,
 } = payBillsSlice.actions;
 
 export const {

@@ -30,18 +30,17 @@ import {
   setVCField,
   setVCVendor,
   setVCErrors,
-  setVCIsSaving,
   addVCLine,
   removeVCLine,
   updateVCLine,
   setVCLineAccount,
   calculateVCTotals,
-  loadVendorCreditForEdit,
   resetVendorCreditForm,
+  saveVendorCredit,
+  fetchVendorCreditForEdit,
   type VCFormLine,
 } from './vendorCreditFormSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
-import { createVendorCreditAPI, updateVendorCreditAPI, getVendorCreditByIdAPI } from '../../../network/billNetwork';
 import { chartOfAccountsData } from '../../../dummy-data/chartOfAccounts';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -103,7 +102,7 @@ const VendorCreditFormScreen: React.FC = () => {
     dispatch(fetchVendors());
 
     if (isEditing && editingId) {
-      getVendorCreditByIdAPI(editingId).then(vc => dispatch(loadVendorCreditForEdit(vc)));
+      dispatch(fetchVendorCreditForEdit(editingId));
     } else {
       dispatch(setVCField({ field: 'creditNumber', value: generateCreditNumber() }));
     }
@@ -145,39 +144,10 @@ const VendorCreditFormScreen: React.FC = () => {
         Alert.alert('Validation Error', Object.values(validationErrors)[0]);
         return;
       }
-      dispatch(setVCIsSaving(true));
       dispatch(calculateVCTotals());
 
       try {
-        const payload = {
-          companyId: 'comp_001',
-          creditNumber: form.creditNumber,
-          vendorId: form.vendorId,
-          vendorName: form.vendorName,
-          date: new Date(form.date).toISOString(),
-          lines: form.lines.map(l => ({
-            id: l.id,
-            accountId: l.accountId,
-            accountName: l.accountName,
-            description: l.description,
-            amount: parseFloat(l.amount) || 0,
-            taxRate: parseFloat(l.taxRate) || 0,
-          })),
-          subtotal: form.subtotal,
-          taxAmount: form.taxAmount,
-          total: form.total,
-          appliedAmount: 0,
-          notes: form.notes,
-          status: saveStatus,
-          createdBy: 'admin_001',
-        };
-
-        if (isEditing && form.editId) {
-          await updateVendorCreditAPI(form.editId, payload);
-        } else {
-          await createVendorCreditAPI(payload);
-        }
-
+        await dispatch(saveVendorCredit(saveStatus)).unwrap();
         navigation.goBack();
         Alert.alert(
           'Success',
@@ -187,11 +157,9 @@ const VendorCreditFormScreen: React.FC = () => {
         );
       } catch {
         Alert.alert('Error', 'Failed to save vendor credit.');
-      } finally {
-        dispatch(setVCIsSaving(false));
       }
     },
-    [form, isEditing, validate, dispatch, navigation],
+    [form.creditNumber, isEditing, validate, dispatch, navigation],
   );
 
   // ── Line amount helper ──────────────────────────
@@ -324,7 +292,7 @@ const VendorCreditFormScreen: React.FC = () => {
               />
 
               <View style={styles.lineRow}>
-                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                <View style={styles.lineCol}>
                   <Text style={styles.fieldLabel}>Amount</Text>
                   <TextInput
                     style={styles.numInput}
@@ -343,7 +311,7 @@ const VendorCreditFormScreen: React.FC = () => {
                     }
                   />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={styles.lineCol}>
                   <CustomDropdown
                     label="Tax %"
                     options={TAX_OPTIONS}
@@ -387,9 +355,9 @@ const VendorCreditFormScreen: React.FC = () => {
             <TotalsRow label="Credit Total" value={formatCurrency(form.total, 'Rs ')} bold />
           </View>
 
-          {/* Actions */}
+          {/* Actions — equal-width buttons via gap (not asymmetric margin) */}
           <View style={styles.actions}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={styles.actionBtn}>
               <CustomButton
                 title="Save Draft"
                 onPress={() => handleSave('draft')}
@@ -400,7 +368,7 @@ const VendorCreditFormScreen: React.FC = () => {
                 disabled={form.isSaving}
               />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={styles.actionBtn}>
               <CustomButton
                 title="Issue"
                 onPress={() => handleSave('issued')}
@@ -547,7 +515,9 @@ const styles = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.sm,
   },
-  lineRow: { flexDirection: 'row' },
+  // Equal-width line columns via gap (consistent with rest of codebase)
+  lineRow: { flexDirection: 'row', gap: spacing.sm },
+  lineCol: { flex: 1 },
   fieldLabel: {
     fontSize: 12,
     fontWeight: '600',
@@ -618,7 +588,13 @@ const styles = StyleSheet.create({
     marginVertical: spacing.xs,
   },
 
-  actions: { flexDirection: 'row', marginTop: spacing.md },
+  // Equal-width action buttons — flex:1 + gap (no asymmetric margins)
+  actions: {
+    flexDirection: 'row',
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  actionBtn: { flex: 1 },
 });
 
 export default VendorCreditFormScreen;

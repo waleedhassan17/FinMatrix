@@ -67,6 +67,7 @@ const SOListScreen: React.FC = () => {
   const error = useAppSelector(selectSOError);
   const [showSearch, setShowSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const initialLoading = isLoading && salesOrders.length === 0;
 
   useFocusEffect(
     useCallback(() => {
@@ -187,7 +188,7 @@ const SOListScreen: React.FC = () => {
         </View>
       </View>
 
-      {showSearch && (
+      {showSearch && !initialLoading && (
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
@@ -200,6 +201,7 @@ const SOListScreen: React.FC = () => {
         </View>
       )}
 
+      {!initialLoading && (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -223,6 +225,7 @@ const SOListScreen: React.FC = () => {
           );
         })}
       </ScrollView>
+      )}
 
       {isLoading && salesOrders.length === 0 ? (
         <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>

@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { TaxLiabilityRow, TaxLiabilityReport } from '../../../types';
 import { getTaxLiabilityAPI } from '../../../network/taxNetwork';
@@ -60,15 +61,13 @@ export const taxLiabilitySlice = createAppSlice({
   }),
 
   selectors: {
-    selectTaxLiabilityRows:    state => state.rows,
-    selectTaxLiabilityTotals:  state => ({
-      collected: state.totalCollected,
-      paid: state.totalPaid,
-      net: state.totalNet,
-    }),
-    selectTaxLiabilityRange:   state => state.range,
-    selectTaxLiabilityLoading: state => state.isLoading,
-    selectTaxLiabilityError:   state => state.error,
+    selectTaxLiabilityRows:        state => state.rows,
+    selectTaxLiabilityCollected:   state => state.totalCollected,
+    selectTaxLiabilityPaid:        state => state.totalPaid,
+    selectTaxLiabilityNet:         state => state.totalNet,
+    selectTaxLiabilityRange:       state => state.range,
+    selectTaxLiabilityLoading:     state => state.isLoading,
+    selectTaxLiabilityError:       state => state.error,
   },
 });
 
@@ -76,8 +75,16 @@ export const { setRange, fetchTaxLiability } = taxLiabilitySlice.actions;
 
 export const {
   selectTaxLiabilityRows,
-  selectTaxLiabilityTotals,
+  selectTaxLiabilityCollected,
+  selectTaxLiabilityPaid,
+  selectTaxLiabilityNet,
   selectTaxLiabilityRange,
   selectTaxLiabilityLoading,
   selectTaxLiabilityError,
 } = taxLiabilitySlice.selectors;
+
+/** Memoized — returns a stable object reference unless inputs change. */
+export const selectTaxLiabilityTotals = createSelector(
+  [selectTaxLiabilityCollected, selectTaxLiabilityPaid, selectTaxLiabilityNet],
+  (collected, paid, net) => ({ collected, paid, net }),
+);

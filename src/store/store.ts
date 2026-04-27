@@ -91,7 +91,7 @@ import { billListSlice } from '../screens/Bills/BillList/billListSlice';
 import { billFormSlice } from '../screens/Bills/BillForm/billFormSlice';
 import { billDetailSlice } from '../screens/Bills/BillDetail/billDetailSlice';
 import { payBillsSlice } from '../screens/Bills/PayBills/payBillsSlice';
-import { vendorCreditFormSlice } from '../screens/Bills/VendorCreditForm/vendorCreditFormSlice';
+import { vendorCreditFormSlice } from '../screens/VendorCredits/VendorCreditForm/vendorCreditFormSlice';
 import { poListSlice } from '../screens/PurchaseOrders/POList/poListSlice';
 import { poFormSlice } from '../screens/PurchaseOrders/POForm/poFormSlice';
 import { poDetailSlice } from '../screens/PurchaseOrders/PODetail/poDetailSlice';

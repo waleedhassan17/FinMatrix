@@ -6,6 +6,7 @@
 // Mirrors `glSlice.ts`.
 
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Vendor } from '../../../types';
 import {
@@ -165,12 +166,10 @@ export const vendorListSlice = createAppSlice({
     selectVendorSortField: state => state.sortField,
     selectVendorIsLoading: state => state.isLoading,
     selectVendorError: state => state.error,
-    selectVendorTotals: state => ({
-      totalVendors: state.totalVendors,
-      activeCount: state.activeCount,
-      inactiveCount: state.inactiveCount,
-      totalBalance: state.totalBalance,
-    }),
+    selectVendorTotalVendors: state => state.totalVendors,
+    selectVendorActiveCount: state => state.activeCount,
+    selectVendorInactiveCount: state => state.inactiveCount,
+    selectVendorTotalBalance: state => state.totalBalance,
   },
 });
 
@@ -195,5 +194,24 @@ export const {
   selectVendorSortField,
   selectVendorIsLoading,
   selectVendorError,
-  selectVendorTotals,
+  selectVendorTotalVendors,
+  selectVendorActiveCount,
+  selectVendorInactiveCount,
+  selectVendorTotalBalance,
 } = vendorListSlice.selectors;
+
+/** Memoized — returns a stable object reference unless inputs change. */
+export const selectVendorTotals = createSelector(
+  [
+    selectVendorTotalVendors,
+    selectVendorActiveCount,
+    selectVendorInactiveCount,
+    selectVendorTotalBalance,
+  ],
+  (totalVendors, activeCount, inactiveCount, totalBalance) => ({
+    totalVendors,
+    activeCount,
+    inactiveCount,
+    totalBalance,
+  }),
+);

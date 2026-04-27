@@ -68,6 +68,7 @@ const EstimateListScreen: React.FC = () => {
   const error = useAppSelector(selectEstimateError);
   const [showSearch, setShowSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const initialLoading = isLoading && estimates.length === 0;
 
   useFocusEffect(
     useCallback(() => {
@@ -208,8 +209,8 @@ const EstimateListScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Search */}
-      {showSearch && (
+      {/* Search — hidden during initial load to keep loader centered */}
+      {showSearch && !initialLoading && (
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
@@ -222,7 +223,8 @@ const EstimateListScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Filter tabs */}
+      {/* Filter tabs — hidden during initial load */}
+      {!initialLoading && (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -248,6 +250,7 @@ const EstimateListScreen: React.FC = () => {
           );
         })}
       </ScrollView>
+      )}
 
       {/* List */}
       {isLoading && estimates.length === 0 ? (

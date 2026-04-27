@@ -6,6 +6,7 @@
 // Mirrors `billListSlice.ts`.
 
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { PurchaseOrder, PurchaseOrderStatus } from '../../../types';
 import {
@@ -114,10 +115,8 @@ export const poListSlice = createAppSlice({
     selectIsLoading: s => s.isLoading,
     selectError: s => s.error,
     selectCounts: s => s.counts,
-    selectListTotals: s => ({
-      totalValue: s.totalValue,
-      totalPOs: s.totalPOs,
-    }),
+    selectTotalValue: s => s.totalValue,
+    selectTotalPOs: s => s.totalPOs,
   },
 });
 
@@ -137,5 +136,12 @@ export const {
   selectIsLoading,
   selectError,
   selectCounts,
-  selectListTotals,
+  selectTotalValue,
+  selectTotalPOs,
 } = poListSlice.selectors;
+
+/** Memoized — returns a stable object reference unless inputs change. */
+export const selectListTotals = createSelector(
+  [selectTotalValue, selectTotalPOs],
+  (totalValue, totalPOs) => ({ totalValue, totalPOs }),
+);

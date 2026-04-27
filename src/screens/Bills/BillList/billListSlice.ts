@@ -6,6 +6,7 @@
 // Mirrors `glSlice.ts`.
 
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Bill, BillStatus } from '../../../types';
 import {
@@ -144,11 +145,9 @@ export const billListSlice = createAppSlice({
     selectBillIsLoading: state => state.isLoading,
     selectBillError: state => state.error,
     selectBillCounts: state => state.counts,
-    selectBillTotals: state => ({
-      totalOutstanding: state.totalOutstanding,
-      overdueAmount: state.overdueAmount,
-      totalBills: state.totalBills,
-    }),
+    selectBillTotalOutstanding: state => state.totalOutstanding,
+    selectBillOverdueAmount: state => state.overdueAmount,
+    selectBillTotalBills: state => state.totalBills,
   },
 });
 
@@ -170,5 +169,17 @@ export const {
   selectBillIsLoading,
   selectBillError,
   selectBillCounts,
-  selectBillTotals,
+  selectBillTotalOutstanding,
+  selectBillOverdueAmount,
+  selectBillTotalBills,
 } = billListSlice.selectors;
+
+/** Memoized — returns a stable object reference unless inputs change. */
+export const selectBillTotals = createSelector(
+  [selectBillTotalOutstanding, selectBillOverdueAmount, selectBillTotalBills],
+  (totalOutstanding, overdueAmount, totalBills) => ({
+    totalOutstanding,
+    overdueAmount,
+    totalBills,
+  }),
+);
