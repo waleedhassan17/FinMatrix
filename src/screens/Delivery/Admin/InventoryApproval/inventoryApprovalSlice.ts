@@ -82,6 +82,60 @@ export const inventoryApprovalSlice = createAppSlice({
         state.activeFilter = action.payload;
       },
     ),
+    /**
+     * Push a new pending Inventory Update Request created by the
+     * Delivery Personnel right after they upload the bill photo.
+     * This is what makes the request appear in the admin's review queue.
+     */
+    submitInventoryRequestFromBillPhoto: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          requestId: string;
+          deliveryId: string;
+          deliveryReference: string;
+          personnelId: string;
+          personnelName: string;
+          routeLabel: string;
+          billPhotoUri: string;
+          billPhotoCapturedAt: string;
+          signedBy: string;
+          submittedAt: string;
+          changes: Array<{
+            itemId: string;
+            itemName: string;
+            beforeQty: number;
+            deliveredQty: number;
+            returnedQty: number;
+          }>;
+        }>,
+      ) => {
+        const exists = state.requests.some(r => r.id === action.payload.requestId);
+        if (exists) return;
+        state.requests.unshift({
+          id: action.payload.requestId,
+          deliveryId: action.payload.deliveryId,
+          deliveryReference: action.payload.deliveryReference,
+          personnelId: action.payload.personnelId,
+          personnelName: action.payload.personnelName,
+          routeLabel: action.payload.routeLabel,
+          submittedAt: action.payload.submittedAt,
+          status: 'pending',
+          shadowStatus: 'pending',
+          changes: action.payload.changes,
+          proof: {
+            signatureBase64: '',
+            signedBy: action.payload.signedBy,
+            verificationMethod: 'bill_photo',
+            verifiedBy: action.payload.personnelName,
+            verifiedAt: action.payload.billPhotoCapturedAt,
+            billPhotoUri: action.payload.billPhotoUri,
+            billPhotoCapturedAt: action.payload.billPhotoCapturedAt,
+          },
+        });
+      },
+    ),
+
     setRequestStatus: create.reducer(
       (
         state,
@@ -216,6 +270,7 @@ export const inventoryApprovalSlice = createAppSlice({
 
 export const {
   setInventoryApprovalFilter,
+  submitInventoryRequestFromBillPhoto,
   setRequestStatus,
   fetchApprovalRequests,
   approveRequestAsync,

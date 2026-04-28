@@ -39,7 +39,7 @@ import { dpProfileSlice } from '../screens/Delivery/Personnel/DPProfile/dpProfil
 import { dpShadowInventorySlice } from '../screens/Delivery/Personnel/DPShadowInventory/dpShadowInventorySlice';
 import { dpHistorySlice } from '../screens/Delivery/Personnel/DPHistory/dpHistorySlice';
 import { dpSettingsSlice } from '../screens/Delivery/Personnel/DPSettings/dpSettingsSlice';
-import { dpSignatureCaptureSlice } from '../screens/Delivery/Personnel/SignatureCapture/dpSignatureCaptureSlice';
+import { dpBillPhotoCaptureSlice } from '../screens/Delivery/Personnel/BillPhotoCapture/dpBillPhotoCaptureSlice';
 import { dpCustomerConfirmSlice } from '../screens/Delivery/Personnel/CustomerConfirm/dpCustomerConfirmSlice';
 import { dpDeliveryCompleteSlice } from '../screens/Delivery/Personnel/DeliveryComplete/dpDeliveryCompleteSlice';
 import { deliveryPersonnelListSlice } from '../screens/Delivery/Admin/DeliveryPersonnelList/deliveryPersonnelListSlice';
@@ -195,7 +195,7 @@ const rootReducer = combineReducers({
   dpShadowInventory: dpShadowInventorySlice.reducer,
   dpHistory: dpHistorySlice.reducer,
   dpSettings: dpSettingsSlice.reducer,
-  dpSignatureCapture: dpSignatureCaptureSlice.reducer,
+  dpBillPhotoCapture: dpBillPhotoCaptureSlice.reducer,
   dpCustomerConfirm: dpCustomerConfirmSlice.reducer,
   dpDeliveryComplete: dpDeliveryCompleteSlice.reducer,
   deliveryPersonnelList: deliveryPersonnelListSlice.reducer,

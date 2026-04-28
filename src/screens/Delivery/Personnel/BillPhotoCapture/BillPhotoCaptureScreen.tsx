@@ -1,0 +1,611 @@
+import React, { useEffect, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Alert,
+  StatusBar,
+  ScrollView,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
+import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
+import { selectDeliveries, selectDeliveryPersonnel } from '../../Admin/AssignDeliveries/deliverySlice';
+import { selectInventoryApprovalRequests } from '../../Admin/InventoryApproval/inventoryApprovalSlice';
+import { selectUser } from '../../../Auth/authSlice';
+import {
+  resetBillPhotoState,
+  setBillPhoto,
+  clearBillPhoto,
+  setSignedBy,
+  setNote,
+  submitBillPhoto,
+  selectBillPhotoUri,
+  selectBillPhotoSignedBy,
+  selectBillPhotoNote,
+  selectBillPhotoIsSubmitting,
+} from './dpBillPhotoCaptureSlice';
+import { THEME } from '../../../../utils/theme';
+import { DP_BRAND } from '../../../../utils/deliveryTheme';
+
+type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'BillPhotoCapture'>;
+
+const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { deliveryId } = route.params;
+  const dispatch = useAppDispatch();
+
+  const deliveries = useAppSelector(selectDeliveries);
+  const personnel = useAppSelector(selectDeliveryPersonnel);
+  const approvalRequests = useAppSelector(selectInventoryApprovalRequests);
+  const user = useAppSelector(selectUser);
+  const photoUri = useAppSelector(selectBillPhotoUri);
+  const signedBy = useAppSelector(selectBillPhotoSignedBy);
+  const note = useAppSelector(selectBillPhotoNote);
+  const isSubmitting = useAppSelector(selectBillPhotoIsSubmitting);
+
+  const delivery = useMemo(
+    () => deliveries.find(d => d.id === deliveryId),
+    [deliveries, deliveryId],
+  );
+  const dp = useMemo(
+    () => personnel.find(p => p.userId === delivery?.assignedTo),
+    [personnel, delivery],
+  );
+
+  const alreadySubmitted = useMemo(
+    () => approvalRequests.some(r => r.deliveryId === deliveryId),
+    [approvalRequests, deliveryId],
+  );
+
+  useEffect(() => {
+    dispatch(resetBillPhotoState());
+    if (delivery?.customerName) dispatch(setSignedBy(delivery.customerName));
+  }, [dispatch, delivery?.customerName]);
+
+  if (!delivery) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Bill Photo</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="inbox" size={28} color={THEME.colors.textTertiary} />
+          </View>
+          <Text style={styles.emptyTitle}>Delivery Not Found</Text>
+          <Text style={styles.emptySubtitle}>This delivery may have been removed.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.emptyButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const ensurePermissions = async (kind: 'camera' | 'gallery'): Promise<boolean> => {
+    if (kind === 'camera') {
+      const cam = await ImagePicker.requestCameraPermissionsAsync();
+      if (!cam.granted) {
+        Alert.alert(
+          'Camera permission required',
+          'Please enable camera access in Settings to capture the signed bill.',
+        );
+        return false;
+      }
+      return true;
+    }
+    const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!lib.granted) {
+      Alert.alert(
+        'Photo library permission required',
+        'Please enable photo library access to choose an image.',
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const handleTakePhoto = async () => {
+    if (!(await ensurePermissions('camera'))) return;
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [3, 4],
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      dispatch(setBillPhoto({ uri: result.assets[0].uri, source: 'camera' }));
+    }
+  };
+
+  const handlePickFromGallery = async () => {
+    if (!(await ensurePermissions('gallery'))) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [3, 4],
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      dispatch(setBillPhoto({ uri: result.assets[0].uri, source: 'gallery' }));
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (alreadySubmitted) {
+      Alert.alert(
+        'Already submitted',
+        'A bill photo for this delivery has already been sent for admin review.',
+      );
+      return;
+    }
+    if (!photoUri) {
+      Alert.alert('Photo required', 'Capture or pick a photo of the signed bill.');
+      return;
+    }
+    if (!signedBy.trim()) {
+      Alert.alert('Customer name required', 'Enter the name printed on the signed bill.');
+      return;
+    }
+    if (!delivery.assignedTo) {
+      Alert.alert('Unassigned delivery', 'This delivery has no assigned personnel.');
+      return;
+    }
+
+    const personnelName = dp?.displayName ?? user?.displayName ?? 'Delivery Personnel';
+    const routeLabel = `${delivery.zone} · ${new Date(delivery.scheduledDate).toLocaleDateString()}`;
+
+    try {
+      const action = await dispatch(
+        submitBillPhoto({
+          deliveryId: delivery.id,
+          deliveryReference: delivery.referenceNo,
+          personnelId: delivery.assignedTo,
+          personnelName,
+          routeLabel,
+          photoUri,
+          source: 'camera',
+          signedBy: signedBy.trim(),
+          note: note.trim() || undefined,
+          changes: delivery.items.map(item => ({
+            itemId: item.itemId,
+            itemName: item.itemName,
+            beforeQty: item.quantity,
+            deliveredQty: item.quantity,
+            returnedQty: 0,
+          })),
+        }),
+      );
+
+      if (submitBillPhoto.rejected.match(action)) {
+        Alert.alert('Upload failed', action.error?.message ?? 'Could not submit the bill photo.');
+        return;
+      }
+
+      Alert.alert(
+        'Bill photo submitted',
+        'Admin has been notified. Inventory will update once the request is approved.',
+        [
+          {
+            text: 'Continue',
+            onPress: () => navigation.navigate('CustomerConfirm', { deliveryId: delivery.id }),
+          },
+        ],
+      );
+    } catch (e: any) {
+      Alert.alert('Upload failed', e?.message ?? 'Could not submit the bill photo.');
+    }
+  };
+
+  const itemsCount = delivery.items?.length ?? 0;
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
+
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Bill Photo</Text>
+          <Text style={styles.headerSubtitle}>{delivery.referenceNo}</Text>
+        </View>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentInner}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.customerCard}>
+            <View style={styles.customerIconWrap}>
+              <Feather name="file-text" size={20} color={THEME.colors.warning} />
+            </View>
+            <View style={styles.customerInfo}>
+              <Text style={styles.customerLabel}>SIGNED BILL FROM</Text>
+              <Text style={styles.customerName}>{delivery.customerName}</Text>
+              <Text style={styles.customerSub}>{itemsCount} item{itemsCount === 1 ? '' : 's'} · {delivery.zone}</Text>
+            </View>
+          </View>
+
+          <View style={styles.instructionCard}>
+            <Feather name="info" size={16} color={THEME.colors.info} />
+            <Text style={styles.instructionText}>
+              Ask the customer to sign the printed bill. Capture a clear photo of the
+              full signed bill — the admin will review it before stock is updated.
+            </Text>
+          </View>
+
+          {photoUri ? (
+            <View style={styles.previewCard}>
+              <Image source={{ uri: photoUri }} style={styles.preview} resizeMode="cover" />
+              <View style={styles.previewActions}>
+                <TouchableOpacity
+                  style={styles.secondaryAction}
+                  onPress={() => dispatch(clearBillPhoto())}
+                  disabled={isSubmitting}
+                >
+                  <Feather name="trash-2" size={16} color={THEME.colors.danger} />
+                  <Text style={[styles.secondaryActionText, { color: THEME.colors.danger }]}>
+                    Remove
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.secondaryAction}
+                  onPress={handleTakePhoto}
+                  disabled={isSubmitting}
+                >
+                  <Feather name="refresh-ccw" size={16} color={DP_BRAND.primary} />
+                  <Text style={[styles.secondaryActionText, { color: DP_BRAND.primary }]}>
+                    Retake
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.captureCard}>
+              <View style={styles.cameraIconWrap}>
+                <Feather name="camera" size={32} color={DP_BRAND.primary} />
+              </View>
+              <Text style={styles.captureTitle}>Capture signed bill</Text>
+              <Text style={styles.captureHint}>
+                Use the camera for the freshest proof, or pick from your gallery.
+              </Text>
+              <TouchableOpacity
+                style={styles.primaryBtn}
+                onPress={handleTakePhoto}
+                activeOpacity={0.9}
+              >
+                <Feather name="camera" size={18} color={THEME.colors.textInverse} />
+                <Text style={styles.primaryBtnText}>Take Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={handlePickFromGallery}
+                activeOpacity={0.9}
+              >
+                <Feather name="image" size={18} color={DP_BRAND.primary} />
+                <Text style={styles.secondaryBtnText}>Choose from Gallery</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Customer name on bill</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Muhammad Arif"
+              placeholderTextColor={THEME.colors.textTertiary}
+              value={signedBy}
+              onChangeText={t => dispatch(setSignedBy(t))}
+              editable={!isSubmitting}
+            />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Note for admin (optional)</Text>
+            <TextInput
+              style={[styles.input, styles.inputMultiline]}
+              placeholder="Anything the admin should know — short returns, partial delivery, etc."
+              placeholderTextColor={THEME.colors.textTertiary}
+              value={note}
+              onChangeText={t => dispatch(setNote(t))}
+              multiline
+              editable={!isSubmitting}
+            />
+          </View>
+
+          {alreadySubmitted && (
+            <View style={styles.warnBanner}>
+              <Feather name="alert-circle" size={16} color={THEME.colors.warning} />
+              <Text style={styles.warnBannerText}>
+                A bill photo for this delivery is already pending admin review.
+              </Text>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[
+              styles.submitBtn,
+              (!photoUri || isSubmitting || alreadySubmitted) && styles.submitBtnDisabled,
+            ]}
+            onPress={handleSubmit}
+            disabled={!photoUri || isSubmitting || alreadySubmitted}
+            activeOpacity={0.9}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color={THEME.colors.textInverse} />
+            ) : (
+              <>
+                <Feather name="send" size={18} color={THEME.colors.textInverse} />
+                <Text style={styles.submitBtnText}>Send to Admin for Review</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <Text style={styles.footnote}>
+            Inventory will be updated once the admin approves this request.
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: DP_BRAND.primary },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: DP_BRAND.primary,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: DP_BRAND.headerOverlay,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: { alignItems: 'center' },
+  headerTitle: { ...THEME.typography.h3, fontWeight: '700', color: DP_BRAND.white },
+  headerSubtitle: { ...THEME.typography.caption, color: DP_BRAND.headerTextSecondary, marginTop: 2 },
+  headerSpacer: { width: 40 },
+
+  content: { flex: 1, backgroundColor: THEME.colors.background },
+  contentInner: { padding: 20, paddingBottom: 40 },
+
+  customerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    padding: 16,
+    marginBottom: 12,
+    ...THEME.shadows.sm,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
+  },
+  customerIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.warningLight ?? '#FFF4E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  customerInfo: { flex: 1 },
+  customerLabel: {
+    ...THEME.typography.overline,
+    color: THEME.colors.textTertiary,
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  customerName: { ...THEME.typography.h3, fontWeight: '700', color: THEME.colors.textPrimary },
+  customerSub: { ...THEME.typography.caption, color: THEME.colors.textSecondary, marginTop: 2 },
+
+  instructionCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: THEME.colors.infoLight,
+    borderRadius: THEME.radius.lg,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  instructionText: {
+    flex: 1,
+    ...THEME.typography.bodySm,
+    color: THEME.colors.info,
+    lineHeight: 19,
+  },
+
+  captureCard: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: THEME.colors.border,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cameraIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: THEME.colors.neutral100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  captureTitle: { ...THEME.typography.h4, color: THEME.colors.textPrimary, marginBottom: 4 },
+  captureHint: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  primaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: DP_BRAND.primary,
+    borderRadius: THEME.radius.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignSelf: 'stretch',
+    marginBottom: 10,
+    ...THEME.shadows.md,
+  },
+  primaryBtnText: { ...THEME.typography.h4, fontWeight: '700', color: THEME.colors.textInverse },
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: DP_BRAND.primary,
+    borderRadius: THEME.radius.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignSelf: 'stretch',
+  },
+  secondaryBtnText: { ...THEME.typography.h4, fontWeight: '600', color: DP_BRAND.primary },
+
+  previewCard: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
+    marginBottom: 16,
+    ...THEME.shadows.sm,
+  },
+  preview: { width: '100%', aspectRatio: 3 / 4, backgroundColor: THEME.colors.neutral100 },
+  previewActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.borderLight,
+    backgroundColor: THEME.colors.neutral50,
+  },
+  secondaryAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  secondaryActionText: { ...THEME.typography.bodyMd, fontWeight: '600' },
+
+  fieldGroup: { marginBottom: 14 },
+  fieldLabel: {
+    ...THEME.typography.labelSm,
+    color: THEME.colors.textSecondary,
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.radius.lg,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: THEME.colors.textPrimary,
+    ...THEME.typography.bodyMd,
+  },
+  inputMultiline: { minHeight: 84, textAlignVertical: 'top' },
+
+  warnBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: THEME.colors.warningLight ?? '#FFF4E5',
+    borderRadius: THEME.radius.lg,
+    padding: 12,
+    marginBottom: 12,
+  },
+  warnBannerText: {
+    flex: 1,
+    ...THEME.typography.bodySm,
+    color: THEME.colors.warning,
+  },
+
+  submitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: THEME.colors.success,
+    borderRadius: THEME.radius.lg,
+    paddingVertical: 16,
+    marginTop: 4,
+    ...THEME.shadows.md,
+  },
+  submitBtnDisabled: { backgroundColor: THEME.colors.neutral300, shadowOpacity: 0, elevation: 0 },
+  submitBtnText: { ...THEME.typography.h4, fontWeight: '700', color: THEME.colors.textInverse },
+  footnote: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textTertiary,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: THEME.colors.background,
+  },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: THEME.colors.neutral100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: { ...THEME.typography.h2, color: THEME.colors.textPrimary, marginBottom: 8 },
+  emptySubtitle: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  emptyButton: {
+    backgroundColor: DP_BRAND.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: THEME.radius.lg,
+    ...THEME.shadows.sm,
+  },
+  emptyButtonText: { ...THEME.typography.labelLg, color: THEME.colors.textInverse },
+});
+
+export default BillPhotoCaptureScreen;

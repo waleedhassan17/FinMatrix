@@ -1,6 +1,8 @@
 // ★ DUMMY API HELPER — Every network file uses this to simulate real API latency ★
 // When backend (NestJS) is ready, replace these with real fetch/axios calls.
 
+import axios from 'axios';
+
 export const simulateDelay = (ms: number = 800): Promise<void> =>
   new Promise(resolve => setTimeout(resolve, ms));
 
@@ -14,8 +16,16 @@ export const simulateApiError = async (message: string, delayMs: number = 500): 
   throw new Error(message);
 };
 
-// ★ BACKEND BASE URL — change this when NestJS server is running ★
-// For now all network files use dummy data. When ready, swap to:
-// export const API_BASE_URL = 'http://10.0.2.2:3000/api'; // Android emulator -> localhost
-// export const API_BASE_URL = 'http://192.168.X.X:3000/api'; // Physical device -> your IP
-export const API_BASE_URL = '__DUMMY_MODE__'; // Signals we're using mock data
+// ★ BACKEND BASE URL ★
+export const API_BASE_URL = 'https://finmatrix-api.onrender.com/api/v1';
+
+// Setup basic axios instance
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+});
+
+// Optional: you can add interceptors here to inject tokens later
+// api.interceptors.request.use(config => {
+//   // config.headers.Authorization = `Bearer ${token}`;
+//   return config;
+// });

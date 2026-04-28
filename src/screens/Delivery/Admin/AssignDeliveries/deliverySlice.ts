@@ -322,6 +322,38 @@ export const deliverySlice = createAppSlice({
       },
     ),
 
+    /**
+     * Persist the captured bill-photo URI + capture timestamp on the
+     * canonical delivery record. Called via cross-slice dispatch from
+     * dpBillPhotoCaptureSlice once the photo upload pipeline succeeds.
+     */
+    attachBillPhotoToDelivery: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          deliveryId: string;
+          billPhotoUri: string;
+          billPhotoCapturedAt: string;
+          signedBy: string;
+        }>,
+      ) => {
+        const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
+        if (!delivery) return;
+        const now = new Date().toISOString();
+        delivery.billPhotoUri = action.payload.billPhotoUri;
+        delivery.billPhotoCapturedAt = action.payload.billPhotoCapturedAt;
+        delivery.billSignedBy = action.payload.signedBy;
+        delivery.updatedAt = now;
+        if (!delivery.statusHistory) delivery.statusHistory = [];
+        delivery.statusHistory.push({
+          status: delivery.status,
+          timestamp: now,
+          note: `Bill photo captured (signed by ${action.payload.signedBy})`,
+          updatedBy: 'delivery_personnel',
+        } as StatusHistoryEntry);
+      },
+    ),
+
     saveDeliverySignature: create.reducer(
       (state, action: PayloadAction<{ deliveryId: string; signatureBase64: string; signedBy: string }>) => {
         const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
@@ -467,6 +499,7 @@ export const {
   markNotificationRead,
   reassignDelivery,
   cancelDelivery,
+  attachBillPhotoToDelivery,
   saveDeliverySignature,
   confirmCustomerReceipt,
   reportDeliveryIssue,

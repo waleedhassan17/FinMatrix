@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -51,6 +52,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const auditTrail = useAppSelector(selectInventoryApprovalAuditTrail);
 
   const [proofFor, setProofFor] = useState<InventoryUpdateRequest | null>(null);
+  const [photoFullscreen, setPhotoFullscreen] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [targetRequest, setTargetRequest] = useState<InventoryUpdateRequest | null>(null);
   const [rejectComment, setRejectComment] = useState('');
@@ -218,9 +220,35 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
               {renderChangeRows(request)}
             </View>
 
-            <TouchableOpacity style={styles.proofBtn} onPress={() => setProofFor(request)}>
-              <Text style={styles.proofBtnText}>View Delivery Proof</Text>
-            </TouchableOpacity>
+            {request.proof.billPhotoUri ? (
+              <View style={styles.billPhotoRow}>
+                <TouchableOpacity
+                  onPress={() => setPhotoFullscreen(request.proof.billPhotoUri ?? null)}
+                  activeOpacity={0.85}
+                  style={styles.billPhotoThumbWrap}
+                >
+                  <Image
+                    source={{ uri: request.proof.billPhotoUri }}
+                    style={styles.billPhotoThumb}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.billPhotoBadge}>
+                    <Text style={styles.billPhotoBadgeText}>Tap to view</Text>
+                  </View>
+                </TouchableOpacity>
+                <View style={styles.billPhotoMeta}>
+                  <Text style={styles.billPhotoLabel}>Signed bill photo</Text>
+                  <Text style={styles.billPhotoSub}>Signed by {request.proof.signedBy || 'customer'}</Text>
+                  <TouchableOpacity onPress={() => setProofFor(request)}>
+                    <Text style={styles.proofLink}>View full proof details</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.proofBtn} onPress={() => setProofFor(request)}>
+                <Text style={styles.proofBtnText}>View Delivery Proof</Text>
+              </TouchableOpacity>
+            )}
 
             <View style={styles.metaRow}>
               <Text style={styles.metaText}>Shadow: {request.shadowStatus}</Text>
@@ -332,9 +360,44 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.modalLine}>Verification: {proofFor?.proof.verificationMethod}</Text>
             <Text style={styles.modalLine}>Verified by: {proofFor?.proof.verifiedBy}</Text>
             <Text style={styles.modalLine}>Verified at: {proofFor ? new Date(proofFor.proof.verifiedAt).toLocaleString() : '-'}</Text>
-            <Text style={styles.modalLine} numberOfLines={1}>Signature: {proofFor?.proof.signatureBase64}</Text>
+            {proofFor?.proof.billPhotoUri ? (
+              <TouchableOpacity
+                onPress={() => proofFor?.proof.billPhotoUri && setPhotoFullscreen(proofFor.proof.billPhotoUri)}
+                activeOpacity={0.85}
+                style={styles.proofPhotoTouchable}
+              >
+                <Image
+                  source={{ uri: proofFor.proof.billPhotoUri }}
+                  style={styles.proofPhoto}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            ) : (
+              !!proofFor?.proof.signatureBase64 && (
+                <Text style={styles.modalLine} numberOfLines={1}>Signature: {proofFor?.proof.signatureBase64}</Text>
+              )
+            )}
             <CustomButton title="Close" onPress={() => setProofFor(null)} fullWidth />
           </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!photoFullscreen} transparent animationType="fade" onRequestClose={() => setPhotoFullscreen(null)}>
+        <View style={styles.fullscreenBackdrop}>
+          <TouchableOpacity
+            style={styles.fullscreenClose}
+            onPress={() => setPhotoFullscreen(null)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.fullscreenCloseText}>✕</Text>
+          </TouchableOpacity>
+          {!!photoFullscreen && (
+            <Image
+              source={{ uri: photoFullscreen }}
+              style={styles.fullscreenImage}
+              resizeMode="contain"
+            />
+          )}
         </View>
       </Modal>
     </SafeAreaView>
@@ -425,6 +488,31 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   proofBtnText: { ...THEME.typography.caption, color: colors.secondary, fontWeight: '600' },
+  billPhotoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  billPhotoThumbWrap: { width: 72, height: 96, borderRadius: borderRadius.sm, overflow: 'hidden', backgroundColor: '#000' },
+  billPhotoThumb: { width: '100%', height: '100%' },
+  billPhotoBadge: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 2, backgroundColor: 'rgba(0,0,0,0.55)' },
+  billPhotoBadgeText: { ...THEME.typography.caption, color: '#fff', textAlign: 'center', fontSize: 10 },
+  billPhotoMeta: { flex: 1 },
+  billPhotoLabel: { ...THEME.typography.bodyMd, color: colors.textPrimary, fontWeight: '700' },
+  billPhotoSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
+  proofLink: { ...THEME.typography.caption, color: colors.secondary, fontWeight: '600', marginTop: 6 },
+  proofPhotoTouchable: { width: '100%', aspectRatio: 3 / 4, borderRadius: borderRadius.sm, overflow: 'hidden', backgroundColor: '#000', marginBottom: spacing.sm },
+  proofPhoto: { width: '100%', height: '100%' },
+  fullscreenBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  fullscreenImage: { width: '100%', height: '100%' },
+  fullscreenClose: { position: 'absolute', top: 50, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', zIndex: 5 },
+  fullscreenCloseText: { color: '#fff', fontSize: 22, fontWeight: '600' },
 
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm, gap: spacing.sm },
   metaText: { ...THEME.typography.caption, color: colors.textSecondary },

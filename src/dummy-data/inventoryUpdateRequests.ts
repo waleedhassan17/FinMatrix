@@ -4,9 +4,13 @@ export type InventoryShadowStatus = 'pending' | 'synced' | 'rejected';
 export interface DeliveryProof {
   signatureBase64: string;
   signedBy: string;
-  verificationMethod: 'otp' | 'customer_id' | 'manual';
+  verificationMethod: 'otp' | 'customer_id' | 'manual' | 'bill_photo';
   verifiedBy: string;
   verifiedAt: string;
+  /** URI of the photo of the manually signed bill (new flow). */
+  billPhotoUri?: string;
+  /** ISO timestamp when the bill photo was captured. */
+  billPhotoCapturedAt?: string;
 }
 
 export interface InventoryUpdateChange {

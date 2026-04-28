@@ -45,6 +45,12 @@ export interface DeliveryRecord {
   statusHistory?: StatusHistoryEntry[];
   signature?: string;
   signatureBase64?: string;
+  /** URI (file:// or remote) to the photo of the manually signed bill. */
+  billPhotoUri?: string;
+  /** ISO timestamp when the bill photo was captured by the delivery personnel. */
+  billPhotoCapturedAt?: string;
+  /** Customer name written on the signed bill (from DP form). */
+  billSignedBy?: string;
   photos?: string[];
   customerVerified?: boolean;
   pickedUpAt?: string;

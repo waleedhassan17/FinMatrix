@@ -7,10 +7,7 @@ import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/D
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import {
-  selectInventoryRequestSubmitted,
   resetDeliveryCompleteState,
-  setInventoryRequestSubmitted,
-  submitDeliveryComplete,
 } from './dpDeliveryCompleteSlice';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
@@ -73,7 +70,9 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
   const { deliveryId } = route.params;
   const dispatch = useAppDispatch();
   const deliveries = useAppSelector(selectDeliveries);
-  const inventoryRequestSubmitted = useAppSelector(selectInventoryRequestSubmitted);
+  // The Inventory Update Request is created earlier (when DP submits the
+  // bill photo), so by the time the user lands here it has always been sent.
+  const inventoryRequestSubmitted = true;
 
   const delivery = useMemo(() => deliveries.find(d => d.id === deliveryId), [deliveries, deliveryId]);
 
@@ -131,11 +130,10 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
     dispatch(resetDeliveryCompleteState());
   }, [dispatch, deliveryId]);
 
-  useEffect(() => {
-    if (!delivery || inventoryRequestSubmitted || !delivery.assignedTo) return;
-    dispatch(submitDeliveryComplete({ deliveryId, personnelId: delivery.assignedTo }));
-    dispatch(setInventoryRequestSubmitted(true));
-  }, [delivery, inventoryRequestSubmitted, dispatch, deliveryId]);
+  // The inventory update request is now created earlier in the flow,
+  // when the delivery personnel submits the bill photo. This screen is
+  // purely a celebratory completion confirmation and no longer creates
+  // a second (duplicate) request.
 
   const spin = badgeRotate.interpolate({
     inputRange: [0, 1],

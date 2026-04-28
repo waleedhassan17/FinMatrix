@@ -6,7 +6,7 @@
 // All endpoints return the standard envelope
 // `{ success, data: { ... } }` (mirrors glNetwork / billNetwork).
 
-import { simulateApiCall } from './apiHelpers';
+import { simulateApiCall, api } from './apiHelpers';
 import { deliveryRecords as seedDeliveries } from '../dummy-data/deliveries';
 import { dummyDeliveryPersonnel as seedPersonnel } from '../dummy-data/deliveryPersonnel';
 import { inventoryUpdateRequests as seedRequests } from '../dummy-data/inventoryUpdateRequests';
@@ -345,14 +345,11 @@ export const getDeliveryPersonByIdAPI = async (userId: string): Promise<any> => 
 /**
  * GET /api/v1/inventory-update-requests
  */
-export const getInventoryUpdateRequestsAPI = async (): Promise<any> => {
-  const envelope: ApiEnvelope<{
-    requests: InventoryUpdateRequestApiEntity[];
-  }> = {
-    success: true,
-    data: { requests: inventoryRequestStore.map(cloneRequest) },
-  };
-  return simulateApiCall(envelope, 500);
+export const getInventoryUpdateRequestsAPI = async (
+  params?: { status?: string; page?: number; pageSize?: number }
+): Promise<any> => {
+  const response = await api.get('/inventory-update-requests', { params });
+  return response.data;
 };
 
 /**
@@ -361,23 +358,11 @@ export const getInventoryUpdateRequestsAPI = async (): Promise<any> => {
 export const approveInventoryUpdateRequestAPI = async (
   id: string,
   reviewerComment?: string,
-  reviewedBy = 'admin',
 ): Promise<any> => {
-  const idx = inventoryRequestStore.findIndex(r => r.id === id);
-  if (idx === -1) throw new Error('Request not found');
-  inventoryRequestStore[idx] = {
-    ...inventoryRequestStore[idx],
-    status: 'approved',
-    shadowStatus: 'synced',
-    reviewedAt: new Date().toISOString(),
-    reviewedBy,
+  const response = await api.post(`/inventory-update-requests/${id}/approve`, {
     reviewerComment,
-  };
-  const envelope: ApiEnvelope<{ request: InventoryUpdateRequestApiEntity }> = {
-    success: true,
-    data: { request: cloneRequest(inventoryRequestStore[idx]) },
-  };
-  return simulateApiCall(envelope, 400);
+  });
+  return response.data;
 };
 
 /**
@@ -386,23 +371,11 @@ export const approveInventoryUpdateRequestAPI = async (
 export const rejectInventoryUpdateRequestAPI = async (
   id: string,
   reviewerComment?: string,
-  reviewedBy = 'admin',
 ): Promise<any> => {
-  const idx = inventoryRequestStore.findIndex(r => r.id === id);
-  if (idx === -1) throw new Error('Request not found');
-  inventoryRequestStore[idx] = {
-    ...inventoryRequestStore[idx],
-    status: 'rejected',
-    shadowStatus: 'rejected',
-    reviewedAt: new Date().toISOString(),
-    reviewedBy,
+  const response = await api.post(`/inventory-update-requests/${id}/reject`, {
     reviewerComment,
-  };
-  const envelope: ApiEnvelope<{ request: InventoryUpdateRequestApiEntity }> = {
-    success: true,
-    data: { request: cloneRequest(inventoryRequestStore[idx]) },
-  };
-  return simulateApiCall(envelope, 400);
+  });
+  return response.data;
 };
 
 // ═══════════════════════════════════════════════════════

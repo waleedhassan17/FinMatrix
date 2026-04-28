@@ -114,11 +114,11 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         };
       case 'arrived':
         return {
-          title: 'Capture Signature',
-          subtitle: 'Complete delivery verification',
-          icon: 'edit-3',
+          title: 'Capture Signed Bill',
+          subtitle: 'Photograph the customer-signed bill',
+          icon: 'camera',
           color: THEME.colors.success,
-          handler: () => navigation.navigate('SignatureCapture', { deliveryId: delivery.id }),
+          handler: () => navigation.navigate('BillPhotoCapture', { deliveryId: delivery.id }),
         };
       default:
         return null;
