@@ -374,7 +374,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             activeOpacity={0.9}
           >
             <View style={styles.actionButtonContent}>
-              <Feather name={actionConfig.icon as any} size={24} color={THEME.colors.textInverse} />
+              <Feather name={actionConfig.icon as any} size={24} color={THEME.colors.textInverse} style={{ marginRight: 4 }} />
               <View style={styles.actionButtonText}>
                 <Text style={styles.actionButtonTitle}>{actionConfig.title}</Text>
                 <Text style={styles.actionButtonSubtitle}>{actionConfig.subtitle}</Text>
@@ -777,12 +777,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    gap: 16,
   },
   actionButtonIcon: {
     fontSize: 24,
     marginRight: 16,
   },
-  actionButtonText: {},
+  actionButtonText: {
+    justifyContent: 'center',
+    flexShrink: 1,
+  },
   actionButtonTitle: {
     ...THEME.typography.h4,
     fontWeight: '700',
