@@ -1,10 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
-import { signOut } from '../../../Auth/authSlice';
+import { signOut, setUser } from '../../../Auth/authSlice';
 import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
 import { THEME } from '../../../../utils/theme';
@@ -27,81 +29,109 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const displayName = user?.displayName ?? 'Delivery Personnel';
   const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const [profileImage, setProfileImage] = useState<string | null>(user?.photoURL ?? null);
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
+      <StatusBar barStyle="light-content" backgroundColor="#EA580C" />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-      </View>
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={['#EA580C', '#F97316']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>My Profile</Text>
+          <TouchableOpacity style={styles.headerIcon} activeOpacity={0.7}>
+            <Feather name="bell" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Profile Section inside gradient */}
+        <View style={styles.profileHeaderSection}>
+          <TouchableOpacity style={styles.avatarRing} onPress={pickImage} activeOpacity={0.8}>
+            <View style={styles.avatar}>
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
+            </View>
+            <View style={styles.cameraOverlay}>
+              <Feather name="camera" size={14} color={DP_BRAND.primary} />
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.profileMeta}>
+            <Text style={styles.userName}>{displayName}</Text>
+            <Text style={styles.userEmail}>{user?.email ?? 'delivery@finmatrix.pk'}</Text>
+            <View style={styles.roleBadge}>
+              <Feather name="truck" size={10} color="#fff" />
+              <Text style={styles.roleText}>Delivery Personnel</Text>
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
 
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarSection}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initials}</Text>
-              </View>
-              <View style={styles.onlineDot} />
-            </View>
-          </View>
-
-          <Text style={styles.userName}>{displayName}</Text>
-          <Text style={styles.userEmail}>{user?.email ?? 'delivery@finmatrix.pk'}</Text>
-
-          <View style={styles.roleBadge}>
-            <Feather name="truck" size={12} color={DP_BRAND.primary} />
-            <Text style={styles.roleText}>Delivery Personnel</Text>
-          </View>
-
-          {/* Quick Actions */}
-          <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickAction}>
-              <Feather name="edit-2" size={14} color={THEME.colors.textPrimary} />
-              <Text style={styles.quickActionText}>Edit Profile</Text>
-            </TouchableOpacity>
-            <View style={styles.quickActionDivider} />
-            <TouchableOpacity style={styles.quickAction}>
-              <Feather name="camera" size={14} color={THEME.colors.textPrimary} />
-              <Text style={styles.quickActionText}>Change Photo</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Account Info Card */}
         <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.cardIconWrap, { backgroundColor: DP_BRAND.primarySoft }]}>
-              <Feather name="user" size={18} color={DP_BRAND.primary} />
-            </View>
-            <View style={styles.cardHeaderText}>
-              <Text style={styles.cardTitle}>Account Information</Text>
-              <Text style={styles.cardSubtitle}>Your account details</Text>
-            </View>
-          </View>
-
-          <View style={styles.cardDivider} />
+          <Text style={styles.sectionTitle}>Account Information</Text>
 
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Phone Number</Text>
-              <Text style={styles.infoValue}>{user?.phoneNumber || '+92 300 0000000'}</Text>
+              <View style={styles.infoRowLeft}>
+                <View style={[styles.infoRowIcon, { backgroundColor: '#F0FDF4' }]}>
+                  <Feather name="smartphone" size={16} color="#16A34A" />
+                </View>
+                <View>
+                  <Text style={styles.infoLabel}>Phone Number</Text>
+                  <Text style={styles.infoValue}>{user?.phoneNumber || '+92-301-1112233'}</Text>
+                </View>
+              </View>
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Username</Text>
-              <Text style={styles.infoValue}>{user?.username || 'dp_user'}</Text>
+              <View style={styles.infoRowLeft}>
+                <View style={[styles.infoRowIcon, { backgroundColor: '#EFF6FF' }]}>
+                  <Feather name="at-sign" size={16} color="#2563EB" />
+                </View>
+                <View>
+                  <Text style={styles.infoLabel}>Username</Text>
+                  <Text style={styles.infoValue}>{user?.username || 'FM2024.saim'}</Text>
+                </View>
+              </View>
             </View>
             <View style={[styles.infoRow, styles.infoRowLast]}>
-              <Text style={styles.infoLabel}>Role</Text>
-              <View style={styles.roleChip}>
-                <Text style={styles.roleChipText}>{user?.role || 'delivery'}</Text>
+              <View style={styles.infoRowLeft}>
+                <View style={[styles.infoRowIcon, { backgroundColor: '#FFF7ED' }]}>
+                  <Feather name="shield" size={16} color="#EA580C" />
+                </View>
+                <View>
+                  <Text style={styles.infoLabel}>Role</Text>
+                  <Text style={[styles.infoValue, { color: '#16A34A' }]}>Delivery</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -239,19 +269,106 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DP_BRAND.primary,
+    backgroundColor: THEME.colors.background,
   },
 
-  // Header
+  // Gradient Header
+  headerGradient: {
+    paddingBottom: 24,
+  },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: DP_BRAND.primary,
   },
   headerTitle: {
-    ...THEME.typography.h2,
-    color: DP_BRAND.white,
-    letterSpacing: -0.3,
+    ...THEME.typography.h3,
+    color: '#fff',
+    fontWeight: '700',
+  },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Profile Header Section
+  profileHeaderSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  avatarRing: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  avatarText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: DP_BRAND.primary,
+  },
+  avatarImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+    borderColor: DP_BRAND.primary,
+    ...THEME.shadows.sm,
+  },
+  profileMeta: {
+    flex: 1,
+  },
+  userName: {
+    ...THEME.typography.h3,
+    color: '#fff',
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  userEmail: {
+    ...THEME.typography.bodySm,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 8,
+  },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+    gap: 4,
+  },
+  roleText: {
+    ...THEME.typography.labelSm,
+    fontWeight: '600',
+    color: '#fff',
   },
 
   scrollView: {
@@ -261,101 +378,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
-    backgroundColor: THEME.colors.background,
   },
 
-  // Profile Card
-  profileCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.xl,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 16,
-    ...THEME.shadows.sm,
-    borderWidth: 1,
-    borderColor: THEME.colors.borderLight,
-  },
-  avatarSection: {
-    marginBottom: 16,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: DP_BRAND.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...THEME.shadows.md,
-  },
-  avatarText: {
-    ...THEME.typography.displayMd,
-    color: THEME.colors.textInverse,
-  },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: THEME.colors.success,
-    borderWidth: 3,
-    borderColor: THEME.colors.surface,
-  },
-  userName: {
-    ...THEME.typography.h2,
+  // Section Title
+  sectionTitle: {
+    ...THEME.typography.h4,
+    fontWeight: '700',
     color: THEME.colors.textPrimary,
-    marginBottom: 4,
-    letterSpacing: -0.3,
-  },
-  userEmail: {
-    ...THEME.typography.bodySm,
-    color: THEME.colors.textSecondary,
-    marginBottom: 12,
-  },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: DP_BRAND.primarySoft,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: THEME.radius.full,
-    marginBottom: 20,
-    gap: 6,
-  },
-  roleText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
-    color: DP_BRAND.primary,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    width: '100%',
-    backgroundColor: THEME.colors.neutral50,
-    borderRadius: THEME.radius.lg,
-    padding: 4,
-  },
-  quickAction: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: THEME.radius.md,
-    gap: 8,
-  },
-  quickActionDivider: {
-    width: 1,
-    backgroundColor: THEME.colors.border,
-    marginVertical: 8,
-  },
-  quickActionText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
-    color: THEME.colors.textPrimary,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
 
   // Card
@@ -368,6 +400,46 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.borderLight,
     overflow: 'hidden',
   },
+
+  // Info List
+  infoList: {
+    padding: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.borderLight,
+  },
+  infoRowLast: {
+    borderBottomWidth: 0,
+  },
+  infoRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  infoRowIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoLabel: {
+    ...THEME.typography.labelSm,
+    color: THEME.colors.textTertiary,
+    marginBottom: 2,
+  },
+  infoValue: {
+    ...THEME.typography.bodyMd,
+    fontWeight: '600',
+    color: THEME.colors.textPrimary,
+  },
+
+  // Card Header (for performance)
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -399,41 +471,6 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.borderLight,
   },
 
-  // Info List
-  infoList: {
-    padding: 16,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.borderLight,
-  },
-  infoRowLast: {
-    borderBottomWidth: 0,
-  },
-  infoLabel: {
-    ...THEME.typography.bodyMd,
-    color: THEME.colors.textSecondary,
-  },
-  infoValue: {
-    ...THEME.typography.labelLg,
-    color: THEME.colors.textPrimary,
-  },
-  roleChip: {
-    backgroundColor: THEME.colors.successLight,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.full,
-  },
-  roleChipText: {
-    ...THEME.typography.labelMd,
-    color: THEME.colors.success,
-    textTransform: 'capitalize',
-  },
-
   // Metrics Grid
   metricsGrid: {
     flexDirection: 'row',
@@ -446,16 +483,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   metricIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   metricValue: {
     ...THEME.typography.h2,
     color: THEME.colors.textPrimary,
+    fontWeight: '700',
   },
   metricLabel: {
     ...THEME.typography.labelSm,
@@ -495,6 +533,7 @@ const styles = StyleSheet.create({
   menuLabel: {
     ...THEME.typography.labelLg,
     color: THEME.colors.textPrimary,
+    fontWeight: '600',
   },
   menuHint: {
     ...THEME.typography.caption,
@@ -520,9 +559,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.dangerLight,
+    backgroundColor: THEME.colors.surface,
     borderWidth: 1,
-    borderColor: THEME.colors.danger,
+    borderColor: THEME.colors.borderLight,
     borderRadius: THEME.radius.lg,
     paddingVertical: 14,
     marginBottom: 16,
@@ -530,6 +569,7 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     ...THEME.typography.h4,
+    fontWeight: '600',
     color: THEME.colors.danger,
   },
 
@@ -539,7 +579,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   footerText: {
-    ...THEME.typography.bodySm,
+    ...THEME.typography.labelSm,
     fontWeight: '600',
     color: THEME.colors.textTertiary,
   },
