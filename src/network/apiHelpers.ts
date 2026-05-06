@@ -17,7 +17,7 @@ export const simulateApiError = async (message: string, delayMs: number = 500): 
 };
 
 // ★ BACKEND BASE URL ★
-export const API_BASE_URL = 'https://finmatrix-api.onrender.com/api/v1';
+export const API_BASE_URL = 'https://finmatrix-api-a824f23fbd72.herokuapp.com/api/v1';
 
 // Setup basic axios instance
 export const api = axios.create({

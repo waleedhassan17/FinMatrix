@@ -1,4 +1,5 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { UserRole } from '../../types';
 import type { RootState } from '../../store/store';
@@ -218,23 +219,21 @@ const isVisibleToUser = (item: AppNotification, role: UserRole, userId?: string)
   return !item.targetUserId || item.targetUserId === userId;
 };
 
-export const selectVisibleNotificationsForUser = (
-  root: RootState,
-  role: UserRole,
-  userId?: string,
-): AppNotification[] => {
-  return root.notificationCenter.items.filter(item => isVisibleToUser(item, role, userId));
-};
+export const selectVisibleNotificationsForUser = createSelector(
+  [(root: RootState) => root.notificationCenter.items, (_root: RootState, role: UserRole) => role, (_root: RootState, _role: UserRole, userId?: string) => userId],
+  (items, role, userId): AppNotification[] => {
+    return items.filter(item => isVisibleToUser(item, role, userId));
+  },
+);
 
-export const selectUnreadNotificationCountForUser = (
-  root: RootState,
-  role: UserRole,
-  userId?: string,
-): number => {
-  return root.notificationCenter.items.filter(
-    item => isVisibleToUser(item, role, userId) && !item.isRead,
-  ).length;
-};
+export const selectUnreadNotificationCountForUser = createSelector(
+  [(root: RootState) => root.notificationCenter.items, (_root: RootState, role: UserRole) => role, (_root: RootState, _role: UserRole, userId?: string) => userId],
+  (items, role, userId): number => {
+    return items.filter(
+      item => isVisibleToUser(item, role, userId) && !item.isRead,
+    ).length;
+  },
+);
 
 export const {
   addRealtimeNotification,
