@@ -9,8 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
@@ -23,12 +22,12 @@ import {
 import { formatCurrency } from '../../../utils/formatters';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 
-type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
+type TrialBalanceScreenProps = NativeStackScreenProps<ReportsStackParamList, 'TrialBalance'>;
 
-const TrialBalanceScreen: React.FC = () => {
-  const navigation = useNavigation<ReportsNav>();
+const TrialBalanceScreen: React.FC<TrialBalanceScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectTrialBalanceState);
+  const rows = Array.isArray(state.report?.rows) ? state.report.rows : [];
 
   useEffect(() => {
     dispatch(fetchTrialBalanceReport(state.asOfDate));
@@ -66,7 +65,7 @@ const TrialBalanceScreen: React.FC = () => {
               <Text style={styles.headText}>Credit</Text>
             </View>
 
-            {state.report.rows.map(row => (
+            {rows.map(row => (
               <View key={row.accountId} style={styles.tableRow}>
                 <Text style={[styles.bodyText, styles.accountCol]}>{row.accountCode} - {row.accountName}</Text>
                 <Text style={styles.bodyText}>{formatCurrency(row.debit, 'Rs ')}</Text>

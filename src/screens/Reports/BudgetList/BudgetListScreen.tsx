@@ -8,8 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
@@ -20,12 +19,12 @@ import { calculateBudgetTotal } from '../../../models/budgetModel';
 import { formatCurrency } from '../../../utils/formatters';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 
-type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
+type BudgetListScreenProps = NativeStackScreenProps<ReportsStackParamList, 'BudgetList'>;
 
-const BudgetListScreen: React.FC = () => {
-  const navigation = useNavigation<ReportsNav>();
+const BudgetListScreen: React.FC<BudgetListScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectBudgetListState);
+  const budgets = Array.isArray(state.budgets) ? state.budgets : [];
 
   useEffect(() => {
     dispatch(fetchBudgetList());
@@ -59,19 +58,22 @@ const BudgetListScreen: React.FC = () => {
           />
         )}
 
-        {!state.isLoading && !state.error && state.budgets.length === 0 && (
+        {!state.isLoading && !state.error && budgets.length === 0 && (
           <EmptyState
             title="No Budgets Yet"
             message="Create your first annual budget to start tracking."
           />
         )}
 
-        {state.budgets.map(budget => (
+        {budgets.map(budget => {
+          const budgetLines = Array.isArray(budget.lines) ? budget.lines : [];
+
+          return (
           <View key={budget.id} style={styles.card}>
             <Text style={styles.cardTitle}>{budget.name}</Text>
             <Text style={styles.cardMeta}>Fiscal Year: {budget.fiscalYear}</Text>
-            <Text style={styles.cardMeta}>Accounts: {budget.lines.length}</Text>
-            <Text style={styles.cardValue}>{formatCurrency(calculateBudgetTotal(budget.lines), 'Rs ')}</Text>
+            <Text style={styles.cardMeta}>Accounts: {budgetLines.length}</Text>
+            <Text style={styles.cardValue}>{formatCurrency(calculateBudgetTotal(budgetLines), 'Rs ')}</Text>
 
             <View style={styles.actionsRow}>
               <TouchableOpacity
@@ -91,7 +93,8 @@ const BudgetListScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
-        ))}
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );

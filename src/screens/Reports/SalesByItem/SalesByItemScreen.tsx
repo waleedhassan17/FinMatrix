@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
@@ -22,6 +22,9 @@ import {
 } from './salesByItemSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { ReportDateRange } from '../../../models/reportModel';
+import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
+
+type SalesByItemScreenProps = NativeStackScreenProps<ReportsStackParamList, 'SalesByItem'>;
 
 const SORT_COLS: { label: string; field: SalesByItemSortField; flex: number }[] = [
   { label: 'Item', field: 'itemName', flex: 3 },
@@ -51,8 +54,7 @@ const marginColor = (margin: number): string => {
   return '#EF4444';
 };
 
-const SalesByItemScreen: React.FC = () => {
-  const navigation = useNavigation();
+const SalesByItemScreen: React.FC<SalesByItemScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { report, range, sortField, sortDir, isLoading, error } =
     useAppSelector(selectSalesByItemState);

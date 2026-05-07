@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import { startDelivery } from './dpDashboardSlice';
 import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DPDashboardStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
+import { locationService } from '../../../../services/locationService';
 
 type Nav = NativeStackNavigationProp<DPDashboardStackParamList>;
 
@@ -57,6 +58,9 @@ const DPDashboardScreen: React.FC = () => {
   const unreadNotifications = useAppSelector(state =>
     selectUnreadNotificationCountForUser(state, 'delivery', userId),
   );
+
+  const [isGpsTracking, setIsGpsTracking] = useState(false);
+  const gpsAnim = useRef(new Animated.Value(1)).current;
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -98,6 +102,16 @@ const DPDashboardScreen: React.FC = () => {
         useNativeDriver: true,
       }).start();
     });
+
+    locationService.requestPermission().then(granted => {
+      if (!granted) {
+        Alert.alert(
+          'Location Access Needed',
+          'Enable location access in Settings to allow GPS tracking during deliveries.',
+          [{ text: 'OK' }],
+        );
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -107,6 +121,28 @@ const DPDashboardScreen: React.FC = () => {
       useNativeDriver: false,
     }).start();
   }, [progress]);
+
+  const hasActiveDelivery = summary.inProgress > 0 || summary.pending > 0;
+
+  useEffect(() => {
+    if (hasActiveDelivery) {
+      locationService.startTracking(30_000);
+      setIsGpsTracking(true);
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(gpsAnim, { toValue: 0.3, duration: 900, useNativeDriver: true }),
+          Animated.timing(gpsAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        ]),
+      );
+      pulse.start();
+      return () => {
+        pulse.stop();
+      };
+    } else {
+      locationService.stopTracking();
+      setIsGpsTracking(false);
+    }
+  }, [hasActiveDelivery]);
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -202,6 +238,12 @@ const DPDashboardScreen: React.FC = () => {
           <View style={styles.dateDot} />
           <Text style={styles.dateText}>{currentDate}</Text>
         </View>
+        {isGpsTracking && (
+          <View style={styles.gpsTrackingPill}>
+            <Animated.View style={[styles.gpsTrackingDot, { opacity: gpsAnim }]} />
+            <Text style={styles.gpsTrackingText}>GPS Active</Text>
+          </View>
+        )}
       </View>
 
       <ScrollView 
@@ -506,6 +548,9 @@ const styles = StyleSheet.create({
 
   // Date Strip
   dateStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 10,
     backgroundColor: DP_BRAND.primary,
@@ -530,6 +575,28 @@ const styles = StyleSheet.create({
     ...THEME.typography.caption,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.9)',
+  },
+  gpsTrackingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: THEME.radius.full,
+    gap: 5,
+  },
+  gpsTrackingDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#22c55e',
+  },
+  gpsTrackingText: {
+    ...THEME.typography.caption,
+    fontWeight: '600',
+    color: '#22c55e',
   },
 
   // Scroll

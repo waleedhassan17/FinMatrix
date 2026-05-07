@@ -9,8 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
@@ -20,13 +19,12 @@ import { fetchAnalyticsDashboard, selectAnalyticsDashboardState } from './analyt
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import { formatCurrency } from '../../../utils/formatters';
 
-type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
+type AnalyticsDashboardScreenProps = NativeStackScreenProps<ReportsStackParamList, 'AnalyticsDashboard'>;
 
 const CHART_WIDTH = Dimensions.get('window').width - spacing.md * 2 - spacing.md * 2;
 const PIE_COLORS = ['#1D4ED8', '#0EA5E9', '#10B981', '#F59E0B', '#F97316', '#EF4444'];
 
-const AnalyticsDashboardScreen: React.FC = () => {
-  const navigation = useNavigation<ReportsNav>();
+const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectAnalyticsDashboardState);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
@@ -36,17 +34,30 @@ const AnalyticsDashboardScreen: React.FC = () => {
   }, [dispatch]);
 
   const data = state.data;
+  const revenueTrend = Array.isArray(data?.revenueTrend) ? data.revenueTrend : [];
+  const cashFlowTrend = Array.isArray(data?.cashFlowTrend) ? data.cashFlowTrend : [];
+  const topCustomers = Array.isArray(data?.topCustomers) ? data.topCustomers : [];
+  const arAgingTrend = Array.isArray(data?.arAgingTrend) ? data.arAgingTrend : [];
+  const expenseCategories = Array.isArray(data?.expenseCategories) ? data.expenseCategories : [];
+  const safeRevenueTrend = revenueTrend.filter(point => Number.isFinite(point.value));
+  const safeCashFlowTrend = cashFlowTrend.filter(point => Number.isFinite(point.value));
+  const safeTopCustomers = topCustomers.filter(customer => Number.isFinite(customer.value));
+  const safeArAgingTrend = arAgingTrend.filter(point =>
+    [point.current, point.bucket1to30, point.bucket31to60, point.bucket61to90, point.bucket90Plus].every(value =>
+      Number.isFinite(value),
+    ),
+  );
 
   const pieData = useMemo(
     () =>
-      (data?.expenseCategories ?? []).map((item, idx) => ({
+      expenseCategories.map((item, idx) => ({
         name: item.label,
         amount: item.value,
         color: PIE_COLORS[idx % PIE_COLORS.length],
         legendFontColor: colors.textSecondary,
         legendFontSize: 11,
       })),
-    [data?.expenseCategories],
+    [expenseCategories],
   );
 
   return (
@@ -65,60 +76,73 @@ const AnalyticsDashboardScreen: React.FC = () => {
         {data && (
           <>
             <Card title="Revenue Trend (Last 6 Months)">
-              <LineChart
-                data={{
-                  labels: data.revenueTrend.map(point => point.label),
-                  datasets: [{ data: data.revenueTrend.map(point => point.value) }],
-                }}
-                width={CHART_WIDTH}
-                height={220}
-                yAxisLabel="Rs "
-                yAxisSuffix=""
-                bezier
-                chartConfig={chartConfig('#2563EB', '#93C5FD')}
-                style={styles.chart}
-                onDataPointClick={payload => {
-                  setSelectedCustomer(`Revenue ${data.revenueTrend[payload.index]?.label ?? ''}: ${formatCurrency(payload.value, 'Rs ')}`);
-                }}
-              />
+              {safeRevenueTrend.length > 0 ? (
+                <LineChart
+                  data={{
+                    labels: safeRevenueTrend.map(point => point.label),
+                    datasets: [{ data: safeRevenueTrend.map(point => point.value) }],
+                  }}
+                  width={CHART_WIDTH}
+                  height={220}
+                  yAxisLabel="Rs "
+                  yAxisSuffix=""
+                  bezier
+                  chartConfig={chartConfig('#2563EB', '#93C5FD')}
+                  style={styles.chart}
+                  onDataPointClick={payload => {
+                    setSelectedCustomer(`Revenue ${safeRevenueTrend[payload.index]?.label ?? ''}: ${formatCurrency(payload.value, 'Rs ')}`);
+                  }}
+                />
+              ) : (
+                <Text style={styles.emptyText}>No revenue trend data available.</Text>
+              )}
               {!!selectedCustomer && <Text style={styles.selectionText}>{selectedCustomer}</Text>}
             </Card>
 
             <Card title="Expense Categories">
-              <PieChart
-                data={pieData}
-                width={CHART_WIDTH}
-                height={220}
-                accessor="amount"
-                backgroundColor="transparent"
-                paddingLeft="8"
-                absolute
-                chartConfig={{
-                  color: () => colors.textPrimary,
-                  labelColor: () => colors.textSecondary,
-                }}
-              />
+              {pieData.length > 0 ? (
+                <PieChart
+                  data={pieData}
+                  width={CHART_WIDTH}
+                  height={220}
+                  accessor="amount"
+                  backgroundColor="transparent"
+                  paddingLeft="8"
+                  absolute
+                  chartConfig={{
+                    color: () => colors.textPrimary,
+                    labelColor: () => colors.textSecondary,
+                  }}
+                />
+              ) : (
+                <Text style={styles.emptyText}>No expense category data available.</Text>
+              )}
             </Card>
 
             <Card title="Cash Flow (Last 6 Months)">
-              <LineChart
-                data={{
-                  labels: data.cashFlowTrend.map(point => point.label),
-                  datasets: [{ data: data.cashFlowTrend.map(point => point.value) }],
-                }}
-                width={CHART_WIDTH}
-                height={220}
-                yAxisLabel="Rs "
-                bezier
-                chartConfig={chartConfig('#059669', '#A7F3D0')}
-                style={styles.chart}
-              />
+              {safeCashFlowTrend.length > 0 ? (
+                <LineChart
+                  data={{
+                    labels: safeCashFlowTrend.map(point => point.label),
+                    datasets: [{ data: safeCashFlowTrend.map(point => point.value) }],
+                  }}
+                  width={CHART_WIDTH}
+                  height={220}
+                  yAxisLabel="Rs "
+                  bezier
+                  chartConfig={chartConfig('#059669', '#A7F3D0')}
+                  style={styles.chart}
+                />
+              ) : (
+                <Text style={styles.emptyText}>No cash flow data available.</Text>
+              )}
             </Card>
 
             <Card title="Top 5 Customers">
-              <View style={styles.barsWrap}>
-                {data.topCustomers.map(customer => {
-                  const max = Math.max(...data.topCustomers.map(item => item.value), 1);
+              {safeTopCustomers.length > 0 ? (
+                <View style={styles.barsWrap}>
+                  {safeTopCustomers.map(customer => {
+                    const max = Math.max(...safeTopCustomers.map(item => item.value), 1);
                   const widthPct = (customer.value / max) * 100;
                   const active = selectedCustomer === customer.label;
                   return (
@@ -135,34 +159,43 @@ const AnalyticsDashboardScreen: React.FC = () => {
                       <Text style={styles.barValue}>{formatCurrency(customer.value, 'Rs ')}</Text>
                     </TouchableOpacity>
                   );
-                })}
-              </View>
+                  })}
+                </View>
+              ) : (
+                <Text style={styles.emptyText}>No customer ranking data available.</Text>
+              )}
             </Card>
 
             <Card title="AR Aging (Stacked)">
-              <View style={styles.stackWrap}>
-                {data.arAgingTrend.map(point => {
-                  const total =
-                    point.current +
-                    point.bucket1to30 +
-                    point.bucket31to60 +
-                    point.bucket61to90 +
-                    point.bucket90Plus;
-                  const h = 130;
-                  const safeTotal = Math.max(1, total);
-                  return (
-                    <View key={point.label} style={styles.stackCol}>
-                      <View style={[styles.stackSegment, { height: (point.bucket90Plus / safeTotal) * h, backgroundColor: '#DC2626' }]} />
-                      <View style={[styles.stackSegment, { height: (point.bucket61to90 / safeTotal) * h, backgroundColor: '#F97316' }]} />
-                      <View style={[styles.stackSegment, { height: (point.bucket31to60 / safeTotal) * h, backgroundColor: '#F59E0B' }]} />
-                      <View style={[styles.stackSegment, { height: (point.bucket1to30 / safeTotal) * h, backgroundColor: '#0EA5E9' }]} />
-                      <View style={[styles.stackSegment, { height: (point.current / safeTotal) * h, backgroundColor: '#10B981' }]} />
-                      <Text style={styles.stackLabel}>{point.label}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-              <Text style={styles.legendText}>Green: Current | Blue: 1-30 | Amber: 31-60 | Orange: 61-90 | Red: 90+</Text>
+              {safeArAgingTrend.length > 0 ? (
+                <>
+                  <View style={styles.stackWrap}>
+                    {safeArAgingTrend.map(point => {
+                      const total =
+                        point.current +
+                        point.bucket1to30 +
+                        point.bucket31to60 +
+                        point.bucket61to90 +
+                        point.bucket90Plus;
+                      const h = 130;
+                      const safeTotal = Math.max(1, total);
+                      return (
+                        <View key={point.label} style={styles.stackCol}>
+                          <View style={[styles.stackSegment, { height: (point.bucket90Plus / safeTotal) * h, backgroundColor: '#DC2626' }]} />
+                          <View style={[styles.stackSegment, { height: (point.bucket61to90 / safeTotal) * h, backgroundColor: '#F97316' }]} />
+                          <View style={[styles.stackSegment, { height: (point.bucket31to60 / safeTotal) * h, backgroundColor: '#F59E0B' }]} />
+                          <View style={[styles.stackSegment, { height: (point.bucket1to30 / safeTotal) * h, backgroundColor: '#0EA5E9' }]} />
+                          <View style={[styles.stackSegment, { height: (point.current / safeTotal) * h, backgroundColor: '#10B981' }]} />
+                          <Text style={styles.stackLabel}>{point.label}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.legendText}>Green: Current | Blue: 1-30 | Amber: 31-60 | Orange: 61-90 | Red: 90+</Text>
+                </>
+              ) : (
+                <Text style={styles.emptyText}>No AR aging data available.</Text>
+              )}
             </Card>
           </>
         )}
@@ -305,6 +338,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     fontFamily: THEME.typography.fontFamily,
+  },
+  emptyText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontFamily: THEME.typography.fontFamily,
+    textAlign: 'center' as const,
+    paddingVertical: 16,
   },
 });
 

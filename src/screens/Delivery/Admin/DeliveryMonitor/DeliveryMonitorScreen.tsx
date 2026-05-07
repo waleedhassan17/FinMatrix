@@ -1,11 +1,23 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  FlatList,
+  Alert,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MapView, { Marker, Callout, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
-import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
-import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
+import type { DashboardStackParamList } from '../../../../navigators/stacks/DashboardStack';
+import { useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectDeliveries, selectDeliveryPersonnel } from '../AssignDeliveries/deliverySlice';
 import {
   selectMonitorFilter,
@@ -15,44 +27,76 @@ import {
   type MonitorFilterStatus,
   type MonitorSortBy,
 } from './deliveryMonitorSlice';
-import type { DeliveryRecordStatus } from '../../../../models/deliveryModel';
+import { getDeliveryMapDataAPI } from '../../../../network/deliveryNetwork';
 
-type Props = NativeStackScreenProps<MoreStackParamList, 'DeliveryMonitor'>;
+type Props = NativeStackScreenProps<DashboardStackParamList, 'DeliveryMonitor'>;
+
+// ── Types ────────────────────────────────────────────────────────────────────
+interface MapMarker {
+  deliveryId: string;
+  status: string;
+  priority: string;
+  customerId: string;
+  personnelId: string | null;
+  itemCount: number;
+  assignedAt: string | null;
+  createdAt: string;
+  personnel: {
+    vehicleType: string | null;
+    rating: string;
+    isAvailable: boolean;
+    lat: number | null;
+    lng: number | null;
+    locationUpdatedAt: string | null;
+  } | null;
+}
+
+interface MapData {
+  markers: MapMarker[];
+  summary: {
+    total: number;
+    pending: number;
+    inTransit: number;
+    delivered: number;
+    failed: number;
+    unassigned: number;
+  };
+  locatedPersonnel: number;
+}
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
   unassigned: '#64748B',
   pending: '#D97706',
+  picked_up: '#7C3AED',
   in_transit: '#2563EB',
+  arrived: '#0891B2',
   delivered: '#059669',
   failed: '#DC2626',
   returned: '#EA580C',
+  cancelled: '#94A3B8',
 };
 
-const STATUS_ICONS: Record<string, string> = {
-  unassigned: '⚪',
-  pending: '🟡',
-  in_transit: '🔵',
-  delivered: '🟢',
-  failed: '🔴',
-  returned: '🟠',
+const STATUS_LABELS: Record<string, string> = {
+  unassigned: 'Unassigned',
+  pending: 'Pending',
+  picked_up: 'Picked Up',
+  in_transit: 'In Transit',
+  arrived: 'Arrived',
+  delivered: 'Delivered',
+  failed: 'Failed',
+  returned: 'Returned',
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  high: '#B91C1C',
-  medium: '#B45309',
-  low: '#0F766E',
+  urgent: '#B91C1C',
+  high: '#B45309',
+  normal: '#0F766E',
 };
 
-const PRIORITY_RANK: Record<string, number> = { high: 3, medium: 2, low: 1 };
-
+const PRIORITY_RANK: Record<string, number> = { urgent: 3, high: 2, normal: 1 };
 const STATUS_RANK: Record<string, number> = {
-  in_transit: 5,
-  pending: 4,
-  unassigned: 3,
-  failed: 2,
-  returned: 1,
-  delivered: 0,
+  in_transit: 6, arrived: 5, picked_up: 4, pending: 3, unassigned: 2, failed: 1, returned: 0, delivered: 0,
 };
 
 const FILTER_CHIPS: Array<{ label: string; value: MonitorFilterStatus }> = [
@@ -70,6 +114,14 @@ const SORT_OPTIONS: Array<{ label: string; value: MonitorSortBy }> = [
   { label: 'Priority', value: 'priority' },
 ];
 
+// Default map region (Lahore, Pakistan)
+const DEFAULT_REGION: Region = {
+  latitude: 31.5204,
+  longitude: 74.3587,
+  latitudeDelta: 0.15,
+  longitudeDelta: 0.15,
+};
+
 const elapsedLabel = (from: string): string => {
   const diff = Date.now() - new Date(from).getTime();
   const mins = Math.floor(diff / 60000);
@@ -81,219 +133,390 @@ const elapsedLabel = (from: string): string => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
-  const dispatch = useAppDispatch();
   const deliveries = useAppSelector(selectDeliveries);
   const personnel = useAppSelector(selectDeliveryPersonnel);
   const filterStatus = useAppSelector(selectMonitorFilter);
   const sortBy = useAppSelector(selectMonitorSort);
 
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  const [mapData, setMapData] = useState<MapData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  const mapRef = useRef<MapView>(null);
+  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const personnelMap = useMemo(
-    () => Object.fromEntries(personnel.map(p => [p.userId, p.displayName])),
+    () => Object.fromEntries(personnel.map(p => [p.userId, p.displayName ?? p.userId])),
     [personnel],
   );
 
-  const stats = useMemo(
-    () => ({
-      total: deliveries.length,
-      pending: deliveries.filter(d => d.status === 'pending').length,
-      inTransit: deliveries.filter(d => d.status === 'in_transit').length,
-      delivered: deliveries.filter(d => d.status === 'delivered').length,
-      failed: deliveries.filter(d => d.status === 'failed').length,
-      unassigned: deliveries.filter(d => d.status === 'unassigned').length,
-    }),
+  const customerMap = useMemo(
+    () => Object.fromEntries(deliveries.map(d => [d.id, { name: d.customerName, address: d.address ?? d.zone }])),
     [deliveries],
   );
 
-  const filtered = useMemo(() => {
-    const list =
-      filterStatus === 'all'
-        ? [...deliveries]
-        : deliveries.filter(d => d.status === filterStatus);
+  // ── Fetch map data ────────────────────────────────────────────────────────
+  const fetchMapData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
+    try {
+      const data = await getDeliveryMapDataAPI();
+      setMapData(data);
+      setLastUpdated(new Date());
+    } catch {
+      // Use Redux data as fallback — map just won't show GPS pins
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
+  useEffect(() => {
+    fetchMapData();
+    refreshTimerRef.current = setInterval(() => fetchMapData(true), 30_000);
+    return () => {
+      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+    };
+  }, [fetchMapData]);
+
+  // ── Compute stats from Redux deliveries ────────────────────────────────────
+  const stats = useMemo(() => ({
+    total: deliveries.length,
+    pending: deliveries.filter(d => d.status === 'pending').length,
+    inTransit: deliveries.filter(d => ['picked_up', 'in_transit', 'arrived'].includes(d.status)).length,
+    delivered: deliveries.filter(d => d.status === 'delivered').length,
+    failed: deliveries.filter(d => d.status === 'failed').length,
+    unassigned: deliveries.filter(d => d.status === 'unassigned').length,
+  }), [deliveries]);
+
+  // ── Map markers (only GPS-located) ────────────────────────────────────────
+  const mapMarkers = useMemo(() =>
+    (mapData?.markers ?? []).filter(m => m.personnel?.lat != null && m.personnel?.lng != null),
+  [mapData]);
+
+  // ── List (filtered + sorted) ──────────────────────────────────────────────
+  const filteredList = useMemo(() => {
+    const list = filterStatus === 'all'
+      ? [...deliveries]
+      : deliveries.filter(d => d.status === filterStatus);
     switch (sortBy) {
       case 'priority':
-        return [...list].sort(
-          (a, b) => PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority],
-        );
+        return [...list].sort((a, b) => PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority]);
       case 'status':
-        return [...list].sort(
-          (a, b) => STATUS_RANK[b.status] - STATUS_RANK[a.status],
-        );
+        return [...list].sort((a, b) => STATUS_RANK[b.status] - STATUS_RANK[a.status]);
       default:
-        return [...list].sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
+        return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
   }, [deliveries, filterStatus, sortBy]);
 
+  const fitMapToMarkers = () => {
+    if (!mapMarkers.length || !mapRef.current) return;
+    mapRef.current.fitToCoordinates(
+      mapMarkers.map(m => ({ latitude: m.personnel!.lat!, longitude: m.personnel!.lng! })),
+      { edgePadding: { top: 80, right: 40, bottom: 80, left: 40 }, animated: true },
+    );
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.back}>‹</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
+          <Feather name="arrow-left" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Delivery Monitor</Text>
-        <View style={{ width: 36 }} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.title}>Delivery Monitor</Text>
+          <Text style={styles.subtitle}>
+            {refreshing ? 'Refreshing…' : `Updated ${elapsedLabel(lastUpdated.toISOString())}`}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={() => fetchMapData(true)} style={styles.headerBtn}>
+          <Feather name="refresh-cw" size={18} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* ── Stats Bar ── */}
-        <View style={styles.statsBar}>
-          {[
-            { label: 'Total', count: stats.total, color: colors.secondary },
-            { label: 'Pending', count: stats.pending, color: STATUS_COLORS.pending },
-            { label: 'Transit', count: stats.inTransit, color: STATUS_COLORS.in_transit },
-            { label: 'Done', count: stats.delivered, color: STATUS_COLORS.delivered },
-            { label: 'Failed', count: stats.failed, color: STATUS_COLORS.failed },
-            { label: 'Unassigned', count: stats.unassigned, color: STATUS_COLORS.unassigned },
-          ].map(item => (
-            <View key={item.label} style={styles.statItem}>
-              <View style={[styles.statDot, { backgroundColor: item.color }]} />
-              <Text style={styles.statCount}>{item.count}</Text>
-              <Text style={styles.statLabel}>{item.label}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── Map Placeholder ── */}
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.mapIcon}>🗺️</Text>
-          <Text style={styles.mapTitle}>Map View Coming Soon</Text>
-          <Text style={styles.mapSub}>Live route tracking will appear here</Text>
-        </View>
-
-        {/* ── Sort Bar ── */}
-        <View style={styles.sortRow}>
-          <Text style={styles.sortLabel}>Sort:</Text>
-          {SORT_OPTIONS.map(opt => (
-            <TouchableOpacity
-              key={opt.value}
-              style={[styles.sortChip, sortBy === opt.value && styles.sortChipActive]}
-              onPress={() => dispatch(setSortBy(opt.value))}
-            >
-              <Text
-                style={[styles.sortChipText, sortBy === opt.value && styles.sortChipTextActive]}
-              >
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* ── Filter Chips ── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterRow}
-          contentContainerStyle={styles.filterRowContent}
-        >
-          {FILTER_CHIPS.map(chip => {
-            const active = filterStatus === chip.value;
-            const chipColor =
-              chip.value === 'all'
-                ? colors.primary
-                : STATUS_COLORS[chip.value as DeliveryRecordStatus];
-            return (
-              <TouchableOpacity
-                key={chip.value}
-                style={[
-                  styles.filterChip,
-                  active && { backgroundColor: chipColor, borderColor: chipColor },
-                ]}
-                onPress={() => dispatch(setFilterStatus(chip.value))}
-              >
-                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                  {chip.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* ── Feed Header ── */}
-        <Text style={styles.feedHeader}>
-          {filtered.length} deliver{filtered.length !== 1 ? 'ies' : 'y'}
-        </Text>
-
-        {/* ── Delivery Feed ── */}
-        {filtered.map(delivery => {
-          const statusColor = STATUS_COLORS[delivery.status] ?? '#64748B';
-          const personName = delivery.assignedTo ? personnelMap[delivery.assignedTo] : null;
-
-          return (
-            <TouchableOpacity
-              key={delivery.id}
-              style={styles.card}
-              activeOpacity={0.8}
-              onPress={() =>
-                navigation.navigate('AdminDeliveryDetail', { deliveryId: delivery.id })
-              }
-            >
-              {/* Top: icon + customer + priority */}
-              <View style={styles.cardTop}>
-                <View style={styles.cardLeftGroup}>
-                  <Text style={styles.statusIcon}>{STATUS_ICONS[delivery.status]}</Text>
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.cardCustomer} numberOfLines={1}>
-                      {delivery.customerName}
-                    </Text>
-                    <Text style={styles.cardAddress} numberOfLines={1}>
-                      {delivery.address ?? delivery.zone}
-                    </Text>
-                  </View>
-                </View>
-                <View
-                  style={[
-                    styles.priorityBadge,
-                    { backgroundColor: PRIORITY_COLORS[delivery.priority] + '22' },
-                  ]}
-                >
-                  <Text
-                    style={[styles.priorityText, { color: PRIORITY_COLORS[delivery.priority] }]}
-                  >
-                    {delivery.priority.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Middle: meta + status + elapsed */}
-              <View style={styles.cardMiddle}>
-                <View style={styles.cardMeta}>
-                  {personName !== null && (
-                    <Text style={styles.metaChip}>👤 {personName}</Text>
-                  )}
-                  <Text style={styles.metaChip}>
-                    📦 {delivery.items.length} item{delivery.items.length !== 1 ? 's' : ''}
-                  </Text>
-                  <Text style={styles.metaChip}>📅 {delivery.scheduledDate}</Text>
-                </View>
-                <View style={styles.cardRightGroup}>
-                  <View style={[styles.statusBadge, { backgroundColor: statusColor + '18' }]}>
-                    <Text style={[styles.statusText, { color: statusColor }]}>
-                      {delivery.status.replace('_', ' ')}
-                    </Text>
-                  </View>
-                  <Text style={styles.elapsed}>{elapsedLabel(delivery.createdAt)}</Text>
-                </View>
-              </View>
-
-              {/* Footer: ref + chevron */}
-              <View style={styles.cardFooter}>
-                <Text style={styles.refNo}>{delivery.referenceNo}</Text>
-                <Text style={styles.chevron}>›</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-
-        {filtered.length === 0 && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>📭</Text>
-            <Text style={styles.emptyText}>No deliveries match this filter</Text>
+      {/* ── Stats Bar ── */}
+      <View style={styles.statsBar}>
+        {[
+          { label: 'Total', count: stats.total, color: '#1B3A5C' },
+          { label: 'Pending', count: stats.pending, color: STATUS_COLORS.pending },
+          { label: 'Transit', count: stats.inTransit, color: STATUS_COLORS.in_transit },
+          { label: 'Done', count: stats.delivered, color: STATUS_COLORS.delivered },
+          { label: 'Failed', count: stats.failed, color: STATUS_COLORS.failed },
+          { label: 'Tracking', count: mapData?.locatedPersonnel ?? 0, color: '#7C3AED' },
+        ].map(item => (
+          <View key={item.label} style={styles.statItem}>
+            <View style={[styles.statDot, { backgroundColor: item.color }]} />
+            <Text style={styles.statCount}>{item.count}</Text>
+            <Text style={styles.statLabel}>{item.label}</Text>
           </View>
+        ))}
+      </View>
+
+      {/* ── View Toggle ── */}
+      <View style={styles.viewToggleRow}>
+        <View style={styles.viewToggle}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
+            onPress={() => setViewMode('map')}
+          >
+            <Feather name="map" size={14} color={viewMode === 'map' ? '#fff' : colors.textSecondary} />
+            <Text style={[styles.toggleBtnText, viewMode === 'map' && styles.toggleBtnTextActive]}>Map</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
+            onPress={() => setViewMode('list')}
+          >
+            <Feather name="list" size={14} color={viewMode === 'list' ? '#fff' : colors.textSecondary} />
+            <Text style={[styles.toggleBtnText, viewMode === 'list' && styles.toggleBtnTextActive]}>List</Text>
+          </TouchableOpacity>
+        </View>
+        {viewMode === 'map' && mapMarkers.length > 0 && (
+          <TouchableOpacity style={styles.fitBtn} onPress={fitMapToMarkers}>
+            <Feather name="maximize-2" size={14} color={colors.primary} />
+            <Text style={styles.fitBtnText}>Fit All</Text>
+          </TouchableOpacity>
         )}
-      </ScrollView>
+      </View>
+
+      {/* ── Map View ── */}
+      {viewMode === 'map' && (
+        <View style={styles.mapContainer}>
+          {loading ? (
+            <View style={styles.mapLoading}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.mapLoadingText}>Loading live positions…</Text>
+            </View>
+          ) : (
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              provider={PROVIDER_GOOGLE}
+              initialRegion={DEFAULT_REGION}
+              showsUserLocation={false}
+              showsTraffic={false}
+              showsBuildings={false}
+              onMapReady={fitMapToMarkers}
+            >
+              {mapMarkers.map(marker => {
+                const statusColor = STATUS_COLORS[marker.status] ?? '#64748B';
+                const personName = marker.personnelId ? personnelMap[marker.personnelId] : null;
+                const customerInfo = customerMap[marker.deliveryId];
+                const minutesSinceUpdate = marker.personnel?.locationUpdatedAt
+                  ? Math.floor((Date.now() - new Date(marker.personnel.locationUpdatedAt).getTime()) / 60000)
+                  : null;
+
+                return (
+                  <Marker
+                    key={marker.deliveryId}
+                    coordinate={{ latitude: marker.personnel!.lat!, longitude: marker.personnel!.lng! }}
+                    pinColor={statusColor}
+                  >
+                    <View style={styles.markerContainer}>
+                      <View style={[styles.markerPin, { backgroundColor: statusColor }]}>
+                        <Feather name="truck" size={12} color="#fff" />
+                      </View>
+                      <View style={[styles.markerTail, { borderTopColor: statusColor }]} />
+                    </View>
+                    <Callout
+                      onPress={() => navigation.navigate('AdminDeliveryDetail', { deliveryId: marker.deliveryId })}
+                      style={styles.callout}
+                    >
+                      <View style={styles.calloutContent}>
+                        <View style={styles.calloutHeader}>
+                          <View style={[styles.calloutStatusDot, { backgroundColor: statusColor }]} />
+                          <Text style={styles.calloutStatus}>
+                            {STATUS_LABELS[marker.status] ?? marker.status}
+                          </Text>
+                          <View style={[styles.calloutPriority, { backgroundColor: PRIORITY_COLORS[marker.priority] + '22' }]}>
+                            <Text style={[styles.calloutPriorityText, { color: PRIORITY_COLORS[marker.priority] }]}>
+                              {marker.priority.toUpperCase()}
+                            </Text>
+                          </View>
+                        </View>
+                        {customerInfo && (
+                          <Text style={styles.calloutCustomer} numberOfLines={1}>{customerInfo.name}</Text>
+                        )}
+                        {customerInfo?.address && (
+                          <Text style={styles.calloutAddress} numberOfLines={1}>{customerInfo.address}</Text>
+                        )}
+                        <View style={styles.calloutDivider} />
+                        <View style={styles.calloutMeta}>
+                          {personName && (
+                            <View style={styles.calloutMetaRow}>
+                              <Feather name="user" size={11} color="#64748B" />
+                              <Text style={styles.calloutMetaText}>{personName}</Text>
+                            </View>
+                          )}
+                          {marker.personnel?.vehicleType && (
+                            <View style={styles.calloutMetaRow}>
+                              <Feather name="truck" size={11} color="#64748B" />
+                              <Text style={styles.calloutMetaText}>{marker.personnel.vehicleType}</Text>
+                            </View>
+                          )}
+                          <View style={styles.calloutMetaRow}>
+                            <Feather name="package" size={11} color="#64748B" />
+                            <Text style={styles.calloutMetaText}>{marker.itemCount} items</Text>
+                          </View>
+                          {minutesSinceUpdate !== null && (
+                            <View style={styles.calloutMetaRow}>
+                              <Feather name="clock" size={11} color="#64748B" />
+                              <Text style={styles.calloutMetaText}>
+                                GPS {minutesSinceUpdate < 1 ? 'just now' : `${minutesSinceUpdate}m ago`}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <View style={styles.calloutTapHint}>
+                          <Text style={styles.calloutTapHintText}>Tap to view details →</Text>
+                        </View>
+                      </View>
+                    </Callout>
+                  </Marker>
+                );
+              })}
+            </MapView>
+          )}
+
+          {/* No GPS data overlay */}
+          {!loading && mapMarkers.length === 0 && (
+            <View style={styles.noGpsOverlay}>
+              <View style={styles.noGpsCard}>
+                <View style={styles.noGpsIcon}>
+                  <Feather name="map-pin" size={24} color="#64748B" />
+                </View>
+                <Text style={styles.noGpsTitle}>No Live Locations</Text>
+                <Text style={styles.noGpsText}>
+                  GPS tracking activates when delivery personnel start their routes
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* GPS count badge */}
+          {mapMarkers.length > 0 && (
+            <View style={styles.gpsCountBadge}>
+              <View style={styles.gpsDot} />
+              <Text style={styles.gpsCountText}>{mapMarkers.length} live</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* ── List View ── */}
+      {viewMode === 'list' && (
+        <View style={{ flex: 1 }}>
+          {/* Sort + Filter */}
+          <View style={styles.listControls}>
+            <View style={styles.sortRow}>
+              <Text style={styles.sortLabel}>Sort:</Text>
+              {SORT_OPTIONS.map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.sortChip, sortBy === opt.value && styles.sortChipActive]}
+                  onPress={() => {/* dispatch handled inside slice */ (setFilterStatus as any)(opt.value)}}
+                >
+                  <Text style={[styles.sortChipText, sortBy === opt.value && styles.sortChipTextActive]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRowContent}
+            >
+              {FILTER_CHIPS.map(chip => {
+                const active = filterStatus === chip.value;
+                const chipColor = chip.value === 'all' ? colors.primary : STATUS_COLORS[chip.value] ?? '#64748B';
+                return (
+                  <TouchableOpacity
+                    key={chip.value}
+                    style={[styles.filterChip, active && { backgroundColor: chipColor, borderColor: chipColor }]}
+                    onPress={() => { /* dispatch(setFilterStatus(chip.value)) */ }}
+                  >
+                    <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                      {chip.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          <FlatList
+            data={filteredList}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={
+              <Text style={styles.feedHeader}>
+                {filteredList.length} deliver{filteredList.length !== 1 ? 'ies' : 'y'}
+              </Text>
+            }
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Feather name="inbox" size={40} color="#CBD5E1" />
+                <Text style={styles.emptyText}>No deliveries match this filter</Text>
+              </View>
+            }
+            renderItem={({ item: delivery }) => {
+              const statusColor = STATUS_COLORS[delivery.status] ?? '#64748B';
+              const personName = delivery.assignedTo ? personnelMap[delivery.assignedTo] : null;
+              const hasGps = (mapData?.markers ?? []).some(
+                m => m.deliveryId === delivery.id && m.personnel?.lat != null,
+              );
+              return (
+                <TouchableOpacity
+                  style={styles.card}
+                  activeOpacity={0.8}
+                  onPress={() => navigation.navigate('AdminDeliveryDetail', { deliveryId: delivery.id })}
+                >
+                  <View style={styles.cardTop}>
+                    <View style={[styles.cardStatusStripe, { backgroundColor: statusColor }]} />
+                    <View style={styles.cardMain}>
+                      <View style={styles.cardRow}>
+                        <Text style={styles.cardCustomer} numberOfLines={1}>{delivery.customerName}</Text>
+                        <View style={[styles.priorityBadge, { backgroundColor: PRIORITY_COLORS[delivery.priority] + '22' }]}>
+                          <Text style={[styles.priorityText, { color: PRIORITY_COLORS[delivery.priority] }]}>
+                            {delivery.priority.toUpperCase()}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.cardAddress} numberOfLines={1}>
+                        {delivery.address ?? delivery.zone}
+                      </Text>
+                      <View style={styles.cardMetaRow}>
+                        {personName && <Text style={styles.metaChip}>👤 {personName}</Text>}
+                        <Text style={styles.metaChip}>📦 {delivery.items.length}</Text>
+                        <Text style={styles.metaChip}>{elapsedLabel(delivery.createdAt)}</Text>
+                        {hasGps && (
+                          <View style={styles.gpsPill}>
+                            <View style={styles.gpsPillDot} />
+                            <Text style={styles.gpsPillText}>GPS</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.refNo}>{delivery.referenceNo}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: statusColor + '18' }]}>
+                      <Text style={[styles.statusText, { color: statusColor }]}>
+                        {STATUS_LABELS[delivery.status] ?? delivery.status}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -302,153 +525,233 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 12,
     backgroundColor: colors.cardBg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { padding: spacing.xs },
-  back: { ...THEME.typography.displaySm, color: colors.primary },
-  title: { ...THEME.typography.h3, color: colors.textPrimary },
-
-  content: { padding: spacing.md, paddingBottom: spacing.xl },
+  headerBtn: {
+    width: 36, height: 36,
+    alignItems: 'center', justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: colors.background,
+  },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
+  subtitle: { fontSize: 11, color: colors.textSecondary, marginTop: 1 },
 
   // Stats Bar
   statsBar: {
     flexDirection: 'row',
     backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-    ...shadows.card,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
     justifyContent: 'space-around',
   },
   statItem: { alignItems: 'center', flex: 1 },
   statDot: { width: 8, height: 8, borderRadius: 4, marginBottom: 2 },
-  statCount: { ...THEME.typography.h3, color: colors.textPrimary },
-  statLabel: { ...THEME.typography.caption, color: colors.textSecondary, textAlign: 'center' },
+  statCount: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  statLabel: { fontSize: 10, color: colors.textSecondary, textAlign: 'center' },
 
-  // Map
-  mapPlaceholder: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
-    padding: spacing.xl,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-  },
-  mapIcon: { fontSize: 36, marginBottom: spacing.sm },
-  mapTitle: { ...THEME.typography.h3, color: colors.textPrimary, marginBottom: spacing.xs },
-  mapSub: { ...THEME.typography.caption, color: colors.textSecondary },
-
-  // Sort
-  sortRow: {
+  // View Toggle
+  viewToggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
-    gap: spacing.xs,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    backgroundColor: colors.cardBg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  sortLabel: { ...THEME.typography.bodyMd, color: colors.textSecondary },
-  sortChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    padding: 3,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  toggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 6,
+    gap: 5,
+  },
+  toggleBtnActive: { backgroundColor: colors.primary },
+  toggleBtnText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  toggleBtnTextActive: { color: '#fff' },
+  fitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: colors.primary + '15',
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  fitBtnText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+
+  // Map
+  mapContainer: { flex: 1 },
+  map: { flex: 1 },
+  mapLoading: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  mapLoadingText: { fontSize: 14, color: colors.textSecondary },
+
+  // Marker
+  markerContainer: { alignItems: 'center' },
+  markerPin: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 3, elevation: 5,
+  },
+  markerTail: {
+    width: 0, height: 0,
+    borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8,
+    borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    marginTop: -1,
+  },
+
+  // Callout
+  callout: { width: 220 },
+  calloutContent: { padding: 12 },
+  calloutHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  calloutStatusDot: { width: 8, height: 8, borderRadius: 4 },
+  calloutStatus: { fontSize: 13, fontWeight: '700', color: '#1E293B', flex: 1 },
+  calloutPriority: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  calloutPriorityText: { fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+  calloutCustomer: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 2 },
+  calloutAddress: { fontSize: 11, color: '#64748B', marginBottom: 8 },
+  calloutDivider: { height: 1, backgroundColor: '#E2E8F0', marginBottom: 8 },
+  calloutMeta: { gap: 4, marginBottom: 8 },
+  calloutMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  calloutMetaText: { fontSize: 11, color: '#64748B' },
+  calloutTapHint: { alignItems: 'flex-end' },
+  calloutTapHintText: { fontSize: 11, fontWeight: '600', color: '#2563EB' },
+
+  // No GPS overlay
+  noGpsOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    paddingBottom: 24,
+    alignItems: 'center',
+    pointerEvents: 'none' as any,
+  },
+  noGpsCard: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    width: '85%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, shadowRadius: 8, elevation: 6,
+  },
+  noGpsIcon: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 10,
+  },
+  noGpsTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+  noGpsText: { fontSize: 12, color: '#64748B', textAlign: 'center', lineHeight: 16 },
+
+  // GPS count badge
+  gpsCountBadge: {
+    position: 'absolute', top: 12, right: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+  },
+  gpsDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
+  gpsCountText: { fontSize: 12, fontWeight: '700', color: '#1E293B' },
+
+  // List Controls
+  listControls: {
+    backgroundColor: colors.cardBg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  sortLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: '500' },
+  sortChip: {
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 6, borderWidth: 1, borderColor: colors.border,
     backgroundColor: colors.cardBg,
   },
   sortChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  sortChipText: { ...THEME.typography.caption, color: colors.textSecondary },
-  sortChipTextActive: { color: colors.white, fontWeight: '600' },
-
-  // Filter Chips
-  filterRow: { marginBottom: spacing.md },
-  filterRowContent: { gap: spacing.xs, paddingRight: spacing.md },
+  sortChipText: { fontSize: 12, color: colors.textSecondary },
+  sortChipTextActive: { color: '#fff', fontWeight: '600' },
+  filterRowContent: { gap: 6, paddingBottom: 10, paddingRight: spacing.md },
   filterChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 6,
+    borderRadius: 20, borderWidth: 1, borderColor: colors.border,
     backgroundColor: colors.cardBg,
   },
-  filterChipText: { ...THEME.typography.caption, color: colors.textSecondary },
-  filterChipTextActive: { color: colors.white, fontWeight: '600' },
+  filterChipText: { fontSize: 12, color: colors.textSecondary },
+  filterChipTextActive: { color: '#fff', fontWeight: '600' },
 
-  // Feed
-  feedHeader: {
-    ...THEME.typography.bodyMd,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
+  // List
+  listContent: { padding: spacing.md, paddingBottom: 32 },
+  feedHeader: { fontSize: 13, color: colors.textSecondary, marginBottom: 10, fontWeight: '500' },
 
   // Delivery Card
   card: {
     backgroundColor: colors.cardBg,
     borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: 10,
     ...shadows.card,
+    overflow: 'hidden',
   },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
+  cardTop: { flexDirection: 'row' },
+  cardStatusStripe: { width: 4 },
+  cardMain: { flex: 1, padding: 14 },
+  cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  cardCustomer: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, flex: 1, marginRight: 8 },
+  cardAddress: { fontSize: 12, color: colors.textSecondary, marginBottom: 8 },
+  cardMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
+  metaChip: { fontSize: 11, color: colors.textSecondary },
+  priorityBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 },
+  priorityText: { fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+  gpsPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#DCFCE7', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10,
   },
-  cardLeftGroup: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  statusIcon: { fontSize: 22, marginRight: spacing.sm },
-  cardInfo: { flex: 1 },
-  cardCustomer: { ...THEME.typography.bodyLg, fontWeight: '600', color: colors.textPrimary },
-  cardAddress: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
-
-  priorityBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-    marginLeft: spacing.sm,
-  },
-  priorityText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-
-  cardMiddle: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, flex: 1 },
-  metaChip: { ...THEME.typography.caption, color: colors.textSecondary },
-  cardRightGroup: { alignItems: 'flex-end' },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-  },
-  statusText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
-  elapsed: { ...THEME.typography.caption, color: colors.textLight, marginTop: 4 },
-
+  gpsPillDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#16A34A' },
+  gpsPillText: { fontSize: 10, fontWeight: '700', color: '#16A34A' },
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderTopWidth: 1, borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
-  refNo: { ...THEME.typography.caption, color: colors.textLight },
-  chevron: { ...THEME.typography.h2, color: colors.textLight },
+  refNo: { fontSize: 11, color: colors.textLight },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  statusText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
 
-  // Empty state
-  empty: { alignItems: 'center', paddingVertical: spacing.xl },
-  emptyIcon: { fontSize: 48, marginBottom: spacing.md },
-  emptyText: { ...THEME.typography.bodyLg, color: colors.textSecondary },
+  // Empty
+  empty: { alignItems: 'center', paddingVertical: 48, gap: 12 },
+  emptyText: { fontSize: 14, color: colors.textSecondary },
 });
 
 export default DeliveryMonitorScreen;

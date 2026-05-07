@@ -7,17 +7,35 @@
     "scheme": "finmatrix",
     "newArchEnabled": true,
     "platforms": [
-      "android"
+      "android",
+      "web"
     ],
     "android": {
       "package": "com.finmatrix",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
       }
     },
     "plugins": [
       "expo-font",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "FinMatrix needs location access to track your delivery route.",
+          "locationWhenInUsePermission": "FinMatrix needs location access to track your delivery route."
+        }
+      ]
     ]
   }
 }

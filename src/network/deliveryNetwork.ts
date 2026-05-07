@@ -244,6 +244,26 @@ export const syncShadowInventoryAPI = async (personnelId: string): Promise<any> 
   }
 };
 
+// ─── GPS Location Tracking ──────────────────────────
+
+export const updateLocationAPI = async (lat: number, lng: number): Promise<any> => {
+  try {
+    const response = await api.patch('/delivery-personnel/location', { lat, lng });
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getDeliveryMapDataAPI = async (): Promise<any> => {
+  try {
+    const response = await api.get('/deliveries/map-data');
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
 // ─── Aliases used by inventoryApprovalSlice ─────────
 export const getInventoryUpdateRequestsAPI = getInventoryApprovalsAPI;
 

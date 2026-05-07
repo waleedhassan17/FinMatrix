@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, StatusBar } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, StatusBar, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,6 +9,9 @@ import { updateDeliveryExecutionStatus } from './dpDeliveryDetailSlice';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
+import { locationService } from '../../../../services/locationService';
+
+const ACTIVE_STATUSES = ['pending', 'picked_up', 'in_transit', 'arrived'];
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'DPDeliveryDetail'>;
 
@@ -24,11 +27,36 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { deliveryId } = route.params;
   const dispatch = useAppDispatch();
   const deliveries = useAppSelector(selectDeliveries);
+  const [isTracking, setIsTracking] = useState(locationService.isTracking);
+  const gpsAnim = useRef(new Animated.Value(1)).current;
 
   const delivery = useMemo(
     () => deliveries.find(item => item.id === deliveryId),
     [deliveries, deliveryId],
   );
+
+  const isActiveDelivery = delivery ? ACTIVE_STATUSES.includes(delivery.status) : false;
+
+  useEffect(() => {
+    if (!isActiveDelivery) return;
+
+    locationService.startTracking(30_000);
+    setIsTracking(true);
+
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(gpsAnim, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+        Animated.timing(gpsAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+
+    return () => {
+      pulse.stop();
+      locationService.stopTracking();
+      setIsTracking(false);
+    };
+  }, [isActiveDelivery]);
 
   if (!delivery) {
     return (
@@ -141,10 +169,18 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>{delivery.referenceNo}</Text>
-          <View style={[styles.headerBadge, { backgroundColor: statusConfig.bg }]}>
-            <Text style={[styles.headerBadgeText, { color: statusConfig.color }]}>
-              {statusConfig.label}
-            </Text>
+          <View style={styles.headerBadgeRow}>
+            <View style={[styles.headerBadge, { backgroundColor: statusConfig.bg }]}>
+              <Text style={[styles.headerBadgeText, { color: statusConfig.color }]}>
+                {statusConfig.label}
+              </Text>
+            </View>
+            {isTracking && (
+              <View style={styles.gpsPill}>
+                <Animated.View style={[styles.gpsDot, { opacity: gpsAnim }]} />
+                <Text style={styles.gpsText}>GPS</Text>
+              </View>
+            )}
           </View>
         </View>
         <TouchableOpacity style={styles.moreBtn}>
@@ -428,6 +464,11 @@ const styles = StyleSheet.create({
     color: DP_BRAND.white,
     marginBottom: 4,
   },
+  headerBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   headerBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -435,6 +476,28 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     ...THEME.typography.labelSm,
+  },
+  gpsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: THEME.radius.full,
+    gap: 4,
+  },
+  gpsDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#22c55e',
+  },
+  gpsText: {
+    ...THEME.typography.overline,
+    color: '#22c55e',
+    fontWeight: '700',
   },
   moreBtn: {
     width: 40,
