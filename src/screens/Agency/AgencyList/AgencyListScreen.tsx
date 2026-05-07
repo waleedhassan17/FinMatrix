@@ -34,7 +34,7 @@ import EmptyState from '../../../components/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency } from '../../../utils/formatters';
 import { AGENCY_TYPE_COLORS } from '../../../models/agencyModel';
-import type { WarehouseAgency } from '../../../dummy-data/warehouseAgencies';
+import type { WarehouseAgency } from '../../../models/agencyModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;

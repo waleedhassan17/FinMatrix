@@ -32,7 +32,7 @@ import {
   addAdjustment,
   generateAdjustmentRef,
   type AdjustmentReason,
-} from '../../../dummy-data/adjustments';
+} from '../../../models/adjustmentModel';
 import { formatDate } from '../../../utils/formatters';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 

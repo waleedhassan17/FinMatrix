@@ -17,7 +17,7 @@ export type DPDeliveriesStackParamList = {
 const Stack = createNativeStackNavigator<DPDeliveriesStackParamList>();
 
 const DPDeliveriesStack: React.FC = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+  <Stack.Navigator id="DPDeliveriesStack" screenOptions={{ headerShown: false }}>
     <Stack.Screen name="DPDeliveries" component={DPDeliveryListScreen} />
     <Stack.Screen name="DPDeliveryDetail" component={DPDeliveryDetailScreen} />
     <Stack.Screen name="BillPhotoCapture" component={BillPhotoCaptureScreen} />

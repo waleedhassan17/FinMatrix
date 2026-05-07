@@ -36,21 +36,27 @@ const mapBillLine = (raw: Partial<BillApiLineEntity>): BillLine => ({
   amount: typeof raw.amount === 'number' ? raw.amount : 0,
 });
 
-export const mapBill = (raw: Partial<BillApiEntity>): Bill => ({
+const toNum = (v: any): number => {
+  if (typeof v === 'number') return v;
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+};
+
+export const mapBill = (raw: Partial<BillApiEntity> & { billDate?: string; memo?: string }): Bill => ({
   id: raw.id ?? '',
   companyId: raw.companyId ?? '',
   billNumber: raw.billNumber ?? '',
   vendorId: raw.vendorId ?? '',
   vendorName: raw.vendorName ?? '',
-  issueDate: raw.issueDate ?? '',
+  issueDate: (raw as any).billDate ?? raw.issueDate ?? '',
   dueDate: raw.dueDate ?? '',
   status: (raw.status as BillStatus) ?? 'draft',
   lines: Array.isArray(raw.lines) ? raw.lines.map(mapBillLine) : [],
-  subtotal: typeof raw.subtotal === 'number' ? raw.subtotal : 0,
-  taxAmount: typeof raw.taxAmount === 'number' ? raw.taxAmount : 0,
-  total: typeof raw.total === 'number' ? raw.total : 0,
-  amountPaid: typeof raw.amountPaid === 'number' ? raw.amountPaid : 0,
-  notes: raw.notes ?? '',
+  subtotal: toNum(raw.subtotal),
+  taxAmount: toNum(raw.taxAmount),
+  total: toNum(raw.total),
+  amountPaid: toNum(raw.amountPaid),
+  notes: (raw as any).memo ?? raw.notes ?? '',
   createdBy: raw.createdBy ?? '',
   createdAt: raw.createdAt ?? '',
   updatedAt: raw.updatedAt ?? '',
@@ -58,10 +64,14 @@ export const mapBill = (raw: Partial<BillApiEntity>): Bill => ({
 
 // ─── Envelope serializers ────────────────────────────
 export function billListSerializer(payload: any): SerializedBillList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.bills) ? data.bills : [];
-  const pagination = data.pagination || {};
-  const totals = data.totals || {};
+  const data = payload?.data;
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.bills)
+      ? data.bills
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
+  const totals = (data && !Array.isArray(data)) ? (data.totals || {}) : {};
 
   const bills = raw.map(mapBill);
 
@@ -97,7 +107,7 @@ export function billListSerializer(payload: any): SerializedBillList {
 }
 
 export function billSingleSerializer(payload: any): Bill | null {
-  const raw = payload?.data?.bill;
+  const raw = payload?.data?.bill ?? (payload?.data && !Array.isArray(payload.data) ? payload.data : null);
   if (!raw) return null;
   return mapBill(raw);
 }

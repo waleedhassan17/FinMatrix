@@ -1,389 +1,117 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Banking Network (Dummy APIs)
+// FinMatrix — Banking Network (Production API)
 // ═══════════════════════════════════════════════════════
 
-import { simulateApiCall } from './apiHelpers';
-import { bankAccounts as seedBankAccounts } from '../dummy-data/bankAccounts';
-import { bankTransactions as seedBankTransactions } from '../dummy-data/bankTransactions';
-import { bankReconciliations as seedBankReconciliations } from '../dummy-data/bankReconciliations';
-import { journalEntriesData } from '../dummy-data/journalEntries';
-import type { BankAccount, BankReconciliation, BankTransaction, JournalEntry } from '../types';
-import type {
-  ApiEnvelope,
-  BankAccountListResponse,
-  BankAccountSingleResponse,
-  BankReconciliationListResponse,
-  BankReconciliationSingleResponse,
-  BankTransactionListResponse,
-  BankTransactionSingleResponse,
-  CreateBankReconciliationPayload,
-  CreateBankTransactionPayload,
-  TransferFundsPayload,
-  TransferFundsResponse,
-} from '../models/bankingModel';
+import { api, extractErrorMessage } from './apiHelpers';
 
-// Re-export payload types for backward compatibility with existing imports.
-export type {
-  CreateBankTransactionPayload,
-  TransferFundsPayload,
-  CreateBankReconciliationPayload,
-} from '../models/bankingModel';
-
-let accountsStore: BankAccount[] = seedBankAccounts.map(a => ({ ...a }));
-let transactionsStore: BankTransaction[] = seedBankTransactions.map(t => {
-  const txDate = new Date(t.date);
-  const cutoff = new Date('2026-02-28T23:59:59.999Z');
-  return {
-    ...t,
-    isReconciled: txDate <= cutoff,
-  };
-});
-let reconciliationsStore: BankReconciliation[] = seedBankReconciliations.map(r => ({
-  ...r,
-  clearedTransactionIds: [...r.clearedTransactionIds],
-}));
-
-const accountStartingBalance: Record<string, number> = accountsStore.reduce((acc, account) => {
-  const txs = transactionsStore.filter(t => t.bankAccountId === account.id);
-  const totalDelta = txs.reduce((sum, tx) => sum + signedDelta(tx), 0);
-  acc[account.id] = account.balance - totalDelta;
-  return acc;
-}, {} as Record<string, number>);
-
-function signedDelta(tx: Pick<BankTransaction, 'type' | 'amount' | 'description'>): number {
-  if (tx.type === 'deposit' || tx.type === 'interest' || tx.type === 'card_payment') return tx.amount;
-  if (tx.type === 'withdrawal' || tx.type === 'fee' || tx.type === 'card_charge') return -tx.amount;
-  if (tx.type === 'transfer') {
-    const fromDirection = /transfer to/i.test(tx.description);
-    return fromDirection ? -tx.amount : tx.amount;
+export const getBankAccountsAPI = async (params: any = {}): Promise<any> => {
+  try {
+    const queryParams = { page: 1, limit: 50, ...params };
+    const response = await api.get('/banking/accounts', { params: queryParams });
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
   }
-  return 0;
-}
-
-function cloneAccount(account: BankAccount): BankAccount {
-  return { ...account };
-}
-
-function cloneTx(tx: BankTransaction): BankTransaction {
-  return { ...tx };
-}
-
-function cloneReconciliation(r: BankReconciliation): BankReconciliation {
-  return {
-    ...r,
-    clearedTransactionIds: [...r.clearedTransactionIds],
-  };
-}
-
-function sortByDateThenId<T extends { date: string; id: string }>(rows: T[]): T[] {
-  return [...rows].sort((a, b) => {
-    const byDate = a.date.localeCompare(b.date);
-    if (byDate !== 0) return byDate;
-    return a.id.localeCompare(b.id);
-  });
-}
-
-function recomputeAccountLedger(accountId: string): void {
-  const opening = accountStartingBalance[accountId] ?? 0;
-  const txs = sortByDateThenId(transactionsStore.filter(t => t.bankAccountId === accountId));
-
-  let running = opening;
-  txs.forEach(tx => {
-    running += signedDelta(tx);
-    tx.balance = running;
-  });
-
-  const accountIndex = accountsStore.findIndex(a => a.id === accountId);
-  if (accountIndex >= 0) {
-    accountsStore[accountIndex] = {
-      ...accountsStore[accountIndex],
-      balance: running,
-      updatedAt: new Date().toISOString(),
-    };
-  }
-}
-
-function nextJournalEntryNumber(): string {
-  const max = journalEntriesData.reduce((n, je) => {
-    const match = je.entryNumber.match(/JE-(\d+)/i);
-    return match ? Math.max(n, parseInt(match[1], 10)) : n;
-  }, 0);
-  return `JE-${String(max + 1).padStart(3, '0')}`;
-}
-
-function appendTransferJournalEntry(
-  fromAccount: BankAccount,
-  toAccount: BankAccount,
-  amount: number,
-  dateISO: string,
-  memo?: string,
-): JournalEntry {
-  const entryNumber = nextJournalEntryNumber();
-  const createdAt = new Date().toISOString();
-
-  const entry: JournalEntry = {
-    id: `je-${entryNumber.toLowerCase()}-${Date.now()}`,
-    companyId: fromAccount.companyId,
-    entryNumber,
-    date: dateISO.slice(0, 10),
-    description: memo?.trim() || `Transfer from ${fromAccount.bankName} to ${toAccount.bankName}`,
-    reference: `BNK-XFER-${Date.now()}`,
-    status: 'posted',
-    lines: [
-      {
-        id: `jel-${Date.now()}-1`,
-        accountId: toAccount.accountId,
-        accountName: `${toAccount.bankName} (${toAccount.accountNumber})`,
-        accountCode: toAccount.accountId.replace('acct-', ''),
-        debit: amount,
-        credit: 0,
-        description: `Transfer in from ${fromAccount.accountNumber}`,
-      },
-      {
-        id: `jel-${Date.now()}-2`,
-        accountId: fromAccount.accountId,
-        accountName: `${fromAccount.bankName} (${fromAccount.accountNumber})`,
-        accountCode: fromAccount.accountId.replace('acct-', ''),
-        debit: 0,
-        credit: amount,
-        description: `Transfer out to ${toAccount.accountNumber}`,
-      },
-    ],
-    totalDebit: amount,
-    totalCredit: amount,
-    createdBy: 'admin_001',
-    approvedBy: 'admin_001',
-    postedAt: createdAt,
-    createdAt,
-    updatedAt: createdAt,
-  };
-
-  journalEntriesData.push(entry);
-  return entry;
-}
-
-export const getBankAccountsAPI = async (): Promise<
-  ApiEnvelope<BankAccountListResponse>
-> =>
-  simulateApiCall(
-    { success: true, data: { accounts: accountsStore.map(cloneAccount) } },
-    500,
-  );
-
-export const getBankTransactionsAPI = async (
-  bankAccountId?: string,
-): Promise<ApiEnvelope<BankTransactionListResponse>> => {
-  const rows = bankAccountId
-    ? transactionsStore.filter(t => t.bankAccountId === bankAccountId)
-    : transactionsStore;
-  const sorted = sortByDateThenId(rows).reverse();
-  return simulateApiCall(
-    { success: true, data: { transactions: sorted.map(cloneTx) } },
-    650,
-  );
 };
 
-export const createBankTransactionAPI = async (
-  payload: CreateBankTransactionPayload,
-): Promise<ApiEnvelope<BankTransactionSingleResponse>> => {
-  const isoDate = new Date(payload.date).toISOString();
-  const tx: BankTransaction = {
-    id: `bt_${Date.now()}`,
-    bankAccountId: payload.bankAccountId,
-    companyId: 'comp_001',
-    date: isoDate,
-    payee: payload.payee,
-    description: payload.description,
-    type: payload.type,
-    amount: Math.abs(payload.amount),
-    balance: 0,
-    memo: payload.memo,
-    reference: payload.reference ?? `BNK-${Date.now().toString().slice(-6)}`,
-    isReconciled: payload.isReconciled ?? false,
-    transferPairId: undefined,
-    matchedTransactionId: null,
-    createdAt: new Date().toISOString(),
-  };
-
-  transactionsStore.push(tx);
-  recomputeAccountLedger(payload.bankAccountId);
-
-  const created = transactionsStore.find(t => t.id === tx.id);
-  if (!created) throw new Error('Unable to create transaction');
-
-  return simulateApiCall(
-    { success: true, data: { transaction: cloneTx(created) } },
-    500,
-  );
+export const createBankAccountAPI = async (data: any): Promise<any> => {
+  try {
+    const response = await api.post('/banking/accounts', data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
 };
 
-export const transferFundsAPI = async (
-  payload: TransferFundsPayload,
-): Promise<ApiEnvelope<TransferFundsResponse>> => {
-  if (payload.fromAccountId === payload.toAccountId) {
-    throw new Error('From and To accounts must be different.');
+export const getBankRegisterAPI = async (id: string, params: any = {}): Promise<any> => {
+  try {
+    const response = await api.get(`/banking/accounts/${id}/transactions`, { params });
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
   }
-
-  const fromAccount = accountsStore.find(a => a.id === payload.fromAccountId);
-  const toAccount = accountsStore.find(a => a.id === payload.toAccountId);
-  if (!fromAccount || !toAccount) {
-    throw new Error('Invalid bank account selected.');
-  }
-
-  const amount = Math.abs(payload.amount);
-  if (!(amount > 0)) {
-    throw new Error('Transfer amount must be greater than zero.');
-  }
-
-  const transferPairId = `xfer_${Date.now()}`;
-  const isoDate = new Date(payload.date).toISOString();
-
-  const fromTx: BankTransaction = {
-    id: `bt_${Date.now()}_from`,
-    bankAccountId: fromAccount.id,
-    companyId: fromAccount.companyId,
-    date: isoDate,
-    payee: toAccount.bankName,
-    description: `Transfer to ${toAccount.accountNumber}`,
-    type: 'transfer',
-    amount,
-    balance: 0,
-    memo: payload.memo,
-    reference: transferPairId.toUpperCase(),
-    isReconciled: false,
-    transferPairId,
-    matchedTransactionId: null,
-    createdAt: new Date().toISOString(),
-  };
-
-  const toTx: BankTransaction = {
-    id: `bt_${Date.now()}_to`,
-    bankAccountId: toAccount.id,
-    companyId: toAccount.companyId,
-    date: isoDate,
-    payee: fromAccount.bankName,
-    description: `Transfer from ${fromAccount.accountNumber}`,
-    type: 'transfer',
-    amount,
-    balance: 0,
-    memo: payload.memo,
-    reference: transferPairId.toUpperCase(),
-    isReconciled: false,
-    transferPairId,
-    matchedTransactionId: null,
-    createdAt: new Date().toISOString(),
-  };
-
-  transactionsStore.push(fromTx, toTx);
-  recomputeAccountLedger(fromAccount.id);
-  recomputeAccountLedger(toAccount.id);
-
-  const refreshedFrom = transactionsStore.find(t => t.id === fromTx.id);
-  const refreshedTo = transactionsStore.find(t => t.id === toTx.id);
-  if (!refreshedFrom || !refreshedTo) {
-    throw new Error('Unable to persist transfer transactions.');
-  }
-
-  const journalEntry = appendTransferJournalEntry(fromAccount, toAccount, amount, isoDate, payload.memo);
-
-  return simulateApiCall(
-    {
-      success: true,
-      data: {
-        fromTransaction: cloneTx(refreshedFrom),
-        toTransaction: cloneTx(refreshedTo),
-        journalEntry,
-      },
-    },
-    650,
-  );
 };
 
-export const getUnreconciledTransactionsAPI = async (
-  bankAccountId: string,
-  statementDate: string,
-): Promise<ApiEnvelope<BankTransactionListResponse>> => {
-  const cutoff = new Date(statementDate);
-  const rows = sortByDateThenId(
-    transactionsStore.filter(
-      t =>
-        t.bankAccountId === bankAccountId &&
-        !t.isReconciled &&
-        new Date(t.date) <= cutoff,
-    ),
-  );
-  return simulateApiCall(
-    { success: true, data: { transactions: rows.map(cloneTx) } },
-    500,
-  );
-};
-
-export const getReconciliationHistoryAPI = async (
-  bankAccountId?: string,
-): Promise<ApiEnvelope<BankReconciliationListResponse>> => {
-  const rows = bankAccountId
-    ? reconciliationsStore.filter(r => r.bankAccountId === bankAccountId)
-    : reconciliationsStore;
-  const sorted = [...rows].sort((a, b) => b.statementDate.localeCompare(a.statementDate));
-  return simulateApiCall(
-    { success: true, data: { reconciliations: sorted.map(cloneReconciliation) } },
-    500,
-  );
-};
-
-export const createBankReconciliationAPI = async (
-  payload: CreateBankReconciliationPayload,
-): Promise<ApiEnvelope<BankReconciliationSingleResponse>> => {
-  const selected = transactionsStore.filter(
-    tx => tx.bankAccountId === payload.bankAccountId && payload.clearedTransactionIds.includes(tx.id),
-  );
-
-  const delta = selected.reduce((sum, tx) => sum + signedDelta(tx), 0);
-  const clearedBalance = payload.beginningBalance + delta;
-  const difference = payload.endingBalance - clearedBalance;
-
-  selected.forEach(tx => {
-    tx.isReconciled = true;
-  });
-
-  const accountIdx = accountsStore.findIndex(a => a.id === payload.bankAccountId);
-  if (accountIdx >= 0) {
-    accountsStore[accountIdx] = {
-      ...accountsStore[accountIdx],
-      lastReconciledDate: payload.statementDate,
-      updatedAt: new Date().toISOString(),
-    };
+export const addBankTransactionAPI = async (data: any): Promise<any> => {
+  try {
+    const response = await api.post('/banking/transactions', data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
   }
-
-  const rec: BankReconciliation = {
-    id: `br_${Date.now()}`,
-    bankAccountId: payload.bankAccountId,
-    companyId: 'comp_001',
-    statementDate: new Date(payload.statementDate).toISOString(),
-    beginningBalance: payload.beginningBalance,
-    endingBalance: payload.endingBalance,
-    clearedBalance,
-    difference,
-    clearedTransactionIds: [...payload.clearedTransactionIds],
-    adjustmentTransactionId: payload.adjustmentTransactionId ?? null,
-    createdAt: new Date().toISOString(),
-  };
-
-  reconciliationsStore.push(rec);
-  return simulateApiCall(
-    { success: true, data: { reconciliation: cloneReconciliation(rec) } },
-    600,
-  );
 };
 
-// Single-account fetcher (used after mutations to refresh a single account).
-export const getBankAccountByIdAPI = async (
-  id: string,
-): Promise<ApiEnvelope<BankAccountSingleResponse>> => {
-  const account = accountsStore.find(a => a.id === id);
-  if (!account) throw new Error('Bank account not found');
-  return simulateApiCall(
-    { success: true, data: { account: cloneAccount(account) } },
-    300,
-  );
+export const bankTransferAPI = async (data: { fromAccountId: string; toAccountId: string; amount: number; date: string; memo?: string }): Promise<any> => {
+  try {
+    const response = await api.post('/banking/transfers', data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const startReconciliationAPI = async (data: any): Promise<any> => {
+  try {
+    const response = await api.post('/banking/reconciliations', data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getUnreconciledTransactionsAPI = async (bankAccountId: string, statementDate?: string): Promise<any> => {
+  try {
+    const params: any = { bankAccountId };
+    if (statementDate) params.statementDate = statementDate;
+    const response = await api.get('/banking/reconciliations/unreconciled', { params });
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getReconciliationHistoryAPI = async (id: string): Promise<any> => {
+  try {
+    const response = await api.get(`/banking/accounts/${id}/reconciliations`);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export interface CreateBankTransactionPayload {
+  bankAccountId: string;
+  type: string;
+  date: string;
+  payee?: string;
+  amount: number;
+  accountId?: string;
+  reference?: string;
+  memo?: string;
+  description?: string;
+  [key: string]: any;
+}
+
+export const createBankTransactionAPI = async (data: CreateBankTransactionPayload): Promise<any> => {
+  return addBankTransactionAPI(data);
+};
+
+export interface TransferFundsPayload {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  date: string;
+  memo?: string;
+}
+
+export const transferFundsAPI = async (data: TransferFundsPayload): Promise<any> => {
+  return bankTransferAPI(data);
+};
+
+export const createBankReconciliationAPI = async (data: any): Promise<any> => {
+  return startReconciliationAPI(data);
+};
+
+export const getBankTransactionsAPI = async (bankAccountId: string, params: any = {}): Promise<any> => {
+  return getBankRegisterAPI(bankAccountId, params);
 };

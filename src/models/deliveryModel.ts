@@ -7,33 +7,170 @@
 //   • Query params for the list endpoints
 // Plus form-validation helpers used by the create/assign screens.
 
-import type {
-  DeliveryRecord,
-  DeliveryRecordStatus,
-  DeliveryPriority,
-  DeliveryItemLine,
-  StatusHistoryEntry,
-} from '../dummy-data/deliveries';
-import type { DummyDeliveryPerson } from '../dummy-data/deliveryPersonnel';
-import type {
-  InventoryUpdateRequest,
-  InventoryUpdateChange,
-  DeliveryProof,
-  InventoryUpdateRequestStatus,
-} from '../dummy-data/inventoryUpdateRequests';
-import type {
-  ShadowInventoryRecord,
-  ShadowInventoryStatus,
-  ShadowInventoryChange,
-} from '../dummy-data/shadowInventory';
+// ─── Type Definitions ────────────────────────────────
+
+export type DeliveryRecordStatus = 'unassigned' | 'pending' | 'picked_up' | 'in_transit' | 'arrived' | 'delivered' | 'failed' | 'returned';
+export type DeliveryPriority = 'high' | 'medium' | 'low';
+export type InventoryUpdateRequestStatus = 'pending' | 'approved' | 'rejected';
+export type ShadowInventoryStatus = 'pending' | 'synced' | 'rejected';
+
+export interface DeliveryItemLine {
+  itemId: string;
+  itemName: string;
+  agencyId?: string;
+  agencyName?: string;
+  orderedQty: number;
+  quantity?: number;
+  deliveredQty?: number;
+  returnedQty?: number;
+  unitPrice: number;
+}
+
+export interface StatusHistoryEntry {
+  status: DeliveryRecordStatus;
+  timestamp: string;
+  note?: string;
+  updatedBy?: string;
+  location?: { lat: number; lng: number };
+}
+
+export interface DeliveryRecord {
+  id: string;
+  reference: string;
+  referenceNo?: string;
+  customerId: string;
+  customerName: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  address?: string;
+  personnelId?: string;
+  personnelName?: string;
+  assignedTo?: string;
+  assignedAt?: string;
+  status: DeliveryRecordStatus;
+  priority: DeliveryPriority;
+  zone?: string;
+  scheduledDate?: string;
+  preferredDate?: string;
+  preferredTimeSlot?: string;
+  items: DeliveryItemLine[];
+  statusHistory: StatusHistoryEntry[];
+  photos?: string[];
+  signature?: string;
+  signatureBase64?: string;
+  customerVerified?: boolean;
+  issueNote?: string;
+  notes?: string;
+  pickedUpAt?: string;
+  inTransitAt?: string;
+  arrivedAt?: string;
+  deliveredAt?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  cancelReason?: string;
+  billPhotoUrl?: string;
+  billPhotoStorageKey?: string;
+  billPhotoCapturedAt?: string;
+  billSignedBy?: string;
+  [key: string]: any;
+}
+
+export interface DummyDeliveryPerson {
+  userId: string;
+  email?: string;
+  username?: string;
+  displayName: string;
+  phone?: string;
+  vehicleType: string;
+  vehicleNumber: string;
+  zones: string[];
+  maxLoad: number;
+  status: 'active' | 'inactive' | 'on_delivery' | 'on_leave';
+  companyId?: string;
+  role?: string;
+  address?: string;
+  isAvailable?: boolean;
+  totalDeliveries?: number;
+  onTimeRate?: number;
+  password?: string;
+  completedDeliveries?: number;
+  rating?: number;
+  currentLoad?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: any;
+}
+
+export interface InventoryUpdateChange {
+  itemId: string;
+  itemName: string;
+  beforeQty: number;
+  deliveredQty: number;
+  returnedQty: number;
+}
+
+export interface DeliveryProof {
+  billPhotoUri?: string;
+  signedBy?: string;
+  signatureBase64?: string;
+  verificationMethod?: string;
+  verifiedBy?: string;
+  verifiedAt?: string;
+  billPhotoCapturedAt?: string;
+}
+
+export interface InventoryUpdateRequest {
+  id: string;
+  deliveryId: string;
+  deliveryReference?: string;
+  personnelId: string;
+  personnelName?: string;
+  routeLabel?: string;
+  submittedAt: string;
+  status: InventoryUpdateRequestStatus;
+  shadowStatus?: string;
+  changes: InventoryUpdateChange[];
+  proof?: DeliveryProof;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNotes?: string;
+  reviewerComment?: string;
+}
+
+export interface ShadowInventoryChange {
+  id: string;
+  timestamp: string;
+  originalQty: number;
+  currentQty: number;
+  delta: number;
+  reason: string;
+  status: ShadowInventoryStatus;
+}
+
+export interface ShadowInventoryRecord {
+  id: string;
+  personnelId: string;
+  itemId: string;
+  itemName: string;
+  originalQty: number;
+  currentQty: number;
+  status: ShadowInventoryStatus;
+  changesToday: ShadowInventoryChange[];
+}
 
 // ─── Raw API entity aliases (backend shape) ──────────
-// Defined as aliases so future backend-only fields can be added
-// without leaking into UI types.
 export type DeliveryApiEntity = DeliveryRecord;
 export type DeliveryPersonApiEntity = DummyDeliveryPerson;
 export type InventoryUpdateRequestApiEntity = InventoryUpdateRequest;
 export type ShadowInventoryApiEntity = ShadowInventoryRecord;
+
+// ─── Empty defaults for initial state ────────────────
+export const deliveryRecords: DeliveryRecord[] = [];
+export const dummyDeliveryPersonnel: DummyDeliveryPerson[] = [];
+export const inventoryUpdateRequests: InventoryUpdateRequest[] = [];
+export const shadowInventoryRecords: ShadowInventoryRecord[] = [];
 
 // ─── Pagination envelope ─────────────────────────────
 export interface DeliveryApiPagination {
@@ -62,22 +199,6 @@ export interface DeliveryPersonnelQueryParams {
   limit?: number;
 }
 
-// ─── Re-export canonical UI types for convenience ────
-export type {
-  DeliveryRecord,
-  DeliveryRecordStatus,
-  DeliveryPriority,
-  DeliveryItemLine,
-  StatusHistoryEntry,
-  DummyDeliveryPerson,
-  InventoryUpdateRequest,
-  InventoryUpdateChange,
-  DeliveryProof,
-  InventoryUpdateRequestStatus,
-  ShadowInventoryRecord,
-  ShadowInventoryStatus,
-  ShadowInventoryChange,
-};
 
 // ─── Status / priority labels & colors ───────────────
 export const DELIVERY_STATUS_LABELS: Record<DeliveryRecordStatus, string> = {

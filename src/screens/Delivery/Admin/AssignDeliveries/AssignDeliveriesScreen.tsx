@@ -39,7 +39,7 @@ import { selectPendingApprovalCount } from '../InventoryApproval/inventoryApprov
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import CustomInput from '../../../../Custom-Components/CustomInput';
-import { customers } from '../../../../dummy-data/customers';
+import { customers } from '../../../../models/customerModel';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
@@ -118,6 +118,8 @@ const AssignDeliveriesScreen: React.FC = () => {
             agencyId: 'agency_aquapure',
             agencyName: 'AquaPure Water Supply',
             quantity: 10,
+            orderedQty: 10,
+            unitPrice: 0,
           },
         ],
       }),

@@ -31,9 +31,9 @@ import {
   addAdjustment,
   generateAdjustmentRef,
   type AdjustmentReason,
-} from '../../../dummy-data/adjustments';
+} from '../../../models/adjustmentModel';
 import { CATEGORY_OPTIONS, LOCATION_OPTIONS } from '../../../models/inventoryModel';
-import type { InventoryItemData } from '../../../dummy-data/inventoryItems';
+import type { InventoryItemData } from '../../../models/inventoryModel';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 
 type Nav = NativeStackNavigationProp<InventoryStackParamList>;

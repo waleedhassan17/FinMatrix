@@ -1,88 +1,114 @@
-import { simulateApiCall } from './apiHelpers';
-import {
-  DEFAULT_PREFERENCES,
-  DUMMY_USERS,
-  type AppPreferences,
-} from '../dummy-data/settingsData';
-import type { CompanyMember } from '../screens/Auth/companySlice';
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Settings Network (Production API)
+// ═══════════════════════════════════════════════════════
 
-/* ─── Preferences ─── */
-let storedPrefs: AppPreferences = { ...DEFAULT_PREFERENCES };
+import { api, extractErrorMessage } from './apiHelpers';
 
-export const fetchPreferences = () => simulateApiCall(storedPrefs, 400);
-
-export const savePreferences = (prefs: AppPreferences) => {
-  storedPrefs = { ...prefs };
-  return simulateApiCall(storedPrefs, 500);
+export const getSettingsAPI = async (): Promise<any> => {
+  try {
+    const response = await api.get('/settings');
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
 };
 
-/* ─── Company Profile ─── */
+export const updateSettingsAPI = async (data: any): Promise<any> => {
+  try {
+    const response = await api.patch('/settings', data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getAllUsersAPI = async (): Promise<any> => {
+  try {
+    const response = await api.get('/settings/users');
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const inviteUserAPI = async (data: { email: string; role: string; displayName?: string }): Promise<any> => {
+  try {
+    const response = await api.post('/settings/users/invite', data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+// ─── Aliases used by settingsSlice ──────────────────
+export const fetchPreferences = async (): Promise<any> => {
+  const res = await getSettingsAPI();
+  return res?.data?.preferences ?? res?.data ?? res;
+};
+
+export const savePreferences = async (preferences: any): Promise<any> => {
+  const res = await updateSettingsAPI({ preferences });
+  return res?.data?.preferences ?? res?.data ?? preferences;
+};
+
 export interface CompanyProfilePayload {
-  name: string;
-  industry: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  phone: string;
-  email: string;
-  website: string;
-  taxId: string;
-  fiscalYearStart: string;
+  name?: string;
+  industry?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  taxId?: string;
 }
 
-export const saveCompanyProfile = (data: CompanyProfilePayload) =>
-  simulateApiCall({ ...data, updatedAt: new Date().toISOString() }, 600);
-
-/* ─── User Management ─── */
-let users: CompanyMember[] = [...DUMMY_USERS];
-
-export const fetchUsers = () => simulateApiCall([...users], 500);
-
-export const inviteUser = (email: string, role: 'admin' | 'delivery') => {
-  const newUser: CompanyMember = {
-    userId: `u-${Date.now()}`,
-    role,
-    displayName: email.split('@')[0],
-    email,
-    phone: '',
-    joinedAt: new Date().toISOString(),
-  };
-  users = [...users, newUser];
-  return simulateApiCall(newUser, 600);
-};
-
-export const updateUserRole = (userId: string, role: 'admin' | 'delivery') => {
-  users = users.map(u => (u.userId === userId ? { ...u, role } : u));
-  return simulateApiCall({ userId, role }, 400);
-};
-
-export const removeUser = (userId: string) => {
-  users = users.filter(u => u.userId !== userId);
-  return simulateApiCall({ userId }, 400);
-};
-
-/* ─── Company Switcher ─── */
 export interface CompanySwitcherItem {
-  companyId: string;
+  id: string;
+  companyId?: string;
   name: string;
-  industry: string;
   role: string;
-  memberCount: number;
+  industry?: string;
+  memberCount?: number;
+  inviteCode?: string;
+  [key: string]: any;
 }
 
-export const fetchCompanies = (): Promise<CompanySwitcherItem[]> =>
-  simulateApiCall(
-    [
-      { companyId: 'c-001', name: 'FinMatrix Trading Co.', industry: 'Trading', role: 'Owner', memberCount: 5 },
-      { companyId: 'c-002', name: 'Al-Noor Distributors', industry: 'Distribution', role: 'Admin', memberCount: 12 },
-      { companyId: 'c-003', name: 'Pak Supplies Ltd.', industry: 'Manufacturing', role: 'Admin', memberCount: 8 },
-    ],
-    500,
-  );
+export const saveCompanyProfile = async (data: CompanyProfilePayload): Promise<any> => {
+  return updateSettingsAPI(data);
+};
 
-/* ─── Data Management ─── */
-export const exportData = () => simulateApiCall({ success: true, file: 'finmatrix_export.json' }, 1000);
-export const importData = () => simulateApiCall({ success: true, recordsImported: 156 }, 1200);
-export const clearDemoData = () => simulateApiCall({ success: true }, 800);
+export const fetchCompanies = async (): Promise<any> => {
+  try {
+    const response = await api.get('/auth/me');
+    return response.data?.data?.companies ?? [];
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const fetchUsers = async (): Promise<any> => {
+  return getAllUsersAPI();
+};
+
+export const updateUserRole = async (userId: string, role: string): Promise<any> => {
+  try {
+    const response = await api.patch(`/settings/users/${userId}`, { role });
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const removeUser = async (userId: string): Promise<any> => {
+  try {
+    const response = await api.delete(`/settings/users/${userId}`);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const inviteUser = async (emailOrData: string | { email: string; role: string; displayName?: string }, role?: string): Promise<any> => {
+  if (typeof emailOrData === 'string') {
+    return inviteUserAPI({ email: emailOrData, role: role ?? 'member', displayName: emailOrData });
+  }
+  return inviteUserAPI(emailOrData);
+};

@@ -16,7 +16,6 @@ module.exports = function (api) {
           '@network': './src/network',
           '@models': './src/models',
           '@serializers': './src/serializers',
-          '@dummy': './src/dummy-data',
           '@hooks': './src/hooks',
           '@theme': './src/theme',
           '@utils': './src/utils',

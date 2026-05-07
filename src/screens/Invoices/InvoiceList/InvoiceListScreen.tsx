@@ -43,20 +43,22 @@ import type { TransactionsStackParamList } from '../../../navigators/stacks/Tran
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 
 // ── Status → colour mapping ──────────────────────────
-const STATUS_COLOR: Record<InvoiceStatus, string> = {
+const STATUS_COLOR: Record<string, string> = {
   draft: '#94A3B8',
   sent: colors.secondary,
   paid: colors.success,
   overdue: colors.danger,
   cancelled: '#475569',
+  void: '#475569',
 };
 
-const STATUS_LABEL: Record<InvoiceStatus, string> = {
+const STATUS_LABEL: Record<string, string> = {
   draft: 'Draft',
   sent: 'Sent',
   paid: 'Paid',
   overdue: 'Overdue',
   cancelled: 'Cancelled',
+  void: 'Void',
 };
 
 // ═══════════════════════════════════════════════════════
@@ -368,7 +370,8 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
     gap: spacing.sm,
   },
   summaryCard: {
@@ -468,7 +471,7 @@ const styles = StyleSheet.create({
   amtValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   // ── Empty / Loading ────────────────────────────
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
+  center: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', gap: spacing.md, paddingTop: spacing.xl * 2, paddingBottom: spacing.xl * 4 },
   emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
   emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 

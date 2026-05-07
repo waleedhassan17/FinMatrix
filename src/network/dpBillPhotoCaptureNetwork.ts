@@ -1,41 +1,22 @@
-import { api } from './apiHelpers';
-import type {
-  SubmitBillPhotoPayload,
-  SubmitBillPhotoResponse,
-} from '../models/dpBillPhotoCaptureModel';
+// ═══════════════════════════════════════════════════════
+// FinMatrix — DP Bill Photo Capture Network (Production API)
+// ═══════════════════════════════════════════════════════
 
-/**
- * Uploads a photo of the manually signed bill and creates an
- * Inventory-Update-Request on the backend.
- */
-export const submitBillPhotoAPI = async (
-  payload: SubmitBillPhotoPayload,
-): Promise<SubmitBillPhotoResponse> => {
-  const formData = new FormData();
-  
-  // Append file (React Native format for FormData)
-  formData.append('photo', {
-    uri: payload.photoUri,
-    type: 'image/jpeg', // Defaulting to jpeg, but you might want to dynamically get the mime type
-    name: `bill_${payload.deliveryId}.jpg`,
-  } as any);
+import { api, extractErrorMessage } from './apiHelpers';
 
-  formData.append('signedBy', payload.signedBy);
-  formData.append('source', payload.source);
-  if (payload.note) {
-    formData.append('note', payload.note);
+export const uploadBillPhotoAPI = async (deliveryId: string, formData: FormData): Promise<any> => {
+  try {
+    const response = await api.post(`/deliveries/${deliveryId}/bill-photo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
   }
-  formData.append('changes', JSON.stringify(payload.changes));
+};
 
-  const response = await api.post<SubmitBillPhotoResponse>(
-    `/deliveries/${payload.deliveryId}/bill-photo`,
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }
-  );
-
-  return response.data;
+export const submitBillPhotoAPI = async (payload: any): Promise<any> => {
+  const deliveryId = payload.deliveryId ?? payload.id ?? '';
+  const formData = payload.formData ?? payload;
+  return uploadBillPhotoAPI(deliveryId, formData);
 };

@@ -25,7 +25,7 @@ import {
   setRequestStatus,
 } from './inventoryApprovalSlice';
 import { applyDeliveryChanges } from '../../../../store/inventorySlice';
-import type { InventoryUpdateRequest } from '../../../../dummy-data/inventoryUpdateRequests';
+import type { InventoryUpdateRequest } from '../../../../models/deliveryModel';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'InventoryApproval'>;

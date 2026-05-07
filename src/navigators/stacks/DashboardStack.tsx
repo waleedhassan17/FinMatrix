@@ -33,7 +33,7 @@ export type DashboardStackParamList = {
 const Stack = createNativeStackNavigator<DashboardStackParamList>();
 
 const DashboardStack: React.FC = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+  <Stack.Navigator id="DashboardStack" screenOptions={{ headerShown: false }}>
     <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
     <Stack.Screen name="Notifications" component={NotificationCenterScreen} />
     <Stack.Screen name="DeliveryPersonnelList" component={DeliveryPersonnelListScreen} />

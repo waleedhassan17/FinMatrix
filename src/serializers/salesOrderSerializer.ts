@@ -35,16 +35,16 @@ export const mapSalesOrderLine = (raw: Partial<SalesOrderApiLine>): SalesOrderLi
 export const mapSalesOrder = (raw: Partial<SalesOrderApiEntity>): SalesOrder => ({
   id: raw.id ?? '',
   companyId: raw.companyId ?? '',
-  soNumber: raw.soNumber ?? '',
+  soNumber: (raw as any).soNumber ?? (raw as any).orderNumber ?? '',
   customerId: raw.customerId ?? '',
-  customerName: raw.customerName ?? '',
+  customerName: raw.customerName ?? (raw as any).customer?.name ?? '',
   orderDate: raw.orderDate ?? '',
   expectedDate: raw.expectedDate ?? '',
   status: (raw.status ?? 'open') as SalesOrderStatus,
   lines: Array.isArray(raw.lines) ? raw.lines.map(mapSalesOrderLine) : [],
-  subtotal: typeof raw.subtotal === 'number' ? raw.subtotal : 0,
-  taxAmount: typeof raw.taxAmount === 'number' ? raw.taxAmount : 0,
-  total: typeof raw.total === 'number' ? raw.total : 0,
+  subtotal: typeof raw.subtotal === 'number' ? raw.subtotal : parseFloat(String(raw.subtotal)) || 0,
+  taxAmount: typeof raw.taxAmount === 'number' ? raw.taxAmount : parseFloat(String(raw.taxAmount)) || 0,
+  total: typeof raw.total === 'number' ? raw.total : parseFloat(String(raw.total)) || 0,
   notes: raw.notes ?? '',
   createdBy: raw.createdBy ?? '',
   createdAt: raw.createdAt ?? '',
@@ -53,9 +53,15 @@ export const mapSalesOrder = (raw: Partial<SalesOrderApiEntity>): SalesOrder => 
 
 // ─── Envelope serializers ────────────────────────────
 export function salesOrderListSerializer(payload: any): SerializedSalesOrderList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.salesOrders) ? data.salesOrders : [];
-  const pagination = data.pagination || {};
+  const data = payload?.data;
+  // Backend returns flat array: { success: true, data: [...] }
+  // Also support nested: { data: { salesOrders: [...], pagination: {...} } }
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.salesOrders)
+      ? data.salesOrders
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
 
   return {
     salesOrders: raw.map(mapSalesOrder),
@@ -66,7 +72,7 @@ export function salesOrderListSerializer(payload: any): SerializedSalesOrderList
 }
 
 export function salesOrderSingleSerializer(payload: any): SalesOrder | null {
-  const raw = payload?.data?.salesOrder;
-  if (!raw) return null;
+  const raw = payload?.data?.salesOrder ?? payload?.data;
+  if (!raw || Array.isArray(raw)) return null;
   return mapSalesOrder(raw);
 }

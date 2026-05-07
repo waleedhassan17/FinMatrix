@@ -38,8 +38,8 @@ import {
   setViewMode,
 } from './inventoryListSlice';
 import type { StockFilter, ViewMode } from './inventoryListSlice';
-import type { InventoryItemData } from '../../../dummy-data/inventoryItems';
-import { warehouseAgencies } from '../../../dummy-data/warehouseAgencies';
+import type { InventoryItemData } from '../../../models/inventoryModel';
+import { warehouseAgencies } from '../../../models/agencyModel';
 import EmptyState from '../../../components/EmptyState';
 import { formatCurrency } from '../../../utils/formatters';
 
@@ -81,8 +81,9 @@ const getStockLabel = (status: StockFilter): string => {
 };
 
 // ── Category options ────────────────────────────────
-const buildCategoryOptions = (items: InventoryItemData[]) => {
-  const cats = [...new Set(items.map(i => i.category))].sort();
+const buildCategoryOptions = (items: InventoryItemData[] | undefined | null) => {
+  const safeItems = Array.isArray(items) ? items : [];
+  const cats = [...new Set(safeItems.map(i => i.category))].sort();
   return [{ label: 'All Categories', value: 'all' }, ...cats.map(c => ({ label: c, value: c }))];
 };
 
@@ -101,7 +102,7 @@ const InventoryListScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<InventoryStackParamList>>();
   const dispatch = useAppDispatch();
 
-  const items = useAppSelector(selectInventoryItems);
+  const rawItems = useAppSelector(selectInventoryItems);
   const searchQuery = useAppSelector(selectInventorySearchQuery);
   const activeFilter = useAppSelector(selectInventoryActiveFilter);
   const categoryFilter = useAppSelector(selectInventoryCategoryFilter);
@@ -109,6 +110,8 @@ const InventoryListScreen: React.FC = () => {
   const viewMode = useAppSelector(selectInventoryViewMode);
   const isLoading = useAppSelector(selectInventoryIsLoading);
   const [activePicker, setActivePicker] = React.useState<PickerType>(null);
+
+  const items = useMemo(() => (Array.isArray(rawItems) ? rawItems : []), [rawItems]);
 
   useEffect(() => {
     dispatch(fetchInventoryItems());

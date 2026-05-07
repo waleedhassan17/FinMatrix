@@ -41,7 +41,7 @@ import {
   type VCFormLine,
 } from './vendorCreditFormSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
-import { chartOfAccountsData } from '../../../dummy-data/chartOfAccounts';
+import { chartOfAccountsData } from '../../../models/coaModel';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';

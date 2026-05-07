@@ -1,48 +1,47 @@
-import { simulateApiCall } from './apiHelpers';
-import {
-  AUDIT_ENTRIES,
-  SEARCH_INDEX,
-  type AuditEntry,
-  type AuditModule,
-  type AuditAction,
-  type SearchResult,
-} from '../dummy-data/auditAndSearch';
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Audit & Search Network (Production API)
+// ═══════════════════════════════════════════════════════
 
-/* ─── Audit Trail ─── */
-export interface AuditFilters {
-  dateFrom?: string;
-  dateTo?: string;
-  userId?: string;
-  module?: AuditModule;
-  action?: AuditAction;
-}
+import { api, extractErrorMessage } from './apiHelpers';
 
-export const fetchAuditTrail = (filters: AuditFilters): Promise<AuditEntry[]> => {
-  let results = [...AUDIT_ENTRIES];
-  if (filters.dateFrom) {
-    results = results.filter(e => e.timestamp >= filters.dateFrom!);
+export const getAuditEntriesAPI = async (params: any = {}): Promise<any> => {
+  try {
+    const response = await api.get('/audit', { params });
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
   }
-  if (filters.dateTo) {
-    results = results.filter(e => e.timestamp <= filters.dateTo!);
-  }
-  if (filters.userId) {
-    results = results.filter(e => e.userId === filters.userId);
-  }
-  if (filters.module) {
-    results = results.filter(e => e.module === filters.module);
-  }
-  if (filters.action) {
-    results = results.filter(e => e.action === filters.action);
-  }
-  return simulateApiCall(results, 500);
 };
 
-/* ─── Global Search ─── */
-export const searchAll = (query: string): Promise<SearchResult[]> => {
-  if (!query.trim()) return simulateApiCall([], 100);
-  const q = query.toLowerCase();
-  const results = SEARCH_INDEX.filter(
-    s => s.title.toLowerCase().includes(q) || s.subtitle.toLowerCase().includes(q),
-  );
-  return simulateApiCall(results, 300);
+export const getAuditByResourceAPI = async (type: string, id: string): Promise<any> => {
+  try {
+    const response = await api.get(`/audit/resource/${type}/${id}`);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export interface AuditFilters {
+  module?: string;
+  resourceType?: string;
+  userId?: string;
+  action?: string;
+  page?: number;
+  limit?: number;
+  [key: string]: any;
+}
+
+export const fetchAuditTrail = async (params: AuditFilters = {}): Promise<any> => {
+  return getAuditEntriesAPI(params);
+};
+
+export const searchAll = async (query: string): Promise<any> => {
+  try {
+    const response = await api.get('/search', { params: { q: query } });
+    return response.data;
+  } catch (e: any) {
+    // If search endpoint doesn't exist, return empty
+    return { success: true, data: [] };
+  }
 };

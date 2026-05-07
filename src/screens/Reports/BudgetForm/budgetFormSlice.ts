@@ -1,6 +1,6 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import { chartOfAccountsData } from '../../../dummy-data/chartOfAccounts';
+import { chartOfAccountsData } from '../../../models/coaModel';
 import {
   type AnnualBudget,
   type BudgetAccountLine,

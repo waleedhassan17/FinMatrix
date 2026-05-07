@@ -7,7 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectUser } from '../../../Auth/authSlice';
 import { selectInventoryUpdateRequests } from '../../Admin/AssignDeliveries/deliverySlice';
-import { shadowInventoryRecords } from '../../../../dummy-data/shadowInventory';
+import { shadowInventoryRecords } from '../../../../models/deliveryModel';
 import {
   openChangeLog,
   closeChangeLog,

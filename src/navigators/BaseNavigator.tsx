@@ -46,6 +46,7 @@ const BaseNavigator: React.FC = () => {
   return (
     <View style={styles.container}>
       <Stack.Navigator
+        id="BaseNavigator"
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: '#F8FAFC' },

@@ -47,7 +47,7 @@ import {
   COST_METHOD_OPTIONS,
   LOCATION_OPTIONS,
 } from '../../../models/inventoryModel';
-import { warehouseAgencies } from '../../../dummy-data/warehouseAgencies';
+import { warehouseAgencies } from '../../../models/agencyModel';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 
 type FormRoute = RouteProp<InventoryStackParamList, 'InventoryForm'>;

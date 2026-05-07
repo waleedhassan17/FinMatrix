@@ -102,5 +102,8 @@ android/.gradle/
 .env.local
 .env.production
 
+# Credentials (never commit real credentials)
+TEST_CREDENTIALS.md
+
 # iOS (not used)
 ios/

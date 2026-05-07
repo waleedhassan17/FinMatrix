@@ -55,10 +55,14 @@ export const mapPO = (raw: Partial<PurchaseOrderApiEntity>): PurchaseOrder => ({
 
 // ─── Envelope serializers ────────────────────────────
 export function purchaseOrderListSerializer(payload: any): SerializedPOList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.purchaseOrders) ? data.purchaseOrders : [];
-  const pagination = data.pagination || {};
-  const totals = data.totals || {};
+  const data = payload?.data;
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.purchaseOrders)
+      ? data.purchaseOrders
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
+  const totals = (data && !Array.isArray(data)) ? (data.totals || {}) : {};
 
   const purchaseOrders = raw.map(mapPO);
 
@@ -88,7 +92,7 @@ export function purchaseOrderListSerializer(payload: any): SerializedPOList {
 }
 
 export function purchaseOrderSingleSerializer(payload: any): PurchaseOrder | null {
-  const raw = payload?.data?.purchaseOrder ?? payload?.data?.po;
+  const raw = payload?.data?.purchaseOrder ?? payload?.data?.po ?? (payload?.data && !Array.isArray(payload.data) ? payload.data : null);
   if (!raw) return null;
   return mapPO(raw);
 }

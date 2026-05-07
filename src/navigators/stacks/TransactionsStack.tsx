@@ -49,7 +49,7 @@ export type TransactionsStackParamList = {
 const Stack = createNativeStackNavigator<TransactionsStackParamList>();
 
 const TransactionsStack: React.FC = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+  <Stack.Navigator id="TransactionsStack" screenOptions={{ headerShown: false }}>
     <Stack.Screen name="TransactionsHub" component={TransactionsHubScreen} />
     <Stack.Screen name="InvoiceList" component={InvoiceListScreen} />
     <Stack.Screen name="InvoiceForm" component={InvoiceFormScreen} />

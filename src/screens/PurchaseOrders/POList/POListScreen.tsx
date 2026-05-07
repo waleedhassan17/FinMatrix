@@ -52,13 +52,26 @@ const POListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
 
-  const items = useAppSelector(selectItems);
+  const rawItems = useAppSelector(selectItems);
   const searchQuery = useAppSelector(selectSearchQuery);
   const statusFilter = useAppSelector(selectStatusFilter);
   const isLoading = useAppSelector(selectIsLoading);
   const error = useAppSelector(selectError);
-  const counts = useAppSelector(selectCounts);
+  const rawCounts = useAppSelector(selectCounts);
   const totals = useAppSelector(selectListTotals);
+
+  const items = useMemo(() => (Array.isArray(rawItems) ? rawItems : []), [rawItems]);
+  const counts = useMemo(
+    () => ({
+      all: Number(rawCounts?.all ?? 0),
+      draft: Number(rawCounts?.draft ?? 0),
+      sent: Number(rawCounts?.sent ?? 0),
+      partially_received: Number(rawCounts?.partially_received ?? 0),
+      fully_received: Number(rawCounts?.fully_received ?? 0),
+      closed: Number(rawCounts?.closed ?? 0),
+    }),
+    [rawCounts],
+  );
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,8 +104,9 @@ const POListScreen: React.FC = () => {
   const renderCard = useCallback(
     ({ item }: { item: PurchaseOrder }) => {
       const statusColor = PO_STATUS_COLORS[item.status];
-      const totalQty = item.lines.reduce((s, l) => s + l.quantity, 0);
-      const totalReceived = item.lines.reduce((s, l) => s + l.receivedQuantity, 0);
+      const lines = Array.isArray(item.lines) ? item.lines : [];
+      const totalQty = lines.reduce((s, l) => s + l.quantity, 0);
+      const totalReceived = lines.reduce((s, l) => s + l.receivedQuantity, 0);
 
       return (
         <TouchableOpacity

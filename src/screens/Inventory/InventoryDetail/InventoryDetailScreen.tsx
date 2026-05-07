@@ -30,8 +30,8 @@ import {
   resetInventoryDetail,
 } from './inventoryDetailSlice';
 import type { InventoryDetailTab } from './inventoryDetailSlice';
-import { getStockMovements, type StockMovement } from '../../../dummy-data/inventoryItems';
-import { warehouseAgencies } from '../../../dummy-data/warehouseAgencies';
+import { getStockMovements, type StockMovement } from '../../../models/inventoryModel';
+import { warehouseAgencies } from '../../../models/agencyModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 

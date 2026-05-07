@@ -14,8 +14,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
-import { customers } from '../../../../dummy-data/customers';
-import { warehouseAgencies } from '../../../../dummy-data/warehouseAgencies';
+import { customers } from '../../../../models/customerModel';
+import { warehouseAgencies } from '../../../../models/agencyModel';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomInput from '../../../../Custom-Components/CustomInput';
@@ -82,6 +82,8 @@ const CreateDeliveryScreen: React.FC = () => {
         itemId: item.id,
         itemName: item.name,
         quantity: numericQty,
+        orderedQty: numericQty,
+        unitPrice: 0,
       }),
     );
 

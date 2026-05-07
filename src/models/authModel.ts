@@ -59,9 +59,7 @@ export const validateDeliverySignIn = (data: DeliverySignInData): ValidationErro
   const errors: ValidationErrors = {};
 
   if (!data.username.trim()) {
-    errors.username = 'Username is required';
-  } else if (!/^[A-Za-z0-9]+\.[A-Za-z0-9.]+$/.test(data.username.trim())) {
-    errors.username = 'Enter your full username (e.g., FM2024.saim)';
+    errors.username = 'Username or Email is required';
   }
 
   if (!data.password) {

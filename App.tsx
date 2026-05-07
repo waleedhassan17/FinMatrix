@@ -7,12 +7,7 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { store, persistor } from './src/store/store';
 import { colors } from './src/theme';
 import AppContainer from './src/components/app-container/AppContainer';
-
-// ⚠️ DEV ONLY: Purge persisted state so the app always starts from Onboarding.
-// Remove this line once done testing.
-if (__DEV__) {
-  persistor.purge();
-}
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 const LoadingFallback = () => (
   <View style={styles.loading}>
@@ -21,13 +16,15 @@ const LoadingFallback = () => (
 );
 
 const App = () => (
-  <GestureHandlerRootView style={styles.root}>
-    <Provider store={store}>
-      <PersistGate loading={<LoadingFallback />} persistor={persistor}>
-        <AppContainer />
-      </PersistGate>
-    </Provider>
-  </GestureHandlerRootView>
+  <ErrorBoundary>
+    <GestureHandlerRootView style={styles.root}>
+      <Provider store={store}>
+        <PersistGate loading={<LoadingFallback />} persistor={persistor}>
+          <AppContainer />
+        </PersistGate>
+      </Provider>
+    </GestureHandlerRootView>
+  </ErrorBoundary>
 );
 
 const styles = StyleSheet.create({

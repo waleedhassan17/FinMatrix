@@ -1,31 +1,33 @@
-import { simulateApiCall } from './apiHelpers';
-import type {
-  ConfirmReceiptPayload,
-  ConfirmReceiptResponse,
-  ConfirmReceiptResult,
-  ReportIssuePayload,
-  ReportIssueResponse,
-  ReportIssueResult,
-} from '../models/dpCustomerConfirmModel';
+// ═══════════════════════════════════════════════════════
+// FinMatrix — DP Customer Confirm Network (Production API)
+// ═══════════════════════════════════════════════════════
 
-export const confirmCustomerReceiptAPI = async (
-  payload: ConfirmReceiptPayload,
-): Promise<ConfirmReceiptResponse> => {
-  const result: ConfirmReceiptResult = {
-    deliveryId: payload.deliveryId,
-    verifiedAt: new Date().toISOString(),
-    verifiedBy: payload.verifiedBy,
-  };
-  return simulateApiCall({ success: true, data: result }, 350);
+import { api, extractErrorMessage } from './apiHelpers';
+
+export const confirmReceiptAPI = async (deliveryId: string, data: any): Promise<any> => {
+  try {
+    const response = await api.post(`/deliveries/${deliveryId}/confirm`, data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
 };
 
-export const reportDeliveryIssueAPI = async (
-  payload: ReportIssuePayload,
-): Promise<ReportIssueResponse> => {
-  const result: ReportIssueResult = {
-    deliveryId: payload.deliveryId,
-    reportedAt: new Date().toISOString(),
-    note: payload.note,
-  };
-  return simulateApiCall({ success: true, data: result }, 350);
+export const reportIssueAPI = async (deliveryId: string, data: { issueType: string; notes?: string; photoUrl?: string }): Promise<any> => {
+  try {
+    const response = await api.post(`/deliveries/${deliveryId}/issues`, data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const confirmCustomerReceiptAPI = async (payload: any): Promise<any> => {
+  const { deliveryId, ...data } = payload;
+  return confirmReceiptAPI(deliveryId, data);
+};
+
+export const reportDeliveryIssueAPI = async (payload: any): Promise<any> => {
+  const { deliveryId, ...data } = payload;
+  return reportIssueAPI(deliveryId, data);
 };

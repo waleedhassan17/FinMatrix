@@ -61,10 +61,14 @@ export const mapVendorCredit = (
 export function vendorCreditListSerializer(
   payload: any,
 ): SerializedVendorCreditList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.vendorCredits) ? data.vendorCredits : [];
-  const pagination = data.pagination || {};
-  const totals = data.totals || {};
+  const data = payload?.data;
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.vendorCredits)
+      ? data.vendorCredits
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
+  const totals = (data && !Array.isArray(data)) ? (data.totals || {}) : {};
 
   const vendorCredits = raw.map(mapVendorCredit);
 

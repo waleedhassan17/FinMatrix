@@ -41,7 +41,7 @@ import {
   validateAgency,
   type AgencyType,
 } from '../../../models/agencyModel';
-import type { AgencyInventoryItem } from '../../../dummy-data/warehouseAgencies';
+import type { AgencyInventoryItem } from '../../../models/agencyModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type FormRoute = RouteProp<MoreStackParamList, 'AgencyForm'>;
@@ -80,7 +80,7 @@ const AgencyFormScreen: React.FC = () => {
           name: agency.name,
           type: agency.type,
           description: agency.description,
-          address: agency.address,
+          address: (typeof agency.address === 'string' ? agency.address : agency.address?.street ?? '') as string,
           city: agency.city,
           province: agency.province,
           contactPhone: agency.contactPhone,
@@ -109,16 +109,20 @@ const AgencyFormScreen: React.FC = () => {
     if (!itemSku.trim()) { Alert.alert('Validation', 'SKU is required'); return; }
 
     const item: AgencyInventoryItem = {
+      itemId: `agitem-${Date.now()}`,
+      itemName: itemName.trim(),
       id: `agitem-${Date.now()}`,
       sku: itemSku.trim(),
       name: itemName.trim(),
       description: '',
       category: itemCategory || 'General',
       unitOfMeasure: itemUOM,
-      costPrice: parseFloat(itemCost) || 0,
+      unitCost: parseFloat(itemCost) || 0,
       sellingPrice: parseFloat(itemSell) || 0,
+      quantity: parseInt(itemQty, 10) || 0,
       quantityOnHand: parseInt(itemQty, 10) || 0,
       reorderLevel: parseInt(itemReorder, 10) || 0,
+      reorderPoint: parseInt(itemReorder, 10) || 0,
     };
     dispatch(addInventoryItem(item));
     resetItemForm();

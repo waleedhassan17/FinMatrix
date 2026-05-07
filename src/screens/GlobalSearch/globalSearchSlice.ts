@@ -1,7 +1,7 @@
 import { createAppSlice } from '@store/createAppSlice';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { searchAll } from '../../network/auditSearchNetwork';
-import type { SearchResult, SearchModule } from '../../dummy-data/auditAndSearch';
+import type { SearchResult, SearchModule } from '../../models/auditModel';
 
 interface GlobalSearchState {
   query: string;

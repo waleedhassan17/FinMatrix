@@ -6,8 +6,7 @@
 // UI-ready data structure with inline field mapping.
 // Mirrors `glSerializer.ts` / `billSerializer.ts`.
 
-import type { InventoryItemData } from '../dummy-data/inventoryItems';
-import type { InventoryApiEntity } from '../models/inventoryModel';
+import type { InventoryItemData, InventoryApiEntity } from '../models/inventoryModel';
 
 // ─── Stock-status counts (for tab badges) ────────────
 export type InventoryStockCounts = {
@@ -27,29 +26,35 @@ export interface SerializedInventoryList {
   totalStockValue: number;
 }
 
+// ─── Helpers ─────────────────────────────────────────
+const toNum = (v: any): number => {
+  if (typeof v === 'number') return v;
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+};
+
 // ─── Raw → UI mapper ─────────────────────────────────
 export const mapInventoryItem = (
-  raw: Partial<InventoryApiEntity>,
+  raw: any,
 ): InventoryItemData => ({
-  itemId: raw.itemId ?? '',
+  id: raw.id ?? raw.itemId ?? '',
+  itemId: raw.itemId ?? raw.id ?? '',
   companyId: raw.companyId ?? '',
   sku: raw.sku ?? '',
   name: raw.name ?? '',
   description: raw.description ?? '',
   category: raw.category ?? '',
   unitOfMeasure: raw.unitOfMeasure ?? 'Unit',
-  costMethod: (raw.costMethod as InventoryItemData['costMethod']) ?? 'FIFO',
-  unitCost: typeof raw.unitCost === 'number' ? raw.unitCost : 0,
-  sellingPrice: typeof raw.sellingPrice === 'number' ? raw.sellingPrice : 0,
-  quantityOnHand: typeof raw.quantityOnHand === 'number' ? raw.quantityOnHand : 0,
-  quantityOnOrder: typeof raw.quantityOnOrder === 'number' ? raw.quantityOnOrder : 0,
-  quantityCommitted:
-    typeof raw.quantityCommitted === 'number' ? raw.quantityCommitted : 0,
-  reorderPoint: typeof raw.reorderPoint === 'number' ? raw.reorderPoint : 0,
-  reorderQuantity:
-    typeof raw.reorderQuantity === 'number' ? raw.reorderQuantity : 0,
-  minStock: typeof raw.minStock === 'number' ? raw.minStock : 0,
-  maxStock: typeof raw.maxStock === 'number' ? raw.maxStock : 0,
+  costMethod: raw.costMethod ?? 'average',
+  unitCost: toNum(raw.unitCost),
+  sellingPrice: toNum(raw.sellingPrice),
+  quantityOnHand: toNum(raw.quantityOnHand),
+  quantityOnOrder: toNum(raw.quantityOnOrder),
+  quantityCommitted: toNum(raw.quantityCommitted),
+  reorderPoint: toNum(raw.reorderPoint),
+  reorderQuantity: toNum(raw.reorderQuantity),
+  minStock: toNum(raw.minStock),
+  maxStock: toNum(raw.maxStock),
   isActive: raw.isActive ?? true,
   serialTracking: raw.serialTracking ?? false,
   lotTracking: raw.lotTracking ?? false,
@@ -57,32 +62,38 @@ export const mapInventoryItem = (
   locationId: raw.locationId ?? '',
   sourceAgencyId: raw.sourceAgencyId,
   imageUrl: raw.imageUrl ?? '',
-  lastUpdated: raw.lastUpdated ?? '',
+  lastUpdated: raw.updatedAt ?? raw.lastUpdated ?? '',
+  createdAt: raw.createdAt,
+  updatedAt: raw.updatedAt,
 });
 
 // ─── Envelope serializers ────────────────────────────
 export function inventoryListSerializer(payload: any): SerializedInventoryList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.items) ? data.items : [];
-  const pagination = data.pagination || {};
-  const totals = data.totals || {};
+  const data = payload?.data;
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.items)
+      ? data.items
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
+  const totals = (data && !Array.isArray(data)) ? (data.totals || {}) : {};
 
   const items = raw.map(mapInventoryItem);
 
   // Compute counts client-side if not provided.
   const counts: InventoryStockCounts = totals.counts || {
     all: items.length,
-    in_stock: items.filter(i => i.quantityOnHand > i.reorderPoint).length,
+    in_stock: items.filter(i => toNum(i.quantityOnHand) > toNum(i.reorderPoint)).length,
     low_stock: items.filter(
-      i => i.quantityOnHand > 0 && i.quantityOnHand <= i.reorderPoint,
+      i => toNum(i.quantityOnHand) > 0 && toNum(i.quantityOnHand) <= toNum(i.reorderPoint),
     ).length,
-    out_of_stock: items.filter(i => i.quantityOnHand === 0).length,
+    out_of_stock: items.filter(i => toNum(i.quantityOnHand) === 0).length,
   };
 
   const totalStockValue =
     typeof totals.totalStockValue === 'number'
       ? totals.totalStockValue
-      : items.reduce((s, i) => s + i.quantityOnHand * i.unitCost, 0);
+      : items.reduce((s, i) => s + toNum(i.quantityOnHand) * toNum(i.unitCost), 0);
 
   return {
     items,
@@ -97,7 +108,7 @@ export function inventoryListSerializer(payload: any): SerializedInventoryList {
 export function inventorySingleSerializer(
   payload: any,
 ): InventoryItemData | null {
-  const raw = payload?.data?.item;
+  const raw = payload?.data?.item ?? (payload?.data && !Array.isArray(payload.data) ? payload.data : null);
   if (!raw) return null;
   return mapInventoryItem(raw);
 }

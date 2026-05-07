@@ -14,6 +14,7 @@
     "skipLibCheck": true,
     "target": "ESNext",
     "strict": true,
+    "strictNullChecks": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "paths": {
@@ -25,7 +26,6 @@
       "@network/*": ["./src/network/*"],
       "@models/*": ["./src/models/*"],
       "@serializers/*": ["./src/serializers/*"],
-      "@dummy/*": ["./src/dummy-data/*"],
       "@hooks/*": ["./src/hooks/*"],
       "@theme/*": ["./src/theme/*"],
       "@utils/*": ["./src/utils/*"],

@@ -13,7 +13,7 @@ export type DPProfileStackParamList = {
 const Stack = createNativeStackNavigator<DPProfileStackParamList>();
 
 const DPProfileStack: React.FC = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+  <Stack.Navigator id="DPProfileStack" screenOptions={{ headerShown: false }}>
     <Stack.Screen name="DPProfile" component={DPProfileScreen} />
     <Stack.Screen name="DPHistory" component={DPHistoryScreen} />
     <Stack.Screen name="DPSettings" component={DPSettingsScreen} />

@@ -15,7 +15,7 @@ import {
   type MonitorFilterStatus,
   type MonitorSortBy,
 } from './deliveryMonitorSlice';
-import type { DeliveryRecordStatus } from '../../../../dummy-data/deliveries';
+import type { DeliveryRecordStatus } from '../../../../models/deliveryModel';
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'DeliveryMonitor'>;
 

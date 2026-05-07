@@ -133,6 +133,8 @@ const CreditMemoListScreen: React.FC = () => {
     return m;
   }, [creditMemos]);
 
+  const showFab = !initialLoading && !(error && creditMemos.length === 0) && filtered.length > 0;
+
   const handleDelete = useCallback((cm: CreditMemo) => {
     Alert.alert('Delete Credit Memo', `Delete ${cm.creditMemoNumber}?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -302,13 +304,15 @@ const CreditMemoListScreen: React.FC = () => {
       )}
 
       {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('CreditMemoForm')}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      {showFab && (
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('CreditMemoForm')}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
@@ -347,7 +351,8 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
     gap: spacing.sm,
   },
   summaryCard: {
@@ -445,7 +450,7 @@ const styles = StyleSheet.create({
   cardDate: { ...THEME.typography.caption, color: colors.textLight },
   cardTotal: { ...THEME.typography.h4, fontWeight: '800', color: colors.primary },
 
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl * 2 },
+  center: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', gap: spacing.md, paddingTop: spacing.xl * 2, paddingBottom: spacing.xl * 4 },
 
   // FAB
   fab: {

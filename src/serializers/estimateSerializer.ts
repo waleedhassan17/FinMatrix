@@ -56,9 +56,15 @@ export const mapEstimate = (raw: Partial<EstimateApiEntity>): Estimate => ({
 
 // ─── Envelope serializers ────────────────────────────
 export function estimateListSerializer(payload: any): SerializedEstimateList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.estimates) ? data.estimates : [];
-  const pagination = data.pagination || {};
+  const data = payload?.data;
+  // Backend returns flat array: { success: true, data: [...] }
+  // Also support nested: { data: { estimates: [...], pagination: {...} } }
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.estimates)
+      ? data.estimates
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
 
   return {
     estimates: raw.map(mapEstimate),
@@ -69,7 +75,7 @@ export function estimateListSerializer(payload: any): SerializedEstimateList {
 }
 
 export function estimateSingleSerializer(payload: any): Estimate | null {
-  const raw = payload?.data?.estimate;
-  if (!raw) return null;
+  const raw = payload?.data?.estimate ?? payload?.data;
+  if (!raw || Array.isArray(raw)) return null;
   return mapEstimate(raw);
 }

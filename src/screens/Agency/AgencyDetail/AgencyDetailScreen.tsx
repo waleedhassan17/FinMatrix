@@ -36,7 +36,7 @@ import {
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency } from '../../../utils/formatters';
 import { AGENCY_TYPE_COLORS } from '../../../models/agencyModel';
-import type { AgencyInventoryItem } from '../../../dummy-data/warehouseAgencies';
+import type { AgencyInventoryItem } from '../../../models/agencyModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type DetailRoute = RouteProp<MoreStackParamList, 'AgencyDetail'>;
@@ -116,7 +116,13 @@ const AgencyDetailScreen: React.FC = () => {
         ) : null}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📍</Text>
-          <Text style={styles.infoValue}>{agency.address}, {agency.city}, {agency.province}</Text>
+          <Text style={styles.infoValue}>
+            {typeof agency.address === 'object'
+              ? [agency.address?.street, agency.address?.city, agency.address?.state].filter(Boolean).join(', ')
+              : String(agency.address ?? '')}
+            {agency.city ? `, ${agency.city}` : ''}
+            {agency.province ? `, ${agency.province}` : ''}
+          </Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📞</Text>

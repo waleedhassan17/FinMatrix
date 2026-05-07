@@ -52,6 +52,7 @@ const DeliveryTabNavigator: React.FC = () => {
 
   return (
     <Tab.Navigator
+      id="DeliveryTabNavigator"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

@@ -21,13 +21,19 @@ export interface SerializedVendorList {
 }
 
 // ─── Raw → UI mapper ─────────────────────────────────
-export const mapVendor = (raw: Partial<VendorApiEntity>): Vendor => ({
+const toNum = (v: any): number => {
+  if (typeof v === 'number') return v;
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+};
+
+export const mapVendor = (raw: Partial<VendorApiEntity> & { companyName?: string }): Vendor => ({
   id: raw.id ?? '',
   companyId: raw.companyId ?? '',
-  name: raw.name ?? '',
+  name: (raw as any).companyName ?? raw.name ?? '',
   email: raw.email ?? '',
   phone: raw.phone ?? '',
-  address: raw.address ?? '',
+  address: typeof raw.address === 'string' ? raw.address : '',
   city: raw.city ?? '',
   state: raw.state ?? '',
   zipCode: raw.zipCode ?? '',
@@ -35,7 +41,7 @@ export const mapVendor = (raw: Partial<VendorApiEntity>): Vendor => ({
   taxId: raw.taxId ?? '',
   contactPerson: raw.contactPerson ?? '',
   notes: raw.notes ?? '',
-  balance: typeof raw.balance === 'number' ? raw.balance : 0,
+  balance: toNum(raw.balance),
   paymentTerms: raw.paymentTerms ?? '',
   defaultExpenseAccountId: raw.defaultExpenseAccountId ?? '',
   isActive: typeof raw.isActive === 'boolean' ? raw.isActive : true,
@@ -45,10 +51,14 @@ export const mapVendor = (raw: Partial<VendorApiEntity>): Vendor => ({
 
 // ─── Envelope serializers ────────────────────────────
 export function vendorListSerializer(payload: any): SerializedVendorList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.vendors) ? data.vendors : [];
-  const pagination = data.pagination || {};
-  const totals = data.totals || {};
+  const data = payload?.data;
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.vendors)
+      ? data.vendors
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
+  const totals = (data && !Array.isArray(data)) ? (data.totals || {}) : {};
 
   const vendors = raw.map(mapVendor);
 
@@ -66,7 +76,7 @@ export function vendorListSerializer(payload: any): SerializedVendorList {
 }
 
 export function vendorSingleSerializer(payload: any): Vendor | null {
-  const raw = payload?.data?.vendor;
+  const raw = payload?.data?.vendor ?? (payload?.data && !Array.isArray(payload.data) ? payload.data : null);
   if (!raw) return null;
   return mapVendor(raw);
 }

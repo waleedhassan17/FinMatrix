@@ -6,7 +6,7 @@
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { WarehouseAgency } from '../../../dummy-data/warehouseAgencies';
+import type { WarehouseAgency } from '../../../models/agencyModel';
 import {
   getAgenciesAPI,
   createAgencyAPI,

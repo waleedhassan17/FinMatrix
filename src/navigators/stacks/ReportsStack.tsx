@@ -39,7 +39,7 @@ export type ReportsStackParamList = {
 const Stack = createNativeStackNavigator<ReportsStackParamList>();
 
 const ReportsStack: React.FC = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+  <Stack.Navigator id="ReportsStack" screenOptions={{ headerShown: false }}>
     <Stack.Screen name="ReportsHub" component={ReportsHubScreen} />
     <Stack.Screen name="ProfitLoss" component={ProfitLossScreen} />
     <Stack.Screen name="BalanceSheet" component={BalanceSheetScreen} />

@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { WarehouseAgency } from '@dummy/warehouseAgencies';
-import type { DummyDeliveryPerson } from '@dummy/deliveryPersonnel';
+import type { WarehouseAgency } from '@models/agencyModel';
+import type { DummyDeliveryPerson } from '@models/deliveryModel';
 import { signOut } from './authSlice';
 
 // ─── Types ────────────────────────────────────────────

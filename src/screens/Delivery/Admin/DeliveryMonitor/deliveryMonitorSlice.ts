@@ -1,6 +1,6 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { DeliveryRecordStatus } from '../../../../dummy-data/deliveries';
+import type { DeliveryRecordStatus } from '../../../../models/deliveryModel';
 
 export type MonitorFilterStatus = 'all' | DeliveryRecordStatus;
 export type MonitorSortBy = 'time' | 'status' | 'priority';

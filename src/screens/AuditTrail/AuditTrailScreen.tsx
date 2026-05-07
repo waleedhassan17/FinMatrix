@@ -17,7 +17,7 @@ import {
   setFilterUser, setFilterModule, setFilterAction,
   setSelectedEntry, clearFilters, fetchAuditTrail,
 } from './auditTrailSlice';
-import type { AuditEntry, AuditModule, AuditAction } from '../../dummy-data/auditAndSearch';
+import type { AuditEntry, AuditModule, AuditAction } from '../../models/auditModel';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;

@@ -13,16 +13,20 @@ const num = (v: any, fallback = 0): number =>
 
 // ─── Sub-mapper ──────────────────────────────────────
 export const mapAgencyInventoryItem = (raw: any): AgencyInventoryItemApi => ({
-  id: raw?.id ?? '',
+  itemId: raw?.id ?? raw?.itemId ?? '',
+  itemName: raw?.name ?? raw?.itemName ?? '',
+  name: raw?.name ?? raw?.itemName ?? '',
   sku: raw?.sku ?? '',
-  name: raw?.name ?? '',
-  description: raw?.description ?? '',
+  quantity: num(raw?.quantity ?? raw?.quantityOnHand),
+  quantityOnHand: num(raw?.quantityOnHand ?? raw?.quantity),
   category: raw?.category ?? '',
-  unitOfMeasure: raw?.unitOfMeasure ?? '',
-  costPrice: num(raw?.costPrice),
   sellingPrice: num(raw?.sellingPrice),
-  quantityOnHand: num(raw?.quantityOnHand),
-  reorderLevel: num(raw?.reorderLevel),
+  reorderLevel: num(raw?.reorderLevel ?? raw?.reorderPoint),
+  reorderPoint: num(raw?.reorderPoint ?? raw?.reorderLevel),
+  unitCost: num(raw?.unitCost ?? raw?.costPrice),
+  id: raw?.id ?? '',
+  description: raw?.description ?? '',
+  unitOfMeasure: raw?.unitOfMeasure ?? '',
 });
 
 // ─── Raw → UI mapper ─────────────────────────────────

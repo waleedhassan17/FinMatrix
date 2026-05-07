@@ -14,7 +14,7 @@ import {
   setInventorySortBy,
   setInventoryCategory,
 } from './dpInventorySlice';
-import { shadowInventoryRecords } from '../../../../dummy-data/shadowInventory';
+import { shadowInventoryRecords } from '../../../../models/deliveryModel';
 import type { DPInventoryStackParamList } from '../../../../navigators/stacks/DPInventoryStack';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../../../utils/theme';

@@ -19,6 +19,13 @@ import {
 
 export type POStatusFilter = 'all' | PurchaseOrderStatus;
 
+const toApiPOStatus = (statusFilter: POStatusFilter): string | undefined => {
+  if (statusFilter === 'all') return undefined;
+  if (statusFilter === 'partially_received') return 'partial';
+  if (statusFilter === 'fully_received') return 'received';
+  return statusFilter;
+};
+
 export interface POListSliceState {
   items: PurchaseOrder[];
   searchQuery: string;
@@ -71,20 +78,28 @@ export const poListSlice = createAppSlice({
       async (_arg, thunkAPI) => {
         const root = thunkAPI.getState() as { poList: POListSliceState };
         const { searchQuery, statusFilter } = root.poList;
+        const apiStatus = toApiPOStatus(statusFilter);
         return getPurchaseOrdersAPI({
           ...(searchQuery ? { search: searchQuery } : {}),
-          status: statusFilter,
+          ...(apiStatus ? { status: apiStatus } : {}),
         });
       },
       {
         pending: state => { state.isLoading = true; state.error = ''; },
         fulfilled: (state, action: PayloadAction<any>) => {
           const data = purchaseOrderListSerializer(action.payload);
-          state.items = data.purchaseOrders;
+          state.items = Array.isArray(data.purchaseOrders) ? data.purchaseOrders : [];
           state.page = data.page;
           state.totalPages = data.totalPages;
           state.totalPOs = data.totalPOs;
-          state.counts = data.counts;
+          state.counts = {
+            all: data.counts?.all ?? 0,
+            draft: data.counts?.draft ?? 0,
+            sent: data.counts?.sent ?? 0,
+            partially_received: data.counts?.partially_received ?? 0,
+            fully_received: data.counts?.fully_received ?? 0,
+            closed: data.counts?.closed ?? 0,
+          };
           state.totalValue = data.totalValue;
           state.isLoading = false;
         },

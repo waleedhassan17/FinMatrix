@@ -18,8 +18,8 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import { deliveryRecords, type DeliveryItemLine, type DeliveryPriority, type DeliveryRecord, type StatusHistoryEntry } from '../../../../dummy-data/deliveries';
-import { dummyDeliveryPersonnel, type DummyDeliveryPerson } from '../../../../dummy-data/deliveryPersonnel';
+import { deliveryRecords, type DeliveryItemLine, type DeliveryPriority, type DeliveryRecord, type StatusHistoryEntry } from '../../../../models/deliveryModel';
+import { dummyDeliveryPersonnel, type DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import {
   getDeliveriesAPI,
   getDeliveryPersonnelAPI,
@@ -139,6 +139,7 @@ export const deliverySlice = createAppSlice({
         const id = `del_${String(state.deliveries.length + 1).padStart(3, '0')}`;
         state.deliveries.unshift({
           id,
+          reference: `DEL-${nextNumber}`,
           referenceNo: `DEL-${nextNumber}`,
           customerId: action.payload.customerId,
           customerName: action.payload.customerName,
@@ -148,6 +149,7 @@ export const deliverySlice = createAppSlice({
           status: 'unassigned',
           notes: action.payload.notes,
           items: action.payload.items,
+          statusHistory: [],
           createdAt: now,
           updatedAt: now,
         });

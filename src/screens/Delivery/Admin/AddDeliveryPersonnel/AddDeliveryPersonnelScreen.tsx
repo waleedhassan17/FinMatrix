@@ -23,7 +23,7 @@ import { THEME } from '../../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectActiveCompany, addDeliveryPersonnel, addMember } from '../../../Auth/companySlice';
 import { registerAdminCreatedPersonnel } from '../../../../network/authNetwork';
-import type { DummyDeliveryPerson } from '../../../../dummy-data/deliveryPersonnel';
+import type { DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import type { RootStackParamList } from '../../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddDeliveryPersonnel'>;

@@ -54,6 +54,7 @@ const AdminTabNavigator: React.FC = () => {
 
   return (
     <Tab.Navigator
+      id="AdminTabNavigator"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

@@ -23,7 +23,7 @@ import {
   inventoryUpdateRequests,
   type InventoryUpdateRequest,
   type InventoryUpdateRequestStatus,
-} from '../../../../dummy-data/inventoryUpdateRequests';
+} from '../../../../models/deliveryModel';
 import {
   getInventoryUpdateRequestsAPI,
   approveInventoryUpdateRequestAPI,

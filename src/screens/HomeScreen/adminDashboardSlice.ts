@@ -9,13 +9,13 @@ import {
   recentTransactions,
   deliveryOverview,
   dashboardAlerts,
-} from '../../dummy-data/dashboardData';
+} from '../../models/dashboardModel';
 import type {
   DashboardStat,
   RecentTransaction,
   DeliveryOverviewData,
   DashboardAlert,
-} from '../../dummy-data/dashboardData';
+} from '../../models/dashboardModel';
 
 export interface AdminDashboardSliceState {
   stats: DashboardStat[];

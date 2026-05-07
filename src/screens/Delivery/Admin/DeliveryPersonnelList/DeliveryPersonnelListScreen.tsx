@@ -16,7 +16,7 @@ import { ROUTES } from '../../../../navigations-map/Base';
 import EmptyState from '../../../../components/EmptyState';
 import { useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectActiveCompany } from '../../../Auth/companySlice';
-import { dummyDeliveryPersonnel, type DummyDeliveryPerson } from '../../../../dummy-data/deliveryPersonnel';
+import { dummyDeliveryPersonnel, type DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import type { RootStackParamList } from '../../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryPersonnelList'>;

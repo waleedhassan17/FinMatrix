@@ -99,7 +99,7 @@ export type MoreStackParamList = {
 const Stack = createNativeStackNavigator<MoreStackParamList>();
 
 const MoreStack: React.FC = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+  <Stack.Navigator id="MoreStack" screenOptions={{ headerShown: false }}>
     <Stack.Screen name="MoreHub" component={MoreHubScreen} />
     <Stack.Screen name="COAList" component={COAListScreen} />
     <Stack.Screen name="COAForm" component={COAFormScreen} />

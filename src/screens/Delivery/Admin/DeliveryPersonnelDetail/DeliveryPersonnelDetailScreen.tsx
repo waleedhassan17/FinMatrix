@@ -21,7 +21,7 @@ import {
   removeDeliveryPersonnel,
   removeMember,
 } from '../../../Auth/companySlice';
-import { dummyDeliveryPersonnel } from '../../../../dummy-data/deliveryPersonnel';
+import { dummyDeliveryPersonnel } from '../../../../models/deliveryModel';
 import type { RootStackParamList } from '../../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryPersonnelDetail'>;

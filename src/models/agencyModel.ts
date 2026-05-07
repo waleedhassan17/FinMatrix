@@ -4,9 +4,42 @@
 // API contract + UI form contract for the Agency feature.
 // Mirrors the GL / Banking / Employees / Payroll pattern.
 
-import type { WarehouseAgency, AgencyInventoryItem } from '../dummy-data/warehouseAgencies';
-
 export type AgencyType = 'Manufacturing' | 'Supply' | 'Distribution';
+
+export interface WarehouseAgency {
+  id: string;
+  name: string;
+  type: AgencyType;
+  description?: string;
+  address?: { city?: string; state?: string; street?: string } | string;
+  contact?: { name?: string; phone?: string; email?: string };
+  isActive?: boolean;
+  inventory: AgencyInventoryItem[];
+  createdAt?: string;
+  updatedAt?: string;
+  // Legacy UI fields used by CreateCompanyScreen
+  typeBadgeColor?: string;
+  productCount?: number;
+  city?: string;
+  province?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+}
+
+export interface AgencyInventoryItem {
+  itemId: string;
+  itemName: string;
+  name: string;
+  sku: string;
+  quantity: number;
+  quantityOnHand: number;
+  category: string;
+  sellingPrice: number;
+  reorderLevel: number;
+  reorderPoint: number;
+  unitCost: number;
+  [key: string]: any;
+}
 
 // ─── API entity & envelope types ─────────────────────
 export type AgencyApi = WarehouseAgency;
@@ -76,3 +109,6 @@ export const validateAgency = (data: AgencyFormData): ValidationErrors => {
   }
   return errors;
 };
+
+// ─── Empty default for screens that reference agencies locally ──
+export const warehouseAgencies: WarehouseAgency[] = [];

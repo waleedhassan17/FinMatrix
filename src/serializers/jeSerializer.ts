@@ -31,19 +31,25 @@ const mapLine = (raw: Partial<JEApiLine>): JournalEntryLine => ({
 
 // ─── Entry mapping ───────────────────────────────────
 
-export const mapJournalEntry = (raw: Partial<JEApiEntry>): JournalEntry => ({
+const toNum = (v: any): number => {
+  if (typeof v === 'number') return v;
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+};
+
+export const mapJournalEntry = (raw: Partial<JEApiEntry> & { memo?: string; totalDebits?: any; totalCredits?: any }): JournalEntry => ({
   id: raw.id ?? '',
   companyId: raw.companyId ?? '',
-  entryNumber: raw.entryNumber ?? '',
+  entryNumber: raw.entryNumber ?? raw.reference ?? '',
   date: raw.date ?? '',
-  description: raw.description ?? '',
+  description: raw.memo ?? raw.description ?? '',
   reference: raw.reference ?? '',
   status: (raw.status ?? 'draft') as JournalEntryStatus,
   lines: (raw.lines ?? []).map(mapLine),
-  totalDebit: typeof raw.totalDebit === 'number' ? raw.totalDebit : 0,
-  totalCredit: typeof raw.totalCredit === 'number' ? raw.totalCredit : 0,
+  totalDebit: toNum(raw.totalDebits ?? raw.totalDebit),
+  totalCredit: toNum(raw.totalCredits ?? raw.totalCredit),
   createdBy: raw.createdBy ?? '',
-  approvedBy: raw.approvedBy ?? null,
+  approvedBy: (raw as any).postedBy ?? raw.approvedBy ?? null,
   postedAt: raw.postedAt ?? null,
   createdAt: raw.createdAt ?? '',
   updatedAt: raw.updatedAt ?? '',
@@ -52,9 +58,13 @@ export const mapJournalEntry = (raw: Partial<JEApiEntry>): JournalEntry => ({
 // ─── List serializer ─────────────────────────────────
 
 export function jeListSerializer(payload: any): SerializedJEList {
-  const data = payload?.data || {};
-  const rawEntries: any[] = data.entries || [];
-  const pagination = data.pagination || {};
+  const data = payload?.data;
+  const rawEntries: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.entries)
+      ? data.entries
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
 
   return {
     entries: rawEntries.map(mapJournalEntry),
@@ -67,7 +77,7 @@ export function jeListSerializer(payload: any): SerializedJEList {
 // ─── Single-entry serializer ─────────────────────────
 
 export function jeSingleSerializer(payload: any): JournalEntry | null {
-  const raw = payload?.data?.entry;
+  const raw = payload?.data?.entry ?? (payload?.data && !Array.isArray(payload.data) ? payload.data : null);
   if (!raw) return null;
   return mapJournalEntry(raw);
 }

@@ -7,11 +7,40 @@
 //   • Query params for the list endpoint
 // Plus the existing form-validation helpers used by the form screen.
 
-import type { InventoryItemData } from '../dummy-data/inventoryItems';
-
 // ─── Raw API entity (backend shape) ──────────────────
-// 1-to-1 with the `InventoryItemData` UI type today; defined as an alias
-// so future backend-only fields can be added without leaking into UI.
+export interface InventoryItemData {
+  id: string;
+  itemId?: string;
+  companyId?: string;
+  sku: string;
+  name: string;
+  description: string;
+  category: string;
+  unitOfMeasure: string;
+  costMethod: string;
+  unitCost: number;
+  sellingPrice: number;
+  quantityOnHand: number;
+  quantityOnOrder: number;
+  quantityCommitted: number;
+  reorderPoint: number;
+  reorderQuantity: number;
+  minStock: number;
+  maxStock: number;
+  isActive: boolean;
+  serialTracking: boolean;
+  lotTracking: boolean;
+  barcodeData: string;
+  locationId: string;
+  sourceAgencyId?: string;
+  sourceAgencyName?: string;
+  imageUrl: string;
+  lastUpdated: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: any;
+}
+
 export type InventoryApiEntity = InventoryItemData;
 
 // ─── Pagination envelope ─────────────────────────────
@@ -34,8 +63,6 @@ export interface InventoryQueryParams {
   limit?: number;
 }
 
-// ─── Re-export the canonical UI type for convenience ─
-export type { InventoryItemData };
 
 export interface ValidationErrors {
   [key: string]: string;
@@ -175,3 +202,17 @@ export const validateInventoryItem = (
 
   return errors;
 };
+
+// ─── Empty defaults for screens that reference data locally ──
+export const inventoryItemsData: InventoryItemData[] = [];
+
+export interface StockMovement {
+  id: string;
+  date: string;
+  type: string;
+  reference: string;
+  quantity: number;
+  balance: number;
+}
+
+export const getStockMovements = (_itemId: string): StockMovement[] => [];

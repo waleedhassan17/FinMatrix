@@ -7,7 +7,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { AgencyType } from '../../../models/agencyModel';
-import type { AgencyInventoryItem } from '../../../dummy-data/warehouseAgencies';
+import type { AgencyInventoryItem } from '../../../models/agencyModel';
 
 export interface AgencyFormSliceState {
   name: string;

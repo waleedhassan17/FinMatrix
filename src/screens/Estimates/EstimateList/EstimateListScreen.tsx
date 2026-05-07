@@ -129,6 +129,8 @@ const EstimateListScreen: React.FC = () => {
     [estimates],
   );
 
+  const showFab = !initialLoading && !(error && estimates.length === 0) && filtered.length > 0;
+
   // ── Render card ─────────────────────────────────
   const renderCard = ({ item: est }: { item: Estimate }) => {
     const statusCol = STATUS_COLOR[est.status];
@@ -289,13 +291,15 @@ const EstimateListScreen: React.FC = () => {
       )}
 
       {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('EstimateForm')}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
+      {showFab && (
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('EstimateForm')}
+        >
+          <Text style={styles.fabIcon}>+</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
@@ -316,7 +320,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
-  summaryRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.sm },
+  summaryRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs, gap: spacing.sm },
   summaryCard: {
     flex: 1,
     backgroundColor: colors.white,
@@ -368,7 +372,7 @@ const styles = StyleSheet.create({
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
   amtLabel: { ...THEME.typography.labelSm, fontWeight: '400', color: colors.textLight },
   amtValue: { ...THEME.typography.h4, fontWeight: '700', color: colors.textPrimary },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
+  center: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', gap: spacing.md, paddingTop: spacing.xl * 2, paddingBottom: spacing.xl * 4 },
   emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
   emptyText: { ...THEME.typography.h4, fontWeight: 'normal', color: colors.textSecondary },
   fab: {

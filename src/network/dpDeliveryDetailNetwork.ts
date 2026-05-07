@@ -1,18 +1,24 @@
-import { simulateApiCall } from './apiHelpers';
-import type {
-  UpdateDeliveryStatusPayload,
-  UpdateDeliveryStatusResponse,
-  UpdateDeliveryStatusResult,
-} from '../models/dpDeliveryDetailModel';
+// ═══════════════════════════════════════════════════════
+// FinMatrix — DP Delivery Detail Network (Production API)
+// ═══════════════════════════════════════════════════════
 
-export const updateDeliveryStatusAPI = async (
-  payload: UpdateDeliveryStatusPayload,
-): Promise<UpdateDeliveryStatusResponse> => {
-  const result: UpdateDeliveryStatusResult = {
-    deliveryId: payload.deliveryId,
-    status: payload.status,
-    note: payload.note,
-    updatedAt: new Date().toISOString(),
-  };
-  return simulateApiCall({ success: true, data: result }, 300);
+import { api, extractErrorMessage } from './apiHelpers';
+
+export const updateDeliveryStatusAPI = async (payload: any): Promise<any> => {
+  try {
+    const { deliveryId, ...data } = payload;
+    const response = await api.patch(`/deliveries/${deliveryId}/status`, data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getDeliveryDetailAPI = async (deliveryId: string): Promise<any> => {
+  try {
+    const response = await api.get(`/deliveries/${deliveryId}`);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
 };

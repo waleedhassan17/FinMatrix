@@ -27,7 +27,7 @@ import {
   selectBudgetFormState,
   setBudgetLineMonthAmount,
 } from './budgetFormSlice';
-import { chartOfAccountsData } from '../../../dummy-data/chartOfAccounts';
+import { chartOfAccountsData } from '../../../models/coaModel';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import { formatCurrency } from '../../../utils/formatters';
 import CustomButton from '../../../Custom-Components/CustomButton';

@@ -4,8 +4,8 @@ import {
   fetchPreferences as apiFetchPrefs,
   savePreferences as apiSavePrefs,
 } from '../../../network/settingsNetwork';
-import type { AppPreferences } from '../../../dummy-data/settingsData';
-import { DEFAULT_PREFERENCES } from '../../../dummy-data/settingsData';
+import type { AppPreferences } from '../../../models/settingsModel';
+import { DEFAULT_PREFERENCES } from '../../../models/settingsModel';
 
 interface SettingsState {
   preferences: AppPreferences;

@@ -22,36 +22,43 @@ export interface SerializedInvoiceList {
   totalInvoices: number;
 }
 
+// ─── Helpers ──────────────────────────────────────────
+const toNum = (v: any): number => {
+  if (typeof v === 'number') return v;
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+};
+
 // ─── Raw → UI mappers ────────────────────────────────
 
-export const mapInvoiceLine = (raw: Partial<InvoiceApiLine>): InvoiceLine => ({
+export const mapInvoiceLine = (raw: any): InvoiceLine => ({
   id: raw.id ?? '',
-  itemId: raw.itemId ?? '',
-  itemName: raw.itemName ?? '',
+  itemId: raw.itemId ?? raw.inventoryItemId ?? '',
+  itemName: raw.itemName ?? raw.description ?? '',
   description: raw.description ?? '',
-  quantity: typeof raw.quantity === 'number' ? raw.quantity : 0,
-  unitPrice: typeof raw.unitPrice === 'number' ? raw.unitPrice : 0,
-  taxRate: typeof raw.taxRate === 'number' ? raw.taxRate : 0,
-  amount: typeof raw.amount === 'number' ? raw.amount : 0,
+  quantity: toNum(raw.quantity),
+  unitPrice: toNum(raw.unitPrice),
+  taxRate: toNum(raw.taxRate),
+  amount: toNum(raw.amount ?? raw.lineTotal),
 });
 
-export const mapInvoice = (raw: Partial<InvoiceApiEntity>): Invoice => ({
+export const mapInvoice = (raw: any): Invoice => ({
   id: raw.id ?? '',
   companyId: raw.companyId ?? '',
   invoiceNumber: raw.invoiceNumber ?? '',
   customerId: raw.customerId ?? '',
-  customerName: raw.customerName ?? '',
-  issueDate: raw.issueDate ?? '',
+  customerName: raw.customerName ?? raw.customer?.name ?? '',
+  issueDate: raw.issueDate ?? raw.invoiceDate ?? '',
   dueDate: raw.dueDate ?? '',
   status: (raw.status ?? 'draft') as InvoiceStatus,
-  lines: Array.isArray(raw.lines) ? raw.lines.map(mapInvoiceLine) : [],
-  subtotal: typeof raw.subtotal === 'number' ? raw.subtotal : 0,
-  taxAmount: typeof raw.taxAmount === 'number' ? raw.taxAmount : 0,
-  discountType: (raw.discountType ?? 'fixed') as DiscountType,
-  discountValue: typeof raw.discountValue === 'number' ? raw.discountValue : 0,
-  discountAmount: typeof raw.discountAmount === 'number' ? raw.discountAmount : 0,
-  total: typeof raw.total === 'number' ? raw.total : 0,
-  amountPaid: typeof raw.amountPaid === 'number' ? raw.amountPaid : 0,
+  lines: Array.isArray(raw.lines) ? raw.lines.map(mapInvoiceLine) : Array.isArray(raw.items) ? raw.items.map(mapInvoiceLine) : [],
+  subtotal: toNum(raw.subtotal),
+  taxAmount: toNum(raw.taxAmount),
+  discountType: (raw.discountType ?? 'none') as DiscountType,
+  discountValue: toNum(raw.discountValue),
+  discountAmount: toNum(raw.discountAmount),
+  total: toNum(raw.total),
+  amountPaid: toNum(raw.amountPaid),
   notes: raw.notes ?? '',
   createdBy: raw.createdBy ?? '',
   createdAt: raw.createdAt ?? '',
@@ -61,9 +68,15 @@ export const mapInvoice = (raw: Partial<InvoiceApiEntity>): Invoice => ({
 // ─── Envelope serializers ────────────────────────────
 
 export function invoiceListSerializer(payload: any): SerializedInvoiceList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.invoices) ? data.invoices : [];
-  const pagination = data.pagination || {};
+  const data = payload?.data;
+  // Backend returns flat array: { success: true, data: [...] }
+  // Also support nested: { data: { invoices: [...], pagination: {...} } }
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.invoices)
+      ? data.invoices
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
 
   return {
     invoices: raw.map(mapInvoice),
@@ -74,7 +87,8 @@ export function invoiceListSerializer(payload: any): SerializedInvoiceList {
 }
 
 export function invoiceSingleSerializer(payload: any): Invoice | null {
-  const raw = payload?.data?.invoice;
-  if (!raw) return null;
+  // Support both { data: { invoice: {...} } } and { data: {...} }
+  const raw = payload?.data?.invoice ?? payload?.data;
+  if (!raw || Array.isArray(raw)) return null;
   return mapInvoice(raw);
 }

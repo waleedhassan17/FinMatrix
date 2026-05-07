@@ -38,7 +38,7 @@ import {
 } from './poFormSlice';
 import { selectItems as selectPOs, upsertPurchaseOrder, fetchPurchaseOrders } from '../POList/poListSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
-import { inventoryItemsData } from '../../../dummy-data/inventoryItems';
+import { inventoryItemsData } from '../../../models/inventoryModel';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';

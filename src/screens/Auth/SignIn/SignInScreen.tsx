@@ -125,9 +125,6 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   const isDelivery = role === 'delivery';
   const roleLabel = isDelivery ? 'Delivery Portal' : 'Business Portal';
 
-  const demoEmail = 'admin@finmatrix.pk';
-  const demoUsername = 'FM2024.saim';
-  const demoPassword = role === 'admin' ? 'admin123' : 'deliver123';
 
   // ── Orchestrated entrance animation ──
   useEffect(() => {
@@ -205,16 +202,6 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
-  const handleDemoFill = () => {
-    if (isDelivery) {
-      dispatch(setUsername(demoUsername));
-    } else {
-      dispatch(setEmail(demoEmail));
-    }
-    dispatch(setPassword(demoPassword));
-    setErrors({});
-    dispatch(clearSignInError());
-  };
 
   const isLoading = status === 'loading';
 
@@ -320,7 +307,7 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
                   dispatch(setUsername(t));
                   if (errors.username) setErrors(p => ({ ...p, username: '' }));
                 }}
-                placeholder="e.g., FM2024.saim"
+                placeholder="Enter your username"
                 autoCapitalize="none"
                 error={errors.username}
               />
@@ -441,18 +428,6 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
             )}
           </Animated.View>
 
-          {/* ── Dev-only auto-fill ── */}
-          {__DEV__ && (
-            <TouchableOpacity
-              style={s.devBanner}
-              onPress={handleDemoFill}
-              activeOpacity={0.7}>
-              <View style={s.devPill}>
-                <Text style={s.devPillLabel}>DEV</Text>
-              </View>
-              <Text style={s.devText}>Tap to auto-fill demo credentials</Text>
-            </TouchableOpacity>
-          )}
 
           {/* Security footer */}
           <View style={s.secFooter}>

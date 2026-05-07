@@ -165,3 +165,6 @@ export const validateAccount = (
 
   return errors;
 };
+
+// ─── Empty default for screens that reference COA data locally ──
+export const chartOfAccountsData: COAApiAccount[] = [];

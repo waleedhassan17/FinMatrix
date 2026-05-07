@@ -82,25 +82,29 @@ const CashFlowScreen: React.FC = () => {
 
 const Group: React.FC<{
   title: string;
-  lines: Array<{ id: string; label: string; amount: number }>;
+  lines?: Array<{ id: string; label: string; amount: number }>;
   total: number;
-}> = ({ title, lines, total }) => (
-  <View style={styles.groupCard}>
-    <Text style={styles.groupTitle}>{title}</Text>
-    {lines.length === 0 && <Text style={styles.empty}>No cash movements in range.</Text>}
-    {lines.map(line => (
-      <View key={line.id} style={styles.lineRow}>
-        <Text style={styles.lineLabel}>{line.label}</Text>
-        <Text style={styles.lineAmount}>{formatCurrency(line.amount, 'Rs ')}</Text>
+}> = ({ title, lines = [], total }) => {
+  const safeLines = Array.isArray(lines) ? lines : [];
+
+  return (
+    <View style={styles.groupCard}>
+      <Text style={styles.groupTitle}>{title}</Text>
+      {safeLines.length === 0 && <Text style={styles.empty}>No cash movements in range.</Text>}
+      {safeLines.map(line => (
+        <View key={line.id} style={styles.lineRow}>
+          <Text style={styles.lineLabel}>{line.label}</Text>
+          <Text style={styles.lineAmount}>{formatCurrency(line.amount, 'Rs ')}</Text>
+        </View>
+      ))}
+      <View style={styles.hr} />
+      <View style={styles.lineRow}>
+        <Text style={styles.totalLabel}>Total</Text>
+        <Text style={styles.totalValue}>{formatCurrency(total, 'Rs ')}</Text>
       </View>
-    ))}
-    <View style={styles.hr} />
-    <View style={styles.lineRow}>
-      <Text style={styles.totalLabel}>Total</Text>
-      <Text style={styles.totalValue}>{formatCurrency(total, 'Rs ')}</Text>
     </View>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },

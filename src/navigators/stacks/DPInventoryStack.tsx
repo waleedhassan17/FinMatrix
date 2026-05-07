@@ -11,7 +11,7 @@ export type DPInventoryStackParamList = {
 const Stack = createNativeStackNavigator<DPInventoryStackParamList>();
 
 const DPInventoryStack: React.FC = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+  <Stack.Navigator id="DPInventoryStack" screenOptions={{ headerShown: false }}>
     <Stack.Screen name="DPInventory" component={DPInventoryScreen} />
     <Stack.Screen name="DPShadowInventory" component={DPShadowInventoryScreen} />
   </Stack.Navigator>

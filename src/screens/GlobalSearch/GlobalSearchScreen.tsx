@@ -13,8 +13,8 @@ import {
   selectSearchQuery, selectSearchResults, selectIsSearching, selectRecentSearches,
   setQuery, clearSearch, addRecentSearch, performSearch,
 } from './globalSearchSlice';
-import type { SearchResult, SearchModule } from '../../dummy-data/auditAndSearch';
-import { MODULE_COLORS } from '../../dummy-data/auditAndSearch';
+import type { SearchResult, SearchModule } from '../../models/auditModel';
+import { MODULE_COLORS } from '../../models/auditModel';
 
 const P = {
   brand: '#1B5E92',

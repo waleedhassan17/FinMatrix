@@ -38,7 +38,7 @@ import {
 import { selectDeliverySummary } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
 import NotificationBadge from '../../components/NotificationBadge';
 import type { DashboardStackParamList } from '../../navigators/stacks/DashboardStack';
-import type { DashboardStat, RecentTransaction, DashboardAlert } from '../../dummy-data/dashboardData';
+import type { DashboardStat, RecentTransaction, DashboardAlert } from '../../models/dashboardModel';
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
 const { width: SCREEN_W } = Dimensions.get('window');

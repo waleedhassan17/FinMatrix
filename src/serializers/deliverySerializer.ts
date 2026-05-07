@@ -51,7 +51,11 @@ const mapItemLine = (
   itemName: raw.itemName ?? '',
   agencyId: raw.agencyId ?? '',
   agencyName: raw.agencyName ?? '',
+  orderedQty: raw.orderedQty ?? (typeof raw.quantity === 'number' ? raw.quantity : 0),
   quantity: typeof raw.quantity === 'number' ? raw.quantity : 0,
+  deliveredQty: raw.deliveredQty,
+  returnedQty: raw.returnedQty,
+  unitPrice: raw.unitPrice ?? 0,
 });
 
 const mapStatusHistory = (
@@ -67,7 +71,8 @@ export const mapDelivery = (
   raw: Partial<DeliveryApiEntity>,
 ): DeliveryRecord => ({
   id: raw.id ?? '',
-  referenceNo: raw.referenceNo ?? '',
+  reference: raw.reference ?? raw.referenceNo ?? '',
+  referenceNo: raw.referenceNo ?? raw.reference ?? '',
   customerId: raw.customerId ?? '',
   customerName: raw.customerName ?? '',
   zone: raw.zone ?? '',
@@ -84,7 +89,7 @@ export const mapDelivery = (
   customerPhone: raw.customerPhone,
   statusHistory: Array.isArray(raw.statusHistory)
     ? raw.statusHistory.map(mapStatusHistory)
-    : undefined,
+    : [],
   signature: raw.signature,
   signatureBase64: raw.signatureBase64,
   photos: Array.isArray(raw.photos) ? [...raw.photos] : undefined,
@@ -192,10 +197,14 @@ export const mapShadowInventory = (
 
 // ─── Envelope serializers ────────────────────────────
 export function deliveryListSerializer(payload: any): SerializedDeliveryList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.deliveries) ? data.deliveries : [];
-  const pagination = data.pagination || {};
-  const totals = data.totals || {};
+  const data = payload?.data;
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.deliveries)
+      ? data.deliveries
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
+  const totals = (data && !Array.isArray(data)) ? (data.totals || {}) : {};
 
   const deliveries = raw.map(mapDelivery);
 
@@ -223,7 +232,7 @@ export function deliveryListSerializer(payload: any): SerializedDeliveryList {
 export function deliverySingleSerializer(
   payload: any,
 ): DeliveryRecord | null {
-  const raw = payload?.data?.delivery;
+  const raw = payload?.data?.delivery ?? (payload?.data && !Array.isArray(payload.data) ? payload.data : null);
   if (!raw) return null;
   return mapDelivery(raw);
 }
@@ -235,9 +244,13 @@ export function deliveryListMutationSerializer(payload: any): DeliveryRecord[] {
 }
 
 export function personnelListSerializer(payload: any): SerializedPersonnelList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.personnel) ? data.personnel : [];
-  const pagination = data.pagination || {};
+  const data = payload?.data;
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.personnel)
+      ? data.personnel
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
   const personnel = raw.map(mapDeliveryPerson);
   return {
     personnel,
@@ -250,7 +263,7 @@ export function personnelListSerializer(payload: any): SerializedPersonnelList {
 export function personnelSingleSerializer(
   payload: any,
 ): DummyDeliveryPerson | null {
-  const raw = payload?.data?.personnel;
+  const raw = payload?.data?.personnel ?? (payload?.data && !Array.isArray(payload.data) ? payload.data : null);
   if (!raw) return null;
   return mapDeliveryPerson(raw);
 }

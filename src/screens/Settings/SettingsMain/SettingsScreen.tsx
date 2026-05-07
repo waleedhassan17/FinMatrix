@@ -16,8 +16,8 @@ import {
 import {
   DATE_FORMAT_OPTIONS, NUMBER_FORMAT_OPTIONS,
   CURRENCY_OPTIONS, PAYMENT_TERMS_OPTIONS,
-} from '../../../dummy-data/settingsData';
-import type { AppPreferences } from '../../../dummy-data/settingsData';
+} from '../../../models/settingsModel';
+import type { AppPreferences } from '../../../models/settingsModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;

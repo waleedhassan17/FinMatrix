@@ -89,18 +89,22 @@ const BalanceSheetScreen: React.FC = () => {
 
 const Section: React.FC<{
   title: string;
-  items: Array<{ accountId: string; accountCode: string; accountName: string; amount: number }>;
-}> = ({ title, items }) => (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    {items.map(item => (
-      <View key={item.accountId} style={styles.row}>
-        <Text style={styles.accountName}>{item.accountCode} - {item.accountName}</Text>
-        <Text style={styles.accountValue}>{formatCurrency(item.amount, 'Rs ')}</Text>
-      </View>
-    ))}
-  </View>
-);
+  items?: Array<{ accountId: string; accountCode: string; accountName: string; amount: number }>;
+}> = ({ title, items = [] }) => {
+  const safeItems = Array.isArray(items) ? items : [];
+
+  return (
+    <View style={styles.sectionCard}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {safeItems.map(item => (
+        <View key={item.accountId} style={styles.row}>
+          <Text style={styles.accountName}>{item.accountCode} - {item.accountName}</Text>
+          <Text style={styles.accountValue}>{formatCurrency(item.amount, 'Rs ')}</Text>
+        </View>
+      ))}
+    </View>
+  );
+};
 
 const SummaryRow: React.FC<{ label: string; value: number; strong?: boolean }> = ({ label, value, strong }) => (
   <View style={styles.row}>

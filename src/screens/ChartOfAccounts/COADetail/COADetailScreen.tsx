@@ -29,7 +29,7 @@ import type { DetailTab } from './coaDetailSlice';
 import {
   getAccountTransactions,
   type AccountTransaction,
-} from '../../../dummy-data/accountTransactions';
+} from '../../../models/accountTransactionModel';
 import type { AccountType } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 

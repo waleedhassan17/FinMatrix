@@ -22,6 +22,12 @@ import {
 
 export type BillStatusFilter = 'all' | BillStatus;
 
+const toApiBillStatus = (statusFilter: BillStatusFilter): string | undefined => {
+  if (statusFilter === 'all') return undefined;
+  if (statusFilter === 'partially_paid') return 'partial';
+  return statusFilter;
+};
+
 export interface BillListSliceState {
   bills: Bill[];
   searchQuery: string;
@@ -76,9 +82,10 @@ export const billListSlice = createAppSlice({
       async (_arg, thunkAPI) => {
         const root = thunkAPI.getState() as { billList: BillListSliceState };
         const { searchQuery, statusFilter } = root.billList;
+        const apiStatus = toApiBillStatus(statusFilter);
         return getBillsAPI({
           ...(searchQuery ? { search: searchQuery } : {}),
-          status: statusFilter,
+          ...(apiStatus ? { status: apiStatus } : {}),
         });
       },
       {

@@ -32,8 +32,10 @@ import {
 import {
   warehouseAgencies,
   type WarehouseAgency,
-} from '../../../dummy-data/warehouseAgencies';
-import { dummyDeliveryPersonnel } from '../../../dummy-data/deliveryPersonnel';
+} from '../../../models/agencyModel';
+import { dummyDeliveryPersonnel } from '../../../models/deliveryModel';
+import { setStoredCompanyId } from '../../../network/apiHelpers';
+import { createCompanyAPI } from '../../../network/authNetwork';
 import type { RootStackParamList } from '../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateCompany'>;
@@ -287,55 +289,66 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
     0,
   );
 
-  const handleCreate = useCallback(() => {
+  const handleCreate = useCallback(async () => {
     if (!user || isCreating) return;
     setIsCreating(true);
 
-    const companyId = `company_${uuidv4().slice(0, 8)}`;
-    const now = new Date().toISOString();
-
-    const adminMember: CompanyMember = {
-      userId: user.uid,
-      role: 'admin',
-      displayName: user.displayName,
-      email: user.email,
-      phone: user.phoneNumber,
-      joinedAt: now,
-    };
-
-    const companyData: CompanyData = {
-      companyId,
-      name: companyName.trim(),
-      industry,
-      address: street.trim(),
-      city: city.trim(),
-      state: stateProv.trim(),
-      zipCode: zipCode.trim(),
-      country,
-      phone: phone.trim(),
-      email: email.trim(),
-      website: website.trim(),
-      taxId: taxId.trim(),
-      logo: null,
-      inviteCode,
-      agencies: selectedAgencies,
-      members: [adminMember],
-      deliveryPersonnel: [
-        ...dummyDeliveryPersonnel.map(dp => ({ ...dp, companyId })),
-      ],
-      createdAt: now,
-    };
-
     try {
+      // Create company on backend first to get the real company ID
+      const backendCompany = await createCompanyAPI({
+        name: companyName.trim(),
+        industry,
+        address: `${street.trim()}, ${city.trim()}, ${stateProv.trim()} ${zipCode.trim()}, ${country}`,
+        phone: phone.trim(),
+        email: email.trim(),
+        taxId: taxId.trim(),
+      });
+
+      const companyId: string = backendCompany?.id ?? backendCompany?.companyId ?? `company_${uuidv4().slice(0, 8)}`;
+      await setStoredCompanyId(companyId);
+
+      const now = new Date().toISOString();
+      const adminMember: CompanyMember = {
+        userId: user.uid,
+        role: 'admin',
+        displayName: user.displayName,
+        email: user.email,
+        phone: user.phoneNumber,
+        joinedAt: now,
+      };
+
+      const companyData: CompanyData = {
+        companyId,
+        name: companyName.trim(),
+        industry,
+        address: street.trim(),
+        city: city.trim(),
+        state: stateProv.trim(),
+        zipCode: zipCode.trim(),
+        country,
+        phone: phone.trim(),
+        email: email.trim(),
+        website: website.trim(),
+        taxId: taxId.trim(),
+        logo: null,
+        inviteCode,
+        agencies: selectedAgencies,
+        members: [adminMember],
+        deliveryPersonnel: [
+          ...dummyDeliveryPersonnel.map(dp => ({ ...dp, companyId })),
+        ],
+        createdAt: now,
+      };
+
       dispatch(createCompany(companyData));
       dispatch(setUser({ ...user, companyId }));
       navigation.reset({
         index: 0,
         routes: [{ name: ROUTES.ADMIN_TABS as any }],
       });
-    } catch {
+    } catch (err: any) {
       setIsCreating(false);
-      Alert.alert('Error', 'Unable to create company. Please try again.');
+      Alert.alert('Error', err?.message ?? 'Unable to create company. Please try again.');
     }
   }, [
     user,

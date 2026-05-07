@@ -55,9 +55,15 @@ export const mapCreditMemo = (raw: Partial<CreditMemoApiEntity>): CreditMemo => 
 
 // ─── Envelope serializers ────────────────────────────
 export function creditMemoListSerializer(payload: any): SerializedCreditMemoList {
-  const data = payload?.data || {};
-  const raw: any[] = Array.isArray(data.creditMemos) ? data.creditMemos : [];
-  const pagination = data.pagination || {};
+  const data = payload?.data;
+  // Backend returns flat array: { success: true, data: [...] }
+  // Also support nested: { data: { creditMemos: [...], pagination: {...} } }
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.creditMemos)
+      ? data.creditMemos
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
 
   return {
     creditMemos: raw.map(mapCreditMemo),
@@ -68,7 +74,7 @@ export function creditMemoListSerializer(payload: any): SerializedCreditMemoList
 }
 
 export function creditMemoSingleSerializer(payload: any): CreditMemo | null {
-  const raw = payload?.data?.creditMemo;
-  if (!raw) return null;
+  const raw = payload?.data?.creditMemo ?? payload?.data;
+  if (!raw || Array.isArray(raw)) return null;
   return mapCreditMemo(raw);
 }

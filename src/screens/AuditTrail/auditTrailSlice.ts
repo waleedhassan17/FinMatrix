@@ -4,7 +4,7 @@ import {
   fetchAuditTrail as apiFetchAudit,
   type AuditFilters,
 } from '../../network/auditSearchNetwork';
-import type { AuditEntry, AuditModule, AuditAction } from '../../dummy-data/auditAndSearch';
+import type { AuditEntry, AuditModule, AuditAction } from '../../models/auditModel';
 
 interface AuditTrailState {
   entries: AuditEntry[];

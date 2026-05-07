@@ -29,3 +29,16 @@ export interface DashboardAlert {
   message: string;
   severity: 'amber' | 'red' | 'blue';
 }
+
+// ─── Empty defaults for initial state ────────────────
+export const dashboardStats: DashboardStat[] = [];
+export const recentTransactions: RecentTransaction[] = [];
+export const deliveryOverview: DeliveryOverviewData = {
+  assigned: 0,
+  inTransit: 0,
+  delivered: 0,
+  pending: 0,
+  total: 0,
+};
+export const dashboardAlerts: DashboardAlert[] = [];
+

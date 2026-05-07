@@ -116,6 +116,8 @@ const SOListScreen: React.FC = () => {
     [salesOrders],
   );
 
+  const showFab = !initialLoading && !(error && salesOrders.length === 0) && filtered.length > 0;
+
   const renderCard = ({ item: so }: { item: SalesOrder }) => {
     const statusCol = STATUS_COLOR[so.status];
     const totalOrdered = so.lines.reduce((s, l) => s + l.quantity, 0);
@@ -253,9 +255,11 @@ const SOListScreen: React.FC = () => {
         />
       )}
 
-      <TouchableOpacity style={styles.fab} activeOpacity={0.8} onPress={() => navigation.navigate('SOForm')}>
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
+      {showFab && (
+        <TouchableOpacity style={styles.fab} activeOpacity={0.8} onPress={() => navigation.navigate('SOForm')}>
+          <Text style={styles.fabIcon}>+</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
@@ -272,7 +276,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
-  summaryRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.sm },
+  summaryRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs, gap: spacing.sm },
   summaryCard: {
     flex: 1,
     backgroundColor: colors.white,
@@ -324,7 +328,7 @@ const styles = StyleSheet.create({
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
   amtLabel: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
   amtValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
+  center: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', gap: spacing.md, paddingTop: spacing.xl * 2, paddingBottom: spacing.xl * 4 },
   emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
   emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   fab: {

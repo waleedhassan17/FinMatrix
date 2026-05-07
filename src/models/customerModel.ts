@@ -142,3 +142,13 @@ export interface CustomerApiPagination {
   total: number;
   totalPages: number;
 }
+
+// ─── Legacy shape used by delivery screens ──────────
+export interface LegacyCustomer {
+  id: string;
+  name: string;
+  shippingAddress: { city: string };
+}
+
+export const customers: LegacyCustomer[] = [];
+

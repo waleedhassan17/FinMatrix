@@ -44,7 +44,7 @@ import {
 } from './billFormSlice';
 import { selectBills, fetchBills, upsertBill } from '../BillList/billListSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
-import { chartOfAccountsData } from '../../../dummy-data/chartOfAccounts';
+import { chartOfAccountsData } from '../../../models/coaModel';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';

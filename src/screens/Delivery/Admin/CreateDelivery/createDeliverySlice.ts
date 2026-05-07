@@ -1,6 +1,6 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { DeliveryPriority } from '../../../../dummy-data/deliveries';
+import type { DeliveryPriority } from '../../../../models/deliveryModel';
 
 interface DraftItem {
   agencyId: string;
@@ -8,6 +8,8 @@ interface DraftItem {
   itemId: string;
   itemName: string;
   quantity: number;
+  orderedQty: number;
+  unitPrice: number;
 }
 
 export interface CreateDeliverySliceState {

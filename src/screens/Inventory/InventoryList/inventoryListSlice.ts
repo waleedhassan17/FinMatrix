@@ -7,7 +7,7 @@
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { InventoryItemData } from '../../../dummy-data/inventoryItems';
+import type { InventoryItemData } from '../../../models/inventoryModel';
 import {
   getInventoryItemsAPI,
   createInventoryItemAPI,
@@ -110,7 +110,7 @@ export const inventoryListSlice = createAppSlice({
         pending: state => { state.isLoading = true; state.error = ''; },
         fulfilled: (state, action: PayloadAction<any>) => {
           const serialized = inventoryListSerializer(action.payload);
-          state.items = serialized.items;
+          state.items = Array.isArray(serialized.items) ? serialized.items : [];
           state.isLoading = false;
         },
         rejected: (state, action) => {

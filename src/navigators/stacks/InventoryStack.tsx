@@ -19,7 +19,7 @@ export type InventoryStackParamList = {
 const Stack = createNativeStackNavigator<InventoryStackParamList>();
 
 const InventoryStack: React.FC = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+  <Stack.Navigator id="InventoryStack" screenOptions={{ headerShown: false }}>
     <Stack.Screen name="InventoryList" component={InventoryListScreen} />
     <Stack.Screen name="InventoryForm" component={InventoryFormScreen} />
     <Stack.Screen name="InventoryDetail" component={InventoryDetailScreen} />

@@ -30,7 +30,7 @@ import CustomInput from '../../../Custom-Components/CustomInput';
 import {
   addTransfer,
   generateTransferRef,
-} from '../../../dummy-data/transferHistory';
+} from '../../../models/stockTransferModel';
 import { LOCATION_OPTIONS } from '../../../models/inventoryModel';
 import { formatDate } from '../../../utils/formatters';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';

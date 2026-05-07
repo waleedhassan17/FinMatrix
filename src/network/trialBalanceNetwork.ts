@@ -1,39 +1,11 @@
-import { simulateApiCall } from './apiHelpers';
-import { chartOfAccountsData } from '../dummy-data/chartOfAccounts';
-import { round2 } from '../models/reportModel';
-import {
-  type TrialBalanceReport,
-  type TrialBalanceReportResponse,
-  type TrialBalanceRow,
-} from '../models/trialBalanceModel';
-import { balanceToTrialColumns, buildBalancesAsOf, envelope } from './_reportHelpers';
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Trial Balance Report Network (Production API)
+// ═══════════════════════════════════════════════════════
 
-export const getTrialBalanceReportAPI = async (
-  asOfDate: string,
-): Promise<TrialBalanceReportResponse> => {
-  const balances = buildBalancesAsOf(asOfDate);
+import { fetchReport } from './_reportHelpers';
 
-  const rows: TrialBalanceRow[] = chartOfAccountsData
-    .filter(account => account.isActive)
-    .map(account => {
-      const balance = balances[account.id] ?? 0;
-      const { debit, credit } = balanceToTrialColumns(balance, account.normalBalance);
-      return {
-        accountId: account.id,
-        accountCode: account.code,
-        accountName: account.name,
-        debit,
-        credit,
-      };
-    })
-    .filter(row => row.debit !== 0 || row.credit !== 0)
-    .sort((a, b) => a.accountCode.localeCompare(b.accountCode));
-
-  const totalDebit = round2(rows.reduce((sum, row) => sum + row.debit, 0));
-  const totalCredit = round2(rows.reduce((sum, row) => sum + row.credit, 0));
-
-  return simulateApiCall(
-    envelope<TrialBalanceReport>({ asOfDate, rows, totalDebit, totalCredit }),
-    450,
-  );
+export const getTrialBalanceAPI = async (paramsOrDate: string | { asOfDate?: string } = {}): Promise<any> => {
+  const params = typeof paramsOrDate === 'string' ? { asOfDate: paramsOrDate } : paramsOrDate;
+  return fetchReport('/reports/trial-balance', params);
 };
+export const getTrialBalanceReportAPI = getTrialBalanceAPI;

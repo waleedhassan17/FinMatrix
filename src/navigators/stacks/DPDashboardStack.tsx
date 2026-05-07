@@ -19,7 +19,7 @@ export type DPDashboardStackParamList = {
 const Stack = createNativeStackNavigator<DPDashboardStackParamList>();
 
 const DPDashboardStack: React.FC = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+  <Stack.Navigator id="DPDashboardStack" screenOptions={{ headerShown: false }}>
     <Stack.Screen name="DPDashboard" component={DPDashboardScreen} />
     <Stack.Screen name="Notifications" component={NotificationCenterScreen} />
     <Stack.Screen name="DPDeliveryDetail" component={DPDeliveryDetailScreen} />

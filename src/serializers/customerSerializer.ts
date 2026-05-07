@@ -47,9 +47,13 @@ export const mapCustomer = (raw: Partial<CustomerApiEntity>): Customer => {
 // ─── List serializer ─────────────────────────────────
 
 export function customerListSerializer(payload: any): SerializedCustomerList {
-  const data = payload?.data || {};
-  const rawCustomers: any[] = data.customers || [];
-  const pagination = data.pagination || {};
+  const data = payload?.data;
+  const rawCustomers: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.customers)
+      ? data.customers
+      : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
 
   return {
     customers: rawCustomers.map(mapCustomer),
