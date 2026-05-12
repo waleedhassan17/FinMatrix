@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 // ─── Enums & Unions ───────────────────────────────────
-export type UserRole = 'admin' | 'delivery';
+export type UserRole = 'admin' | 'delivery' | 'super_admin';
 export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
 export type AccountSubType =
   | 'current_asset'
@@ -759,6 +759,8 @@ export type RootStackParamList = {
   DeliveryOnboarding: undefined;
   AdminTabs: undefined;
   DeliveryTabs: undefined;
+  SuperAdminTabs: undefined;
+  SubscriptionSelect: { companyId?: string } | undefined;
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;
   DeliveryPersonnelDetail: { userId: string };

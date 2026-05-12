@@ -14,6 +14,7 @@ import EmailVerificationScreen from '../screens/Auth/EmailVerification/EmailVeri
 import CompanySetupScreen from '../screens/Auth/CompanySetup/CompanySetupScreen';
 import CreateCompanyScreen from '../screens/Auth/CreateCompany/CreateCompanyScreen';
 import JoinCompanyScreen from '../screens/Auth/JoinCompany/JoinCompanyScreen';
+import SubscriptionSelectScreen from '../screens/Auth/SubscriptionSelect/SubscriptionSelectScreen';
 
 // Splash Overlay
 import SplashOverlay from '../screens/Splash/SplashScreen';
@@ -21,6 +22,7 @@ import SplashOverlay from '../screens/Splash/SplashScreen';
 // Tab Navigators
 import AdminTabNavigator from './AdminTabNavigator';
 import DeliveryTabNavigator from './DeliveryTabNavigator';
+import SuperAdminNavigator from './SuperAdminNavigator';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -35,6 +37,7 @@ const BaseNavigator: React.FC = () => {
   );
   const hasCompany = Boolean(user?.companyId);
   const isDeliveryUser = user?.role === 'delivery';
+  const isSuperAdmin = user?.role === 'super_admin';
 
   // ─── Auth Flow Logic ─────────────────────────────────
   // 1. Not seen onboarding → Onboarding
@@ -78,6 +81,15 @@ const BaseNavigator: React.FC = () => {
               component={EmailVerificationScreen}
             />
           </>
+        ) : isSuperAdmin ? (
+          // ── Super Admin → Platform Control Panel ──
+          <>
+            <Stack.Screen
+              name="SuperAdminTabs"
+              component={SuperAdminNavigator}
+              options={{ animation: 'none' }}
+            />
+          </>
         ) : isDeliveryUser ? (
           // ── Delivery Personnel → straight to home ──
           <>
@@ -112,6 +124,10 @@ const BaseNavigator: React.FC = () => {
                   name="JoinCompany"
                   component={JoinCompanyScreen}
                   options={{ animation: 'none' }}
+                />
+                <Stack.Screen
+                  name="SubscriptionSelect"
+                  component={SubscriptionSelectScreen}
                 />
                 <Stack.Screen
                   name="AdminTabs"

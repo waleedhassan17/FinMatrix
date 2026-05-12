@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Admin Dashboard Screen
+// FinMatrix — Company Admin Dashboard Screen
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,683 +10,519 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  Alert,
-  Dimensions,
+  ActivityIndicator,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import BottomSheet, {
-  BottomSheetBackdrop,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet';
 
-import { colors, spacing, borderRadius, shadows } from '../../theme';
-import { THEME } from '../../utils/theme';
 import { useAppSelector, useAppDispatch } from '../../hooks/useReduxHooks';
-import { selectUser, signOut } from '../Auth/authSlice';
+import { selectUser } from '../Auth/authSlice';
+import { selectActiveCompany, loadCompany } from '../Auth/companySlice';
 import { selectUnreadNotificationCountForUser } from '../Notifications/notificationCenterSlice';
-import { selectActiveCompany } from '../Auth/companySlice';
+import { getCompanyAPI } from '../../network/authNetwork';
 import {
   selectDashboardStats,
   selectRecentTransactions,
+  selectDeliveryOverview,
   selectDashboardAlerts,
   selectIsRefreshing,
+  selectDashboardStatus,
   refreshDashboard,
+  loadDashboard,
 } from './adminDashboardSlice';
-import { selectDeliverySummary } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
 import NotificationBadge from '../../components/NotificationBadge';
 import type { DashboardStackParamList } from '../../navigators/stacks/DashboardStack';
-import type { DashboardStat, RecentTransaction, DashboardAlert } from '../../models/dashboardModel';
+import type { DashboardStat, RecentTransaction, DashboardAlert, DeliveryOverviewData } from '../../models/dashboardModel';
+import { colors, spacing, borderRadius, shadows } from '../../theme';
+import { THEME } from '../../utils/theme';
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
-const { width: SCREEN_W } = Dimensions.get('window');
 
-// ── Helpers ───────────────────────────────────────────
-const getGreeting = (): string => {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good Morning,';
-  if (h < 17) return 'Good Afternoon,';
-  return 'Good Evening,';
+const BORDER_COLORS: Record<string, string> = {
+  revenue: '#27AE60',
+  ar: '#2E75B6',
+  expenses: '#E74C3C',
+  ap: '#F39C12',
 };
 
-const getInitials = (name: string): string => {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-};
-
-const QUICK_ACTIONS = [
-  { key: 'invoice', label: 'New Invoice', abbr: 'NI', bg: '#2E75B6' },
-  { key: 'payment', label: 'Record Payment', abbr: 'RP', bg: '#27AE60' },
-  { key: 'expense', label: 'New Expense', abbr: 'NE', bg: '#E74C3C' },
-  { key: 'payroll', label: 'Run Payroll', abbr: 'PR', bg: '#8E44AD' },
-  { key: 'inventory', label: 'Check Inventory', abbr: 'CI', bg: '#F39C12' },
-  { key: 'delivery', label: 'Assign Delivery', abbr: 'AD', bg: '#1B3A5C' },
-  { key: 'reports', label: 'View Reports', abbr: 'VR', bg: '#16A085' },
-  { key: 'bank', label: 'Reconcile Bank', abbr: 'RB', bg: '#2C3E50' },
-];
-
-const ALERT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  amber: { bg: '#FFF8E1', border: '#F39C12', text: '#B7791F' },
-  red: { bg: '#FFF5F5', border: '#E74C3C', text: '#C53030' },
-  blue: { bg: '#EBF8FF', border: '#2E75B6', text: '#2B6CB0' },
-};
-
-// ═══════════════════════════════════════════════════════
-// COMPONENT
-// ═══════════════════════════════════════════════════════
 const AdminDashboardScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
-
+  const navigation = useNavigation<Nav>();
   const user = useAppSelector(selectUser);
-  const unreadNotifications = useAppSelector(state =>
-    selectUnreadNotificationCountForUser(state, 'admin', user?.uid),
-  );
   const company = useAppSelector(selectActiveCompany);
+  const unreadCount = useAppSelector(state =>
+    selectUnreadNotificationCountForUser(state, (user?.role ?? 'admin') as any, user?.uid ?? ''),
+  );
   const stats = useAppSelector(selectDashboardStats);
   const transactions = useAppSelector(selectRecentTransactions);
-  const delivery = useAppSelector(selectDeliverySummary);
+  const delivery = useAppSelector(selectDeliveryOverview);
   const alerts = useAppSelector(selectDashboardAlerts);
   const isRefreshing = useAppSelector(selectIsRefreshing);
+  const status = useAppSelector(selectDashboardStatus);
 
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ['28%'], []);
+  useEffect(() => {
+    dispatch(loadDashboard());
+  }, [dispatch]);
 
-  const displayName = user?.displayName ?? 'Admin';
-  const initials = getInitials(displayName);
+  // Populate company name from API for users who logged into an existing account
+  useEffect(() => {
+    if (!company && user?.companyId) {
+      getCompanyAPI(user.companyId)
+        .then(apiCompany => {
+          if (apiCompany?.id) {
+            dispatch(loadCompany({
+              companyId: apiCompany.id,
+              name: apiCompany.name ?? 'My Company',
+              industry: apiCompany.industry ?? '',
+              address: typeof apiCompany.address === 'string'
+                ? apiCompany.address
+                : (apiCompany.address?.street ?? ''),
+              city: apiCompany.address?.city ?? '',
+              state: apiCompany.address?.state ?? '',
+              zipCode: apiCompany.address?.postalCode ?? '',
+              country: apiCompany.address?.country ?? '',
+              phone: apiCompany.phone ?? '',
+              email: apiCompany.email ?? '',
+              website: apiCompany.website ?? '',
+              taxId: apiCompany.taxId ?? '',
+              logo: apiCompany.logo ?? null,
+              inviteCode: apiCompany.inviteCode ?? '',
+              agencies: [],
+              members: [],
+              deliveryPersonnel: [],
+              createdAt: apiCompany.createdAt ?? new Date().toISOString(),
+            }));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user?.companyId, company, dispatch]);
 
-  // ── Callbacks ─────────────────────────────────────
   const onRefresh = useCallback(() => {
     dispatch(refreshDashboard());
   }, [dispatch]);
 
-  const openProfileSheet = useCallback(() => {
-    bottomSheetRef.current?.expand();
-  }, []);
+  const isLoading = status === 'loading';
 
-  const handleLogout = useCallback(() => {
-    bottomSheetRef.current?.close();
-    dispatch(signOut());
-  }, [dispatch]);
-
-  const handleQuickAction = useCallback((key: string) => {
-    if (key === 'delivery') {
-      navigation.navigate('AssignDeliveries');
-      return;
-    }
-
-    const moduleMap: Record<string, string> = {
-      invoice: 'Transactions',
-      payment: 'Transactions',
-      expense: 'Transactions',
-      payroll: 'Payroll',
-      inventory: 'Inventory',
-      reports: 'Reports',
-      bank: 'Reconciliation',
-    };
-    Alert.alert('Coming Soon', `This feature is coming in the ${moduleMap[key] ?? 'next'} module.`);
-  }, [navigation]);
-
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.4} />
-    ),
-    [],
-  );
-
-  // ── Progress bar width ────────────────────────────
-  const deliveryProgress = delivery.total > 0 ? delivery.delivered / delivery.total : 0;
-
-  // ═════════════════════════════════════════════════════
-  // RENDER
-  // ═════════════════════════════════════════════════════
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* ── SECTION 1: TOP BAR ── */}
-      <View style={styles.topBar}>
-        <View style={styles.topBarLeft}>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.displayName} numberOfLines={1}>
-            {displayName}
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.companyName}>{company?.name ?? 'FinMatrix'}</Text>
+          <Text style={styles.greeting}>
+            {`Good ${new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, ${user?.displayName?.split(' ')[0] ?? 'Admin'}`}
           </Text>
         </View>
-        <View style={styles.topBarRight}>
-          <TouchableOpacity
-            style={styles.bellBtn}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('GlobalSearch')}
-          >
-            <Feather name="search" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.bellBtn}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Notifications')}
-          >
-            <Text style={styles.bellIcon}>🔔</Text>
-            <NotificationBadge count={unreadNotifications} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.avatar}
-            activeOpacity={0.7}
-            onPress={openProfileSheet}
-          >
-            <Text style={styles.avatarText}>{initials}</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.notifBtn}
+          onPress={() => navigation.navigate('Notifications')}
+        >
+          <Feather name="bell" size={22} color={colors.textPrimary} />
+          {unreadCount > 0 && <NotificationBadge count={unreadCount} />}
+        </TouchableOpacity>
       </View>
 
-      {/* ── COMPANY SWITCHER ── */}
-      <TouchableOpacity style={styles.companySwitcher} activeOpacity={0.7}>
-        <Text style={styles.companyName} numberOfLines={1}>
-          {company?.name ?? 'My Company'} ▼
-        </Text>
-      </TouchableOpacity>
-
-      {/* ── SCROLLABLE CONTENT ── */}
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary]}
             tintColor={colors.primary}
           />
         }
       >
-        {/* ── SECTION 2: FINANCIAL SUMMARY ── */}
-        <Text style={styles.sectionTitle}>Financial Summary</Text>
-        <View style={styles.statsGrid}>
-          {stats.map((stat: DashboardStat) => (
-            <View key={stat.id} style={[styles.statCard, { borderLeftColor: stat.borderColor }]}>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              {stat.trend ? (
-                <View
-                  style={[
-                    styles.trendPill,
-                    { backgroundColor: stat.trendPositive ? '#E8F5E9' : '#FFEBEE' },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.trendText,
-                      { color: stat.trendPositive ? '#2E7D32' : '#C62828' },
-                    ]}
-                  >
-                    {stat.trendDirection === 'up' ? '↑' : '↓'} {stat.trend}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          ))}
-        </View>
+        {isLoading && (
+          <ActivityIndicator
+            size="small"
+            color={colors.primary}
+            style={styles.loader}
+          />
+        )}
 
-        {/* ── SECTION 3: QUICK ACTIONS ── */}
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.quickActionsRow}
-        >
-          {QUICK_ACTIONS.map(action => (
-            <TouchableOpacity
-              key={action.key}
-              style={styles.quickActionItem}
-              activeOpacity={0.7}
-              onPress={() => handleQuickAction(action.key)}
-            >
-              <View style={[styles.quickActionCircle, { backgroundColor: action.bg + '1A' }]}>
-                <Text style={[styles.quickActionAbbr, { color: action.bg }]}>
-                  {action.abbr}
-                </Text>
-              </View>
-              <Text style={styles.quickActionLabel} numberOfLines={2}>
-                {action.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* ── SECTION 4: RECENT TRANSACTIONS ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          <TouchableOpacity activeOpacity={0.7} onPress={() => Alert.alert('Navigate', 'Go to Transactions Hub')}>
-            <Text style={styles.viewAllLink}>View All</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.transactionsCard}>
-          {transactions.map((txn: RecentTransaction, idx: number) => (
-            <View
-              key={txn.id}
-              style={[
-                styles.txnRow,
-                idx < transactions.length - 1 && styles.txnRowBorder,
-              ]}
-            >
-              <View
-                style={[
-                  styles.txnIcon,
-                  {
-                    backgroundColor:
-                      txn.type === 'income' ? '#E8F5E9' : '#FFEBEE',
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    ...THEME.typography.labelLg,
-                    fontWeight: '700',
-                    color: txn.type === 'income' ? '#2E7D32' : '#C62828',
-                  }}
-                >
-                  {txn.type === 'income' ? '↑' : '↓'}
-                </Text>
-              </View>
-              <View style={styles.txnInfo}>
-                <Text style={styles.txnDesc} numberOfLines={1}>
-                  {txn.description}
-                </Text>
-                <Text style={styles.txnDate}>{txn.date}</Text>
-              </View>
-              <Text
-                style={[
-                  styles.txnAmount,
-                  {
-                    color: txn.type === 'income' ? colors.success : colors.danger,
-                  },
-                ]}
-              >
-                {txn.amount}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── SECTION 5: DELIVERY OVERVIEW ── */}
-        <Text style={styles.sectionTitle}>Delivery Overview</Text>
-        <View style={styles.deliveryCard}>
-          <View style={styles.deliveryStatsRow}>
-            {[
-              { label: 'Assigned', value: delivery.pending + delivery.inTransit, color: colors.primary },
-              { label: 'In Transit', value: delivery.inTransit, color: colors.warning },
-              { label: 'Delivered', value: delivery.delivered, color: colors.success },
-              { label: 'Pending', value: delivery.pending, color: colors.danger },
-            ].map(item => (
-              <View key={item.label} style={styles.deliveryStat}>
-                <Text style={[styles.deliveryStatValue, { color: item.color }]}>
-                  {item.value}
-                </Text>
-                <Text style={styles.deliveryStatLabel}>{item.label}</Text>
-              </View>
+        {/* Alerts */}
+        {alerts.length > 0 && (
+          <View style={styles.section}>
+            {alerts.map(alert => (
+              <AlertBanner key={alert.id} alert={alert} />
             ))}
           </View>
-          {/* Progress bar */}
-          <View style={styles.progressBarBg}>
-            <View
-              style={[
-                styles.progressBarFill,
-                { width: `${Math.round(deliveryProgress * 100)}%` },
-              ]}
-            />
+        )}
+
+        {/* Financial Summary */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Financial Summary</Text>
+          <View style={styles.statsGrid}>
+            {stats.map(stat => (
+              <StatCard key={stat.id} stat={stat} />
+            ))}
           </View>
-          <Text style={styles.progressLabel}>
-            {delivery.delivered}/{delivery.total} Delivered ({Math.round(deliveryProgress * 100)}%)
-          </Text>
-          <TouchableOpacity
-            style={styles.manageDeliveriesBtn}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('AssignDeliveries')}
-          >
-            <Text style={styles.manageDeliveriesTxt}>Manage Deliveries</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* ── SECTION 6: ALERTS ── */}
-        <Text style={styles.sectionTitle}>Alerts</Text>
-        {alerts.slice(0, 3).map((alert: DashboardAlert) => {
-          const c = ALERT_COLORS[alert.severity] ?? ALERT_COLORS.blue;
-          return (
-            <TouchableOpacity
-              key={alert.id}
-              style={[
-                styles.alertRow,
-                { backgroundColor: c.bg, borderLeftColor: c.border },
-              ]}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.alertText, { color: c.text }]} numberOfLines={2}>
-                {alert.message}
-              </Text>
-              <Text style={[styles.alertChevron, { color: c.text }]}>›</Text>
-            </TouchableOpacity>
-          );
-        })}
+        {/* Delivery Overview */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Delivery Overview</Text>
+          <DeliveryCard delivery={delivery} />
+        </View>
 
-        <View style={{ height: spacing.xl }} />
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionsGrid}>
+            <QuickAction
+              icon="file-text"
+              label="New Invoice"
+              color="#2E75B6"
+              onPress={() =>
+                (navigation as any).navigate('TransactionsStack', {
+                  screen: 'InvoiceForm',
+                })
+              }
+            />
+            <QuickAction
+              icon="shopping-cart"
+              label="New Bill"
+              color="#E74C3C"
+              onPress={() =>
+                (navigation as any).navigate('TransactionsStack', {
+                  screen: 'BillForm',
+                })
+              }
+            />
+            <QuickAction
+              icon="package"
+              label="Inventory"
+              color="#9B59B6"
+              onPress={() =>
+                (navigation as any).navigate('InventoryStack', {
+                  screen: 'InventoryList',
+                })
+              }
+            />
+            <QuickAction
+              icon="users"
+              label="Deliveries"
+              color="#27AE60"
+              onPress={() => navigation.navigate('DeliveryPersonnelList')}
+            />
+          </View>
+        </View>
+
+        {/* Recent Transactions */}
+        {transactions.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            <View style={styles.card}>
+              {transactions.map((tx, idx) => (
+                <TransactionRow
+                  key={tx.id}
+                  tx={tx}
+                  isLast={idx === transactions.length - 1}
+                />
+              ))}
+            </View>
+          </View>
+        )}
       </ScrollView>
-
-      {/* ── BOTTOM SHEET (Profile) ── */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        backdropComponent={renderBackdrop}
-        backgroundStyle={styles.sheetBg}
-        handleIndicatorStyle={styles.sheetHandle}
-      >
-        <BottomSheetView style={styles.sheetContent}>
-          <TouchableOpacity style={styles.sheetOption} activeOpacity={0.7}>
-            <Text style={styles.sheetOptionText}>👤  My Profile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.sheetOption} activeOpacity={0.7}>
-            <Text style={styles.sheetOptionText}>⚙️  Settings</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.sheetOption, styles.sheetLogout]}
-            activeOpacity={0.7}
-            onPress={handleLogout}
-          >
-            <Text style={styles.sheetLogoutText}>🚪  Logout</Text>
-          </TouchableOpacity>
-        </BottomSheetView>
-      </BottomSheet>
     </SafeAreaView>
   );
 };
 
-// ═══════════════════════════════════════════════════════
-// STYLES
-// ═══════════════════════════════════════════════════════
-const CARD_GAP = spacing.sm;
-const CARD_W = (SCREEN_W - spacing.lg * 2 - CARD_GAP) / 2;
+// ─── Sub-components ─────────────────────────────────
+
+const StatCard: React.FC<{ stat: DashboardStat }> = ({ stat }) => (
+  <View style={[styles.statCard, { borderLeftColor: stat.borderColor }]}>
+    <Text style={styles.statLabel}>{stat.label}</Text>
+    <Text style={styles.statValue}>{stat.value}</Text>
+    {stat.trend && (
+      <View style={styles.trendRow}>
+        <Feather
+          name={stat.trendDirection === 'up' ? 'trending-up' : 'trending-down'}
+          size={12}
+          color={stat.trendPositive ? '#27AE60' : '#E74C3C'}
+        />
+        <Text
+          style={[
+            styles.trendText,
+            { color: stat.trendPositive ? '#27AE60' : '#E74C3C' },
+          ]}
+        >
+          {stat.trend}
+        </Text>
+      </View>
+    )}
+  </View>
+);
+
+const DeliveryCard: React.FC<{ delivery: DeliveryOverviewData }> = ({ delivery }) => (
+  <View style={styles.card}>
+    <View style={styles.deliveryRow}>
+      {[
+        { label: 'Pending', value: delivery.pending, color: '#F39C12' },
+        { label: 'In Transit', value: delivery.inTransit, color: '#2E75B6' },
+        { label: 'Delivered', value: delivery.delivered, color: '#27AE60' },
+        { label: 'Total', value: delivery.total, color: '#6C757D' },
+      ].map(item => (
+        <View key={item.label} style={styles.deliveryItem}>
+          <Text style={[styles.deliveryCount, { color: item.color }]}>
+            {item.value}
+          </Text>
+          <Text style={styles.deliveryLabel}>{item.label}</Text>
+        </View>
+      ))}
+    </View>
+  </View>
+);
+
+const QuickAction: React.FC<{
+  icon: string;
+  label: string;
+  color: string;
+  onPress: () => void;
+}> = ({ icon, label, color, onPress }) => (
+  <TouchableOpacity style={styles.actionBtn} onPress={onPress} activeOpacity={0.7}>
+    <View style={[styles.actionIcon, { backgroundColor: color + '15' }]}>
+      <Feather name={icon as any} size={20} color={color} />
+    </View>
+    <Text style={styles.actionLabel}>{label}</Text>
+  </TouchableOpacity>
+);
+
+const TransactionRow: React.FC<{ tx: RecentTransaction; isLast: boolean }> = ({
+  tx,
+  isLast,
+}) => (
+  <View style={[styles.txRow, !isLast && styles.txRowBorder]}>
+    <View
+      style={[
+        styles.txIcon,
+        { backgroundColor: tx.type === 'income' ? '#DCFCE7' : '#FEE2E2' },
+      ]}
+    >
+      <Feather
+        name={tx.type === 'income' ? 'arrow-down-left' : 'arrow-up-right'}
+        size={14}
+        color={tx.type === 'income' ? '#16A34A' : '#DC2626'}
+      />
+    </View>
+    <View style={styles.txMeta}>
+      <Text style={styles.txDesc} numberOfLines={1}>
+        {tx.description}
+      </Text>
+      <Text style={styles.txDate}>{tx.date}</Text>
+    </View>
+    <Text
+      style={[
+        styles.txAmount,
+        { color: tx.type === 'income' ? '#16A34A' : '#DC2626' },
+      ]}
+    >
+      {tx.type === 'income' ? '+' : '-'} {tx.amount}
+    </Text>
+  </View>
+);
+
+const AlertBanner: React.FC<{ alert: DashboardAlert }> = ({ alert }) => {
+  const cfg = {
+    red: { bg: '#FFF5F5', border: '#E74C3C', text: '#C53030', icon: 'alert-circle' },
+    amber: { bg: '#FFFBEB', border: '#F39C12', text: '#B45309', icon: 'alert-triangle' },
+    blue: { bg: '#EBF8FF', border: '#2E75B6', text: '#2B6CB0', icon: 'info' },
+  }[alert.severity];
+
+  return (
+    <View
+      style={[
+        styles.alert,
+        { backgroundColor: cfg.bg, borderLeftColor: cfg.border },
+      ]}
+    >
+      <Feather name={cfg.icon as any} size={14} color={cfg.text} />
+      <Text style={[styles.alertText, { color: cfg.text }]}>{alert.message}</Text>
+    </View>
+  );
+};
+
+// ─── Styles ──────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-
-  // ── Top Bar ───────────────────────────────────────
-  topBar: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-  },
-  topBarLeft: { flex: 1, marginRight: spacing.md },
-  topBarRight: { flexDirection: 'row', alignItems: 'center' },
-  greeting: {
-    ...THEME.typography.bodyMd,
-    color: colors.textSecondary,
-  },
-  displayName: {
-    ...THEME.typography.h2,
-    color: colors.textPrimary,
-  },
-  bellBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  bellIcon: { fontSize: 22 },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    ...THEME.typography.labelLg,
-    fontWeight: '700',
-    color: colors.white,
-  },
-
-  // ── Company Switcher ──────────────────────────────
-  companySwitcher: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  headerLeft: { flex: 1 },
   companyName: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
-    color: colors.secondary,
-  },
-
-  // ── Scroll ────────────────────────────────────────
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-
-  // ── Section Titles ────────────────────────────────
-  sectionTitle: {
-    ...THEME.typography.h4,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    fontFamily: THEME.typography.fontFamily,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
+  greeting: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+    fontFamily: THEME.typography.fontFamily,
   },
-  viewAllLink: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
-    color: colors.secondary,
+  notifBtn: { padding: spacing.xs, position: 'relative' },
+  content: { padding: spacing.md, paddingBottom: spacing.xl, gap: spacing.md },
+  loader: { marginVertical: spacing.sm },
+  section: { gap: spacing.sm },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
   },
-
-  // ── Financial Summary ─────────────────────────────
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.small,
+  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   statCard: {
-    width: CARD_W,
+    flex: 1,
+    minWidth: '45%',
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     padding: spacing.md,
-    marginBottom: CARD_GAP,
-    borderLeftWidth: 3,
-    ...shadows.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 4,
+    ...shadows.small,
   },
   statLabel: {
-    ...THEME.typography.caption,
+    fontSize: 11,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    fontFamily: THEME.typography.fontFamily,
+    marginBottom: 4,
   },
   statValue: {
-    ...THEME.typography.h2,
+    fontSize: 17,
+    fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
+    fontFamily: THEME.typography.fontFamily,
   },
-  trendPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  trendText: {
-    ...THEME.typography.labelSm,
-    fontWeight: '700',
-  },
-
-  // ── Quick Actions ─────────────────────────────────
-  quickActionsRow: { paddingBottom: spacing.md },
-  quickActionItem: {
-    alignItems: 'center',
-    width: 72,
-    marginRight: spacing.sm,
-  },
-  quickActionCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  quickActionAbbr: {
-    ...THEME.typography.h4,
-    fontWeight: '700',
-  },
-  quickActionLabel: {
-    ...THEME.typography.labelSm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-
-  // ── Recent Transactions ───────────────────────────
-  transactionsCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.xs,
-    marginBottom: spacing.md,
-    ...shadows.card,
-  },
-  txnRow: {
+  trendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    gap: 3,
+    marginTop: 4,
   },
-  txnRowBorder: {
+  trendText: {
+    fontSize: 11,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  deliveryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  deliveryItem: { alignItems: 'center', gap: 4 },
+  deliveryCount: {
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: THEME.typography.fontFamily,
+  },
+  deliveryLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  actionBtn: {
+    flex: 1,
+    minWidth: '22%',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.small,
+  },
+  actionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionLabel: {
+    fontSize: 11,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    textAlign: 'center',
+    fontFamily: THEME.typography.fontFamily,
+  },
+  txRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  txRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  txnIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  txIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
   },
-  txnInfo: { flex: 1, marginRight: spacing.sm },
-  txnDesc: {
-    ...THEME.typography.bodyMd,
-    fontWeight: '500',
+  txMeta: { flex: 1 },
+  txDesc: {
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
   },
-  txnDate: {
-    ...THEME.typography.caption,
-    color: colors.textLight,
+  txDate: {
+    fontSize: 11,
+    color: colors.textSecondary,
     marginTop: 2,
+    fontFamily: THEME.typography.fontFamily,
   },
-  txnAmount: {
-    ...THEME.typography.labelLg,
+  txAmount: {
+    fontSize: 13,
     fontWeight: '700',
+    fontFamily: THEME.typography.fontFamily,
   },
-
-  // ── Delivery Overview ─────────────────────────────
-  deliveryCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadows.card,
-  },
-  deliveryStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  deliveryStat: { alignItems: 'center', flex: 1 },
-  deliveryStatValue: {
-    ...THEME.typography.h2,
-  },
-  deliveryStatLabel: {
-    ...THEME.typography.labelSm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  progressBarBg: {
-    height: 8,
-    backgroundColor: '#E8ECF0',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: spacing.xs,
-  },
-  progressBarFill: {
-    height: 8,
-    backgroundColor: colors.success,
-    borderRadius: 4,
-  },
-  progressLabel: {
-    ...THEME.typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-  },
-  manageDeliveriesBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.sm,
-    alignItems: 'center',
-  },
-  manageDeliveriesTxt: {
-    ...THEME.typography.labelLg,
-    color: colors.white,
-  },
-
-  // ── Alerts ────────────────────────────────────────
-  alertRow: {
+  alert: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
+    gap: spacing.sm,
+    padding: spacing.sm,
     borderRadius: borderRadius.sm,
-    marginBottom: spacing.sm,
     borderLeftWidth: 3,
   },
   alertText: {
+    fontSize: 12,
     flex: 1,
-    ...THEME.typography.bodySm,
-    fontWeight: '500',
-  },
-  alertChevron: {
-    ...THEME.typography.h3,
-    fontSize: 22,
-    marginLeft: spacing.sm,
-  },
-
-  // ── Bottom Sheet ──────────────────────────────────
-  sheetBg: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  sheetHandle: { backgroundColor: '#CBD5E1', width: 40 },
-  sheetContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  sheetOption: {
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  sheetOptionText: {
-    ...THEME.typography.bodyLg,
-    fontWeight: '500',
-    color: colors.textPrimary,
-  },
-  sheetLogout: { borderBottomWidth: 0, marginTop: spacing.xs },
-  sheetLogoutText: {
-    ...THEME.typography.h4,
-    color: colors.danger,
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

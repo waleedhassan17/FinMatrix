@@ -21,9 +21,7 @@ import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import { THEME } from '../../../utils/theme';
-import { ROUTES } from '../../../navigations-map/Base';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { setUser } from '../authSlice';
 import {
   createCompany,
   type CompanyData,
@@ -341,11 +339,8 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
       };
 
       dispatch(createCompany(companyData));
-      dispatch(setUser({ ...user, companyId }));
-      navigation.reset({
-        index: 0,
-        routes: [{ name: ROUTES.ADMIN_TABS as any }],
-      });
+      setIsCreating(false);
+      navigation.navigate('SubscriptionSelect', { companyId });
     } catch (err: any) {
       setIsCreating(false);
       Alert.alert('Error', err?.message ?? 'Unable to create company. Please try again.');

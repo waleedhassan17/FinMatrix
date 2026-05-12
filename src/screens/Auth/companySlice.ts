@@ -194,6 +194,16 @@ const companySlice = createSlice({
         }
       }
     },
+    // Upsert company from API response (used on login for existing users)
+    loadCompany(state, action: PayloadAction<CompanyData>) {
+      const idx = state.companies.findIndex(c => c.companyId === action.payload.companyId);
+      if (idx >= 0) {
+        state.companies[idx] = action.payload;
+      } else {
+        state.companies.push(action.payload);
+      }
+      state.activeCompanyId = action.payload.companyId;
+    },
     setCompanyLoading(state, action: PayloadAction<boolean>) {
       state.isLoading = action.payload;
     },
@@ -208,6 +218,7 @@ const companySlice = createSlice({
 
 export const {
   createCompany,
+  loadCompany,
   setActiveCompany,
   clearCompany,
   addAgency,
