@@ -86,13 +86,13 @@ function buildStats(data: AdminDashboardData): DashboardStat[] {
       trend: '+0%',
       trendDirection: 'up',
       trendPositive: true,
-      borderColor: '#00875A',
+      borderColor: '#059669',
     },
     {
       id: 'ar',
       label: 'Outstanding AR',
       value: fmtCurrency(data.outstandingAR),
-      borderColor: '#0052CC',
+      borderColor: '#0F172A',
     },
     {
       id: 'expenses',

@@ -16,7 +16,7 @@ import InventoryStack from './stacks/InventoryStack';
 import MoreStack from './stacks/MoreStack';
 
 // ── Design Tokens ──
-const ACTIVE = '#0052CC';
+const ACTIVE = '#059669';
 const INACTIVE = '#8993A4';
 const TAB_HEIGHT = 72;
 
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconPillActive: {
-    backgroundColor: '#DEEBFF',
+    backgroundColor: '#ECFDF5',
   },
 });
 

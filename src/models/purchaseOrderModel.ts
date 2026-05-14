@@ -70,7 +70,7 @@ export const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
 
 export const PO_STATUS_COLORS: Record<PurchaseOrderStatus, string> = {
   draft: '#8993A4',
-  sent: '#0052CC',
+  sent: '#059669',
   partially_received: '#FF991F',
   fully_received: '#00875A',
   closed: '#5E6C84',

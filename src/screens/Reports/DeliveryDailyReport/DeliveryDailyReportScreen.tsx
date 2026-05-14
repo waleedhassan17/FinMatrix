@@ -23,7 +23,7 @@ import {
 import type { DeliveryPersonnelStat } from '../../../models/deliveryDailyReportModel';
 
 const CHART_WIDTH = Dimensions.get('window').width - spacing.md * 4;
-const PIE_COLORS = ['#0052CC', '#00875A', '#6554C0', '#FF991F', '#DE350B'];
+const PIE_COLORS = ['#059669', '#00875A', '#6554C0', '#FF991F', '#DE350B'];
 
 const shiftDate = (dateStr: string, days: number): string => {
   const d = new Date(dateStr);

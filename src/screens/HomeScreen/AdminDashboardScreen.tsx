@@ -43,8 +43,8 @@ import { THEME } from '../../utils/theme';
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
 
 const BORDER_COLORS: Record<string, string> = {
-  revenue: '#00875A',
-  ar: '#0052CC',
+  revenue: '#059669',
+  ar: '#0F172A',
   expenses: '#DE350B',
   ap: '#FF991F',
 };
@@ -110,7 +110,7 @@ const AdminDashboardScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor="#0052CC" />
+      <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -266,7 +266,7 @@ const DeliveryCard: React.FC<{ delivery: DeliveryOverviewData }> = ({ delivery }
     <View style={styles.deliveryRow}>
       {[
         { label: 'Pending', value: delivery.pending, color: '#FF991F' },
-        { label: 'In Transit', value: delivery.inTransit, color: '#0052CC' },
+        { label: 'In Transit', value: delivery.inTransit, color: '#059669' },
         { label: 'Delivered', value: delivery.delivered, color: '#00875A' },
         { label: 'Total', value: delivery.total, color: '#5E6C84' },
       ].map(item => (
@@ -333,7 +333,7 @@ const AlertBanner: React.FC<{ alert: DashboardAlert }> = ({ alert }) => {
   const cfg = {
     red: { bg: '#FFEBE6', border: '#DE350B', text: '#BF2600', icon: 'alert-circle' },
     amber: { bg: '#FFFAE6', border: '#FF991F', text: '#FF8B00', icon: 'alert-triangle' },
-    blue: { bg: '#DEEBFF', border: '#0052CC', text: '#0747A6', icon: 'info' },
+    blue: { bg: '#ECFDF5', border: '#059669', text: '#047857', icon: 'info' },
   }[alert.severity];
 
   return (
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: '#0052CC',
+    backgroundColor: '#0F172A',
   },
   headerLeft: { flex: 1 },
   companyName: {

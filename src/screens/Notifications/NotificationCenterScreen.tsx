@@ -37,7 +37,7 @@ type RoleCategoryConfig = {
 const ADMIN_CATEGORIES: RoleCategoryConfig[] = [
   { key: 'invoice_updates', title: 'Invoice Updates', borderColor: '#FF991F', icon: 'file-text' },
   { key: 'payment_updates', title: 'Payment Updates', borderColor: '#00875A', icon: 'credit-card' },
-  { key: 'delivery_updates', title: 'Delivery Updates', borderColor: '#0052CC', icon: 'truck' },
+  { key: 'delivery_updates', title: 'Delivery Updates', borderColor: '#059669', icon: 'truck' },
   { key: 'inventory_approvals', title: 'Inventory Approvals', borderColor: '#FF8B00', icon: 'package' },
   { key: 'banking_alerts', title: 'Banking Alerts', borderColor: '#6554C0', icon: 'dollar-sign' },
   { key: 'payroll_updates', title: 'Payroll Updates', borderColor: '#00B8D9', icon: 'briefcase' },
@@ -45,7 +45,7 @@ const ADMIN_CATEGORIES: RoleCategoryConfig[] = [
 ];
 
 const DELIVERY_CATEGORIES: RoleCategoryConfig[] = [
-  { key: 'new_assignments', title: 'New Assignments', borderColor: '#0052CC', icon: 'clipboard' },
+  { key: 'new_assignments', title: 'New Assignments', borderColor: '#059669', icon: 'clipboard' },
   { key: 'approval_results', title: 'Approval Results', borderColor: '#FF991F', icon: 'check-circle' },
   { key: 'general', title: 'General', borderColor: '#5E6C84', icon: NOTIFICATION_ICON_NAME },
 ];

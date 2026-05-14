@@ -22,8 +22,8 @@ import type { RootStackParamList } from '../../types';
 const BRAND = {
   navy: '#091E42',
   navyDark: '#091E42',
-  blue: '#0052CC',
-  blueLight: '#DEEBFF',
+  blue: '#059669',
+  blueLight: '#ECFDF5',
   coral: '#DE350B',
   coralLight: '#FFEBE6',
   bg: '#F4F5F7',

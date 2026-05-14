@@ -13,10 +13,10 @@ const fontFamily = Platform.select({
 export const THEME = {
   colors: {
     // Primary Brand
-    primary: '#0052CC',
-    primaryHover: '#0747A6',
-    primaryLight: '#DEEBFF',
-    primaryLighter: '#F4F8FF',
+    primary: '#059669',
+    primaryHover: '#047857',
+    primaryLight: '#ECFDF5',
+    primaryLighter: '#F0FDF4',
     
     // Secondary
     secondary: '#6554C0',
@@ -65,7 +65,7 @@ export const THEME = {
     surfaceHover: '#F4F5F7',
     border: '#DFE1E6',
     borderLight: '#EBECF0',
-    borderFocus: '#4C9AFF',
+    borderFocus: '#34D399',
     
     // Text
     textPrimary: '#172B4D',
@@ -73,7 +73,7 @@ export const THEME = {
     textTertiary: '#8993A4',
     textDisabled: '#B3BAC5',
     textInverse: '#FFFFFF',
-    textLink: '#0052CC',
+    textLink: '#059669',
     
     // Overlay
     overlay: 'rgba(9, 30, 66, 0.54)',

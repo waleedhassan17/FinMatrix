@@ -242,7 +242,7 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
       {/* ── Stats Bar ── */}
       <View style={styles.statsBar}>
         {[
-          { label: 'Total', count: stats.total, color: '#0052CC' },
+          { label: 'Total', count: stats.total, color: '#059669' },
           { label: 'Pending', count: stats.pending, color: STATUS_COLORS.pending },
           { label: 'Transit', count: stats.inTransit, color: STATUS_COLORS.in_transit },
           { label: 'Done', count: stats.delivered, color: STATUS_COLORS.delivered },

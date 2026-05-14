@@ -28,8 +28,8 @@ import { THEME } from '../../../utils/theme';
 // ── Design tokens ─────────────────────────────────────
 const DS = {
   navy: '#091E42',
-  primary: '#0052CC',
-  primaryDark: '#0747A6',
+  primary: '#059669',
+  primaryDark: '#047857',
   green: '#00875A',
   amber: '#FF991F',
   purple: '#6554C0',
@@ -42,8 +42,8 @@ const DS = {
 
 const PLAN_COLORS: Record<string, { gradient: [string, string]; badge: string; accent: string }> = {
   Free:         { gradient: ['#FAFBFC', '#EBECF0'],   badge: '#5E6C84', accent: '#344563' },
-  Starter:      { gradient: ['#DEEBFF', '#B3D4FF'],   badge: '#0065FF', accent: '#0052CC' },
-  Professional: { gradient: ['#DEEBFF', '#B3D4FF'],   badge: '#0052CC', accent: '#0747A6' },
+  Starter:      { gradient: ['#ECFDF5', '#D1FAE5'],   badge: '#059669', accent: '#047857' },
+  Professional: { gradient: ['#ECFDF5', '#A7F3D0'],   badge: '#047857', accent: '#065F46' },
   Enterprise:   { gradient: ['#EAE6FF', '#C0B6F2'],   badge: '#6554C0', accent: '#5243AA' },
 };
 

@@ -77,7 +77,7 @@ export const BILL_STATUS_LABELS: Record<BillStatus, string> = {
 
 export const BILL_STATUS_COLORS: Record<BillStatus, string> = {
   draft: '#8993A4',
-  open: '#0052CC',
+  open: '#059669',
   partially_paid: '#FF991F',
   paid: '#00875A',
   overdue: '#DE350B',

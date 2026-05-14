@@ -34,7 +34,7 @@ interface MoreSection {
 
 /* ───────────── colour tokens for icon circles ───────────── */
 const IC = {
-  blueBg: '#DEEBFF', blue: '#0052CC',
+  blueBg: '#ECFDF5', blue: '#059669',
   greenBg: '#E3FCEF', green: '#00875A',
   amberBg: '#FFFAE6', amber: '#FF991F',
   tealBg: '#E6FCFF', teal: '#00B8D9',

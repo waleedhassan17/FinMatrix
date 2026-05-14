@@ -216,7 +216,7 @@ export const DELIVERY_STATUS_COLORS: Record<DeliveryRecordStatus, string> = {
   unassigned: '#8993A4',
   pending: '#FF991F',
   picked_up: '#0065FF',
-  in_transit: '#0052CC',
+  in_transit: '#059669',
   arrived: '#6554C0',
   delivered: '#00875A',
   failed: '#DE350B',

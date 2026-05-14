@@ -38,7 +38,7 @@ type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
 // ── Constants ─────────────────────────────────────────
 const TYPE_COLORS: Record<AccountType, string> = {
-  asset: '#0052CC',
+  asset: '#059669',
   liability: '#DE350B',
   equity: '#6554C0',
   revenue: '#00875A',

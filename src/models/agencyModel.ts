@@ -82,7 +82,7 @@ export const AGENCY_TYPE_OPTIONS: { label: string; value: AgencyType }[] = [
 ];
 
 export const AGENCY_TYPE_COLORS: Record<AgencyType, string> = {
-  Manufacturing: '#0052CC',
+  Manufacturing: '#059669',
   Supply: '#00875A',
   Distribution: '#6554C0',
 };
