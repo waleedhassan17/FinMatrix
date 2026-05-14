@@ -127,7 +127,7 @@ const SalesTaxReportScreen: React.FC = () => {
           <>
             {/* Period info */}
             <Text style={styles.periodInfo}>
-              {report.range.startDate} — {report.range.endDate}
+              {report.range?.startDate ?? range.startDate} — {report.range?.endDate ?? range.endDate}
             </Text>
 
             {/* Summary row */}
@@ -161,7 +161,7 @@ const SalesTaxReportScreen: React.FC = () => {
                 <Text style={styles.colHeader}>Net Liability</Text>
               </View>
 
-              {report.rows.length === 0 ? (
+              {!report.rows || report.rows.length === 0 ? (
                 <Text style={styles.emptyText}>No taxable transactions in this period</Text>
               ) : (
                 report.rows.map((row, idx) => (
@@ -170,7 +170,7 @@ const SalesTaxReportScreen: React.FC = () => {
               )}
 
               {/* Totals row */}
-              {report.rows.length > 0 && (
+              {(report.rows?.length ?? 0) > 0 && (
                 <View style={styles.totalsRow}>
                   <Text style={[styles.totalsCell, { flex: 2, textAlign: 'left' }]}>TOTAL</Text>
                   <Text style={[styles.totalsCell, { color: '#2563EB' }]}>

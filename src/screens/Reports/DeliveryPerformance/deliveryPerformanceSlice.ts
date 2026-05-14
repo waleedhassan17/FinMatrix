@@ -52,4 +52,8 @@ export const deliveryPerformanceSlice = createAppSlice({
 
 export const { setDeliveryPerformanceRange, fetchDeliveryPerformance } =
   deliveryPerformanceSlice.actions;
-export const { selectDeliveryPerformanceState } = deliveryPerformanceSlice.selectors;
+
+// Manual selector – RTK's auto-generated slice.selectors can return
+// undefined before redux-persist rehydrates the store.
+export const selectDeliveryPerformanceState = (rootState: { deliveryPerformance?: DeliveryPerformanceState }) =>
+  rootState.deliveryPerformance ?? initialState;

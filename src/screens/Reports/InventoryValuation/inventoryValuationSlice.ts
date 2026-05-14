@@ -43,4 +43,5 @@ export const inventoryValuationSlice = createAppSlice({
 });
 
 export const { fetchInventoryValuationReport } = inventoryValuationSlice.actions;
-export const { selectInventoryValuationState } = inventoryValuationSlice.selectors;
+export const selectInventoryValuationState = (rootState: { inventoryValuation?: InventoryValuationState }) =>
+  rootState.inventoryValuation ?? initialState;

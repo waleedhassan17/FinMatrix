@@ -77,7 +77,8 @@ export const reportsHubSlice = createAppSlice({
 });
 
 export const { setReportCategories } = reportsHubSlice.actions;
-export const { selectReportCategories } = reportsHubSlice.selectors;
+export const selectReportCategories = (rootState: { reportsHub?: ReportsHubState }) =>
+  (rootState.reportsHub ?? initialState).categories;
 
 /* ── Derived selectors ── */
 

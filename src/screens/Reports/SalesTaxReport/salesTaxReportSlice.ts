@@ -51,4 +51,8 @@ export const salesTaxReportSlice = createAppSlice({
 });
 
 export const { setSalesTaxRange, fetchSalesTaxReport } = salesTaxReportSlice.actions;
-export const { selectSalesTaxReportState } = salesTaxReportSlice.selectors;
+
+// Manual selector – RTK's auto-generated slice.selectors can return
+// undefined before redux-persist rehydrates the store.
+export const selectSalesTaxReportState = (rootState: { salesTaxReport?: SalesTaxReportState }) =>
+  rootState.salesTaxReport ?? initialState;

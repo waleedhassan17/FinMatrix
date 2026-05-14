@@ -58,7 +58,7 @@ const SalesByCustomerScreen: React.FC = () => {
   }, [dispatch, range]);
 
   const sortedRows = useMemo(() => {
-    if (!report) return [];
+    if (!report?.rows) return [];
     return [...report.rows].sort((a, b) => {
       const av = a[sortField];
       const bv = b[sortField];

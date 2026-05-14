@@ -49,4 +49,6 @@ export const deliveryDailyReportSlice = createAppSlice({
 });
 
 export const { setDeliveryDailyDate, fetchDeliveryDailyReport } = deliveryDailyReportSlice.actions;
-export const { selectDeliveryDailyReportState } = deliveryDailyReportSlice.selectors;
+
+export const selectDeliveryDailyReportState = (rootState: { deliveryDailyReport?: DeliveryDailyReportState }) =>
+  rootState.deliveryDailyReport ?? initialState;

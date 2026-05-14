@@ -191,4 +191,6 @@ export const {
   initializeBudgetDraft,
 } = budgetFormSlice.actions;
 
-export const { selectBudgetFormState, selectBudgetFormMonths } = budgetFormSlice.selectors;
+export const selectBudgetFormState = (rootState: { budgetForm?: BudgetFormState }) =>
+  rootState.budgetForm ?? initialState;
+export const selectBudgetFormMonths = () => MONTH_KEYS;

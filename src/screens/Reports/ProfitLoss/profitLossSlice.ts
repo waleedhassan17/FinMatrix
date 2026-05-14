@@ -73,4 +73,5 @@ export const {
   fetchProfitLossReport,
 } = profitLossSlice.actions;
 
-export const { selectProfitLossState } = profitLossSlice.selectors;
+export const selectProfitLossState = (rootState: { profitLoss?: ProfitLossState }) =>
+  rootState.profitLoss ?? initialState;

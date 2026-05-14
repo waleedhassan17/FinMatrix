@@ -129,8 +129,14 @@ api.interceptors.response.use(
 // ─── Error Extractor ────────────────────────────────
 export const extractErrorMessage = (error: any): string => {
   if (axios.isAxiosError(error)) {
-    const serverMsg = error.response?.data?.error?.message;
+    const data = error.response?.data;
+    // NestJS standard: { error: { message: '...' } }
+    const serverMsg = data?.error?.message;
     if (serverMsg) return serverMsg;
+    // NestJS validation pipe: { message: '...' } or { message: ['...'] }
+    if (data?.message) {
+      return Array.isArray(data.message) ? data.message.join(', ') : String(data.message);
+    }
     if (error.response?.status === 429) return 'Too many requests. Please wait a moment.';
     if (error.response?.status === 403) return 'You do not have permission for this action.';
     if (error.response?.status === 404) return 'Resource not found.';

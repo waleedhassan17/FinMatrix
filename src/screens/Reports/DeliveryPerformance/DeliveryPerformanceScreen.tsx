@@ -143,7 +143,7 @@ const DeliveryPerformanceScreen: React.FC = () => {
         {report && (
           <>
             <Text style={styles.sectionTitle}>Personnel Breakdown</Text>
-            {report.rows.length === 0 ? (
+            {!report.rows || report.rows.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>No assignments found in this period</Text>
               </View>
@@ -185,7 +185,7 @@ const DeliveryPerformanceScreen: React.FC = () => {
                   <Text style={styles.trendBreakdownLabel}>Failed</Text>
                   <Text style={styles.trendBreakdownLabel}>Total</Text>
                 </View>
-                {report.dailyTrend.map(pt => (
+                {(report.dailyTrend ?? []).map(pt => (
                   <View key={pt.label} style={styles.trendBreakdownRow}>
                     <Text style={[styles.trendBreakdownCell, { color: colors.textPrimary }]}>
                       {pt.label}

@@ -40,4 +40,5 @@ export const analyticsDashboardSlice = createAppSlice({
 });
 
 export const { fetchAnalyticsDashboard } = analyticsDashboardSlice.actions;
-export const { selectAnalyticsDashboardState } = analyticsDashboardSlice.selectors;
+export const selectAnalyticsDashboardState = (rootState: { analyticsDashboard?: AnalyticsDashboardState }) =>
+  rootState.analyticsDashboard ?? initialState;

@@ -49,4 +49,5 @@ export const arAgingSlice = createAppSlice({
 });
 
 export const { setARAgingAsOfDate, fetchARAgingReport } = arAgingSlice.actions;
-export const { selectARAgingState } = arAgingSlice.selectors;
+export const selectARAgingState = (rootState: { arAging?: ARAgingState }) =>
+  rootState.arAging ?? initialState;

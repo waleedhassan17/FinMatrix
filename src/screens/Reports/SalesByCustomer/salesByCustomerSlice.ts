@@ -69,4 +69,9 @@ export const salesByCustomerSlice = createAppSlice({
 
 export const { setSalesByCustomerRange, setSalesByCustomerSort, fetchSalesByCustomer } =
   salesByCustomerSlice.actions;
-export const { selectSalesByCustomerState } = salesByCustomerSlice.selectors;
+
+// Manual selector – RTK's auto-generated slice.selectors can return
+// undefined before redux-persist rehydrates the store.  Fall back to
+// initialState so consumers never receive undefined.
+export const selectSalesByCustomerState = (rootState: { salesByCustomer?: SalesByCustomerState }) =>
+  rootState.salesByCustomer ?? initialState;

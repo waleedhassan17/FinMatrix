@@ -51,4 +51,5 @@ export const balanceSheetSlice = createAppSlice({
 });
 
 export const { setBalanceSheetAsOfDate, fetchBalanceSheetReport } = balanceSheetSlice.actions;
-export const { selectBalanceSheetState } = balanceSheetSlice.selectors;
+export const selectBalanceSheetState = (rootState: { balanceSheet?: BalanceSheetState }) =>
+  rootState.balanceSheet ?? initialState;

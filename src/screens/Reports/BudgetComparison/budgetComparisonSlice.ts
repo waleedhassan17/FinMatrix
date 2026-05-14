@@ -46,4 +46,5 @@ export const budgetComparisonSlice = createAppSlice({
 });
 
 export const { setBudgetComparisonBudgetId, fetchBudgetComparison } = budgetComparisonSlice.actions;
-export const { selectBudgetComparisonState } = budgetComparisonSlice.selectors;
+export const selectBudgetComparisonState = (rootState: { budgetComparison?: BudgetComparisonState }) =>
+  rootState.budgetComparison ?? initialState;

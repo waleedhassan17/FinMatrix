@@ -49,4 +49,5 @@ export const trialBalanceSlice = createAppSlice({
 });
 
 export const { setTrialBalanceAsOfDate, fetchTrialBalanceReport } = trialBalanceSlice.actions;
-export const { selectTrialBalanceState } = trialBalanceSlice.selectors;
+export const selectTrialBalanceState = (rootState: { trialBalance?: TrialBalanceState }) =>
+  rootState.trialBalance ?? initialState;

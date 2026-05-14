@@ -40,4 +40,5 @@ export const budgetListSlice = createAppSlice({
 });
 
 export const { fetchBudgetList } = budgetListSlice.actions;
-export const { selectBudgetListState } = budgetListSlice.selectors;
+export const selectBudgetListState = (rootState: { budgetList?: BudgetListState }) =>
+  rootState.budgetList ?? initialState;

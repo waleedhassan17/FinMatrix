@@ -67,4 +67,8 @@ export const salesByItemSlice = createAppSlice({
 
 export const { setSalesByItemRange, setSalesByItemSort, fetchSalesByItem } =
   salesByItemSlice.actions;
-export const { selectSalesByItemState } = salesByItemSlice.selectors;
+
+// Manual selector – RTK's auto-generated slice.selectors can return
+// undefined before redux-persist rehydrates the store.
+export const selectSalesByItemState = (rootState: { salesByItem?: SalesByItemState }) =>
+  rootState.salesByItem ?? initialState;

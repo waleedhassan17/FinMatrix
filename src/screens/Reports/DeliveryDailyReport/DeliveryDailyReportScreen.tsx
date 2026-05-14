@@ -149,7 +149,7 @@ const DeliveryDailyReportScreen: React.FC = () => {
                 <Text style={styles.colHeader}>Failed</Text>
                 <Text style={styles.colHeader}>On-Time</Text>
               </View>
-              {report.personnelStats.length === 0 ? (
+              {!report.personnelStats || report.personnelStats.length === 0 ? (
                 <Text style={styles.emptyText}>No personnel assigned for this date</Text>
               ) : (
                 report.personnelStats.map((p, idx) => (
@@ -159,7 +159,7 @@ const DeliveryDailyReportScreen: React.FC = () => {
             </View>
 
             {/* Agency Distribution Pie */}
-            {report.agencyDistribution.length > 0 && (
+            {(report.agencyDistribution?.length ?? 0) > 0 && (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Agency Distribution</Text>
                 <PieChart

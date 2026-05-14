@@ -53,4 +53,5 @@ export const cashFlowSlice = createAppSlice({
 });
 
 export const { setCashFlowRange, fetchCashFlowReport } = cashFlowSlice.actions;
-export const { selectCashFlowState } = cashFlowSlice.selectors;
+export const selectCashFlowState = (rootState: { cashFlow?: CashFlowState }) =>
+  rootState.cashFlow ?? initialState;
