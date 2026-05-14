@@ -34,6 +34,7 @@ import {
   loadDashboard,
 } from './adminDashboardSlice';
 import NotificationBadge from '../../components/NotificationBadge';
+import NotificationIcon from '../../components/NotificationIcon';
 import type { DashboardStackParamList } from '../../navigators/stacks/DashboardStack';
 import type { DashboardStat, RecentTransaction, DashboardAlert, DeliveryOverviewData } from '../../models/dashboardModel';
 import { colors, spacing, borderRadius, shadows } from '../../theme';
@@ -122,7 +123,7 @@ const AdminDashboardScreen: React.FC = () => {
           style={styles.notifBtn}
           onPress={() => navigation.navigate('Notifications')}
         >
-          <Feather name="bell" size={22} color="#FFFFFF" />
+          <NotificationIcon size={22} color="#FFFFFF" />
           {unreadCount > 0 && <NotificationBadge count={unreadCount} />}
         </TouchableOpacity>
       </View>

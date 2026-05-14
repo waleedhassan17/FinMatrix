@@ -46,7 +46,7 @@ const InventoryValuationScreen: React.FC = () => {
           <>
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>Value by Category</Text>
-              {state.report.byCategory.map(category => (
+              {(state.report.byCategory ?? []).map(category => (
                 <View key={category.category} style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>{category.category}</Text>
                   <Text style={styles.summaryValue}>{formatCurrency(category.totalValue, 'Rs ')}</Text>
@@ -55,7 +55,7 @@ const InventoryValuationScreen: React.FC = () => {
               <View style={styles.hr} />
               <View style={styles.summaryRow}>
                 <Text style={styles.totalLabel}>Total Inventory Value</Text>
-                <Text style={styles.totalValue}>{formatCurrency(state.report.totalValue, 'Rs ')}</Text>
+                <Text style={styles.totalValue}>{formatCurrency(state.report.totalValue ?? 0, 'Rs ')}</Text>
               </View>
             </View>
 
@@ -69,7 +69,7 @@ const InventoryValuationScreen: React.FC = () => {
                     <Cell text="Cost" width={120} head />
                     <Cell text="Value" width={140} head />
                   </View>
-                  {state.report.rows.map(row => (
+                  {(state.report.rows ?? []).map(row => (
                     <View key={row.itemId} style={styles.tableRow}>
                       <Cell text={row.itemName} width={210} />
                       <Cell text={row.sku} width={130} />

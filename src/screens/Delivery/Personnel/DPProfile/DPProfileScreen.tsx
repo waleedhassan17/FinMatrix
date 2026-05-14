@@ -9,6 +9,7 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks'
 import { signOut, setUser } from '../../../Auth/authSlice';
 import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
+import NotificationIcon from '../../../../components/NotificationIcon';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
@@ -61,7 +62,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>My Profile</Text>
           <TouchableOpacity style={styles.headerIcon} activeOpacity={0.7}>
-            <Feather name="bell" size={20} color="#fff" />
+            <NotificationIcon size={20} color="#fff" />
           </TouchableOpacity>
         </View>
 

@@ -22,6 +22,8 @@ import {
 } from '../../Admin/AssignDeliveries/deliverySlice';
 import { startDelivery } from './dpDashboardSlice';
 import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DPDashboardStack';
+import NotificationBadge from '../../../../components/NotificationBadge';
+import NotificationIcon from '../../../../components/NotificationIcon';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { locationService } from '../../../../services/locationService';
@@ -217,14 +219,8 @@ const DPDashboardScreen: React.FC = () => {
             style={styles.notificationBtn}
             onPress={() => navigation.navigate('Notifications')}
           >
-            <Feather name="bell" size={20} color={DP_BRAND.white} />
-            {unreadNotifications > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>
-                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                </Text>
-              </View>
-            )}
+            <NotificationIcon size={20} color={DP_BRAND.white} />
+            <NotificationBadge count={unreadNotifications} />
           </TouchableOpacity>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
@@ -512,25 +508,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: DP_BRAND.headerOverlayBorder,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: THEME.colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-    borderWidth: 2,
-    borderColor: DP_BRAND.primary,
-  },
-  notificationBadgeText: {
-    ...THEME.typography.overline,
-    textTransform: undefined,
-    color: THEME.colors.textInverse,
   },
   avatar: {
     width: 42,

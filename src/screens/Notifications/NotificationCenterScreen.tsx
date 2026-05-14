@@ -25,6 +25,7 @@ import {
   type NotificationCategory,
 } from './notificationCenterSlice';
 import NotificationBadge from '../../components/NotificationBadge';
+import NotificationIcon, { NOTIFICATION_ICON_NAME } from '../../components/NotificationIcon';
 
 type RoleCategoryConfig = {
   key: NotificationCategory;
@@ -46,7 +47,7 @@ const ADMIN_CATEGORIES: RoleCategoryConfig[] = [
 const DELIVERY_CATEGORIES: RoleCategoryConfig[] = [
   { key: 'new_assignments', title: 'New Assignments', borderColor: '#0052CC', icon: 'clipboard' },
   { key: 'approval_results', title: 'Approval Results', borderColor: '#FF991F', icon: 'check-circle' },
-  { key: 'general', title: 'General', borderColor: '#5E6C84', icon: 'bell' },
+  { key: 'general', title: 'General', borderColor: '#5E6C84', icon: NOTIFICATION_ICON_NAME },
 ];
 
 const NotificationCenterScreen: React.FC = () => {
@@ -150,7 +151,7 @@ const NotificationCenterScreen: React.FC = () => {
         </View>
         <View style={styles.headerRight}>
           <View style={styles.badgeWrap}>
-            <Feather name="bell" size={16} color={colors.textSecondary} />
+            <NotificationIcon size={16} color={colors.textSecondary} />
             <NotificationBadge count={unreadCount} />
           </View>
           <TouchableOpacity style={styles.markBtn} onPress={handleMarkAllRead}>

@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectDPSettings, setPushNotifications, setSmsNotifications, setEmailNotifications } from './dpSettingsSlice';
+import NotificationIcon from '../../../../components/NotificationIcon';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
@@ -40,7 +41,7 @@ const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={[styles.cardIconWrap, { backgroundColor: THEME.colors.warningLight }]}>
-              <Feather name="bell" size={20} color={THEME.colors.warning} />
+              <NotificationIcon size={20} color={THEME.colors.warning} />
             </View>
             <View style={styles.cardHeaderText}>
               <Text style={styles.cardTitle}>Notifications</Text>

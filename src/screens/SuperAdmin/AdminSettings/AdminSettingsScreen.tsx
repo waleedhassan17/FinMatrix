@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser, signOut } from '../../Auth/authSlice';
+import { NOTIFICATION_ICON_NAME } from '../../../components/NotificationIcon';
 
 // ── Design tokens ─────────────────────────────────────
 const C = {
@@ -228,7 +229,7 @@ const AdminSettingsScreen: React.FC = () => {
             onToggle={setEmailAlerts}
           />
           <SettingRow
-            icon="bell"
+            icon={NOTIFICATION_ICON_NAME}
             iconColor="#8B5CF6"
             label="Push Notifications"
             toggle
