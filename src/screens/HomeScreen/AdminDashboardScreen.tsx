@@ -11,6 +11,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -108,6 +109,7 @@ const AdminDashboardScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor="#0052CC" />
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -120,7 +122,7 @@ const AdminDashboardScreen: React.FC = () => {
           style={styles.notifBtn}
           onPress={() => navigation.navigate('Notifications')}
         >
-          <Feather name="bell" size={22} color={colors.textPrimary} />
+          <Feather name="bell" size={22} color="#FFFFFF" />
           {unreadCount > 0 && <NotificationBadge count={unreadCount} />}
         </TouchableOpacity>
       </View>
@@ -356,20 +358,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: '#0052CC',
   },
   headerLeft: { flex: 1 },
   companyName: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     fontFamily: THEME.typography.fontFamily,
   },
   greeting: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
     fontFamily: THEME.typography.fontFamily,
   },
