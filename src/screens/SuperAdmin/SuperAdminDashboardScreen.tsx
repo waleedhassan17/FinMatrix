@@ -39,36 +39,30 @@ const STATUS_H = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
 
 // ── Design tokens ─────────────────────────────────────
 const C = {
-  bg: '#F0F4FF',
+  bg: '#F4F5F7',
   surface: '#FFFFFF',
-  primary: '#6366F1',
-  primaryDark: '#4F46E5',
-  border: '#E2E8F0',
-  text: { primary: '#1A1A2E', secondary: '#64748B', muted: '#94A3B8', inverse: '#FFFFFF' },
-  gradients: {
-    total: ['#6366F1', '#8B5CF6'] as const,
-    pending: ['#F59E0B', '#F97316'] as const,
-    active: ['#10B981', '#059669'] as const,
-    plans: ['#3B82F6', '#0EA5E9'] as const,
-    subs: ['#EF4444', '#F43F5E'] as const,
-  },
+  primary: '#0052CC',
+  primaryDark: '#0747A6',
+  border: '#DFE1E6',
+  text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4', inverse: '#FFFFFF' },
+  accent: '#0065FF',
+  cardIcon: '#DEEBFF',
   status: {
-    active: { bg: '#DCFCE7', text: '#16A34A' },
-    pending: { bg: '#FEF9C3', text: '#CA8A04' },
-    suspended: { bg: '#FEE2E2', text: '#DC2626' },
-    rejected: { bg: '#F1F5F9', text: '#64748B' },
+    active: { bg: '#E3FCEF', text: '#00875A' },
+    pending: { bg: '#FFFAE6', text: '#FF8B00' },
+    suspended: { bg: '#FFEBE6', text: '#DE350B' },
+    rejected: { bg: '#EBECF0', text: '#5E6C84' },
   },
 };
 
-// ── Animated Stat Card ────────────────────────────────
+// ── Stat Card (clean surface style) ──────────────────
 const StatCard: React.FC<{
   label: string;
   value: number | string;
   subtitle?: string;
-  gradient: readonly [string, string];
   icon: string;
   delay?: number;
-}> = ({ label, value, subtitle, gradient, icon, delay = 0 }) => {
+}> = ({ label, value, subtitle, icon, delay = 0 }) => {
   const scale = useRef(new Animated.Value(0.85)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -81,16 +75,14 @@ const StatCard: React.FC<{
 
   return (
     <Animated.View style={[S.statWrap, { opacity, transform: [{ scale }] }]}>
-      <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={S.statGrad}>
-        <View style={S.statDecor1} />
-        <View style={S.statDecor2} />
+      <View style={S.statCard}>
         <View style={S.statIconBox}>
-          <Feather name={icon as any} size={18} color="rgba(255,255,255,0.9)" />
+          <Feather name={icon as any} size={16} color={C.primary} />
         </View>
         <Text style={S.statValue}>{value}</Text>
         <Text style={S.statLabel}>{label}</Text>
         {subtitle ? <Text style={S.statSub}>{subtitle}</Text> : null}
-      </LinearGradient>
+      </View>
     </Animated.View>
   );
 };
@@ -170,7 +162,7 @@ const SidebarDrawer: React.FC<{
           </View>
 
           <TouchableOpacity style={S.drawerSignOut} onPress={onSignOut} activeOpacity={0.8}>
-            <Feather name="log-out" size={18} color="#EF4444" />
+            <Feather name="log-out" size={18} color="#DE350B" />
             <Text style={S.drawerSignOutText}>Sign Out</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -289,7 +281,7 @@ const SuperAdminDashboardScreen: React.FC = () => {
           <ActivityIndicator size="large" color={C.primary} style={S.loader} />
         ) : statsError ? (
           <View style={S.errorBox}>
-            <Feather name="alert-circle" size={20} color="#EF4444" />
+            <Feather name="alert-circle" size={20} color="#DE350B" />
             <Text style={S.errorText}>{statsError}</Text>
             <TouchableOpacity onPress={load} style={S.retryBtn}>
               <Text style={S.retryText}>Retry</Text>
@@ -303,7 +295,6 @@ const SuperAdminDashboardScreen: React.FC = () => {
               <StatCard
                 label="Total Companies"
                 value={stats.companies.total}
-                gradient={C.gradients.total}
                 icon="briefcase"
                 delay={0}
               />
@@ -311,14 +302,12 @@ const SuperAdminDashboardScreen: React.FC = () => {
                 label="Pending Review"
                 value={stats.companies.pending}
                 subtitle="Awaiting approval"
-                gradient={C.gradients.pending}
                 icon="clock"
                 delay={80}
               />
               <StatCard
                 label="Active Companies"
                 value={stats.companies.active}
-                gradient={C.gradients.active}
                 icon="check-circle"
                 delay={160}
               />
@@ -326,7 +315,6 @@ const SuperAdminDashboardScreen: React.FC = () => {
                 label="Active Subs"
                 value={stats.subscriptions.activeSubscriptions}
                 subtitle={`of ${stats.subscriptions.totalSubscriptions} total`}
-                gradient={C.gradients.subs}
                 icon="credit-card"
                 delay={240}
               />
@@ -335,28 +323,28 @@ const SuperAdminDashboardScreen: React.FC = () => {
             {/* Quick Stats Bar */}
             <View style={S.quickStatsBar}>
               <View style={S.quickStatItem}>
-                <Text style={[S.quickStatVal, { color: '#EF4444' }]}>
+                <Text style={[S.quickStatVal, { color: C.text.primary }]}>
                   {stats.companies.suspended}
                 </Text>
                 <Text style={S.quickStatLabel}>Suspended</Text>
               </View>
               <View style={S.qsDivider} />
               <View style={S.quickStatItem}>
-                <Text style={[S.quickStatVal, { color: '#6B7280' }]}>
+                <Text style={[S.quickStatVal, { color: C.text.primary }]}>
                   {stats.companies.rejected}
                 </Text>
                 <Text style={S.quickStatLabel}>Rejected</Text>
               </View>
               <View style={S.qsDivider} />
               <View style={S.quickStatItem}>
-                <Text style={[S.quickStatVal, { color: '#3B82F6' }]}>
+                <Text style={[S.quickStatVal, { color: C.text.primary }]}>
                   {stats.subscriptions.totalPlans}
                 </Text>
                 <Text style={S.quickStatLabel}>Plans</Text>
               </View>
               <View style={S.qsDivider} />
               <View style={S.quickStatItem}>
-                <Text style={[S.quickStatVal, { color: '#10B981' }]}>
+                <Text style={[S.quickStatVal, { color: C.text.primary }]}>
                   {stats.companies.recentWeek}
                 </Text>
                 <Text style={S.quickStatLabel}>This Week</Text>
@@ -371,17 +359,17 @@ const SuperAdminDashboardScreen: React.FC = () => {
                 onPress={() => navigation.navigate('Companies' as any)}
                 activeOpacity={0.75}
               >
-                <LinearGradient colors={['#FEF9C3', '#FDE68A']} style={S.actionGrad}>
-                  <Feather name="clock" size={22} color="#D97706" />
-                  <Text style={[S.actionLabel, { color: '#D97706' }]}>
-                    Review{'\n'}Companies
-                  </Text>
+                <View style={S.actionSurface}>
+                  <View style={S.actionIconWrap}>
+                    <Feather name="clock" size={18} color={C.primary} />
+                  </View>
+                  <Text style={S.actionLabel}>Review{' '}Companies</Text>
                   {stats.companies.pending > 0 && (
                     <View style={S.actionBadge}>
                       <Text style={S.actionBadgeText}>{stats.companies.pending}</Text>
                     </View>
                   )}
-                </LinearGradient>
+                </View>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -389,10 +377,12 @@ const SuperAdminDashboardScreen: React.FC = () => {
                 onPress={() => navigation.navigate('Companies' as any)}
                 activeOpacity={0.75}
               >
-                <LinearGradient colors={['#EDE9FE', '#DDD6FE']} style={S.actionGrad}>
-                  <Feather name="briefcase" size={22} color="#7C3AED" />
-                  <Text style={[S.actionLabel, { color: '#7C3AED' }]}>All{'\n'}Companies</Text>
-                </LinearGradient>
+                <View style={S.actionSurface}>
+                  <View style={S.actionIconWrap}>
+                    <Feather name="briefcase" size={18} color={C.primary} />
+                  </View>
+                  <Text style={S.actionLabel}>All Companies</Text>
+                </View>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -400,10 +390,12 @@ const SuperAdminDashboardScreen: React.FC = () => {
                 onPress={() => navigation.navigate('Plans' as any)}
                 activeOpacity={0.75}
               >
-                <LinearGradient colors={['#DCFCE7', '#BBF7D0']} style={S.actionGrad}>
-                  <Feather name="credit-card" size={22} color="#16A34A" />
-                  <Text style={[S.actionLabel, { color: '#16A34A' }]}>Manage{'\n'}Plans</Text>
-                </LinearGradient>
+                <View style={S.actionSurface}>
+                  <View style={S.actionIconWrap}>
+                    <Feather name="credit-card" size={18} color={C.primary} />
+                  </View>
+                  <Text style={S.actionLabel}>Manage Plans</Text>
+                </View>
               </TouchableOpacity>
             </View>
 
@@ -477,7 +469,7 @@ const S = StyleSheet.create({
     alignItems: 'center', gap: 8, padding: 20,
     backgroundColor: C.surface, borderRadius: 12,
   },
-  errorText: { fontSize: 13, color: '#EF4444', textAlign: 'center' },
+  errorText: { fontSize: 13, color: '#DE350B', textAlign: 'center' },
   retryBtn: {
     paddingHorizontal: 20, paddingVertical: 8,
     backgroundColor: C.primary, borderRadius: 8,
@@ -509,28 +501,23 @@ const S = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 10,
   },
   statWrap: { width: (SCREEN_W - 42) / 2 },
-  statGrad: {
-    borderRadius: 14, padding: 16, overflow: 'hidden', position: 'relative', minHeight: 110,
-  },
-  statDecor1: {
-    position: 'absolute', top: -15, right: -15,
-    width: 70, height: 70, borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  statDecor2: {
-    position: 'absolute', bottom: -20, left: -10,
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+  statCard: {
+    backgroundColor: C.surface,
+    borderRadius: 14,
+    padding: 16,
+    minHeight: 110,
+    borderWidth: 1,
+    borderColor: C.border,
   },
   statIconBox: {
     width: 32, height: 32, borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: C.cardIcon,
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  statValue: { fontSize: 26, fontWeight: '800', color: '#FFF' },
-  statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
-  statSub: { fontSize: 10, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+  statValue: { fontSize: 28, fontWeight: '800', color: C.text.primary },
+  statLabel: { fontSize: 11, color: C.text.secondary, marginTop: 3 },
+  statSub: { fontSize: 10, color: C.text.muted, marginTop: 2 },
 
   quickStatsBar: {
     flexDirection: 'row',
@@ -547,15 +534,22 @@ const S = StyleSheet.create({
   qsDivider: { width: 1, backgroundColor: C.border, marginVertical: 4 },
 
   actionsRow: { flexDirection: 'row', gap: 10 },
-  actionCard: { flex: 1, borderRadius: 14, overflow: 'hidden' },
-  actionGrad: {
+  actionCard: { flex: 1, borderRadius: 12, overflow: 'hidden' },
+  actionSurface: {
+    backgroundColor: C.surface,
     padding: 14, minHeight: 90,
-    alignItems: 'flex-start', gap: 6, position: 'relative',
+    alignItems: 'flex-start', gap: 8, position: 'relative',
+    borderWidth: 1, borderColor: C.border, borderRadius: 12,
   },
-  actionLabel: { fontSize: 11, fontWeight: '700', lineHeight: 15 },
+  actionIconWrap: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: C.cardIcon,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  actionLabel: { fontSize: 12, fontWeight: '600', color: C.text.primary, lineHeight: 16 },
   actionBadge: {
-    position: 'absolute', top: 8, right: 8,
-    backgroundColor: '#EF4444', borderRadius: 10,
+    position: 'absolute', top: 10, right: 10,
+    backgroundColor: C.primary, borderRadius: 10,
     minWidth: 20, height: 20,
     alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 5,
@@ -573,7 +567,7 @@ const S = StyleSheet.create({
   },
   regAvatar: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#DEEBFF',
     alignItems: 'center', justifyContent: 'center',
   },
   regAvatarText: { fontSize: 14, fontWeight: '700', color: C.primary },
@@ -619,7 +613,7 @@ const S = StyleSheet.create({
   },
   drawerItemIcon: {
     width: 38, height: 38, borderRadius: 10,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DEEBFF',
     alignItems: 'center', justifyContent: 'center',
   },
   drawerItemText: { flex: 1, fontSize: 14, fontWeight: '600', color: C.text.primary },
@@ -627,7 +621,7 @@ const S = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     padding: 20, gap: 12, borderTopWidth: 1, borderTopColor: C.border,
   },
-  drawerSignOutText: { fontSize: 14, fontWeight: '600', color: '#EF4444' },
+  drawerSignOutText: { fontSize: 14, fontWeight: '600', color: '#DE350B' },
 });
 
 export default SuperAdminDashboardScreen;

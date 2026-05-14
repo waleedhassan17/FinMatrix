@@ -51,10 +51,10 @@ const RunPayrollScreen: React.FC = () => {
 
   const chartData = useMemo(
     () => [
-      { name: 'Taxes', amount: totals.taxes, color: '#F59E0B', legendFontColor: colors.textSecondary, legendFontSize: 12 },
-      { name: 'Benefits', amount: totals.benefits, color: '#3B82F6', legendFontColor: colors.textSecondary, legendFontSize: 12 },
-      { name: 'Deductions', amount: totals.deductions, color: '#EF4444', legendFontColor: colors.textSecondary, legendFontSize: 12 },
-      { name: 'Net', amount: totals.net, color: '#10B981', legendFontColor: colors.textSecondary, legendFontSize: 12 },
+      { name: 'Taxes', amount: totals.taxes, color: '#FF991F', legendFontColor: colors.textSecondary, legendFontSize: 12 },
+      { name: 'Benefits', amount: totals.benefits, color: '#0065FF', legendFontColor: colors.textSecondary, legendFontSize: 12 },
+      { name: 'Deductions', amount: totals.deductions, color: '#DE350B', legendFontColor: colors.textSecondary, legendFontSize: 12 },
+      { name: 'Net', amount: totals.net, color: '#00875A', legendFontColor: colors.textSecondary, legendFontSize: 12 },
     ],
     [totals],
   );

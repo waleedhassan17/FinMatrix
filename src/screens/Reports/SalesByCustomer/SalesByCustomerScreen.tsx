@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   periodBtnTextActive: { color: '#fff', fontWeight: '600' },
   errorText: {
     fontSize: 13,
-    color: '#EF4444',
+    color: '#DE350B',
     textAlign: 'center',
     marginVertical: spacing.sm,
     marginHorizontal: spacing.md,

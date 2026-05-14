@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1B3A5C',
+    color: '#0052CC',
     marginBottom: 12,
   },
   message: {
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   button: {
-    backgroundColor: '#1B3A5C',
+    backgroundColor: '#0052CC',
     paddingVertical: 12,
     paddingHorizontal: 32,
     borderRadius: 8,

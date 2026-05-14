@@ -49,9 +49,9 @@ const PERIOD_OPTIONS: { label: string; range: ReportDateRange }[] = [
 ];
 
 const marginColor = (margin: number): string => {
-  if (margin >= 30) return '#10B981';
-  if (margin >= 10) return '#F59E0B';
-  return '#EF4444';
+  if (margin >= 30) return '#00875A';
+  if (margin >= 10) return '#FF991F';
+  return '#DE350B';
 };
 
 const SalesByItemScreen: React.FC<SalesByItemScreenProps> = ({ navigation }) => {
@@ -132,15 +132,15 @@ const SalesByItemScreen: React.FC<SalesByItemScreenProps> = ({ navigation }) => 
                 {formatCurrency(report.totalRevenue, 'Rs ')}
               </Text>
             </View>
-            <View style={[styles.summaryCard, { borderTopColor: '#10B981' }]}>
+            <View style={[styles.summaryCard, { borderTopColor: '#00875A' }]}>
               <Text style={styles.summaryLabel}>Total Profit</Text>
-              <Text style={[styles.summaryValue, { color: '#10B981' }]}>
+              <Text style={[styles.summaryValue, { color: '#00875A' }]}>
                 {formatCurrency(report.totalProfit, 'Rs ')}
               </Text>
             </View>
-            <View style={[styles.summaryCard, { borderTopColor: '#6366F1' }]}>
+            <View style={[styles.summaryCard, { borderTopColor: '#6554C0' }]}>
               <Text style={styles.summaryLabel}>Avg Margin</Text>
-              <Text style={[styles.summaryValue, { color: '#6366F1' }]}>
+              <Text style={[styles.summaryValue, { color: '#6554C0' }]}>
                 {report.totalRevenue > 0
                   ? `${((report.totalProfit / report.totalRevenue) * 100).toFixed(1)}%`
                   : '—'}
@@ -199,15 +199,15 @@ const SalesByItemScreen: React.FC<SalesByItemScreenProps> = ({ navigation }) => 
           {/* Margin legend */}
           <View style={styles.legend}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+              <View style={[styles.legendDot, { backgroundColor: '#00875A' }]} />
               <Text style={styles.legendText}>≥30% Good</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+              <View style={[styles.legendDot, { backgroundColor: '#FF991F' }]} />
               <Text style={styles.legendText}>10–29% OK</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+              <View style={[styles.legendDot, { backgroundColor: '#DE350B' }]} />
               <Text style={styles.legendText}>&lt;10% Low</Text>
             </View>
           </View>
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   periodBtnTextActive: { color: '#fff', fontWeight: '600' },
   errorText: {
     fontSize: 13,
-    color: '#EF4444',
+    color: '#DE350B',
     textAlign: 'center',
     marginVertical: spacing.sm,
     marginHorizontal: spacing.md,

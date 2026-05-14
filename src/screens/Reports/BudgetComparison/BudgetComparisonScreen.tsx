@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   },
   barActual: {
     height: '100%',
-    backgroundColor: '#10B981',
+    backgroundColor: '#00875A',
   },
   metricsRow: {
     flexDirection: 'row',
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily,
   },
   positive: { color: '#059669' },
-  negative: { color: '#DC2626' },
+  negative: { color: '#DE350B' },
   legend: {
     fontSize: 11,
     color: colors.textSecondary,

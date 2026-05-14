@@ -22,7 +22,7 @@ import { formatCurrency } from '../../../utils/formatters';
 type AnalyticsDashboardScreenProps = NativeStackScreenProps<ReportsStackParamList, 'AnalyticsDashboard'>;
 
 const CHART_WIDTH = Dimensions.get('window').width - spacing.md * 2 - spacing.md * 2;
-const PIE_COLORS = ['#1D4ED8', '#0EA5E9', '#10B981', '#F59E0B', '#F97316', '#EF4444'];
+const PIE_COLORS = ['#1D4ED8', '#0EA5E9', '#00875A', '#FF991F', '#F97316', '#DE350B'];
 
 const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
@@ -181,11 +181,11 @@ const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ nav
                       const safeTotal = Math.max(1, total);
                       return (
                         <View key={point.label} style={styles.stackCol}>
-                          <View style={[styles.stackSegment, { height: (point.bucket90Plus / safeTotal) * h, backgroundColor: '#DC2626' }]} />
+                          <View style={[styles.stackSegment, { height: (point.bucket90Plus / safeTotal) * h, backgroundColor: '#DE350B' }]} />
                           <View style={[styles.stackSegment, { height: (point.bucket61to90 / safeTotal) * h, backgroundColor: '#F97316' }]} />
-                          <View style={[styles.stackSegment, { height: (point.bucket31to60 / safeTotal) * h, backgroundColor: '#F59E0B' }]} />
+                          <View style={[styles.stackSegment, { height: (point.bucket31to60 / safeTotal) * h, backgroundColor: '#FF991F' }]} />
                           <View style={[styles.stackSegment, { height: (point.bucket1to30 / safeTotal) * h, backgroundColor: '#0EA5E9' }]} />
-                          <View style={[styles.stackSegment, { height: (point.current / safeTotal) * h, backgroundColor: '#10B981' }]} />
+                          <View style={[styles.stackSegment, { height: (point.current / safeTotal) * h, backgroundColor: '#00875A' }]} />
                           <Text style={styles.stackLabel}>{point.label}</Text>
                         </View>
                       );

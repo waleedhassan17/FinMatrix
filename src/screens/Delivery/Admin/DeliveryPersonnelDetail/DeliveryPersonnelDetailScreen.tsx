@@ -114,7 +114,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
   const deliveryStatusColors: Record<string, string> = {
     delivered: colors.success,
     in_transit: colors.secondary,
-    pending: '#F59E0B',
+    pending: '#FF991F',
     failed: colors.danger,
   };
 
@@ -198,7 +198,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, {
                 width: `${person.onTimeRate}%`,
-                backgroundColor: person.onTimeRate >= 90 ? colors.success : person.onTimeRate >= 70 ? '#F59E0B' : colors.danger,
+                backgroundColor: person.onTimeRate >= 90 ? colors.success : person.onTimeRate >= 70 ? '#FF991F' : colors.danger,
               }]} />
             </View>
           </View>

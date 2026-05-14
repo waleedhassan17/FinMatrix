@@ -28,8 +28,8 @@ const esc = (v: string | number | undefined | null): string => {
 // ─── Status → colour mapping (mirrors the app) ───────
 const STATUS_META: Record<SalesOrder['status'], { label: string; color: string }> = {
   open:                 { label: 'OPEN',                color: '#2563EB' },
-  partially_fulfilled:  { label: 'PARTIALLY FULFILLED', color: '#F59E0B' },
-  fulfilled:            { label: 'FULFILLED',           color: '#16A34A' },
+  partially_fulfilled:  { label: 'PARTIALLY FULFILLED', color: '#FF991F' },
+  fulfilled:            { label: 'FULFILLED',           color: '#00875A' },
   closed:               { label: 'CLOSED',              color: '#475569' },
 };
 

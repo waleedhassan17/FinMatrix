@@ -27,24 +27,24 @@ import { THEME } from '../../../utils/theme';
 
 // ── Design tokens ─────────────────────────────────────
 const DS = {
-  navy: '#0F172A',
-  primary: '#6366F1',
-  primaryDark: '#4F46E5',
-  green: '#10B981',
-  amber: '#F59E0B',
-  purple: '#7C3AED',
-  bg: '#F8FAFC',
+  navy: '#091E42',
+  primary: '#0052CC',
+  primaryDark: '#0747A6',
+  green: '#00875A',
+  amber: '#FF991F',
+  purple: '#6554C0',
+  bg: '#F4F5F7',
   surface: '#FFFFFF',
-  border: '#E2E8F0',
-  text: { h: '#0F172A', sub: '#64748B', muted: '#94A3B8', inv: '#FFFFFF' },
+  border: '#DFE1E6',
+  text: { h: '#172B4D', sub: '#5E6C84', muted: '#8993A4', inv: '#FFFFFF' },
   radius: { sm: 8, md: 12, lg: 16, xl: 20 },
 };
 
 const PLAN_COLORS: Record<string, { gradient: [string, string]; badge: string; accent: string }> = {
-  Free:         { gradient: ['#F8FAFC', '#F1F5F9'],   badge: '#64748B', accent: '#475569' },
-  Starter:      { gradient: ['#EFF6FF', '#DBEAFE'],   badge: '#3B82F6', accent: '#2563EB' },
-  Professional: { gradient: ['#EEF2FF', '#E0E7FF'],   badge: '#6366F1', accent: '#4F46E5' },
-  Enterprise:   { gradient: ['#F5F3FF', '#EDE9FE'],   badge: '#7C3AED', accent: '#6D28D9' },
+  Free:         { gradient: ['#FAFBFC', '#EBECF0'],   badge: '#5E6C84', accent: '#344563' },
+  Starter:      { gradient: ['#DEEBFF', '#B3D4FF'],   badge: '#0065FF', accent: '#0052CC' },
+  Professional: { gradient: ['#DEEBFF', '#B3D4FF'],   badge: '#0052CC', accent: '#0747A6' },
+  Enterprise:   { gradient: ['#EAE6FF', '#C0B6F2'],   badge: '#6554C0', accent: '#5243AA' },
 };
 
 interface Plan {

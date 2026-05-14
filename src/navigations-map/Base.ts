@@ -97,4 +97,12 @@ export const ROUTES = {
   PO_LIST: 'POList',
   PO_FORM: 'POForm',
   PO_DETAIL: 'PODetail',
+
+  // Super Admin Navigator
+  SUPER_ADMIN_TABS: 'SuperAdminTabs',
+  SUPER_ADMIN_DASHBOARD: 'SuperAdminDashboard',
+  COMPANY_MANAGEMENT: 'CompanyManagement',
+  COMPANY_DETAIL: 'CompanyDetail',
+  SUBSCRIPTION_PLANS: 'SubscriptionPlans',
+  SUPER_ADMIN_SETTINGS: 'SuperAdminSettings',
 } as const;

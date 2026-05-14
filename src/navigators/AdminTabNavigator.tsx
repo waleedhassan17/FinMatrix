@@ -16,8 +16,8 @@ import InventoryStack from './stacks/InventoryStack';
 import MoreStack from './stacks/MoreStack';
 
 // ── Design Tokens ──
-const ACTIVE = '#1B3A5C';
-const INACTIVE = '#999999';
+const ACTIVE = '#0052CC';
+const INACTIVE = '#8993A4';
 const TAB_HEIGHT = 72;
 
 type IconName = React.ComponentProps<typeof Feather>['name'];
@@ -62,12 +62,13 @@ const AdminTabNavigator: React.FC = () => {
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 8,
           backgroundColor: '#FFFFFF',
-          borderTopWidth: 0,
-          elevation: 14,
-          shadowColor: '#0F172A',
+          borderTopWidth: 1,
+          borderTopColor: '#DFE1E6',
+          elevation: 8,
+          shadowColor: '#091E42',
           shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 10,
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
         },
         tabBarActiveTintColor: ACTIVE,
         tabBarInactiveTintColor: INACTIVE,
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconPillActive: {
-    backgroundColor: '#E7EEF6',
+    backgroundColor: '#DEEBFF',
   },
 });
 

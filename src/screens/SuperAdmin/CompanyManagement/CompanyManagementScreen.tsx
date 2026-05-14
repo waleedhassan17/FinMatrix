@@ -39,16 +39,16 @@ import {
 
 // ── Design tokens ─────────────────────────────────────
 const C = {
-  bg: '#F0F4FF',
+  bg: '#F4F5F7',
   surface: '#FFFFFF',
-  primary: '#6366F1',
-  border: '#E2E8F0',
-  text: { primary: '#1A1A2E', secondary: '#64748B', muted: '#94A3B8' },
+  primary: '#0052CC',
+  border: '#DFE1E6',
+  text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4' },
   status: {
-    active: { bg: '#DCFCE7', text: '#16A34A', border: '#86EFAC' },
-    pending: { bg: '#FEF9C3', text: '#CA8A04', border: '#FDE047' },
-    suspended: { bg: '#FEE2E2', text: '#DC2626', border: '#FCA5A5' },
-    rejected: { bg: '#F1F5F9', text: '#64748B', border: '#CBD5E1' },
+    active: { bg: '#E3FCEF', text: '#00875A', border: '#ABF5D1' },
+    pending: { bg: '#FFFAE6', text: '#FF8B00', border: '#FFF0B3' },
+    suspended: { bg: '#FFEBE6', text: '#DE350B', border: '#FFBDAD' },
+    rejected: { bg: '#EBECF0', text: '#5E6C84', border: '#DFE1E6' },
   },
 };
 
@@ -140,7 +140,7 @@ const ReviewModal: React.FC<{
       >
         <Animated.View style={[S.modal, { transform: [{ scale: scaleAnim }] }]}>
           {/* Modal Header */}
-          <LinearGradient colors={['#6366F1', '#4F46E5']} style={S.modalHeader}>
+          <LinearGradient colors={['#0052CC', '#0747A6']} style={S.modalHeader}>
             <View style={S.modalAvatar}>
               <Text style={S.modalAvatarText}>{company.name.slice(0, 2).toUpperCase()}</Text>
             </View>
@@ -561,7 +561,7 @@ const S = StyleSheet.create({
 
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 13, color: C.text.secondary },
-  errorText: { fontSize: 13, color: '#EF4444', textAlign: 'center', paddingHorizontal: 20 },
+  errorText: { fontSize: 13, color: '#DE350B', textAlign: 'center', paddingHorizontal: 20 },
   retryBtn: { paddingHorizontal: 20, paddingVertical: 8, backgroundColor: C.primary, borderRadius: 8 },
   retryText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
@@ -608,8 +608,8 @@ const S = StyleSheet.create({
   },
   cancelBtnText: { fontSize: 14, fontWeight: '600', color: C.text.secondary },
   submitBtn: { flex: 2, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  submitApprove: { backgroundColor: '#10B981' },
-  submitReject: { backgroundColor: '#EF4444' },
+  submitApprove: { backgroundColor: '#00875A' },
+  submitReject: { backgroundColor: '#DE350B' },
   submitBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 
   infoRow: {
@@ -624,9 +624,9 @@ const S = StyleSheet.create({
   infoValue: { flex: 1, fontSize: 13, color: C.text.primary, fontWeight: '600' },
   rejectionBox: {
     marginTop: 12, padding: 12,
-    backgroundColor: '#FEF2F2', borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#EF4444',
+    backgroundColor: '#FFEBE6', borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#DE350B',
   },
-  rejectionLabel: { fontSize: 11, fontWeight: '700', color: '#DC2626', marginBottom: 4 },
+  rejectionLabel: { fontSize: 11, fontWeight: '700', color: '#BF2600', marginBottom: 4 },
   rejectionText: { fontSize: 12, color: '#7F1D1D' },
 
   actionPrompt: { fontSize: 13, color: C.text.secondary, marginBottom: 12 },

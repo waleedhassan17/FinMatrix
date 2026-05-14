@@ -34,19 +34,19 @@ type RoleCategoryConfig = {
 };
 
 const ADMIN_CATEGORIES: RoleCategoryConfig[] = [
-  { key: 'invoice_updates', title: 'Invoice Updates', borderColor: '#D97706', icon: 'file-text' },
-  { key: 'payment_updates', title: 'Payment Updates', borderColor: '#059669', icon: 'credit-card' },
-  { key: 'delivery_updates', title: 'Delivery Updates', borderColor: '#2E75B6', icon: 'truck' },
-  { key: 'inventory_approvals', title: 'Inventory Approvals', borderColor: '#F59E0B', icon: 'package' },
-  { key: 'banking_alerts', title: 'Banking Alerts', borderColor: '#7C3AED', icon: 'dollar-sign' },
-  { key: 'payroll_updates', title: 'Payroll Updates', borderColor: '#0891B2', icon: 'briefcase' },
-  { key: 'system_alerts', title: 'System Alerts', borderColor: '#DC2626', icon: 'alert-triangle' },
+  { key: 'invoice_updates', title: 'Invoice Updates', borderColor: '#FF991F', icon: 'file-text' },
+  { key: 'payment_updates', title: 'Payment Updates', borderColor: '#00875A', icon: 'credit-card' },
+  { key: 'delivery_updates', title: 'Delivery Updates', borderColor: '#0052CC', icon: 'truck' },
+  { key: 'inventory_approvals', title: 'Inventory Approvals', borderColor: '#FF8B00', icon: 'package' },
+  { key: 'banking_alerts', title: 'Banking Alerts', borderColor: '#6554C0', icon: 'dollar-sign' },
+  { key: 'payroll_updates', title: 'Payroll Updates', borderColor: '#00B8D9', icon: 'briefcase' },
+  { key: 'system_alerts', title: 'System Alerts', borderColor: '#DE350B', icon: 'alert-triangle' },
 ];
 
 const DELIVERY_CATEGORIES: RoleCategoryConfig[] = [
-  { key: 'new_assignments', title: 'New Assignments', borderColor: '#1B3A5C', icon: 'clipboard' },
-  { key: 'approval_results', title: 'Approval Results', borderColor: '#F59E0B', icon: 'check-circle' },
-  { key: 'general', title: 'General', borderColor: '#6B7280', icon: 'bell' },
+  { key: 'new_assignments', title: 'New Assignments', borderColor: '#0052CC', icon: 'clipboard' },
+  { key: 'approval_results', title: 'Approval Results', borderColor: '#FF991F', icon: 'check-circle' },
+  { key: 'general', title: 'General', borderColor: '#5E6C84', icon: 'bell' },
 ];
 
 const NotificationCenterScreen: React.FC = () => {

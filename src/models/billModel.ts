@@ -76,11 +76,11 @@ export const BILL_STATUS_LABELS: Record<BillStatus, string> = {
 };
 
 export const BILL_STATUS_COLORS: Record<BillStatus, string> = {
-  draft: '#94A3B8',
-  open: '#2E75B6',
-  partially_paid: '#F39C12',
-  paid: '#27AE60',
-  overdue: '#E74C3C',
+  draft: '#8993A4',
+  open: '#0052CC',
+  partially_paid: '#FF991F',
+  paid: '#00875A',
+  overdue: '#DE350B',
 };
 
 export interface BillFormLineData {

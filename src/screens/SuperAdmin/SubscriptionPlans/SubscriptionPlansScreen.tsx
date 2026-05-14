@@ -35,19 +35,19 @@ import {
 } from '../superAdminSlice';
 
 const C = {
-  bg: '#F0F4FF',
+  bg: '#F4F5F7',
   surface: '#FFFFFF',
-  primary: '#6366F1',
-  border: '#E2E8F0',
-  text: { primary: '#1A1A2E', secondary: '#64748B', muted: '#94A3B8' },
+  primary: '#0052CC',
+  border: '#DFE1E6',
+  text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4' },
 };
 
 const PLAN_GRADIENTS: readonly [string, string][] = [
-  ['#6366F1', '#8B5CF6'],
-  ['#3B82F6', '#0EA5E9'],
-  ['#10B981', '#059669'],
-  ['#F59E0B', '#F97316'],
-  ['#EF4444', '#F43F5E'],
+  ['#0052CC', '#0747A6'],
+  ['#0065FF', '#0052CC'],
+  ['#00875A', '#006644'],
+  ['#FF991F', '#FF8B00'],
+  ['#6554C0', '#5243AA'],
 ];
 
 const DEFAULT_FEATURES = [
@@ -145,7 +145,7 @@ const PlanFormModal: React.FC<{
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={S.formModal}>
-          <LinearGradient colors={['#6366F1', '#4F46E5']} style={S.formModalHeader}>
+          <LinearGradient colors={['#0052CC', '#0747A6']} style={S.formModalHeader}>
             <Text style={S.formModalTitle}>
               {editPlan ? 'Edit Plan' : 'Create Plan'}
             </Text>
@@ -457,7 +457,7 @@ const SubscriptionPlansScreen: React.FC = () => {
           <Text style={S.headerSub}>{plans.length} plan{plans.length !== 1 ? 's' : ''} configured</Text>
         </View>
         <TouchableOpacity style={S.addBtn} onPress={openCreate} activeOpacity={0.8}>
-          <LinearGradient colors={['#6366F1', '#4F46E5']} style={S.addBtnGrad}>
+          <LinearGradient colors={['#0052CC', '#0747A6']} style={S.addBtnGrad}>
             <Feather name="plus" size={18} color="#FFF" />
           </LinearGradient>
         </TouchableOpacity>
@@ -525,7 +525,7 @@ const S = StyleSheet.create({
   planCard: {
     backgroundColor: C.surface, borderRadius: 16, overflow: 'hidden',
     borderWidth: 1, borderColor: C.border,
-    shadowColor: '#6366F1', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#0052CC', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   planCardInactive: { opacity: 0.7 },
@@ -573,7 +573,7 @@ const S = StyleSheet.create({
     gap: 5, paddingVertical: 8, borderRadius: 8,
     backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
   },
-  deleteBtnText: { fontSize: 13, fontWeight: '600', color: '#EF4444' },
+  deleteBtnText: { fontSize: 13, fontWeight: '600', color: '#DE350B' },
 
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: C.text.primary },

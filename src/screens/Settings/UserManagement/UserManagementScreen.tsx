@@ -37,7 +37,7 @@ const P = {
   adminBg: '#EFF6FF',
   delivery: '#059669',
   deliveryBg: '#ECFDF5',
-  danger: '#DC2626',
+  danger: '#DE350B',
 };
 
 const ROLE_COLORS: Record<string, { bg: string; fg: string }> = {

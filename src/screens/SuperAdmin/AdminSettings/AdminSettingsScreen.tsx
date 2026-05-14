@@ -22,14 +22,14 @@ import { selectUser, signOut } from '../../Auth/authSlice';
 
 // ── Design tokens ─────────────────────────────────────
 const C = {
-  bg: '#F0F4FF',
+  bg: '#F4F5F7',
   surface: '#FFFFFF',
-  primary: '#6366F1',
-  primaryDark: '#4F46E5',
-  border: '#E2E8F0',
-  text: { primary: '#1A1A2E', secondary: '#64748B', muted: '#94A3B8' },
-  red: '#EF4444',
-  green: '#10B981',
+  primary: '#0052CC',
+  primaryDark: '#0747A6',
+  border: '#DFE1E6',
+  text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4' },
+  red: '#DE350B',
+  green: '#00875A',
 };
 
 // ── Reusable Section ──────────────────────────────────
@@ -171,7 +171,7 @@ const AdminSettingsScreen: React.FC = () => {
           <View style={S.statusDivider} />
           <InfoBadge label="Version" value="2.4.1" color={C.primary} />
           <View style={S.statusDivider} />
-          <InfoBadge label="Mode" value={demoMode ? 'Demo' : 'Live'} color={demoMode ? '#F59E0B' : C.green} />
+          <InfoBadge label="Mode" value={demoMode ? 'Demo' : 'Live'} color={demoMode ? '#FF991F' : C.green} />
           <View style={S.statusDivider} />
           <InfoBadge label="Region" value="US-East" color={C.text.secondary} />
         </View>

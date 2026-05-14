@@ -213,14 +213,14 @@ export const DELIVERY_STATUS_LABELS: Record<DeliveryRecordStatus, string> = {
 };
 
 export const DELIVERY_STATUS_COLORS: Record<DeliveryRecordStatus, string> = {
-  unassigned: '#94A3B8',
-  pending: '#F39C12',
-  picked_up: '#3B82F6',
-  in_transit: '#2E75B6',
-  arrived: '#8B5CF6',
-  delivered: '#27AE60',
-  failed: '#E74C3C',
-  returned: '#64748B',
+  unassigned: '#8993A4',
+  pending: '#FF991F',
+  picked_up: '#0065FF',
+  in_transit: '#0052CC',
+  arrived: '#6554C0',
+  delivered: '#00875A',
+  failed: '#DE350B',
+  returned: '#5E6C84',
 };
 
 export const DELIVERY_PRIORITY_LABELS: Record<DeliveryPriority, string> = {
@@ -230,9 +230,9 @@ export const DELIVERY_PRIORITY_LABELS: Record<DeliveryPriority, string> = {
 };
 
 export const DELIVERY_PRIORITY_COLORS: Record<DeliveryPriority, string> = {
-  high: '#E74C3C',
-  medium: '#F39C12',
-  low: '#27AE60',
+  high: '#DE350B',
+  medium: '#FF991F',
+  low: '#00875A',
 };
 
 // ─── Form types & validation ─────────────────────────

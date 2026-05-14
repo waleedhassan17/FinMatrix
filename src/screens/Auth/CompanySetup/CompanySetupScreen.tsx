@@ -28,13 +28,13 @@ const DS = {
   navy700: '#1E293B',
 
   green500: '#059669',
-  green400: '#10B981',
+  green400: '#00875A',
   green300: '#34D399',
   green50: '#ECFDF5',
   greenBorder: '#A7F3D0',
 
   blue600: '#2563EB',
-  blue500: '#3B82F6',
+  blue500: '#0065FF',
   blue100: '#DBEAFE',
   blue50: '#EFF6FF',
 

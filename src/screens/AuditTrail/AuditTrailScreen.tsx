@@ -35,9 +35,9 @@ const P = {
 const ACTION_COLORS: Record<AuditAction, string> = {
   Created: '#059669',
   Updated: '#2563EB',
-  Deleted: '#DC2626',
-  Approved: '#7C3AED',
-  Voided: '#D97706',
+  Deleted: '#DE350B',
+  Approved: '#6554C0',
+  Voided: '#FF8B00',
   'Logged In': '#64748B',
   Exported: '#0891B2',
 };

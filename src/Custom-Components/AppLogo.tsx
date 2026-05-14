@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily,
   },
   titleFin: {
-    color: colors.success ?? '#10B981',
+    color: colors.success ?? '#00875A',
   },
   titleMatrix: {
     color: colors.primary,

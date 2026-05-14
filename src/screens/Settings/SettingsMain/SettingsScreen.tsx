@@ -31,7 +31,7 @@ const P = {
   text: '#1E293B',
   sub: '#94A3B8',
   divider: '#E2E8F0',
-  danger: '#DC2626',
+  danger: '#DE350B',
 };
 
 /* ─── helpers ─── */

@@ -72,10 +72,10 @@ export const VENDOR_CREDIT_STATUS_LABELS: Record<VendorCreditStatus, string> = {
 };
 
 export const VENDOR_CREDIT_STATUS_COLORS: Record<VendorCreditStatus, string> = {
-  draft: '#94A3B8',
-  issued: '#2E75B6',
-  applied: '#27AE60',
-  voided: '#E74C3C',
+  draft: '#8993A4',
+  issued: '#0052CC',
+  applied: '#00875A',
+  voided: '#DE350B',
 };
 
 export interface VendorCreditFormLineData {

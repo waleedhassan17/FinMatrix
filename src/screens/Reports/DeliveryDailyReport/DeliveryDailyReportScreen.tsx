@@ -23,7 +23,7 @@ import {
 import type { DeliveryPersonnelStat } from '../../../models/deliveryDailyReportModel';
 
 const CHART_WIDTH = Dimensions.get('window').width - spacing.md * 4;
-const PIE_COLORS = ['#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444'];
+const PIE_COLORS = ['#0052CC', '#00875A', '#6554C0', '#FF991F', '#DE350B'];
 
 const shiftDate = (dateStr: string, days: number): string => {
   const d = new Date(dateStr);
@@ -56,11 +56,11 @@ const PersonRow: React.FC<PersonRowProps> = ({ stat, alt }) => (
       {stat.name}
     </Text>
     <Text style={styles.tableCell}>{stat.total}</Text>
-    <Text style={[styles.tableCell, { color: '#10B981', fontWeight: '600' }]}>{stat.delivered}</Text>
+    <Text style={[styles.tableCell, { color: '#00875A', fontWeight: '600' }]}>{stat.delivered}</Text>
     <Text
       style={[
         styles.tableCell,
-        { color: stat.failed > 0 ? '#EF4444' : colors.textSecondary, fontWeight: '600' },
+        { color: stat.failed > 0 ? '#DE350B' : colors.textSecondary, fontWeight: '600' },
       ]}
     >
       {stat.failed}
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
   errorText: {
     fontSize: 13,
-    color: '#EF4444',
+    color: '#DE350B',
     textAlign: 'center',
     marginVertical: spacing.sm,
     fontFamily: THEME.typography.fontFamily,

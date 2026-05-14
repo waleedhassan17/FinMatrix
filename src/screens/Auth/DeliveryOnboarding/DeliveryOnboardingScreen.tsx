@@ -25,7 +25,7 @@ const { width } = Dimensions.get('window');
 const BRAND = {
   navy: '#0F172A',
   emerald: '#059669',
-  emeraldLight: '#10B981',
+  emeraldLight: '#00875A',
 };
 
 const slides = [

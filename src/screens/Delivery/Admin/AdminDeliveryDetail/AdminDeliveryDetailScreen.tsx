@@ -35,10 +35,10 @@ type Props = NativeStackScreenProps<MoreStackParamList, 'AdminDeliveryDetail'>;
 // ── Constants ────────────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
   unassigned: '#64748B',
-  pending: '#D97706',
+  pending: '#FF8B00',
   in_transit: '#2563EB',
   delivered: '#059669',
-  failed: '#DC2626',
+  failed: '#DE350B',
   returned: '#EA580C',
 };
 
@@ -249,7 +249,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     styles.personStatusBadge,
                     {
                       backgroundColor:
-                        assignedPerson.status === 'active' ? '#059669' + '20' : '#D97706' + '20',
+                        assignedPerson.status === 'active' ? '#059669' + '20' : '#FF8B00' + '20',
                     },
                   ]}
                 >
@@ -257,7 +257,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     style={{
                       fontSize: 11,
                       fontWeight: '600',
-                      color: assignedPerson.status === 'active' ? '#059669' : '#D97706',
+                      color: assignedPerson.status === 'active' ? '#059669' : '#FF8B00',
                     }}
                   >
                     {assignedPerson.status}
@@ -396,7 +396,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* ── Cancel Confirm ── */}
         {uiState.showCancelConfirm && (
           <View style={[styles.actionPanel, styles.dangerPanel]}>
-            <Text style={[styles.actionPanelTitle, { color: '#DC2626' }]}>Cancel Delivery?</Text>
+            <Text style={[styles.actionPanelTitle, { color: '#DE350B' }]}>Cancel Delivery?</Text>
             <Text style={styles.dangerNote}>
               This marks the delivery as failed and cannot be undone from this screen.
             </Text>
@@ -429,7 +429,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.bottomBtnText}>🔄{'\n'}Re-assign</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.bottomBtn, { backgroundColor: '#DC2626' }]}
+          style={[styles.bottomBtn, { backgroundColor: '#DE350B' }]}
           onPress={() => dispatch(toggleCancelConfirm())}
         >
           <Text style={styles.bottomBtnText}>✕{'\n'}Cancel</Text>

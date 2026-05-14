@@ -325,9 +325,9 @@ export const MOCK_REVENUE = {
   churnRate: 2.1,
   avgRevenuePerAccount: 115.5,
   byPlan: [
-    { plan: 'Starter', label: 'STR', companies: 2, monthly: 29, revenue: 58, color: '#3B82F6' },
-    { plan: 'Professional', label: 'PRO', companies: 3, monthly: 79, revenue: 237, color: '#6366F1' },
-    { plan: 'Enterprise', label: 'ENT', companies: 2, monthly: 199, revenue: 398, color: '#7C3AED' },
+    { plan: 'Starter', label: 'STR', companies: 2, monthly: 29, revenue: 58, color: '#0065FF' },
+    { plan: 'Professional', label: 'PRO', companies: 3, monthly: 79, revenue: 237, color: '#0052CC' },
+    { plan: 'Enterprise', label: 'ENT', companies: 2, monthly: 199, revenue: 398, color: '#6554C0' },
   ],
   monthlyTrend: [
     { month: 'Nov', revenue: 420, companies: 7 },
@@ -360,7 +360,7 @@ export const MOCK_TEAM = [
     status: 'active',
     lastActive: new Date().toISOString(),
     avatar: 'WH',
-    color: '#6366F1',
+    color: '#0052CC',
   },
   {
     id: 'u2',
@@ -371,7 +371,7 @@ export const MOCK_TEAM = [
     status: 'active',
     lastActive: new Date(Date.now() - 3600000).toISOString(),
     avatar: 'SJ',
-    color: '#10B981',
+    color: '#00875A',
   },
   {
     id: 'u3',
@@ -382,7 +382,7 @@ export const MOCK_TEAM = [
     status: 'active',
     lastActive: new Date(Date.now() - 7200000).toISOString(),
     avatar: 'AK',
-    color: '#F59E0B',
+    color: '#FF991F',
   },
   {
     id: 'u4',
@@ -393,7 +393,7 @@ export const MOCK_TEAM = [
     status: 'active',
     lastActive: new Date(Date.now() - 86400000).toISOString(),
     avatar: 'MS',
-    color: '#EF4444',
+    color: '#DE350B',
   },
 ];
 

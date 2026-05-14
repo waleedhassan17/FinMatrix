@@ -114,7 +114,7 @@ const JoinCompanyScreen: React.FC<Props> = ({ navigation }) => {
 
     const member: CompanyMember = {
       userId: user.uid,
-      role: user.role,
+      role: user.role as 'admin' | 'delivery',
       displayName: user.displayName,
       email: user.email,
       phone: user.phoneNumber,

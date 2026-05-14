@@ -130,7 +130,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
                 <View>
                   <Text style={styles.infoLabel}>Role</Text>
-                  <Text style={[styles.infoValue, { color: '#16A34A' }]}>Delivery</Text>
+                  <Text style={[styles.infoValue, { color: '#00875A' }]}>Delivery</Text>
                 </View>
               </View>
             </View>

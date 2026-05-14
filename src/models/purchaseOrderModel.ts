@@ -69,11 +69,11 @@ export const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
 };
 
 export const PO_STATUS_COLORS: Record<PurchaseOrderStatus, string> = {
-  draft: '#94A3B8',
-  sent: '#2E75B6',
-  partially_received: '#F39C12',
-  fully_received: '#27AE60',
-  closed: '#6B7280',
+  draft: '#8993A4',
+  sent: '#0052CC',
+  partially_received: '#FF991F',
+  fully_received: '#00875A',
+  closed: '#5E6C84',
 };
 
 export interface POFormLineData {

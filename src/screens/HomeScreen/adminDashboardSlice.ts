@@ -86,25 +86,25 @@ function buildStats(data: AdminDashboardData): DashboardStat[] {
       trend: '+0%',
       trendDirection: 'up',
       trendPositive: true,
-      borderColor: '#27AE60',
+      borderColor: '#00875A',
     },
     {
       id: 'ar',
       label: 'Outstanding AR',
       value: fmtCurrency(data.outstandingAR),
-      borderColor: '#2E75B6',
+      borderColor: '#0052CC',
     },
     {
       id: 'expenses',
       label: "This Month's Expenses",
       value: fmtCurrency(data.totalExpenses),
-      borderColor: '#E74C3C',
+      borderColor: '#DE350B',
     },
     {
       id: 'ap',
       label: 'Pending Bills (AP)',
       value: fmtCurrency(data.pendingAP),
-      borderColor: '#F39C12',
+      borderColor: '#FF991F',
     },
   ];
 }

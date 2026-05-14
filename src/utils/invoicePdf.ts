@@ -53,8 +53,8 @@ const esc = (v: string | number | undefined | null): string => {
 const STATUS_META: Record<Invoice['status'], { label: string; color: string }> = {
   draft:     { label: 'DRAFT',     color: '#64748B' },
   sent:      { label: 'SENT',      color: '#2563EB' },
-  paid:      { label: 'PAID',      color: '#16A34A' },
-  overdue:   { label: 'OVERDUE',   color: '#DC2626' },
+  paid:      { label: 'PAID',      color: '#00875A' },
+  overdue:   { label: 'OVERDUE',   color: '#DE350B' },
   cancelled: { label: 'CANCELLED', color: '#475569' },
 };
 

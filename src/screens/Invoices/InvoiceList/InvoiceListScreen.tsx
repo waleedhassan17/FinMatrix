@@ -44,12 +44,12 @@ type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 
 // ── Status → colour mapping ──────────────────────────
 const STATUS_COLOR: Record<string, string> = {
-  draft: '#94A3B8',
+  draft: colors.textSecondary,
   sent: colors.secondary,
   paid: colors.success,
   overdue: colors.danger,
-  cancelled: '#475569',
-  void: '#475569',
+  cancelled: colors.textLight,
+  void: colors.textLight,
 };
 
 const STATUS_LABEL: Record<string, string> = {

@@ -25,7 +25,7 @@ type FilterKey = 'all' | 'available' | 'busy' | 'on_leave';
 
 const STATUS_COLORS: Record<string, string> = {
   available: colors.success,
-  busy: '#F59E0B',
+  busy: '#FF991F',
   on_leave: '#9CA3AF',
   active: colors.success,
   inactive: '#9CA3AF',
@@ -40,7 +40,7 @@ const VEHICLE_LABELS: Record<string, string> = {
 const TAB_COLORS: Record<FilterKey, string> = {
   all: colors.primary,
   available: colors.success,
-  busy: '#F59E0B',
+  busy: '#FF991F',
   on_leave: '#9CA3AF',
 };
 
@@ -94,7 +94,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
   const getLoadColor = (current: number, max: number) => {
     const pct = (current / max) * 100;
     if (pct < 50) return colors.success;
-    if (pct <= 80) return '#F59E0B';
+    if (pct <= 80) return '#FF991F';
     return colors.danger;
   };
 

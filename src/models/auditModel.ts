@@ -37,7 +37,7 @@ export interface SearchResult {
 
 export const MODULE_COLORS: Record<SearchModule, { bg: string; fg: string }> = {
   Customers: { bg: '#EFF6FF', fg: '#2563EB' },
-  Invoices: { bg: '#FEF3C7', fg: '#D97706' },
+  Invoices: { bg: '#FEF3C7', fg: '#FF8B00' },
   Inventory: { bg: '#ECFDF5', fg: '#059669' },
-  Vendors: { bg: '#FEE2E2', fg: '#DC2626' },
+  Vendors: { bg: '#FEE2E2', fg: '#DE350B' },
 };

@@ -32,8 +32,8 @@ const esc = (v: string | number | undefined | null): string => {
 const STATUS_META: Record<Estimate['status'], { label: string; color: string }> = {
   draft:    { label: 'DRAFT',    color: '#94A3B8' },
   sent:     { label: 'SENT',     color: '#2563EB' },
-  accepted: { label: 'ACCEPTED', color: '#16A34A' },
-  declined: { label: 'DECLINED', color: '#DC2626' },
+  accepted: { label: 'ACCEPTED', color: '#00875A' },
+  declined: { label: 'DECLINED', color: '#DE350B' },
   expired:  { label: 'EXPIRED',  color: '#475569' },
 };
 

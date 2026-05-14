@@ -61,8 +61,8 @@ const SuperAdminNavigator: React.FC = () => (
         </Text>
       ),
       tabBarStyle: TS.tabBar,
-      tabBarActiveTintColor: '#6366F1',
-      tabBarInactiveTintColor: '#94A3B8',
+      tabBarActiveTintColor: '#0052CC',
+      tabBarInactiveTintColor: '#8993A4',
       tabBarHideOnKeyboard: true,
     })}
   >
@@ -78,12 +78,12 @@ const TS = StyleSheet.create({
   tabBar: {
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: '#DFE1E6',
     height: Platform.OS === 'ios' ? 80 : 62,
     paddingBottom: Platform.OS === 'ios' ? 24 : 8,
     paddingTop: 6,
     elevation: 8,
-    shadowColor: '#1A1A2E',
+    shadowColor: '#091E42',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -96,7 +96,7 @@ const TS = StyleSheet.create({
     borderRadius: 8,
   },
   iconWrapActive: {
-    backgroundColor: 'rgba(99,102,241,0.10)',
+    backgroundColor: '#DEEBFF',
   },
   tabLabel: {
     fontSize: 10,

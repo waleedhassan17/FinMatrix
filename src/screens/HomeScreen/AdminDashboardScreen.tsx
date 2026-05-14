@@ -41,10 +41,10 @@ import { THEME } from '../../utils/theme';
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
 
 const BORDER_COLORS: Record<string, string> = {
-  revenue: '#27AE60',
-  ar: '#2E75B6',
-  expenses: '#E74C3C',
-  ap: '#F39C12',
+  revenue: '#00875A',
+  ar: '#0052CC',
+  expenses: '#DE350B',
+  ap: '#FF991F',
 };
 
 const AdminDashboardScreen: React.FC = () => {
@@ -176,7 +176,7 @@ const AdminDashboardScreen: React.FC = () => {
             <QuickAction
               icon="file-text"
               label="New Invoice"
-              color="#2E75B6"
+              color="#0052CC"
               onPress={() =>
                 (navigation as any).navigate('TransactionsStack', {
                   screen: 'InvoiceForm',
@@ -186,7 +186,7 @@ const AdminDashboardScreen: React.FC = () => {
             <QuickAction
               icon="shopping-cart"
               label="New Bill"
-              color="#E74C3C"
+              color="#DE350B"
               onPress={() =>
                 (navigation as any).navigate('TransactionsStack', {
                   screen: 'BillForm',
@@ -196,7 +196,7 @@ const AdminDashboardScreen: React.FC = () => {
             <QuickAction
               icon="package"
               label="Inventory"
-              color="#9B59B6"
+              color="#6554C0"
               onPress={() =>
                 (navigation as any).navigate('InventoryStack', {
                   screen: 'InventoryList',
@@ -206,7 +206,7 @@ const AdminDashboardScreen: React.FC = () => {
             <QuickAction
               icon="users"
               label="Deliveries"
-              color="#27AE60"
+              color="#00875A"
               onPress={() => navigation.navigate('DeliveryPersonnelList')}
             />
           </View>
@@ -243,12 +243,12 @@ const StatCard: React.FC<{ stat: DashboardStat }> = ({ stat }) => (
         <Feather
           name={stat.trendDirection === 'up' ? 'trending-up' : 'trending-down'}
           size={12}
-          color={stat.trendPositive ? '#27AE60' : '#E74C3C'}
+          color={stat.trendPositive ? '#00875A' : '#DE350B'}
         />
         <Text
           style={[
             styles.trendText,
-            { color: stat.trendPositive ? '#27AE60' : '#E74C3C' },
+            { color: stat.trendPositive ? '#00875A' : '#DE350B' },
           ]}
         >
           {stat.trend}
@@ -262,10 +262,10 @@ const DeliveryCard: React.FC<{ delivery: DeliveryOverviewData }> = ({ delivery }
   <View style={styles.card}>
     <View style={styles.deliveryRow}>
       {[
-        { label: 'Pending', value: delivery.pending, color: '#F39C12' },
-        { label: 'In Transit', value: delivery.inTransit, color: '#2E75B6' },
-        { label: 'Delivered', value: delivery.delivered, color: '#27AE60' },
-        { label: 'Total', value: delivery.total, color: '#6C757D' },
+        { label: 'Pending', value: delivery.pending, color: '#FF991F' },
+        { label: 'In Transit', value: delivery.inTransit, color: '#0052CC' },
+        { label: 'Delivered', value: delivery.delivered, color: '#00875A' },
+        { label: 'Total', value: delivery.total, color: '#5E6C84' },
       ].map(item => (
         <View key={item.label} style={styles.deliveryItem}>
           <Text style={[styles.deliveryCount, { color: item.color }]}>
@@ -300,13 +300,13 @@ const TransactionRow: React.FC<{ tx: RecentTransaction; isLast: boolean }> = ({
     <View
       style={[
         styles.txIcon,
-        { backgroundColor: tx.type === 'income' ? '#DCFCE7' : '#FEE2E2' },
+        { backgroundColor: tx.type === 'income' ? '#E3FCEF' : '#FFEBE6' },
       ]}
     >
       <Feather
         name={tx.type === 'income' ? 'arrow-down-left' : 'arrow-up-right'}
         size={14}
-        color={tx.type === 'income' ? '#16A34A' : '#DC2626'}
+        color={tx.type === 'income' ? '#00875A' : '#DE350B'}
       />
     </View>
     <View style={styles.txMeta}>
@@ -318,7 +318,7 @@ const TransactionRow: React.FC<{ tx: RecentTransaction; isLast: boolean }> = ({
     <Text
       style={[
         styles.txAmount,
-        { color: tx.type === 'income' ? '#16A34A' : '#DC2626' },
+        { color: tx.type === 'income' ? '#00875A' : '#DE350B' },
       ]}
     >
       {tx.type === 'income' ? '+' : '-'} {tx.amount}
@@ -328,9 +328,9 @@ const TransactionRow: React.FC<{ tx: RecentTransaction; isLast: boolean }> = ({
 
 const AlertBanner: React.FC<{ alert: DashboardAlert }> = ({ alert }) => {
   const cfg = {
-    red: { bg: '#FFF5F5', border: '#E74C3C', text: '#C53030', icon: 'alert-circle' },
-    amber: { bg: '#FFFBEB', border: '#F39C12', text: '#B45309', icon: 'alert-triangle' },
-    blue: { bg: '#EBF8FF', border: '#2E75B6', text: '#2B6CB0', icon: 'info' },
+    red: { bg: '#FFEBE6', border: '#DE350B', text: '#BF2600', icon: 'alert-circle' },
+    amber: { bg: '#FFFAE6', border: '#FF991F', text: '#FF8B00', icon: 'alert-triangle' },
+    blue: { bg: '#DEEBFF', border: '#0052CC', text: '#0747A6', icon: 'info' },
   }[alert.severity];
 
   return (

@@ -34,16 +34,16 @@ interface MoreSection {
 
 /* ───────────── colour tokens for icon circles ───────────── */
 const IC = {
-  blueBg: '#EBF0F7', blue: '#1B3A5C',
-  greenBg: '#E8F5E9', green: '#27AE60',
-  amberBg: '#FFF8E1', amber: '#F39C12',
-  tealBg: '#E0F7FA', teal: '#0891B2',
-  purpleBg: '#F3E8FF', purple: '#7C3AED',
-  redBg: '#FEE2E2', red: '#E74C3C',
-  indigoBg: '#E8EAF6', indigo: '#3F51B5',
-  cyanBg: '#E0F2F1', cyan: '#009688',
-  orangeBg: '#FFF3E0', orange: '#E65100',
-  grayBg: '#F1F3F5', gray: '#6B7280',
+  blueBg: '#DEEBFF', blue: '#0052CC',
+  greenBg: '#E3FCEF', green: '#00875A',
+  amberBg: '#FFFAE6', amber: '#FF991F',
+  tealBg: '#E6FCFF', teal: '#00B8D9',
+  purpleBg: '#EAE6FF', purple: '#6554C0',
+  redBg: '#FFEBE6', red: '#DE350B',
+  indigoBg: '#E6F0FF', indigo: '#0065FF',
+  cyanBg: '#E6FCFF', cyan: '#00B8D9',
+  orangeBg: '#FFFAE6', orange: '#FF8B00',
+  grayBg: '#EBECF0', gray: '#5E6C84',
 };
 
 const SECTIONS: MoreSection[] = [

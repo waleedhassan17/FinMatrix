@@ -44,7 +44,7 @@ type PersonCardProps = { row: DeliveryPerformanceRow };
 
 const PersonCard: React.FC<PersonCardProps> = ({ row }) => {
   const deliveredPct = row.total > 0 ? Math.round((row.delivered / row.total) * 100) : 0;
-  const successColor = row.onTimeRate >= 90 ? '#10B981' : '#F59E0B';
+  const successColor = row.onTimeRate >= 90 ? '#00875A' : '#FF991F';
 
   return (
     <View style={styles.personCard}>
@@ -70,7 +70,7 @@ const PersonCard: React.FC<PersonCardProps> = ({ row }) => {
         <View
           style={[
             styles.progressFill,
-            { width: `${deliveredPct}%` as `${number}%`, backgroundColor: '#10B981' },
+            { width: `${deliveredPct}%` as `${number}%`, backgroundColor: '#00875A' },
           ]}
         />
       </View>
@@ -190,10 +190,10 @@ const DeliveryPerformanceScreen: React.FC = () => {
                     <Text style={[styles.trendBreakdownCell, { color: colors.textPrimary }]}>
                       {pt.label}
                     </Text>
-                    <Text style={[styles.trendBreakdownCell, { color: '#10B981' }]}>
+                    <Text style={[styles.trendBreakdownCell, { color: '#00875A' }]}>
                       {pt.delivered}
                     </Text>
-                    <Text style={[styles.trendBreakdownCell, { color: '#EF4444' }]}>
+                    <Text style={[styles.trendBreakdownCell, { color: '#DE350B' }]}>
                       {pt.failed}
                     </Text>
                     <Text style={styles.trendBreakdownCell}>{pt.delivered + pt.failed}</Text>
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
   errorText: {
     fontSize: 13,
-    color: '#EF4444',
+    color: '#DE350B',
     textAlign: 'center',
     marginVertical: spacing.sm,
     fontFamily: THEME.typography.fontFamily,

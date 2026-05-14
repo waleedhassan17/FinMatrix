@@ -52,7 +52,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ label, value, color }) => (
 type TaxRowProps = { row: SalesTaxRow; alt: boolean };
 
 const TaxTableRow: React.FC<TaxRowProps> = ({ row, alt }) => {
-  const liabilityColor = row.netLiability > 0 ? '#EF4444' : '#10B981';
+  const liabilityColor = row.netLiability > 0 ? '#DE350B' : '#00875A';
   return (
     <View style={[styles.taxRow, alt && styles.taxRowAlt]}>
       <Text style={[styles.taxCell, { flex: 2, textAlign: 'left' }]} numberOfLines={1}>
@@ -61,7 +61,7 @@ const TaxTableRow: React.FC<TaxRowProps> = ({ row, alt }) => {
       <Text style={[styles.taxCell, { color: '#2563EB' }]}>
         {formatCurrency(row.collected, 'Rs ')}
       </Text>
-      <Text style={[styles.taxCell, { color: '#F59E0B' }]}>
+      <Text style={[styles.taxCell, { color: '#FF991F' }]}>
         {formatCurrency(row.paid, 'Rs ')}
       </Text>
       <Text style={[styles.taxCell, { color: liabilityColor, fontWeight: '700' }]}>
@@ -145,7 +145,7 @@ const SalesTaxReportScreen: React.FC = () => {
               <SummaryCard
                 label="Net Liability"
                 value={formatCurrency(report.totalNetLiability, 'Rs ')}
-                color={report.totalNetLiability >= 0 ? '#EF4444' : '#10B981'}
+                color={report.totalNetLiability >= 0 ? '#DE350B' : '#00875A'}
               />
             </View>
 
@@ -176,13 +176,13 @@ const SalesTaxReportScreen: React.FC = () => {
                   <Text style={[styles.totalsCell, { color: '#2563EB' }]}>
                     {formatCurrency(report.totalCollected, 'Rs ')}
                   </Text>
-                  <Text style={[styles.totalsCell, { color: '#F59E0B' }]}>
+                  <Text style={[styles.totalsCell, { color: '#FF991F' }]}>
                     {formatCurrency(report.totalPaid, 'Rs ')}
                   </Text>
                   <Text
                     style={[
                       styles.totalsCell,
-                      { color: report.totalNetLiability >= 0 ? '#EF4444' : '#10B981' },
+                      { color: report.totalNetLiability >= 0 ? '#DE350B' : '#00875A' },
                     ]}
                   >
                     {formatCurrency(report.totalNetLiability, 'Rs ')}
@@ -197,9 +197,9 @@ const SalesTaxReportScreen: React.FC = () => {
               <Text style={styles.infoText}>
                 <Text style={{ fontWeight: '700', color: '#2563EB' }}>Collected</Text>
                 {' — tax charged on customer invoices.\n'}
-                <Text style={{ fontWeight: '700', color: '#F59E0B' }}>Paid</Text>
+                <Text style={{ fontWeight: '700', color: '#FF991F' }}>Paid</Text>
                 {' — input tax from vendor bills.\n'}
-                <Text style={{ fontWeight: '700', color: '#EF4444' }}>Net Liability</Text>
+                <Text style={{ fontWeight: '700', color: '#DE350B' }}>Net Liability</Text>
                 {' — amount payable to tax authority (Collected − Paid).'}
               </Text>
             </View>
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
   errorText: {
     fontSize: 13,
-    color: '#EF4444',
+    color: '#DE350B',
     textAlign: 'center',
     marginVertical: spacing.sm,
     fontFamily: THEME.typography.fontFamily,

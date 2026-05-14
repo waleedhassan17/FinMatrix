@@ -20,18 +20,18 @@ import type { RootStackParamList } from '../../types';
 
 /* ── Brand Colors ───────────────────────────────────── */
 const BRAND = {
-  navy: '#1E3A5F',
-  navyDark: '#162D4A',
-  blue: '#2563EB',
-  blueLight: '#EBF0F7',
-  coral: '#E85D4A',
-  coralLight: '#FCEEED',
-  bg: '#F5F5F5',
+  navy: '#091E42',
+  navyDark: '#091E42',
+  blue: '#0052CC',
+  blueLight: '#DEEBFF',
+  coral: '#DE350B',
+  coralLight: '#FFEBE6',
+  bg: '#F4F5F7',
   card: '#FFFFFF',
-  textDark: '#1A1A1A',
-  textMid: '#555555',
-  textLight: '#999999',
-  border: '#E8E8E8',
+  textDark: '#172B4D',
+  textMid: '#5E6C84',
+  textLight: '#8993A4',
+  border: '#DFE1E6',
 };
 
 type RoleSelectionNavigationProp = NativeStackNavigationProp<
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   logoFin: {
-    color: '#10B981',
+    color: '#00875A',
   },
   logoMatrix: {
     color: BRAND.textDark,

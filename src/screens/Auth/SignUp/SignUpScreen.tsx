@@ -53,7 +53,7 @@ const DS = {
   navy700: '#1E293B',
 
   green500: '#059669',
-  green400: '#10B981',
+  green400: '#00875A',
   green50: '#ECFDF5',
 
   slate50: '#F8FAFC',
@@ -65,12 +65,12 @@ const DS = {
 
   red50: '#FEF2F2',
   red100: '#FEE2E2',
-  red500: '#EF4444',
+  red500: '#DE350B',
   red700: '#B91C1C',
   red900: '#7F1D1D',
 
-  amber500: '#F59E0B',
-  amber600: '#D97706',
+  amber500: '#FF991F',
+  amber600: '#FF8B00',
 
   white: '#FFFFFF',
 

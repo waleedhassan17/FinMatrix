@@ -24,15 +24,15 @@ const { width: W } = Dimensions.get('window');
 
 // ── Design tokens ─────────────────────────────────────
 const C = {
-  bg: '#F0F4FF',
+  bg: '#F4F5F7',
   surface: '#FFFFFF',
-  primary: '#6366F1',
-  primaryDark: '#4F46E5',
-  border: '#E2E8F0',
-  text: { primary: '#1A1A2E', secondary: '#64748B', muted: '#94A3B8', white: '#FFFFFF' },
-  green: '#10B981',
-  red: '#EF4444',
-  amber: '#F59E0B',
+  primary: '#0052CC',
+  primaryDark: '#0747A6',
+  border: '#DFE1E6',
+  text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4', white: '#FFFFFF' },
+  green: '#00875A',
+  red: '#DE350B',
+  amber: '#FF991F',
 };
 
 // ── Animated Metric Card ──────────────────────────────
@@ -384,7 +384,7 @@ const S = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
   liveIndicator: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.green },
-  headerBadgeText: { fontSize: 12, fontWeight: '700', color: '#16A34A' },
+  headerBadgeText: { fontSize: 12, fontWeight: '700', color: '#00875A' },
 
   content: { padding: 16, gap: 14 },
 
@@ -511,7 +511,7 @@ const S = StyleSheet.create({
   coBadge: {
     backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5,
   },
-  coBadgeText: { fontSize: 9, fontWeight: '700', color: '#DC2626', textTransform: 'capitalize' },
+  coBadgeText: { fontSize: 9, fontWeight: '700', color: '#DE350B', textTransform: 'capitalize' },
 
   // Forecast
   forecastCard: {

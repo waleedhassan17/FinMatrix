@@ -48,10 +48,10 @@ export const strengthConfig: Record<
   PasswordStrength,
   { color: string; label: string; width: string }
 > = {
-  weak: { color: '#E74C3C', label: 'Weak', width: '25%' },
-  fair: { color: '#F39C12', label: 'Fair', width: '50%' },
-  strong: { color: '#2E75B6', label: 'Strong', width: '75%' },
-  excellent: { color: '#27AE60', label: 'Excellent', width: '100%' },
+  weak: { color: '#DE350B', label: 'Weak', width: '25%' },
+  fair: { color: '#FF991F', label: 'Fair', width: '50%' },
+  strong: { color: '#0052CC', label: 'Strong', width: '75%' },
+  excellent: { color: '#00875A', label: 'Excellent', width: '100%' },
 };
 
 // ─── Delivery Sign In Validation ─────────────────────

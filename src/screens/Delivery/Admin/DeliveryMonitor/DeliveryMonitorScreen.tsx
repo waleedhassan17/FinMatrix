@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, Callout, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import MapView, { Marker, Callout, PROVIDER_GOOGLE } from '../../../../components/PlatformMapView';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
@@ -67,12 +67,12 @@ interface MapData {
 // ── Constants ────────────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
   unassigned: '#64748B',
-  pending: '#D97706',
-  picked_up: '#7C3AED',
+  pending: '#FF8B00',
+  picked_up: '#6554C0',
   in_transit: '#2563EB',
   arrived: '#0891B2',
   delivered: '#059669',
-  failed: '#DC2626',
+  failed: '#DE350B',
   returned: '#EA580C',
   cancelled: '#94A3B8',
 };
@@ -115,6 +115,7 @@ const SORT_OPTIONS: Array<{ label: string; value: MonitorSortBy }> = [
 ];
 
 // Default map region (Lahore, Pakistan)
+type Region = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
 const DEFAULT_REGION: Region = {
   latitude: 31.5204,
   longitude: 74.3587,
@@ -144,7 +145,7 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const personnelMap = useMemo(
@@ -241,12 +242,12 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
       {/* ── Stats Bar ── */}
       <View style={styles.statsBar}>
         {[
-          { label: 'Total', count: stats.total, color: '#1B3A5C' },
+          { label: 'Total', count: stats.total, color: '#0052CC' },
           { label: 'Pending', count: stats.pending, color: STATUS_COLORS.pending },
           { label: 'Transit', count: stats.inTransit, color: STATUS_COLORS.in_transit },
           { label: 'Done', count: stats.delivered, color: STATUS_COLORS.delivered },
           { label: 'Failed', count: stats.failed, color: STATUS_COLORS.failed },
-          { label: 'Tracking', count: mapData?.locatedPersonnel ?? 0, color: '#7C3AED' },
+          { label: 'Tracking', count: mapData?.locatedPersonnel ?? 0, color: '#6554C0' },
         ].map(item => (
           <View key={item.label} style={styles.statItem}>
             <View style={[styles.statDot, { backgroundColor: item.color }]} />
@@ -737,8 +738,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: '#DCFCE7', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10,
   },
-  gpsPillDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#16A34A' },
-  gpsPillText: { fontSize: 10, fontWeight: '700', color: '#16A34A' },
+  gpsPillDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#00875A' },
+  gpsPillText: { fontSize: 10, fontWeight: '700', color: '#00875A' },
   cardFooter: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 14, paddingVertical: 8,
