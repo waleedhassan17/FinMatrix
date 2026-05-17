@@ -50,11 +50,11 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor="#EA580C" />
-      
+      <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
+
       {/* Header with Gradient */}
       <LinearGradient
-        colors={['#EA580C', '#F97316']}
+        colors={[DP_BRAND.primaryDark, DP_BRAND.primary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
@@ -126,8 +126,8 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             <View style={[styles.infoRow, styles.infoRowLast]}>
               <View style={styles.infoRowLeft}>
-                <View style={[styles.infoRowIcon, { backgroundColor: '#FFF7ED' }]}>
-                  <Feather name="shield" size={16} color="#EA580C" />
+                <View style={[styles.infoRowIcon, { backgroundColor: DP_BRAND.primarySoft }]}>
+                  <Feather name="shield" size={16} color={DP_BRAND.primary} />
                 </View>
                 <View>
                   <Text style={styles.infoLabel}>Role</Text>

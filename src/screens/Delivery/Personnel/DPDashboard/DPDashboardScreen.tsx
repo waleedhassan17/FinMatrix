@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Animated,
   Alert,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -19,6 +20,8 @@ import { selectUnreadNotificationCountForUser } from '../../../Notifications/not
 import {
   selectDeliveries,
   selectDeliveryPersonnel,
+  fetchDeliveries,
+  fetchDeliveryPersonnel,
 } from '../../Admin/AssignDeliveries/deliverySlice';
 import { startDelivery } from './dpDashboardSlice';
 import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DPDashboardStack';
@@ -62,6 +65,7 @@ const DPDashboardScreen: React.FC = () => {
   );
 
   const [isGpsTracking, setIsGpsTracking] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const gpsAnim = useRef(new Animated.Value(1)).current;
 
   // Animations
@@ -90,6 +94,10 @@ const DPDashboardScreen: React.FC = () => {
   );
 
   useEffect(() => {
+    // Fetch deliveries & personnel from backend on mount
+    dispatch(fetchDeliveries());
+    dispatch(fetchDeliveryPersonnel());
+
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
@@ -114,7 +122,7 @@ const DPDashboardScreen: React.FC = () => {
         );
       }
     });
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -124,7 +132,25 @@ const DPDashboardScreen: React.FC = () => {
     }).start();
   }, [progress]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      dispatch(fetchDeliveries()),
+      dispatch(fetchDeliveryPersonnel()),
+    ]);
+    setRefreshing(false);
+  }, [dispatch]);
+
   const hasActiveDelivery = summary.inProgress > 0 || summary.pending > 0;
+
+  // Poll every 30 seconds while there are active deliveries
+  useEffect(() => {
+    if (!hasActiveDelivery) return;
+    const interval = setInterval(() => {
+      dispatch(fetchDeliveries());
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [hasActiveDelivery, dispatch]);
 
   useEffect(() => {
     if (hasActiveDelivery) {
@@ -242,10 +268,18 @@ const DPDashboardScreen: React.FC = () => {
         )}
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={DP_BRAND.primary}
+            colors={[DP_BRAND.primary]}
+          />
+        }
       >
         {/* Progress Overview Card */}
         <Animated.View style={[

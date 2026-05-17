@@ -58,3 +58,38 @@ export const deleteAgencyAPI = async (id: string): Promise<any> => {
     throw new Error(extractErrorMessage(e));
   }
 };
+
+/**
+ * GET /agencies/:id/items
+ * Returns all InventoryItem records linked to the specified agency
+ * (i.e. sourceAgencyId = id).
+ */
+export const getAgencyItemsAPI = async (agencyId: string): Promise<any> => {
+  try {
+    const response = await api.get(`/agencies/${agencyId}/items`);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+/**
+ * POST /agencies/:id/items
+ * Creates a new InventoryItem with sourceAgencyId set to the given agency.
+ */
+export const addAgencyItemAPI = async (agencyId: string, data: {
+  name: string;
+  sku: string;
+  category?: string;
+  unitCost?: string;
+  sellingPrice?: string;
+  quantityOnHand?: string;
+  unitOfMeasure?: string;
+}): Promise<any> => {
+  try {
+    const response = await api.post(`/agencies/${agencyId}/items`, data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};

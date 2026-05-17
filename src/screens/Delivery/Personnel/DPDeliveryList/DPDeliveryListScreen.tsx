@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAppSelector } from '../../../../hooks/useReduxHooks';
+import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks';
 import { selectUser } from '../../../Auth/authSlice';
-import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
+import { selectDeliveries, fetchDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
@@ -108,9 +108,21 @@ const SectionCard: React.FC<{
 );
 
 const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
+  const dispatch = useAppDispatch();
   const user = useAppSelector(selectUser);
   const deliveries = useAppSelector(selectDeliveries);
   const userId = user?.uid ?? 'dp_002';
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchDeliveries());
+  }, [dispatch]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await dispatch(fetchDeliveries());
+    setRefreshing(false);
+  }, [dispatch]);
 
   const myDeliveries = useMemo(
     () => deliveries.filter(d => d.assignedTo === userId),
@@ -165,10 +177,18 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={DP_BRAND.primary}
+            colors={[DP_BRAND.primary]}
+          />
+        }
       >
         {/* In Progress Section */}
         <SectionCard

@@ -18,15 +18,19 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import { deliveryRecords, type DeliveryItemLine, type DeliveryPriority, type DeliveryRecord, type StatusHistoryEntry } from '../../../../models/deliveryModel';
-import { dummyDeliveryPersonnel, type DummyDeliveryPerson } from '../../../../models/deliveryModel';
+import { type DeliveryItemLine, type DeliveryPriority, type DeliveryRecord, type StatusHistoryEntry } from '../../../../models/deliveryModel';
+import { type DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import {
   getDeliveriesAPI,
   getDeliveryPersonnelAPI,
+  assignDeliveriesAPI,
+  createDeliveryAPI,
+  getShadowInventoryAPI,
 } from '../../../../network/deliveryNetwork';
 import {
   deliveryListSerializer,
   personnelListSerializer,
+  mapDelivery,
 } from '../../../../serializers/deliverySerializer';
 
 export interface ShadowInventoryItem {
@@ -84,36 +88,10 @@ const buildLoadMap = (deliveries: DeliveryRecord[]): Record<string, number> => {
 };
 
 const initialState: DeliverySliceState = {
-  deliveries: deliveryRecords,
-  deliveryPersonnel: dummyDeliveryPersonnel,
-  shadowInventory: [
-    {
-      personnelId: 'dp_002',
-      itemId: 'aqua_001',
-      itemName: 'AquaPure Water 500ml',
-      quantity: 40,
-      updatedAt: '2026-03-15T08:00:00Z',
-    },
-    {
-      personnelId: 'dp_001',
-      itemId: 'dalda_001',
-      itemName: 'Dalda Cooking Oil 1L',
-      quantity: 12,
-      updatedAt: '2026-03-15T08:10:00Z',
-    },
-  ],
-  inventoryUpdateRequests: [
-    {
-      id: 'inv_req_001',
-      personnelId: 'dp_002',
-      itemId: 'aqua_003',
-      itemName: 'AquaPure Dispenser Bottle 19L',
-      requestedQty: 8,
-      reason: 'High demand on Zone C route',
-      status: 'pending',
-      createdAt: '2026-03-15T07:30:00Z',
-    },
-  ],
+  deliveries: [],
+  deliveryPersonnel: [],
+  shadowInventory: [],
+  inventoryUpdateRequests: [],
   notifications: [],
 };
 
@@ -121,74 +99,98 @@ export const deliverySlice = createAppSlice({
   name: 'delivery',
   initialState,
   reducers: create => ({
-    createDelivery: create.reducer(
-      (
-        state,
-        action: PayloadAction<{
-          customerId: string;
-          customerName: string;
-          zone: string;
-          scheduledDate: string;
-          priority: DeliveryPriority;
-          notes?: string;
-          items: DeliveryItemLine[];
-        }>,
-      ) => {
-        const now = new Date().toISOString();
-        const nextNumber = state.deliveries.length + 1001;
-        const id = `del_${String(state.deliveries.length + 1).padStart(3, '0')}`;
-        state.deliveries.unshift({
-          id,
-          reference: `DEL-${nextNumber}`,
-          referenceNo: `DEL-${nextNumber}`,
-          customerId: action.payload.customerId,
-          customerName: action.payload.customerName,
-          zone: action.payload.zone,
-          scheduledDate: action.payload.scheduledDate,
-          priority: action.payload.priority,
-          status: 'unassigned',
-          notes: action.payload.notes,
-          items: action.payload.items,
-          statusHistory: [],
-          createdAt: now,
-          updatedAt: now,
-        });
+    createDelivery: create.asyncThunk(
+      async (payload: {
+        customerId: string;
+        customerName: string;
+        zone: string;
+        scheduledDate: string;
+        priority: DeliveryPriority;
+        notes?: string;
+        items: DeliveryItemLine[];
+      }) => {
+        const result = await createDeliveryAPI(payload);
+        console.log('[createDelivery] API response:', JSON.stringify(result, null, 2));
+        return { ...payload, apiResult: result };
+      },
+      {
+        fulfilled: (state, action) => {
+          const { apiResult, ...payload } = action.payload;
+          // Use backend-returned delivery if available, otherwise create locally
+          const backendDelivery = apiResult?.data?.delivery ?? apiResult?.data;
+          if (backendDelivery?.id) {
+            state.deliveries.unshift(mapDelivery(backendDelivery));
+          } else {
+            const now = new Date().toISOString();
+            const nextNumber = state.deliveries.length + 1001;
+            const id = `del_${String(state.deliveries.length + 1).padStart(3, '0')}`;
+            state.deliveries.unshift({
+              id,
+              reference: `DEL-${nextNumber}`,
+              referenceNo: `DEL-${nextNumber}`,
+              customerId: payload.customerId,
+              customerName: payload.customerName,
+              zone: payload.zone,
+              scheduledDate: payload.scheduledDate,
+              priority: payload.priority,
+              status: 'unassigned',
+              notes: payload.notes,
+              items: payload.items,
+              statusHistory: [],
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+        },
+        rejected: (_state, action) => {
+          console.warn('[createDelivery] FAILED:', action.error?.message);
+        },
       },
     ),
 
-    assignSelectedDeliveries: create.reducer(
-      (
-        state,
-        action: PayloadAction<{ deliveryIds: string[]; personnelId: string; assignedBy?: string }>,
-      ) => {
-        const { deliveryIds, personnelId } = action.payload;
-        const now = new Date().toISOString();
+    assignSelectedDeliveries: create.asyncThunk(
+      async (payload: { deliveryIds: string[]; personnelId: string; assignedBy?: string }) => {
+        const result = await assignDeliveriesAPI({
+          deliveryIds: payload.deliveryIds,
+          personnelId: payload.personnelId,
+        });
+        console.log('[assignDeliveries] API response:', JSON.stringify(result, null, 2));
+        return { ...payload, apiResult: result };
+      },
+      {
+        fulfilled: (state, action) => {
+          const { deliveryIds, personnelId } = action.payload;
+          const now = new Date().toISOString();
 
-        for (const delivery of state.deliveries) {
-          if (!deliveryIds.includes(delivery.id)) continue;
+          for (const delivery of state.deliveries) {
+            if (!deliveryIds.includes(delivery.id)) continue;
 
-          delivery.assignedTo = personnelId;
-          delivery.assignedAt = now;
-          delivery.status = 'pending';
-          delivery.updatedAt = now;
+            delivery.assignedTo = personnelId;
+            delivery.assignedAt = now;
+            delivery.status = 'pending';
+            delivery.updatedAt = now;
 
-          state.notifications.unshift({
-            id: `notif_${Date.now()}_${delivery.id}`,
-            type: 'delivery_assigned',
-            deliveryId: delivery.id,
-            personnelId,
-            title: 'New delivery assigned',
-            message: `${delivery.referenceNo} assigned to ${personnelId}.`,
-            createdAt: now,
-            isRead: false,
-          });
-        }
+            state.notifications.unshift({
+              id: `notif_${Date.now()}_${delivery.id}`,
+              type: 'delivery_assigned',
+              deliveryId: delivery.id,
+              personnelId,
+              title: 'New delivery assigned',
+              message: `${delivery.referenceNo} assigned to ${personnelId}.`,
+              createdAt: now,
+              isRead: false,
+            });
+          }
 
-        const loadMap = buildLoadMap(state.deliveries);
-        state.deliveryPersonnel = state.deliveryPersonnel.map(person => ({
-          ...person,
-          currentLoad: loadMap[person.userId] ?? 0,
-        }));
+          const loadMap = buildLoadMap(state.deliveries);
+          state.deliveryPersonnel = state.deliveryPersonnel.map(person => ({
+            ...person,
+            currentLoad: loadMap[person.userId] ?? 0,
+          }));
+        },
+        rejected: (_state, action) => {
+          console.warn('[assignDeliveries] FAILED:', action.error?.message);
+        },
       },
     ),
 
@@ -430,24 +432,102 @@ export const deliverySlice = createAppSlice({
       },
     ),
 
+    /** Deduct items from shadow inventory when personnel submits for admin review */
+    deductShadowInventory: create.reducer(
+      (state, action: PayloadAction<{ personnelId: string; changes: Array<{ itemId: string; itemName: string; deliveredQty: number; returnedQty: number }> }>) => {
+        const now = new Date().toISOString();
+        action.payload.changes.forEach(change => {
+          const idx = state.shadowInventory.findIndex(
+            si => si.personnelId === action.payload.personnelId && si.itemId === change.itemId,
+          );
+          if (idx !== -1) {
+            state.shadowInventory[idx].quantity = Math.max(
+              0,
+              state.shadowInventory[idx].quantity - change.deliveredQty + change.returnedQty,
+            );
+            state.shadowInventory[idx].updatedAt = now;
+          } else {
+            // Track new item in shadow (negative = owed)
+            state.shadowInventory.push({
+              personnelId: action.payload.personnelId,
+              itemId: change.itemId,
+              itemName: change.itemName,
+              quantity: -(change.deliveredQty - change.returnedQty),
+              updatedAt: now,
+            });
+          }
+        });
+      },
+    ),
+
+    /** Remove shadow entries for a personnel after admin approval syncs to actual inventory */
+    clearShadowInventoryForRequest: create.reducer(
+      (state, action: PayloadAction<{ personnelId: string; itemIds: string[] }>) => {
+        state.shadowInventory = state.shadowInventory.filter(
+          si => !(si.personnelId === action.payload.personnelId && action.payload.itemIds.includes(si.itemId)),
+        );
+      },
+    ),
+
     // ── Async thunks (GL pipeline: network → serializer → state) ──
     /** Fetch latest deliveries from the API and refresh state. */
     fetchDeliveries: create.asyncThunk(
-      async () => getDeliveriesAPI(),
+      async () => {
+        const response = await getDeliveriesAPI();
+        console.log('[fetchDeliveries] raw API response:', JSON.stringify(response, null, 2));
+        return response;
+      },
       {
         fulfilled: (state, action: PayloadAction<any>) => {
           const serialized = deliveryListSerializer(action.payload);
+          console.log('[fetchDeliveries] serialized count:', serialized.deliveries.length,
+            'first:', serialized.deliveries[0] ? JSON.stringify({ id: serialized.deliveries[0].id, assignedTo: serialized.deliveries[0].assignedTo, status: serialized.deliveries[0].status }) : 'none');
           state.deliveries = serialized.deliveries;
+        },
+        rejected: (_state, action) => {
+          console.warn('[fetchDeliveries] FAILED:', action.error?.message);
         },
       },
     ),
     /** Fetch latest delivery personnel from the API and refresh state. */
     fetchDeliveryPersonnel: create.asyncThunk(
-      async () => getDeliveryPersonnelAPI(),
+      async () => {
+        const response = await getDeliveryPersonnelAPI();
+        console.log('[fetchDeliveryPersonnel] raw API response:', JSON.stringify(response, null, 2));
+        return response;
+      },
       {
         fulfilled: (state, action: PayloadAction<any>) => {
           const serialized = personnelListSerializer(action.payload);
+          console.log('[fetchDeliveryPersonnel] serialized personnel:', JSON.stringify(serialized.personnel, null, 2));
           state.deliveryPersonnel = serialized.personnel;
+        },
+        rejected: (_state, action) => {
+          console.warn('[fetchDeliveryPersonnel] FAILED:', action.error?.message);
+        },
+      },
+    ),
+    /** Fetch shadow inventory from the API */
+    fetchShadowInventory: create.asyncThunk(
+      async () => {
+        const response = await getShadowInventoryAPI();
+        return response;
+      },
+      {
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const raw = action.payload?.data ?? action.payload;
+          if (Array.isArray(raw)) {
+            state.shadowInventory = raw.map((item: any) => ({
+              personnelId: item.personnelId ?? item.personnel_id ?? '',
+              itemId: item.itemId ?? item.item_id ?? '',
+              itemName: item.itemName ?? item.item_name ?? '',
+              quantity: typeof item.quantity === 'number' ? item.quantity : parseFloat(item.quantity) || 0,
+              updatedAt: item.updatedAt ?? item.updated_at ?? new Date().toISOString(),
+            }));
+          }
+        },
+        rejected: (_state, action) => {
+          console.warn('[fetchShadowInventory] FAILED:', action.error?.message);
         },
       },
     ),
@@ -506,8 +586,11 @@ export const {
   confirmCustomerReceipt,
   reportDeliveryIssue,
   submitShadowInventoryUpdateForDelivery,
+  deductShadowInventory,
+  clearShadowInventoryForRequest,
   fetchDeliveries,
   fetchDeliveryPersonnel,
+  fetchShadowInventory,
 } = deliverySlice.actions;
 
 export const {

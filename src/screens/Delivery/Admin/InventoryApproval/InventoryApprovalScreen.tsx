@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -23,13 +23,18 @@ import {
   selectPendingApprovalCount,
   setInventoryApprovalFilter,
   setRequestStatus,
+  fetchApprovalRequests,
+  approveRequestAsync,
+  rejectRequestAsync,
+  undoApprovalAsync,
 } from './inventoryApprovalSlice';
 import { applyDeliveryChanges } from '../../../../store/inventorySlice';
+import { clearShadowInventoryForRequest } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { InventoryUpdateRequest } from '../../../../models/deliveryModel';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'InventoryApproval'>;
-type ModalMode = 'approve' | 'reject' | null;
+type ModalMode = 'approve' | 'reject' | 'undo' | null;
 
 const FILTERS: Array<{ key: 'pending' | 'approved' | 'rejected' | 'all'; label: string }> = [
   { key: 'pending', label: 'Pending' },
@@ -50,6 +55,10 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const activeFilter = useAppSelector(selectInventoryApprovalFilter);
   const pendingCount = useAppSelector(selectPendingApprovalCount);
   const auditTrail = useAppSelector(selectInventoryApprovalAuditTrail);
+
+  useEffect(() => {
+    dispatch(fetchApprovalRequests());
+  }, [dispatch]);
 
   const [proofFor, setProofFor] = useState<InventoryUpdateRequest | null>(null);
   const [photoFullscreen, setPhotoFullscreen] = useState<string | null>(null);
@@ -76,73 +85,94 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     setModalMode('reject');
   };
 
+  const openUndoModal = (request: InventoryUpdateRequest) => {
+    setTargetRequest(request);
+    setModalMode('undo');
+  };
+
   const closeModal = () => {
     setModalMode(null);
     setTargetRequest(null);
     setRejectComment('');
   };
 
-  const confirmApprove = () => {
+  const confirmApprove = async () => {
     if (!targetRequest) return;
 
-    dispatch({
-      type: 'approvals/approve',
-      payload: {
-        requestId: targetRequest.id,
-        personnelId: targetRequest.personnelId,
-        deliveryReference: targetRequest.deliveryReference,
-      },
-    });
+    try {
+      await dispatch(
+        approveRequestAsync({
+          requestId: targetRequest.id,
+          reviewedBy: 'Admin',
+        }),
+      ).unwrap();
 
-    dispatch(
-      setRequestStatus({
-        requestId: targetRequest.id,
-        status: 'approved',
-        reviewedBy: 'Admin',
-      }),
-    );
+      // Apply changes to actual inventory
+      dispatch(
+        applyDeliveryChanges({
+          changes: targetRequest.changes.map(c => ({
+            itemId: c.itemId,
+            deliveredQty: c.deliveredQty,
+            returnedQty: c.returnedQty,
+          })),
+        }),
+      );
 
-    dispatch(
-      applyDeliveryChanges({
-        changes: targetRequest.changes.map(c => ({
-          itemId: c.itemId,
-          deliveredQty: c.deliveredQty,
-          returnedQty: c.returnedQty,
-        })),
-      }),
-    );
+      // Clear shadow inventory entries for this personnel since they are now synced
+      dispatch(
+        clearShadowInventoryForRequest({
+          personnelId: targetRequest.personnelId,
+          itemIds: targetRequest.changes.map(c => c.itemId),
+        }),
+      );
 
-    closeModal();
-    Alert.alert('Approved', 'Delivery changes applied to real inventory and shadow inventory marked synced.');
+      closeModal();
+      Alert.alert('Approved', 'Delivery changes applied to real inventory and shadow inventory cleared.');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Failed to approve request.');
+    }
   };
 
-  const confirmReject = () => {
+  const confirmUndo = async () => {
+    if (!targetRequest) return;
+    try {
+      await dispatch(undoApprovalAsync({ requestId: targetRequest.id })).unwrap();
+      closeModal();
+      Alert.alert('Undone', 'Approval reversed. Inventory quantities have been restored to their previous values.');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Failed to undo approval.');
+    }
+  };
+
+  const confirmReject = async () => {
     if (!targetRequest) return;
     if (!rejectComment.trim()) {
       Alert.alert('Comment required', 'Please add rejection reason before submitting.');
       return;
     }
 
-    dispatch({
-      type: 'approvals/reject',
-      payload: {
-        requestId: targetRequest.id,
-        personnelId: targetRequest.personnelId,
-        deliveryReference: targetRequest.deliveryReference,
-      },
-    });
+    try {
+      await dispatch(
+        rejectRequestAsync({
+          requestId: targetRequest.id,
+          reviewedBy: 'Admin',
+          reviewerComment: rejectComment,
+        }),
+      ).unwrap();
 
-    dispatch(
-      setRequestStatus({
-        requestId: targetRequest.id,
-        status: 'rejected',
-        reviewedBy: 'Admin',
-        reviewerComment: rejectComment,
-      }),
-    );
+      // Revert shadow inventory — items go back since the request was rejected
+      dispatch(
+        clearShadowInventoryForRequest({
+          personnelId: targetRequest.personnelId,
+          itemIds: targetRequest.changes.map(c => c.itemId),
+        }),
+      );
 
-    closeModal();
-    Alert.alert('Rejected', 'Request marked rejected and delivery personnel notified.');
+      closeModal();
+      Alert.alert('Rejected', 'Request marked rejected. Shadow inventory reverted and personnel notified.');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Failed to reject request.');
+    }
   };
 
   const renderChangeRows = (request: InventoryUpdateRequest) => {
@@ -266,6 +296,16 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.reviewInfoBox}>
                 <Text style={styles.reviewInfoText}>Reviewed by {request.reviewedBy ?? 'Admin'} · {request.reviewedAt ? new Date(request.reviewedAt).toLocaleString() : '-'}</Text>
                 {!!request.reviewerComment && <Text style={styles.reviewComment}>{request.reviewerComment}</Text>}
+                {request.status === 'approved' && (
+                  <View style={styles.undoBtnWrap}>
+                    <CustomButton
+                      title="Undo Approval"
+                      onPress={() => openUndoModal(request)}
+                      variant="danger"
+                      size="sm"
+                    />
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -378,6 +418,31 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
               )
             )}
             <CustomButton title="Close" onPress={() => setProofFor(null)} fullWidth />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={modalMode === 'undo' && !!targetRequest} transparent animationType="fade" onRequestClose={closeModal}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Undo Approval</Text>
+            <Text style={styles.modalSub}>
+              This will reverse all inventory changes made by this approval. The request will be marked as rejected and inventory quantities will be restored.
+            </Text>
+            <Text style={styles.modalLine}>Delivery: {targetRequest?.deliveryReference}</Text>
+            <Text style={styles.modalLine}>Personnel: {targetRequest?.personnelName}</Text>
+            {targetRequest?.changes.map(c => {
+              const appliedQty = c.beforeQty - c.deliveredQty + c.returnedQty;
+              return (
+                <Text key={c.itemId} style={styles.modalLine}>
+                  {c.itemName}: {appliedQty} → {c.beforeQty} (restored)
+                </Text>
+              );
+            })}
+            <View style={styles.modalActionRow}>
+              <View style={styles.modalBtn}><CustomButton title="Cancel" onPress={closeModal} variant="secondary" fullWidth /></View>
+              <View style={styles.modalBtn}><CustomButton title="Undo" onPress={confirmUndo} variant="danger" fullWidth /></View>
+            </View>
           </View>
         </View>
       </Modal>
@@ -522,7 +587,8 @@ const styles = StyleSheet.create({
 
   reviewInfoBox: { backgroundColor: colors.background, borderRadius: borderRadius.sm, padding: spacing.sm },
   reviewInfoText: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: 4 },
-  reviewComment: { ...THEME.typography.bodyMd, color: colors.textPrimary },
+  reviewComment: { ...THEME.typography.bodyMd, color: colors.textPrimary, marginBottom: spacing.sm },
+  undoBtnWrap: { marginTop: spacing.sm, alignSelf: 'flex-start' },
 
   emptyState: {
     backgroundColor: colors.cardBg,

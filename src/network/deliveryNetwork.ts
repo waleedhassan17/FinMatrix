@@ -246,9 +246,20 @@ export const syncShadowInventoryAPI = async (personnelId: string): Promise<any> 
 
 // ─── GPS Location Tracking ──────────────────────────
 
-export const updateLocationAPI = async (lat: number, lng: number): Promise<any> => {
+export const updateLocationAPI = async (
+  lat: number,
+  lng: number,
+  meta?: { heading?: number | null; speed?: number | null; accuracy?: number | null; timestamp?: number },
+): Promise<any> => {
   try {
-    const response = await api.patch('/delivery-personnel/location', { lat, lng });
+    const response = await api.patch('/delivery-personnel/location', {
+      lat,
+      lng,
+      heading: meta?.heading ?? null,
+      speed: meta?.speed ?? null,
+      accuracy: meta?.accuracy ?? null,
+      timestamp: meta?.timestamp ?? Date.now(),
+    });
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -258,6 +269,24 @@ export const updateLocationAPI = async (lat: number, lng: number): Promise<any> 
 export const getDeliveryMapDataAPI = async (): Promise<any> => {
   try {
     const response = await api.get('/deliveries/map-data');
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getPersonnelLocationAPI = async (personnelId: string): Promise<any> => {
+  try {
+    const response = await api.get(`/delivery-personnel/${personnelId}/location`);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getDeliveryLocationHistoryAPI = async (deliveryId: string): Promise<any> => {
+  try {
+    const response = await api.get(`/deliveries/${deliveryId}/location-history`);
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -286,4 +315,13 @@ export const rejectInventoryUpdateRequestAPI = async (
     action: 'rejected',
     notes: reviewerComment,
   });
+
+export const undoInventoryApprovalAPI = async (requestId: string): Promise<any> => {
+  try {
+    const response = await api.post(`/inventory-update-requests/${requestId}/undo`);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
 

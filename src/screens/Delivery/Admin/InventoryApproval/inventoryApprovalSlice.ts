@@ -28,6 +28,7 @@ import {
   getInventoryUpdateRequestsAPI,
   approveInventoryUpdateRequestAPI,
   rejectInventoryUpdateRequestAPI,
+  undoInventoryApprovalAPI,
 } from '../../../../network/deliveryNetwork';
 import {
   inventoryUpdateRequestListSerializer,
@@ -257,6 +258,37 @@ export const inventoryApprovalSlice = createAppSlice({
         },
       },
     ),
+    /**
+     * Undo an approved request — reverses inventory changes and marks it
+     * as rejected on the server.
+     */
+    undoApprovalAsync: create.asyncThunk(
+      async (params: { requestId: string }) => undoInventoryApprovalAPI(params.requestId),
+      {
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const updated = inventoryUpdateRequestSingleSerializer(action.payload);
+          if (!updated) return;
+          const idx = state.requests.findIndex(r => r.id === updated.id);
+          if (idx !== -1) state.requests[idx] = updated;
+          const now = updated.reviewedAt ?? new Date().toISOString();
+          state.notifications.unshift({
+            id: `notif_${Date.now()}_${updated.id}`,
+            userId: updated.personnelId,
+            title: 'Inventory approval reversed',
+            message: `The approval for ${updated.deliveryReference} was undone. Inventory restored.`,
+            createdAt: now,
+          });
+          state.auditTrail.unshift({
+            id: `audit_${Date.now()}_${updated.id}`,
+            requestId: updated.id,
+            action: 'rejected',
+            reviewedBy: updated.reviewedBy ?? 'admin',
+            createdAt: now,
+            details: `[UNDONE] ${updated.deliveryReference} | ${summarizeChanges(updated)}`,
+          });
+        },
+      },
+    ),
   }),
   selectors: {
     selectInventoryApprovalState: state => state,
@@ -275,6 +307,7 @@ export const {
   fetchApprovalRequests,
   approveRequestAsync,
   rejectRequestAsync,
+  undoApprovalAsync,
 } = inventoryApprovalSlice.actions;
 
 export const {
