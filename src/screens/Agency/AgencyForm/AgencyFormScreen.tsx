@@ -2,7 +2,7 @@
 // FinMatrix — Agency Form Screen (Create / Edit)
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import { colors, spacing, borderRadius } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAgencies, createAgency, editAgency, fetchAgencies } from '../AgencyList/agencyListSlice';
@@ -26,8 +26,6 @@ import {
   setField,
   setErrors,
   setIsSaving,
-  addInventoryItem,
-  removeInventoryItem,
   loadAgencyForEdit,
   resetAgencyForm,
 } from './agencyFormSlice';
@@ -41,7 +39,6 @@ import {
   validateAgency,
   type AgencyType,
 } from '../../../models/agencyModel';
-import type { AgencyInventoryItem } from '../../../models/agencyModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type FormRoute = RouteProp<MoreStackParamList, 'AgencyForm'>;
@@ -60,17 +57,6 @@ const AgencyFormScreen: React.FC = () => {
   const agencies = useAppSelector(selectAgencies);
   const form = useAppSelector(selectAgencyFormState);
 
-  // ── Inline item form state ──────────────────────
-  const [itemName, setItemName] = useState('');
-  const [itemSku, setItemSku] = useState('');
-  const [itemCategory, setItemCategory] = useState('');
-  const [itemUOM, setItemUOM] = useState('Unit');
-  const [itemCost, setItemCost] = useState('');
-  const [itemSell, setItemSell] = useState('');
-  const [itemQty, setItemQty] = useState('');
-  const [itemReorder, setItemReorder] = useState('');
-  const [showItemForm, setShowItemForm] = useState(false);
-
   // ── Load for edit ───────────────────────────────
   useEffect(() => {
     if (isEditing) {
@@ -85,7 +71,6 @@ const AgencyFormScreen: React.FC = () => {
           province: agency.province,
           contactPhone: agency.contactPhone,
           contactEmail: agency.contactEmail,
-          inventoryItems: [...agency.inventory],
         }));
       }
     }
@@ -97,36 +82,6 @@ const AgencyFormScreen: React.FC = () => {
     (key: string, value: any) => dispatch(setField({ key: key as any, value })),
     [dispatch],
   );
-
-  const resetItemForm = () => {
-    setItemName(''); setItemSku(''); setItemCategory(''); setItemUOM('Unit');
-    setItemCost(''); setItemSell(''); setItemQty(''); setItemReorder('');
-    setShowItemForm(false);
-  };
-
-  const handleAddItem = useCallback(() => {
-    if (!itemName.trim()) { Alert.alert('Validation', 'Item name is required'); return; }
-    if (!itemSku.trim()) { Alert.alert('Validation', 'SKU is required'); return; }
-
-    const item: AgencyInventoryItem = {
-      itemId: `agitem-${Date.now()}`,
-      itemName: itemName.trim(),
-      id: `agitem-${Date.now()}`,
-      sku: itemSku.trim(),
-      name: itemName.trim(),
-      description: '',
-      category: itemCategory || 'General',
-      unitOfMeasure: itemUOM,
-      unitCost: parseFloat(itemCost) || 0,
-      sellingPrice: parseFloat(itemSell) || 0,
-      quantity: parseInt(itemQty, 10) || 0,
-      quantityOnHand: parseInt(itemQty, 10) || 0,
-      reorderLevel: parseInt(itemReorder, 10) || 0,
-      reorderPoint: parseInt(itemReorder, 10) || 0,
-    };
-    dispatch(addInventoryItem(item));
-    resetItemForm();
-  }, [itemName, itemSku, itemCategory, itemUOM, itemCost, itemSell, itemQty, itemReorder, dispatch]);
 
   // ── Save ────────────────────────────────────────
   const handleSave = useCallback(async () => {
@@ -151,19 +106,22 @@ const AgencyFormScreen: React.FC = () => {
     try {
       const payload = {
         name: form.name,
-        type: form.type as AgencyType,
+        type: (form.type as string).toLowerCase(),
         typeBadgeColor: AGENCY_TYPE_COLORS[form.type as AgencyType],
         description: form.description,
-        address: form.address,
+        address: {
+          street: form.address,
+          city: form.city,
+          state: form.province,
+        },
         city: form.city,
         province: form.province,
         contactPhone: form.contactPhone,
         contactEmail: form.contactEmail,
-        inventory: form.inventoryItems,
       };
 
       if (isEditing) {
-        await dispatch(editAgency({ id: editingId!, data: { ...payload, productCount: form.inventoryItems.length } })).unwrap();
+        await dispatch(editAgency({ id: editingId!, data: payload as any })).unwrap();
       } else {
         await dispatch(createAgency(payload as any)).unwrap();
       }
@@ -175,8 +133,9 @@ const AgencyFormScreen: React.FC = () => {
         `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`,
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
-    } catch {
-      Alert.alert('Error', 'Failed to save agency.');
+    } catch (err: any) {
+      const msg = err?.message ?? 'Failed to save agency.';
+      Alert.alert('Error', msg);
     } finally {
       dispatch(setIsSaving(false));
     }
@@ -283,82 +242,29 @@ const AgencyFormScreen: React.FC = () => {
             error={form.errors.contactEmail}
           />
 
-          {/* ── Inventory Section ──────────────────── */}
-          <View style={styles.invHeader}>
-            <Text style={styles.sectionTitle}>Inventory Items ({form.inventoryItems.length})</Text>
-            <CustomButton
-              title="+ Add Item"
-              onPress={() => setShowItemForm(true)}
-              variant="text"
-              size="sm"
-            />
-          </View>
-
-          {/* Existing items */}
-          {form.inventoryItems.map(item => (
-            <View key={item.id} style={styles.itemCard}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemSku}>{item.sku} · Qty: {item.quantityOnHand}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => dispatch(removeInventoryItem(item.id))}
-                activeOpacity={0.6}
-              >
-                <Text style={styles.removeBtn}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-
-          {/* Inline add item form */}
-          {showItemForm && (
-            <View style={styles.inlineForm}>
-              <Text style={styles.inlineTitle}>New Item</Text>
-              <CustomInput label="Name *" value={itemName} onChangeText={setItemName} placeholder="Item name" />
-              <CustomInput label="SKU *" value={itemSku} onChangeText={setItemSku} placeholder="SKU code" />
-              <CustomInput label="Category" value={itemCategory} onChangeText={setItemCategory} placeholder="e.g. Electronics" />
-              <View style={styles.row}>
-                <View style={{ flex: 1, marginRight: spacing.sm }}>
-                  <CustomInput label="Cost Price" value={itemCost} onChangeText={setItemCost} placeholder="0" keyboardType="numeric" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <CustomInput label="Sell Price" value={itemSell} onChangeText={setItemSell} placeholder="0" keyboardType="numeric" />
-                </View>
-              </View>
-              <View style={styles.row}>
-                <View style={{ flex: 1, marginRight: spacing.sm }}>
-                  <CustomInput label="Qty on Hand" value={itemQty} onChangeText={setItemQty} placeholder="0" keyboardType="numeric" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <CustomInput label="Reorder Level" value={itemReorder} onChangeText={setItemReorder} placeholder="0" keyboardType="numeric" />
-                </View>
-              </View>
-              <View style={styles.inlineBtnRow}>
-                <CustomButton title="Cancel" onPress={resetItemForm} variant="secondary" size="sm" />
-                <CustomButton title="Add" onPress={handleAddItem} variant="primary" size="sm" />
-              </View>
-            </View>
-          )}
-
           {/* ── Actions ────────────────────────────── */}
           <View style={styles.btnRow}>
-            <CustomButton
-              title="Cancel"
-              onPress={() => navigation.goBack()}
-              variant="secondary"
-              size="lg"
-              fullWidth
-            />
+            <View style={styles.btnCol}>
+              <CustomButton
+                title="Cancel"
+                onPress={() => navigation.goBack()}
+                variant="secondary"
+                size="lg"
+                fullWidth
+              />
+            </View>
             <View style={{ width: spacing.sm }} />
-            <CustomButton
-              title={isEditing ? 'Update Agency' : 'Create Agency'}
-              onPress={handleSave}
-              variant="primary"
-              size="lg"
-              fullWidth
-              isLoading={form.isSaving}
-              disabled={form.isSaving}
-            />
+            <View style={styles.btnCol}>
+              <CustomButton
+                title={isEditing ? 'Update Agency' : 'Create Agency'}
+                onPress={handleSave}
+                variant="primary"
+                size="lg"
+                fullWidth
+                isLoading={form.isSaving}
+                disabled={form.isSaving}
+              />
+            </View>
           </View>
 
           <View style={{ height: spacing.xl }} />
@@ -393,37 +299,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
   row: { flexDirection: 'row' },
 
-  // ── Inventory items ───────────────────────────────
-  invHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md },
-  itemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.xs + 2,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  itemName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  itemSku: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
-  removeBtn: { fontSize: 16, fontWeight: '700', color: colors.danger, paddingHorizontal: spacing.sm },
-
-  // ── Inline form ───────────────────────────────────
-  inlineForm: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginTop: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.secondary + '40',
-    ...shadows.small,
-  },
-  inlineTitle: { fontSize: 14, fontWeight: '700', color: colors.secondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
-  inlineBtnRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.sm },
-
   btnRow: { flexDirection: 'row', marginTop: spacing.lg },
+  btnCol: { flex: 1 },
 });
 
 export default AgencyFormScreen;

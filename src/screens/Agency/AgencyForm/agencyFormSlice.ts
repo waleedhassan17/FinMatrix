@@ -7,7 +7,6 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { AgencyType } from '../../../models/agencyModel';
-import type { AgencyInventoryItem } from '../../../models/agencyModel';
 
 export interface AgencyFormSliceState {
   name: string;
@@ -18,7 +17,6 @@ export interface AgencyFormSliceState {
   province: string;
   contactPhone: string;
   contactEmail: string;
-  inventoryItems: AgencyInventoryItem[];
   errors: Record<string, string>;
   isSaving: boolean;
   saveError: string;
@@ -33,7 +31,6 @@ const initialState: AgencyFormSliceState = {
   province: '',
   contactPhone: '',
   contactEmail: '',
-  inventoryItems: [],
   errors: {},
   isSaving: false,
   saveError: '',
@@ -55,17 +52,10 @@ export const agencyFormSlice = createAppSlice({
     setSaveError: create.reducer((state, action: PayloadAction<string>) => {
       state.saveError = action.payload;
     }),
-    addInventoryItem: create.reducer((state, action: PayloadAction<AgencyInventoryItem>) => {
-      state.inventoryItems.push(action.payload);
-    }),
-    removeInventoryItem: create.reducer((state, action: PayloadAction<string>) => {
-      state.inventoryItems = state.inventoryItems.filter(i => i.id !== action.payload);
-    }),
     loadAgencyForEdit: create.reducer(
       (state, action: PayloadAction<{
         name: string; type: AgencyType; description: string; address: string;
         city: string; province: string; contactPhone: string; contactEmail: string;
-        inventoryItems: AgencyInventoryItem[];
       }>) => {
         const d = action.payload;
         state.name = d.name;
@@ -76,7 +66,6 @@ export const agencyFormSlice = createAppSlice({
         state.province = d.province;
         state.contactPhone = d.contactPhone;
         state.contactEmail = d.contactEmail;
-        state.inventoryItems = d.inventoryItems;
         state.errors = {};
         state.isSaving = false;
         state.saveError = '';
@@ -91,7 +80,6 @@ export const agencyFormSlice = createAppSlice({
     selectAgencyFormState: state => state,
     selectAgencyFormErrors: state => state.errors,
     selectAgencyFormIsSaving: state => state.isSaving,
-    selectAgencyFormInventory: state => state.inventoryItems,
   },
 });
 
@@ -100,8 +88,6 @@ export const {
   setErrors,
   setIsSaving,
   setSaveError,
-  addInventoryItem,
-  removeInventoryItem,
   loadAgencyForEdit,
   resetAgencyForm,
 } = agencyFormSlice.actions;
@@ -110,5 +96,4 @@ export const {
   selectAgencyFormState,
   selectAgencyFormErrors,
   selectAgencyFormIsSaving,
-  selectAgencyFormInventory,
 } = agencyFormSlice.selectors;

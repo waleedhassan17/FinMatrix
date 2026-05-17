@@ -37,7 +37,9 @@ export interface ShadowInventoryItem {
   personnelId: string;
   itemId: string;
   itemName: string;
-  quantity: number;
+  quantity: number;      // currentQty after deductions
+  originalQty: number;   // qty before any deliveries (from backend originalQty)
+  syncStatus: string;    // 'synced' | 'pending' | 'rejected'
   updatedAt: string;
 }
 
@@ -441,18 +443,25 @@ export const deliverySlice = createAppSlice({
             si => si.personnelId === action.payload.personnelId && si.itemId === change.itemId,
           );
           if (idx !== -1) {
+            // Preserve originalQty before first deduction
+            if (state.shadowInventory[idx].syncStatus === 'synced') {
+              state.shadowInventory[idx].originalQty = state.shadowInventory[idx].quantity;
+            }
             state.shadowInventory[idx].quantity = Math.max(
               0,
               state.shadowInventory[idx].quantity - change.deliveredQty + change.returnedQty,
             );
+            state.shadowInventory[idx].syncStatus = 'pending';
             state.shadowInventory[idx].updatedAt = now;
           } else {
-            // Track new item in shadow (negative = owed)
+            const netDeducted = change.deliveredQty - change.returnedQty;
             state.shadowInventory.push({
               personnelId: action.payload.personnelId,
               itemId: change.itemId,
               itemName: change.itemName,
-              quantity: -(change.deliveredQty - change.returnedQty),
+              quantity: Math.max(0, change.deliveredQty - netDeducted),
+              originalQty: change.deliveredQty,
+              syncStatus: 'pending',
               updatedAt: now,
             });
           }
@@ -521,7 +530,9 @@ export const deliverySlice = createAppSlice({
               personnelId: item.personnelId ?? item.personnel_id ?? '',
               itemId: item.itemId ?? item.item_id ?? '',
               itemName: item.itemName ?? item.item_name ?? '',
-              quantity: typeof item.quantity === 'number' ? item.quantity : parseFloat(item.quantity) || 0,
+              quantity: parseFloat(item.currentQty ?? item.quantity) || 0,
+              originalQty: parseFloat(item.originalQty) || parseFloat(item.currentQty ?? item.quantity) || 0,
+              syncStatus: item.syncStatus ?? 'synced',
               updatedAt: item.updatedAt ?? item.updated_at ?? new Date().toISOString(),
             }));
           }

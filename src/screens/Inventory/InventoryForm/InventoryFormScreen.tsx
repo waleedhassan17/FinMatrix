@@ -47,7 +47,7 @@ import {
   COST_METHOD_OPTIONS,
   LOCATION_OPTIONS,
 } from '../../../models/inventoryModel';
-import { warehouseAgencies } from '../../../models/agencyModel';
+import { selectAgencies, fetchAgencies } from '../../Agency/AgencyList/agencyListSlice';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 
 type FormRoute = RouteProp<InventoryStackParamList, 'InventoryForm'>;
@@ -68,6 +68,7 @@ const InventoryFormScreen: React.FC = () => {
   const form = useAppSelector(selectInventoryFormData);
   const errors = useAppSelector(selectInventoryFormErrors);
   const isSaving = useAppSelector(selectInventoryIsSaving);
+  const agencies = useAppSelector(selectAgencies);
 
   const editingId = route.params?.itemId;
   const existing = editingId ? items.find(i => i.itemId === editingId) : undefined;
@@ -83,6 +84,11 @@ const InventoryFormScreen: React.FC = () => {
 
   const toggleSection = (key: SectionKey) =>
     setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // ── Fetch agencies for the source dropdown ────────
+  useEffect(() => {
+    if (agencies.length === 0) dispatch(fetchAgencies());
+  }, [dispatch, agencies.length]);
 
   // ── Pre-fill for edit mode / reset for add ────────
   useEffect(() => {
@@ -140,9 +146,9 @@ const InventoryFormScreen: React.FC = () => {
   );
 
   const agencyOptions = useMemo(() => [
-    { label: 'None (Company Owned)', value: '' },
-    ...warehouseAgencies.map(a => ({ label: a.name, value: a.id })),
-  ], []);
+    { label: 'No Specific Warehouse', value: '' },
+    ...agencies.map(a => ({ label: a.name, value: a.id })),
+  ], [agencies]);
 
   // ── Handlers ──────────────────────────────────────
   const updateField = useCallback(
@@ -449,11 +455,11 @@ const InventoryFormScreen: React.FC = () => {
                 placeholder="Select location..."
               />
               <CustomDropdown
-                label="Source Agency"
+                label="Warehouse / Agency"
                 options={agencyOptions}
                 value={form.sourceAgencyId}
                 onChange={val => updateField('sourceAgencyId', val)}
-                placeholder="None (Company Owned)"
+                placeholder="Select warehouse (optional)..."
               />
               <View style={styles.toggleRow}>
                 <View>

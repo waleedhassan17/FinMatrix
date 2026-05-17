@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, TextInput, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -6,8 +6,7 @@ import type { DPInventoryStackParamList } from '../../../../navigators/stacks/DP
 import { Feather } from '@expo/vector-icons';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectUser } from '../../../Auth/authSlice';
-import { selectInventoryUpdateRequests } from '../../Admin/AssignDeliveries/deliverySlice';
-import { shadowInventoryRecords } from '../../../../models/deliveryModel';
+import { selectInventoryUpdateRequests, selectShadowInventory, fetchShadowInventory } from '../../Admin/AssignDeliveries/deliverySlice';
 import {
   openChangeLog,
   closeChangeLog,
@@ -34,20 +33,50 @@ const SORT_OPTIONS = [
   { key: 'changes_high', label: 'Changes', icon: 'edit' },
 ] as const;
 
+/** Projected shape that the UI uses for rendering */
+interface ShadowDisplayItem {
+  id: string;
+  personnelId: string;
+  itemId: string;
+  itemName: string;
+  originalQty: number;
+  currentQty: number;
+  status: 'synced' | 'pending' | 'rejected';
+  changesToday: Array<{ id: string; delta: number; reason: string; timestamp: string }>;
+}
+
 const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUser);
   const requests = useAppSelector(selectInventoryUpdateRequests);
+  const shadowItems = useAppSelector(selectShadowInventory);
   const { selectedItemId, showChangeLog, searchTerm, sortBy } = useAppSelector(selectShadowInventoryUI);
   const userId = user?.uid ?? 'dp_002';
 
-  const items = useMemo(() => {
-    const filtered = shadowInventoryRecords
+  useEffect(() => {
+    dispatch(fetchShadowInventory());
+  }, [dispatch]);
+
+  const items: ShadowDisplayItem[] = useMemo(() => {
+    const filtered = shadowItems
       .filter(item => item.personnelId === userId)
       .filter(item => {
         if (!searchTerm.trim()) return true;
         const text = searchTerm.trim().toLowerCase();
         return item.itemName.toLowerCase().includes(text) || item.itemId.toLowerCase().includes(text);
+      })
+      .map(item => {
+        const status = (item.syncStatus as 'synced' | 'pending' | 'rejected') ?? 'synced';
+        return {
+          id: `${item.personnelId}_${item.itemId}`,
+          personnelId: item.personnelId,
+          itemId: item.itemId,
+          itemName: item.itemName,
+          originalQty: item.originalQty ?? item.quantity,
+          currentQty: item.quantity,
+          status,
+          changesToday: [] as ShadowDisplayItem['changesToday'],
+        };
       });
 
     return [...filtered].sort((a, b) => {
@@ -64,7 +93,7 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
           return a.itemName.localeCompare(b.itemName);
       }
     });
-  }, [searchTerm, sortBy, userId]);
+  }, [shadowItems, searchTerm, sortBy, userId]);
 
   const selectedItem = items.find(i => i.id === selectedItemId);
 

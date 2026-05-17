@@ -3,14 +3,13 @@
 // Tabs: Inventory | Deliveries | Analytics
 // ═══════════════════════════════════════════════════════
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   FlatList,
-  TextInput,
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,27 +22,18 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAgencies } from '../AgencyList/agencyListSlice';
 import {
   selectAgencyDetailTab,
-  selectInventorySearch,
-  selectInventorySort,
-  selectInventorySortAsc,
   setActiveTab,
-  setInventorySearch,
-  setInventorySort,
   resetAgencyDetail,
   type AgencyDetailTab,
-  type InventorySortField,
 } from './agencyDetailSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { formatCurrency } from '../../../utils/formatters';
 import { AGENCY_TYPE_COLORS } from '../../../models/agencyModel';
-import type { AgencyInventoryItem } from '../../../models/agencyModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type DetailRoute = RouteProp<MoreStackParamList, 'AgencyDetail'>;
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
 const TABS: { key: AgencyDetailTab; label: string }[] = [
-  { key: 'inventory', label: 'Inventory' },
   { key: 'deliveries', label: 'Deliveries' },
   { key: 'analytics', label: 'Analytics' },
 ];
@@ -58,9 +48,6 @@ const AgencyDetailScreen: React.FC = () => {
 
   const agencies = useAppSelector(selectAgencies);
   const activeTab = useAppSelector(selectAgencyDetailTab);
-  const invSearch = useAppSelector(selectInventorySearch);
-  const invSort = useAppSelector(selectInventorySort);
-  const invSortAsc = useAppSelector(selectInventorySortAsc);
 
   const agency = agencies.find(a => a.id === route.params.agencyId);
 
@@ -79,9 +66,6 @@ const AgencyDetailScreen: React.FC = () => {
       </SafeAreaView>
     );
   }
-
-  const totalValue = agency.inventory.reduce((s, i) => s + i.sellingPrice * i.quantityOnHand, 0);
-  const totalCost = agency.inventory.reduce((s, i) => s + i.costPrice * i.quantityOnHand, 0);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -135,9 +119,8 @@ const AgencyDetailScreen: React.FC = () => {
           </View>
         ) : null}
         <View style={styles.statRow}>
-          <StatBox label="Items" value={String(agency.inventory.length)} />
-          <StatBox label="Total Value" value={formatCurrency(totalValue, 'Rs ')} />
-          <StatBox label="Total Cost" value={formatCurrency(totalCost, 'Rs ')} />
+          <StatBox label="Type" value={agency.type} />
+          <StatBox label="City" value={agency.city || '—'} />
         </View>
       </View>
 
@@ -159,18 +142,8 @@ const AgencyDetailScreen: React.FC = () => {
       </View>
 
       {/* Tab Content */}
-      {activeTab === 'inventory' && (
-        <InventoryTab
-          items={agency.inventory}
-          search={invSearch}
-          sortField={invSort}
-          sortAsc={invSortAsc}
-          onSearchChange={v => dispatch(setInventorySearch(v))}
-          onSortChange={f => dispatch(setInventorySort(f))}
-        />
-      )}
       {activeTab === 'deliveries' && <DeliveriesTab agencyName={agency.name} />}
-      {activeTab === 'analytics' && <AnalyticsTab items={agency.inventory} agencyName={agency.name} />}
+      {activeTab === 'analytics' && <AnalyticsTab agencyName={agency.name} />}
     </SafeAreaView>
   );
 };
@@ -185,109 +158,6 @@ const StatBox: React.FC<{ label: string; value: string }> = ({ label, value }) =
   </View>
 );
 
-// ═══════════════════════════════════════════════════════
-// INVENTORY TAB
-// ═══════════════════════════════════════════════════════
-interface InventoryTabProps {
-  items: AgencyInventoryItem[];
-  search: string;
-  sortField: InventorySortField;
-  sortAsc: boolean;
-  onSearchChange: (v: string) => void;
-  onSortChange: (f: InventorySortField) => void;
-}
-
-const SORT_OPTIONS: { label: string; value: InventorySortField }[] = [
-  { label: 'Name', value: 'name' },
-  { label: 'SKU', value: 'sku' },
-  { label: 'Qty', value: 'quantity' },
-  { label: 'Value', value: 'value' },
-];
-
-const InventoryTab: React.FC<InventoryTabProps> = ({
-  items, search, sortField, sortAsc, onSearchChange, onSortChange,
-}) => {
-  const processed = useMemo(() => {
-    let list = items;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(i => i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q));
-    }
-    list = [...list].sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case 'name': cmp = a.name.localeCompare(b.name); break;
-        case 'sku': cmp = a.sku.localeCompare(b.sku); break;
-        case 'quantity': cmp = a.quantityOnHand - b.quantityOnHand; break;
-        case 'value': cmp = (a.sellingPrice * a.quantityOnHand) - (b.sellingPrice * b.quantityOnHand); break;
-      }
-      return sortAsc ? cmp : -cmp;
-    });
-    return list;
-  }, [items, search, sortField, sortAsc]);
-
-  const renderItem = ({ item }: { item: AgencyInventoryItem }) => {
-    const value = item.sellingPrice * item.quantityOnHand;
-    const isLow = item.quantityOnHand <= item.reorderLevel;
-    return (
-      <View style={styles.invRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.invName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.invSku}>{item.sku}</Text>
-        </View>
-        <View style={styles.invRight}>
-          <Text style={[styles.invQty, isLow && { color: colors.danger }]}>
-            {item.quantityOnHand}
-          </Text>
-          <Text style={styles.invValue}>{formatCurrency(value, 'Rs ')}</Text>
-        </View>
-      </View>
-    );
-  };
-
-  return (
-    <View style={{ flex: 1 }}>
-      <View style={styles.invSearchRow}>
-        <TextInput
-          style={styles.invSearchInput}
-          value={search}
-          onChangeText={onSearchChange}
-          placeholder="Search items…"
-          placeholderTextColor={colors.textLight}
-        />
-      </View>
-      <View style={styles.sortRow}>
-        {SORT_OPTIONS.map(s => {
-          const active = sortField === s.value;
-          return (
-            <TouchableOpacity
-              key={s.value}
-              style={[styles.sortChip, active && styles.sortChipActive]}
-              activeOpacity={0.7}
-              onPress={() => onSortChange(s.value)}
-            >
-              <Text style={[styles.sortChipText, active && styles.sortChipTextActive]}>
-                {s.label} {active ? (sortAsc ? '↑' : '↓') : ''}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      <FlatList
-        data={processed}
-        keyExtractor={i => i.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: spacing.xl }}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.center}>
-            <Text style={styles.emptyText}>No items found</Text>
-          </View>
-        }
-      />
-    </View>
-  );
-};
 
 // ═══════════════════════════════════════════════════════
 // DELIVERIES TAB
@@ -342,78 +212,31 @@ const DeliveriesTab: React.FC<{ agencyName: string }> = ({ agencyName }) => (
 // ═══════════════════════════════════════════════════════
 // ANALYTICS TAB
 // ═══════════════════════════════════════════════════════
-const AnalyticsTab: React.FC<{ items: AgencyInventoryItem[]; agencyName: string }> = ({ items }) => {
-  const topItems = useMemo(
-    () => [...items]
-      .sort((a, b) => (b.sellingPrice * b.quantityOnHand) - (a.sellingPrice * a.quantityOnHand))
-      .slice(0, 5),
-    [items],
-  );
-
-  const maxValue = topItems.length > 0
-    ? topItems[0].sellingPrice * topItems[0].quantityOnHand
-    : 1;
-
-  const categorySummary = useMemo(() => {
-    const map: Record<string, { qty: number; value: number }> = {};
-    items.forEach(i => {
-      if (!map[i.category]) map[i.category] = { qty: 0, value: 0 };
-      map[i.category].qty += i.quantityOnHand;
-      map[i.category].value += i.sellingPrice * i.quantityOnHand;
-    });
-    return Object.entries(map).sort((a, b) => b[1].value - a[1].value);
-  }, [items]);
-
-  const totalQty = items.reduce((s, i) => s + i.quantityOnHand, 0);
-  const totalValue = items.reduce((s, i) => s + i.sellingPrice * i.quantityOnHand, 0);
-  const avgPrice = items.length > 0 ? totalValue / totalQty : 0;
-
-  return (
-    <ScrollView contentContainerStyle={{ padding: spacing.lg }} showsVerticalScrollIndicator={false}>
-      {/* Quick Stats */}
-      <View style={styles.analyticsStatRow}>
-        <View style={styles.analyticsStat}>
-          <Text style={styles.analyticsStatVal}>{totalQty.toLocaleString()}</Text>
-          <Text style={styles.analyticsStatLbl}>Total Units</Text>
-        </View>
-        <View style={styles.analyticsStat}>
-          <Text style={styles.analyticsStatVal}>{formatCurrency(avgPrice, 'Rs ')}</Text>
-          <Text style={styles.analyticsStatLbl}>Avg Sell Price</Text>
-        </View>
-      </View>
-
-      {/* Top Items Bar Chart */}
-      <Text style={styles.sectionTitle}>Top Items by Value</Text>
-      {topItems.map(item => {
-        const val = item.sellingPrice * item.quantityOnHand;
-        const pct = maxValue > 0 ? (val / maxValue) * 100 : 0;
-        return (
-          <View key={item.id} style={styles.barRow}>
-            <Text style={styles.barLabel} numberOfLines={1}>{item.name}</Text>
-            <View style={styles.barTrack}>
-              <View style={[styles.barFill, { width: `${pct}%` }]} />
-            </View>
-            <Text style={styles.barValue}>{formatCurrency(val, 'Rs ')}</Text>
+const AnalyticsTab: React.FC<{ agencyName: string }> = ({ agencyName }) => (
+  <ScrollView contentContainerStyle={{ padding: spacing.lg }} showsVerticalScrollIndicator={false}>
+    <Text style={styles.sectionTitle}>Delivery Performance</Text>
+    <View style={styles.analyticsStatRow}>
+      {MOCK_DELIVERIES.map(d => d.status).reduce<Record<string, number>>((acc, s) => {
+        acc[s] = (acc[s] ?? 0) + 1;
+        return acc;
+      }, {}) && (
+        <>
+          <View style={styles.analyticsStat}>
+            <Text style={styles.analyticsStatVal}>{MOCK_DELIVERIES.length}</Text>
+            <Text style={styles.analyticsStatLbl}>Total Deliveries</Text>
           </View>
-        );
-      })}
-
-      {/* Category Breakdown */}
-      <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Category Breakdown</Text>
-      {categorySummary.map(([cat, data]) => (
-        <View key={cat} style={styles.catRow}>
-          <Text style={styles.catName}>{cat}</Text>
-          <View style={styles.catRight}>
-            <Text style={styles.catQty}>{data.qty} units</Text>
-            <Text style={styles.catValue}>{formatCurrency(data.value, 'Rs ')}</Text>
+          <View style={styles.analyticsStat}>
+            <Text style={styles.analyticsStatVal}>
+              {MOCK_DELIVERIES.filter(d => d.status === 'Delivered').length}
+            </Text>
+            <Text style={styles.analyticsStatLbl}>Completed</Text>
           </View>
-        </View>
-      ))}
-
-      <View style={{ height: spacing.xl }} />
-    </ScrollView>
-  );
-};
+        </>
+      )}
+    </View>
+    <View style={{ height: spacing.xl }} />
+  </ScrollView>
+);
 
 // ═══════════════════════════════════════════════════════
 // STYLES
