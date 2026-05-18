@@ -80,7 +80,7 @@ export function billListSerializer(payload: any): SerializedBillList {
     all: bills.length,
     draft: bills.filter(b => b.status === 'draft').length,
     open: bills.filter(b => b.status === 'open').length,
-    partially_paid: bills.filter(b => b.status === 'partially_paid').length,
+    partial: bills.filter(b => b.status === 'partial').length,
     paid: bills.filter(b => b.status === 'paid').length,
     overdue: bills.filter(b => b.status === 'overdue').length,
   };
@@ -88,7 +88,7 @@ export function billListSerializer(payload: any): SerializedBillList {
   let totalOutstanding = 0;
   let overdueAmount = 0;
   bills.forEach(b => {
-    if (b.status === 'open' || b.status === 'overdue' || b.status === 'partially_paid') {
+    if (b.status === 'open' || b.status === 'overdue' || b.status === 'partial') {
       const bal = b.total - b.amountPaid;
       totalOutstanding += bal;
       if (b.status === 'overdue') overdueAmount += bal;

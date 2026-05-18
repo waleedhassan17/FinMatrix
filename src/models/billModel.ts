@@ -70,17 +70,19 @@ export interface ValidationErrors {
 export const BILL_STATUS_LABELS: Record<BillStatus, string> = {
   draft: 'Draft',
   open: 'Open',
-  partially_paid: 'Partially Paid',
+  partial: 'Partially Paid',
   paid: 'Paid',
   overdue: 'Overdue',
+  void: 'Void',
 };
 
 export const BILL_STATUS_COLORS: Record<BillStatus, string> = {
   draft: '#8993A4',
   open: '#059669',
-  partially_paid: '#FF991F',
+  partial: '#FF991F',
   paid: '#00875A',
   overdue: '#DE350B',
+  void: '#64748B',
 };
 
 export interface BillFormLineData {

@@ -328,7 +328,7 @@ const BillDetailScreen: React.FC = () => {
           </>
         )}
 
-        {(bill.status === 'open' || bill.status === 'overdue' || bill.status === 'partially_paid') && (
+        {(bill.status === 'open' || bill.status === 'overdue' || bill.status === 'partial') && (
           <>
             <View style={styles.actionSecondary}>
               <CustomButton

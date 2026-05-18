@@ -94,7 +94,7 @@ export function buildEstimateHtml({
       ? `
         <tr>
           <td>${
-            estimate.discountType === 'percentage'
+            estimate.discountType === 'percent'
               ? `Discount (${esc(estimate.discountValue)}%)`
               : 'Discount (Fixed)'
           }</td>

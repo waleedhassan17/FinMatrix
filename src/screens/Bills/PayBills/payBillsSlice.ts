@@ -81,7 +81,7 @@ function buildRows(bills: Bill[], vendorId: string): OutstandingBillRow[] {
     .filter(
       b =>
         b.vendorId === vendorId &&
-        (b.status === 'open' || b.status === 'overdue' || b.status === 'partially_paid') &&
+        (b.status === 'open' || b.status === 'overdue' || b.status === 'partial') &&
         b.total - b.amountPaid > 0,
     )
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
@@ -224,7 +224,7 @@ export const payBillsSlice = createAppSlice({
             newAmountPaid >= bill.total
               ? 'paid'
               : newAmountPaid > 0
-                ? 'partially_paid'
+                ? 'partial'
                 : bill.status;
           await updateBillAPI(bill.id, {
             amountPaid: newAmountPaid,

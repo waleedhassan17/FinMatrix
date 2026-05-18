@@ -46,19 +46,21 @@ type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const STATUS_COLOR: Record<string, string> = {
   draft: colors.textSecondary,
   sent: colors.secondary,
+  partial: '#FF991F',
   paid: colors.success,
   overdue: colors.danger,
+  void: '#64748B',
   cancelled: colors.textLight,
-  void: colors.textLight,
 };
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Draft',
   sent: 'Sent',
+  partial: 'Partial',
   paid: 'Paid',
   overdue: 'Overdue',
-  cancelled: 'Cancelled',
   void: 'Void',
+  cancelled: 'Cancelled',
 };
 
 // ═══════════════════════════════════════════════════════
@@ -90,11 +92,11 @@ const InvoiceListScreen: React.FC = () => {
 
   // ── Tab counts ──────────────────────────────────
   const counts = useMemo(() => {
-    const c: Record<InvoiceStatusFilter, number> = {
+    const c: Record<string, number> = {
       all: invoices.length,
-      draft: 0, sent: 0, paid: 0, overdue: 0, cancelled: 0,
+      draft: 0, sent: 0, partial: 0, paid: 0, overdue: 0, void: 0, cancelled: 0,
     };
-    invoices.forEach(i => { c[i.status]++; });
+    invoices.forEach(i => { c[i.status] = (c[i.status] ?? 0) + 1; });
     return c;
   }, [invoices]);
 

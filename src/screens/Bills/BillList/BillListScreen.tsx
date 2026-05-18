@@ -68,8 +68,8 @@ const BillListScreen: React.FC = () => {
 
   // ── Tab counts ──────────────────────────────────
   const counts = useMemo(() => {
-    const c = { all: bills.length, draft: 0, open: 0, partially_paid: 0, paid: 0, overdue: 0 };
-    bills.forEach(b => { c[b.status] = (c[b.status] || 0) + 1; });
+    const c: Record<string, number> = { all: bills.length, draft: 0, open: 0, partial: 0, paid: 0, overdue: 0, void: 0 };
+    bills.forEach(b => { c[b.status] = (c[b.status] ?? 0) + 1; });
     return c;
   }, [bills]);
 
@@ -78,7 +78,7 @@ const BillListScreen: React.FC = () => {
     { label: 'Draft', value: 'draft', count: counts.draft },
     { label: 'Open', value: 'open', count: counts.open },
     { label: 'Overdue', value: 'overdue', count: counts.overdue },
-    { label: 'Part. Paid', value: 'partially_paid', count: counts.partially_paid },
+    { label: 'Part. Paid', value: 'partial', count: counts.partial },
     { label: 'Paid', value: 'paid', count: counts.paid },
   ];
 
@@ -100,7 +100,7 @@ const BillListScreen: React.FC = () => {
     let outstanding = 0;
     let overdue = 0;
     bills.forEach(b => {
-      if (b.status === 'open' || b.status === 'overdue' || b.status === 'partially_paid') {
+      if (b.status === 'open' || b.status === 'overdue' || b.status === 'partial') {
         const bal = b.total - b.amountPaid;
         outstanding += bal;
         if (b.status === 'overdue') overdue += bal;

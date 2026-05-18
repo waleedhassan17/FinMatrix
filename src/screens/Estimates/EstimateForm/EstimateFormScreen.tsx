@@ -55,8 +55,9 @@ type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'EstimateForm'>;
 
 const DISCOUNT_OPTIONS = [
-  { label: 'Fixed (Rs)', value: 'fixed' },
-  { label: 'Percentage (%)', value: 'percentage' },
+  { label: 'None', value: 'none' },
+  { label: 'Fixed (Rs)', value: 'amount' },
+  { label: 'Percentage (%)', value: 'percent' },
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -164,37 +165,23 @@ const EstimateFormScreen: React.FC = () => {
 
       try {
         const payload = {
-          companyId: 'comp_001',
-          estimateNumber: form.estimateNumber,
           customerId: form.customerId,
-          customerName: form.customerName,
-          issueDate: new Date(form.issueDate).toISOString(),
-          expirationDate: new Date(form.expirationDate).toISOString(),
-          status: saveStatus,
+          estimateDate: form.issueDate,
+          expirationDate: form.expirationDate || undefined,
           lines: form.lines.map(l => ({
-            id: l.id,
-            itemId: '',
-            itemName: l.description,
             description: l.description,
-            quantity: parseFloat(l.quantity) || 0,
-            unitPrice: parseFloat(l.unitPrice) || 0,
-            taxRate: parseFloat(l.taxRate) || 0,
-            amount: (parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0),
+            quantity: l.quantity || '0',
+            unitPrice: l.unitPrice || '0',
+            taxRate: l.taxRate || '0',
           })),
-          subtotal: form.subtotal,
-          taxAmount: form.taxAmount,
-          discountType: form.discountType,
-          discountValue: parseFloat(form.discountValue) || 0,
-          discountAmount: form.discountAmount,
-          total: form.total,
+          discountAmount: String(form.discountAmount),
           notes: form.notes,
-          createdBy: 'admin_001',
         };
 
         if (isEditing) {
-          await updateEstimateAPI(editingId!, payload);
+          await updateEstimateAPI(editingId!, payload as any);
         } else {
-          await createEstimateAPI(payload);
+          await createEstimateAPI(payload as any);
         }
 
         await dispatch(fetchEstimates());
@@ -319,7 +306,7 @@ const EstimateFormScreen: React.FC = () => {
               </View>
               <View style={{ flex: 1 }}>
                 <CustomInput
-                  label={form.discountType === 'percentage' ? 'Discount (%)' : 'Discount (Rs)'}
+                  label={form.discountType === 'percent' ? 'Discount (%)' : 'Discount (Rs)'}
                   value={form.discountValue}
                   onChangeText={v => {
                     dispatch(setEstField({ key: 'discountValue', value: v.replace(/[^0-9.]/g, '') }));
@@ -353,7 +340,7 @@ const EstimateFormScreen: React.FC = () => {
             {form.discountAmount > 0 && (
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>
-                  Discount {form.discountType === 'percentage' ? `(${form.discountValue}%)` : '(Fixed)'}
+                  Discount {form.discountType === 'percent' ? `(${form.discountValue}%)` : '(Fixed)'}
                 </Text>
                 <Text style={[styles.totalsValue, { color: colors.success }]}>
                   − {formatCurrency(form.discountAmount, 'Rs ')}

@@ -62,7 +62,7 @@ const initialState: InvoiceFormSliceState = {
   status: 'draft',
   notes: '',
   lines: [freshLine()],
-  discountType: 'fixed',
+  discountType: 'none',
   discountValue: '0',
   subtotal: 0,
   taxAmount: 0,
@@ -87,9 +87,9 @@ function recalc(state: InvoiceFormSliceState) {
   });
 
   const discVal = parseFloat(state.discountValue) || 0;
-  const discAmt = state.discountType === 'percentage'
+  const discAmt = state.discountType === 'percent'
     ? sub * discVal / 100
-    : discVal;
+    : state.discountType === 'amount' ? discVal : 0;
 
   state.subtotal = Math.round(sub * 100) / 100;
   state.taxAmount = Math.round(tax * 100) / 100;

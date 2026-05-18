@@ -173,35 +173,22 @@ const SOFormScreen: React.FC = () => {
 
       try {
         const payload = {
-          companyId: 'comp_001',
-          soNumber: form.soNumber,
           customerId: form.customerId,
-          customerName: form.customerName,
-          orderDate: new Date(form.orderDate).toISOString(),
-          expectedDate: new Date(form.expectedDate).toISOString(),
-          status: saveStatus,
+          orderDate: form.orderDate,
+          expectedDate: form.expectedDate || undefined,
           lines: form.lines.map(l => ({
-            id: l.id,
-            itemId: '',
-            itemName: l.description,
             description: l.description,
-            quantity: parseFloat(l.quantity) || 0,
-            unitPrice: parseFloat(l.unitPrice) || 0,
-            taxRate: parseFloat(l.taxRate) || 0,
-            amount: (parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0),
-            fulfilledQuantity: l.fulfilledQuantity,
+            orderedQty: l.quantity || '0',
+            unitPrice: l.unitPrice || '0',
+            taxRate: l.taxRate || '0',
           })),
-          subtotal: form.subtotal,
-          taxAmount: form.taxAmount,
-          total: form.total,
           notes: form.notes,
-          createdBy: 'admin_001',
         };
 
         if (isEditing) {
-          await updateSalesOrderAPI(editingId!, payload);
+          await updateSalesOrderAPI(editingId!, payload as any);
         } else {
-          await createSalesOrderAPI(payload);
+          await createSalesOrderAPI(payload as any);
         }
 
         await dispatch(fetchSalesOrders());

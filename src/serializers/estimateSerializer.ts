@@ -44,7 +44,7 @@ export const mapEstimate = (raw: Partial<EstimateApiEntity>): Estimate => ({
   lines: Array.isArray(raw.lines) ? raw.lines.map(mapEstimateLine) : [],
   subtotal: typeof raw.subtotal === 'number' ? raw.subtotal : 0,
   taxAmount: typeof raw.taxAmount === 'number' ? raw.taxAmount : 0,
-  discountType: (raw.discountType ?? 'fixed') as DiscountType,
+  discountType: (raw.discountType ?? 'none') as DiscountType,
   discountValue: typeof raw.discountValue === 'number' ? raw.discountValue : 0,
   discountAmount: typeof raw.discountAmount === 'number' ? raw.discountAmount : 0,
   total: typeof raw.total === 'number' ? raw.total : 0,

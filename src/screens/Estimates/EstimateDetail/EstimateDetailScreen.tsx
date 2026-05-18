@@ -270,7 +270,7 @@ const EstimateDetailScreen: React.FC = () => {
             <TotalsRow label="Subtotal" value={formatCurrency(estimate.subtotal, 'Rs ')} />
             {estimate.discountAmount > 0 && (
               <TotalsRow
-                label={estimate.discountType === 'percentage' ? `Discount (${estimate.discountValue}%)` : 'Discount (Fixed)'}
+                label={estimate.discountType === 'percent' ? `Discount (${estimate.discountValue}%)` : 'Discount (Fixed)'}
                 value={`− ${formatCurrency(estimate.discountAmount, 'Rs ')}`}
                 valueColor={colors.success}
               />

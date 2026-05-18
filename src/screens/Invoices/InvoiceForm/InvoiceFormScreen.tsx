@@ -58,8 +58,9 @@ type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'InvoiceForm'>;
 
 const DISCOUNT_OPTIONS = [
-  { label: 'Fixed (Rs)', value: 'fixed' },
-  { label: 'Percentage (%)', value: 'percentage' },
+  { label: 'None', value: 'none' },
+  { label: 'Fixed (Rs)', value: 'amount' },
+  { label: 'Percentage (%)', value: 'percent' },
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -226,38 +227,25 @@ const InvoiceFormScreen: React.FC = () => {
 
       try {
         const payload = {
-          companyId: 'comp_001',
-          invoiceNumber: form.invoiceNumber,
           customerId: form.customerId,
-          customerName: form.customerName,
-          issueDate: new Date(form.issueDate).toISOString(),
-          dueDate: new Date(form.dueDate).toISOString(),
+          invoiceDate: form.issueDate,
+          dueDate: form.dueDate,
           status: saveStatus,
-          lines: form.lines.map(l => ({
-            id: l.id,
-            itemId: '',
-            itemName: l.description,
-            description: l.description,
-            quantity: parseFloat(l.quantity) || 0,
-            unitPrice: parseFloat(l.unitPrice) || 0,
-            taxRate: parseFloat(l.taxRate) || 0,
-            amount: (parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0),
-          })),
-          subtotal: form.subtotal,
-          taxAmount: form.taxAmount,
           discountType: form.discountType,
-          discountValue: parseFloat(form.discountValue) || 0,
-          discountAmount: form.discountAmount,
-          total: form.total,
-          amountPaid: 0,
+          discountValue: form.discountValue || '0',
+          lines: form.lines.map(l => ({
+            description: l.description,
+            quantity: l.quantity || '0',
+            unitPrice: l.unitPrice || '0',
+            taxRate: l.taxRate || '0',
+          })),
           notes: form.notes,
-          createdBy: 'admin_001',
         };
 
         if (isEditing) {
-          await updateInvoiceAPI(editingId!, payload);
+          await updateInvoiceAPI(editingId!, payload as any);
         } else {
-          await createInvoiceAPI(payload);
+          await createInvoiceAPI(payload as any);
         }
 
         await dispatch(fetchInvoices());
@@ -394,7 +382,7 @@ const InvoiceFormScreen: React.FC = () => {
               </View>
               <View style={{ flex: 1 }}>
                 <CustomInput
-                  label={form.discountType === 'percentage' ? 'Discount (%)' : 'Discount (Rs)'}
+                  label={form.discountType === 'percent' ? 'Discount (%)' : 'Discount (Rs)'}
                   value={form.discountValue}
                   onChangeText={v => {
                     dispatch(setField({ key: 'discountValue', value: v.replace(/[^0-9.]/g, '') }));
@@ -429,7 +417,7 @@ const InvoiceFormScreen: React.FC = () => {
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>
                   Discount{' '}
-                  {form.discountType === 'percentage'
+                  {form.discountType === 'percent'
                     ? `(${form.discountValue}%)`
                     : '(Fixed)'}
                 </Text>

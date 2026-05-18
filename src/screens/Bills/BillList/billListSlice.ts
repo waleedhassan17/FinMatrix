@@ -24,7 +24,6 @@ export type BillStatusFilter = 'all' | BillStatus;
 
 const toApiBillStatus = (statusFilter: BillStatusFilter): string | undefined => {
   if (statusFilter === 'all') return undefined;
-  if (statusFilter === 'partially_paid') return 'partial';
   return statusFilter;
 };
 
@@ -51,7 +50,7 @@ const initialState: BillListSliceState = {
   page: 1,
   totalPages: 1,
   totalBills: 0,
-  counts: { all: 0, draft: 0, open: 0, partially_paid: 0, paid: 0, overdue: 0 },
+  counts: { all: 0, draft: 0, open: 0, partial: 0, paid: 0, overdue: 0, void: 0 },
   totalOutstanding: 0,
   overdueAmount: 0,
 };

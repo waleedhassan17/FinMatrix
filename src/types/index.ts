@@ -17,9 +17,9 @@ export type AccountSubType =
   | 'operating_expense'
   | 'cost_of_goods';
 export type JournalEntryStatus = 'draft' | 'posted' | 'voided';
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+export type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue' | 'void' | 'cancelled';
 export type PaymentMethod = 'cash' | 'cheque' | 'bank_transfer' | 'online';
-export type BillStatus = 'draft' | 'open' | 'partially_paid' | 'paid' | 'overdue';
+export type BillStatus = 'draft' | 'open' | 'partial' | 'paid' | 'overdue' | 'void';
 export type PurchaseOrderStatus = 'draft' | 'sent' | 'partially_received' | 'fully_received' | 'closed';
 export type SalesOrderStatus = 'open' | 'partially_fulfilled' | 'fulfilled' | 'closed';
 export type EstimateStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired';
@@ -204,7 +204,7 @@ export interface InvoiceLine {
   amount: number;
 }
 
-export type DiscountType = 'percentage' | 'fixed';
+export type DiscountType = 'percent' | 'amount' | 'none';
 
 export interface Invoice {
   id: string;

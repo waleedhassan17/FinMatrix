@@ -56,7 +56,8 @@ export const invoiceDetailSlice = createAppSlice({
         },
         fulfilled: (state, action: PayloadAction<any>) => {
           state.invoice = invoiceSingleSerializer(action.payload.invoiceEnvelope);
-          state.payments = action.payload.payments;
+          const p = action.payload.payments;
+          state.payments = Array.isArray(p?.data) ? p.data : Array.isArray(p) ? p : [];
           state.isLoading = false;
         },
         rejected: (state, action) => {

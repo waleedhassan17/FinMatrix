@@ -93,30 +93,20 @@ function recalc(state: BillFormSliceState) {
 const buildSavePayload = (
   state: BillFormSliceState,
   saveStatus: BillStatus,
-): Omit<Bill, 'id' | 'createdAt' | 'updatedAt'> => ({
-  companyId: 'comp_001',
-  billNumber: state.billNumber.trim(),
+) => ({
   vendorId: state.vendorId,
-  vendorName: state.vendorName,
-  issueDate: new Date(state.issueDate).toISOString(),
-  dueDate: new Date(state.dueDate).toISOString(),
-  status: saveStatus,
-  lines: state.lines.map(l => ({
-    id: l.id,
-    accountId: l.accountId,
-    accountName: l.accountName,
-    description: l.description,
-    quantity: 1,
-    unitPrice: parseFloat(l.amount) || 0,
-    taxRate: parseFloat(l.taxRate) || 0,
-    amount: parseFloat(l.amount) || 0,
-  })),
-  subtotal: state.subtotal,
-  taxAmount: state.taxAmount,
-  total: state.total,
-  amountPaid: 0,
-  notes: state.notes,
-  createdBy: 'admin_001',
+  billDate: state.issueDate,
+  dueDate: state.dueDate,
+  status: saveStatus as 'draft' | 'open',
+  memo: state.notes,
+  lines: state.lines
+    .filter(l => l.accountId && parseFloat(l.amount) > 0)
+    .map(l => ({
+      accountId: l.accountId,
+      description: l.description,
+      amount: l.amount || '0',
+      taxRate: l.taxRate || '0',
+    })),
 });
 
 export const billFormSlice = createAppSlice({

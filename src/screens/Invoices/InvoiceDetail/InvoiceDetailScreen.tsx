@@ -61,16 +61,20 @@ type DetailRoute = RouteProp<TransactionsStackParamList, 'InvoiceDetail'>;
 const STATUS_COLOR: Record<InvoiceStatus, string> = {
   draft: '#94A3B8',
   sent: colors.secondary,
+  partial: '#FF991F',
   paid: colors.success,
   overdue: colors.danger,
+  void: '#64748B',
   cancelled: '#475569',
 };
 
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
   draft: 'Draft',
   sent: 'Sent',
+  partial: 'Partial',
   paid: 'Paid',
   overdue: 'Overdue',
+  void: 'Void',
   cancelled: 'Cancelled',
 };
 
@@ -308,7 +312,7 @@ const InvoiceDetailScreen: React.FC = () => {
             {invoice.discountAmount > 0 && (
               <TotalsRow
                 label={
-                  invoice.discountType === 'percentage'
+                  invoice.discountType === 'percent'
                     ? `Discount (${invoice.discountValue}%)`
                     : 'Discount (Fixed)'
                 }
@@ -446,8 +450,46 @@ const InvoiceDetailScreen: React.FC = () => {
           </>
         )}
 
-        {/* Paid / cancelled: share PDF only */}
-        {(invoice.status === 'paid' || invoice.status === 'cancelled') && (
+        {/* Partial: same as sent/overdue — can still record payment */}
+        {invoice.status === 'partial' && (
+          <>
+            <View style={styles.actionShare}>
+              <CustomButton
+                title="Share PDF"
+                onPress={handleSharePdf}
+                variant="text"
+                size="sm"
+                fullWidth
+              />
+            </View>
+            <View style={styles.actionSecondary}>
+              <CustomButton
+                title={customerHasWhatsApp ? 'Remind' : 'WhatsApp'}
+                onPress={customerHasWhatsApp ? handleOpenWhatsAppChat : handleSendViaWhatsApp}
+                variant="secondary"
+                size="sm"
+                fullWidth
+              />
+            </View>
+            <View style={styles.actionPrimary}>
+              <CustomButton
+                title="Record Payment"
+                onPress={() =>
+                  navigation.navigate('ReceivePayment', {
+                    customerId: invoice.customerId,
+                    invoiceId: invoice.id,
+                  })
+                }
+                variant="primary"
+                size="sm"
+                fullWidth
+              />
+            </View>
+          </>
+        )}
+
+        {/* Paid / void / cancelled: share PDF only */}
+        {(invoice.status === 'paid' || invoice.status === 'void' || invoice.status === 'cancelled') && (
           <>
             <View style={styles.actionSecondary}>
               <CustomButton
