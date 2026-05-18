@@ -183,12 +183,19 @@ export const inventoryApprovalSlice = createAppSlice({
     ),
 
     // ── Async thunks (GL pipeline: network → serializer → state) ──
-    /** Fetch all approval requests from the API and refresh state. */
+    /** Fetch all approval requests from the API and merge with local state. */
     fetchApprovalRequests: create.asyncThunk(
       async () => getInventoryUpdateRequestsAPI(),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
-          state.requests = inventoryUpdateRequestListSerializer(action.payload);
+          const apiRequests = inventoryUpdateRequestListSerializer(action.payload);
+          if (apiRequests.length > 0) {
+            // Merge: API requests take precedence, but keep local-only requests
+            const apiIds = new Set(apiRequests.map(r => r.id));
+            const localOnly = state.requests.filter(r => !apiIds.has(r.id));
+            state.requests = [...apiRequests, ...localOnly];
+          }
+          // If API returned nothing, keep existing local requests as-is
         },
       },
     ),

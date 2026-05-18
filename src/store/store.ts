@@ -259,7 +259,7 @@ const rootReducer = combineReducers({
 const persistConfig = {
   key: 'finmatrix-root',
   storage: AsyncStorage,
-  whitelist: ['auth', 'company'],
+  whitelist: ['auth', 'company', 'inventoryApproval'],
   stateReconciler: autoMergeLevel2 as any,
 };
 

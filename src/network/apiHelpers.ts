@@ -84,8 +84,12 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    // Skip refresh for auth endpoints — a 401 there IS the real error
+    const url = originalRequest?.url ?? '';
+    const isAuthRoute = url.includes('/auth/signin') || url.includes('/auth/signup') || url.includes('/auth/refresh-token');
+
     // Only attempt refresh on 401 and if we haven't already retried
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -129,7 +133,16 @@ api.interceptors.response.use(
 // ─── Error Extractor ────────────────────────────────
 export const extractErrorMessage = (error: any): string => {
   if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
     const data = error.response?.data;
+
+    // If backend returned HTML (e.g. Heroku error page), don't try to parse it
+    if (typeof data === 'string' && data.includes('<!DOCTYPE')) {
+      if (status === 502 || status === 503) return 'Server is temporarily unavailable. Please try again in a moment.';
+      if (status === 500) return 'Internal server error. Please try again later.';
+      return `Server error (${status}). Please try again later.`;
+    }
+
     // NestJS standard: { error: { message: '...' } }
     const serverMsg = data?.error?.message;
     if (serverMsg) return serverMsg;
@@ -137,9 +150,12 @@ export const extractErrorMessage = (error: any): string => {
     if (data?.message) {
       return Array.isArray(data.message) ? data.message.join(', ') : String(data.message);
     }
-    if (error.response?.status === 429) return 'Too many requests. Please wait a moment.';
-    if (error.response?.status === 403) return 'You do not have permission for this action.';
-    if (error.response?.status === 404) return 'Resource not found.';
+    if (status === 401) return 'Invalid email or password.';
+    if (status === 429) return 'Too many requests. Please wait a moment.';
+    if (status === 403) return 'You do not have permission for this action.';
+    if (status === 404) return 'Resource not found.';
+    if (status === 502 || status === 503) return 'Server is temporarily unavailable. Please try again in a moment.';
+    if (status === 500) return 'Internal server error. Please try again later.';
     if (!error.response) return 'Network error. Please check your connection.';
   }
   return error?.message || 'An unexpected error occurred.';

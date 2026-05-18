@@ -67,7 +67,12 @@ export const authLogin = async ({
       email: signInInfo.email.trim(),
       password: signInInfo.password,
     });
-    const { user: backendUser, tokens, companyId } = response.data.data;
+    console.log('[authLogin] response.data:', JSON.stringify(response.data, null, 2));
+    const responseData = response.data?.data ?? response.data;
+    const { user: backendUser, tokens, companyId } = responseData;
+    if (!tokens?.accessToken) {
+      throw new Error('Login succeeded but no token received. Please try again.');
+    }
     // Store tokens
     await setTokens(tokens.accessToken, tokens.refreshToken);
     if (companyId) {
@@ -76,6 +81,7 @@ export const authLogin = async ({
     const user = mapUser(backendUser);
     return { data: user };
   } catch (e: any) {
+    console.warn('[authLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
     throw new Error(extractErrorMessage(e));
   }
 };
@@ -93,7 +99,12 @@ export const authDeliveryLogin = async ({
       email: signInInfo.username.trim(),
       password: signInInfo.password,
     });
-    const { user: backendUser, tokens, companyId } = response.data.data;
+    console.log('[authDeliveryLogin] response.data:', JSON.stringify(response.data, null, 2));
+    const responseData = response.data?.data ?? response.data;
+    const { user: backendUser, tokens, companyId } = responseData;
+    if (!tokens?.accessToken) {
+      throw new Error('Login succeeded but no token received. Please try again.');
+    }
     await setTokens(tokens.accessToken, tokens.refreshToken);
     if (companyId) {
       await setStoredCompanyId(companyId);
@@ -101,6 +112,7 @@ export const authDeliveryLogin = async ({
     const user = mapUser(backendUser);
     return { data: user };
   } catch (e: any) {
+    console.warn('[authDeliveryLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
     throw new Error(extractErrorMessage(e));
   }
 };
@@ -287,6 +299,23 @@ export const regenerateInviteCodeAPI = async (companyId: string) => {
   }
 };
 
-export const registerAdminCreatedPersonnel = (_info: any) => {
-  // No-op: In production, delivery personnel are created via POST /delivery-personnel
+export const registerAdminCreatedPersonnel = async (info: any): Promise<any> => {
+  try {
+    const response = await api.post('/delivery-personnel', {
+      email: info.email,
+      username: info.username,
+      password: info.password,
+      name: info.user?.displayName ?? info.email?.split('@')[0],
+      phone: info.user?.phoneNumber ?? '',
+      companyId: info.user?.companyId,
+      vehicleType: info.vehicleType ?? 'motorcycle',
+      vehicleNumber: info.vehicleNumber ?? '',
+      zones: info.zones ?? [],
+      maxLoad: info.maxLoad ?? 10,
+    });
+    return response.data;
+  } catch (e: any) {
+    console.warn('[registerAdminCreatedPersonnel] error:', e?.response?.status, e?.response?.data ?? e?.message);
+    throw new Error(extractErrorMessage(e));
+  }
 };

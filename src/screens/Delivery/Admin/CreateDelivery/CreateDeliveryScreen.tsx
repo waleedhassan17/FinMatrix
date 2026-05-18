@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
-import { customers } from '../../../../models/customerModel';
-import { warehouseAgencies } from '../../../../models/agencyModel';
+import { selectCustomers, fetchCustomers } from '../../../Customers/CustomerList/customerListSlice';
+import { selectAgencies, fetchAgencies } from '../../../Agency/AgencyList/agencyListSlice';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomInput from '../../../../Custom-Components/CustomInput';
@@ -45,29 +45,36 @@ const CreateDeliveryScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
   const draft = useAppSelector(selectCreateDeliveryDraft);
+  const customers = useAppSelector(selectCustomers);
+  const agencies = useAppSelector(selectAgencies);
 
-  const [agencyId, setAgencyId] = useState(warehouseAgencies[0]?.id ?? '');
+  const [agencyId, setAgencyId] = useState('');
   const [itemId, setItemId] = useState('');
   const [qty, setQty] = useState('1');
 
+  useEffect(() => {
+    dispatch(fetchCustomers());
+    dispatch(fetchAgencies());
+  }, [dispatch]);
+
   const agencyOptions = useMemo(
-    () => warehouseAgencies.map(a => ({ label: a.name, value: a.id })),
-    [],
+    () => agencies.map(a => ({ label: a.name, value: a.id })),
+    [agencies],
   );
 
   const customerOptions = useMemo(
-    () => customers.slice(0, 20).map(c => ({ label: `${c.name} • ${c.shippingAddress.city}`, value: c.id })),
-    [],
+    () => customers.map(c => ({ label: `${c.name} • ${c.shippingAddress?.city ?? ''}`, value: c.id })),
+    [customers],
   );
 
   const itemOptions = useMemo(() => {
-    const agency = warehouseAgencies.find(a => a.id === agencyId);
-    return (agency?.inventory ?? []).map(item => ({ label: item.name, value: item.id }));
-  }, [agencyId]);
+    const agency = agencies.find(a => a.id === agencyId);
+    return (agency?.inventory ?? []).map(item => ({ label: item.name, value: item.id ?? item.itemId }));
+  }, [agencyId, agencies]);
 
   const addItemToDraft = () => {
-    const agency = warehouseAgencies.find(a => a.id === agencyId);
-    const item = agency?.inventory.find(i => i.id === itemId);
+    const agency = agencies.find(a => a.id === agencyId);
+    const item = agency?.inventory.find(i => (i.id ?? i.itemId) === itemId);
     const numericQty = Number(qty);
 
     if (!agency || !item || Number.isNaN(numericQty) || numericQty <= 0) {
@@ -107,7 +114,7 @@ const CreateDeliveryScreen: React.FC = () => {
       createDelivery({
         customerId: customer.id,
         customerName: customer.name,
-        zone: zoneByCity(customer.shippingAddress.city),
+        zone: zoneByCity(customer.shippingAddress?.city ?? ''),
         scheduledDate: new Date().toISOString().slice(0, 10),
         priority: draft.priority,
         notes: draft.notes,

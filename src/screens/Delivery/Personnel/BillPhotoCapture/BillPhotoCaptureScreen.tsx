@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -122,7 +122,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleTakePhoto = async () => {
     if (!(await ensurePermissions('camera'))) return;
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
       allowsEditing: true,
       aspect: [3, 4],
@@ -135,7 +135,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
   const handlePickFromGallery = async () => {
     if (!(await ensurePermissions('gallery'))) return;
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
       allowsEditing: true,
       aspect: [3, 4],
@@ -196,22 +196,69 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
         return;
       }
 
-      Alert.alert(
-        'Bill photo submitted',
-        'Admin has been notified. Inventory will update once the request is approved.',
-        [
-          {
-            text: 'Continue',
-            onPress: () => navigation.navigate('CustomerConfirm', { deliveryId: delivery.id }),
-          },
-        ],
-      );
+      setShowSuccess(true);
     } catch (e: any) {
       Alert.alert('Upload failed', e?.message ?? 'Could not submit the bill photo.');
     }
   };
 
   const itemsCount = delivery.items?.length ?? 0;
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  if (showSuccess) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
+        <View style={styles.header}>
+          <View style={styles.headerSpacer} />
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Bill Photo</Text>
+            <Text style={styles.headerSubtitle}>{delivery.referenceNo}</Text>
+          </View>
+          <View style={styles.headerSpacer} />
+        </View>
+        <View style={successStyles.wrapper}>
+          <View style={successStyles.card}>
+            <View style={successStyles.iconCircle}>
+              <Feather name="check-circle" size={48} color={THEME.colors.success} />
+            </View>
+            <Text style={successStyles.title}>Sent for Admin Review</Text>
+            <Text style={successStyles.subtitle}>
+              Your bill photo for {delivery.referenceNo} has been submitted successfully.
+              The admin will review and approve the inventory changes.
+            </Text>
+            <View style={successStyles.infoRow}>
+              <Feather name="package" size={16} color={THEME.colors.textSecondary} />
+              <Text style={successStyles.infoText}>
+                Shadow inventory has been updated · {itemsCount} item{itemsCount === 1 ? '' : 's'} deducted
+              </Text>
+            </View>
+            <View style={successStyles.infoRow}>
+              <Feather name="clock" size={16} color={THEME.colors.warning} />
+              <Text style={successStyles.infoText}>
+                Pending admin approval — actual inventory will update once confirmed
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={successStyles.continueBtn}
+              onPress={() => navigation.navigate('CustomerConfirm', { deliveryId: delivery.id })}
+              activeOpacity={0.9}
+            >
+              <Feather name="arrow-right" size={18} color={THEME.colors.textInverse} />
+              <Text style={successStyles.continueBtnText}>Continue to Customer Confirmation</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={successStyles.backBtn}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.8}
+            >
+              <Text style={successStyles.backBtnText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -606,6 +653,91 @@ const styles = StyleSheet.create({
     ...THEME.shadows.sm,
   },
   emptyButtonText: { ...THEME.typography.labelLg, color: THEME.colors.textInverse },
+});
+
+const successStyles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  card: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    padding: 28,
+    alignItems: 'center',
+    width: '100%',
+    ...THEME.shadows.md,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: THEME.colors.successLight ?? '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    ...THEME.typography.h2,
+    fontWeight: '700',
+    color: THEME.colors.success,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 21,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: THEME.colors.neutral50,
+    borderRadius: THEME.radius.lg,
+    padding: 12,
+    marginBottom: 8,
+    alignSelf: 'stretch',
+  },
+  infoText: {
+    flex: 1,
+    ...THEME.typography.bodySm,
+    color: THEME.colors.textSecondary,
+  },
+  continueBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: DP_BRAND.primary,
+    borderRadius: THEME.radius.lg,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignSelf: 'stretch',
+    marginTop: 16,
+    ...THEME.shadows.md,
+  },
+  continueBtnText: {
+    ...THEME.typography.h4,
+    fontWeight: '700',
+    color: THEME.colors.textInverse,
+  },
+  backBtn: {
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  backBtnText: {
+    ...THEME.typography.bodyMd,
+    fontWeight: '600',
+    color: THEME.colors.textTertiary,
+  },
 });
 
 export default BillPhotoCaptureScreen;

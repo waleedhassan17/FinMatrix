@@ -101,43 +101,53 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
     return Object.keys(errs).length === 0;
   };
 
-  const handleCreatePersonnel = useCallback(() => {
+  const handleCreatePersonnel = useCallback(async () => {
     if (!validateForm() || !activeCompany) return;
     setIsCreating(true);
 
     const finalEmail = email.trim() || generateEmail(fullName);
     const username = generatedUsername;
-    const userId = `dp_${uuidv4().slice(0, 8)}`;
     const now = new Date().toISOString();
 
-    const person: DummyDeliveryPerson = {
-      userId, displayName: fullName.trim(), email: finalEmail.toLowerCase(),
-      username, password: tempPassword, phone: phone.trim(), role: 'delivery',
-      companyId: activeCompany.companyId, isAvailable: true, currentLoad: 0,
-      maxLoad, rating: 0, totalDeliveries: 0, onTimeRate: 0, status: 'active',
-      vehicleType: vehicleType as DummyDeliveryPerson['vehicleType'],
-      vehicleNumber: vehicleNumber.trim(),
-      zones: selectedZones.length > 0 ? selectedZones : ['Zone A'],
-    };
+    try {
+      const result = await registerAdminCreatedPersonnel({
+        email: finalEmail.toLowerCase(), username, password: tempPassword,
+        vehicleType: vehicleType || 'motorcycle',
+        vehicleNumber: vehicleNumber.trim(),
+        zones: selectedZones.length > 0 ? selectedZones : ['Zone A'],
+        maxLoad,
+        user: {
+          displayName: fullName.trim(),
+          role: 'delivery', companyId: activeCompany.companyId, phoneNumber: phone.trim(),
+          photoURL: null, isActive: true, createdAt: now, updatedAt: now, username,
+        },
+      });
 
-    dispatch(addDeliveryPersonnel({ companyId: activeCompany.companyId, person }));
-    dispatch(addMember({
-      companyId: activeCompany.companyId,
-      member: { userId, role: 'delivery', displayName: fullName.trim(), email: finalEmail.toLowerCase(), phone: phone.trim(), joinedAt: now },
-    }));
+      const backendUserId = result?.data?.userId ?? result?.data?.id ?? `dp_${uuidv4().slice(0, 8)}`;
 
-    registerAdminCreatedPersonnel({
-      email: finalEmail.toLowerCase(), username, password: tempPassword,
-      user: {
-        uid: userId, email: finalEmail.toLowerCase(), displayName: fullName.trim(),
-        role: 'delivery', companyId: activeCompany.companyId, phoneNumber: phone.trim(),
-        photoURL: null, isActive: true, createdAt: now, updatedAt: now, username,
-      },
-    });
+      const person: DummyDeliveryPerson = {
+        userId: backendUserId, displayName: fullName.trim(), email: finalEmail.toLowerCase(),
+        username, password: tempPassword, phone: phone.trim(), role: 'delivery',
+        companyId: activeCompany.companyId, isAvailable: true, currentLoad: 0,
+        maxLoad, rating: 0, totalDeliveries: 0, onTimeRate: 0, status: 'active',
+        vehicleType: vehicleType as DummyDeliveryPerson['vehicleType'],
+        vehicleNumber: vehicleNumber.trim(),
+        zones: selectedZones.length > 0 ? selectedZones : ['Zone A'],
+      };
 
-    setIsCreating(false);
-    setCreatedPerson({ name: fullName.trim(), username, email: finalEmail.toLowerCase(), password: tempPassword });
-    setShowSuccess(true);
+      dispatch(addDeliveryPersonnel({ companyId: activeCompany.companyId, person }));
+      dispatch(addMember({
+        companyId: activeCompany.companyId,
+        member: { userId: backendUserId, role: 'delivery', displayName: fullName.trim(), email: finalEmail.toLowerCase(), phone: phone.trim(), joinedAt: now },
+      }));
+
+      setCreatedPerson({ name: fullName.trim(), username, email: finalEmail.toLowerCase(), password: tempPassword });
+      setShowSuccess(true);
+    } catch (e: any) {
+      Alert.alert('Failed to create personnel', e?.message ?? 'Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
   }, [fullName, email, phone, tempPassword, vehicleType, vehicleNumber, selectedZones, maxLoad, activeCompany, dispatch, generatedUsername]);
 
   const handleDismissSuccess = () => { setShowSuccess(false); navigation.goBack(); };

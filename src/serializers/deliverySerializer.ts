@@ -68,62 +68,85 @@ const mapStatusHistory = (
 });
 
 export const mapDelivery = (
-  raw: Partial<DeliveryApiEntity>,
+  raw: Partial<DeliveryApiEntity> & Record<string, any>,
 ): DeliveryRecord => ({
-  id: raw.id ?? '',
-  reference: raw.reference ?? raw.referenceNo ?? '',
-  referenceNo: raw.referenceNo ?? raw.reference ?? '',
-  customerId: raw.customerId ?? '',
-  customerName: raw.customerName ?? '',
+  id: raw.id ?? raw._id ?? '',
+  reference: raw.reference ?? raw.referenceNo ?? raw.ref ?? '',
+  referenceNo: raw.referenceNo ?? raw.reference ?? raw.ref ?? '',
+  customerId: raw.customerId ?? raw.customer_id ?? '',
+  customerName: raw.customerName ?? raw.customer_name ?? '',
   zone: raw.zone ?? '',
-  scheduledDate: raw.scheduledDate ?? '',
+  scheduledDate: raw.scheduledDate ?? raw.scheduled_date ?? '',
   priority: raw.priority ?? 'medium',
   status: raw.status ?? 'unassigned',
-  assignedTo: raw.assignedTo,
-  assignedAt: raw.assignedAt,
+  assignedTo: raw.assignedTo ?? raw.personnelId ?? raw.assigned_to ?? raw.personnelUserId,
+  assignedAt: raw.assignedAt ?? raw.assigned_at,
   notes: raw.notes,
   items: Array.isArray(raw.items) ? raw.items.map(mapItemLine) : [],
-  createdAt: raw.createdAt ?? '',
-  updatedAt: raw.updatedAt ?? '',
-  address: raw.address,
-  customerPhone: raw.customerPhone,
+  createdAt: raw.createdAt ?? raw.created_at ?? '',
+  updatedAt: raw.updatedAt ?? raw.updated_at ?? '',
+  address: raw.address ?? raw.deliveryAddress,
+  customerPhone: raw.customerPhone ?? raw.customer_phone,
   statusHistory: Array.isArray(raw.statusHistory)
     ? raw.statusHistory.map(mapStatusHistory)
-    : [],
+    : Array.isArray(raw.status_history)
+      ? raw.status_history.map(mapStatusHistory)
+      : [],
   signature: raw.signature,
   signatureBase64: raw.signatureBase64,
   photos: Array.isArray(raw.photos) ? [...raw.photos] : undefined,
   customerVerified: raw.customerVerified,
-  pickedUpAt: raw.pickedUpAt,
-  inTransitAt: raw.inTransitAt,
-  arrivedAt: raw.arrivedAt,
-  deliveredAt: raw.deliveredAt,
-  issueNote: raw.issueNote,
+  pickedUpAt: raw.pickedUpAt ?? raw.picked_up_at,
+  inTransitAt: raw.inTransitAt ?? raw.in_transit_at,
+  arrivedAt: raw.arrivedAt ?? raw.arrived_at,
+  deliveredAt: raw.deliveredAt ?? raw.delivered_at,
+  issueNote: raw.issueNote ?? raw.issue_note,
 });
 
 export const mapDeliveryPerson = (
-  raw: Partial<DeliveryPersonApiEntity>,
-): DummyDeliveryPerson => ({
-  userId: raw.userId ?? '',
-  displayName: raw.displayName ?? '',
-  username: raw.username ?? '',
-  email: raw.email ?? '',
-  password: raw.password ?? '',
-  phone: raw.phone ?? '',
-  role: 'delivery',
-  companyId: raw.companyId ?? '',
-  isAvailable: raw.isAvailable ?? false,
-  currentLoad: typeof raw.currentLoad === 'number' ? raw.currentLoad : 0,
-  maxLoad: typeof raw.maxLoad === 'number' ? raw.maxLoad : 0,
-  rating: typeof raw.rating === 'number' ? raw.rating : 0,
-  totalDeliveries:
-    typeof raw.totalDeliveries === 'number' ? raw.totalDeliveries : 0,
-  onTimeRate: typeof raw.onTimeRate === 'number' ? raw.onTimeRate : 0,
-  status: raw.status ?? 'inactive',
-  vehicleType: raw.vehicleType ?? 'motorcycle',
-  vehicleNumber: raw.vehicleNumber ?? '',
-  zones: Array.isArray(raw.zones) ? [...raw.zones] : [],
-});
+  raw: Partial<DeliveryPersonApiEntity> & Record<string, any>,
+): DummyDeliveryPerson => {
+  // Parse numeric strings from backend (e.g. "500.00" → 500)
+  const toNum = (v: any, fallback: number): number => {
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string') { const n = parseFloat(v); if (Number.isFinite(n)) return n; }
+    return fallback;
+  };
+
+  // Determine status: default to 'active' since the backend returns them from the personnel endpoint
+  const rawStatus = raw.status ?? raw.accountStatus;
+  const status: DummyDeliveryPerson['status'] =
+    rawStatus === 'inactive' ? 'inactive'
+    : rawStatus === 'on_leave' ? 'on_leave'
+    : rawStatus === 'on_delivery' ? 'on_delivery'
+    : 'active';
+
+  // Build display name from available fields
+  const displayName = raw.displayName ?? raw.name ?? raw.fullName ?? raw.username
+    ?? raw.email?.split('@')[0]
+    ?? `Driver ${raw.vehicleNumber ?? raw.userId?.slice(0, 6) ?? ''}`;
+
+  return {
+    userId: raw.userId ?? raw.id ?? raw._id ?? '',
+    displayName,
+    username: raw.username ?? raw.email?.split('@')[0] ?? '',
+    email: raw.email ?? '',
+    password: raw.password ?? '',
+    phone: raw.phone ?? raw.phoneNumber ?? '',
+    role: 'delivery',
+    companyId: raw.companyId ?? raw.company ?? '',
+    isAvailable: raw.isAvailable !== false,
+    currentLoad: toNum(raw.currentLoad, 0),
+    maxLoad: toNum(raw.maxLoad ?? raw.max_load, 10),
+    rating: toNum(raw.rating, 0),
+    totalDeliveries: toNum(raw.totalDeliveries, 0),
+    onTimeRate: toNum(raw.onTimeRate, 0),
+    status,
+    vehicleType: raw.vehicleType ?? raw.vehicle_type ?? 'motorcycle',
+    vehicleNumber: raw.vehicleNumber ?? raw.vehicle_number ?? '',
+    zones: Array.isArray(raw.zones) ? [...raw.zones] : ['Zone A', 'Zone B', 'Zone C', 'Zone D'],
+  };
+};
 
 const mapInventoryChange = (
   raw: Partial<InventoryUpdateChange>,
@@ -152,13 +175,18 @@ export const mapInventoryUpdateRequest = (
   reviewerComment: raw.reviewerComment,
   changes: Array.isArray(raw.changes) ? raw.changes.map(mapInventoryChange) : [],
   proof: raw.proof
-    ? {
-        signatureBase64: raw.proof.signatureBase64 ?? '',
-        signedBy: raw.proof.signedBy ?? '',
-        verificationMethod: raw.proof.verificationMethod ?? 'manual',
-        verifiedBy: raw.proof.verifiedBy ?? '',
-        verifiedAt: raw.proof.verifiedAt ?? '',
-      }
+    ? (() => {
+        const p = raw.proof as any;
+        return {
+          signatureBase64: p.signatureBase64 ?? '',
+          signedBy: p.signedBy ?? '',
+          verificationMethod: p.verificationMethod ?? 'bill_photo',
+          verifiedBy: p.verifiedBy ?? '',
+          verifiedAt: p.verifiedAt ?? '',
+          billPhotoUri: p.billPhotoUri ?? p.bill_photo_uri ?? p.photoUrl ?? '',
+          billPhotoCapturedAt: p.billPhotoCapturedAt ?? p.bill_photo_captured_at ?? '',
+        };
+      })()
     : {
         signatureBase64: '',
         signedBy: '',
@@ -249,14 +277,22 @@ export function personnelListSerializer(payload: any): SerializedPersonnelList {
     ? data
     : Array.isArray(data?.personnel)
       ? data.personnel
-      : [];
-  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
+      : Array.isArray(data?.deliveryPersonnel)
+        ? data.deliveryPersonnel
+        : Array.isArray(data?.users)
+          ? data.users
+          : Array.isArray(payload?.personnel)
+            ? payload.personnel
+            : Array.isArray(payload?.deliveryPersonnel)
+              ? payload.deliveryPersonnel
+              : [];
+  const pagination = (data && !Array.isArray(data)) ? (data.pagination || data.meta || {}) : {};
   const personnel = raw.map(mapDeliveryPerson);
   return {
     personnel,
-    page: pagination.page ?? 1,
-    totalPages: pagination.totalPages ?? 1,
-    totalPersonnel: pagination.total ?? personnel.length,
+    page: pagination.page ?? pagination.currentPage ?? 1,
+    totalPages: pagination.totalPages ?? pagination.pages ?? 1,
+    totalPersonnel: pagination.total ?? pagination.totalCount ?? personnel.length,
   };
 }
 
@@ -271,7 +307,12 @@ export function personnelSingleSerializer(
 export function inventoryUpdateRequestListSerializer(
   payload: any,
 ): InventoryUpdateRequest[] {
-  const raw = payload?.data?.requests;
+  const raw =
+    payload?.data?.requests ??
+    payload?.data?.approvals ??
+    payload?.data?.inventoryApprovals ??
+    (Array.isArray(payload?.data) ? payload.data : null) ??
+    (Array.isArray(payload) ? payload : null);
   if (!Array.isArray(raw)) return [];
   return raw.map(mapInventoryUpdateRequest);
 }
@@ -279,7 +320,10 @@ export function inventoryUpdateRequestListSerializer(
 export function inventoryUpdateRequestSingleSerializer(
   payload: any,
 ): InventoryUpdateRequest | null {
-  const raw = payload?.data?.request;
+  const raw =
+    payload?.data?.request ??
+    payload?.data?.approval ??
+    (payload?.data && !Array.isArray(payload.data) ? payload.data : null);
   if (!raw) return null;
   return mapInventoryUpdateRequest(raw);
 }

@@ -249,17 +249,16 @@ const AgencyFormScreen: React.FC = () => {
                 title="Cancel"
                 onPress={() => navigation.goBack()}
                 variant="secondary"
-                size="lg"
+                size="md"
                 fullWidth
               />
             </View>
-            <View style={{ width: spacing.sm }} />
             <View style={styles.btnCol}>
               <CustomButton
                 title={isEditing ? 'Update Agency' : 'Create Agency'}
                 onPress={handleSave}
                 variant="primary"
-                size="lg"
+                size="md"
                 fullWidth
                 isLoading={form.isSaving}
                 disabled={form.isSaving}
@@ -299,8 +298,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
   row: { flexDirection: 'row' },
 
-  btnRow: { flexDirection: 'row', marginTop: spacing.lg },
-  btnCol: { flex: 1 },
+  btnRow: { flexDirection: 'row', marginTop: spacing.xl, gap: spacing.md },
+  btnCol: { flex: 1, minHeight: 48 },
 });
 
 export default AgencyFormScreen;

@@ -29,23 +29,33 @@ export const mapAgencyInventoryItem = (raw: any): AgencyInventoryItemApi => ({
   unitOfMeasure: raw?.unitOfMeasure ?? '',
 });
 
+// ─── Helpers ─────────────────────────────────────────
+const capitalize = (s: string): string =>
+  s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
+
 // ─── Raw → UI mapper ─────────────────────────────────
-export const mapAgency = (raw: any): AgencyApi => ({
-  id: raw?.id ?? '',
-  name: raw?.name ?? '',
-  type: (raw?.type as AgencyApi['type']) ?? 'Supply',
-  typeBadgeColor: raw?.typeBadgeColor ?? '',
-  description: raw?.description ?? '',
-  productCount: num(raw?.productCount, Array.isArray(raw?.inventory) ? raw.inventory.length : 0),
-  city: raw?.city ?? '',
-  province: raw?.province ?? '',
-  address: raw?.address ?? '',
-  contactPhone: raw?.contactPhone ?? '',
-  contactEmail: raw?.contactEmail ?? '',
-  inventory: Array.isArray(raw?.inventory)
-    ? raw.inventory.map(mapAgencyInventoryItem)
-    : [],
-});
+export const mapAgency = (raw: any): AgencyApi => {
+  // Backend may return address as object { street, city, state } or as a string
+  const addr = raw?.address;
+  const isAddrObj = addr && typeof addr === 'object';
+
+  return {
+    id: raw?.id ?? '',
+    name: raw?.name ?? '',
+    type: (capitalize(raw?.type ?? '') as AgencyApi['type']) || 'Supply',
+    typeBadgeColor: raw?.typeBadgeColor ?? '',
+    description: raw?.description ?? '',
+    productCount: num(raw?.productCount, Array.isArray(raw?.inventory) ? raw.inventory.length : 0),
+    city: raw?.city ?? (isAddrObj ? addr.city : '') ?? '',
+    province: raw?.province ?? (isAddrObj ? addr.state : '') ?? '',
+    address: isAddrObj ? addr : (raw?.address ?? ''),
+    contactPhone: raw?.contactPhone ?? raw?.contact?.phone ?? '',
+    contactEmail: raw?.contactEmail ?? raw?.contact?.email ?? '',
+    inventory: Array.isArray(raw?.inventory)
+      ? raw.inventory.map(mapAgencyInventoryItem)
+      : [],
+  };
+};
 
 // ─── Envelope serializers ────────────────────────────
 export function agencyListSerializer(payload: any): AgencyApi[] {

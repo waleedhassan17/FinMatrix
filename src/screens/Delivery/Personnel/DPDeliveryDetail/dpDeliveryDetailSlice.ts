@@ -14,6 +14,7 @@ import type {
 import { updateDeliveryStatusAPI } from '../../../../network/dpDeliveryDetailNetwork';
 import { dpDeliveryDetailSerializer } from '../../../../serializers/dpDeliveryDetailSerializer';
 import { updateDeliveryStatus } from '../../Admin/AssignDeliveries/deliverySlice';
+import { locationService } from '../../../../services/locationService';
 
 export interface DPDeliveryDetailSliceState {
   showItems: boolean;
@@ -43,6 +44,9 @@ export const dpDeliveryDetailSlice = createAppSlice({
         payload: { deliveryId: string; status: DeliveryExecutionStatus; note?: string },
         thunkAPI,
       ) => {
+        // Send immediate GPS ping on status transition for precise milestone tracking
+        await locationService.sendImmediateUpdate();
+
         const result = dpDeliveryDetailSerializer(await updateDeliveryStatusAPI(payload));
         if (result) {
           thunkAPI.dispatch(

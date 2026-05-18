@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -33,13 +35,14 @@ import {
   selectDeliveryPersonnel,
   createDelivery,
   assignSelectedDeliveries,
-  autoAssignDeliveries,
+  fetchDeliveries,
+  fetchDeliveryPersonnel,
 } from './deliverySlice';
 import { selectPendingApprovalCount } from '../InventoryApproval/inventoryApprovalSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import CustomInput from '../../../../Custom-Components/CustomInput';
-import { customers } from '../../../../models/customerModel';
+import { selectCustomers, fetchCustomers } from '../../../Customers/CustomerList/customerListSlice';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
@@ -71,13 +74,22 @@ const AssignDeliveriesScreen: React.FC = () => {
   const personnel = useAppSelector(selectDeliveryPersonnel);
   const pendingApprovalCount = useAppSelector(selectPendingApprovalCount);
 
+  const customers = useAppSelector(selectCustomers);
+
   const [quickCustomerId, setQuickCustomerId] = useState('');
   const [quickPriority, setQuickPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [quickNotes, setQuickNotes] = useState('');
+  const [showPersonnelModal, setShowPersonnelModal] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchCustomers());
+    dispatch(fetchDeliveries());
+    dispatch(fetchDeliveryPersonnel());
+  }, [dispatch]);
 
   const customerOptions = useMemo(
-    () => customers.slice(0, 20).map(c => ({ label: `${c.name} • ${c.shippingAddress.city}`, value: c.id })),
-    [],
+    () => customers.map(c => ({ label: `${c.name} • ${c.shippingAddress?.city ?? ''}`, value: c.id })),
+    [customers],
   );
 
   const selectedCustomer = customers.find(c => c.id === quickCustomerId);
@@ -107,7 +119,7 @@ const AssignDeliveriesScreen: React.FC = () => {
       createDelivery({
         customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
-        zone: zoneByCity(selectedCustomer.shippingAddress.city),
+        zone: zoneByCity(selectedCustomer.shippingAddress?.city ?? ''),
         scheduledDate: selectedDate,
         priority: quickPriority,
         notes: quickNotes,
@@ -132,29 +144,19 @@ const AssignDeliveriesScreen: React.FC = () => {
     Alert.alert('Created', 'Delivery added to unassigned queue.');
   };
 
-  const handleAssignSelected = () => {
+  const handleOpenAssignModal = () => {
     if (!selectedDeliveryIds.length) {
       Alert.alert('No deliveries', 'Select at least one unassigned delivery.');
       return;
     }
-    if (!selectedPersonnelId) {
-      Alert.alert('No personnel', 'Select delivery personnel to continue.');
-      return;
-    }
-
-    dispatch(assignSelectedDeliveries({ deliveryIds: selectedDeliveryIds, personnelId: selectedPersonnelId }));
-    dispatch({
-      type: 'delivery/assignDelivery',
-      payload: { deliveryIds: selectedDeliveryIds, personnelId: selectedPersonnelId },
-    });
-    dispatch(clearSelectedDeliveries());
-    Alert.alert('Assigned', 'Selected deliveries moved to pending and notifications dispatched.');
+    setShowPersonnelModal(true);
   };
 
-  const handleAutoAssign = () => {
-    dispatch(autoAssignDeliveries({ deliveryIds: selectedDeliveryIds.length ? selectedDeliveryIds : undefined }));
+  const handlePickPersonnel = (personnelId: string, personnelName: string) => {
+    setShowPersonnelModal(false);
+    dispatch(assignSelectedDeliveries({ deliveryIds: selectedDeliveryIds, personnelId }));
     dispatch(clearSelectedDeliveries());
-    Alert.alert('Auto assigned', 'Deliveries distributed by priority and zone match.');
+    Alert.alert('Assigned', `${selectedDeliveryIds.length} delivery(ies) assigned to ${personnelName}.`);
   };
 
   const tabs: Array<{ key: 'assign' | 'monitor' | 'approvals'; label: string }> = [
@@ -266,34 +268,13 @@ const AssignDeliveriesScreen: React.FC = () => {
               {!filteredUnassigned.length && <Text style={styles.emptyText}>No unassigned deliveries for selected date.</Text>}
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Section 3: Delivery Personnel</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.personnelRow}>
-                {personnel.filter(p => p.status === 'active').map(p => {
-                  const selected = selectedPersonnelId === p.userId;
-                  const loadPercent = Math.min(100, Math.round((p.currentLoad / Math.max(1, p.maxLoad)) * 100));
-                  return (
-                    <TouchableOpacity
-                      key={p.userId}
-                      style={[styles.personCard, selected && styles.personCardSelected]}
-                      onPress={() => dispatch(setSelectedPersonnelId(p.userId))}
-                    >
-                      <Text style={styles.personName}>{p.displayName}</Text>
-                      <Text style={styles.personMeta}>{p.currentLoad}/{p.maxLoad} active load</Text>
-                      <View style={styles.loadTrack}>
-                        <View style={[styles.loadFill, { width: `${loadPercent}%` }]} />
-                      </View>
-                      <Text style={styles.zoneText}>{p.zones.join(' • ')}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
             <View style={styles.actionRow}>
-              <CustomButton title="Assign Selected" onPress={handleAssignSelected} fullWidth />
-              <View style={{ height: spacing.sm }} />
-              <CustomButton title="Auto-Assign" onPress={handleAutoAssign} variant="secondary" fullWidth />
+              <CustomButton
+                title={`Assign Selected (${selectedDeliveryIds.length})`}
+                onPress={handleOpenAssignModal}
+                fullWidth
+                disabled={!selectedDeliveryIds.length}
+              />
             </View>
 
             <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('AssignWork')}>
@@ -359,6 +340,56 @@ const AssignDeliveriesScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Personnel Picker Modal ──────────────────── */}
+      <Modal visible={showPersonnelModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Select Delivery Personnel</Text>
+            <Text style={styles.modalSubtitle}>
+              Assigning {selectedDeliveryIds.length} delivery(ies)
+            </Text>
+
+            <FlatList
+              data={personnel}
+              keyExtractor={p => p.userId}
+              style={styles.modalList}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>No active delivery personnel found.</Text>
+              }
+              renderItem={({ item: p }) => {
+                const loadPercent = Math.min(100, Math.round((p.currentLoad / Math.max(1, p.maxLoad)) * 100));
+                return (
+                  <TouchableOpacity
+                    style={styles.modalPersonRow}
+                    onPress={() => handlePickPersonnel(p.userId, p.displayName)}
+                  >
+                    <View style={styles.modalPersonAvatar}>
+                      <Text style={styles.modalPersonInitials}>
+                        {p.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modalPersonName}>{p.displayName}</Text>
+                      <Text style={styles.modalPersonMeta}>
+                        {p.vehicleType} • {p.currentLoad}/{p.maxLoad} load • {loadPercent}%
+                      </Text>
+                    </View>
+                    <Text style={styles.modalAssignBtn}>Assign</Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+
+            <TouchableOpacity
+              style={styles.modalCancelBtn}
+              onPress={() => setShowPersonnelModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -591,6 +622,93 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 12,
     marginTop: 2,
+    fontFamily: THEME.typography.fontFamily,
+  },
+
+  // ── Personnel Picker Modal ─────────────────────
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontFamily: THEME.typography.fontFamily,
+    marginTop: 4,
+    marginBottom: spacing.md,
+  },
+  modalList: {
+    flexGrow: 0,
+  },
+  modalPersonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalPersonAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.primary + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  modalPersonInitials: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  modalPersonName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  modalPersonMeta: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontFamily: THEME.typography.fontFamily,
+    marginTop: 2,
+  },
+  modalAssignBtn: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
+    fontFamily: THEME.typography.fontFamily,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  modalCancelBtn: {
+    marginTop: spacing.md,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: 10,
+    backgroundColor: colors.background,
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textSecondary,
     fontFamily: THEME.typography.fontFamily,
   },
 });

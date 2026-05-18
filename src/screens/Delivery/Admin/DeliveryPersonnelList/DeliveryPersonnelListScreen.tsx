@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,9 @@ import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
 import { ROUTES } from '../../../../navigations-map/Base';
 import EmptyState from '../../../../components/EmptyState';
-import { useAppSelector } from '../../../../hooks/useReduxHooks';
-import { selectActiveCompany } from '../../../Auth/companySlice';
-import { dummyDeliveryPersonnel, type DummyDeliveryPerson } from '../../../../models/deliveryModel';
+import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks';
+import { selectDeliveryPersonnel, fetchDeliveryPersonnel } from '../../Admin/AssignDeliveries/deliverySlice';
+import type { DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import type { RootStackParamList } from '../../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryPersonnelList'>;
@@ -45,16 +45,14 @@ const TAB_COLORS: Record<FilterKey, string> = {
 };
 
 const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
-  const activeCompany = useAppSelector(selectActiveCompany);
+  const dispatch = useAppDispatch();
+  const allPersonnel = useAppSelector(selectDeliveryPersonnel);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
 
-  const allPersonnel: DummyDeliveryPerson[] = useMemo(() => {
-    const companyPersonnel = activeCompany?.deliveryPersonnel ?? [];
-    const knownIds = new Set(companyPersonnel.map(p => p.userId));
-    const fromDummy = dummyDeliveryPersonnel.filter(d => !knownIds.has(d.userId));
-    return [...companyPersonnel, ...fromDummy];
-  }, [activeCompany]);
+  useEffect(() => {
+    dispatch(fetchDeliveryPersonnel());
+  }, [dispatch]);
 
   const getEffectiveStatus = (p: DummyDeliveryPerson): string => {
     if (p.status === 'on_leave' || p.status === 'inactive') return 'on_leave';
