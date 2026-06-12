@@ -41,7 +41,7 @@ export interface CheckVerificationPayload {
 }
 
 // ─── Helper: map backend user to app User type ───────
-const mapUser = (backendUser: any): User => ({
+const mapUser = (backendUser: any, companyStatus?: string | null): User => ({
   uid: backendUser.id,
   email: backendUser.email,
   displayName: backendUser.displayName,
@@ -51,9 +51,22 @@ const mapUser = (backendUser: any): User => ({
   photoURL: backendUser.photoURL || null,
   username: backendUser.username,
   isActive: true,
+  isEmailVerified: backendUser.isEmailVerified ?? true,
+  companyStatus: companyStatus ?? null,
   createdAt: backendUser.createdAt || new Date().toISOString(),
   updatedAt: backendUser.updatedAt || new Date().toISOString(),
 });
+
+// Error augmented with a backend error code (used to detect EMAIL_NOT_VERIFIED).
+export class AuthError extends Error {
+  code?: string;
+  email?: string;
+  constructor(message: string, code?: string, email?: string) {
+    super(message);
+    this.code = code;
+    this.email = email;
+  }
+}
 
 // ─── Login ────────────────────────────────────────────
 
@@ -69,7 +82,7 @@ export const authLogin = async ({
     });
     console.log('[authLogin] response.data:', JSON.stringify(response.data, null, 2));
     const responseData = response.data?.data ?? response.data;
-    const { user: backendUser, tokens, companyId } = responseData;
+    const { user: backendUser, tokens, companyId, companyStatus } = responseData;
     if (!tokens?.accessToken) {
       throw new Error('Login succeeded but no token received. Please try again.');
     }
@@ -78,10 +91,20 @@ export const authLogin = async ({
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
-    const user = mapUser(backendUser);
+    const user = mapUser(backendUser, companyStatus);
     return { data: user };
   } catch (e: any) {
     console.warn('[authLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
+    // Surface the EMAIL_NOT_VERIFIED gate so the UI can route to verification.
+    const body = e?.response?.data;
+    const code = body?.error?.code ?? body?.code;
+    if (code === 'EMAIL_NOT_VERIFIED') {
+      throw new AuthError(
+        'Please verify your email before signing in.',
+        'EMAIL_NOT_VERIFIED',
+        body?.error?.email ?? body?.email,
+      );
+    }
     throw new Error(extractErrorMessage(e));
   }
 };
@@ -132,12 +155,12 @@ export const authRegister = async ({
       phone: registerInfo.phone,
       role: 'admin',
     });
-    const { user: backendUser, tokens, companyId } = response.data.data;
+    const { user: backendUser, tokens, companyId, companyStatus } = response.data.data;
     await setTokens(tokens.accessToken, tokens.refreshToken);
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
-    const user = mapUser(backendUser);
+    const user = mapUser(backendUser, companyStatus);
     return { data: user };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -149,8 +172,8 @@ export const authRegister = async ({
 export const authMe = async () => {
   try {
     const response = await api.get('/auth/me');
-    const { user: backendUser, companies, companyId } = response.data.data;
-    const user = mapUser(backendUser);
+    const { user: backendUser, companies, companyId, companyStatus } = response.data.data;
+    const user = mapUser(backendUser, companyStatus);
     return { data: { user, companies, companyId } };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -186,25 +209,52 @@ export const authForgotPassword = async ({
   }
 };
 
-// ─── Reset Password ──────────────────────────────────
+// ─── Forgot Password: Verify OTP ─────────────────────
+// Returns a single-use resetToken used to set the new password.
 
-export const authResetPassword = async (token: string, newPassword: string) => {
+export const authVerifyOtp = async (email: string, otp: string) => {
   try {
-    const response = await api.post('/auth/reset-password', { token, newPassword });
+    const response = await api.post('/auth/verify-otp', { email: email.trim(), otp });
+    const data = response.data?.data ?? response.data;
+    return { resetToken: data.resetToken as string };
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+// ─── Reset Password (with OTP reset token) ───────────
+
+export const authResetPassword = async (
+  email: string,
+  resetToken: string,
+  password: string,
+) => {
+  try {
+    const response = await api.post('/auth/reset-password', {
+      email: email.trim(),
+      resetToken,
+      password,
+    });
     return { data: response.data };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }
 };
 
-// ─── Verify Email (no-op for now) ────────────────────
-
-export const authVerifyEmail = async ({
-  verifyEmailInfo,
-}: {
-  verifyEmailInfo: VerifyEmailPayload;
-}) => {
-  return { data: { success: true } };
+// ─── Verify Email (deep-link token) ──────────────────
+// Accepts a raw token string (deep link) or the legacy { verifyEmailInfo }
+// object shape still used by emailVerificationSlice.
+export const authVerifyEmail = async (
+  arg: string | { verifyEmailInfo: VerifyEmailPayload },
+) => {
+  const token = typeof arg === 'string' ? arg : '';
+  try {
+    const response = await api.post('/auth/verify-email', { token });
+    const data = response.data?.data ?? response.data;
+    return { data };
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
 };
 
 // ─── Resend Verification ──────────────────────────────
@@ -214,32 +264,69 @@ export const authResendVerification = async ({
 }: {
   resendInfo: ResendVerificationPayload;
 }) => {
-  return { data: { success: true, message: `Verification email resent to ${resendInfo.email}` } };
+  try {
+    const response = await api.post('/auth/resend-verification', {
+      email: resendInfo.email.trim(),
+    });
+    return { data: response.data };
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
 };
 
-// ─── Check Verification Status ────────────────────────
+// ─── Check Verification Status (via /auth/me) ────────
 
-export const authCheckVerificationStatus = async ({
-  checkInfo,
-}: {
-  checkInfo: CheckVerificationPayload;
-}) => {
-  return { data: { verified: true } };
+export const authCheckVerificationStatus = async (_args?: unknown) => {
+  try {
+    const response = await api.get('/auth/me');
+    const data = response.data?.data ?? response.data;
+    return { data: { verified: Boolean(data?.user?.isEmailVerified) } };
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
 };
 
 // ─── Company APIs ─────────────────────────────────────
 
-export const createCompanyAPI = async (data: {
+export interface CreateCompanyData {
   name: string;
   industry?: string;
-  address?: string;
+  legalStructure?: string;
+  // Accepts a structured address (preferred) or a legacy concatenated string.
+  address?:
+    | string
+    | {
+        street?: string;
+        city?: string;
+        state?: string;
+        postalCode?: string;
+        country?: string;
+      };
   phone?: string;
   email?: string;
+  website?: string;
   taxId?: string;
-}) => {
+  fiscalYearStartMonth?: number;
+  accountingMethod?: string;
+  homeCurrency?: string;
+  logo?: string;
+}
+
+export const createCompanyAPI = async (data: CreateCompanyData) => {
   try {
     const response = await api.post('/companies', data);
     return response.data.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+// ─── Submit company onboarding for platform-admin approval (Step C) ──────────
+
+export const submitCompanyAPI = async (companyId: string) => {
+  try {
+    const response = await api.post(`/companies/${companyId}/submit`);
+    return response.data?.data ?? response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }

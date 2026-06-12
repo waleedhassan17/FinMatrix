@@ -18,8 +18,11 @@ import {
   RefreshControl,
   ActivityIndicator,
   ScrollView,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -41,6 +44,7 @@ import {
 } from './poListSlice';
 import EmptyState from '../../../components/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
+import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { PO_STATUS_COLORS, PO_STATUS_LABELS } from '../../../models/purchaseOrderModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PurchaseOrder } from '../../../types';
@@ -161,11 +165,14 @@ const POListScreen: React.FC = () => {
   // to leave a stuck spinner with no visible data).
   if (isLoading && items.length === 0 && !refreshing) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        {renderHeader()}
-        {renderSummary()}
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+      <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+        <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+        <View style={styles.body}>
+          {renderHeader()}
+          {renderSummary()}
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -173,15 +180,19 @@ const POListScreen: React.FC = () => {
 
   if (error && items.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        {renderHeader()}
-        <View style={styles.center}>
-          <EmptyState
-            title="Failed to Load"
-            message={error}
-            actionLabel="Retry"
-            onAction={() => dispatch(fetchPurchaseOrders())}
-          />
+      <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+        <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+        <View style={styles.body}>
+          {renderHeader()}
+          <View style={styles.center}>
+            <EmptyState
+              icon="alert-triangle"
+              title="Failed to Load"
+              message={error}
+              actionLabel="Retry"
+              onAction={() => dispatch(fetchPurchaseOrders())}
+            />
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -189,17 +200,17 @@ const POListScreen: React.FC = () => {
 
   function renderHeader() {
     return (
-      <View style={styles.header}>
+      <LinearGradient colors={HEADER_NAVY} style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-              <Text style={styles.backIcon}>‹</Text>
+              <Feather name="arrow-left" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Purchase Orders</Text>
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.searchToggle} onPress={() => setSearchOpen(p => !p)}>
-              <Text style={styles.searchToggleIcon}>🔍</Text>
+              <Feather name="search" size={18} color="#FFFFFF" />
             </TouchableOpacity>
             <CustomButton
               title="+ New"
@@ -209,7 +220,7 @@ const POListScreen: React.FC = () => {
             />
           </View>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -228,13 +239,20 @@ const POListScreen: React.FC = () => {
     );
   }
 
+  // Genuine first-run: no POs at all (not a filter/search result). Loading and
+  // error empties are handled by the early returns above. Hide the summary,
+  // tabs and FAB for a clean, professional zero-state.
+  const isFirstRun = items.length === 0 && statusFilter === 'all' && !searchQuery.trim();
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <View style={styles.body}>
       {renderHeader()}
-      {renderSummary()}
+      {!isFirstRun && renderSummary()}
 
       {/* ── Search ──────────────────────────────── */}
-      {searchOpen && (
+      {searchOpen && !isFirstRun && (
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
@@ -247,7 +265,8 @@ const POListScreen: React.FC = () => {
         </View>
       )}
 
-      {/* ── Filter Tabs ─────────────────────────── */}
+      {/* ── Filter Tabs — hidden on first-run ───── */}
+      {!isFirstRun && (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -273,28 +292,43 @@ const POListScreen: React.FC = () => {
           );
         })}
       </ScrollView>
+      )}
 
-      {/* ── List ────────────────────────────────── */}
-      <FlatList
-        data={items}
-        keyExtractor={i => i.id}
-        renderItem={renderCard}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
-        }
-        ListEmptyComponent={
+      {/* ── List / states ───────────────────────── */}
+      {isFirstRun ? (
+        <View style={styles.emptyFull}>
           <EmptyState
-            title="No Purchase Orders"
-            message={searchQuery ? `No results for "${searchQuery}"` : 'Create your first PO to get started.'}
+            icon="clipboard"
+            title="No purchase orders yet"
+            message="Create your first purchase order to track what you've ordered from vendors."
             actionLabel="Create PO"
             onAction={() => navigation.navigate('POForm')}
           />
-        }
-      />
+        </View>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={i => i.id}
+          renderItem={renderCard}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+          }
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <EmptyState
+                icon="search"
+                title="No Purchase Orders"
+                message={searchQuery ? `No results for "${searchQuery}"` : 'Try a different filter.'}
+              />
+            </View>
+          }
+        />
+      )}
 
-      {/* ── FAB ─────────────────────────────────── */}
+      {/* ── FAB — hidden on first-run ───────────── */}
+      {!isFirstRun && (
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.8}
@@ -302,6 +336,8 @@ const POListScreen: React.FC = () => {
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
+      )}
+      </View>
     </SafeAreaView>
   );
 };
@@ -309,21 +345,22 @@ const POListScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
+  body: { flex: 1, backgroundColor: colors.background },
 
   header: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
   backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
 
@@ -421,6 +458,7 @@ const styles = StyleSheet.create({
   amtValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
+  emptyFull: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   fab: {
     position: 'absolute',

@@ -13,10 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectUser } from '../../../Auth/authSlice';
-import { selectUnreadNotificationCountForUser } from '../../../Notifications/notificationCenterSlice';
 import {
   selectDeliveries,
   selectDeliveryPersonnel,
@@ -25,8 +25,6 @@ import {
 } from '../../Admin/AssignDeliveries/deliverySlice';
 import { startDelivery } from './dpDashboardSlice';
 import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DPDashboardStack';
-import NotificationBadge from '../../../../components/NotificationBadge';
-import NotificationIcon from '../../../../components/NotificationIcon';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { locationService } from '../../../../services/locationService';
@@ -60,9 +58,6 @@ const DPDashboardScreen: React.FC = () => {
   const deliveries = useAppSelector(selectDeliveries);
   const personnel = useAppSelector(selectDeliveryPersonnel);
   const userId = user?.uid ?? 'dp_002';
-  const unreadNotifications = useAppSelector(state =>
-    selectUnreadNotificationCountForUser(state, 'delivery', userId),
-  );
 
   const [isGpsTracking, setIsGpsTracking] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -220,8 +215,7 @@ const DPDashboardScreen: React.FC = () => {
   };
 
   const displayName = user?.displayName ?? me?.displayName ?? 'Partner';
-  const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  const currentDate = new Date().toLocaleDateString('en-US', { 
+  const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long', 
     month: 'long', 
     day: 'numeric' 
@@ -235,38 +229,37 @@ const DPDashboardScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
       
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>{getGreeting()},</Text>
-          <Text style={styles.userName}>{displayName}</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity 
-            style={styles.notificationBtn}
-            onPress={() => navigation.navigate('Notifications')}
-          >
-            <NotificationIcon size={20} color={DP_BRAND.white} />
-            <NotificationBadge count={unreadNotifications} />
-          </TouchableOpacity>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+      <LinearGradient
+        colors={[DP_BRAND.primary, DP_BRAND.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>{getGreeting()},</Text>
+            <Text style={styles.userName} numberOfLines={1}>{displayName}</Text>
           </View>
         </View>
-      </View>
 
-      {/* Date Strip */}
-      <View style={styles.dateStrip}>
-        <View style={styles.dateBadge}>
-          <View style={styles.dateDot} />
-          <Text style={styles.dateText}>{currentDate}</Text>
-        </View>
-        {isGpsTracking && (
-          <View style={styles.gpsTrackingPill}>
-            <Animated.View style={[styles.gpsTrackingDot, { opacity: gpsAnim }]} />
-            <Text style={styles.gpsTrackingText}>GPS Active</Text>
+        <View style={styles.headerMetaRow}>
+          <View style={styles.dateBadge}>
+            <Feather name="calendar" size={12} color="rgba(255,255,255,0.95)" />
+            <Text style={styles.dateText}>{currentDate}</Text>
           </View>
-        )}
-      </View>
+          {isGpsTracking ? (
+            <View style={styles.gpsTrackingPill}>
+              <Animated.View style={[styles.gpsTrackingDot, { opacity: gpsAnim }]} />
+              <Text style={styles.gpsTrackingText}>GPS Active</Text>
+            </View>
+          ) : (
+            <View style={styles.dutyPill}>
+              <Feather name="briefcase" size={11} color={DP_BRAND.white} />
+              <Text style={styles.dutyPillText}>On Duty</Text>
+            </View>
+          )}
+        </View>
+      </LinearGradient>
 
       <ScrollView
         style={styles.scrollView}
@@ -508,17 +501,23 @@ const styles = StyleSheet.create({
     backgroundColor: DP_BRAND.primary,
   },
 
-  // Header
+  // Header (gradient)
   header: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 18,
+    shadowColor: DP_BRAND.primaryDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
-    backgroundColor: DP_BRAND.primary,
   },
-  headerLeft: {},
+  headerLeft: { flex: 1, marginRight: 12 },
   greeting: {
     ...THEME.typography.bodySm,
     color: DP_BRAND.headerTextSecondary,
@@ -528,64 +527,43 @@ const styles = StyleSheet.create({
     ...THEME.typography.h2,
     color: DP_BRAND.white,
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  notificationBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: DP_BRAND.headerOverlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: DP_BRAND.headerOverlayBorder,
-  },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: DP_BRAND.headerOverlaySolid,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    ...THEME.typography.h4,
-    fontWeight: '700',
-    color: THEME.colors.textInverse,
-  },
 
-  // Date Strip
-  dateStrip: {
+  // Header meta row
+  headerMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: DP_BRAND.primary,
+    marginTop: 16,
   },
   dateBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
+    gap: 6,
     backgroundColor: DP_BRAND.headerOverlaySolid,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: THEME.radius.full,
   },
-  dateDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: DP_BRAND.white,
-    marginRight: 8,
-  },
   dateText: {
     ...THEME.typography.caption,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  dutyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: DP_BRAND.headerOverlay,
+    borderWidth: 1,
+    borderColor: DP_BRAND.headerOverlayBorder,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: THEME.radius.full,
+  },
+  dutyPillText: {
+    ...THEME.typography.caption,
+    fontWeight: '600',
+    color: DP_BRAND.white,
   },
   gpsTrackingPill: {
     flexDirection: 'row',

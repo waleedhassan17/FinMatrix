@@ -3,7 +3,7 @@
 // Tabs: Inventory | Deliveries | Analytics
 // ═══════════════════════════════════════════════════════
 
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,14 @@ import {
   ScrollView,
   FlatList,
   TouchableOpacity,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,7 +26,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { selectAgencies } from '../AgencyList/agencyListSlice';
+import { selectAgencies, fetchAgencies } from '../AgencyList/agencyListSlice';
 import {
   selectAgencyDetailTab,
   setActiveTab,
@@ -29,17 +36,357 @@ import {
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { AGENCY_TYPE_COLORS } from '../../../models/agencyModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+import { getAgencyItemsAPI, addAgencyItemAPI } from '../../../network/agencyNetwork';
+import { formatCurrency } from '../../../utils/formatters';
 
 type DetailRoute = RouteProp<MoreStackParamList, 'AgencyDetail'>;
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
 const TABS: { key: AgencyDetailTab; label: string }[] = [
+  { key: 'inventory', label: 'Inventory' },
   { key: 'deliveries', label: 'Deliveries' },
   { key: 'analytics', label: 'Analytics' },
 ];
 
+// ── Add Item Modal State ────────────────────────────────
+interface AddItemForm {
+  name: string;
+  sku: string;
+  category: string;
+  unitOfMeasure: string;
+  quantityOnHand: string;
+  unitCost: string;
+  sellingPrice: string;
+}
+
+const EMPTY_FORM: AddItemForm = {
+  name: '',
+  sku: '',
+  category: 'General',
+  unitOfMeasure: 'unit',
+  quantityOnHand: '0',
+  unitCost: '0',
+  sellingPrice: '0',
+};
+
 // ═══════════════════════════════════════════════════════
-// COMPONENT
+// INVENTORY TAB
+// ═══════════════════════════════════════════════════════
+interface AgencyItem {
+  id: string;
+  name: string;
+  sku: string;
+  category: string;
+  quantityOnHand: string | number;
+  unitCost: string | number;
+  sellingPrice: string | number;
+  isActive: boolean;
+}
+
+const InventoryTab: React.FC<{ agencyId: string; agencyName: string }> = ({ agencyId, agencyName }) => {
+  const dispatch = useAppDispatch();
+  const [items, setItems] = useState<AgencyItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState<AddItemForm>(EMPTY_FORM);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const loadItems = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await getAgencyItemsAPI(agencyId);
+      const data = res?.data?.data ?? res?.data ?? [];
+      setItems(Array.isArray(data) ? data : []);
+    } catch {
+      setItems([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [agencyId]);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
+
+  const handleAddItem = useCallback(async () => {
+    if (!addForm.name.trim()) {
+      Alert.alert('Validation', 'Item name is required.');
+      return;
+    }
+    if (!addForm.sku.trim()) {
+      Alert.alert('Validation', 'SKU is required.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await addAgencyItemAPI(agencyId, {
+        name: addForm.name.trim(),
+        sku: addForm.sku.trim(),
+        category: addForm.category.trim() || 'General',
+        unitOfMeasure: addForm.unitOfMeasure.trim() || 'unit',
+        quantityOnHand: String(parseFloat(addForm.quantityOnHand) || 0),
+        unitCost: String(parseFloat(addForm.unitCost) || 0),
+        sellingPrice: String(parseFloat(addForm.sellingPrice) || 0),
+      });
+      setShowAddModal(false);
+      setAddForm(EMPTY_FORM);
+      await loadItems();
+      await dispatch(fetchAgencies());
+      Alert.alert('Success', `${addForm.name} added to ${agencyName}.`);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'Failed to add item. Check SKU is unique.';
+      Alert.alert('Error', msg);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [addForm, agencyId, agencyName, loadItems, dispatch]);
+
+  const totalValue = items.reduce((sum, i) => {
+    const qty = parseFloat(String(i.quantityOnHand)) || 0;
+    const cost = parseFloat(String(i.unitCost)) || 0;
+    return sum + qty * cost;
+  }, 0);
+
+  const qtyColor = (qty: number) => {
+    if (qty <= 0) return colors.danger;
+    if (qty < 50) return colors.warning;
+    return colors.success;
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Summary bar */}
+      <View style={styles.invSummaryBar}>
+        <View style={styles.invSummaryItem}>
+          <Text style={styles.invSummaryVal}>{items.length}</Text>
+          <Text style={styles.invSummaryLabel}>Items</Text>
+        </View>
+        <View style={styles.invSummaryDivider} />
+        <View style={styles.invSummaryItem}>
+          <Text style={styles.invSummaryVal}>
+            {formatCurrency(totalValue, 'Rs ')}
+          </Text>
+          <Text style={styles.invSummaryLabel}>Total Value</Text>
+        </View>
+        <View style={styles.invSummaryDivider} />
+        <View style={styles.invSummaryItem}>
+          <Text style={[styles.invSummaryVal, { color: colors.warning }]}>
+            {items.filter(i => (parseFloat(String(i.quantityOnHand)) || 0) < 50).length}
+          </Text>
+          <Text style={styles.invSummaryLabel}>Low Stock</Text>
+        </View>
+      </View>
+
+      <FlatList
+        data={items}
+        keyExtractor={i => i.id}
+        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => {
+          const qty = parseFloat(String(item.quantityOnHand)) || 0;
+          const cost = parseFloat(String(item.unitCost)) || 0;
+          return (
+            <View style={styles.invItemCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.invItemName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.invItemSku}>{item.sku} · {item.category}</Text>
+              </View>
+              <View style={styles.invItemRight}>
+                <View style={[styles.invQtyBadge, { backgroundColor: qtyColor(qty) + '18' }]}>
+                  <Text style={[styles.invQtyText, { color: qtyColor(qty) }]}>{qty}</Text>
+                </View>
+                <Text style={styles.invItemValue}>
+                  {formatCurrency(qty * cost, 'Rs ')}
+                </Text>
+              </View>
+            </View>
+          );
+        }}
+        ListEmptyComponent={
+          <View style={styles.center}>
+            <Text style={styles.emptyText}>No inventory items in this warehouse.</Text>
+            <Text style={styles.emptySubText}>Tap "Add Item" to add products.</Text>
+          </View>
+        }
+      />
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setShowAddModal(true)}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.fabText}>+ Add Item</Text>
+      </TouchableOpacity>
+
+      {/* Add Item Modal */}
+      <Modal visible={showAddModal} transparent animationType="slide" onRequestClose={() => setShowAddModal(false)}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Item to {agencyName}</Text>
+                <TouchableOpacity onPress={() => { setShowAddModal(false); setAddForm(EMPTY_FORM); }}>
+                  <Text style={styles.modalClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+                <AddField label="Item Name *" value={addForm.name} placeholder="e.g. Habib Cooking Oil 5L"
+                  onChangeText={v => setAddForm(f => ({ ...f, name: v }))} />
+                <AddField label="SKU *" value={addForm.sku} placeholder="e.g. CO-HABIB-5L"
+                  onChangeText={v => setAddForm(f => ({ ...f, sku: v }))} autoCapitalize="characters" />
+                <AddField label="Category" value={addForm.category} placeholder="e.g. Cooking Oil"
+                  onChangeText={v => setAddForm(f => ({ ...f, category: v }))} />
+                <AddField label="Unit of Measure" value={addForm.unitOfMeasure} placeholder="e.g. bottle, pack"
+                  onChangeText={v => setAddForm(f => ({ ...f, unitOfMeasure: v }))} />
+                <View style={styles.addFieldRow}>
+                  <View style={{ flex: 1, marginRight: spacing.sm }}>
+                    <AddField label="Opening Qty" value={addForm.quantityOnHand} placeholder="0"
+                      onChangeText={v => setAddForm(f => ({ ...f, quantityOnHand: v }))} keyboardType="numeric" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <AddField label="Unit Cost (Rs)" value={addForm.unitCost} placeholder="0"
+                      onChangeText={v => setAddForm(f => ({ ...f, unitCost: v }))} keyboardType="numeric" />
+                  </View>
+                </View>
+                <AddField label="Selling Price (Rs)" value={addForm.sellingPrice} placeholder="0"
+                  onChangeText={v => setAddForm(f => ({ ...f, sellingPrice: v }))} keyboardType="numeric" />
+              </ScrollView>
+              <View style={styles.modalFooter}>
+                <CustomButton title="Cancel" onPress={() => { setShowAddModal(false); setAddForm(EMPTY_FORM); }}
+                  variant="secondary" size="md" fullWidth />
+                <View style={{ width: spacing.sm }} />
+                <CustomButton title="Add Item" onPress={handleAddItem} variant="primary" size="md" fullWidth
+                  isLoading={isSaving} />
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </View>
+  );
+};
+
+const AddField: React.FC<{
+  label: string; value: string; placeholder: string;
+  onChangeText: (v: string) => void; keyboardType?: any; autoCapitalize?: any;
+}> = ({ label, value, placeholder, onChangeText, keyboardType = 'default', autoCapitalize = 'words' }) => (
+  <View style={styles.addField}>
+    <Text style={styles.addFieldLabel}>{label}</Text>
+    <TextInput
+      style={styles.addFieldInput}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={colors.textLight}
+      keyboardType={keyboardType}
+      autoCapitalize={autoCapitalize}
+    />
+  </View>
+);
+
+// ═══════════════════════════════════════════════════════
+// DELIVERIES TAB
+// ═══════════════════════════════════════════════════════
+const DeliveriesTab: React.FC<{ agencyName: string }> = ({ agencyName }) => (
+  <View style={[styles.center, { flex: 1, paddingVertical: spacing.xl * 2 }]}>
+    <Text style={{ fontSize: 32, marginBottom: spacing.sm }}>🚚</Text>
+    <Text style={styles.emptyText}>Delivery history</Text>
+    <Text style={styles.emptySubText}>Deliveries routed through {agencyName} will appear here.</Text>
+  </View>
+);
+
+// ═══════════════════════════════════════════════════════
+// ANALYTICS TAB
+// ═══════════════════════════════════════════════════════
+const AnalyticsTab: React.FC<{ agencyId: string }> = ({ agencyId }) => {
+  const [items, setItems] = useState<AgencyItem[]>([]);
+
+  useEffect(() => {
+    getAgencyItemsAPI(agencyId)
+      .then(res => {
+        const data = res?.data?.data ?? res?.data ?? [];
+        setItems(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setItems([]));
+  }, [agencyId]);
+
+  const totalValue = items.reduce((s, i) => s + (parseFloat(String(i.quantityOnHand)) || 0) * (parseFloat(String(i.unitCost)) || 0), 0);
+  const inStock = items.filter(i => (parseFloat(String(i.quantityOnHand)) || 0) > 0).length;
+  const lowStock = items.filter(i => { const q = parseFloat(String(i.quantityOnHand)) || 0; return q > 0 && q < 50; }).length;
+
+  return (
+    <ScrollView contentContainerStyle={{ padding: spacing.lg }} showsVerticalScrollIndicator={false}>
+      <Text style={styles.analyticsSectionTitle}>Inventory Overview</Text>
+      <View style={styles.analyticsRow}>
+        <AnalyticCard label="Total Items" value={String(items.length)} color={colors.primary} />
+        <AnalyticCard label="In Stock" value={String(inStock)} color={colors.success} />
+        <AnalyticCard label="Low Stock" value={String(lowStock)} color={colors.warning} />
+      </View>
+      <View style={styles.analyticsTotalCard}>
+        <Text style={styles.analyticsTotalLabel}>Total Inventory Value</Text>
+        <Text style={styles.analyticsTotalVal}>{formatCurrency(totalValue, 'Rs ')}</Text>
+      </View>
+
+      {items.length > 0 && (
+        <>
+          <Text style={[styles.analyticsSectionTitle, { marginTop: spacing.md }]}>Top Items by Value</Text>
+          {[...items]
+            .sort((a, b) => {
+              const va = (parseFloat(String(a.quantityOnHand)) || 0) * (parseFloat(String(a.unitCost)) || 0);
+              const vb = (parseFloat(String(b.quantityOnHand)) || 0) * (parseFloat(String(b.unitCost)) || 0);
+              return vb - va;
+            })
+            .slice(0, 5)
+            .map(item => {
+              const val = (parseFloat(String(item.quantityOnHand)) || 0) * (parseFloat(String(item.unitCost)) || 0);
+              const pct = totalValue > 0 ? (val / totalValue) * 100 : 0;
+              return (
+                <View key={item.id} style={styles.analyticsBar}>
+                  <Text style={styles.analyticsBarName} numberOfLines={1}>{item.name}</Text>
+                  <View style={styles.analyticsBarTrack}>
+                    <View style={[styles.analyticsBarFill, { width: `${Math.min(pct, 100)}%` }]} />
+                  </View>
+                  <Text style={styles.analyticsBarVal}>{formatCurrency(val, 'Rs ')}</Text>
+                </View>
+              );
+            })}
+        </>
+      )}
+    </ScrollView>
+  );
+};
+
+const AnalyticCard: React.FC<{ label: string; value: string; color: string }> = ({ label, value, color }) => (
+  <View style={[styles.analyticCard, { borderTopColor: color }]}>
+    <Text style={[styles.analyticCardVal, { color }]}>{value}</Text>
+    <Text style={styles.analyticCardLabel}>{label}</Text>
+  </View>
+);
+
+// ═══════════════════════════════════════════════════════
+// STAT BOX
+// ═══════════════════════════════════════════════════════
+const StatBox: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <View style={styles.statBox}>
+    <Text style={styles.statValue}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
+
+// ═══════════════════════════════════════════════════════
+// MAIN COMPONENT
 // ═══════════════════════════════════════════════════════
 const AgencyDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -51,7 +398,6 @@ const AgencyDetailScreen: React.FC = () => {
 
   const agency = agencies.find(a => a.id === route.params.agencyId);
 
-  // Reset tab state on unmount
   React.useEffect(() => {
     return () => { dispatch(resetAgencyDetail()); };
   }, [dispatch]);
@@ -72,7 +418,7 @@ const AgencyDetailScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Feather name="arrow-left" size={17} color={colors.secondary} style={{ marginRight: 2 }} /><Text style={styles.backBtn}>Back</Text></View>
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{agency.name}</Text>
         <CustomButton
@@ -105,22 +451,17 @@ const AgencyDetailScreen: React.FC = () => {
               ? [agency.address?.street, agency.address?.city, agency.address?.state].filter(Boolean).join(', ')
               : String(agency.address ?? '')}
             {agency.city ? `, ${agency.city}` : ''}
-            {agency.province ? `, ${agency.province}` : ''}
           </Text>
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📞</Text>
-          <Text style={styles.infoValue}>{agency.contactPhone}</Text>
-        </View>
-        {agency.contactEmail ? (
+        {agency.contactPhone ? (
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>✉️</Text>
-            <Text style={styles.infoValue}>{agency.contactEmail}</Text>
+            <Text style={styles.infoLabel}>📞</Text>
+            <Text style={styles.infoValue}>{agency.contactPhone}</Text>
           </View>
         ) : null}
         <View style={styles.statRow}>
           <StatBox label="Type" value={agency.type} />
-          <StatBox label="City" value={agency.city || '—'} />
+          <StatBox label="Items" value={String(agency.inventory?.length ?? 0)} />
         </View>
       </View>
 
@@ -142,101 +483,14 @@ const AgencyDetailScreen: React.FC = () => {
       </View>
 
       {/* Tab Content */}
+      {activeTab === 'inventory' && (
+        <InventoryTab agencyId={agency.id} agencyName={agency.name} />
+      )}
       {activeTab === 'deliveries' && <DeliveriesTab agencyName={agency.name} />}
-      {activeTab === 'analytics' && <AnalyticsTab agencyName={agency.name} />}
+      {activeTab === 'analytics' && <AnalyticsTab agencyId={agency.id} />}
     </SafeAreaView>
   );
 };
-
-// ═══════════════════════════════════════════════════════
-// STAT BOX
-// ═══════════════════════════════════════════════════════
-const StatBox: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <View style={styles.statBox}>
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
-);
-
-
-// ═══════════════════════════════════════════════════════
-// DELIVERIES TAB
-// ═══════════════════════════════════════════════════════
-interface DeliveryEntry {
-  id: string;
-  reference: string;
-  date: string;
-  itemCount: number;
-  status: 'Delivered' | 'In Transit' | 'Pending';
-}
-
-const MOCK_DELIVERIES: DeliveryEntry[] = [
-  { id: 'd1', reference: 'DEL-2026-001', date: '2026-03-10', itemCount: 12, status: 'Delivered' },
-  { id: 'd2', reference: 'DEL-2026-002', date: '2026-03-08', itemCount: 8, status: 'Delivered' },
-  { id: 'd3', reference: 'DEL-2026-003', date: '2026-03-12', itemCount: 5, status: 'In Transit' },
-  { id: 'd4', reference: 'DEL-2026-004', date: '2026-03-13', itemCount: 15, status: 'Pending' },
-];
-
-const STATUS_COLORS: Record<string, string> = {
-  Delivered: colors.success,
-  'In Transit': colors.warning,
-  Pending: colors.textLight,
-};
-
-const DeliveriesTab: React.FC<{ agencyName: string }> = ({ agencyName }) => (
-  <FlatList
-    data={MOCK_DELIVERIES}
-    keyExtractor={d => d.id}
-    contentContainerStyle={{ padding: spacing.lg }}
-    showsVerticalScrollIndicator={false}
-    renderItem={({ item: d }) => (
-      <View style={styles.delCard}>
-        <View style={styles.delTop}>
-          <Text style={styles.delRef}>{d.reference}</Text>
-          <View style={[styles.delStatusBadge, { backgroundColor: STATUS_COLORS[d.status] + '18' }]}>
-            <Text style={[styles.delStatusText, { color: STATUS_COLORS[d.status] }]}>{d.status}</Text>
-          </View>
-        </View>
-        <View style={styles.delBottom}>
-          <Text style={styles.delDetail}>📅 {d.date}</Text>
-          <Text style={styles.delDetail}>📦 {d.itemCount} items</Text>
-        </View>
-      </View>
-    )}
-    ListEmptyComponent={
-      <View style={styles.center}><Text style={styles.emptyText}>No deliveries</Text></View>
-    }
-  />
-);
-
-// ═══════════════════════════════════════════════════════
-// ANALYTICS TAB
-// ═══════════════════════════════════════════════════════
-const AnalyticsTab: React.FC<{ agencyName: string }> = ({ agencyName }) => (
-  <ScrollView contentContainerStyle={{ padding: spacing.lg }} showsVerticalScrollIndicator={false}>
-    <Text style={styles.sectionTitle}>Delivery Performance</Text>
-    <View style={styles.analyticsStatRow}>
-      {MOCK_DELIVERIES.map(d => d.status).reduce<Record<string, number>>((acc, s) => {
-        acc[s] = (acc[s] ?? 0) + 1;
-        return acc;
-      }, {}) && (
-        <>
-          <View style={styles.analyticsStat}>
-            <Text style={styles.analyticsStatVal}>{MOCK_DELIVERIES.length}</Text>
-            <Text style={styles.analyticsStatLbl}>Total Deliveries</Text>
-          </View>
-          <View style={styles.analyticsStat}>
-            <Text style={styles.analyticsStatVal}>
-              {MOCK_DELIVERIES.filter(d => d.status === 'Delivered').length}
-            </Text>
-            <Text style={styles.analyticsStatLbl}>Completed</Text>
-          </View>
-        </>
-      )}
-    </View>
-    <View style={{ height: spacing.xl }} />
-  </ScrollView>
-);
 
 // ═══════════════════════════════════════════════════════
 // STYLES
@@ -300,100 +554,128 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.primary },
 
   // ── Inventory Tab ─────────────────────────────────
-  invSearchRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs },
-  invSearchInput: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: 13,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  sortRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.xs },
-  sortChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 14,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sortChipActive: { backgroundColor: colors.secondary + '15', borderColor: colors.secondary },
-  sortChipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  sortChipTextActive: { color: colors.secondary },
-
-  invRow: {
+  invSummaryBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.white,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    backgroundColor: colors.white,
   },
-  invName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  invSku: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
-  invRight: { alignItems: 'flex-end' },
-  invQty: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  invValue: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  invSummaryItem: { flex: 1, alignItems: 'center' },
+  invSummaryDivider: { width: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
+  invSummaryVal: { fontSize: 14, fontWeight: '800', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  invSummaryLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
 
-  // ── Deliveries Tab ────────────────────────────────
-  delCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.small,
-  },
-  delTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  delRef: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  delStatusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  delStatusText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
-  delBottom: { flexDirection: 'row', gap: spacing.lg },
-  delDetail: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-
-  // ── Analytics Tab ─────────────────────────────────
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
-  analyticsStatRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
-  analyticsStat: {
-    flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm + 4,
-    alignItems: 'center',
-    ...shadows.small,
-  },
-  analyticsStatVal: { fontSize: 16, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  analyticsStatLbl: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
-
-  barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-  barLabel: { width: 90, fontSize: 11, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  barTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: colors.border, overflow: 'hidden', marginHorizontal: spacing.xs },
-  barFill: { height: 10, borderRadius: 5, backgroundColor: colors.secondary },
-  barValue: { width: 80, fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'right' },
-
-  catRow: {
+  invItemCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    padding: spacing.sm + 2,
     marginBottom: spacing.xs + 2,
     ...shadows.small,
   },
-  catName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  catRight: { alignItems: 'flex-end' },
-  catQty: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
-  catValue: { fontSize: 12, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  invItemName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  invItemSku: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  invItemRight: { alignItems: 'flex-end', gap: 4 },
+  invQtyBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 8 },
+  invQtyText: { fontSize: 13, fontWeight: '800', fontFamily: THEME.typography.fontFamily },
+  invItemValue: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+
+  fab: {
+    position: 'absolute',
+    bottom: spacing.lg,
+    right: spacing.lg,
+    backgroundColor: colors.primary,
+    borderRadius: 24,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+    ...shadows.card,
+  },
+  fabText: { fontSize: 14, fontWeight: '700', color: colors.white, fontFamily: THEME.typography.fontFamily },
+
+  // ── Add Item Modal ─────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  modalClose: { fontSize: 18, color: colors.textLight, padding: spacing.xs },
+  modalFooter: {
+    flexDirection: 'row',
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+
+  addField: { marginBottom: spacing.sm },
+  addFieldLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: 4 },
+  addFieldInput: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.sm,
+    fontSize: 14,
+    color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  addFieldRow: { flexDirection: 'row' },
+
+  // ── Deliveries Tab ────────────────────────────────
+
+  // ── Analytics Tab ─────────────────────────────────
+  analyticsSectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
+  analyticsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  analyticCard: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.sm,
+    padding: spacing.sm + 2,
+    alignItems: 'center',
+    borderTopWidth: 3,
+    ...shadows.small,
+  },
+  analyticCardVal: { fontSize: 20, fontWeight: '800', fontFamily: THEME.typography.fontFamily },
+  analyticCardLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  analyticsTotalCard: {
+    backgroundColor: colors.primary + '0A',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  analyticsTotalLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  analyticsTotalVal: { fontSize: 22, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily, marginTop: 4 },
+  analyticsBar: { marginBottom: spacing.sm },
+  analyticsBarName: { fontSize: 12, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: 4 },
+  analyticsBarTrack: { height: 8, borderRadius: 4, backgroundColor: colors.border, overflow: 'hidden', marginBottom: 2 },
+  analyticsBarFill: { height: 8, borderRadius: 4, backgroundColor: colors.secondary },
+  analyticsBarVal: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 
   // ── Common ────────────────────────────────────────
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: spacing.xl * 2 },
-  emptyText: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  emptyText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  emptySubText: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginTop: 4, textAlign: 'center' },
 });
 
 export default AgencyDetailScreen;

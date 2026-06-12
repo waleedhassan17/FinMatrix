@@ -13,7 +13,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Modal,
+  FlatList,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -79,8 +82,10 @@ const InventoryFormScreen: React.FC = () => {
     pricing: false,
     stock: false,
     tracking: true,
-    location: true,
+    location: false,
   });
+
+  const [showAgencyPrompt, setShowAgencyPrompt] = useState(false);
 
   const toggleSection = (key: SectionKey) =>
     setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
@@ -89,6 +94,15 @@ const InventoryFormScreen: React.FC = () => {
   useEffect(() => {
     if (agencies.length === 0) dispatch(fetchAgencies());
   }, [dispatch, agencies.length]);
+
+  // ── Prompt agency selection for new items ─────────
+  useEffect(() => {
+    if (!isEdit && agencies.length > 0 && !form.sourceAgencyId) {
+      setShowAgencyPrompt(true);
+    }
+  // Only on mount for new items
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, agencies.length]);
 
   // ── Pre-fill for edit mode / reset for add ────────
   useEffect(() => {
@@ -201,7 +215,6 @@ const InventoryFormScreen: React.FC = () => {
       } else {
         await dispatch(
           createInventoryItem({
-            companyId: 'comp-001',
             name: form.name.trim(),
             sku: form.sku.trim(),
             description: form.description.trim(),
@@ -256,7 +269,7 @@ const InventoryFormScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Feather name="arrow-left" size={17} color={colors.secondary} style={{ marginRight: 2 }} /><Text style={styles.backBtn}>Back</Text></View>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {isEdit ? 'Edit Item' : 'Add Item'}
@@ -493,6 +506,51 @@ const InventoryFormScreen: React.FC = () => {
           <View style={{ height: spacing.xl }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ── Agency Selection Prompt ── */}
+      <Modal
+        visible={showAgencyPrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAgencyPrompt(false)}
+      >
+        <View style={styles.promptOverlay}>
+          <View style={styles.promptSheet}>
+            <Text style={styles.promptTitle}>Select Warehouse / Agency</Text>
+            <Text style={styles.promptSubtitle}>
+              Which warehouse does this inventory item belong to?
+            </Text>
+            <FlatList
+              data={agencyOptions}
+              keyExtractor={o => o.value}
+              style={{ maxHeight: 280 }}
+              renderItem={({ item: opt }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.promptOption,
+                    form.sourceAgencyId === opt.value && styles.promptOptionSelected,
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    updateField('sourceAgencyId', opt.value);
+                    setShowAgencyPrompt(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.promptOptionText,
+                    form.sourceAgencyId === opt.value && styles.promptOptionTextSelected,
+                  ]}>
+                    {opt.label}
+                  </Text>
+                  {opt.value !== '' && (
+                    <Text style={styles.promptOptionBadge}>Warehouse</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -642,6 +700,70 @@ const styles = StyleSheet.create({
   // ── Save button ───────────────────────────────────
   btnRow: {
     marginTop: spacing.md,
+  },
+
+  // ── Agency Prompt Modal ───────────────────────────
+  promptOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  promptSheet: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    width: '100%',
+    maxWidth: 400,
+  },
+  promptTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.xs,
+  },
+  promptSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.md,
+  },
+  promptOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.xs + 2,
+    backgroundColor: colors.white,
+  },
+  promptOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '0A',
+  },
+  promptOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
+    flex: 1,
+  },
+  promptOptionTextSelected: {
+    color: colors.primary,
+  },
+  promptOptionBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.secondary,
+    backgroundColor: colors.secondary + '18',
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
 });
 

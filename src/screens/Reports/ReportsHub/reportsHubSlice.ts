@@ -10,10 +10,7 @@ const initialCategories: ReportHubCategory[] = [
     items: [
       { key: 'pl', title: 'P&L', icon: 'PL', target: 'ProfitLoss' },
       { key: 'bs', title: 'Balance Sheet', icon: 'BS', target: 'BalanceSheet' },
-      { key: 'cf', title: 'Cash Flow', icon: 'CF', target: 'CashFlow' },
-      { key: 'tb', title: 'Trial Balance', icon: 'TB', target: 'TrialBalance' },
       { key: 'analytics', title: 'Analytics Dashboard', icon: 'ANL', target: 'AnalyticsDashboard' },
-      { key: 'budgeting', title: 'Budgets', icon: 'BDG', target: 'BudgetList' },
     ],
   },
   {
@@ -30,16 +27,6 @@ const initialCategories: ReportHubCategory[] = [
     icon: 'INV',
     items: [
       { key: 'inv-valuation', title: 'Valuation', icon: 'VAL', target: 'InventoryValuation' },
-    ],
-  },
-  {
-    key: 'sales',
-    title: 'Sales',
-    icon: 'SAL',
-    items: [
-      { key: 'sales-by-customer', title: 'Sales by Customer', icon: 'SC', target: 'SalesByCustomer' },
-      { key: 'sales-by-item', title: 'Sales by Item', icon: 'SI', target: 'SalesByItem' },
-      { key: 'sales-tax', title: 'Tax Report', icon: 'TAX', target: 'SalesTaxReport' },
     ],
   },
   {

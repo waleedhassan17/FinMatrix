@@ -15,6 +15,8 @@ import CompanySetupScreen from '../screens/Auth/CompanySetup/CompanySetupScreen'
 import CreateCompanyScreen from '../screens/Auth/CreateCompany/CreateCompanyScreen';
 import JoinCompanyScreen from '../screens/Auth/JoinCompany/JoinCompanyScreen';
 import SubscriptionSelectScreen from '../screens/Auth/SubscriptionSelect/SubscriptionSelectScreen';
+import PendingApprovalScreen from '../screens/Auth/PendingApproval/PendingApprovalScreen';
+import CompanyRejectedScreen from '../screens/Auth/CompanyRejected/CompanyRejectedScreen';
 
 // Splash Overlay
 import SplashOverlay from '../screens/Splash/SplashScreen';
@@ -39,12 +41,16 @@ const BaseNavigator: React.FC = () => {
   const isDeliveryUser = user?.role === 'delivery';
   const isSuperAdmin = user?.role === 'super_admin';
 
-  // ─── Auth Flow Logic ─────────────────────────────────
-  // 1. Not seen onboarding → Onboarding
-  // 2. Not authenticated → RoleSelection → Sign In/Up
-  // 3. Authenticated + delivery role → DeliveryTabs
-  // 4. Authenticated, no company → CompanySetup
-  // 5. Authenticated + company → AdminTabs
+  // ─── Stage 1: company-admin onboarding/approval gate ───
+  const companyStatus = user?.companyStatus ?? null;
+  const emailVerified = user?.isEmailVerified !== false; // default true (legacy)
+  const isApproved =
+    companyStatus === 'approved' || companyStatus === 'active';
+  const isPending =
+    companyStatus === 'pending_approval' || companyStatus === 'pending';
+  const isRejected = companyStatus === 'rejected';
+  // A created-but-not-submitted company resumes at plan selection + submit.
+  const isDraftCompany = hasCompany && companyStatus === 'email_verified';
 
   return (
     <View style={styles.container}>
@@ -99,43 +105,83 @@ const BaseNavigator: React.FC = () => {
               options={{ animation: 'none' }}
             />
           </>
-        ) : (
-          // ── Admin Flow ──
+        ) : !emailVerified ? (
+          // ── Admin: email not verified ──
           <>
-            {hasCompany ? (
-              <Stack.Screen
-                name="AdminTabs"
-                component={AdminTabNavigator}
-                options={{ animation: 'none' }}
-              />
-            ) : (
-              <>
-                <Stack.Screen
-                  name="CompanySetup"
-                  component={CompanySetupScreen}
-                  options={{ animation: 'none' }}
-                />
-                <Stack.Screen
-                  name="CreateCompany"
-                  component={CreateCompanyScreen}
-                  options={{ animation: 'none' }}
-                />
-                <Stack.Screen
-                  name="JoinCompany"
-                  component={JoinCompanyScreen}
-                  options={{ animation: 'none' }}
-                />
-                <Stack.Screen
-                  name="SubscriptionSelect"
-                  component={SubscriptionSelectScreen}
-                />
-                <Stack.Screen
-                  name="AdminTabs"
-                  component={AdminTabNavigator}
-                  options={{ animation: 'none' }}
-                />
-              </>
-            )}
+            <Stack.Screen
+              name="EmailVerification"
+              component={EmailVerificationScreen}
+              options={{ animation: 'none' }}
+            />
+          </>
+        ) : isPending ? (
+          // ── Admin: company submitted, awaiting approval ──
+          <>
+            <Stack.Screen
+              name="PendingApproval"
+              component={PendingApprovalScreen}
+              options={{ animation: 'none' }}
+            />
+          </>
+        ) : isRejected ? (
+          // ── Admin: company registration rejected ──
+          <>
+            <Stack.Screen
+              name="CompanyRejected"
+              component={CompanyRejectedScreen}
+              options={{ animation: 'none' }}
+            />
+          </>
+        ) : isApproved ? (
+          // ── Admin: approved → full app ──
+          <>
+            <Stack.Screen
+              name="AdminTabs"
+              component={AdminTabNavigator}
+              options={{ animation: 'none' }}
+            />
+          </>
+        ) : isDraftCompany ? (
+          // ── Admin: company drafted, resume at plan selection + submit ──
+          <>
+            <Stack.Screen
+              name="SubscriptionSelect"
+              component={SubscriptionSelectScreen}
+              options={{ animation: 'none' }}
+            />
+            <Stack.Screen
+              name="AdminTabs"
+              component={AdminTabNavigator}
+              options={{ animation: 'none' }}
+            />
+          </>
+        ) : (
+          // ── Admin: onboarding (no company yet) ──
+          <>
+            <Stack.Screen
+              name="CompanySetup"
+              component={CompanySetupScreen}
+              options={{ animation: 'none' }}
+            />
+            <Stack.Screen
+              name="CreateCompany"
+              component={CreateCompanyScreen}
+              options={{ animation: 'none' }}
+            />
+            <Stack.Screen
+              name="JoinCompany"
+              component={JoinCompanyScreen}
+              options={{ animation: 'none' }}
+            />
+            <Stack.Screen
+              name="SubscriptionSelect"
+              component={SubscriptionSelectScreen}
+            />
+            <Stack.Screen
+              name="AdminTabs"
+              component={AdminTabNavigator}
+              options={{ animation: 'none' }}
+            />
           </>
         )}
       </Stack.Navigator>

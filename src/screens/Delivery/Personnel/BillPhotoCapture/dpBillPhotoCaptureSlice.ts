@@ -20,7 +20,6 @@ import { submitBillPhotoAPI } from '../../../../network/dpBillPhotoCaptureNetwor
 import { dpBillPhotoCaptureSerializer } from '../../../../serializers/dpBillPhotoCaptureSerializer';
 import { attachBillPhotoToDelivery, deductShadowInventory } from '../../Admin/AssignDeliveries/deliverySlice';
 import { submitInventoryRequestFromBillPhoto } from '../../Admin/InventoryApproval/inventoryApprovalSlice';
-import { addRealtimeNotification } from '../../../Notifications/notificationCenterSlice';
 
 export interface DPBillPhotoCaptureSliceState {
   photoUri: string;
@@ -122,17 +121,8 @@ export const dpBillPhotoCaptureSlice = createAppSlice({
           }),
         );
 
-        // 4. Notify admin in real time so they see it in the bell.
-        thunkAPI.dispatch(
-          addRealtimeNotification({
-            targetRole: 'admin',
-            category: 'inventory_approvals',
-            title: 'Bill photo received — review needed',
-            message: `${payload.personnelName} submitted a signed bill for ${payload.deliveryReference}. Review and approve to update inventory.`,
-            routeName: 'InventoryApproval',
-            routeParams: { requestId },
-          }),
-        );
+        // The admin sees this pending request directly in the Inventory
+        // Approvals queue. (The in-app Notification Centre is deferred to v2.)
 
         return result ?? { requestId, deliveryId: payload.deliveryId, photoUrl, uploadedAt: capturedAt };
       },

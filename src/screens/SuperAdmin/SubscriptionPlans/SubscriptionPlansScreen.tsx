@@ -171,7 +171,7 @@ const PlanFormModal: React.FC<{
             <View style={S.formRow}>
               <View style={S.formHalf}>
                 <FormField
-                  label="Monthly Price (PKR) *"
+                  label="Monthly Price (Rs) *"
                   value={form.priceMonthly}
                   onChangeText={v => setForm(p => ({ ...p, priceMonthly: v }))}
                   placeholder="0"
@@ -180,7 +180,7 @@ const PlanFormModal: React.FC<{
               </View>
               <View style={S.formHalf}>
                 <FormField
-                  label="Yearly Price (PKR) *"
+                  label="Yearly Price (Rs) *"
                   value={form.priceYearly}
                   onChangeText={v => setForm(p => ({ ...p, priceYearly: v }))}
                   placeholder="0"
@@ -314,14 +314,14 @@ const PlanCard: React.FC<{
           <View>
             <Text style={S.planPriceLabel}>Monthly</Text>
             <Text style={S.planPrice}>
-              PKR {isNaN(monthlyPrice) ? plan.priceMonthly : monthlyPrice.toLocaleString()}
+              Rs {isNaN(monthlyPrice) ? plan.priceMonthly : monthlyPrice.toLocaleString()}
             </Text>
           </View>
           <View style={S.planPriceDivider} />
           <View>
             <Text style={S.planPriceLabel}>Yearly</Text>
             <Text style={S.planPrice}>
-              PKR {isNaN(yearlyPrice) ? plan.priceYearly : yearlyPrice.toLocaleString()}
+              Rs {isNaN(yearlyPrice) ? plan.priceYearly : yearlyPrice.toLocaleString()}
             </Text>
           </View>
         </View>

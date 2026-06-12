@@ -77,7 +77,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
         <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
+            <Feather name="arrow-left" size={20} color={DP_BRAND.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Bill Photo</Text>
           <View style={styles.headerSpacer} />
@@ -266,7 +266,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
+          <Feather name="arrow-left" size={20} color={DP_BRAND.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Bill Photo</Text>

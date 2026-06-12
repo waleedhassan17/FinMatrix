@@ -22,6 +22,7 @@ export const colors = {
   backgroundAlt: '#FAFBFC',
   cardBg: '#FFFFFF',
   surface: '#FFFFFF',
+  surfaceAlt: '#FAFBFC',
   textPrimary: '#172B4D',
   textSecondary: '#5E6C84',
   textTertiary: '#8993A4',
@@ -45,12 +46,18 @@ export const typography = {
   h3: { fontSize: 20, fontWeight: '600' as const, fontFamily },
   h4: { fontSize: 18, fontWeight: '500' as const, fontFamily },
   body: { fontSize: 16, fontWeight: '400' as const, fontFamily },
+  bodySmall: { fontSize: 14, fontWeight: '400' as const, fontFamily },
   small: { fontSize: 14, fontWeight: '400' as const, fontFamily },
+  label: { fontSize: 14, fontWeight: '600' as const, fontFamily },
+  button: { fontSize: 16, fontWeight: '600' as const, fontFamily },
+  overline: { fontSize: 11, fontWeight: '600' as const, fontFamily },
   caption: { fontSize: 12, fontWeight: '400' as const, fontFamily },
 };
 
-export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
+export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
 export const borderRadius = { sm: 8, md: 12, lg: 16 };
+// Stage 1 screens use `radius` (incl. a `full` pill value).
+export const radius = { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 };
 
 export const shadows = {
   card: {

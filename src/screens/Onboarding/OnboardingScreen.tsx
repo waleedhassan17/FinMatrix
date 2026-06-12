@@ -124,7 +124,7 @@ const DashboardContent: React.FC<{ accent: string }> = ({ accent }) => (
   <>
     <View style={cS.metricRow}>
       {[
-        { v: 'PKR 2.4M', l: 'Revenue', c: B.emerald },
+        { v: 'Rs 2.4M', l: 'Revenue', c: B.emerald },
         { v: '847', l: 'Orders', c: B.teal },
         { v: '96.2%', l: 'On-time', c: B.sky },
       ].map((m, i) => (
@@ -214,8 +214,8 @@ const ReportContent: React.FC<{ accent: string }> = ({ accent }) => (
   <>
     <View style={cS.metricRow}>
       {[
-        { v: 'PKR 8.2M', l: 'Revenue', c: B.emerald },
-        { v: 'PKR 1.4M', l: 'Net Profit', c: B.amber },
+        { v: 'Rs 8.2M', l: 'Revenue', c: B.emerald },
+        { v: 'Rs 1.4M', l: 'Net Profit', c: B.amber },
       ].map((m, i) => (
         <View key={i} style={cS.metricCell}>
           <Text style={[cS.metricValue, { color: m.c }]}>{m.v}</Text>

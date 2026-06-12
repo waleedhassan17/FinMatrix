@@ -12,8 +12,12 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -176,18 +180,20 @@ const VendorListScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <View style={styles.body}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient colors={HEADER_NAVY} style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-            <Text style={styles.backIcon}>‹</Text>
+            <Feather name="arrow-left" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Vendors</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.searchToggle}>
-            <Text style={styles.searchToggleIcon}>🔍</Text>
+            <Feather name="search" size={18} color="#FFFFFF" />
           </TouchableOpacity>
           <CustomButton
             title="+ Add"
@@ -196,7 +202,7 @@ const VendorListScreen: React.FC = () => {
             size="sm"
           />
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Summary */}
       <View style={styles.summaryRow}>
@@ -303,6 +309,7 @@ const VendorListScreen: React.FC = () => {
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -312,22 +319,23 @@ const VendorListScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
+  body: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
   backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
+  headerTitle: { ...THEME.typography.h2, color: '#FFFFFF' },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
 

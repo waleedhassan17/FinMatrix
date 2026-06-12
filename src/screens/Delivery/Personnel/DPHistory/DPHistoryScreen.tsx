@@ -119,7 +119,7 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Feather name="chevron-left" size={20} color={DP_BRAND.white} />
+          <Feather name="arrow-left" size={20} color={DP_BRAND.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Delivery History</Text>
@@ -295,7 +295,7 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
               onPress={() => dispatch(setHistoryPage(page - 1))}
               disabled={page === 1}
             >
-              <Text style={[styles.pageBtnText, page === 1 && styles.pageBtnTextDisabled]}><Feather name="chevron-left" size={13} /> Previous</Text>
+              <Text style={[styles.pageBtnText, page === 1 && styles.pageBtnTextDisabled]}><Feather name="arrow-left" size={13} /> Previous</Text>
             </TouchableOpacity>
             <View style={styles.pageInfo}>
               <Text style={styles.pageInfoText}>Page {page} of {totalPages}</Text>

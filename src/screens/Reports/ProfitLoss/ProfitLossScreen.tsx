@@ -1,19 +1,8 @@
 import React, { useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Switch,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, ScrollView, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -24,8 +13,23 @@ import {
 } from './profitLossSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
+import {
+  ReportContainer,
+  ReportHeader,
+  Card,
+  SectionCard,
+  KpiGrid,
+  DateField,
+  SummaryLine,
+  LoadingBlock,
+  ErrorBlock,
+  ACCENT,
+  reportContentStyle,
+} from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
+
+const rs = (n: number) => formatCurrency(n, 'Rs ');
 
 const ProfitLossScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
@@ -37,221 +41,141 @@ const ProfitLossScreen: React.FC = () => {
   }, [dispatch, state.range.startDate, state.range.endDate, state.comparisonEnabled]);
 
   const report = state.report;
+  const netPositive = (report?.netIncome ?? 0) >= 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Reports</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Profit & Loss</Text>
-      </View>
+    <ReportContainer>
+      <ReportHeader
+        title="Profit & Loss"
+        subtitle="Income statement"
+        onBack={() => navigation.goBack()}
+      />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.filterCard}>
-          <Text style={styles.filterTitle}>Date Range (YYYY-MM-DD)</Text>
-          <View style={styles.row}>
-            <TextInput
-              style={styles.input}
+      <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
+        {/* Filter */}
+        <Card>
+          <View style={styles.filterRow}>
+            <DateField
+              label="From"
               value={state.range.startDate}
               onChangeText={text => dispatch(setProfitLossRange({ ...state.range, startDate: text }))}
-              placeholder="Start"
-              placeholderTextColor={colors.textLight}
             />
-            <TextInput
-              style={styles.input}
+            <DateField
+              label="To"
               value={state.range.endDate}
               onChangeText={text => dispatch(setProfitLossRange({ ...state.range, endDate: text }))}
-              placeholder="End"
-              placeholderTextColor={colors.textLight}
             />
           </View>
-
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Show comparison period</Text>
+            <Text style={styles.switchLabel}>Compare with prior period</Text>
             <Switch
               value={state.comparisonEnabled}
               onValueChange={value => {
                 dispatch(setProfitLossComparisonEnabled(value));
               }}
-              trackColor={{ false: '#CBD5E1', true: colors.primary + '66' }}
-              thumbColor={state.comparisonEnabled ? colors.primary : '#F8FAFC'}
+              trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.primary + '66' }}
+              thumbColor={state.comparisonEnabled ? THEME.colors.primary : '#F8FAFC'}
             />
           </View>
-        </View>
+        </Card>
 
-        {state.isLoading && <ActivityIndicator size="small" color={colors.primary} />}
-        {!!state.error && <Text style={styles.errorText}>{state.error}</Text>}
+        {state.isLoading && <LoadingBlock label="Calculating profit & loss…" />}
+        {!!state.error && (
+          <ErrorBlock
+            message={state.error}
+            onRetry={() =>
+              dispatch(fetchProfitLossReport({ range: state.range, comparisonEnabled: state.comparisonEnabled }))
+            }
+          />
+        )}
 
-        {report && (
-          <View style={styles.tableCard}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.headCell, styles.metricCol]}>Metric</Text>
-              <Text style={styles.headCell}>Current</Text>
-              {state.comparisonEnabled && <Text style={styles.headCell}>Comparison</Text>}
-            </View>
+        {report && !state.isLoading && (
+          <>
+            {/* Headline KPIs */}
+            <KpiGrid
+              items={[
+                { label: 'Revenue', value: rs(report.revenue), accent: ACCENT.brand, icon: 'trending-up' },
+                { label: 'Gross Profit', value: rs(report.grossProfit), accent: ACCENT.blue, icon: 'bar-chart-2' },
+                { label: 'Expenses', value: rs(report.expenses), accent: ACCENT.amber, icon: 'arrow-down-circle' },
+                {
+                  label: 'Net Income',
+                  value: rs(report.netIncome),
+                  accent: netPositive ? ACCENT.green : ACCENT.red,
+                  icon: 'dollar-sign',
+                },
+              ]}
+            />
 
-            <Row
-              label="Revenue"
-              current={report.revenue}
-              comparison={report.comparison?.revenue}
-              showComparison={state.comparisonEnabled}
-            />
-            <Row
-              label="COGS"
-              current={report.cogs}
-              comparison={report.comparison?.cogs}
-              showComparison={state.comparisonEnabled}
-            />
-            <Row
-              label="Gross Profit"
-              current={report.grossProfit}
-              comparison={report.comparison?.grossProfit}
-              showComparison={state.comparisonEnabled}
-              strong
-            />
-            <Row
-              label="Expenses"
-              current={report.expenses}
-              comparison={report.comparison?.expenses}
-              showComparison={state.comparisonEnabled}
-            />
-            <Row
-              label="Net Income"
-              current={report.netIncome}
-              comparison={report.comparison?.netIncome}
-              showComparison={state.comparisonEnabled}
-              strong
-              highlight
-            />
-          </View>
+            {/* Breakdown */}
+            <SectionCard title="Statement" subtitle={state.comparisonEnabled ? 'Current vs prior period' : undefined} icon="file-text">
+              <View style={styles.headRow}>
+                <Text style={[styles.colMetric, styles.headText]}>Metric</Text>
+                <Text style={[styles.colVal, styles.headText]}>Current</Text>
+                {state.comparisonEnabled && <Text style={[styles.colVal, styles.headText]}>Prior</Text>}
+              </View>
+              <Line label="Revenue" current={report.revenue} prior={report.comparison?.revenue} show={state.comparisonEnabled} />
+              <Line label="COGS" current={report.cogs} prior={report.comparison?.cogs} show={state.comparisonEnabled} />
+              <Line label="Gross Profit" current={report.grossProfit} prior={report.comparison?.grossProfit} show={state.comparisonEnabled} strong />
+              <Line label="Expenses" current={report.expenses} prior={report.comparison?.expenses} show={state.comparisonEnabled} />
+              <View style={styles.netWrap}>
+                <SummaryLine
+                  label="Net Income"
+                  value={rs(report.netIncome)}
+                  strong
+                  highlight
+                  valueColor={netPositive ? THEME.colors.success : THEME.colors.danger}
+                />
+              </View>
+            </SectionCard>
+          </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
-const Row: React.FC<{
-  label: string;
-  current: number;
-  comparison?: number;
-  showComparison: boolean;
-  strong?: boolean;
-  highlight?: boolean;
-}> = ({ label, current, comparison, showComparison, strong, highlight }) => {
-  const textStyle = [styles.bodyCell, strong && styles.strongText, highlight && styles.highlightText];
-  return (
-    <View style={styles.tableRow}>
-      <Text style={[textStyle, styles.metricCol]}>{label}</Text>
-      <Text style={textStyle}>{formatCurrency(current, 'Rs ')}</Text>
-      {showComparison && <Text style={textStyle}>{formatCurrency(comparison ?? 0, 'Rs ')}</Text>}
-    </View>
-  );
-};
+const Line: React.FC<{ label: string; current: number; prior?: number; show: boolean; strong?: boolean }> = ({
+  label,
+  current,
+  prior,
+  show,
+  strong,
+}) => (
+  <View style={styles.bodyRow}>
+    <Text style={[styles.colMetric, styles.bodyText, strong && styles.bold]}>{label}</Text>
+    <Text style={[styles.colVal, styles.bodyText, strong && styles.bold]}>{rs(current)}</Text>
+    {show && <Text style={[styles.colVal, styles.bodyText, strong && styles.bold]}>{rs(prior ?? 0)}</Text>}
+  </View>
+);
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backBtn: {
-    fontSize: 13,
-    color: colors.primary,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
-  },
-  title: {
-    marginTop: spacing.xs,
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  content: { padding: spacing.md, gap: spacing.md },
-  filterCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    ...shadows.small,
-  },
-  filterTitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-    backgroundColor: '#F8FAFC',
-  },
+  filterRow: { flexDirection: 'row', gap: THEME.spacing.sm },
   switchRow: {
-    marginTop: spacing.md,
+    marginTop: THEME.spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  switchLabel: {
-    fontSize: 14,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: 13,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  tableCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    ...shadows.small,
-  },
-  tableHeader: {
+  switchLabel: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary },
+
+  headRow: {
     flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: THEME.colors.border,
   },
-  headCell: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-    fontFamily: THEME.typography.fontFamily,
-  },
-  tableRow: {
+  headText: { ...THEME.typography.labelMd, color: THEME.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
+  bodyRow: {
     flexDirection: 'row',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: '#EEF2F7',
+    paddingVertical: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: THEME.colors.borderLight,
   },
-  bodyCell: {
-    flex: 1,
-    fontSize: 13,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  metricCol: { flex: 1.4 },
-  strongText: { fontWeight: '700' },
-  highlightText: { color: '#0F766E' },
+  bodyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
+  colMetric: { flex: 1.4 },
+  colVal: { flex: 1, textAlign: 'right' },
+  bold: { fontWeight: '700' },
+  netWrap: { marginTop: 4 },
 });
 
 export default ProfitLossScreen;

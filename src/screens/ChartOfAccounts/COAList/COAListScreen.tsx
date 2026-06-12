@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Chart of Accounts List Screen
+// Enterprise-consistent with Reports / Transactions (ReportUI kit)
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -14,13 +15,13 @@ import {
   Alert,
   ActionSheetIOS,
   Platform,
+  ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -34,16 +35,22 @@ import {
   selectActiveFilter,
 } from './coaListSlice';
 import type { COAFilter } from './coaListSlice';
-import EmptyState from '../../../components/EmptyState';
 import type { Account, AccountType } from '../../../types';
+import {
+  ReportContainer,
+  ReportHeader,
+  KpiGrid,
+  EmptyBlock,
+  ACCENT,
+} from '../../../components/reports/ReportUI';
 
 // ── Constants ─────────────────────────────────────────
 const TYPE_COLORS: Record<AccountType, string> = {
-  asset: '#059669',
-  liability: '#DE350B',
-  equity: '#6554C0',
-  revenue: '#00875A',
-  expense: '#FF991F',
+  asset: ACCENT.brand,
+  liability: ACCENT.red,
+  equity: ACCENT.violet,
+  revenue: ACCENT.green,
+  expense: ACCENT.amber,
 };
 
 const TYPE_LABELS: Record<AccountType, string> = {
@@ -63,14 +70,20 @@ const FILTER_CHIPS: { key: COAFilter; label: string }[] = [
   { key: 'expense', label: 'Expenses' },
 ];
 
-// ── Helpers ───────────────────────────────────────────
 const formatBalance = (balance: number): string => {
-  const abs = Math.abs(balance);
-  const formatted = abs.toLocaleString('en-US', {
+  const abs = Math.abs(balance).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return balance < 0 ? `-Rs ${formatted}` : `Rs ${formatted}`;
+  return balance < 0 ? `-Rs ${abs}` : `Rs ${abs}`;
+};
+
+const fmtCompact = (n: number): string => {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}Rs ${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}Rs ${(abs / 1_000).toFixed(1)}K`;
+  return `${sign}Rs ${Math.round(abs)}`;
 };
 
 interface Section {
@@ -81,8 +94,6 @@ interface Section {
   data: Account[];
 }
 
-// ═══════════════════════════════════════════════════════
-// COMPONENT
 // ═══════════════════════════════════════════════════════
 const COAListScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<MoreStackParamList>>();
@@ -101,24 +112,16 @@ const COAListScreen: React.FC = () => {
     dispatch(fetchAccounts());
   }, [dispatch]);
 
-  // ── Derive filtered accounts in-component ─────────
   const filteredAccounts = useMemo(() => {
     let result = accounts;
-    if (activeFilter !== 'all') {
-      result = result.filter(a => a.type === activeFilter);
-    }
+    if (activeFilter !== 'all') result = result.filter(a => a.type === activeFilter);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(
-        a =>
-          a.name.toLowerCase().includes(q) ||
-          a.code.toLowerCase().includes(q),
-      );
+      result = result.filter(a => a.name.toLowerCase().includes(q) || a.code.toLowerCase().includes(q));
     }
     return [...result].sort((a, b) => a.code.localeCompare(b.code));
   }, [accounts, searchQuery, activeFilter]);
 
-  // ── Build sections ────────────────────────────────
   const sections: Section[] = useMemo(() => {
     const grouped: Partial<Record<AccountType, Account[]>> = {};
     for (const acct of filteredAccounts) {
@@ -137,47 +140,13 @@ const COAListScreen: React.FC = () => {
       }));
   }, [filteredAccounts]);
 
+  const summary = useMemo(() => {
+    const total = accounts.length;
+    const active = accounts.filter(a => a.isActive).length;
+    return { total, active, inactive: total - active };
+  }, [accounts]);
+
   // ── Long-press action sheet ───────────────────────
-  const showAccountActions = useCallback(
-    (account: Account) => {
-      const options = [
-        'Edit',
-        account.isActive ? 'Deactivate' : 'Activate',
-        'View Detail',
-        'Cancel',
-      ];
-      const destructiveIndex = account.isActive ? 1 : -1;
-
-      if (Platform.OS === 'ios') {
-        ActionSheetIOS.showActionSheetWithOptions(
-          {
-            options,
-            cancelButtonIndex: 3,
-            destructiveButtonIndex: destructiveIndex,
-            title: `${account.code} — ${account.name}`,
-          },
-          idx => handleActionChoice(idx, account),
-        );
-      } else {
-        Alert.alert(
-          `${account.code} — ${account.name}`,
-          undefined,
-          [
-            { text: 'Edit', onPress: () => navigation.navigate('COAForm', { accountId: account.id }) },
-            {
-              text: account.isActive ? 'Deactivate' : 'Activate',
-              style: account.isActive ? 'destructive' : 'default',
-              onPress: () => dispatch(toggleAccount(account.id)),
-            },
-            { text: 'View Detail', onPress: () => navigation.navigate('COADetail', { accountId: account.id }) },
-            { text: 'Cancel', style: 'cancel' },
-          ],
-        );
-      }
-    },
-    [dispatch, navigation],
-  );
-
   const handleActionChoice = useCallback(
     (idx: number, account: Account) => {
       switch (idx) {
@@ -195,23 +164,44 @@ const COAListScreen: React.FC = () => {
     [dispatch, navigation],
   );
 
-  // ── Swipe Edit ────────────────────────────────────
-  const handleSwipeEdit = useCallback((account: Account) => {
-    navigation.navigate('COAForm', { accountId: account.id });
-  }, [navigation]);
+  const showAccountActions = useCallback(
+    (account: Account) => {
+      const options = ['Edit', account.isActive ? 'Deactivate' : 'Activate', 'View Detail', 'Cancel'];
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options,
+            cancelButtonIndex: 3,
+            destructiveButtonIndex: account.isActive ? 1 : -1,
+            title: `${account.code} — ${account.name}`,
+          },
+          idx => handleActionChoice(idx, account),
+        );
+      } else {
+        Alert.alert(`${account.code} — ${account.name}`, undefined, [
+          { text: 'Edit', onPress: () => navigation.navigate('COAForm', { accountId: account.id }) },
+          {
+            text: account.isActive ? 'Deactivate' : 'Activate',
+            style: account.isActive ? 'destructive' : 'default',
+            onPress: () => dispatch(toggleAccount(account.id)),
+          },
+          { text: 'View Detail', onPress: () => navigation.navigate('COADetail', { accountId: account.id }) },
+          { text: 'Cancel', style: 'cancel' },
+        ]);
+      }
+    },
+    [dispatch, navigation, handleActionChoice],
+  );
 
-  // ── Render helpers ────────────────────────────────
+  // ── Renderers ─────────────────────────────────────
   const renderSectionHeader = useCallback(
     ({ section }: { section: Section }) => (
-      <View style={[styles.sectionHeader, { borderLeftColor: TYPE_COLORS[section.type] }]}>
+      <View style={styles.sectionHeader}>
         <View style={styles.sectionHeaderLeft}>
-          <Text style={[styles.sectionHeaderTitle, { color: TYPE_COLORS[section.type] }]}>
-            {section.title}
-          </Text>
-          <View style={[styles.countBadge, { backgroundColor: TYPE_COLORS[section.type] + '1A' }]}>
-            <Text style={[styles.countText, { color: TYPE_COLORS[section.type] }]}>
-              {section.count}
-            </Text>
+          <View style={[styles.sectionAccent, { backgroundColor: TYPE_COLORS[section.type] }]} />
+          <Text style={styles.sectionHeaderTitle}>{section.title}</Text>
+          <View style={[styles.countBadge, { backgroundColor: TYPE_COLORS[section.type] + '14' }]}>
+            <Text style={[styles.countText, { color: TYPE_COLORS[section.type] }]}>{section.count}</Text>
           </View>
         </View>
         <Text style={styles.sectionTotal}>{formatBalance(section.totalBalance)}</Text>
@@ -221,25 +211,22 @@ const COAListScreen: React.FC = () => {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: Account }) => {
+    ({ item, index, section }: { item: Account; index: number; section: Section }) => {
       const typeColor = TYPE_COLORS[item.type];
       const dimmed = !item.isActive;
+      const isLast = index === section.data.length - 1;
       return (
         <TouchableOpacity
-          style={[styles.accountRow, dimmed && styles.accountRowDimmed]}
+          style={[styles.accountRow, isLast && styles.accountRowLast]}
           activeOpacity={0.6}
+          onPress={() => navigation.navigate('COADetail', { accountId: item.id })}
           onLongPress={() => showAccountActions(item)}
-          delayLongPress={400}
+          delayLongPress={350}
         >
+          <View style={[styles.accountDot, { backgroundColor: dimmed ? THEME.colors.neutral300 : typeColor }]} />
           <View style={styles.accountLeft}>
-            <Text style={[styles.accountCode, dimmed && styles.dimmedText]}>
-              {item.code}
-            </Text>
             <View style={styles.accountNameRow}>
-              <Text
-                style={[styles.accountName, dimmed && styles.dimmedText]}
-                numberOfLines={1}
-              >
+              <Text style={[styles.accountName, dimmed && styles.dimmedText]} numberOfLines={1}>
                 {item.name}
               </Text>
               {!item.isActive && (
@@ -248,321 +235,194 @@ const COAListScreen: React.FC = () => {
                 </View>
               )}
             </View>
+            <Text style={styles.accountCode}>{item.code}</Text>
           </View>
           <View style={styles.accountRight}>
-            <Text style={[styles.accountBalance, { color: dimmed ? colors.textLight : typeColor }]}>
+            <Text style={[styles.accountBalance, { color: dimmed ? THEME.colors.textTertiary : typeColor }]}>
               {formatBalance(item.balance)}
             </Text>
-            {/* Swipe-like Edit button */}
-            <TouchableOpacity
-              style={styles.editBtn}
-              activeOpacity={0.7}
-              onPress={() => handleSwipeEdit(item)}
-            >
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
           </View>
+          <Feather name="chevron-right" size={18} color={THEME.colors.textTertiary} style={{ marginLeft: 4 }} />
         </TouchableOpacity>
       );
     },
-    [showAccountActions, handleSwipeEdit],
+    [navigation, showAccountActions],
   );
 
   const keyExtractor = useCallback((item: Account) => item.id, []);
 
-  const ListEmptyComponent = useMemo(
+  const ListHeader = useMemo(
     () => (
-      <EmptyState
-        title="No Accounts Found"
-        message={
-          searchQuery
-            ? `No accounts match "${searchQuery}". Try a different search.`
-            : 'No accounts in this category. Tap "+ Add" to create one.'
-        }
-      />
-    ),
-    [searchQuery],
-  );
+      <View style={styles.listHeader}>
+        <KpiGrid
+          items={[
+            { label: 'Total Accounts', value: String(summary.total), accent: ACCENT.brand, icon: 'list' },
+            { label: 'Active', value: String(summary.active), accent: ACCENT.green, icon: 'check-circle' },
+          ]}
+        />
 
-  // ═════════════════════════════════════════════════════
-  // RENDER
-  // ═════════════════════════════════════════════════════
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Chart of Accounts</Text>
-        <TouchableOpacity
-          style={styles.addBtn}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('COAForm')}
-        >
-          <Text style={styles.addBtnText}>+ Add</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Search Bar ── */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
+        {/* Search */}
+        <View style={styles.searchWrap}>
+          <Feather name="search" size={16} color={THEME.colors.textTertiary} style={{ marginRight: 8 }} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by name or number..."
-            placeholderTextColor={colors.textLight}
+            placeholder="Search by name or code…"
+            placeholderTextColor={THEME.colors.textTertiary}
             value={searchQuery}
             onChangeText={text => dispatch(setSearchQuery(text))}
             autoCorrect={false}
             returnKeyType="search"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => dispatch(setSearchQuery(''))}>
-              <Text style={styles.clearBtn}>✕</Text>
+            <TouchableOpacity onPress={() => dispatch(setSearchQuery(''))} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Feather name="x-circle" size={16} color={THEME.colors.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
-      </View>
 
-      {/* ── Filter Chips ── */}
-      <View style={styles.chipRow}>
-        {FILTER_CHIPS.map(chip => {
-          const selected = activeFilter === chip.key;
-          return (
-            <TouchableOpacity
-              key={chip.key}
-              style={[styles.chip, selected && styles.chipSelected]}
-              activeOpacity={0.7}
-              onPress={() => dispatch(setActiveFilter(chip.key))}
-            >
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                {chip.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {/* Filter chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {FILTER_CHIPS.map(chip => {
+            const selected = activeFilter === chip.key;
+            return (
+              <TouchableOpacity
+                key={chip.key}
+                style={[styles.chip, selected && styles.chipSelected]}
+                activeOpacity={0.7}
+                onPress={() => dispatch(setActiveFilter(chip.key))}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{chip.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
+    ),
+    [summary, searchQuery, activeFilter, dispatch],
+  );
 
-      {/* ── SectionList ── */}
+  return (
+    <ReportContainer>
+      <ReportHeader
+        title="Chart of Accounts"
+        subtitle="General ledger accounts"
+        onBack={() => navigation.goBack()}
+        backLabel="More"
+        right={
+          <TouchableOpacity style={styles.addBtn} activeOpacity={0.8} onPress={() => navigation.navigate('COAForm')}>
+            <Feather name="plus" size={15} color="#FFFFFF" />
+            <Text style={styles.addBtnText}>Add</Text>
+          </TouchableOpacity>
+        }
+      />
+
       <SectionList
         sections={sections}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
-        ListEmptyComponent={ListEmptyComponent}
-        contentContainerStyle={sections.length === 0 ? styles.emptyContainer : styles.listContent}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <EmptyBlock
+              icon="folder"
+              title="No accounts found"
+              hint={searchQuery ? `Nothing matches "${searchQuery}".` : 'Tap Add to create your first account.'}
+            />
+          </View>
+        }
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         stickySectionHeadersEnabled={false}
         refreshControl={
-          <RefreshControl
-            refreshing={isLoading}
-            onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={isLoading} onRefresh={onRefresh} colors={[THEME.colors.primary]} tintColor={THEME.colors.primary} />
         }
       />
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
-// ═══════════════════════════════════════════════════════
-// STYLES
-// ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-
-  // ── Header ────────────────────────────────────────
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-  },
   addBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.sm,
-  },
-  addBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.white,
-    fontFamily: THEME.typography.fontFamily,
-  },
-
-  // ── Search ────────────────────────────────────────
-  searchContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
-  },
-  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 4,
-    height: 42,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 4,
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: THEME.radius.md,
   },
-  searchIcon: { fontSize: 14, marginRight: spacing.sm },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-    paddingVertical: 0,
-  },
-  clearBtn: {
-    fontSize: 16,
-    color: colors.textLight,
-    paddingHorizontal: spacing.xs,
-  },
+  addBtnText: { ...THEME.typography.labelMd, color: '#FFFFFF' },
 
-  // ── Filter Chips ──────────────────────────────────
-  chipRow: {
+  listContent: { padding: THEME.spacing.md, paddingTop: THEME.spacing.sm, gap: 2, paddingBottom: THEME.spacing.xxxl },
+  listHeader: { gap: THEME.spacing.sm + 2, marginBottom: THEME.spacing.xs },
+
+  // Search
+  searchWrap: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: THEME.colors.border,
+    paddingHorizontal: 12,
+    height: 44,
+    ...THEME.shadows.xs,
   },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-  },
-  chipSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  chipTextSelected: {
-    color: colors.white,
-    fontWeight: '600',
-  },
+  searchInput: { flex: 1, ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, paddingVertical: 0 },
 
-  // ── Section Header ────────────────────────────────
+  // Chips
+  chipRow: { gap: THEME.spacing.xs, paddingRight: THEME.spacing.md },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: THEME.radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: THEME.colors.border,
+    backgroundColor: THEME.colors.surface,
+  },
+  chipSelected: { backgroundColor: THEME.colors.primary, borderColor: THEME.colors.primary },
+  chipText: { ...THEME.typography.labelMd, color: THEME.colors.textSecondary },
+  chipTextSelected: { color: '#FFFFFF' },
+
+  // Section header
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    marginTop: spacing.sm,
-    backgroundColor: colors.white,
-    borderLeftWidth: 3,
+    paddingVertical: THEME.spacing.sm,
+    marginTop: THEME.spacing.sm,
   },
-  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
-  sectionHeaderTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: THEME.typography.fontFamily,
-    marginRight: spacing.sm,
-  },
-  countBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 1,
-    borderRadius: 10,
-  },
-  countText: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: THEME.typography.fontFamily,
-  },
-  sectionTotal: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-  },
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionAccent: { width: 3, height: 14, borderRadius: 2 },
+  sectionHeaderTitle: { ...THEME.typography.labelLg, color: THEME.colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.4 },
+  countBadge: { paddingHorizontal: 8, paddingVertical: 1, borderRadius: THEME.radius.full },
+  countText: { ...THEME.typography.labelSm, letterSpacing: 0 },
+  sectionTotal: { ...THEME.typography.labelMd, color: THEME.colors.textSecondary },
 
-  // ── Account Row ───────────────────────────────────
+  // Account row
   accountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm + 4,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingVertical: 12,
+    paddingHorizontal: THEME.spacing.md,
+    backgroundColor: THEME.colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: THEME.colors.borderLight,
   },
-  accountRowDimmed: { opacity: 0.5 },
-  accountLeft: { flex: 1, marginRight: spacing.sm },
-  accountCode: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.textLight,
-    fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier',
-    marginBottom: 2,
-  },
-  accountNameRow: { flexDirection: 'row', alignItems: 'center' },
-  accountName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-    flexShrink: 1,
-  },
-  dimmedText: { color: colors.textLight },
-  inactiveBadge: {
-    marginLeft: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 1,
-    borderRadius: 8,
-    backgroundColor: '#FEE2E2',
-  },
-  inactiveText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#DE350B',
-    fontFamily: THEME.typography.fontFamily,
-  },
+  accountRowLast: { borderBottomWidth: 0 },
+  accountDot: { width: 8, height: 8, borderRadius: 4, marginRight: 12 },
+  accountLeft: { flex: 1, marginRight: THEME.spacing.sm },
+  accountNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  accountName: { ...THEME.typography.h5, color: THEME.colors.textPrimary, flexShrink: 1 },
+  accountCode: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginTop: 1 },
+  dimmedText: { color: THEME.colors.textTertiary },
+  inactiveBadge: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: THEME.radius.sm, backgroundColor: THEME.colors.dangerLight },
+  inactiveText: { ...THEME.typography.labelSm, color: THEME.colors.danger, letterSpacing: 0 },
   accountRight: { alignItems: 'flex-end' },
-  accountBalance: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: 4,
-  },
-  editBtn: {
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 3,
-    borderRadius: 6,
-    backgroundColor: colors.secondary + '15',
-  },
-  editBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.secondary,
-    fontFamily: THEME.typography.fontFamily,
-  },
+  accountBalance: { ...THEME.typography.labelLg },
 
-  // ── Empty & List ──────────────────────────────────
-  emptyContainer: { flexGrow: 1 },
-  listContent: { paddingBottom: spacing.xl },
+  empty: { paddingTop: THEME.spacing.xl },
 });
 
 export default COAListScreen;

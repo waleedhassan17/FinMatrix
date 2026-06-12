@@ -2,6 +2,7 @@
 // FinMatrix — Invoice Form Screen (Create / Edit)
 // Customer dropdown, auto invoice #, date / due date,
 // line items with tax, discount, grand total.
+// Premium Enterprise UI
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -14,11 +15,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import dayjs from 'dayjs';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
@@ -42,8 +46,6 @@ import {
   selectInvoices,
   fetchInvoices,
 } from '../InvoiceList/invoiceListSlice';
-import { selectEstimates } from '../../Estimates/EstimateList/estimateListSlice';
-import { selectSalesOrders } from '../../SalesOrders/SOList/soListSlice';
 import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
 import { createInvoiceAPI, updateInvoiceAPI } from '../../../network/invoiceNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
@@ -63,6 +65,22 @@ const DISCOUNT_OPTIONS = [
   { label: 'Percentage (%)', value: 'percent' },
 ];
 
+// ── Premium palette ───────────────────────────────
+const P = {
+  headerFrom: '#0A1628',
+  headerTo: '#132F4C',
+  accent: '#059669',
+  accentLight: '#ECFDF5',
+  cardBg: '#FFFFFF',
+  sectionLabel: '#64748B',
+  totalsBg: '#0F172A',
+  totalsText: '#F1F5F9',
+  totalsGold: '#F59E0B',
+  lineBorder: '#E2E8F0',
+  lineAccent: '#059669',
+  dangerAccent: '#EF4444',
+};
+
 // ═══════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════
@@ -72,14 +90,11 @@ const InvoiceFormScreen: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const editingId = route.params?.invoiceId;
-  const fromEstimateId = route.params?.fromEstimateId;
-  const fromSOId = route.params?.fromSOId;
   const isEditing = !!editingId;
   const invoices = useAppSelector(selectInvoices);
-  const estimates = useAppSelector(selectEstimates);
-  const salesOrders = useAppSelector(selectSalesOrders);
   const customers = useAppSelector(selectCustomers);
   const form = useAppSelector(selectInvoiceFormState);
+  const hydratedRef = React.useRef(false);
 
   // ── Customer options for dropdown ───────────────
   const customerOptions = useMemo(
@@ -102,6 +117,9 @@ const InvoiceFormScreen: React.FC = () => {
   // ── Load data on mount ──────────────────────────
   useEffect(() => {
     dispatch(fetchCustomers());
+
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
 
     if (isEditing) {
       const inv = invoices.find(i => i.id === editingId);
@@ -127,49 +145,14 @@ const InvoiceFormScreen: React.FC = () => {
           }),
         );
       }
-    } else if (fromEstimateId) {
-      const est = estimates.find(e => e.id === fromEstimateId);
-      if (est) {
-        dispatch(setField({ key: 'invoiceNumber', value: generateInvoiceNumber() }));
-        dispatch(setCustomer({ id: est.customerId, name: est.customerName }));
-        dispatch(setField({ key: 'issueDate', value: dayjs().format('YYYY-MM-DD') }));
-        dispatch(setField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
-        dispatch(setField({ key: 'notes', value: est.notes }));
-        dispatch(setField({ key: 'discountType', value: est.discountType }));
-        dispatch(setField({ key: 'discountValue', value: String(est.discountValue) }));
-        est.lines.forEach(() => dispatch(addLine()));
-        est.lines.forEach((l, idx) => {
-          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'description', value: l.description || l.itemName }));
-          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'quantity', value: String(l.quantity) }));
-          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'unitPrice', value: String(l.unitPrice) }));
-          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'taxRate', value: String(l.taxRate) }));
-        });
-        dispatch(calculateTotals());
-      }
-    } else if (fromSOId) {
-      const so = salesOrders.find(s => s.id === fromSOId);
-      if (so) {
-        dispatch(setField({ key: 'invoiceNumber', value: generateInvoiceNumber() }));
-        dispatch(setCustomer({ id: so.customerId, name: so.customerName }));
-        dispatch(setField({ key: 'issueDate', value: dayjs().format('YYYY-MM-DD') }));
-        dispatch(setField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
-        dispatch(setField({ key: 'notes', value: so.notes }));
-        so.lines.forEach(() => dispatch(addLine()));
-        so.lines.forEach((l, idx) => {
-          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'description', value: l.description || l.itemName }));
-          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'quantity', value: String(l.quantity) }));
-          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'unitPrice', value: String(l.unitPrice) }));
-          dispatch(updateLine({ id: form.lines[idx]?.id ?? l.id, field: 'taxRate', value: String(l.taxRate) }));
-        });
-        dispatch(calculateTotals());
-      }
     } else {
       dispatch(setField({ key: 'invoiceNumber', value: generateInvoiceNumber() }));
       dispatch(setField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
     }
 
     return () => { dispatch(resetInvoiceForm()); };
-  }, [isEditing, editingId, fromEstimateId, fromSOId, invoices, estimates, salesOrders, dispatch, generateInvoiceNumber, form.lines]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, editingId, dispatch]);
 
   // ── Customer change handler (also sets due date from terms) ──
   const handleCustomerChange = useCallback(
@@ -268,79 +251,96 @@ const InvoiceFormScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backBtn}
-            activeOpacity={0.7}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={P.headerFrom} />
+      {/* ── Premium Gradient Header ─────────────────── */}
+      <LinearGradient colors={[P.headerFrom, P.headerTo]} style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          activeOpacity={0.7}>
+          <Feather name="arrow-left" size={24} color={colors.secondary} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>
             {isEditing ? `Edit ${form.invoiceNumber}` : 'New Invoice'}
           </Text>
+          <Text style={styles.headerSub}>
+            {isEditing ? 'Update invoice details' : 'Create a professional invoice'}
+          </Text>
         </View>
-      </View>
+        <View style={styles.headerBadge}>
+          <Feather name="file-text" size={16} color={P.accent} />
+        </View>
+      </LinearGradient>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F1F5F9' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
           {/* ── Section: Customer & Dates ────────────── */}
-          <Text style={styles.sectionTitle}>Invoice Details</Text>
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: P.accent }]} />
+            <Text style={styles.sectionTitle}>INVOICE DETAILS</Text>
+          </View>
           <View style={styles.sectionCard}>
-            <CustomDropdown
-              label="Customer *"
-              options={customerOptions}
-              value={form.customerId}
-              onChange={handleCustomerChange}
-              placeholder="Select customer…"
-              error={form.errors.customerId}
-              searchable
-            />
-            <CustomInput
-              label="Invoice #"
-              value={form.invoiceNumber}
-              onChangeText={v => dispatch(setField({ key: 'invoiceNumber', value: v }))}
-              placeholder="INV-0000"
-              error={form.errors.invoiceNumber}
-              disabled={isEditing}
-            />
-            <View style={styles.rowFields}>
-              <View style={{ flex: 1, marginRight: spacing.sm }}>
-                <CustomInput
-                  label="Issue Date *"
-                  value={form.issueDate}
-                  onChangeText={v => dispatch(setField({ key: 'issueDate', value: v }))}
-                  placeholder="YYYY-MM-DD"
-                  error={form.errors.issueDate}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <CustomInput
-                  label="Due Date *"
-                  value={form.dueDate}
-                  onChangeText={v => dispatch(setField({ key: 'dueDate', value: v }))}
-                  placeholder="YYYY-MM-DD"
-                  error={form.errors.dueDate}
-                />
+            <View style={[styles.cardAccent, { backgroundColor: P.accent }]} />
+            <View style={styles.cardBody}>
+              <CustomDropdown
+                label="Customer *"
+                options={customerOptions}
+                value={form.customerId}
+                onChange={handleCustomerChange}
+                placeholder="Select customer…"
+                error={form.errors.customerId}
+                searchable
+              />
+              <CustomInput
+                label="Invoice #"
+                value={form.invoiceNumber}
+                onChangeText={v => dispatch(setField({ key: 'invoiceNumber', value: v }))}
+                placeholder="INV-0000"
+                error={form.errors.invoiceNumber}
+                disabled={isEditing}
+              />
+              <View style={styles.rowFields}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <CustomInput
+                    label="Issue Date *"
+                    value={form.issueDate}
+                    onChangeText={v => dispatch(setField({ key: 'issueDate', value: v }))}
+                    placeholder="YYYY-MM-DD"
+                    error={form.errors.issueDate}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <CustomInput
+                    label="Due Date *"
+                    value={form.dueDate}
+                    onChangeText={v => dispatch(setField({ key: 'dueDate', value: v }))}
+                    placeholder="YYYY-MM-DD"
+                    error={form.errors.dueDate}
+                  />
+                </View>
               </View>
             </View>
           </View>
 
           {/* ── Section: Line Items ──────────────────── */}
           <View style={styles.linesSectionHeader}>
-            <Text style={styles.sectionTitle}>Line Items</Text>
+            <View style={styles.sectionLabelRow}>
+              <View style={[styles.sectionDot, { backgroundColor: '#6366F1' }]} />
+              <Text style={styles.sectionTitle}>LINE ITEMS</Text>
+            </View>
             <TouchableOpacity
               style={styles.addLineBtn}
               onPress={() => dispatch(addLine())}
               activeOpacity={0.7}
             >
-              <Text style={styles.addLineBtnText}>+ Add Item</Text>
+              <Feather name="plus" size={14} color="#FFFFFF" />
+              <Text style={styles.addLineBtnText}>Add Item</Text>
             </TouchableOpacity>
           </View>
           {form.errors.lines && (
@@ -366,49 +366,71 @@ const InvoiceFormScreen: React.FC = () => {
           ))}
 
           {/* ── Section: Discount ────────────────────── */}
-          <Text style={styles.sectionTitle}>Discount</Text>
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: '#F59E0B' }]} />
+            <Text style={styles.sectionTitle}>DISCOUNT</Text>
+          </View>
           <View style={styles.sectionCard}>
-            <View style={styles.rowFields}>
-              <View style={{ flex: 1, marginRight: spacing.sm }}>
-                <CustomDropdown
-                  label="Discount Type"
-                  options={DISCOUNT_OPTIONS}
-                  value={form.discountType}
-                  onChange={v => {
-                    dispatch(setField({ key: 'discountType', value: v as DiscountType }));
-                    dispatch(calculateTotals());
-                  }}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <CustomInput
-                  label={form.discountType === 'percent' ? 'Discount (%)' : 'Discount (Rs)'}
-                  value={form.discountValue}
-                  onChangeText={v => {
-                    dispatch(setField({ key: 'discountValue', value: v.replace(/[^0-9.]/g, '') }));
-                    dispatch(calculateTotals());
-                  }}
-                  placeholder="0"
-                  keyboardType="decimal-pad"
-                />
+            <View style={[styles.cardAccent, { backgroundColor: '#F59E0B' }]} />
+            <View style={styles.cardBody}>
+              <View style={styles.rowFields}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <CustomDropdown
+                    label="Discount Type"
+                    options={DISCOUNT_OPTIONS}
+                    value={form.discountType}
+                    onChange={v => {
+                      dispatch(setField({ key: 'discountType', value: v as DiscountType }));
+                      dispatch(calculateTotals());
+                    }}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <CustomInput
+                    label={form.discountType === 'percent' ? 'Discount (%)' : 'Discount (Rs)'}
+                    value={form.discountValue}
+                    onChangeText={v => {
+                      dispatch(setField({ key: 'discountValue', value: v.replace(/[^0-9.]/g, '') }));
+                      dispatch(calculateTotals());
+                    }}
+                    placeholder="0"
+                    keyboardType="decimal-pad"
+                  />
+                </View>
               </View>
             </View>
           </View>
 
           {/* ── Section: Notes ───────────────────────── */}
-          <Text style={styles.sectionTitle}>Notes</Text>
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: '#8B5CF6' }]} />
+            <Text style={styles.sectionTitle}>NOTES</Text>
+          </View>
           <View style={styles.sectionCard}>
-            <CustomInput
-              label="Notes"
-              value={form.notes}
-              onChangeText={v => dispatch(setField({ key: 'notes', value: v }))}
-              placeholder="Additional notes for this invoice…"
-              multiline
-            />
+            <View style={[styles.cardAccent, { backgroundColor: '#8B5CF6' }]} />
+            <View style={styles.cardBody}>
+              <CustomInput
+                label="Notes"
+                value={form.notes}
+                onChangeText={v => dispatch(setField({ key: 'notes', value: v }))}
+                placeholder="Additional notes for this invoice…"
+                multiline
+              />
+            </View>
           </View>
 
-          {/* ── Totals Panel ─────────────────────────── */}
-          <View style={styles.totalsCard}>
+          {/* ── Premium Totals Panel ──────────────────── */}
+          <LinearGradient
+            colors={['#0F172A', '#1E293B']}
+            style={styles.totalsCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.totalsHeader}>
+              <Feather name="credit-card" size={16} color={P.totalsGold} />
+              <Text style={styles.totalsHeaderText}>Invoice Summary</Text>
+            </View>
+            <View style={styles.totalsDivider} />
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Subtotal</Text>
               <Text style={styles.totalsValue}>{formatCurrency(form.subtotal, 'Rs ')}</Text>
@@ -421,7 +443,7 @@ const InvoiceFormScreen: React.FC = () => {
                     ? `(${form.discountValue}%)`
                     : '(Fixed)'}
                 </Text>
-                <Text style={[styles.totalsValue, { color: colors.success }]}>
+                <Text style={[styles.totalsValue, { color: '#34D399' }]}>
                   − {formatCurrency(form.discountAmount, 'Rs ')}
                 </Text>
               </View>
@@ -430,33 +452,45 @@ const InvoiceFormScreen: React.FC = () => {
               <Text style={styles.totalsLabel}>Tax</Text>
               <Text style={styles.totalsValue}>{formatCurrency(form.taxAmount, 'Rs ')}</Text>
             </View>
-            <View style={[styles.totalsRow, styles.grandTotalRow]}>
+            <View style={styles.totalsDivider} />
+            <View style={styles.totalsRow}>
               <Text style={styles.grandTotalLabel}>Grand Total</Text>
               <Text style={styles.grandTotalValue}>{formatCurrency(form.total, 'Rs ')}</Text>
             </View>
-          </View>
+          </LinearGradient>
 
           {/* ── Action Buttons ───────────────────────── */}
           <View style={styles.btnRow}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <CustomButton
-                title="Save Draft"
+              <TouchableOpacity
+                style={styles.secondaryBtn}
                 onPress={() => handleSave('draft')}
-                variant="secondary"
-                size="sm"
-                fullWidth
-                isLoading={form.isSaving}
-              />
+                activeOpacity={0.7}
+                disabled={form.isSaving}
+              >
+                <Feather name="save" size={16} color={P.accent} />
+                <Text style={styles.secondaryBtnText}>Save Draft</Text>
+              </TouchableOpacity>
             </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton
-                title="Save & Send"
+            <View style={{ flex: 1.4 }}>
+              <TouchableOpacity
+                style={styles.primaryBtn}
                 onPress={() => handleSave('sent')}
-                variant="primary"
-                size="sm"
-                fullWidth
-                isLoading={form.isSaving}
-              />
+                activeOpacity={0.7}
+                disabled={form.isSaving}
+              >
+                <LinearGradient
+                  colors={['#059669', '#047857']}
+                  style={styles.primaryBtnGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Feather name="send" size={16} color="#FFFFFF" />
+                  <Text style={styles.primaryBtnText}>
+                    {form.isSaving ? 'Saving…' : 'Save & Send'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
@@ -469,37 +503,85 @@ const InvoiceFormScreen: React.FC = () => {
 // STYLES
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerRow: { flexDirection: 'row', alignItems: 'center' },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  safeTop: { backgroundColor: P.headerFrom },
 
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.sm,
-    marginTop: spacing.md,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  // ── Header ──────────────────────────────────────
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  headerCenter: { flex: 1, marginLeft: spacing.sm },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: THEME.typography.fontFamily,
+  },
+  headerSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    fontFamily: THEME.typography.fontFamily,
+    marginTop: 2,
+  },
+  headerBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: P.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  scrollContent: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+  },
+
+  // ── Section labels ──────────────────────────────
+  sectionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    gap: spacing.xs + 2,
+  },
+  sectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: P.sectionLabel,
+    fontFamily: THEME.typography.fontFamily,
+    letterSpacing: 1,
+  },
+
+  // ── Section card with accent stripe ─────────────
   sectionCard: {
-    backgroundColor: colors.white,
+    flexDirection: 'row',
+    backgroundColor: P.cardBg,
     borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.xs,
+    overflow: 'hidden',
     ...shadows.small,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardAccent: {
+    width: 4,
+  },
+  cardBody: {
+    flex: 1,
+    padding: spacing.md,
   },
   rowFields: { flexDirection: 'row' },
 
@@ -508,19 +590,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
   addLineBtn: {
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.xs + 2,
-    backgroundColor: colors.secondary + '18',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.sm + 6,
+    paddingVertical: spacing.xs + 4,
+    backgroundColor: P.accent,
     borderRadius: 20,
   },
   addLineBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.secondary,
+    color: '#FFFFFF',
     fontFamily: THEME.typography.fontFamily,
   },
   lineError: {
@@ -530,13 +615,30 @@ const styles = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily,
   },
 
-  // ── Totals ─────────────────────────────────────
+  // ── Premium Totals Panel ────────────────────────
   totalsCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    ...shadows.small,
+    borderRadius: borderRadius.md + 4,
+    padding: spacing.md + 4,
+    marginTop: spacing.lg,
+    ...shadows.large,
+  },
+  totalsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    marginBottom: spacing.sm,
+  },
+  totalsHeaderText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: P.totalsGold,
+    fontFamily: THEME.typography.fontFamily,
+    letterSpacing: 0.5,
+  },
+  totalsDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginVertical: spacing.xs + 2,
   },
   totalsRow: {
     flexDirection: 'row',
@@ -544,22 +646,70 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xs + 2,
   },
-  totalsLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  totalsValue: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  grandTotalRow: {
-    borderTopWidth: 1.5,
-    borderTopColor: colors.primary,
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
+  totalsLabel: {
+    fontSize: 14,
+    color: 'rgba(241,245,249,0.6)',
+    fontFamily: THEME.typography.fontFamily,
   },
-  grandTotalLabel: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  grandTotalValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  totalsValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: P.totalsText,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  grandTotalLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: P.totalsGold,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  grandTotalValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    fontFamily: THEME.typography.fontFamily,
+  },
 
   // ── Buttons ────────────────────────────────────
   btnRow: {
     flexDirection: 'row',
     marginTop: spacing.lg,
     marginBottom: spacing.md,
+  },
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: 14,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: P.accent,
+    backgroundColor: P.accentLight,
+  },
+  secondaryBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: P.accent,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  primaryBtn: {
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    ...shadows.card,
+  },
+  primaryBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: 14,
+  },
+  primaryBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: THEME.typography.fontFamily,
   },
 });
 

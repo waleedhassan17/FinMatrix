@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Tax Settings Screen
 // List of tax rates — add / edit / delete / toggle active
+// Enterprise-consistent with Reports / Transactions (ReportUI kit)
 // ═══════════════════════════════════════════════════════
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,11 +20,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -44,70 +43,51 @@ import {
   selectTaxIsSaving,
 } from './taxSettingsSlice';
 import type { TaxRate, TaxType } from '../../../types';
-
-// ── Palette ─────────────────────────────────────────────
-const P = {
-  brand:      '#1B5E92',
-  brandLight: '#EBF3FA',
-  brandBorder:'#C8DCF0',
-  pageBg:     '#F6F8FB',
-  cardBg:     '#FFFFFF',
-  textPrimary:'#1A2636',
-  textSec:    '#5A6D80',
-  textTert:   '#8A9BB0',
-  border:     '#E3E9F0',
-  success:    '#1D7D59',
-  successBg:  '#F2FBF8',
-  danger:     '#C0392B',
-  dangerBg:   '#FFF3F3',
-  orange:     '#955B10',
-  orangeBg:   '#FFF8EF',
-  purple:     '#5B3AA6',
-  purpleBg:   '#F7F4FF',
-  teal:       '#1C7A66',
-  tealBg:     '#F1FBF9',
-};
+import {
+  ReportContainer,
+  ReportHeader,
+  KpiGrid,
+  Card,
+  Badge,
+  LoadingBlock,
+  EmptyBlock,
+  ACCENT,
+} from '../../../components/reports/ReportUI';
 
 const TAX_TYPES: TaxType[] = ['GST', 'WHT', 'Income Tax', 'Sales Tax', 'Custom'];
 
-const TYPE_COLORS: Record<TaxType, { bg: string; text: string }> = {
-  'GST':         { bg: P.brandLight, text: P.brand },
-  'WHT':         { bg: P.orangeBg,   text: P.orange },
-  'Income Tax':  { bg: P.purpleBg,   text: P.purple },
-  'Sales Tax':   { bg: P.tealBg,     text: P.teal },
-  'Custom':      { bg: '#F5F5F5',    text: '#555555' },
+const TYPE_COLOR: Record<TaxType, string> = {
+  GST: ACCENT.brand,
+  WHT: ACCENT.amber,
+  'Income Tax': ACCENT.violet,
+  'Sales Tax': ACCENT.teal,
+  Custom: THEME.colors.neutral500,
 };
-
-// ── Component ────────────────────────────────────────────
 
 const TaxSettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
 
-  const rates       = useAppSelector(selectTaxRates);
-  const isLoading   = useAppSelector(selectTaxSettingsLoading);
-  const error       = useAppSelector(selectTaxSettingsError);
-  const modalVisible= useAppSelector(selectTaxModalVisible);
-  const editingId   = useAppSelector(selectTaxEditingId);
-  const form        = useAppSelector(selectTaxForm);
-  const isSaving    = useAppSelector(selectTaxIsSaving);
+  const rates = useAppSelector(selectTaxRates);
+  const isLoading = useAppSelector(selectTaxSettingsLoading);
+  const error = useAppSelector(selectTaxSettingsError);
+  const modalVisible = useAppSelector(selectTaxModalVisible);
+  const editingId = useAppSelector(selectTaxEditingId);
+  const form = useAppSelector(selectTaxForm);
+  const isSaving = useAppSelector(selectTaxIsSaving);
 
-  useEffect(() => { dispatch(fetchTaxRates()); }, [dispatch]);
+  useEffect(() => {
+    dispatch(fetchTaxRates());
+  }, [dispatch]);
+
+  const activeCount = useMemo(() => rates.filter(r => r.isActive).length, [rates]);
 
   const handleDelete = useCallback(
     (rate: TaxRate) => {
-      Alert.alert(
-        'Delete Tax Rate',
-        `Are you sure you want to delete "${rate.name}"? This cannot be undone.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => dispatch(removeTaxRate(rate.id)),
-          },
-        ],
-      );
+      Alert.alert('Delete Tax Rate', `Delete "${rate.name}"? This cannot be undone.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => dispatch(removeTaxRate(rate.id)) },
+      ]);
     },
     [dispatch],
   );
@@ -127,21 +107,24 @@ const TaxSettingsScreen: React.FC = () => {
 
   const renderItem = useCallback(
     ({ item }: { item: TaxRate }) => {
-      const typeColor = TYPE_COLORS[item.taxType] ?? TYPE_COLORS.Custom;
+      const color = TYPE_COLOR[item.taxType] ?? TYPE_COLOR.Custom;
       return (
-        <View style={styles.card}>
-          <View style={styles.cardLeft}>
-            <View style={[styles.iconCircle, { backgroundColor: typeColor.bg }]}>
-              <Text style={[styles.iconText, { color: typeColor.text }]}>%</Text>
+        <Card style={styles.card} padded={false}>
+          <View style={styles.cardInner}>
+            <View style={[styles.iconCircle, { backgroundColor: `${color}14` }]}>
+              <Feather name="percent" size={18} color={color} />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.rateName}>{item.name}</Text>
-              <Text style={styles.rateDesc} numberOfLines={1}>{item.description}</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.rateName} numberOfLines={1}>{item.name}</Text>
+                <Text style={[styles.rateValue, { color }]}>{item.rate}%</Text>
+              </View>
+              {!!item.description && (
+                <Text style={styles.rateDesc} numberOfLines={1}>{item.description}</Text>
+              )}
               <View style={styles.badgeRow}>
-                <View style={[styles.typeBadge, { backgroundColor: typeColor.bg, borderColor: typeColor.text + '40' }]}>
-                  <Text style={[styles.typeBadgeText, { color: typeColor.text }]}>{item.taxType}</Text>
-                </View>
-                <Text style={styles.rateValue}>{item.rate}%</Text>
+                <Badge label={item.taxType} color={color} dot={false} />
+                {!item.isActive && <Badge label="Inactive" color={THEME.colors.textTertiary} dot={false} />}
               </View>
             </View>
           </View>
@@ -149,65 +132,47 @@ const TaxSettingsScreen: React.FC = () => {
           <View style={styles.cardActions}>
             <Switch
               value={item.isActive}
-              onValueChange={() => { dispatch(toggleActive(item.id)); }}
-              trackColor={{ false: P.border, true: P.brand + '60' }}
-              thumbColor={item.isActive ? P.brand : '#B0BAC6'}
-              ios_backgroundColor={P.border}
+              onValueChange={() => {
+                dispatch(toggleActive(item.id));
+              }}
+              trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.primary + '60' }}
+              thumbColor={item.isActive ? THEME.colors.primary : '#B0BAC6'}
+              ios_backgroundColor={THEME.colors.neutral200}
             />
-            <TouchableOpacity
-              style={styles.actionBtn}
-              activeOpacity={0.7}
-              onPress={() => dispatch(openEditModal(item))}
-            >
-              <Feather name="edit-2" size={15} color={P.brand} />
+            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => dispatch(openEditModal(item))}>
+              <Feather name="edit-2" size={15} color={THEME.colors.primary} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: P.dangerBg }]}
+              style={[styles.actionBtn, { backgroundColor: THEME.colors.dangerLight }]}
               activeOpacity={0.7}
               onPress={() => handleDelete(item)}
             >
-              <Feather name="trash-2" size={15} color={P.danger} />
+              <Feather name="trash-2" size={15} color={THEME.colors.danger} />
             </TouchableOpacity>
           </View>
-        </View>
+        </Card>
       );
     },
     [dispatch, handleDelete],
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Feather name="arrow-left" size={20} color={P.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Tax Settings</Text>
-          <Text style={styles.headerSub}>{rates.length} rate{rates.length !== 1 ? 's' : ''} configured</Text>
-        </View>
-        <TouchableOpacity style={styles.fabInline} onPress={() => dispatch(openAddModal())} activeOpacity={0.8}>
-          <Feather name="plus" size={18} color={P.cardBg} />
-        </TouchableOpacity>
-      </View>
+    <ReportContainer>
+      <ReportHeader
+        title="Tax Settings"
+        subtitle="Manage tax rates"
+        onBack={() => navigation.goBack()}
+        backLabel="More"
+        right={
+          <TouchableOpacity style={styles.addBtn} activeOpacity={0.8} onPress={() => dispatch(openAddModal())}>
+            <Feather name="plus" size={15} color="#FFFFFF" />
+            <Text style={styles.addBtnText}>Add</Text>
+          </TouchableOpacity>
+        }
+      />
 
-      {/* ── Error Banner ── */}
-      {!!error && (
-        <View style={styles.errorBanner}>
-          <Feather name="alert-circle" size={14} color={P.danger} />
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      {/* ── List ── */}
       {isLoading && rates.length === 0 ? (
-        <View style={styles.centerWrap}>
-          <ActivityIndicator color={P.brand} size="large" />
-        </View>
+        <LoadingBlock label="Loading tax rates…" />
       ) : (
         <FlatList
           data={rates}
@@ -215,90 +180,86 @@ const TaxSettingsScreen: React.FC = () => {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <View style={styles.listHeader}>
+              <KpiGrid
+                items={[
+                  { label: 'Total Rates', value: String(rates.length), accent: ACCENT.brand, icon: 'percent' },
+                  { label: 'Active', value: String(activeCount), accent: ACCENT.green, icon: 'check-circle' },
+                ]}
+              />
+              {!!error && (
+                <View style={styles.errorBanner}>
+                  <Feather name="alert-circle" size={14} color={THEME.colors.danger} />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              )}
+            </View>
+          }
           ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <Feather name="percent" size={36} color={P.textTert} />
-              <Text style={styles.emptyTitle}>No Tax Rates</Text>
-              <Text style={styles.emptyDesc}>Tap the + button to add your first tax rate</Text>
+            <View style={{ paddingTop: THEME.spacing.lg }}>
+              <EmptyBlock icon="percent" title="No tax rates" hint="Tap Add to create your first tax rate." />
             </View>
           }
         />
       )}
 
       {/* ── Add / Edit Modal ── */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => dispatch(closeModal())}
-      >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => dispatch(closeModal())}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => dispatch(closeModal())} />
           <View style={styles.modalSheet}>
-            {/* Sheet Handle */}
             <View style={styles.sheetHandle} />
-
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalTitle}>
-                {editingId ? 'Edit Tax Rate' : 'New Tax Rate'}
-              </Text>
+              <Text style={styles.modalTitle}>{editingId ? 'Edit Tax Rate' : 'New Tax Rate'}</Text>
 
-              {/* Name */}
               <Text style={styles.fieldLabel}>Name *</Text>
               <TextInput
                 style={styles.fieldInput}
                 placeholder="e.g. GST 17%"
-                placeholderTextColor={P.textTert}
+                placeholderTextColor={THEME.colors.textTertiary}
                 value={form.name}
                 onChangeText={v => dispatch(setFormField({ name: v }))}
               />
 
-              {/* Rate */}
               <Text style={styles.fieldLabel}>Rate (%) *</Text>
               <TextInput
                 style={styles.fieldInput}
                 placeholder="e.g. 17"
-                placeholderTextColor={P.textTert}
+                placeholderTextColor={THEME.colors.textTertiary}
                 keyboardType="decimal-pad"
                 value={form.rate}
                 onChangeText={v => dispatch(setFormField({ rate: v }))}
               />
 
-              {/* Type */}
               <Text style={styles.fieldLabel}>Type</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeRow}>
                 {TAX_TYPES.map(t => {
                   const selected = form.taxType === t;
-                  const tc = TYPE_COLORS[t];
+                  const c = TYPE_COLOR[t];
                   return (
                     <TouchableOpacity
                       key={t}
                       style={[
                         styles.typeChip,
                         selected
-                          ? { backgroundColor: tc.bg, borderColor: tc.text }
-                          : { backgroundColor: '#F1F4F8', borderColor: P.border },
+                          ? { backgroundColor: `${c}14`, borderColor: c }
+                          : { backgroundColor: THEME.colors.neutral50, borderColor: THEME.colors.border },
                       ]}
                       onPress={() => dispatch(setFormField({ taxType: t }))}
                       activeOpacity={0.7}
                     >
-                      <Text style={[styles.typeChipText, { color: selected ? tc.text : P.textSec }]}>
-                        {t}
-                      </Text>
+                      <Text style={[styles.typeChipText, { color: selected ? c : THEME.colors.textSecondary }]}>{t}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
 
-              {/* Description */}
               <Text style={styles.fieldLabel}>Description</Text>
               <TextInput
                 style={[styles.fieldInput, styles.fieldInputMulti]}
                 placeholder="Brief description of when this tax applies"
-                placeholderTextColor={P.textTert}
+                placeholderTextColor={THEME.colors.textTertiary}
                 value={form.description}
                 onChangeText={v => dispatch(setFormField({ description: v }))}
                 multiline
@@ -306,22 +267,22 @@ const TaxSettingsScreen: React.FC = () => {
                 textAlignVertical="top"
               />
 
-              {/* Active toggle */}
               <View style={styles.activeRow}>
-                <View>
-                  <Text style={styles.fieldLabel}>Active</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabelInline}>Active</Text>
                   <Text style={styles.activeHint}>Inactive rates won't appear in transaction forms</Text>
                 </View>
                 <Switch
                   value={form.isActive}
-                  onValueChange={v => { dispatch(setFormField({ isActive: v })); }}
-                  trackColor={{ false: P.border, true: P.brand + '60' }}
-                  thumbColor={form.isActive ? P.brand : '#B0BAC6'}
-                  ios_backgroundColor={P.border}
+                  onValueChange={v => {
+                    dispatch(setFormField({ isActive: v }));
+                  }}
+                  trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.primary + '60' }}
+                  thumbColor={form.isActive ? THEME.colors.primary : '#B0BAC6'}
+                  ios_backgroundColor={THEME.colors.neutral200}
                 />
               </View>
 
-              {/* Buttons */}
               <View style={styles.modalBtns}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => dispatch(closeModal())} activeOpacity={0.7}>
                   <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -332,198 +293,135 @@ const TaxSettingsScreen: React.FC = () => {
                   activeOpacity={0.8}
                   disabled={isSaving}
                 >
-                  {isSaving
-                    ? <ActivityIndicator color="#fff" size="small" />
-                    : <Text style={styles.saveBtnText}>{editingId ? 'Update' : 'Add Rate'}</Text>
-                  }
+                  {isSaving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.saveBtnText}>{editingId ? 'Update' : 'Add Rate'}</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
-// ── Styles ─────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: P.pageBg },
-
-  /* Header */
-  header: {
+  addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: P.cardBg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: P.border,
+    gap: 4,
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: THEME.radius.md,
   },
-  backBtn: {
-    width: 36, height: 36,
-    borderRadius: 10,
-    backgroundColor: '#F1F4F8',
-    alignItems: 'center', justifyContent: 'center',
-    marginRight: spacing.sm,
-  },
-  headerCenter: { flex: 1 },
-  headerTitle: {
-    ...THEME.typography.h3, fontWeight: '700',
-    color: P.textPrimary,
-  },
-  headerSub: {
-    ...THEME.typography.caption, color: P.textSec, marginTop: 1,
-  },
-  fabInline: {
-    width: 36, height: 36,
-    borderRadius: 10,
-    backgroundColor: P.brand,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  addBtnText: { ...THEME.typography.labelMd, color: '#FFFFFF' },
 
-  /* Error */
+  listContent: { padding: THEME.spacing.md, gap: 10, paddingBottom: THEME.spacing.xxxl },
+  listHeader: { gap: THEME.spacing.sm + 2, marginBottom: THEME.spacing.xs },
+
   errorBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#FFF3F3',
-    paddingHorizontal: spacing.md, paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#FCCACA',
-  },
-  errorText: { flex: 1, ...THEME.typography.bodySm, color: P.danger },
-
-  /* List */
-  listContent: { padding: spacing.md, gap: 10, paddingBottom: 80 },
-
-  /* Card */
-  card: {
-    backgroundColor: P.cardBg,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: P.border,
-    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    ...Platform.select({
-      ios: { shadowColor: '#1A2636', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6 },
-      android: { elevation: 1 },
-    }),
+    gap: 8,
+    backgroundColor: THEME.colors.dangerLight,
+    borderRadius: THEME.radius.md,
+    paddingHorizontal: THEME.spacing.sm,
+    paddingVertical: 10,
   },
-  cardLeft: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  iconCircle: {
-    width: 40, height: 40,
-    borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  iconText: { ...THEME.typography.h3, fontWeight: '700' },
+  errorText: { flex: 1, ...THEME.typography.bodySm, color: THEME.colors.danger },
+
+  // Card
+  card: { marginBottom: 0 },
+  cardInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14, paddingBottom: 10 },
+  iconCircle: { width: 40, height: 40, borderRadius: THEME.radius.md, alignItems: 'center', justifyContent: 'center' },
   cardInfo: { flex: 1 },
-  rateName: {
-    ...THEME.typography.h4,
-    color: P.textPrimary,
-  },
-  rateDesc: {
-    ...THEME.typography.caption, color: P.textSec, marginTop: 2,
-  },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  typeBadge: {
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  typeBadgeText: { ...THEME.typography.labelSm },
-  rateValue: {
-    ...THEME.typography.labelLg, fontWeight: '700',
-    color: P.textPrimary,
-  },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  rateName: { ...THEME.typography.h5, color: THEME.colors.textPrimary, flex: 1 },
+  rateValue: { ...THEME.typography.h5, fontWeight: '800' },
+  rateDesc: { ...THEME.typography.caption, color: THEME.colors.textSecondary, marginTop: 2 },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
 
-  /* Actions */
-  cardActions: { alignItems: 'center', gap: 8, marginLeft: 8 },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    paddingTop: 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: THEME.colors.borderLight,
+    marginTop: 2,
+  },
   actionBtn: {
-    width: 32, height: 32,
-    borderRadius: 8,
-    backgroundColor: P.brandLight,
-    alignItems: 'center', justifyContent: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: THEME.radius.sm,
+    backgroundColor: THEME.colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  /* Empty */
-  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyWrap: { alignItems: 'center', paddingTop: 80, gap: 10 },
-  emptyTitle: {
-    ...THEME.typography.h3,
-    color: P.textSec,
-  },
-  emptyDesc: {
-    ...THEME.typography.bodySm, color: P.textTert,
-    textAlign: 'center', maxWidth: 240,
-  },
-
-  /* Modal */
+  // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: THEME.colors.overlay },
   modalSheet: {
-    backgroundColor: P.cardBg,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingHorizontal: spacing.lg,
-    paddingTop: 12, paddingBottom: 32,
+    backgroundColor: THEME.colors.surface,
+    borderTopLeftRadius: THEME.radius.xxl,
+    borderTopRightRadius: THEME.radius.xxl,
+    paddingHorizontal: THEME.spacing.lg,
+    paddingTop: 12,
+    paddingBottom: 32,
     maxHeight: '90%',
   },
-  sheetHandle: {
-    width: 40, height: 4,
-    borderRadius: 2, backgroundColor: '#DDE3EC',
-    alignSelf: 'center', marginBottom: 16,
-  },
-  modalTitle: {
-    ...THEME.typography.h3, fontWeight: '700',
-    color: P.textPrimary,
-    marginBottom: spacing.md,
-  },
-  fieldLabel: {
-    ...THEME.typography.bodySm, fontWeight: '600',
-    color: P.textPrimary,
-    marginBottom: 6, marginTop: spacing.sm,
-  },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: THEME.colors.neutral200, alignSelf: 'center', marginBottom: 16 },
+  modalTitle: { ...THEME.typography.h3, color: THEME.colors.textPrimary, marginBottom: THEME.spacing.sm },
+  fieldLabel: { ...THEME.typography.labelMd, color: THEME.colors.textSecondary, marginBottom: 6, marginTop: THEME.spacing.sm },
+  fieldLabelInline: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   fieldInput: {
-    backgroundColor: '#F6F8FB',
-    borderWidth: 1, borderColor: P.border,
-    borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 11,
-    ...THEME.typography.bodyMd, color: P.textPrimary,
+    backgroundColor: THEME.colors.neutral50,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textPrimary,
   },
   fieldInputMulti: { minHeight: 80 },
   typeRow: { flexDirection: 'row', marginBottom: 4 },
-  typeChip: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 20, borderWidth: 1.5,
-    marginRight: 8,
-  },
+  typeChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: THEME.radius.full, borderWidth: 1.5, marginRight: 8 },
   typeChipText: { ...THEME.typography.labelMd },
   activeRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginTop: spacing.md,
-    backgroundColor: '#F6F8FB',
-    borderRadius: 10, borderWidth: 1, borderColor: P.border,
-    paddingHorizontal: 14, paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: THEME.spacing.md,
+    backgroundColor: THEME.colors.neutral50,
+    borderRadius: THEME.radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: THEME.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  activeHint: { ...THEME.typography.labelSm, fontWeight: 'normal', color: P.textTert, marginTop: 2 },
-  modalBtns: { flexDirection: 'row', gap: 10, marginTop: spacing.lg },
+  activeHint: { ...THEME.typography.labelSm, fontWeight: '400', color: THEME.colors.textTertiary, marginTop: 2 },
+  modalBtns: { flexDirection: 'row', gap: 10, marginTop: THEME.spacing.lg },
   cancelBtn: {
-    flex: 1, height: 46, borderRadius: 10,
-    borderWidth: 1.5, borderColor: P.border,
-    alignItems: 'center', justifyContent: 'center',
+    flex: 1,
+    height: 46,
+    borderRadius: THEME.radius.md,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cancelBtnText: {
-    ...THEME.typography.h4,
-    color: P.textSec,
-  },
-  saveBtn: {
-    flex: 2, height: 46, borderRadius: 10,
-    backgroundColor: P.brand,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  saveBtnText: {
-    ...THEME.typography.h4, fontWeight: '700',
-    color: '#fff',
-  },
+  cancelBtnText: { ...THEME.typography.h5, color: THEME.colors.textSecondary },
+  saveBtn: { flex: 2, height: 46, borderRadius: THEME.radius.md, backgroundColor: THEME.colors.primary, alignItems: 'center', justifyContent: 'center' },
+  saveBtnText: { ...THEME.typography.h5, color: '#fff' },
 });
 
 export default TaxSettingsScreen;

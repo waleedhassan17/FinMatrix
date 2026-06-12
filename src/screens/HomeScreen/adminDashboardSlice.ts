@@ -8,21 +8,30 @@ import {
   getRecentInvoicesAPI,
   getDeliveryStatsAPI,
 } from '../../network/adminDashboardNetwork';
-import type { DashboardStat, RecentTransaction, DeliveryOverviewData, DashboardAlert } from '../../models/dashboardModel';
+import type {
+  DashboardStat,
+  RecentTransaction,
+  DeliveryOverviewData,
+  DashboardAlert,
+} from '../../models/dashboardModel';
 
-const fmtCurrency = (n: number) => {
-  if (n >= 1_000_000) return `PKR ${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `PKR ${(n / 1_000).toFixed(0)}K`;
-  return `PKR ${n.toLocaleString()}`;
+// ── Currency: compact, sign-aware, finite-safe ────────
+const fmtCurrency = (n: number): string => {
+  if (!Number.isFinite(n)) return 'Rs 0';
+  const sign = n < 0 ? '−' : '';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return `${sign}Rs ${(abs / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `${sign}Rs ${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 10_000) return `${sign}Rs ${Math.round(abs / 1_000)}K`;
+  if (abs >= 1_000) return `${sign}Rs ${(abs / 1_000).toFixed(1)}K`;
+  return `${sign}Rs ${Math.round(abs).toLocaleString()}`;
 };
 
 const formatDate = (dateStr: string): string => {
   if (!dateStr) return '';
-  try {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return dateStr;
-  }
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 export interface AdminDashboardData {
@@ -77,34 +86,32 @@ const initialState: AdminDashboardSliceState = {
   error: '',
 };
 
+// ── Stat metadata (id stays in sync with KPI_META on screen) ──
 function buildStats(data: AdminDashboardData): DashboardStat[] {
   return [
     {
       id: 'revenue',
-      label: "This Month's Revenue",
+      label: "This month's revenue",
       value: fmtCurrency(data.totalRevenue),
-      trend: '+0%',
-      trendDirection: 'up',
-      trendPositive: true,
       borderColor: '#059669',
     },
     {
       id: 'ar',
-      label: 'Outstanding AR',
+      label: 'Outstanding receivables',
       value: fmtCurrency(data.outstandingAR),
-      borderColor: '#0F172A',
+      borderColor: '#1D4ED8',
     },
     {
       id: 'expenses',
-      label: "This Month's Expenses",
+      label: "This month's expenses",
       value: fmtCurrency(data.totalExpenses),
-      borderColor: '#DE350B',
+      borderColor: '#7C3AED',
     },
     {
       id: 'ap',
-      label: 'Pending Bills (AP)',
+      label: 'Pending payables',
       value: fmtCurrency(data.pendingAP),
-      borderColor: '#FF991F',
+      borderColor: '#D97706',
     },
   ];
 }
@@ -119,10 +126,12 @@ function buildTransactions(data: AdminDashboardData): RecentTransaction[] {
   }));
 }
 
+// Keep "assigned" and "pending" as distinct buckets so the
+// segmented bar and chips don't double-count.
 function buildDelivery(data: AdminDashboardData): DeliveryOverviewData {
   const d = data.deliveryBreakdown;
   return {
-    assigned: (d.assigned ?? 0) + (d.pending ?? 0),
+    assigned: d.assigned ?? 0,
     inTransit: d.in_transit ?? 0,
     delivered: d.delivered ?? 0,
     pending: d.pending ?? 0,
@@ -140,30 +149,33 @@ async function fetchDashboardData(): Promise<{
   const summaryRaw = await getAdminDashboardSummaryAPI();
   const summary = summaryRaw?.data ?? summaryRaw;
 
-  // If enhanced backend is deployed, it has all fields; otherwise we augment with parallel calls
   let rawData: AdminDashboardData;
   if (summary?.recentTransactions !== undefined) {
-    // Enhanced backend response
+    // Enhanced backend response — already complete
     rawData = summary as AdminDashboardData;
   } else {
-    // Fallback: augment with separate invoice/delivery calls
+    // Fallback: augment summary with parallel invoice/delivery calls
     const [invoicesRaw, deliveriesRaw] = await Promise.allSettled([
       getRecentInvoicesAPI(),
       getDeliveryStatsAPI(),
     ]);
 
-    const invoiceList: any[] = invoicesRaw.status === 'fulfilled'
-      ? (Array.isArray(invoicesRaw.value?.data) ? invoicesRaw.value.data : [])
-      : [];
+    const invoiceList: any[] =
+      invoicesRaw.status === 'fulfilled' && Array.isArray(invoicesRaw.value?.data)
+        ? invoicesRaw.value.data
+        : [];
 
-    const deliveryList: any[] = deliveriesRaw.status === 'fulfilled'
-      ? (Array.isArray(deliveriesRaw.value?.data) ? deliveriesRaw.value.data : [])
-      : [];
+    const deliveryList: any[] =
+      deliveriesRaw.status === 'fulfilled' && Array.isArray(deliveriesRaw.value?.data)
+        ? deliveriesRaw.value.data
+        : [];
 
-    const deliveryBreakdown = { pending: 0, assigned: 0, in_transit: 0, delivered: 0, failed: 0, cancelled: 0 };
+    const deliveryBreakdown = {
+      pending: 0, assigned: 0, in_transit: 0, delivered: 0, failed: 0, cancelled: 0,
+    };
     for (const d of deliveryList) {
-      const s = d.status as keyof typeof deliveryBreakdown;
-      if (s in deliveryBreakdown) deliveryBreakdown[s]++;
+      const st = d.status as keyof typeof deliveryBreakdown;
+      if (st in deliveryBreakdown) deliveryBreakdown[st]++;
     }
 
     const recentTransactions = invoiceList.slice(0, 8).map((inv: any) => ({
@@ -178,8 +190,8 @@ async function fetchDashboardData(): Promise<{
     rawData = {
       totalRevenue: summary?.totalRevenue ?? 0,
       totalExpenses: summary?.totalExpenses ?? 0,
-      outstandingAR: 0,
-      pendingAP: 0,
+      outstandingAR: summary?.outstandingAR ?? 0,
+      pendingAP: summary?.pendingAP ?? 0,
       inventoryItems: summary?.inventoryItems ?? 0,
       deliveryBreakdown,
       deliveryTotal: deliveryList.length,
@@ -204,50 +216,44 @@ export const adminDashboardSlice = createAppSlice({
   name: 'adminDashboard',
   initialState,
   reducers: create => ({
-    refreshDashboard: create.asyncThunk(
-      async () => fetchDashboardData(),
-      {
-        pending: state => {
-          state.isRefreshing = true;
-          state.error = '';
-        },
-        fulfilled: (state, action) => {
-          state.rawData = action.payload.rawData;
-          state.stats = action.payload.stats;
-          state.transactions = action.payload.transactions;
-          state.delivery = action.payload.delivery;
-          state.alerts = action.payload.alerts;
-          state.isRefreshing = false;
-          state.status = 'idle';
-        },
-        rejected: (state, action) => {
-          state.isRefreshing = false;
-          state.status = 'failed';
-          state.error = (action.error as any)?.message ?? 'Failed to load dashboard';
-        },
+    refreshDashboard: create.asyncThunk(async () => fetchDashboardData(), {
+      pending: state => {
+        state.isRefreshing = true;
+        state.error = '';
       },
-    ),
-    loadDashboard: create.asyncThunk(
-      async () => fetchDashboardData(),
-      {
-        pending: state => {
-          state.status = 'loading';
-          state.error = '';
-        },
-        fulfilled: (state, action) => {
-          state.rawData = action.payload.rawData;
-          state.stats = action.payload.stats;
-          state.transactions = action.payload.transactions;
-          state.delivery = action.payload.delivery;
-          state.alerts = action.payload.alerts;
-          state.status = 'idle';
-        },
-        rejected: (state, action) => {
-          state.status = 'failed';
-          state.error = (action.error as any)?.message ?? 'Failed to load dashboard';
-        },
+      fulfilled: (state, action) => {
+        state.rawData = action.payload.rawData;
+        state.stats = action.payload.stats;
+        state.transactions = action.payload.transactions;
+        state.delivery = action.payload.delivery;
+        state.alerts = action.payload.alerts;
+        state.isRefreshing = false;
+        state.status = 'idle';
       },
-    ),
+      rejected: (state, action) => {
+        state.isRefreshing = false;
+        state.status = 'failed';
+        state.error = (action.error as any)?.message ?? 'Failed to load dashboard';
+      },
+    }),
+    loadDashboard: create.asyncThunk(async () => fetchDashboardData(), {
+      pending: state => {
+        state.status = 'loading';
+        state.error = '';
+      },
+      fulfilled: (state, action) => {
+        state.rawData = action.payload.rawData;
+        state.stats = action.payload.stats;
+        state.transactions = action.payload.transactions;
+        state.delivery = action.payload.delivery;
+        state.alerts = action.payload.alerts;
+        state.status = 'idle';
+      },
+      rejected: (state, action) => {
+        state.status = 'failed';
+        state.error = (action.error as any)?.message ?? 'Failed to load dashboard';
+      },
+    }),
   }),
   selectors: {
     selectDashboardStats: state => state.stats,

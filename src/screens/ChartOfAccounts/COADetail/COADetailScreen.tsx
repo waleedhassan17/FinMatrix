@@ -11,13 +11,16 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAccounts, toggleAccount } from '../COAList/coaListSlice';
 import {
@@ -112,7 +115,7 @@ const COADetailScreen: React.FC = () => {
         <View style={styles.centered}>
           <Text style={styles.notFound}>Account not found</Text>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.goBack}>← Go Back</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}><Feather name="arrow-left" size={17} color={colors.primary} style={{ marginRight: 2 }} /><Text style={styles.goBack}>Go Back</Text></View>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -164,18 +167,13 @@ const COADetailScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Account Detail</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ReportHeader title="Account Detail" subtitle="Ledger account" onBack={() => navigation.goBack()} backLabel="Back" />
 
       <ScrollView
-        style={styles.scroll}
+        style={[styles.scroll, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -344,7 +342,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: colors.textLight,
-    fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier',
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 2,
   },
   accountName: {

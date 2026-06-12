@@ -4,9 +4,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../utils/theme';
-import { useAppSelector } from '../hooks/useReduxHooks';
-import { selectUser } from '../screens/Auth/authSlice';
-import { selectUnreadNotificationCountForUser } from '../screens/Notifications/notificationCenterSlice';
 import NotificationBadge from '../components/NotificationBadge';
 
 import DashboardStack from './stacks/DashboardStack';
@@ -47,10 +44,6 @@ const TabIcon: React.FC<{ icon: IconName; focused: boolean; badgeCount?: number 
 
 const AdminTabNavigator: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const user = useAppSelector(selectUser);
-  const unreadCount = useAppSelector(state =>
-    selectUnreadNotificationCountForUser(state, 'admin', user?.uid),
-  );
 
   return (
     <Tab.Navigator
@@ -86,7 +79,7 @@ const AdminTabNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Dashboard',
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="grid" focused={focused} badgeCount={unreadCount} />
+            <TabIcon icon="grid" focused={focused} />
           ),
         }}
       />

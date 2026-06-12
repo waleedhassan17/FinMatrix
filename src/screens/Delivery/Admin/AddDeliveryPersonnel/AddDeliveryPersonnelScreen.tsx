@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import * as ExpoClipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { v4 as uuidv4 } from 'uuid';
@@ -53,6 +54,20 @@ const generateUsername = (companyCode: string, name: string): string => {
   return `${companyCode}.${firstName}`;
 };
 
+/** Slugify a company name into an email domain, e.g. "MetroMatrix" -> "metromatrix.com" */
+const companyEmailDomain = (companyName?: string): string => {
+  const slug = (companyName ?? 'company').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return `${slug || 'company'}.com`;
+};
+
+/** Build a company-domain email: "firstname.lastname@company.com" */
+const buildCompanyEmail = (name: string, domain: string): string => {
+  const parts = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  const local = parts.length >= 2 ? `${parts[0]}.${parts[parts.length - 1]}` : parts[0];
+  return `${local}@${domain}`;
+};
+
 const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const activeCompany = useAppSelector(selectActiveCompany);
@@ -60,8 +75,9 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [emailEdited, setEmailEdited] = useState(false);
   const [phone, setPhone] = useState('');
-  const [tempPassword] = useState(generatePassword());
+  const [tempPassword, setTempPassword] = useState(generatePassword());
   const [vehicleType, setVehicleType] = useState('motorcycle');
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
@@ -78,6 +94,15 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
     [fullName, inviteCode],
   );
 
+  // Company-domain email, e.g. "ali.khan@metromatrix.com"
+  const companyDomain = useMemo(() => companyEmailDomain(activeCompany?.name), [activeCompany?.name]);
+  const suggestedEmail = useMemo(() => buildCompanyEmail(fullName, companyDomain), [fullName, companyDomain]);
+
+  // Auto-fill the email with the company-domain address until the admin edits it manually.
+  useEffect(() => {
+    if (!emailEdited) setEmail(suggestedEmail);
+  }, [suggestedEmail, emailEdited]);
+
   const copyToClipboard = (text: string, label: string) => {
     try { ExpoClipboard.setStringAsync(text); } catch {}
     Alert.alert('Copied', `${label} copied to clipboard`);
@@ -87,15 +112,13 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
     setSelectedZones(prev => prev.includes(zone) ? prev.filter(z => z !== zone) : [...prev, zone]);
   };
 
-  const generateEmail = (name: string): string => {
-    const parts = name.trim().toLowerCase().split(/\s+/);
-    return parts.length >= 2 ? `${parts[0]}.${parts[parts.length - 1]}@company.pk` : `${parts[0]}@company.pk`;
-  };
-
   const validateForm = (): boolean => {
     const errs: Record<string, string> = {};
     if (!fullName.trim()) errs.fullName = 'Full name is required';
+    const finalEmail = (email.trim() || suggestedEmail).toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(finalEmail)) errs.email = 'A valid login email is required';
     if (!phone.trim()) errs.phone = 'Phone is required';
+    if (!tempPassword.trim() || tempPassword.trim().length < 6) errs.password = 'Password must be at least 6 characters';
     if (!vehicleNumber.trim()) errs.vehicleNumber = 'Vehicle number is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -105,7 +128,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
     if (!validateForm() || !activeCompany) return;
     setIsCreating(true);
 
-    const finalEmail = email.trim() || generateEmail(fullName);
+    const finalEmail = email.trim() || suggestedEmail;
     const username = generatedUsername;
     const now = new Date().toISOString();
 
@@ -172,18 +195,37 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       )}
 
-      <CustomInput label="Email (auto-generated if blank)" value={email} onChangeText={setEmail} placeholder={fullName.trim() ? generateEmail(fullName) : 'firstname.lastname@company.pk'} keyboardType="email-address" autoCapitalize="none" />
+      <CustomInput
+        label={`Login Email (@${companyDomain}) *`}
+        value={email}
+        onChangeText={t => { setEmail(t); setEmailEdited(true); if (errors.email) setErrors(p => ({ ...p, email: '' })); }}
+        placeholder={suggestedEmail || `firstname.lastname@${companyDomain}`}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        error={errors.email}
+      />
+      <Text style={styles.usernameHint}>Auto-filled with your company domain. The rider signs in with this email and the password below.</Text>
       <CustomInput label="Phone *" value={phone} onChangeText={t => { setPhone(t); if (errors.phone) setErrors(p => ({ ...p, phone: '' })); }} placeholder="+92-3XX-XXXXXXX" keyboardType="phone-pad" error={errors.phone} />
 
-      <View style={styles.passwordRow}>
-        <Text style={styles.fieldLabel}>Temporary Password</Text>
-        <View style={styles.passwordBox}>
-          <Text style={styles.passwordText}>{tempPassword}</Text>
-          <TouchableOpacity onPress={() => copyToClipboard(tempPassword, 'Password')} style={styles.copyButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.copyText}>Copy</Text>
-          </TouchableOpacity>
-        </View>
+      <CustomInput
+        label="Login Password *"
+        value={tempPassword}
+        onChangeText={t => { setTempPassword(t); if (errors.password) setErrors(p => ({ ...p, password: '' })); }}
+        placeholder="Set a password (min 6 characters)"
+        autoCapitalize="none"
+        autoCorrect={false}
+        error={errors.password}
+      />
+      <View style={styles.passwordActionsRow}>
+        <TouchableOpacity onPress={() => setTempPassword(generatePassword())} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={styles.copyText}>↻ Generate</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => copyToClipboard(tempPassword, 'Password')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={styles.copyText}>Copy</Text>
+        </TouchableOpacity>
       </View>
+      <Text style={styles.usernameHint}>You assign this password — share it with the delivery personnel so they can sign in.</Text>
 
       <CustomDropdown label="Vehicle Type" options={VEHICLE_TYPES} value={vehicleType} onChange={setVehicleType} />
       <CustomInput label="Vehicle Number *" value={vehicleNumber} onChangeText={t => { setVehicleNumber(t); if (errors.vehicleNumber) setErrors(p => ({ ...p, vehicleNumber: '' })); }} placeholder="e.g. LHR-1234" error={errors.vehicleNumber} autoCapitalize="characters" />
@@ -221,7 +263,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <View style={styles.backIconContainer}><Text style={styles.backArrow}>{'‹'}</Text></View>
+            <View style={styles.backIconContainer}><Feather name="arrow-left" size={20} color={colors.textPrimary} /></View>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Add Personnel</Text>
           <View style={styles.headerSpacer} />
@@ -238,6 +280,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
                 <View style={styles.credentialsCard}>
                   {[
                     { label: 'Name', value: createdPerson.name },
+                    { label: 'Email', value: createdPerson.email },
                     { label: 'Username', value: createdPerson.username },
                     { label: 'Password', value: createdPerson.password },
                   ].map((row, i) => (
@@ -249,7 +292,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               )}
               <View style={styles.modalButtons}>
-                <CustomButton title="Share" onPress={() => { if (createdPerson) copyToClipboard(`Name: ${createdPerson.name}\nUsername: ${createdPerson.username}\nPassword: ${createdPerson.password}`, 'Credentials'); }} variant="secondary" size="md" />
+                <CustomButton title="Share" onPress={() => { if (createdPerson) copyToClipboard(`Name: ${createdPerson.name}\nEmail: ${createdPerson.email}\nUsername: ${createdPerson.username}\nPassword: ${createdPerson.password}`, 'Credentials'); }} variant="secondary" size="md" />
                 <View style={{ width: spacing.sm }} />
                 <CustomButton title="Done" onPress={handleDismissSuccess} variant="primary" size="md" />
               </View>
@@ -300,6 +343,7 @@ const styles = StyleSheet.create({
   passwordText: { flex: 1, fontSize: THEME.typography.bodyLg.fontSize, fontWeight: '600', color: BRAND.emerald, fontFamily: THEME.typography.fontFamily, letterSpacing: 1.5 },
   copyButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   copyText: { fontSize: THEME.typography.bodyMd.fontSize, color: BRAND.emerald, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
+  passwordActionsRow: { flexDirection: 'row', gap: spacing.lg, marginTop: 2, marginBottom: 2 },
   zonesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   zoneChip: {
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 8,

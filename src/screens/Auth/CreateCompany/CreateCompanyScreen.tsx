@@ -27,6 +27,7 @@ import {
   type CompanyData,
   type CompanyMember,
 } from '../companySlice';
+import { setUser } from '../authSlice';
 import {
   warehouseAgencies,
   type WarehouseAgency,
@@ -296,7 +297,13 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
       const backendCompany = await createCompanyAPI({
         name: companyName.trim(),
         industry,
-        address: `${street.trim()}, ${city.trim()}, ${stateProv.trim()} ${zipCode.trim()}, ${country}`,
+        address: {
+          street: street.trim(),
+          city: city.trim(),
+          state: stateProv.trim(),
+          postalCode: zipCode.trim(),
+          country,
+        },
         phone: phone.trim(),
         email: email.trim(),
         taxId: taxId.trim(),
@@ -304,6 +311,16 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
 
       const companyId: string = backendCompany?.id ?? backendCompany?.companyId ?? `company_${uuidv4().slice(0, 8)}`;
       await setStoredCompanyId(companyId);
+
+      // Company is created as an onboarding draft (status: email_verified);
+      // it becomes pending_approval once a plan is chosen & submitted.
+      dispatch(
+        setUser({
+          ...user,
+          companyId,
+          companyStatus: backendCompany?.status ?? 'email_verified',
+        }),
+      );
 
       const now = new Date().toISOString();
       const adminMember: CompanyMember = {
@@ -542,7 +559,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
                 <View style={s.inventoryDot} />
                 <Text style={s.inventoryItemName}>{item.name}</Text>
                 <Text style={s.inventoryItemPrice}>
-                  PKR {item.sellingPrice.toLocaleString()}
+                  Rs {item.sellingPrice.toLocaleString()}
                 </Text>
               </View>
             ))}

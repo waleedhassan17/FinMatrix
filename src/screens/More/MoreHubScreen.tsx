@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,9 +9,9 @@ import { THEME } from '../../utils/theme';
 import { useAppSelector } from '../../hooks/useReduxHooks';
 import { selectCustomers } from '../Customers/CustomerList/customerListSlice';
 import { selectVendors } from '../Vendors/VendorList/vendorListSlice';
-import { selectEmployees } from '../Employees/EmployeeList/employeeListSlice';
 import { selectUnassignedDeliveries } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
 import NotificationBadge from '../../components/NotificationBadge';
+import { ReportHeader, HEADER_NAVY } from '../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -56,18 +56,6 @@ const SECTIONS: MoreSection[] = [
         subtitle: 'Manage accounts, balances & categories',
         onPress: nav => nav.navigate('COAList'),
       },
-      {
-        key: 'gl', icon: 'layers', iconBg: IC.indigoBg, iconColor: IC.indigo,
-        label: 'General Ledger',
-        subtitle: 'View entries, balances & audit trail',
-        onPress: nav => nav.navigate('GeneralLedger'),
-      },
-      {
-        key: 'je', icon: 'edit-3', iconBg: IC.tealBg, iconColor: IC.teal,
-        label: 'Journal Entries',
-        subtitle: 'Create, post & manage journal entries',
-        onPress: nav => nav.navigate('JEList'),
-      },
     ],
   },
   {
@@ -87,24 +75,11 @@ const SECTIONS: MoreSection[] = [
         badgeSelector: 'vendors',
         onPress: nav => nav.navigate('VendorList'),
       },
-      {
-        key: 'employees', icon: 'user-check', iconBg: IC.purpleBg, iconColor: IC.purple,
-        label: 'Employees',
-        subtitle: 'Team members, roles & departments',
-        badgeSelector: 'employees',
-        onPress: nav => nav.navigate('EmployeeList'),
-      },
     ],
   },
   {
     title: 'MONEY',
     rows: [
-      {
-        key: 'banking', icon: 'credit-card', iconBg: IC.cyanBg, iconColor: IC.cyan,
-        label: 'Banking',
-        subtitle: 'Accounts, register, transfers & reconciliation',
-        onPress: nav => nav.navigate('BankAccounts'),
-      },
       {
         key: 'tax', icon: 'percent', iconBg: IC.amberBg, iconColor: IC.amber,
         label: 'Tax Management',
@@ -124,10 +99,10 @@ const SECTIONS: MoreSection[] = [
         onPress: nav => nav.navigate('AssignDeliveries'),
       },
       {
-        key: 'payroll', icon: 'dollar-sign', iconBg: IC.greenBg, iconColor: IC.green,
-        label: 'Payroll Processing',
-        subtitle: 'Run payroll, history & pay stubs',
-        onPress: nav => nav.navigate('PayrollHistory'),
+        key: 'personnel', icon: 'user-plus', iconBg: IC.purpleBg, iconColor: IC.purple,
+        label: 'Delivery Personnel',
+        subtitle: 'Add riders & assign login credentials',
+        onPress: nav => nav.navigate('DeliveryPersonnelList'),
       },
       {
         key: 'agencies', icon: 'box', iconBg: IC.amberBg, iconColor: IC.amber,
@@ -140,12 +115,6 @@ const SECTIONS: MoreSection[] = [
   {
     title: 'SYSTEM',
     rows: [
-      {
-        key: 'audit', icon: 'activity', iconBg: IC.redBg, iconColor: IC.red,
-        label: 'Audit Trail',
-        subtitle: 'Track changes across all modules',
-        onPress: nav => nav.navigate('AuditTrail'),
-      },
       {
         key: 'settings', icon: 'settings', iconBg: IC.grayBg, iconColor: IC.gray,
         label: 'Settings',
@@ -161,25 +130,22 @@ const MoreHubScreen: React.FC = () => {
 
   const customerCount = useAppSelector(selectCustomers).length;
   const vendorCount = useAppSelector(selectVendors).length;
-  const employeeCount = useAppSelector(selectEmployees).length;
   const pendingDeliveries = useAppSelector(selectUnassignedDeliveries).length;
 
   const getBadge = (key: string): number => {
     switch (key) {
       case 'customers': return customerCount;
       case 'vendors': return vendorCount;
-      case 'employees': return employeeCount;
       case 'delivery': return pendingDeliveries;
       default: return 0;
     }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>More</Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <ReportHeader title="More" subtitle="Tools, modules & settings" />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} style={{ backgroundColor: colors.background }}>
         {SECTIONS.map(section => (
           <View key={section.title}>
             <Text style={styles.sectionHeader}>{section.title}</Text>

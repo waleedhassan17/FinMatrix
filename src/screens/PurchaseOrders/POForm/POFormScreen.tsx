@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — PO Form Screen (Create / Edit)
-// Activity Diagram step: "Create PO: Select Vendor, Add Items + Qty"
+// Premium Enterprise UI
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -14,11 +14,14 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
@@ -41,13 +44,20 @@ import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorList
 import { inventoryItemsData } from '../../../models/inventoryModel';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
-import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'POForm'>;
+
+const P = {
+  headerFrom: '#0A1628',
+  headerTo: '#132F4C',
+  accent: '#0052CC',
+  accentLight: '#E6F0FF',
+  totalsGold: '#F59E0B',
+};
 
 // ═══════════════════════════════════════════════════════
 const POFormScreen: React.FC = () => {
@@ -62,7 +72,6 @@ const POFormScreen: React.FC = () => {
   const form = useAppSelector(selectPOFormState);
   const hydratedRef = React.useRef(false);
 
-  // ── Vendor / item dropdown options ──────────────
   const vendorOptions = useMemo(
     () => vendors.filter(v => v.isActive).map(v => ({ label: v.name, value: v.id })),
     [vendors],
@@ -76,18 +85,14 @@ const POFormScreen: React.FC = () => {
     [],
   );
 
-  // ── Auto-generate PO number ─────────────────────
   const generatePONumber = useCallback(() => {
     const maxNum = pos.reduce((max, p) => {
-      const m = p.poNumber.match(/PO-(?:\d{4}-)?(\d+)/);
+      const m = p.poNumber.match(/PO-(?:\d{4}-)?(\\d+)/);
       return m ? Math.max(max, parseInt(m[1], 10)) : max;
     }, 0);
     return `PO-${new Date().getFullYear()}-${String(maxNum + 1).padStart(3, '0')}`;
   }, [pos]);
 
-  // ── Hydrate ONCE per mount ──────────────────────
-  // Edit mode: fetch via dedicated thunk so deep-links work
-  // even when the list slice is empty. New mode: prefill defaults.
   useEffect(() => {
     dispatch(fetchVendors());
 
@@ -107,7 +112,6 @@ const POFormScreen: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, editingId, dispatch]);
 
-  // ── Vendor change ───────────────────────────────
   const handleVendorChange = useCallback(
     (vendorId: string) => {
       const vendor = vendors.find(v => v.id === vendorId);
@@ -117,7 +121,6 @@ const POFormScreen: React.FC = () => {
     [vendors, dispatch],
   );
 
-  // ── Item change for a line ──────────────────────
   const handleItemChange = useCallback(
     (lineId: string, itemId: string) => {
       const item = inventoryItemsData.find(i => i.itemId === itemId);
@@ -135,7 +138,6 @@ const POFormScreen: React.FC = () => {
     [dispatch],
   );
 
-  // ── Validation ──────────────────────────────────
   const validate = useCallback((): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!form.vendorId) errs.vendorId = 'Select a vendor';
@@ -150,7 +152,6 @@ const POFormScreen: React.FC = () => {
     return errs;
   }, [form]);
 
-  // ── Save ────────────────────────────────────────
   const handleSave = useCallback(
     async (saveStatus: PurchaseOrderStatus = 'draft') => {
       const validationErrors = validate();
@@ -185,71 +186,88 @@ const POFormScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={P.headerFrom} />
+      <LinearGradient colors={[P.headerFrom, P.headerTo]} style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={24} color={colors.secondary} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {isEditing ? `Edit ${form.poNumber}` : 'New Purchase Order'}
           </Text>
+          <Text style={styles.headerSub}>
+            {isEditing ? 'Update PO details' : 'Order items from a vendor'}
+          </Text>
         </View>
-      </View>
+        <View style={[styles.headerBadge, { backgroundColor: P.accentLight }]}>
+          <Feather name="package" size={16} color={P.accent} />
+        </View>
+      </LinearGradient>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F1F5F9' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
           {/* ── PO Details ─────────────────────────── */}
-          <Text style={styles.sectionTitle}>PO Details</Text>
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: P.accent }]} />
+            <Text style={styles.sectionTitle}>PO DETAILS</Text>
+          </View>
           <View style={styles.sectionCard}>
-            <CustomDropdown
-              label="Vendor *"
-              options={vendorOptions}
-              value={form.vendorId}
-              onChange={handleVendorChange}
-              placeholder="Select vendor…"
-              error={form.errors.vendorId}
-              searchable
-            />
-            <CustomInput
-              label="PO #"
-              value={form.poNumber}
-              onChangeText={v => dispatch(setField({ key: 'poNumber', value: v }))}
-              placeholder="PO-0000"
-              error={form.errors.poNumber}
-              disabled={isEditing}
-            />
-            <View style={styles.rowFields}>
-              <View style={{ flex: 1, marginRight: spacing.sm }}>
-                <CustomInput
-                  label="Order Date *"
-                  value={form.orderDate}
-                  onChangeText={v => dispatch(setField({ key: 'orderDate', value: v }))}
-                  placeholder="YYYY-MM-DD"
-                  error={form.errors.orderDate}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <CustomInput
-                  label="Expected Date *"
-                  value={form.expectedDate}
-                  onChangeText={v => dispatch(setField({ key: 'expectedDate', value: v }))}
-                  placeholder="YYYY-MM-DD"
-                  error={form.errors.expectedDate}
-                />
+            <View style={[styles.cardAccent, { backgroundColor: P.accent }]} />
+            <View style={styles.cardBody}>
+              <CustomDropdown
+                label="Vendor *"
+                options={vendorOptions}
+                value={form.vendorId}
+                onChange={handleVendorChange}
+                placeholder="Select vendor…"
+                error={form.errors.vendorId}
+                searchable
+              />
+              <CustomInput
+                label="PO #"
+                value={form.poNumber}
+                onChangeText={v => dispatch(setField({ key: 'poNumber', value: v }))}
+                placeholder="PO-0000"
+                error={form.errors.poNumber}
+                disabled={isEditing}
+              />
+              <View style={styles.rowFields}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <CustomInput
+                    label="Order Date *"
+                    value={form.orderDate}
+                    onChangeText={v => dispatch(setField({ key: 'orderDate', value: v }))}
+                    placeholder="YYYY-MM-DD"
+                    error={form.errors.orderDate}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <CustomInput
+                    label="Expected Date *"
+                    value={form.expectedDate}
+                    onChangeText={v => dispatch(setField({ key: 'expectedDate', value: v }))}
+                    placeholder="YYYY-MM-DD"
+                    error={form.errors.expectedDate}
+                  />
+                </View>
               </View>
             </View>
           </View>
 
           {/* ── Line Items ─────────────────────────── */}
           <View style={styles.linesSectionHeader}>
-            <Text style={styles.sectionTitle}>Items</Text>
-            <TouchableOpacity style={styles.addLineBtn} onPress={() => dispatch(addLine())}>
-              <Text style={styles.addLineBtnText}>+ Add Item</Text>
+            <View style={styles.sectionLabelRow}>
+              <View style={[styles.sectionDot, { backgroundColor: '#6554C0' }]} />
+              <Text style={styles.sectionTitle}>ITEMS</Text>
+            </View>
+            <TouchableOpacity style={styles.addLineBtn} onPress={() => dispatch(addLine())} activeOpacity={0.7}>
+              <Feather name="plus" size={14} color="#FFFFFF" />
+              <Text style={styles.addLineBtnText}>Add Item</Text>
             </TouchableOpacity>
           </View>
           {!!form.errors.lines && (
@@ -258,117 +276,149 @@ const POFormScreen: React.FC = () => {
 
           {form.lines.map((line, idx) => (
             <View key={line.id} style={styles.lineCard}>
-              <View style={styles.lineHeader}>
-                <Text style={styles.lineLabel}>Item {idx + 1}</Text>
-                {form.lines.length > 1 && (
-                  <TouchableOpacity
-                    style={styles.lineDeleteBtn}
-                    onPress={() => dispatch(removeLine(line.id))}
-                  >
-                    <Text style={styles.lineDeleteText}>✕</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <CustomDropdown
-                label="Item *"
-                options={itemOptions}
-                value={line.itemId}
-                onChange={v => handleItemChange(line.id, v)}
-                placeholder="Select item…"
-                searchable
-              />
-
-              <TextInput
-                style={styles.descInput}
-                value={line.description}
-                onChangeText={v => dispatch(updateLine({ id: line.id, field: 'description', value: v }))}
-                placeholder="Description"
-                placeholderTextColor={colors.textLight}
-              />
-
-              <View style={styles.lineNumRow}>
-                <View style={{ flex: 1, marginRight: spacing.sm }}>
-                  <Text style={styles.fieldLabel}>Quantity</Text>
-                  <TextInput
-                    style={styles.numericInput}
-                    value={line.quantity}
-                    onChangeText={v =>
-                      dispatch(updateLine({ id: line.id, field: 'quantity', value: v.replace(/[^0-9.]/g, '') }))
-                    }
-                    placeholder="0"
-                    placeholderTextColor={colors.textLight}
-                    keyboardType="decimal-pad"
-                  />
+              <View style={[styles.lineCardAccent, { backgroundColor: idx % 2 === 0 ? '#0052CC' : '#6554C0' }]} />
+              <View style={styles.lineCardBody}>
+                <View style={styles.lineHeader}>
+                  <View style={styles.lineBadge}>
+                    <Text style={styles.lineBadgeText}>{idx + 1}</Text>
+                  </View>
+                  <Text style={styles.lineLabel}>Item</Text>
+                  {form.lines.length > 1 && (
+                    <TouchableOpacity style={styles.lineDeleteBtn} onPress={() => dispatch(removeLine(line.id))}>
+                      <Feather name="trash-2" size={14} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Unit Price (Rs)</Text>
-                  <TextInput
-                    style={styles.numericInput}
-                    value={line.unitPrice}
-                    onChangeText={v =>
-                      dispatch(updateLine({ id: line.id, field: 'unitPrice', value: v.replace(/[^0-9.]/g, '') }))
-                    }
-                    placeholder="0"
-                    placeholderTextColor={colors.textLight}
-                    keyboardType="decimal-pad"
-                  />
+
+                <CustomDropdown
+                  label="Item *"
+                  options={itemOptions}
+                  value={line.itemId}
+                  onChange={v => handleItemChange(line.id, v)}
+                  placeholder="Select item…"
+                  searchable
+                />
+
+                <TextInput
+                  style={styles.descInput}
+                  value={line.description}
+                  onChangeText={v => dispatch(updateLine({ id: line.id, field: 'description', value: v }))}
+                  placeholder="Description"
+                  placeholderTextColor={colors.textLight}
+                />
+
+                <View style={styles.lineNumRow}>
+                  <View style={{ flex: 1, marginRight: spacing.sm }}>
+                    <Text style={styles.fieldLabel}>Quantity</Text>
+                    <TextInput
+                      style={styles.numericInput}
+                      value={line.quantity}
+                      onChangeText={v =>
+                        dispatch(updateLine({ id: line.id, field: 'quantity', value: v.replace(/[^0-9.]/g, '') }))
+                      }
+                      placeholder="0"
+                      placeholderTextColor={colors.textLight}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.fieldLabel}>Unit Price (Rs)</Text>
+                    <TextInput
+                      style={styles.numericInput}
+                      value={line.unitPrice}
+                      onChangeText={v =>
+                        dispatch(updateLine({ id: line.id, field: 'unitPrice', value: v.replace(/[^0-9.]/g, '') }))
+                      }
+                      placeholder="0"
+                      placeholderTextColor={colors.textLight}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.lineTotalRow}>
+                  <Feather name="arrow-right" size={12} color={colors.primary} />
+                  <Text style={styles.lineTotal}>
+                    Line Total: {formatCurrency(line.amount, 'Rs ')}
+                  </Text>
                 </View>
               </View>
-
-              <Text style={styles.lineTotal}>
-                Line Total: {formatCurrency(line.amount, 'Rs ')}
-              </Text>
             </View>
           ))}
 
           {/* ── Totals ─────────────────────────────── */}
-          <View style={styles.totalsCard}>
+          <LinearGradient
+            colors={['#0F172A', '#1E293B']}
+            style={styles.totalsCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.totalsHeader}>
+              <Feather name="credit-card" size={16} color={P.totalsGold} />
+              <Text style={styles.totalsHeaderText}>PO Summary</Text>
+            </View>
+            <View style={styles.totalsDivider} />
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Subtotal</Text>
               <Text style={styles.totalsValue}>{formatCurrency(form.subtotal, 'Rs ')}</Text>
             </View>
-            <View style={[styles.totalsRow, styles.grandTotalRow]}>
+            <View style={styles.totalsDivider} />
+            <View style={styles.totalsRow}>
               <Text style={styles.grandTotalLabel}>Total</Text>
               <Text style={styles.grandTotalValue}>{formatCurrency(form.total, 'Rs ')}</Text>
             </View>
-          </View>
+          </LinearGradient>
 
           {/* ── Notes ──────────────────────────────── */}
-          <Text style={styles.sectionTitle}>Notes</Text>
-          <View style={styles.sectionCard}>
-            <CustomInput
-              label="Notes (Optional)"
-              value={form.notes}
-              onChangeText={v => dispatch(setField({ key: 'notes', value: v }))}
-              placeholder="Additional notes…"
-              multiline
-            />
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: '#8B5CF6' }]} />
+            <Text style={styles.sectionTitle}>NOTES</Text>
           </View>
-
-          {/* ── Actions (matches Estimates / SO / Bills) ─ */}
-          <View style={styles.btnRow}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <CustomButton
-                title="Save Draft"
-                onPress={() => handleSave('draft')}
-                variant="secondary"
-                size="sm"
-                fullWidth
-                isLoading={form.isSaving}
-                disabled={form.isSaving}
+          <View style={styles.sectionCard}>
+            <View style={[styles.cardAccent, { backgroundColor: '#8B5CF6' }]} />
+            <View style={styles.cardBody}>
+              <CustomInput
+                label="Notes (Optional)"
+                value={form.notes}
+                onChangeText={v => dispatch(setField({ key: 'notes', value: v }))}
+                placeholder="Additional notes…"
+                multiline
               />
             </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton
-                title={isEditing ? 'Update & Send' : 'Save & Send'}
-                onPress={() => handleSave('sent')}
-                variant="primary"
-                size="sm"
-                fullWidth
-                isLoading={form.isSaving}
+          </View>
+
+          {/* ── Actions ────────────────────────────── */}
+          <View style={styles.btnRow}>
+            <View style={{ flex: 1, marginRight: spacing.sm }}>
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={() => handleSave('draft')}
+                activeOpacity={0.7}
                 disabled={form.isSaving}
-              />
+              >
+                <Feather name="save" size={16} color={P.accent} />
+                <Text style={[styles.secondaryBtnText, { color: P.accent }]}>Save Draft</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flex: 1.4 }}>
+              <TouchableOpacity
+                style={styles.primaryBtn}
+                onPress={() => handleSave('sent')}
+                activeOpacity={0.7}
+                disabled={form.isSaving}
+              >
+                <LinearGradient
+                  colors={['#0052CC', '#003D99']}
+                  style={styles.primaryBtnGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Feather name="send" size={16} color="#FFFFFF" />
+                  <Text style={styles.primaryBtnText}>
+                    {form.isSaving ? 'Saving…' : isEditing ? 'Update & Send' : 'Save & Send'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
@@ -379,116 +429,86 @@ const POFormScreen: React.FC = () => {
 
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  safeTop: { backgroundColor: P.headerFrom },
+
   header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm, paddingBottom: spacing.lg,
+    borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center' },
   backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
+  headerCenter: { flex: 1, marginLeft: spacing.sm },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
+  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  headerBadge: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
+  scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl },
 
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.sm,
-    marginTop: spacing.md,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
+  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.sm, gap: spacing.xs + 2 },
+  sectionDot: { width: 8, height: 8, borderRadius: 4 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#64748B', fontFamily: THEME.typography.fontFamily, letterSpacing: 1 },
+
   sectionCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.xs,
-    ...shadows.small,
+    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: borderRadius.md,
+    overflow: 'hidden', ...shadows.small, borderWidth: 1, borderColor: '#E2E8F0',
   },
+  cardAccent: { width: 4 },
+  cardBody: { flex: 1, padding: spacing.md },
   rowFields: { flexDirection: 'row' },
 
-  linesSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.sm },
-  addLineBtn: { paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs + 2, backgroundColor: colors.secondary + '18', borderRadius: 20 },
-  addLineBtnText: { fontSize: 13, fontWeight: '700', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  linesSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.sm },
+  addLineBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.sm + 6, paddingVertical: spacing.xs + 4, backgroundColor: '#6554C0', borderRadius: 20 },
+  addLineBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
   lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
 
   lineCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.small,
+    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: borderRadius.md,
+    overflow: 'hidden', marginBottom: spacing.sm, ...shadows.small, borderWidth: 1, borderColor: '#E2E8F0',
   },
-  lineHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  lineLabel: { fontSize: 12, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', letterSpacing: 0.5, fontFamily: THEME.typography.fontFamily },
-  lineDeleteBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.danger + '18', justifyContent: 'center', alignItems: 'center' },
-  lineDeleteText: { fontSize: 14, fontWeight: '700', color: colors.danger },
+  lineCardAccent: { width: 4 },
+  lineCardBody: { flex: 1, padding: spacing.md },
+  lineHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs, gap: spacing.xs },
+  lineBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  lineBadgeText: { fontSize: 11, fontWeight: '800', color: '#64748B', fontFamily: THEME.typography.fontFamily },
+  lineLabel: { flex: 1, fontSize: 12, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', letterSpacing: 0.5, fontFamily: THEME.typography.fontFamily },
+  lineDeleteBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center' },
 
   descInput: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.sm,
-    fontSize: 13,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-    marginTop: spacing.xs,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm,
+    fontSize: 13, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginTop: spacing.xs,
   },
   lineNumRow: { flexDirection: 'row', marginTop: spacing.sm },
   fieldLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
   numericInput: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.sm,
-    fontSize: 14,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm,
+    fontSize: 14, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
   },
-  lineTotal: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primary,
-    fontFamily: THEME.typography.fontFamily,
-    textAlign: 'right',
-    marginTop: spacing.sm,
-  },
+  lineTotalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: spacing.sm },
+  lineTotal: { fontSize: 13, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
 
-  totalsCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    ...shadows.small,
-  },
+  totalsCard: { borderRadius: borderRadius.md + 4, padding: spacing.md + 4, marginTop: spacing.lg, ...shadows.large },
+  totalsHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2, marginBottom: spacing.sm },
+  totalsHeaderText: { fontSize: 13, fontWeight: '700', color: '#F59E0B', fontFamily: THEME.typography.fontFamily, letterSpacing: 0.5 },
+  totalsDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: spacing.xs + 2 },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs },
-  totalsLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  totalsValue: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  grandTotalRow: {
-    borderTopWidth: 1.5,
-    borderTopColor: colors.primary,
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-  },
-  grandTotalLabel: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  grandTotalValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  totalsLabel: { fontSize: 14, color: 'rgba(241,245,249,0.6)', fontFamily: THEME.typography.fontFamily },
+  totalsValue: { fontSize: 14, fontWeight: '600', color: '#F1F5F9', fontFamily: THEME.typography.fontFamily },
+  grandTotalLabel: { fontSize: 16, fontWeight: '700', color: '#F59E0B', fontFamily: THEME.typography.fontFamily },
+  grandTotalValue: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 
-  btnRow: {
-    flexDirection: 'row',
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
+  btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.md },
+  secondaryBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
+    paddingVertical: 14, borderRadius: borderRadius.md,
+    borderWidth: 1.5, borderColor: '#0052CC', backgroundColor: '#E6F0FF',
   },
+  secondaryBtnText: { fontSize: 15, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  primaryBtn: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.card },
+  primaryBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: 14 },
+  primaryBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 });
 
 export default POFormScreen;

@@ -56,10 +56,6 @@ import { superAdminSlice } from '../screens/SuperAdmin/superAdminSlice';
 import { coaListSlice } from '../screens/ChartOfAccounts/COAList/coaListSlice';
 import { coaFormSlice } from '../screens/ChartOfAccounts/COAForm/coaFormSlice';
 import { coaDetailSlice } from '../screens/ChartOfAccounts/COADetail/coaDetailSlice';
-import { glSlice } from '../screens/GeneralLedger/glSlice';
-import { jeListSlice } from '../screens/JournalEntries/JEList/jeListSlice';
-import { jeFormSlice } from '../screens/JournalEntries/JEForm/jeFormSlice';
-import { jeDetailSlice } from '../screens/JournalEntries/JEDetail/jeDetailSlice';
 import { inventoryListSlice } from '../screens/Inventory/InventoryList/inventoryListSlice';
 import { inventoryFormSlice } from '../screens/Inventory/InventoryForm/inventoryFormSlice';
 import { inventoryDetailSlice } from '../screens/Inventory/InventoryDetail/inventoryDetailSlice';
@@ -77,14 +73,6 @@ import { invoiceListSlice } from '../screens/Invoices/InvoiceList/invoiceListSli
 import { invoiceFormSlice } from '../screens/Invoices/InvoiceForm/invoiceFormSlice';
 import { invoiceDetailSlice } from '../screens/Invoices/InvoiceDetail/invoiceDetailSlice';
 import { receivePaymentSlice } from '../screens/Payments/ReceivePayment/receivePaymentSlice';
-import { estimateListSlice } from '../screens/Estimates/EstimateList/estimateListSlice';
-import { estimateFormSlice } from '../screens/Estimates/EstimateForm/estimateFormSlice';
-import { estimateDetailSlice } from '../screens/Estimates/EstimateDetail/estimateDetailSlice';
-import { soListSlice } from '../screens/SalesOrders/SOList/soListSlice';
-import { soFormSlice } from '../screens/SalesOrders/SOForm/soFormSlice';
-import { soDetailSlice } from '../screens/SalesOrders/SODetail/soDetailSlice';
-import { creditMemoListSlice } from '../screens/CreditMemos/CreditMemoList/creditMemoListSlice';
-import { creditMemoFormSlice } from '../screens/CreditMemos/CreditMemoForm/creditMemoFormSlice';
 import { vendorListSlice } from '../screens/Vendors/VendorList/vendorListSlice';
 import { vendorFormSlice } from '../screens/Vendors/VendorForm/vendorFormSlice';
 import { vendorDetailSlice } from '../screens/Vendors/VendorDetail/vendorDetailSlice';
@@ -92,40 +80,18 @@ import { billListSlice } from '../screens/Bills/BillList/billListSlice';
 import { billFormSlice } from '../screens/Bills/BillForm/billFormSlice';
 import { billDetailSlice } from '../screens/Bills/BillDetail/billDetailSlice';
 import { payBillsSlice } from '../screens/Bills/PayBills/payBillsSlice';
-import { vendorCreditFormSlice } from '../screens/VendorCredits/VendorCreditForm/vendorCreditFormSlice';
 import { poListSlice } from '../screens/PurchaseOrders/POList/poListSlice';
 import { poFormSlice } from '../screens/PurchaseOrders/POForm/poFormSlice';
 import { poDetailSlice } from '../screens/PurchaseOrders/PODetail/poDetailSlice';
 import { deliverySlice } from '../screens/Delivery/Admin/AssignDeliveries/deliverySlice';
-import { notificationCenterSlice } from '../screens/Notifications/notificationCenterSlice';
-import { bankAccountsSlice } from '../screens/Banking/BankAccounts/bankAccountsSlice';
-import { bankRegisterSlice } from '../screens/Banking/BankRegister/bankRegisterSlice';
-import { addTransactionSlice } from '../screens/Banking/AddTransaction/addTransactionSlice';
-import { transferSlice } from '../screens/Banking/Transfer/transferSlice';
-import { reconciliationSlice } from '../screens/Banking/Reconciliation/reconciliationSlice';
-import { reconciliationHistorySlice } from '../screens/Banking/ReconciliationHistory/reconciliationHistorySlice';
-import { employeeListSlice } from '../screens/Employees/EmployeeList/employeeListSlice';
-import { employeeFormSlice } from '../screens/Employees/EmployeeForm/employeeFormSlice';
-import { employeeDetailSlice } from '../screens/Employees/EmployeeDetail/employeeDetailSlice';
-import { runPayrollSlice } from '../screens/Payroll/RunPayroll/runPayrollSlice';
-import { payrollHistorySlice } from '../screens/Payroll/PayrollHistory/payrollHistorySlice';
-import { payStubSlice } from '../screens/Payroll/PayStub/payStubSlice';
 import { reportsHubSlice } from '../screens/Reports/ReportsHub/reportsHubSlice';
 import { profitLossSlice } from '../screens/Reports/ProfitLoss/profitLossSlice';
 import { balanceSheetSlice } from '../screens/Reports/BalanceSheet/balanceSheetSlice';
-import { cashFlowSlice } from '../screens/Reports/CashFlow/cashFlowSlice';
-import { trialBalanceSlice } from '../screens/Reports/TrialBalance/trialBalanceSlice';
 import { arAgingSlice } from '../screens/Reports/ARAging/arAgingSlice';
 import { inventoryValuationSlice } from '../screens/Reports/InventoryValuation/inventoryValuationSlice';
 import { analyticsDashboardSlice } from '../screens/Reports/AnalyticsDashboard/analyticsDashboardSlice';
-import { budgetListSlice } from '../screens/Reports/BudgetList/budgetListSlice';
-import { budgetFormSlice } from '../screens/Reports/BudgetForm/budgetFormSlice';
-import { budgetComparisonSlice } from '../screens/Reports/BudgetComparison/budgetComparisonSlice';
 import { deliveryDailyReportSlice } from '../screens/Reports/DeliveryDailyReport/deliveryDailyReportSlice';
 import { deliveryPerformanceSlice } from '../screens/Reports/DeliveryPerformance/deliveryPerformanceSlice';
-import { salesByCustomerSlice } from '../screens/Reports/SalesByCustomer/salesByCustomerSlice';
-import { salesByItemSlice } from '../screens/Reports/SalesByItem/salesByItemSlice';
-import { salesTaxReportSlice } from '../screens/Reports/SalesTaxReport/salesTaxReportSlice';
 import { taxSettingsSlice } from '../screens/Tax/TaxSettings/taxSettingsSlice';
 import { taxLiabilitySlice } from '../screens/Tax/TaxLiability/taxLiabilitySlice';
 import { taxPaymentSlice } from '../screens/Tax/TaxPayment/taxPaymentSlice';
@@ -133,42 +99,20 @@ import { settingsSlice } from '../screens/Settings/SettingsMain/settingsSlice';
 import { companyProfileSlice } from '../screens/Settings/CompanyProfile/companyProfileSlice';
 import { userManagementSlice } from '../screens/Settings/UserManagement/userManagementSlice';
 import { companySwitcherSlice } from '../screens/Settings/CompanySwitcher/companySwitcherSlice';
-import { auditTrailSlice } from '../screens/AuditTrail/auditTrailSlice';
 import { globalSearchSlice } from '../screens/GlobalSearch/globalSearchSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
   company: companyReducer,
   appContainer: appContainerSlice.reducer,
-  notificationCenter: notificationCenterSlice.reducer,
-  bankAccounts: bankAccountsSlice.reducer,
-  bankRegister: bankRegisterSlice.reducer,
-  addTransaction: addTransactionSlice.reducer,
-  transfer: transferSlice.reducer,
-  reconciliation: reconciliationSlice.reducer,
-  reconciliationHistory: reconciliationHistorySlice.reducer,
-  employeeList: employeeListSlice.reducer,
-  employeeForm: employeeFormSlice.reducer,
-  employeeDetail: employeeDetailSlice.reducer,
-  runPayroll: runPayrollSlice.reducer,
-  payrollHistory: payrollHistorySlice.reducer,
-  payStub: payStubSlice.reducer,
   reportsHub: reportsHubSlice.reducer,
   profitLoss: profitLossSlice.reducer,
   balanceSheet: balanceSheetSlice.reducer,
-  cashFlow: cashFlowSlice.reducer,
-  trialBalance: trialBalanceSlice.reducer,
   arAging: arAgingSlice.reducer,
   inventoryValuation: inventoryValuationSlice.reducer,
   analyticsDashboard: analyticsDashboardSlice.reducer,
-  budgetList: budgetListSlice.reducer,
-  budgetForm: budgetFormSlice.reducer,
-  budgetComparison: budgetComparisonSlice.reducer,
     deliveryDailyReport: deliveryDailyReportSlice.reducer,
     deliveryPerformance: deliveryPerformanceSlice.reducer,
-    salesByCustomer: salesByCustomerSlice.reducer,
-    salesByItem: salesByItemSlice.reducer,
-    salesTaxReport: salesTaxReportSlice.reducer,
     taxSettings: taxSettingsSlice.reducer,
     taxLiability: taxLiabilitySlice.reducer,
     taxPayment: taxPaymentSlice.reducer,
@@ -176,7 +120,6 @@ const rootReducer = combineReducers({
     companyProfile: companyProfileSlice.reducer,
     userManagement: userManagementSlice.reducer,
     companySwitcher: companySwitcherSlice.reducer,
-    auditTrail: auditTrailSlice.reducer,
     globalSearch: globalSearchSlice.reducer,
   signIn: signInSlice.reducer,
   signUp: signUpSlice.reducer,
@@ -214,10 +157,6 @@ const rootReducer = combineReducers({
   coaList: coaListSlice.reducer,
   coaForm: coaFormSlice.reducer,
   coaDetail: coaDetailSlice.reducer,
-  gl: glSlice.reducer,
-  jeList: jeListSlice.reducer,
-  jeForm: jeFormSlice.reducer,
-  jeDetail: jeDetailSlice.reducer,
   inventoryList: inventoryListSlice.reducer,
   inventoryForm: inventoryFormSlice.reducer,
   inventoryDetail: inventoryDetailSlice.reducer,
@@ -235,14 +174,6 @@ const rootReducer = combineReducers({
   invoiceForm: invoiceFormSlice.reducer,
   invoiceDetail: invoiceDetailSlice.reducer,
   receivePayment: receivePaymentSlice.reducer,
-  estimateList: estimateListSlice.reducer,
-  estimateForm: estimateFormSlice.reducer,
-  estimateDetail: estimateDetailSlice.reducer,
-  soList: soListSlice.reducer,
-  soForm: soFormSlice.reducer,
-  soDetail: soDetailSlice.reducer,
-  creditMemoList: creditMemoListSlice.reducer,
-  creditMemoForm: creditMemoFormSlice.reducer,
   vendorList: vendorListSlice.reducer,
   vendorForm: vendorFormSlice.reducer,
   vendorDetail: vendorDetailSlice.reducer,
@@ -250,7 +181,6 @@ const rootReducer = combineReducers({
   billForm: billFormSlice.reducer,
   billDetail: billDetailSlice.reducer,
   payBills: payBillsSlice.reducer,
-  vendorCreditForm: vendorCreditFormSlice.reducer,
   poList: poListSlice.reducer,
   poForm: poFormSlice.reducer,
   poDetail: poDetailSlice.reducer,

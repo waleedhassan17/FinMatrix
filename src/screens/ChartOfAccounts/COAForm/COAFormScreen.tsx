@@ -13,13 +13,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, borderRadius } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectAccounts,
@@ -201,20 +204,18 @@ const COAFormScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isEdit ? 'Edit Account' : 'Add Account'}
-        </Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ReportHeader
+        title={isEdit ? 'Edit Account' : 'Add Account'}
+        subtitle="Ledger account"
+        onBack={() => navigation.goBack()}
+        backLabel="Back"
+      />
 
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={[styles.flex, { backgroundColor: colors.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView

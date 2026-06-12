@@ -196,8 +196,12 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
           submitSignInAsync({ email: email.trim(), password }),
         ).unwrap();
         dispatch(setUser(user));
-      } catch {
-        /* handled by slice */
+      } catch (err) {
+        // Stage 1: route unverified company admins to the verification screen.
+        if ((err as { code?: string })?.code === 'EMAIL_NOT_VERIFIED') {
+          navigation.navigate('EmailVerification', { email: email.trim() });
+        }
+        /* other errors handled by slice */
       }
     }
   };

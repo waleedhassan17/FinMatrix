@@ -1,8 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Bill Form Screen (Create / Edit)
-// Vendor dropdown, Bill Number, Dates, Line items
-// (Account from COA, Description, Amount, Tax).
-// Subtotal / Tax / Total.
+// Premium Enterprise UI
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -16,11 +14,14 @@ import {
   Platform,
   TouchableOpacity,
   TextInput,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import dayjs from 'dayjs';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
@@ -61,6 +62,20 @@ const TAX_OPTIONS = [
   { label: '10 %', value: '10' },
   { label: '17 %', value: '17' },
 ];
+
+// ── Premium palette ───────────────────────────────
+const P = {
+  headerFrom: '#0A1628',
+  headerTo: '#132F4C',
+  accent: '#DE350B',
+  accentLight: '#FFF1F0',
+  cardBg: '#FFFFFF',
+  sectionLabel: '#64748B',
+  totalsBg: '#0F172A',
+  totalsText: '#F1F5F9',
+  totalsGold: '#F59E0B',
+  lineAccent: '#DE350B',
+};
 
 // ═══════════════════════════════════════════════════════
 // COMPONENT
@@ -107,11 +122,6 @@ const BillFormScreen: React.FC = () => {
   }, [bills]);
 
   // ── Load data on mount ──────────────────
-  // Hydrate ONCE per mount: edit mode uses the dedicated
-  // fetchBillForEdit thunk so deep-links work even when the
-  // list slice hasn't been hydrated; new-bill mode generates
-  // sensible defaults. Subsequent list refetches will NOT
-  // overwrite the user's in-progress edits.
   useEffect(() => {
     dispatch(fetchVendors());
 
@@ -121,7 +131,6 @@ const BillFormScreen: React.FC = () => {
     if (isEditing && editingId) {
       dispatch(fetchBillForEdit(editingId));
     } else if (isFromPO && fromPOId) {
-      // Convert-to-Bill flow from PO Detail.
       dispatch(setBillField({ key: 'billNumber', value: generateBillNumber() }));
       dispatch(setBillField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
       dispatch(fetchBillFromPO(fromPOId));
@@ -218,65 +227,74 @@ const BillFormScreen: React.FC = () => {
   const renderLineItem = useCallback(
     (line: BillFormLine, idx: number) => (
       <View key={line.id} style={styles.lineCard}>
-        <View style={styles.lineHeader}>
-          <Text style={styles.lineLabel}>Line {idx + 1}</Text>
-          {form.lines.length > 1 && (
-            <TouchableOpacity
-              style={styles.lineDeleteBtn}
-              onPress={() => dispatch(removeBillLine(line.id))}
-            >
-              <Text style={styles.lineDeleteText}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <CustomDropdown
-          label="Account *"
-          options={accountOptions}
-          value={line.accountId}
-          onChange={v => handleAccountChange(line.id, v)}
-          placeholder="Select expense account…"
-          searchable
-        />
-
-        <TextInput
-          style={styles.descInput}
-          value={line.description}
-          onChangeText={v => dispatch(updateBillLine({ id: line.id, field: 'description', value: v }))}
-          placeholder="Description"
-          placeholderTextColor={colors.textLight}
-        />
-
-        <View style={styles.lineNumRow}>
-          <View style={{ flex: 1, marginRight: spacing.sm }}>
-            <Text style={styles.fieldLabel}>Amount (Rs)</Text>
-            <TextInput
-              style={styles.numericInput}
-              value={line.amount}
-              onChangeText={v =>
-                dispatch(updateBillLine({ id: line.id, field: 'amount', value: v.replace(/[^0-9.]/g, '') }))
-              }
-              placeholder="0"
-              placeholderTextColor={colors.textLight}
-              keyboardType="decimal-pad"
-            />
+        <View style={[styles.lineCardAccent, { backgroundColor: idx % 2 === 0 ? '#DE350B' : '#6554C0' }]} />
+        <View style={styles.lineCardBody}>
+          <View style={styles.lineHeader}>
+            <View style={styles.lineBadge}>
+              <Text style={styles.lineBadgeText}>{idx + 1}</Text>
+            </View>
+            <Text style={styles.lineLabel}>Line Item</Text>
+            {form.lines.length > 1 && (
+              <TouchableOpacity
+                style={styles.lineDeleteBtn}
+                onPress={() => dispatch(removeBillLine(line.id))}
+              >
+                <Feather name="trash-2" size={14} color="#EF4444" />
+              </TouchableOpacity>
+            )}
           </View>
-          <View style={{ flex: 1 }}>
-            <CustomDropdown
-              label="Tax"
-              options={TAX_OPTIONS}
-              value={line.taxRate}
-              onChange={v => dispatch(updateBillLine({ id: line.id, field: 'taxRate', value: v }))}
-            />
+
+          <CustomDropdown
+            label="Account *"
+            options={accountOptions}
+            value={line.accountId}
+            onChange={v => handleAccountChange(line.id, v)}
+            placeholder="Select expense account…"
+            searchable
+          />
+
+          <TextInput
+            style={styles.descInput}
+            value={line.description}
+            onChangeText={v => dispatch(updateBillLine({ id: line.id, field: 'description', value: v }))}
+            placeholder="Description"
+            placeholderTextColor={colors.textLight}
+          />
+
+          <View style={styles.lineNumRow}>
+            <View style={{ flex: 1, marginRight: spacing.sm }}>
+              <Text style={styles.fieldLabel}>Amount (Rs)</Text>
+              <TextInput
+                style={styles.numericInput}
+                value={line.amount}
+                onChangeText={v =>
+                  dispatch(updateBillLine({ id: line.id, field: 'amount', value: v.replace(/[^0-9.]/g, '') }))
+                }
+                placeholder="0"
+                placeholderTextColor={colors.textLight}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <CustomDropdown
+                label="Tax"
+                options={TAX_OPTIONS}
+                value={line.taxRate}
+                onChange={v => dispatch(updateBillLine({ id: line.id, field: 'taxRate', value: v }))}
+              />
+            </View>
+          </View>
+
+          <View style={styles.lineTotalRow}>
+            <Feather name="arrow-right" size={12} color={colors.primary} />
+            <Text style={styles.lineTotal}>
+              {formatCurrency(
+                (parseFloat(line.amount) || 0) * (1 + (parseFloat(line.taxRate) || 0) / 100),
+                'Rs ',
+              )}
+            </Text>
           </View>
         </View>
-
-        <Text style={styles.lineTotal}>
-          Line Total: {formatCurrency(
-            (parseFloat(line.amount) || 0) * (1 + (parseFloat(line.taxRate) || 0) / 100),
-            'Rs ',
-          )}
-        </Text>
       </View>
     ),
     [form.lines.length, accountOptions, dispatch, handleAccountChange],
@@ -286,73 +304,93 @@ const BillFormScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={P.headerFrom} />
+      {/* ── Premium Gradient Header ─────────────────── */}
+      <LinearGradient colors={[P.headerFrom, P.headerTo]} style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Feather name="arrow-left" size={24} color={colors.secondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {isEditing ? `Edit ${form.billNumber}` : 'New Bill'}
-        </Text>
-      </View>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {isEditing ? `Edit ${form.billNumber}` : 'New Bill'}
+          </Text>
+          <Text style={styles.headerSub}>
+            {isEditing ? 'Update bill details' : 'Record a vendor expense'}
+          </Text>
+        </View>
+        <View style={[styles.headerBadge, { backgroundColor: P.accentLight }]}>
+          <Feather name="shopping-cart" size={16} color={P.accent} />
+        </View>
+      </LinearGradient>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F1F5F9' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
           {/* ── Section: Vendor & Dates ──────────────── */}
-          <Text style={styles.sectionTitle}>Bill Details</Text>
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: P.accent }]} />
+            <Text style={styles.sectionTitle}>BILL DETAILS</Text>
+          </View>
           <View style={styles.sectionCard}>
-            <CustomDropdown
-              label="Vendor *"
-              options={vendorOptions}
-              value={form.vendorId}
-              onChange={handleVendorChange}
-              placeholder="Select vendor…"
-              error={form.errors.vendorId}
-              searchable
-            />
-            <CustomInput
-              label="Bill #"
-              value={form.billNumber}
-              onChangeText={v => dispatch(setBillField({ key: 'billNumber', value: v }))}
-              placeholder="BILL-0000"
-              error={form.errors.billNumber}
-              disabled={isEditing}
-            />
-            <View style={styles.rowFields}>
-              <View style={{ flex: 1, marginRight: spacing.sm }}>
-                <CustomInput
-                  label="Issue Date *"
-                  value={form.issueDate}
-                  onChangeText={v => dispatch(setBillField({ key: 'issueDate', value: v }))}
-                  placeholder="YYYY-MM-DD"
-                  error={form.errors.issueDate}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <CustomInput
-                  label="Due Date *"
-                  value={form.dueDate}
-                  onChangeText={v => dispatch(setBillField({ key: 'dueDate', value: v }))}
-                  placeholder="YYYY-MM-DD"
-                  error={form.errors.dueDate}
-                />
+            <View style={[styles.cardAccent, { backgroundColor: P.accent }]} />
+            <View style={styles.cardBody}>
+              <CustomDropdown
+                label="Vendor *"
+                options={vendorOptions}
+                value={form.vendorId}
+                onChange={handleVendorChange}
+                placeholder="Select vendor…"
+                error={form.errors.vendorId}
+                searchable
+              />
+              <CustomInput
+                label="Bill #"
+                value={form.billNumber}
+                onChangeText={v => dispatch(setBillField({ key: 'billNumber', value: v }))}
+                placeholder="BILL-0000"
+                error={form.errors.billNumber}
+                disabled={isEditing}
+              />
+              <View style={styles.rowFields}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <CustomInput
+                    label="Issue Date *"
+                    value={form.issueDate}
+                    onChangeText={v => dispatch(setBillField({ key: 'issueDate', value: v }))}
+                    placeholder="YYYY-MM-DD"
+                    error={form.errors.issueDate}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <CustomInput
+                    label="Due Date *"
+                    value={form.dueDate}
+                    onChangeText={v => dispatch(setBillField({ key: 'dueDate', value: v }))}
+                    placeholder="YYYY-MM-DD"
+                    error={form.errors.dueDate}
+                  />
+                </View>
               </View>
             </View>
           </View>
 
           {/* ── Section: Line Items ──────────────────── */}
           <View style={styles.linesSectionHeader}>
-            <Text style={styles.sectionTitle}>Line Items</Text>
+            <View style={styles.sectionLabelRow}>
+              <View style={[styles.sectionDot, { backgroundColor: '#6554C0' }]} />
+              <Text style={styles.sectionTitle}>LINE ITEMS</Text>
+            </View>
             <TouchableOpacity
               style={styles.addLineBtn}
               onPress={() => dispatch(addBillLine())}
               activeOpacity={0.7}
             >
-              <Text style={styles.addLineBtnText}>+ Add Line</Text>
+              <Feather name="plus" size={14} color="#FFFFFF" />
+              <Text style={styles.addLineBtnText}>Add Line</Text>
             </TouchableOpacity>
           </View>
           {form.errors.lines && (
@@ -362,19 +400,35 @@ const BillFormScreen: React.FC = () => {
           {form.lines.map((line, idx) => renderLineItem(line, idx))}
 
           {/* ── Section: Notes ───────────────────────── */}
-          <Text style={styles.sectionTitle}>Notes</Text>
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: '#8B5CF6' }]} />
+            <Text style={styles.sectionTitle}>NOTES</Text>
+          </View>
           <View style={styles.sectionCard}>
-            <CustomInput
-              label="Notes"
-              value={form.notes}
-              onChangeText={v => dispatch(setBillField({ key: 'notes', value: v }))}
-              placeholder="Additional notes for this bill…"
-              multiline
-            />
+            <View style={[styles.cardAccent, { backgroundColor: '#8B5CF6' }]} />
+            <View style={styles.cardBody}>
+              <CustomInput
+                label="Notes"
+                value={form.notes}
+                onChangeText={v => dispatch(setBillField({ key: 'notes', value: v }))}
+                placeholder="Additional notes for this bill…"
+                multiline
+              />
+            </View>
           </View>
 
-          {/* ── Totals Panel ─────────────────────────── */}
-          <View style={styles.totalsCard}>
+          {/* ── Premium Totals Panel ─────────────────── */}
+          <LinearGradient
+            colors={['#0F172A', '#1E293B']}
+            style={styles.totalsCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.totalsHeader}>
+              <Feather name="credit-card" size={16} color={P.totalsGold} />
+              <Text style={styles.totalsHeaderText}>Bill Summary</Text>
+            </View>
+            <View style={styles.totalsDivider} />
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Subtotal</Text>
               <Text style={styles.totalsValue}>{formatCurrency(form.subtotal, 'Rs ')}</Text>
@@ -383,35 +437,45 @@ const BillFormScreen: React.FC = () => {
               <Text style={styles.totalsLabel}>Tax</Text>
               <Text style={styles.totalsValue}>{formatCurrency(form.taxAmount, 'Rs ')}</Text>
             </View>
-            <View style={[styles.totalsRow, styles.grandTotalRow]}>
+            <View style={styles.totalsDivider} />
+            <View style={styles.totalsRow}>
               <Text style={styles.grandTotalLabel}>Grand Total</Text>
               <Text style={styles.grandTotalValue}>{formatCurrency(form.total, 'Rs ')}</Text>
             </View>
-          </View>
+          </LinearGradient>
 
-          {/* ── Actions (inline, matches Estimates/SO pattern) ─ */}
+          {/* ── Action Buttons ───────────────────────── */}
           <View style={styles.btnRow}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <CustomButton
-                title="Save Draft"
+              <TouchableOpacity
+                style={styles.secondaryBtn}
                 onPress={() => handleSave('draft')}
-                variant="secondary"
-                size="sm"
-                fullWidth
-                isLoading={form.isSaving}
+                activeOpacity={0.7}
                 disabled={form.isSaving}
-              />
+              >
+                <Feather name="save" size={16} color={P.accent} />
+                <Text style={[styles.secondaryBtnText, { color: P.accent }]}>Save Draft</Text>
+              </TouchableOpacity>
             </View>
-            <View style={{ flex: 1 }}>
-              <CustomButton
-                title={isEditing ? 'Update & Open' : 'Save & Open'}
+            <View style={{ flex: 1.4 }}>
+              <TouchableOpacity
+                style={styles.primaryBtn}
                 onPress={() => handleSave('open')}
-                variant="primary"
-                size="sm"
-                fullWidth
-                isLoading={form.isSaving}
+                activeOpacity={0.7}
                 disabled={form.isSaving}
-              />
+              >
+                <LinearGradient
+                  colors={['#DE350B', '#BF2600']}
+                  style={styles.primaryBtnGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Feather name="check-circle" size={16} color="#FFFFFF" />
+                  <Text style={styles.primaryBtnText}>
+                    {form.isSaving ? 'Saving…' : isEditing ? 'Update & Open' : 'Save & Open'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
@@ -424,157 +488,114 @@ const BillFormScreen: React.FC = () => {
 // STYLES
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  safeTop: { backgroundColor: P.headerFrom },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg },
+  headerCenter: { flex: 1, marginLeft: spacing.sm },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
+  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  headerBadge: {
+    width: 38, height: 38, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
 
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.sm,
-    marginTop: spacing.md,
-  },
+  scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl },
+
+  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.sm, gap: spacing.xs + 2 },
+  sectionDot: { width: 8, height: 8, borderRadius: 4 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#64748B', fontFamily: THEME.typography.fontFamily, letterSpacing: 1 },
+
   sectionCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.xs,
+    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: borderRadius.md,
+    overflow: 'hidden', ...shadows.small, borderWidth: 1, borderColor: '#E2E8F0',
   },
+  cardAccent: { width: 4 },
+  cardBody: { flex: 1, padding: spacing.md },
   rowFields: { flexDirection: 'row' },
 
   linesSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: spacing.lg, marginBottom: spacing.sm,
   },
   addLineBtn: {
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.xs + 2,
-    backgroundColor: colors.secondary + '18',
-    borderRadius: 20,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: spacing.sm + 6, paddingVertical: spacing.xs + 4,
+    backgroundColor: '#6554C0', borderRadius: 20,
   },
-  addLineBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.secondary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  lineError: {
-    fontSize: 12,
-    color: colors.danger,
-    marginBottom: spacing.sm,
-    fontFamily: THEME.typography.fontFamily,
-  },
+  addLineBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
+  lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
 
   // ── Line Item Card ──────────────────────────────
   lineCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.card,
+    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: borderRadius.md,
+    overflow: 'hidden', marginBottom: spacing.sm, ...shadows.small,
+    borderWidth: 1, borderColor: '#E2E8F0',
   },
-  lineHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
+  lineCardAccent: { width: 4 },
+  lineCardBody: { flex: 1, padding: spacing.md },
+  lineHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.xs },
+  lineBadge: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center',
   },
-  lineLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  lineBadgeText: { fontSize: 11, fontWeight: '800', color: '#64748B', fontFamily: THEME.typography.fontFamily },
+  lineLabel: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   lineDeleteBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.danger + '18',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center',
   },
-  lineDeleteText: { fontSize: 13, fontWeight: '800', color: colors.danger },
 
   descInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.sm,
-    fontSize: 14,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.sm,
+    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm,
+    fontSize: 14, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.sm, backgroundColor: '#F8FAFC',
   },
   lineNumRow: { flexDirection: 'row', marginBottom: spacing.xs },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.xs,
-  },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
   numericInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.sm,
-    fontSize: 14,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
+    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm,
+    fontSize: 14, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
+    backgroundColor: '#F8FAFC',
   },
-  lineTotal: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primary,
-    fontFamily: THEME.typography.fontFamily,
-    textAlign: 'right',
-    marginTop: spacing.xs,
-  },
+  lineTotalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: spacing.xs },
+  lineTotal: { fontSize: 14, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
 
   // ── Totals ─────────────────────────────────────
-  totalsCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    ...shadows.card,
-  },
-  totalsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.xs + 2,
-  },
-  totalsLabel: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  totalsValue: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  grandTotalRow: {
-    borderTopWidth: 1.5,
-    borderTopColor: colors.primary,
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-  },
-  grandTotalLabel: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  grandTotalValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  totalsCard: { borderRadius: borderRadius.md + 4, padding: spacing.md + 4, marginTop: spacing.lg, ...shadows.large },
+  totalsHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2, marginBottom: spacing.sm },
+  totalsHeaderText: { fontSize: 13, fontWeight: '700', color: '#F59E0B', fontFamily: THEME.typography.fontFamily, letterSpacing: 0.5 },
+  totalsDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: spacing.xs + 2 },
+  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs + 2 },
+  totalsLabel: { fontSize: 14, color: 'rgba(241,245,249,0.6)', fontFamily: THEME.typography.fontFamily },
+  totalsValue: { fontSize: 14, fontWeight: '600', color: '#F1F5F9', fontFamily: THEME.typography.fontFamily },
+  grandTotalLabel: { fontSize: 16, fontWeight: '700', color: '#F59E0B', fontFamily: THEME.typography.fontFamily },
+  grandTotalValue: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 
-  btnRow: {
-    flexDirection: 'row',
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
+  btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.md },
+  secondaryBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
+    paddingVertical: 14, borderRadius: borderRadius.md,
+    borderWidth: 1.5, borderColor: '#DE350B', backgroundColor: '#FFF1F0',
   },
+  secondaryBtnText: { fontSize: 15, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  primaryBtn: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.card },
+  primaryBtnGradient: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: spacing.xs, paddingVertical: 14,
+  },
+  primaryBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 });
 
 export default BillFormScreen;

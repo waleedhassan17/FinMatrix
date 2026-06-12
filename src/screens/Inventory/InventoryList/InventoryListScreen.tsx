@@ -13,14 +13,17 @@ import {
   RefreshControl,
   Dimensions,
   Modal,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchInventoryItems,
@@ -287,44 +290,43 @@ const InventoryListScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Inventory</Text>
-        <View style={styles.headerRight}>
-          {/* View toggle */}
-          <View style={styles.viewToggle}>
-            <TouchableOpacity
-              style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
-              onPress={() => dispatch(setViewMode('list'))}
-            >
-              <Text style={[styles.viewToggleText, viewMode === 'list' && styles.viewToggleTextActive]}>
-                ☰
-              </Text>
+      <ReportHeader
+        title="Inventory"
+        subtitle="Stock & items"
+        right={
+          <>
+            <View style={styles.viewToggle}>
+              <TouchableOpacity
+                style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
+                onPress={() => dispatch(setViewMode('list'))}
+              >
+                <Feather name="list" size={16} color={viewMode === 'list' ? '#FFFFFF' : 'rgba(255,255,255,0.7)'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.viewToggleBtn, viewMode === 'grid' && styles.viewToggleBtnActive]}
+                onPress={() => dispatch(setViewMode('grid'))}
+              >
+                <Feather name="grid" size={15} color={viewMode === 'grid' ? '#FFFFFF' : 'rgba(255,255,255,0.7)'} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.addBtn} activeOpacity={0.8} onPress={() => navigation.navigate('InventoryForm')}>
+              <Feather name="plus" size={15} color="#FFFFFF" />
+              <Text style={styles.addBtnText}>Add</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.viewToggleBtn, viewMode === 'grid' && styles.viewToggleBtnActive]}
-              onPress={() => dispatch(setViewMode('grid'))}
-            >
-              <Text style={[styles.viewToggleText, viewMode === 'grid' && styles.viewToggleTextActive]}>
-                ⊞
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            style={styles.addBtn}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('InventoryForm')}
-          >
-            <Text style={styles.addBtnText}>+ Add Item</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+          </>
+        }
+      />
+
+      {/* ── Body content ── */}
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
 
       {/* ── Search Bar ── */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Feather name="search" size={16} color={THEME.colors.textTertiary} style={{ marginRight: 8 }} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search by name, SKU, or barcode..."
@@ -335,8 +337,8 @@ const InventoryListScreen: React.FC = () => {
             returnKeyType="search"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => dispatch(setSearchQuery(''))}>
-              <Text style={styles.clearBtn}>✕</Text>
+            <TouchableOpacity onPress={() => dispatch(setSearchQuery(''))} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Feather name="x-circle" size={16} color={THEME.colors.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
@@ -498,6 +500,7 @@ const InventoryListScreen: React.FC = () => {
           }
         />
       )}
+      </View>
     </SafeAreaView>
   );
 };
@@ -524,39 +527,36 @@ const styles = StyleSheet.create({
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   addBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: THEME.radius.md,
   },
   addBtnText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
-    color: colors.white,
+    ...THEME.typography.labelMd,
+    color: '#FFFFFF',
   },
 
   // ── View Toggle ───────────────────────────────────
   viewToggle: {
     flexDirection: 'row',
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: THEME.radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
     overflow: 'hidden',
   },
   viewToggleBtn: {
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 2,
-    backgroundColor: colors.white,
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   viewToggleBtnActive: {
-    backgroundColor: colors.primary,
-  },
-  viewToggleText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  viewToggleTextActive: {
-    color: colors.white,
+    backgroundColor: THEME.colors.primary,
   },
 
   // ── Search ────────────────────────────────────────
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
   },
   listSku: {
     ...THEME.typography.caption,
-    fontFamily: 'monospace',
+    fontFamily: THEME.typography.fontFamily,
     marginTop: 1,
   },
   listMeta: {
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
   gridSku: {
     fontSize: 11,
     color: colors.textLight,
-    fontFamily: 'monospace',
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.xs,
   },
   gridBottom: {

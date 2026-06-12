@@ -1,8 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Receive Payment Screen
-// Customer dropdown · Date · Method · Reference · Amount
-// "Pay in Full" · Outstanding-invoices table with checkboxes
-// Auto-distribute oldest first · Overpayment-as-credit toggle
+// Premium Enterprise UI
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -15,11 +13,14 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
@@ -42,7 +43,6 @@ import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/cu
 import { fetchInvoices } from '../../Invoices/InvoiceList/invoiceListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
-import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -57,8 +57,14 @@ const METHOD_OPTIONS = [
   { label: 'Online (EasyPaisa / JazzCash)', value: 'online' },
 ];
 
-// ═══════════════════════════════════════════════════════
-// COMPONENT
+const P = {
+  headerFrom: '#0A1628',
+  headerTo: '#132F4C',
+  accent: '#059669',
+  accentLight: '#ECFDF5',
+  totalsGold: '#F59E0B',
+};
+
 // ═══════════════════════════════════════════════════════
 const ReceivePaymentScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -71,7 +77,6 @@ const ReceivePaymentScreen: React.FC = () => {
   const form = useAppSelector(selectReceivePaymentState);
   const customers = useAppSelector(selectCustomers);
 
-  // ── Customer options ────────────────────────────
   const customerOptions = useMemo(
     () =>
       customers
@@ -80,31 +85,21 @@ const ReceivePaymentScreen: React.FC = () => {
     [customers],
   );
 
-  // ── Generate payment number ─────────────────────
   const generatePaymentNumber = useCallback(
     () => `PAY-${String(Date.now()).slice(-6)}`,
     [],
   );
 
-  // ── Load data on mount ──────────────────────────
   useEffect(() => {
     if (customers.length === 0) dispatch(fetchCustomers());
     dispatch(fetchAllInvoicesForPayment());
-
     dispatch(setPaymentField({ key: 'reference', value: generatePaymentNumber() }));
-
     return () => { dispatch(resetReceivePayment()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
-  // ── Pre-select customer & invoice after invoices load ──
   useEffect(() => {
-    if (
-      preCustomerId &&
-      !form.customerId &&
-      form.allInvoices.length > 0 &&
-      customers.length > 0
-    ) {
+    if (preCustomerId && !form.customerId && form.allInvoices.length > 0 && customers.length > 0) {
       const cust = customers.find(c => c.id === preCustomerId);
       if (cust) dispatch(setPaymentCustomer({ id: cust.id, name: cust.name }));
     }
@@ -116,7 +111,6 @@ const ReceivePaymentScreen: React.FC = () => {
     }
   }, [preInvoiceId, form.outstandingRows.length, dispatch]);
 
-  // ── Customer change ─────────────────────────────
   const handleCustomerChange = useCallback(
     (custId: string) => {
       const cust = customers.find(c => c.id === custId);
@@ -126,17 +120,14 @@ const ReceivePaymentScreen: React.FC = () => {
     [customers, dispatch],
   );
 
-  // ── Amount change → auto re-distribute ──────────
   const handleAmountChange = useCallback(
     (v: string) => {
       dispatch(setPaymentField({ key: 'amount', value: v.replace(/[^0-9.]/g, '') }));
-      // Run distribute on the next microtask so the new amount is in state.
       setTimeout(() => dispatch(distributeAmount()), 0);
     },
     [dispatch],
   );
 
-  // ── Total allocated & overpayment ───────────────
   const totalAllocated = useMemo(
     () => form.outstandingRows.reduce((s, r) => s + r.allocated, 0),
     [form.outstandingRows],
@@ -153,24 +144,20 @@ const ReceivePaymentScreen: React.FC = () => {
     [form.outstandingRows],
   );
 
-  // ── Validation ──────────────────────────────────
   const validate = useCallback((): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!form.customerId) errs.customerId = 'Select a customer';
     if (!form.paymentDate) errs.paymentDate = 'Payment date is required';
     if (!form.amount || paymentAmount <= 0) errs.amount = 'Enter a positive amount';
     if (totalAllocated <= 0 && !(overpayment > 0 && form.saveOverpaymentAsCredit)) {
-      errs.allocations =
-        'Allocate the payment to at least one invoice, or enable "Save as customer credit" to record the full amount as a credit.';
+      errs.allocations = 'Allocate the payment to at least one invoice, or enable "Save as customer credit".';
     }
     if (overpayment > 0 && !form.saveOverpaymentAsCredit) {
-      errs.allocations =
-        'The amount exceeds what you allocated. Either reduce the amount, allocate more, or enable "Save as customer credit".';
+      errs.allocations = 'The amount exceeds allocation. Reduce or enable "Save as customer credit".';
     }
     return errs;
   }, [form, paymentAmount, totalAllocated, overpayment]);
 
-  // ── Save ────────────────────────────────────────
   const handleSave = useCallback(async () => {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -182,145 +169,139 @@ const ReceivePaymentScreen: React.FC = () => {
     try {
       const result: any = await dispatch(savePayment());
       if (result.error) throw new Error(result.error.message);
-
-      // Refresh invoice cache so updated balances/statuses show everywhere.
       dispatch(fetchInvoices());
 
       const message =
         overpayment > 0 && form.saveOverpaymentAsCredit
-          ? `${formatCurrency(paymentAmount, 'Rs ')} recorded — ${formatCurrency(overpayment, 'Rs ')} kept as credit for ${form.customerName}.`
+          ? `${formatCurrency(paymentAmount, 'Rs ')} recorded — ${formatCurrency(overpayment, 'Rs ')} kept as credit.`
           : `${formatCurrency(paymentAmount, 'Rs ')} from ${form.customerName} has been recorded.`;
 
       Alert.alert('Payment Recorded', message, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to record payment. Please try again.');
+      Alert.alert('Error', err?.message || 'Failed to record payment.');
     }
   }, [dispatch, navigation, validate, paymentAmount, overpayment, form.saveOverpaymentAsCredit, form.customerName]);
 
   // ═════════════════════════════════════════════════════
-  // RENDER
-  // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header — icon back button matches Estimate / SO / Invoice detail screens */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerTitleWrap}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-              <Text style={styles.backIcon}>‹</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Receive Payment</Text>
-          </View>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={P.headerFrom} />
+      <LinearGradient colors={[P.headerFrom, P.headerTo]} style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={24} color={colors.secondary} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Receive Payment</Text>
+          <Text style={styles.headerSub}>Record an incoming payment</Text>
         </View>
-      </View>
+        <View style={[styles.headerBadge, { backgroundColor: P.accentLight }]}>
+          <Feather name="dollar-sign" size={16} color={P.accent} />
+        </View>
+      </LinearGradient>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F1F5F9' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* ── Section: Customer & Payment Info ──── */}
-          <Text style={styles.sectionTitle}>Payment Details</Text>
+          {/* ── Payment Details ─────────────────────── */}
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: P.accent }]} />
+            <Text style={styles.sectionTitle}>PAYMENT DETAILS</Text>
+          </View>
           <View style={styles.sectionCard}>
-            <CustomDropdown
-              label="Customer *"
-              options={customerOptions}
-              value={form.customerId}
-              onChange={handleCustomerChange}
-              placeholder="Select customer…"
-              error={form.errors.customerId}
-              searchable
-            />
-            <View style={styles.rowFields}>
-              <View style={{ flex: 1, marginRight: spacing.sm }}>
-                <CustomInput
-                  label="Payment Date *"
-                  value={form.paymentDate}
-                  onChangeText={v => dispatch(setPaymentField({ key: 'paymentDate', value: v }))}
-                  placeholder="YYYY-MM-DD"
-                  error={form.errors.paymentDate}
-                />
+            <View style={[styles.cardAccent, { backgroundColor: P.accent }]} />
+            <View style={styles.cardBody}>
+              <CustomDropdown
+                label="Customer *"
+                options={customerOptions}
+                value={form.customerId}
+                onChange={handleCustomerChange}
+                placeholder="Select customer…"
+                error={form.errors.customerId}
+                searchable
+              />
+              <View style={styles.rowFields}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <CustomInput
+                    label="Payment Date *"
+                    value={form.paymentDate}
+                    onChangeText={v => dispatch(setPaymentField({ key: 'paymentDate', value: v }))}
+                    placeholder="YYYY-MM-DD"
+                    error={form.errors.paymentDate}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <CustomDropdown
+                    label="Method"
+                    options={METHOD_OPTIONS}
+                    value={form.method}
+                    onChange={v => dispatch(setPaymentField({ key: 'method', value: v as PaymentMethod }))}
+                  />
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <CustomDropdown
-                  label="Method"
-                  options={METHOD_OPTIONS}
-                  value={form.method}
-                  onChange={v =>
-                    dispatch(setPaymentField({ key: 'method', value: v as PaymentMethod }))
-                  }
-                />
-              </View>
+              <CustomInput
+                label="Reference / Cheque #"
+                value={form.reference}
+                onChangeText={v => dispatch(setPaymentField({ key: 'reference', value: v }))}
+                placeholder="e.g. CHQ-12345"
+              />
+              <CustomInput
+                label="Amount (Rs) *"
+                value={form.amount}
+                onChangeText={handleAmountChange}
+                placeholder="0"
+                keyboardType="decimal-pad"
+                error={form.errors.amount}
+              />
+              {hasOutstanding && (
+                <TouchableOpacity onPress={() => dispatch(payInFull())} activeOpacity={0.7} style={styles.payFullChip}>
+                  <Feather name="zap" size={14} color={P.accent} />
+                  <Text style={styles.payFullChipText}>
+                    Pay in Full ({formatCurrency(totalOutstanding, 'Rs ')})
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
-            <CustomInput
-              label="Reference / Cheque #"
-              value={form.reference}
-              onChangeText={v => dispatch(setPaymentField({ key: 'reference', value: v }))}
-              placeholder="e.g. CHQ-12345"
-            />
-
-            <CustomInput
-              label="Amount (Rs) *"
-              value={form.amount}
-              onChangeText={handleAmountChange}
-              placeholder="0"
-              keyboardType="decimal-pad"
-              error={form.errors.amount}
-            />
-
-            {/* Pay-in-full helper — full-width chip under amount */}
-            {hasOutstanding && (
-              <TouchableOpacity
-                onPress={() => dispatch(payInFull())}
-                activeOpacity={0.7}
-                style={styles.payFullChip}
-              >
-                <Text style={styles.payFullChipText}>
-                  ⚡ Pay in Full ({formatCurrency(totalOutstanding, 'Rs ')})
-                </Text>
-              </TouchableOpacity>
-            )}
           </View>
 
-          {/* ── Section: Outstanding Invoices ─────── */}
-          <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>Outstanding Invoices</Text>
+          {/* ── Outstanding Invoices ─────────────────── */}
+          <View style={styles.sectionLabelRow2}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2 }}>
+              <View style={[styles.sectionDot, { backgroundColor: '#6366F1' }]} />
+              <Text style={styles.sectionTitle}>OUTSTANDING INVOICES</Text>
+            </View>
             {hasOutstanding && (
-              <Text style={styles.sectionTitleHint}>
-                {form.outstandingRows.filter(r => r.checked).length} of {form.outstandingRows.length} selected
+              <Text style={styles.sectionHint}>
+                {form.outstandingRows.filter(r => r.checked).length}/{form.outstandingRows.length}
               </Text>
             )}
           </View>
 
           {!form.customerId ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyIcon}>👤</Text>
+              <View style={styles.emptyIconBg}>
+                <Feather name="user" size={20} color="#6366F1" />
+              </View>
               <Text style={styles.emptyTitle}>Select a customer</Text>
-              <Text style={styles.emptyText}>
-                Pick a customer above to see their outstanding invoices.
-              </Text>
+              <Text style={styles.emptyText}>Pick a customer above to see their outstanding invoices.</Text>
             </View>
           ) : !hasOutstanding ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyIcon}>✅</Text>
+              <View style={[styles.emptyIconBg, { backgroundColor: '#ECFDF5' }]}>
+                <Feather name="check-circle" size={20} color={P.accent} />
+              </View>
               <Text style={styles.emptyTitle}>All caught up</Text>
-              <Text style={styles.emptyText}>
-                {form.customerName} has no outstanding invoices. Any amount you enter will be saved as a credit.
-              </Text>
+              <Text style={styles.emptyText}>{form.customerName} has no outstanding invoices.</Text>
             </View>
           ) : (
             <View style={styles.tableWrap}>
               {form.errors.allocations && (
                 <Text style={styles.allocError}>{form.errors.allocations}</Text>
               )}
-
-              {/* Table header */}
               <View style={styles.tableHeader}>
                 <View style={{ width: 32 }} />
                 <Text style={[styles.thText, { flex: 1.2 }]}>Invoice</Text>
@@ -328,39 +309,23 @@ const ReceivePaymentScreen: React.FC = () => {
                 <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Balance</Text>
                 <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Applied</Text>
               </View>
-
               {form.outstandingRows.map((row, idx) => (
                 <TouchableOpacity
                   key={row.invoiceId}
-                  style={[
-                    styles.tableRow,
-                    idx % 2 === 0 && styles.tableRowEven,
-                    row.checked && styles.tableRowChecked,
-                  ]}
+                  style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven, row.checked && styles.tableRowChecked]}
                   activeOpacity={0.6}
                   onPress={() => dispatch(toggleInvoiceCheck(row.invoiceId))}
                 >
                   <View style={styles.checkboxWrap}>
                     <View style={[styles.checkbox, row.checked && styles.checkboxChecked]}>
-                      {row.checked && <Text style={styles.checkmark}>✓</Text>}
+                      {row.checked && <Feather name="check" size={13} color="#FFFFFF" />}
                     </View>
                   </View>
-                  <Text style={[styles.tdText, { flex: 1.2, fontWeight: '600' }]}>
-                    {row.invoiceNumber}
-                  </Text>
-                  <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>
-                    {formatDate(row.dueDate)}
-                  </Text>
-                  <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>
-                    {formatCurrency(row.balance, 'Rs ')}
-                  </Text>
+                  <Text style={[styles.tdText, { flex: 1.2, fontWeight: '600' }]}>{row.invoiceNumber}</Text>
+                  <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatDate(row.dueDate)}</Text>
+                  <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatCurrency(row.balance, 'Rs ')}</Text>
                   <Text
-                    style={[
-                      styles.tdText,
-                      styles.tdRight,
-                      { flex: 1, fontWeight: '700' },
-                      row.allocated > 0 && { color: colors.success },
-                    ]}
+                    style={[styles.tdText, styles.tdRight, { flex: 1, fontWeight: '700' }, row.allocated > 0 && { color: colors.success }]}
                   >
                     {row.allocated > 0 ? formatCurrency(row.allocated, 'Rs ') : '—'}
                   </Text>
@@ -369,92 +334,80 @@ const ReceivePaymentScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ── Summary Panel ────────────────────── */}
+          {/* ── Summary Panel ────────────────────────── */}
           {paymentAmount > 0 && (
-            <View style={styles.summaryCard}>
-              <SummaryRow
-                label="Payment Amount"
-                value={formatCurrency(paymentAmount, 'Rs ')}
-              />
-              <SummaryRow
-                label="Applied to Invoices"
-                value={formatCurrency(totalAllocated, 'Rs ')}
-                valueColor={totalAllocated > 0 ? colors.success : undefined}
-              />
+            <LinearGradient
+              colors={['#0F172A', '#1E293B']}
+              style={styles.summaryCard}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.summaryHeader}>
+                <Feather name="credit-card" size={16} color="#F59E0B" />
+                <Text style={styles.summaryHeaderText}>Payment Summary</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <SummaryRow label="Payment Amount" value={formatCurrency(paymentAmount, 'Rs ')} />
+              <SummaryRow label="Applied to Invoices" value={formatCurrency(totalAllocated, 'Rs ')} valueColor={totalAllocated > 0 ? '#34D399' : undefined} />
               {overpayment > 0 && (
                 <>
-                  <SummaryRow
-                    label="Unapplied Amount"
-                    value={formatCurrency(overpayment, 'Rs ')}
-                    valueColor={form.saveOverpaymentAsCredit ? colors.warning : colors.danger}
-                  />
+                  <SummaryRow label="Unapplied Amount" value={formatCurrency(overpayment, 'Rs ')} valueColor={form.saveOverpaymentAsCredit ? '#FBBF24' : '#F87171'} />
                   <View style={styles.creditToggleRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.creditToggleLabel}>
-                        Save as Customer Credit
-                      </Text>
+                      <Text style={styles.creditToggleLabel}>Save as Customer Credit</Text>
                       <Text style={styles.creditToggleHint}>
-                        Keep the unapplied {formatCurrency(overpayment, 'Rs ')} on file for {form.customerName}'s next purchase.
+                        Keep {formatCurrency(overpayment, 'Rs ')} on file for next purchase.
                       </Text>
                     </View>
                     <TouchableOpacity
                       onPress={() => dispatch(toggleSaveOverpaymentAsCredit())}
                       activeOpacity={0.8}
-                      style={[
-                        styles.toggleSwitch,
-                        form.saveOverpaymentAsCredit && styles.toggleSwitchOn,
-                      ]}
+                      style={[styles.toggleSwitch, form.saveOverpaymentAsCredit && styles.toggleSwitchOn]}
                     >
-                      <View
-                        style={[
-                          styles.toggleKnob,
-                          form.saveOverpaymentAsCredit && styles.toggleKnobOn,
-                        ]}
-                      />
+                      <View style={[styles.toggleKnob, form.saveOverpaymentAsCredit && styles.toggleKnobOn]} />
                     </TouchableOpacity>
                   </View>
                 </>
               )}
-            </View>
+            </LinearGradient>
           )}
 
-          {/* ── Notes ────────────────────────────── */}
-          <Text style={styles.sectionTitle}>Notes</Text>
+          {/* ── Notes ────────────────────────────────── */}
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: '#8B5CF6' }]} />
+            <Text style={styles.sectionTitle}>NOTES</Text>
+          </View>
           <View style={styles.sectionCard}>
-            <CustomInput
-              label="Payment Notes"
-              value={form.notes}
-              onChangeText={v => dispatch(setPaymentField({ key: 'notes', value: v }))}
-              placeholder="Optional notes…"
-              multiline
-            />
+            <View style={[styles.cardAccent, { backgroundColor: '#8B5CF6' }]} />
+            <View style={styles.cardBody}>
+              <CustomInput
+                label="Payment Notes"
+                value={form.notes}
+                onChangeText={v => dispatch(setPaymentField({ key: 'notes', value: v }))}
+                placeholder="Optional notes…"
+                multiline
+              />
+            </View>
           </View>
 
-          <View style={{ height: spacing.xl * 2 }} />
+          <View style={{ height: spacing.xl }} />
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* ── Sticky Action Bar ─────────────────── */}
+      {/* ── Sticky Action Bar ─────────────────────── */}
       <View style={styles.actionBar}>
-        <View style={styles.actionSecondary}>
-          <CustomButton
-            title="Cancel"
-            onPress={() => navigation.goBack()}
-            variant="secondary"
-            size="md"
-            fullWidth
-          />
+        <View style={{ flex: 1, marginRight: spacing.sm }}>
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.actionPrimary}>
-          <CustomButton
-            title={form.isSaving ? 'Recording…' : 'Record Payment'}
-            onPress={handleSave}
-            variant="primary"
-            size="md"
-            fullWidth
-            isLoading={form.isSaving}
-            disabled={form.isSaving}
-          />
+        <View style={{ flex: 1.4 }}>
+          <TouchableOpacity style={styles.recordBtn} onPress={handleSave} activeOpacity={0.7} disabled={form.isSaving}>
+            <LinearGradient colors={['#059669', '#047857']} style={styles.recordBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Feather name="check-circle" size={16} color="#FFFFFF" />
+              <Text style={styles.recordBtnText}>{form.isSaving ? 'Recording…' : 'Record Payment'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -462,253 +415,120 @@ const ReceivePaymentScreen: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════════════════
-// SUMMARY ROW HELPER
-// ═══════════════════════════════════════════════════════
-const SummaryRow: React.FC<{
-  label: string;
-  value: string;
-  valueColor?: string;
-}> = ({ label, value, valueColor }) => (
+const SummaryRow: React.FC<{ label: string; value: string; valueColor?: string }> = ({ label, value, valueColor }) => (
   <View style={styles.summaryRow}>
     <Text style={styles.summaryLabel}>{label}</Text>
-    <Text style={[styles.summaryValue, valueColor ? { color: valueColor } : undefined]}>
-      {value}
-    </Text>
+    <Text style={[styles.summaryValue, valueColor ? { color: valueColor } : undefined]}>{value}</Text>
   </View>
 );
 
 // ═══════════════════════════════════════════════════════
-// STYLES
-// ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  safeTop: { backgroundColor: P.headerFrom },
 
-  // ── Header (icon back button, matches detail screens) ──
   header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm, paddingBottom: spacing.lg,
+    borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitleWrap: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: {
-    fontSize: 20, fontWeight: '700',
-    color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
-  },
+  headerCenter: { flex: 1, marginLeft: spacing.sm },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
+  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  headerBadge: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
 
-  // ── Sections ───────────────────────────────────
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  sectionTitle: {
-    ...THEME.typography.bodyMd,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  sectionTitleHint: {
-    ...THEME.typography.caption,
-    color: colors.textLight,
-    marginTop: spacing.md,
-  },
+  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.sm, gap: spacing.xs + 2 },
+  sectionLabelRow2: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg, marginBottom: spacing.sm },
+  sectionDot: { width: 8, height: 8, borderRadius: 4 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#64748B', fontFamily: THEME.typography.fontFamily, letterSpacing: 1 },
+  sectionHint: { fontSize: 12, fontWeight: '600', color: '#94A3B8', fontFamily: THEME.typography.fontFamily },
+
   sectionCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    ...shadows.small,
-    borderWidth: 1,
-    borderColor: colors.border,
+    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: borderRadius.md,
+    overflow: 'hidden', ...shadows.small, borderWidth: 1, borderColor: '#E2E8F0',
   },
+  cardAccent: { width: 4 },
+  cardBody: { flex: 1, padding: spacing.md },
   rowFields: { flexDirection: 'row' },
 
-  // ── Pay-in-full chip ───────────────────────────
   payFullChip: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.secondary + '12',
-    borderWidth: 1,
-    borderColor: colors.secondary + '40',
-    borderRadius: 18,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 1,
-    marginTop: spacing.xs,
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6,
+    backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0',
+    borderRadius: 20, paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.xs + 2, marginTop: spacing.xs,
   },
-  payFullChipText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '700',
-    color: colors.secondary,
-  },
+  payFullChipText: { fontSize: 13, fontWeight: '700', color: '#059669', fontFamily: THEME.typography.fontFamily },
 
-  // ── Empty state ────────────────────────────────
   emptyCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
+    backgroundColor: '#FFFFFF', borderRadius: borderRadius.md, paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed',
   },
-  emptyIcon: { fontSize: 32, marginBottom: spacing.xs },
-  emptyTitle: { ...THEME.typography.h4, color: colors.textPrimary, marginBottom: 2 },
-  emptyText: {
-    ...THEME.typography.bodySm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
+  emptyIconBg: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF2FF',
+    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs,
   },
-  allocError: {
-    ...THEME.typography.caption,
-    color: colors.danger,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.danger + '0C',
-    borderRadius: borderRadius.sm,
-    marginBottom: spacing.xs,
-  },
+  emptyTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
+  emptyText: { fontSize: 12, color: colors.textSecondary, textAlign: 'center', fontFamily: THEME.typography.fontFamily, lineHeight: 18 },
+  allocError: { fontSize: 12, color: '#EF4444', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: '#FEF2F2', borderRadius: borderRadius.sm, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
 
-  // ── Table ──────────────────────────────────────
-  tableWrap: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  tableWrap: { backgroundColor: '#FFFFFF', borderRadius: borderRadius.md, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0', ...shadows.small },
   tableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.background,
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.primary,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.sm, backgroundColor: '#F8FAFC', borderBottomWidth: 2, borderBottomColor: '#059669',
   },
-  thText: {
-    ...THEME.typography.labelSm,
-    fontWeight: '700',
-    color: colors.primary,
-    textTransform: 'uppercase',
-  },
+  thText: { fontSize: 10, fontWeight: '700', color: '#059669', textTransform: 'uppercase', fontFamily: THEME.typography.fontFamily, letterSpacing: 0.5 },
   thRight: { textAlign: 'right' },
-
   tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm, backgroundColor: '#FFFFFF',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F1F5F9',
   },
-  tableRowEven: { backgroundColor: '#FCFCFD' },
-  tableRowChecked: { backgroundColor: colors.success + '0C' },
-  tdText: { ...THEME.typography.caption, color: colors.textPrimary },
+  tableRowEven: { backgroundColor: '#FAFBFC' },
+  tableRowChecked: { backgroundColor: '#F0FDF4' },
+  tdText: { fontSize: 12, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   tdRight: { textAlign: 'right' },
 
-  // ── Checkbox ───────────────────────────────────
   checkboxWrap: { width: 32, alignItems: 'center' },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.white,
+    width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#CBD5E1',
+    justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF',
   },
-  checkboxChecked: { backgroundColor: colors.success, borderColor: colors.success },
-  checkmark: { color: colors.white, fontSize: 13, fontWeight: '800', marginTop: -1 },
+  checkboxChecked: { backgroundColor: '#059669', borderColor: '#059669' },
 
-  // ── Summary ────────────────────────────────────
-  summaryCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    ...shadows.small,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  summaryLabel: { ...THEME.typography.bodySm, color: colors.textSecondary },
-  summaryValue: {
-    ...THEME.typography.bodyMd,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
+  summaryCard: { borderRadius: borderRadius.md + 4, padding: spacing.md + 4, marginTop: spacing.lg, ...shadows.large },
+  summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2, marginBottom: spacing.sm },
+  summaryHeaderText: { fontSize: 13, fontWeight: '700', color: '#F59E0B', fontFamily: THEME.typography.fontFamily, letterSpacing: 0.5 },
+  summaryDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: spacing.xs + 2 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs + 1 },
+  summaryLabel: { fontSize: 13, color: 'rgba(241,245,249,0.6)', fontFamily: THEME.typography.fontFamily },
+  summaryValue: { fontSize: 14, fontWeight: '700', color: '#F1F5F9', fontFamily: THEME.typography.fontFamily },
 
-  // ── Credit toggle ──────────────────────────────
   creditToggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: spacing.sm,
-    marginTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginTop: spacing.xs,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)',
   },
-  creditToggleLabel: {
-    ...THEME.typography.bodySm,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  creditToggleHint: {
-    ...THEME.typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  toggleSwitch: {
-    width: 44,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.border,
-    justifyContent: 'center',
-    paddingHorizontal: 2,
-    marginLeft: spacing.sm,
-  },
-  toggleSwitchOn: { backgroundColor: colors.success },
-  toggleKnob: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.white,
-    ...shadows.small,
-  },
+  creditToggleLabel: { fontSize: 13, fontWeight: '700', color: '#F1F5F9', fontFamily: THEME.typography.fontFamily },
+  creditToggleHint: { fontSize: 11, color: 'rgba(241,245,249,0.5)', marginTop: 2, lineHeight: 16, fontFamily: THEME.typography.fontFamily },
+  toggleSwitch: { width: 44, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2, marginLeft: spacing.sm },
+  toggleSwitchOn: { backgroundColor: '#059669' },
+  toggleKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF', ...shadows.small },
   toggleKnobOn: { transform: [{ translateX: 18 }] },
 
-  // ── Sticky Action Bar ──────────────────────────
   actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.sm,
-    ...shadows.small,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2, backgroundColor: '#FFFFFF',
+    borderTopWidth: 1, borderTopColor: '#E2E8F0', ...shadows.card,
   },
-  actionPrimary: { flex: 1.4 },
-  actionSecondary: { flex: 1 },
+  cancelBtn: {
+    alignItems: 'center', justifyContent: 'center', paddingVertical: 14,
+    borderRadius: borderRadius.md, borderWidth: 1.5, borderColor: '#CBD5E1', backgroundColor: '#F8FAFC',
+  },
+  cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#64748B', fontFamily: THEME.typography.fontFamily },
+  recordBtn: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.card },
+  recordBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: 14 },
+  recordBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 });
 
 export default ReceivePaymentScreen;

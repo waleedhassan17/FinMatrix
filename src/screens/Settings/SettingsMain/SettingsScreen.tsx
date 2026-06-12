@@ -1,11 +1,13 @@
 import React, { useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
+import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
@@ -23,8 +25,8 @@ import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
 const P = {
-  brand: '#1B5E92',
-  brandLight: '#EBF3FA',
+  brand: '#059669',
+  brandLight: '#ECFDF5',
   pageBg: '#F6F8FB',
   card: '#FFFFFF',
   sectionLabel: '#64748B',
@@ -122,29 +124,20 @@ const SettingsScreen: React.FC = () => {
     dispatch(savePreferences());
   }, [dispatch]);
 
-  const confirmClearDemo = useCallback(() => {
-    Alert.alert(
-      'Clear Demo Data',
-      'This will remove all demo transactions. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: () => {} },
-      ],
-    );
-  }, []);
-
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <SafeAreaView style={[s.safe, s.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <View style={s.body}>
       {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => nav.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Feather name="arrow-left" size={22} color={P.text} />
+      <LinearGradient colors={HEADER_NAVY} style={s.header}>
+        <TouchableOpacity onPress={() => nav.goBack()} style={s.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Settings</Text>
-        <TouchableOpacity onPress={handleSave} disabled={saving}>
-          <Feather name="check" size={22} color={saving ? P.sub : P.brand} />
+        <TouchableOpacity onPress={handleSave} disabled={saving} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={[s.saveText, saving && { opacity: 0.5 }]}>{saving ? 'Saving…' : 'Save'}</Text>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {/* Company */}
@@ -152,12 +145,7 @@ const SettingsScreen: React.FC = () => {
         <View style={s.card}>
           <NavRow icon="briefcase" label="Company Profile" onPress={() => nav.navigate('CompanyProfile')} />
           <View style={s.divider} />
-          <PickRow
-            icon="calendar"
-            label="Fiscal Year Start"
-            value={prefs.dateFormat}
-            onPress={pick('dateFormat', DATE_FORMAT_OPTIONS)}
-          />
+          <NavRow icon="users" label="User Management" onPress={() => nav.navigate('UserManagement')} />
         </View>
 
         {/* Preferences */}
@@ -183,37 +171,13 @@ const SettingsScreen: React.FC = () => {
             value={prefs.currency}
             onPress={pick('currency', CURRENCY_OPTIONS)}
           />
-        </View>
-
-        {/* Invoicing */}
-        <SectionHeader title="INVOICING" />
-        <View style={s.card}>
-          <PickRow
-            icon="file-text"
-            label="Invoice Prefix"
-            value={prefs.invoicePrefix}
-            onPress={() => {}}
-          />
-          <View style={s.divider} />
-          <NavRow
-            icon="hash"
-            label="Starting Number"
-            value={String(prefs.invoiceStartNumber)}
-            onPress={() => {}}
-          />
           <View style={s.divider} />
           <PickRow
             icon="clock"
-            label="Default Terms"
+            label="Default Payment Terms"
             value={prefs.defaultPaymentTerms}
             onPress={pick('defaultPaymentTerms', PAYMENT_TERMS_OPTIONS)}
           />
-        </View>
-
-        {/* Users */}
-        <SectionHeader title="USERS" />
-        <View style={s.card}>
-          <NavRow icon="users" label="User Management" onPress={() => nav.navigate('UserManagement')} />
         </View>
 
         {/* Notifications */}
@@ -230,20 +194,6 @@ const SettingsScreen: React.FC = () => {
           <ToggleRow icon="truck" label="Deliveries" value={prefs.notifyDelivery} onChange={toggle('notifyDelivery')} />
         </View>
 
-        {/* Data */}
-        <SectionHeader title="DATA" />
-        <View style={s.card}>
-          <NavRow icon="download" label="Export Data" onPress={() => Alert.alert('Export', 'Data exported successfully.')} />
-          <View style={s.divider} />
-          <NavRow icon="upload" label="Import Data" onPress={() => Alert.alert('Import', 'Import wizard coming soon.')} />
-          <View style={s.divider} />
-          <TouchableOpacity style={s.row} activeOpacity={0.55} onPress={confirmClearDemo}>
-            <Feather name="trash-2" size={18} color={P.danger} style={s.rowIcon} />
-            <Text style={[s.rowLabel, { color: P.danger }]}>Clear Demo Data</Text>
-            <Feather name="chevron-right" size={16} color={P.sub} />
-          </TouchableOpacity>
-        </View>
-
         {/* About */}
         <SectionHeader title="ABOUT" />
         <View style={s.card}>
@@ -254,22 +204,9 @@ const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Demo Mode */}
-        <SectionHeader title="DEMO MODE" />
-        <View style={s.card}>
-          <ToggleRow
-            icon="toggle-right"
-            label="Demo Mode"
-            value={prefs.demoMode}
-            onChange={toggle('demoMode')}
-          />
-          <Text style={s.demoHint}>
-            When enabled, the app uses sample data for demonstration purposes.
-          </Text>
-        </View>
-
         <View style={{ height: 40 }} />
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -279,20 +216,29 @@ export default SettingsScreen;
 /* ─── styles ─── */
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: P.pageBg },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
+  body: { flex: 1, backgroundColor: P.pageBg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: P.card,
-    borderBottomWidth: 1,
-    borderBottomColor: P.divider,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
+  backBtn: { padding: 2 },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: P.text,
+    color: '#FFFFFF',
+    fontFamily: THEME.typography.fontFamily,
+  },
+  saveText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
     fontFamily: THEME.typography.fontFamily,
   },
   scroll: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
@@ -337,12 +283,4 @@ const s = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily,
   },
   divider: { height: 1, backgroundColor: P.divider, marginLeft: 50 },
-  demoHint: {
-    fontSize: 12,
-    color: P.sub,
-    paddingHorizontal: spacing.md,
-    paddingBottom: 12,
-    marginTop: -4,
-    fontFamily: THEME.typography.fontFamily,
-  },
 });

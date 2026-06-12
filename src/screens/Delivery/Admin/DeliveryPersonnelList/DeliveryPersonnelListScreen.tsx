@@ -9,6 +9,9 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
@@ -166,15 +169,14 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <View style={styles.body}>
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <View style={styles.backIconContainer}>
-            <Text style={styles.backArrow}>{'‹'}</Text>
-          </View>
+      <LinearGradient colors={HEADER_NAVY} style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Delivery Team</Text>
         <TouchableOpacity
@@ -182,7 +184,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => navigation.navigate(ROUTES.ADD_DELIVERY_PERSONNEL as any)}>
           <Text style={styles.addButtonText}>+ Add</Text>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {/* Summary */}
       <View style={styles.summaryBar}>
@@ -265,25 +267,24 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
           />
         }
       />
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
+  body: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 4, backgroundColor: colors.white,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingTop: spacing.sm, paddingBottom: spacing.md,
+    borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
   },
-  backIconContainer: {
-    width: 36, height: 36, borderRadius: 10, backgroundColor: colors.background,
-    borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center',
-  },
-  backArrow: { fontSize: 24, color: colors.textPrimary, marginTop: -2, fontWeight: '300' },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
   headerTitle: {
     flex: 1, textAlign: 'center', fontSize: THEME.typography.h3.fontSize, fontWeight: '600',
-    color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
+    color: '#FFFFFF', fontFamily: THEME.typography.fontFamily,
   },
   addButton: {
     backgroundColor: colors.primary, paddingHorizontal: spacing.md,

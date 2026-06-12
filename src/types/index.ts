@@ -63,6 +63,10 @@ export interface User {
   phoneNumber: string;
   photoURL: string | null;
   isActive: boolean;
+  /** Stage 1: company-admin email verification status. */
+  isEmailVerified?: boolean;
+  /** Stage 1: onboarding/approval state of the user's company. */
+  companyStatus?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -752,11 +756,13 @@ export type RootStackParamList = {
   SignIn: { role: UserRole };
   SignUp: { role: UserRole };
   ForgotPassword: undefined;
-  EmailVerification: { email: string };
+  EmailVerification: { email?: string; token?: string } | undefined;
   CompanySetup: undefined;
   CreateCompany: undefined;
   JoinCompany: undefined;
   DeliveryOnboarding: undefined;
+  PendingApproval: undefined;
+  CompanyRejected: undefined;
   AdminTabs: undefined;
   DeliveryTabs: undefined;
   SuperAdminTabs: undefined;

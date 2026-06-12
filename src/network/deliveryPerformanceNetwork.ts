@@ -5,5 +5,6 @@
 import { fetchReport } from './_reportHelpers';
 
 export const getDeliveryPerformanceAPI = async (params: any = {}): Promise<any> => {
-  return fetchReport('/reports/delivery-performance', params);
+  const query = typeof params === 'string' ? { date: params } : (params ?? {});
+  return fetchReport('/reports/delivery-performance', query);
 };

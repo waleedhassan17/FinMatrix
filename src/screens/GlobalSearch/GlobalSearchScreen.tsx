@@ -17,8 +17,8 @@ import type { SearchResult, SearchModule } from '../../models/auditModel';
 import { MODULE_COLORS } from '../../models/auditModel';
 
 const P = {
-  brand: '#1B5E92',
-  brandLight: '#EBF3FA',
+  brand: '#059669',
+  brandLight: '#ECFDF5',
   pageBg: '#F6F8FB',
   card: '#FFFFFF',
   text: '#1E293B',

@@ -15,8 +15,11 @@ import {
   RefreshControl,
   ActivityIndicator,
   ScrollView,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -36,6 +39,7 @@ import {
 } from './billListSlice';
 import EmptyState from '../../../components/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
+import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { BILL_STATUS_COLORS, BILL_STATUS_LABELS } from '../../../models/billModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { Bill, BillStatus } from '../../../types';
@@ -159,6 +163,7 @@ const BillListScreen: React.FC = () => {
   if (isLoading && bills.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -169,6 +174,7 @@ const BillListScreen: React.FC = () => {
   if (error && bills.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
         <View style={styles.center}>
           <EmptyState title="Failed to Load" message={error} actionLabel="Retry" onAction={() => dispatch(fetchBills())} />
         </View>
@@ -176,20 +182,26 @@ const BillListScreen: React.FC = () => {
     );
   }
 
+  // Genuine first-run (loading / error empties are handled above): no bills at
+  // all. Hide summary, tabs and FAB for a clean, professional zero-state.
+  const isFirstRun = bills.length === 0;
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <View style={styles.body}>
       {/* ── Header ────────────────────────── */}
-      <View style={styles.header}>
+      <LinearGradient colors={HEADER_NAVY} style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-              <Text style={styles.backIcon}>‹</Text>
+              <Feather name="arrow-left" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Bills</Text>
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.searchToggle} onPress={() => setSearchOpen(p => !p)}>
-              <Text style={styles.searchToggleIcon}>🔍</Text>
+              <Feather name="search" size={18} color="#FFFFFF" />
             </TouchableOpacity>
             <CustomButton
               title="+ New"
@@ -199,9 +211,10 @@ const BillListScreen: React.FC = () => {
             />
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
-      {/* ── Summary Bar ─────────────────────────── */}
+      {/* ── Summary Bar — hidden on first-run ───── */}
+      {!isFirstRun && (
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryValue}>{formatCurrency(totalOutstanding, 'Rs ')}</Text>
@@ -218,9 +231,10 @@ const BillListScreen: React.FC = () => {
           <Text style={styles.summaryLabel}>Total</Text>
         </View>
       </View>
+      )}
 
       {/* ── Search ──────────────────────────────── */}
-      {searchOpen && (
+      {searchOpen && !isFirstRun && (
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
@@ -233,7 +247,8 @@ const BillListScreen: React.FC = () => {
         </View>
       )}
 
-      {/* ── Filter Tabs ─────────────────────────── */}
+      {/* ── Filter Tabs — hidden on first-run ───── */}
+      {!isFirstRun && (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -259,28 +274,43 @@ const BillListScreen: React.FC = () => {
           );
         })}
       </ScrollView>
+      )}
 
-      {/* ── List ────────────────────────────────── */}
-      <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        renderItem={renderCard}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
-        }
-        ListEmptyComponent={
+      {/* ── List / states ───────────────────────── */}
+      {isFirstRun ? (
+        <View style={styles.emptyFull}>
           <EmptyState
-            title="No Bills Found"
-            message={searchQuery ? `No results for "${searchQuery}"` : 'Create your first bill to get started.'}
+            icon="file-text"
+            title="No bills yet"
+            message="Record your first vendor bill to track expenses and payments."
             actionLabel="Create Bill"
             onAction={() => navigation.navigate('BillForm')}
           />
-        }
-      />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.id}
+          renderItem={renderCard}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+          }
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <EmptyState
+                icon="search"
+                title="No Bills Found"
+                message={searchQuery ? `No results for "${searchQuery}"` : 'Try a different filter.'}
+              />
+            </View>
+          }
+        />
+      )}
 
-      {/* ── FAB ─────────────────────────────────── */}
+      {/* ── FAB — hidden on first-run ───────────── */}
+      {!isFirstRun && (
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.8}
@@ -288,6 +318,8 @@ const BillListScreen: React.FC = () => {
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
+      )}
+      </View>
     </SafeAreaView>
   );
 };
@@ -297,21 +329,22 @@ const BillListScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
+  body: { flex: 1, backgroundColor: colors.background },
 
   header: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
   backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
 
@@ -411,6 +444,7 @@ const styles = StyleSheet.create({
   amtValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
+  emptyFull: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
   emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 

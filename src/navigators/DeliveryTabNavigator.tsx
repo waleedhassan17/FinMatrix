@@ -4,9 +4,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../utils/theme';
-import { useAppSelector } from '../hooks/useReduxHooks';
-import { selectUser } from '../screens/Auth/authSlice';
-import { selectUnreadNotificationCountForUser } from '../screens/Notifications/notificationCenterSlice';
 import NotificationBadge from '../components/NotificationBadge';
 
 import DPDashboardStack from './stacks/DPDashboardStack';
@@ -14,8 +11,8 @@ import DPDeliveriesStack from './stacks/DPDeliveriesStack';
 import DPInventoryStack from './stacks/DPInventoryStack';
 import DPProfileStack from './stacks/DPProfileStack';
 
-// ── Design Tokens (Delivery Personnel orange brand) ──
-const ACTIVE = '#F8651D';
+// ── Design Tokens (aligned with app primary brand) ──
+const ACTIVE = '#059669';
 const INACTIVE = '#999999';
 const TAB_HEIGHT = 72;
 
@@ -45,10 +42,6 @@ const TabIcon: React.FC<{ icon: IconName; focused: boolean; badgeCount?: number 
 
 const DeliveryTabNavigator: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const user = useAppSelector(selectUser);
-  const unreadCount = useAppSelector(state =>
-    selectUnreadNotificationCountForUser(state, 'delivery', user?.uid),
-  );
 
   return (
     <Tab.Navigator
@@ -83,7 +76,7 @@ const DeliveryTabNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Dashboard',
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="grid" focused={focused} badgeCount={unreadCount} />
+            <TabIcon icon="grid" focused={focused} />
           ),
         }}
       />

@@ -12,8 +12,12 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -181,23 +185,25 @@ const CustomerListScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <View style={styles.body}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient colors={HEADER_NAVY} style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.headerTitleRow}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
               style={styles.backBtn}
               activeOpacity={0.7}>
-              <Text style={styles.backIcon}>‹</Text>
+              <Feather name="arrow-left" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Customers</Text>
           </View>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.searchToggle}>
-            <Text style={styles.searchToggleIcon}>🔍</Text>
+            <Feather name="search" size={18} color="#FFFFFF" />
           </TouchableOpacity>
           <CustomButton
             title="+ Add"
@@ -206,7 +212,7 @@ const CustomerListScreen: React.FC = () => {
             size="sm"
           />
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Summary */}
       <View style={styles.summaryRow}>
@@ -313,6 +319,7 @@ const CustomerListScreen: React.FC = () => {
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -322,23 +329,24 @@ const CustomerListScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
+  body: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
   backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
   backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
   searchToggle: { padding: spacing.xs },
   searchToggleIcon: { fontSize: 18 },
 

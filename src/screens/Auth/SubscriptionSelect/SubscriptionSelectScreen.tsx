@@ -23,6 +23,8 @@ import type { RootStackParamList } from '../../../types';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser, setUser } from '../authSlice';
 import { getPublicPlansAPI, selfSubscribeAPI } from '../../../network/superAdminNetwork';
+import { submitCompanyAPI } from '../../../network/authNetwork';
+import { getStoredCompanyId } from '../../../network/apiHelpers';
 import { THEME } from '../../../utils/theme';
 
 // ── Design tokens ─────────────────────────────────────
@@ -236,22 +238,41 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
     setSubmitting(true);
+    // Real backend company id (set during CreateCompany); the x-company-id
+    // header also carries it, but submit needs it in the URL.
+    const storedId = await getStoredCompanyId();
+    const companyId = storedId ?? route.params?.companyId ?? user?.companyId ?? '';
     try {
+      // Step B: choose plan.
       await selfSubscribeAPI(selectedId);
-    } catch {
-      // Non-fatal: company already has access, subscription is optional
+      // Step C: submit company onboarding for platform-admin approval.
+      let status = 'pending_approval';
+      try {
+        const res = await submitCompanyAPI(companyId);
+        status = res?.status ?? 'pending_approval';
+      } catch (submitErr: any) {
+        Alert.alert(
+          'Almost there',
+          submitErr?.message ??
+            'Your plan was saved but submission failed. Please try again.',
+        );
+      }
+      if (user) {
+        dispatch(setUser({ ...user, companyId, companyStatus: status }));
+      }
+    } catch (e: any) {
+      Alert.alert('Subscription Failed', e?.message ?? 'Please try again.');
     } finally {
       setSubmitting(false);
-    }
-    // Update local user state so navigation proceeds to AdminTabs
-    if (user) {
-      dispatch(setUser({ ...user, companyId: route.params?.companyId ?? user.companyId }));
     }
   };
 
   const handleSkip = () => {
+    // A plan is required before submitting, so "skip" keeps the company as a
+    // draft and returns the admin to plan selection.
     if (user) {
-      dispatch(setUser({ ...user, companyId: route.params?.companyId ?? user.companyId }));
+      const companyId = route.params?.companyId ?? user.companyId;
+      dispatch(setUser({ ...user, companyId, companyStatus: 'email_verified' }));
     }
   };
 
@@ -438,7 +459,7 @@ const S = StyleSheet.create({
   // Price
   priceRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 4 },
   priceCurrency: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
-  priceMain: { fontSize: 38, fontWeight: '900', letterSpacing: -1 },
+  priceMain: { fontSize: 36, fontWeight: '900', letterSpacing: -1 },
   priceFreq: { fontSize: 14, color: DS.text.muted, marginBottom: 6, marginLeft: 2 },
   priceSavings: { fontSize: 11, marginBottom: 12, fontWeight: '500' },
 

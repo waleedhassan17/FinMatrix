@@ -11,11 +11,15 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  StatusBar,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
@@ -137,10 +141,11 @@ const InventoryDetailScreen: React.FC = () => {
   if (!item) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
         <View style={styles.centered}>
           <Text style={styles.notFound}>Item not found</Text>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.goBack}>← Go Back</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}><Feather name="arrow-left" size={17} color={colors.secondary} style={{ marginRight: 2 }} /><Text style={styles.goBack}>Go Back</Text></View>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -161,15 +166,16 @@ const InventoryDetailScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <View style={styles.body}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Back</Text>
+      <LinearGradient colors={HEADER_NAVY} style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Item Detail</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      </LinearGradient>
 
       <ScrollView
         style={styles.scroll}
@@ -367,6 +373,7 @@ const InventoryDetailScreen: React.FC = () => {
 
         <View style={{ height: spacing.xl }} />
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -376,6 +383,8 @@ const InventoryDetailScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
+  body: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   notFound: { fontSize: 16, color: colors.textSecondary, marginBottom: spacing.md, fontFamily: THEME.typography.fontFamily },
   goBack: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
@@ -384,17 +393,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
-  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  headerSpacer: { width: 60 },
+  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.lg },
@@ -425,7 +431,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: colors.textLight,
-    fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier',
+    fontFamily: THEME.typography.fontFamily,
     marginBottom: 4,
   },
   itemCategory: {

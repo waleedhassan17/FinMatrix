@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
@@ -196,7 +197,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>‹</Text>
+          <Feather name="arrow-left" size={24} color={colors.primary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.title}>Inventory Approvals</Text>

@@ -9,12 +9,14 @@ import {
   Alert,
   Modal,
   FlatList,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
+import { ReportHeader, HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import {
@@ -166,12 +168,15 @@ const AssignDeliveriesScreen: React.FC = () => {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Delivery Management</Text>
-        <Text style={styles.subtitle}>Assignment workflow</Text>
-      </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <ReportHeader
+        title="Delivery Management"
+        subtitle="Assignment workflow"
+        onBack={() => navigation.goBack()}
+      />
 
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={styles.dateRow}>
         <Text style={styles.dateLabel}>Schedule Date</Text>
         <TextInput
@@ -390,6 +395,7 @@ const AssignDeliveriesScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+      </View>
     </SafeAreaView>
   );
 };

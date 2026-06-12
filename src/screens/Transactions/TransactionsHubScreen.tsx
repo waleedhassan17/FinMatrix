@@ -1,60 +1,42 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Transactions Hub (Final)
-// Sales section + Purchases section (placeholders)
+// FinMatrix — Transactions Hub
+// Sales + Purchases entry points (enterprise-consistent UI)
 // ═══════════════════════════════════════════════════════
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, borderRadius, shadows } from '../../theme';
+
 import { THEME } from '../../utils/theme';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
+import { ReportContainer, ReportHeader, SectionCard, ACCENT } from '../../components/reports/ReportUI';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 
 interface HubRow {
   key: string;
-  icon: string;
+  icon: keyof typeof Feather.glyphMap;
+  accent: string;
   label: string;
   subtitle: string;
   onPress: (nav: Nav) => void;
-  disabled?: boolean;
 }
 
 const SALES_ROWS: HubRow[] = [
   {
     key: 'invoices',
-    icon: '🧾',
+    icon: 'file-text',
+    accent: ACCENT.brand,
     label: 'Invoices',
     subtitle: 'Create, send, and track customer invoices',
     onPress: nav => nav.navigate('InvoiceList'),
   },
   {
-    key: 'estimates',
-    icon: '📋',
-    label: 'Estimates',
-    subtitle: 'Prepare and send quotes to customers',
-    onPress: nav => nav.navigate('EstimateList'),
-  },
-  {
-    key: 'salesOrders',
-    icon: '📦',
-    label: 'Sales Orders',
-    subtitle: 'Track orders and fulfillment progress',
-    onPress: nav => nav.navigate('SOList'),
-  },
-  {
-    key: 'creditMemos',
-    icon: '🔄',
-    label: 'Credit Memos',
-    subtitle: 'Issue credits for returns or adjustments',
-    onPress: nav => nav.navigate('CreditMemoList'),
-  },
-  {
     key: 'payments',
-    icon: '💳',
+    icon: 'dollar-sign',
+    accent: ACCENT.green,
     label: 'Receive Payments',
     subtitle: 'Record and allocate customer payments',
     onPress: nav => nav.navigate('ReceivePayment'),
@@ -64,28 +46,24 @@ const SALES_ROWS: HubRow[] = [
 const PURCHASE_ROWS: HubRow[] = [
   {
     key: 'bills',
-    icon: '📄',
+    icon: 'file',
+    accent: ACCENT.blue,
     label: 'Bills',
     subtitle: 'Manage vendor bills and expenses',
     onPress: nav => nav.navigate('BillList'),
   },
   {
     key: 'payBills',
-    icon: '💰',
+    icon: 'credit-card',
+    accent: ACCENT.violet,
     label: 'Pay Bills',
     subtitle: 'Record payments to vendors',
     onPress: nav => nav.navigate('PayBills'),
   },
   {
-    key: 'vendorCredits',
-    icon: '🔁',
-    label: 'Vendor Credits',
-    subtitle: 'Track credits received from vendors',
-    onPress: nav => nav.navigate('VendorCreditForm'),
-  },
-  {
     key: 'purchaseOrders',
-    icon: '📝',
+    icon: 'clipboard',
+    accent: ACCENT.amber,
     label: 'Purchase Orders',
     subtitle: 'Create and track vendor purchase orders',
     onPress: nav => nav.navigate('POList'),
@@ -95,136 +73,63 @@ const PURCHASE_ROWS: HubRow[] = [
 const TransactionsHubScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
 
-  const renderRow = (row: HubRow) => (
+  const renderRow = (row: HubRow, last: boolean) => (
     <TouchableOpacity
       key={row.key}
-      style={[styles.row, row.disabled && styles.rowDisabled]}
-      activeOpacity={row.disabled ? 1 : 0.6}
-      onPress={() => !row.disabled && row.onPress(navigation)}
+      style={[styles.row, !last && styles.rowBordered]}
+      activeOpacity={0.6}
+      onPress={() => row.onPress(navigation)}
     >
-      <View style={[styles.rowIcon, row.disabled && styles.rowIconDisabled]}>
-        <Text style={styles.rowIconText}>{row.icon}</Text>
+      <View style={[styles.rowIcon, { backgroundColor: `${row.accent}14` }]}>
+        <Feather name={row.icon} size={18} color={row.accent} />
       </View>
       <View style={styles.rowContent}>
-        <Text style={[styles.rowLabel, row.disabled && styles.rowLabelDisabled]}>{row.label}</Text>
-        <Text style={styles.rowSubtitle}>
-          {row.disabled ? 'Coming soon' : row.subtitle}
-        </Text>
+        <Text style={styles.rowLabel}>{row.label}</Text>
+        <Text style={styles.rowSubtitle}>{row.subtitle}</Text>
       </View>
-      {!row.disabled && <Text style={styles.chevron}>›</Text>}
-      {row.disabled && (
-        <View style={styles.soonBadge}>
-          <Text style={styles.soonBadgeText}>Soon</Text>
-        </View>
-      )}
+      <Feather name="chevron-right" size={18} color={THEME.colors.textTertiary} />
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Transactions</Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Sales section */}
-        <Text style={styles.sectionHeader}>Sales</Text>
-        <View style={styles.sectionCard}>
-          {SALES_ROWS.map(renderRow)}
-        </View>
+    <ReportContainer>
+      <ReportHeader title="Transactions" subtitle="Sales & purchases" />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <SectionCard title="Sales" icon="trending-up">
+          <View style={styles.list}>{SALES_ROWS.map((r, i) => renderRow(r, i === SALES_ROWS.length - 1))}</View>
+        </SectionCard>
 
-        {/* Purchases section */}
-        <Text style={styles.sectionHeader}>Purchases</Text>
-        <View style={styles.sectionCard}>
-          {PURCHASE_ROWS.map(renderRow)}
-        </View>
+        <SectionCard title="Purchases" icon="shopping-cart">
+          <View style={styles.list}>{PURCHASE_ROWS.map((r, i) => renderRow(r, i === PURCHASE_ROWS.length - 1))}</View>
+        </SectionCard>
 
-        <View style={{ height: spacing.xl * 2 }} />
+        <View style={{ height: THEME.spacing.xl }} />
       </ScrollView>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  title: {
-    ...THEME.typography.h2,
-    color: colors.textPrimary,
-  },
-  scrollContent: {
-    paddingBottom: spacing.xl,
-  },
-  sectionHeader: {
-    ...THEME.typography.caption,
-    fontWeight: '600',
-    color: colors.textLight,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
-  },
-  sectionCard: {
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    overflow: 'hidden',
-    ...shadows.card,
-  },
+  content: { padding: THEME.spacing.md, gap: THEME.spacing.sm + 2 },
+  list: { marginHorizontal: -THEME.spacing.md, marginVertical: -THEME.spacing.md },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md - 2,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: 13,
   },
-  rowDisabled: { opacity: 0.5 },
+  rowBordered: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.borderLight },
   rowIcon: {
     width: 42,
     height: 42,
-    borderRadius: 11,
-    backgroundColor: colors.primary + '0C',
+    borderRadius: THEME.radius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
+    marginRight: THEME.spacing.sm,
   },
-  rowIconDisabled: { backgroundColor: colors.border + '60' },
-  rowIconText: { fontSize: 19 },
-  rowContent: { flex: 1, marginRight: spacing.sm },
-  rowLabel: {
-    ...THEME.typography.h4,
-    color: colors.textPrimary,
-    marginBottom: 1,
-  },
-  rowLabelDisabled: { color: colors.textSecondary },
-  rowSubtitle: {
-    ...THEME.typography.caption,
-    color: colors.textSecondary,
-  },
-  chevron: {
-    ...THEME.typography.h2,
-    fontWeight: '600',
-    color: colors.textLight,
-  },
-  soonBadge: {
-    backgroundColor: colors.border,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  soonBadgeText: {
-    ...THEME.typography.overline,
-    fontWeight: '700',
-    color: colors.textLight,
-  },
+  rowContent: { flex: 1, marginRight: THEME.spacing.sm },
+  rowLabel: { ...THEME.typography.h5, color: THEME.colors.textPrimary, marginBottom: 1 },
+  rowSubtitle: { ...THEME.typography.caption, color: THEME.colors.textSecondary },
 });
 
 export default TransactionsHubScreen;

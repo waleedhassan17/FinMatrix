@@ -5,29 +5,49 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { fetchAnalyticsDashboard, selectAnalyticsDashboardState } from './analyticsDashboardSlice';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import { formatCurrency } from '../../../utils/formatters';
+import {
+  ReportContainer,
+  ReportHeader,
+  SectionCard,
+  KpiGrid,
+  LoadingBlock,
+  ErrorBlock,
+  ACCENT,
+  CHART_SERIES,
+  reportContentStyle,
+} from '../../../components/reports/ReportUI';
 
 type AnalyticsDashboardScreenProps = NativeStackScreenProps<ReportsStackParamList, 'AnalyticsDashboard'>;
 
-const CHART_WIDTH = Dimensions.get('window').width - spacing.md * 2 - spacing.md * 2;
-const PIE_COLORS = ['#1D4ED8', '#0EA5E9', '#00875A', '#FF991F', '#F97316', '#DE350B'];
+const CHART_WIDTH = Dimensions.get('window').width - THEME.spacing.md * 4;
+
+const sum = (arr: { value: number }[]) => arr.reduce((s, p) => s + p.value, 0);
+
+// Compact PKR for KPI tiles, e.g. "Rs 1.2M" / "Rs 84.5K"
+const fmtRsCompact = (amount: number): string => {
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}Rs ${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}Rs ${(abs / 1_000).toFixed(1)}K`;
+  return `${sign}Rs ${Math.round(abs)}`;
+};
 
 const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectAnalyticsDashboardState);
-  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
+  const [selection, setSelection] = useState<string>('');
 
   useEffect(() => {
     dispatch(fetchAnalyticsDashboard());
@@ -48,304 +68,412 @@ const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ nav
     ),
   );
 
+  // ── Derived enterprise KPIs ─────────────────────────
+  const kpis = useMemo(() => {
+    const months = safeRevenueTrend.length;
+    const totalRevenue = sum(safeRevenueTrend);
+    const avgRevenue = months > 0 ? totalRevenue / months : 0;
+    const lastRev = safeRevenueTrend[months - 1]?.value ?? 0;
+    const prevRev = safeRevenueTrend[months - 2]?.value ?? 0;
+    const revMoM = prevRev > 0 ? ((lastRev - prevRev) / prevRev) * 100 : 0;
+
+    const totalExpenses = sum(expenseCategories.filter(e => Number.isFinite(e.value)));
+    const totalCashFlow = sum(safeCashFlowTrend);
+    const lastCF = safeCashFlowTrend[safeCashFlowTrend.length - 1]?.value ?? 0;
+    const prevCF = safeCashFlowTrend[safeCashFlowTrend.length - 2]?.value ?? 0;
+    const cfMoM = prevCF !== 0 ? ((lastCF - prevCF) / Math.abs(prevCF)) * 100 : 0;
+
+    const latestAging = safeArAgingTrend[safeArAgingTrend.length - 1];
+    const outstanding = latestAging
+      ? latestAging.current +
+        latestAging.bucket1to30 +
+        latestAging.bucket31to60 +
+        latestAging.bucket61to90 +
+        latestAging.bucket90Plus
+      : 0;
+    const overdue = latestAging
+      ? latestAging.bucket31to60 + latestAging.bucket61to90 + latestAging.bucket90Plus
+      : 0;
+
+    const topCustomer = [...safeTopCustomers].sort((a, b) => b.value - a.value)[0];
+
+    return {
+      months,
+      totalRevenue,
+      avgRevenue,
+      revMoM,
+      totalExpenses,
+      totalCashFlow,
+      cfMoM,
+      outstanding,
+      overdue,
+      topCustomer,
+    };
+  }, [safeRevenueTrend, safeCashFlowTrend, safeTopCustomers, safeArAgingTrend, expenseCategories]);
+
   const pieData = useMemo(
     () =>
       expenseCategories.map((item, idx) => ({
         name: item.label,
         amount: item.value,
-        color: PIE_COLORS[idx % PIE_COLORS.length],
-        legendFontColor: colors.textSecondary,
+        color: CHART_SERIES[idx % CHART_SERIES.length],
+        legendFontColor: THEME.colors.textSecondary,
         legendFontSize: 11,
       })),
     [expenseCategories],
   );
 
+  const AGING_COLORS = [ACCENT.green, ACCENT.blue, ACCENT.amber, '#F97316', ACCENT.red];
+  const hasData = !!data && kpis.months > 0;
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtn}>← Reports</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Analytics Dashboard</Text>
-      </View>
+    <ReportContainer>
+      <ReportHeader title="Analytics" subtitle="Business intelligence · last 6 months" onBack={() => navigation.goBack()} />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {state.isLoading && <ActivityIndicator size="small" color={colors.primary} />}
-        {!!state.error && <Text style={styles.errorText}>{state.error}</Text>}
+      <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
+        {state.isLoading && <LoadingBlock label="Crunching analytics…" />}
+        {!!state.error && <ErrorBlock message={state.error} onRetry={() => dispatch(fetchAnalyticsDashboard())} />}
 
-        {data && (
+        {data && !state.isLoading && (
           <>
-            <Card title="Revenue Trend (Last 6 Months)">
-              {safeRevenueTrend.length > 0 ? (
-                <LineChart
-                  data={{
-                    labels: safeRevenueTrend.map(point => point.label),
-                    datasets: [{ data: safeRevenueTrend.map(point => point.value) }],
-                  }}
-                  width={CHART_WIDTH}
-                  height={220}
-                  yAxisLabel="Rs "
-                  yAxisSuffix=""
-                  bezier
-                  chartConfig={chartConfig('#2563EB', '#93C5FD')}
-                  style={styles.chart}
-                  onDataPointClick={payload => {
-                    setSelectedCustomer(`Revenue ${safeRevenueTrend[payload.index]?.label ?? ''}: ${formatCurrency(payload.value, 'Rs ')}`);
-                  }}
-                />
-              ) : (
-                <Text style={styles.emptyText}>No revenue trend data available.</Text>
-              )}
-              {!!selectedCustomer && <Text style={styles.selectionText}>{selectedCustomer}</Text>}
-            </Card>
+            {/* ── Revenue hero ── */}
+            <LinearGradient
+              colors={['#047857', '#10B981']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.hero}
+            >
+              <View style={styles.heroDecor1} />
+              <View style={styles.heroDecor2} />
+              <View style={styles.heroRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.heroLabel}>Total Revenue · {kpis.months} mo</Text>
+                  <Text style={styles.heroValue}>{formatCurrency(kpis.totalRevenue, 'Rs ')}</Text>
+                  <View style={styles.heroDeltaRow}>
+                    <View style={styles.heroDeltaPill}>
+                      <Feather
+                        name={kpis.revMoM >= 0 ? 'trending-up' : 'trending-down'}
+                        size={12}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.heroDeltaText}>
+                        {kpis.revMoM >= 0 ? '+' : ''}{kpis.revMoM.toFixed(1)}%
+                      </Text>
+                    </View>
+                    <Text style={styles.heroDeltaCaption}>vs last month</Text>
+                  </View>
+                </View>
+                <View style={styles.heroAside}>
+                  <Text style={styles.heroAsideLabel}>Avg / mo</Text>
+                  <Text style={styles.heroAsideValue}>{fmtRsCompact(kpis.avgRevenue)}</Text>
+                </View>
+              </View>
+            </LinearGradient>
 
-            <Card title="Expense Categories">
+            {/* ── KPI grid ── */}
+            <KpiGrid
+              items={[
+                {
+                  label: 'Net Cash Flow',
+                  value: fmtRsCompact(kpis.totalCashFlow),
+                  accent: ACCENT.blue,
+                  icon: 'activity',
+                  delta: { text: `${kpis.cfMoM >= 0 ? '+' : ''}${kpis.cfMoM.toFixed(0)}%`, positive: kpis.cfMoM >= 0 },
+                },
+                {
+                  label: 'Total Expenses',
+                  value: fmtRsCompact(kpis.totalExpenses),
+                  accent: ACCENT.amber,
+                  icon: 'arrow-down-circle',
+                },
+                {
+                  label: 'Outstanding A/R',
+                  value: fmtRsCompact(kpis.outstanding),
+                  accent: kpis.overdue > 0 ? ACCENT.red : ACCENT.teal,
+                  icon: 'inbox',
+                  delta: kpis.overdue > 0 ? { text: `${fmtRsCompact(kpis.overdue)} overdue`, positive: false } : undefined,
+                },
+                {
+                  label: kpis.topCustomer ? `Top: ${kpis.topCustomer.label}` : 'Top Customer',
+                  value: kpis.topCustomer ? fmtRsCompact(kpis.topCustomer.value) : '—',
+                  accent: ACCENT.violet,
+                  icon: 'award',
+                },
+              ]}
+            />
+
+            {/* ── Charts ── */}
+            <SectionCard
+              title="Revenue Trend"
+              subtitle={`Total ${fmtRsCompact(kpis.totalRevenue)} · avg ${fmtRsCompact(kpis.avgRevenue)}/mo`}
+              icon="trending-up"
+            >
+              {safeRevenueTrend.length > 0 ? (
+                <>
+                  <View style={styles.axisHint}>
+                    <Text style={styles.axisHintText}>Amounts in Rs</Text>
+                  </View>
+                  <TrendLineChart
+                    labels={safeRevenueTrend.map(point => point.label)}
+                    values={safeRevenueTrend.map(point => point.value)}
+                    color={ACCENT.blue}
+                    fill={ACCENT.blue}
+                    fromZero
+                    onPointPress={(index, value) =>
+                      setSelection(`Revenue ${safeRevenueTrend[index]?.label ?? ''}: ${formatCurrency(value, 'Rs ')}`)
+                    }
+                  />
+                  {!!selection && (
+                    <View style={styles.tooltip}>
+                      <Feather name="info" size={12} color={THEME.colors.primary} />
+                      <Text style={styles.tooltipText}>{selection}</Text>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.empty}>No revenue data available.</Text>
+              )}
+            </SectionCard>
+
+            <SectionCard
+              title="Cash Flow"
+              subtitle={`Net ${fmtRsCompact(kpis.totalCashFlow)} · ${kpis.cfMoM >= 0 ? '▲' : '▼'} ${Math.abs(kpis.cfMoM).toFixed(0)}% MoM`}
+              icon="activity"
+            >
+              {safeCashFlowTrend.length > 0 ? (
+                <>
+                  <View style={styles.axisHint}>
+                    <Text style={styles.axisHintText}>Amounts in Rs</Text>
+                  </View>
+                  <TrendLineChart
+                    labels={safeCashFlowTrend.map(point => point.label)}
+                    values={safeCashFlowTrend.map(point => point.value)}
+                    color={THEME.colors.primary}
+                    fill={THEME.colors.primary}
+                  />
+                </>
+              ) : (
+                <Text style={styles.empty}>No cash flow data available.</Text>
+              )}
+            </SectionCard>
+
+            <SectionCard title="Expense Categories" subtitle={`Total ${fmtRsCompact(kpis.totalExpenses)}`} icon="pie-chart">
               {pieData.length > 0 ? (
                 <PieChart
                   data={pieData}
                   width={CHART_WIDTH}
-                  height={220}
+                  height={210}
                   accessor="amount"
                   backgroundColor="transparent"
                   paddingLeft="8"
                   absolute
-                  chartConfig={{
-                    color: () => colors.textPrimary,
-                    labelColor: () => colors.textSecondary,
-                  }}
+                  chartConfig={{ color: () => THEME.colors.textPrimary, labelColor: () => THEME.colors.textSecondary }}
                 />
               ) : (
-                <Text style={styles.emptyText}>No expense category data available.</Text>
+                <Text style={styles.empty}>No expense data available.</Text>
               )}
-            </Card>
+            </SectionCard>
 
-            <Card title="Cash Flow (Last 6 Months)">
-              {safeCashFlowTrend.length > 0 ? (
-                <LineChart
-                  data={{
-                    labels: safeCashFlowTrend.map(point => point.label),
-                    datasets: [{ data: safeCashFlowTrend.map(point => point.value) }],
-                  }}
-                  width={CHART_WIDTH}
-                  height={220}
-                  yAxisLabel="Rs "
-                  bezier
-                  chartConfig={chartConfig('#059669', '#A7F3D0')}
-                  style={styles.chart}
-                />
-              ) : (
-                <Text style={styles.emptyText}>No cash flow data available.</Text>
-              )}
-            </Card>
-
-            <Card title="Top 5 Customers">
+            <SectionCard title="Top Customers" subtitle="By revenue contribution" icon="award">
               {safeTopCustomers.length > 0 ? (
-                <View style={styles.barsWrap}>
-                  {safeTopCustomers.map(customer => {
+                <View style={{ gap: 12 }}>
+                  {[...safeTopCustomers].sort((a, b) => b.value - a.value).map((customer, idx) => {
                     const max = Math.max(...safeTopCustomers.map(item => item.value), 1);
-                  const widthPct = (customer.value / max) * 100;
-                  const active = selectedCustomer === customer.label;
-                  return (
-                    <TouchableOpacity
-                      key={customer.label}
-                      activeOpacity={0.75}
-                      onPress={() => setSelectedCustomer(customer.label)}
-                      style={styles.barRow}
-                    >
-                      <Text style={styles.barLabel}>{customer.label}</Text>
-                      <View style={styles.barTrack}>
-                        <View style={[styles.barFill, { width: `${widthPct}%` }, active && styles.barFillActive]} />
-                      </View>
-                      <Text style={styles.barValue}>{formatCurrency(customer.value, 'Rs ')}</Text>
-                    </TouchableOpacity>
-                  );
+                    const widthPct = (customer.value / max) * 100;
+                    const active = selection === customer.label;
+                    return (
+                      <TouchableOpacity
+                        key={customer.label}
+                        activeOpacity={0.75}
+                        onPress={() => setSelection(customer.label)}
+                        style={{ gap: 6 }}
+                      >
+                        <View style={styles.barTop}>
+                          <View style={styles.barRank}>
+                            <Text style={styles.barRankText}>{idx + 1}</Text>
+                          </View>
+                          <Text style={styles.barLabel} numberOfLines={1}>{customer.label}</Text>
+                          <Text style={styles.barValue}>{formatCurrency(customer.value, 'Rs ')}</Text>
+                        </View>
+                        <View style={styles.barTrack}>
+                          <View style={[styles.barFill, { width: `${widthPct}%` }, active && styles.barFillActive]} />
+                        </View>
+                      </TouchableOpacity>
+                    );
                   })}
                 </View>
               ) : (
-                <Text style={styles.emptyText}>No customer ranking data available.</Text>
+                <Text style={styles.empty}>No customer data available.</Text>
               )}
-            </Card>
+            </SectionCard>
 
-            <Card title="AR Aging (Stacked)">
+            <SectionCard title="A/R Aging Trend" subtitle={`Outstanding ${fmtRsCompact(kpis.outstanding)}`} icon="bar-chart-2">
               {safeArAgingTrend.length > 0 ? (
                 <>
                   <View style={styles.stackWrap}>
                     {safeArAgingTrend.map(point => {
-                      const total =
-                        point.current +
-                        point.bucket1to30 +
-                        point.bucket31to60 +
-                        point.bucket61to90 +
-                        point.bucket90Plus;
+                      const buckets = [point.current, point.bucket1to30, point.bucket31to60, point.bucket61to90, point.bucket90Plus];
+                      const total = buckets.reduce((a, b) => a + b, 0);
                       const h = 130;
                       const safeTotal = Math.max(1, total);
                       return (
                         <View key={point.label} style={styles.stackCol}>
-                          <View style={[styles.stackSegment, { height: (point.bucket90Plus / safeTotal) * h, backgroundColor: '#DE350B' }]} />
-                          <View style={[styles.stackSegment, { height: (point.bucket61to90 / safeTotal) * h, backgroundColor: '#F97316' }]} />
-                          <View style={[styles.stackSegment, { height: (point.bucket31to60 / safeTotal) * h, backgroundColor: '#FF991F' }]} />
-                          <View style={[styles.stackSegment, { height: (point.bucket1to30 / safeTotal) * h, backgroundColor: '#0EA5E9' }]} />
-                          <View style={[styles.stackSegment, { height: (point.current / safeTotal) * h, backgroundColor: '#00875A' }]} />
+                          {[4, 3, 2, 1, 0].map(bi => (
+                            <View
+                              key={bi}
+                              style={{ width: 22, height: (buckets[bi] / safeTotal) * h, backgroundColor: AGING_COLORS[bi] }}
+                            />
+                          ))}
                           <Text style={styles.stackLabel}>{point.label}</Text>
                         </View>
                       );
                     })}
                   </View>
-                  <Text style={styles.legendText}>Green: Current | Blue: 1-30 | Amber: 31-60 | Orange: 61-90 | Red: 90+</Text>
+                  <View style={styles.legendWrap}>
+                    {['Current', '1–30', '31–60', '61–90', '90+'].map((lbl, i) => (
+                      <View key={lbl} style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: AGING_COLORS[i] }]} />
+                        <Text style={styles.legendText}>{lbl}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </>
               ) : (
-                <Text style={styles.emptyText}>No AR aging data available.</Text>
+                <Text style={styles.empty}>No A/R aging data available.</Text>
               )}
-            </Card>
+            </SectionCard>
           </>
         )}
+
+        {data && !state.isLoading && !hasData && (
+          <Text style={styles.empty}>No analytics data available yet.</Text>
+        )}
       </ScrollView>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
-const chartConfig = (lineColor: string, fillColor: string) => ({
-  backgroundColor: '#FFFFFF',
-  backgroundGradientFrom: '#FFFFFF',
-  backgroundGradientTo: '#FFFFFF',
-  decimalPlaces: 0,
-  color: () => lineColor,
-  labelColor: () => '#475569',
-  fillShadowGradient: fillColor,
-  fillShadowGradientOpacity: 0.35,
-  propsForDots: {
-    r: '3',
-    strokeWidth: '1',
-    stroke: lineColor,
-  },
-});
+// Compact axis labels: 1200000 -> "1.2M", 84500 -> "85k"
+const compactAxis = (raw: string): string => {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return raw;
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${Math.round(n / 1_000)}k`;
+  return `${Math.round(n)}`;
+};
 
-const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <View style={styles.card}>
-    <Text style={styles.cardTitle}>{title}</Text>
-    {children}
-  </View>
+// Shared, enterprise-styled trend line chart used by Revenue & Cash Flow.
+const TrendLineChart: React.FC<{
+  labels: string[];
+  values: number[];
+  color: string;
+  fill: string;
+  fromZero?: boolean;
+  onPointPress?: (index: number, value: number) => void;
+}> = ({ labels, values, color, fill, fromZero, onPointPress }) => (
+  <LineChart
+    data={{ labels, datasets: [{ data: values, color: () => color, strokeWidth: 3 }] }}
+    width={CHART_WIDTH}
+    height={220}
+    bezier
+    fromZero={fromZero}
+    segments={4}
+    withVerticalLines={false}
+    withInnerLines
+    withDots
+    yAxisInterval={1}
+    yLabelsOffset={10}
+    formatYLabel={compactAxis}
+    chartConfig={{
+      backgroundGradientFrom: THEME.colors.surface,
+      backgroundGradientTo: THEME.colors.surface,
+      decimalPlaces: 0,
+      color: () => color,
+      labelColor: () => THEME.colors.textTertiary,
+      // Vertical gradient area under the line
+      fillShadowGradientFrom: fill,
+      fillShadowGradientFromOpacity: 0.28,
+      fillShadowGradientTo: THEME.colors.surface,
+      fillShadowGradientToOpacity: 0.02,
+      propsForBackgroundLines: { stroke: THEME.colors.borderLight, strokeDasharray: '4 7', strokeWidth: 1 },
+      propsForDots: { r: '4', strokeWidth: '2', stroke: color, fill: THEME.colors.surface },
+      propsForLabels: { fontSize: 11 },
+    }}
+    style={styles.chart}
+    onDataPointClick={onPointPress ? ({ index, value }) => onPointPress(index, value) : undefined}
+  />
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  // Hero
+  hero: { borderRadius: THEME.radius.xl, padding: THEME.spacing.lg, overflow: 'hidden', ...THEME.shadows.md },
+  heroDecor1: {
+    position: 'absolute', right: -24, top: -34, width: 130, height: 130, borderRadius: 65,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  backBtn: {
-    fontSize: 13,
-    color: colors.primary,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
+  heroDecor2: {
+    position: 'absolute', left: -30, bottom: -40, width: 110, height: 110, borderRadius: 55,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  title: {
-    marginTop: spacing.xs,
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
+  heroRow: { flexDirection: 'row', alignItems: 'center' },
+  heroLabel: { ...THEME.typography.labelSm, color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase' },
+  heroValue: { ...THEME.typography.displaySm, color: '#FFFFFF', marginTop: 4 },
+  heroDeltaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  heroDeltaPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: THEME.radius.full,
   },
-  content: {
-    padding: spacing.md,
-    gap: spacing.md,
-    paddingBottom: spacing.xl,
+  heroDeltaText: { ...THEME.typography.labelMd, color: '#FFFFFF' },
+  heroDeltaCaption: { ...THEME.typography.caption, color: 'rgba(255,255,255,0.8)' },
+  heroAside: {
+    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: THEME.radius.lg,
+    paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center',
   },
-  errorText: {
-    color: colors.danger,
-    fontSize: 13,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  card: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    ...shadows.small,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  chart: {
-    borderRadius: borderRadius.sm,
-  },
-  selectionText: {
-    marginTop: spacing.sm,
-    color: '#0F766E',
-    fontSize: 12,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  barsWrap: { gap: spacing.sm },
-  barRow: {
-    gap: spacing.xs,
-  },
-  barLabel: {
-    fontSize: 12,
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  barTrack: {
-    height: 10,
-    borderRadius: 6,
-    backgroundColor: '#E2E8F0',
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    borderRadius: 6,
-    backgroundColor: '#38BDF8',
-  },
-  barFillActive: {
-    backgroundColor: '#0EA5E9',
-  },
-  barValue: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  stackWrap: {
+  heroAsideLabel: { ...THEME.typography.caption, color: 'rgba(255,255,255,0.75)' },
+  heroAsideValue: { ...THEME.typography.h4, color: '#FFFFFF', marginTop: 2 },
+
+  // Charts
+  chart: { borderRadius: THEME.radius.md, marginLeft: -THEME.spacing.sm, marginTop: 4 },
+  empty: { ...THEME.typography.bodySm, color: THEME.colors.textTertiary, textAlign: 'center', paddingVertical: 16 },
+  axisHint: { alignItems: 'flex-end', marginBottom: -6 },
+  axisHintText: { ...THEME.typography.caption, color: THEME.colors.textTertiary, fontSize: 10 },
+  tooltip: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    gap: spacing.xs,
-    minHeight: 170,
-  },
-  stackCol: {
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    flex: 1,
+    gap: 6,
+    alignSelf: 'center',
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: THEME.radius.full,
+    backgroundColor: THEME.colors.primaryLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: THEME.colors.primary + '33',
   },
-  stackSegment: {
-    width: 24,
+  tooltipText: { ...THEME.typography.labelMd, color: THEME.colors.primaryHover },
+
+  // Top customers
+  barTop: { flexDirection: 'row', alignItems: 'center' },
+  barRank: {
+    width: 20, height: 20, borderRadius: 10, backgroundColor: THEME.colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center', marginRight: 8,
   },
-  stackLabel: {
-    marginTop: spacing.xs,
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  legendText: {
-    marginTop: spacing.sm,
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  emptyText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-    textAlign: 'center' as const,
-    paddingVertical: 16,
-  },
+  barRankText: { ...THEME.typography.labelSm, color: THEME.colors.primary, letterSpacing: 0 },
+  barLabel: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, flex: 1, marginRight: 8 },
+  barValue: { ...THEME.typography.labelMd, color: THEME.colors.textSecondary },
+  barTrack: { height: 10, borderRadius: 6, backgroundColor: THEME.colors.neutral100, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 6, backgroundColor: ACCENT.blue + 'AA' },
+  barFillActive: { backgroundColor: ACCENT.blue },
+
+  // AR aging stack
+  stackWrap: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 6, minHeight: 168 },
+  stackCol: { alignItems: 'center', justifyContent: 'flex-end', flex: 1 },
+  stackLabel: { marginTop: 6, ...THEME.typography.caption, color: THEME.colors.textSecondary },
+  legendWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14, justifyContent: 'center' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 9, height: 9, borderRadius: 2 },
+  legendText: { ...THEME.typography.caption, color: THEME.colors.textSecondary },
 });
 
 export default AnalyticsDashboardScreen;

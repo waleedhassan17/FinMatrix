@@ -46,5 +46,5 @@ export const getUnreadCountAPI = async (userId: string): Promise<any> => {
 };
 
 export const getAnalyticsDashboardAPI = async (params: any = {}): Promise<any> => {
-  return getDashboardSummaryAPI(params);
+  return fetchReport('/reports/analytics-dashboard', params);
 };

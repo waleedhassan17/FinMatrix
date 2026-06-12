@@ -10,6 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
@@ -125,7 +126,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <View style={styles.backIconContainer}>
-            <Text style={styles.backArrow}>{'‹'}</Text>
+            <Feather name="arrow-left" size={20} color={colors.textPrimary} />
           </View>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Personnel Details</Text>

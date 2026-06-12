@@ -12,6 +12,7 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -147,7 +148,7 @@ const CustomerDetailScreen: React.FC = () => {
               onPress={() => navigation.goBack()}
               style={styles.backBtn}
               activeOpacity={0.7}>
-              <Text style={styles.backIcon}>‹</Text>
+              <Feather name="arrow-left" size={24} color={colors.secondary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle} numberOfLines={1}>{customer.name}</Text>
           </View>

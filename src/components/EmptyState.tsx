@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import CustomButton from '../Custom-Components/CustomButton';
 import { colors, spacing } from '../theme';
 import { THEME } from '../utils/theme';
@@ -9,6 +10,8 @@ interface EmptyStateProps {
   message: string;
   actionLabel?: string;
   onAction?: () => void;
+  /** Feather icon shown in the circle. Defaults to a neutral inbox. */
+  icon?: keyof typeof Feather.glyphMap;
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
@@ -16,11 +19,12 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   message,
   actionLabel,
   onAction,
+  icon = 'inbox',
 }) => {
   return (
     <View style={styles.container}>
       <View style={styles.iconCircle}>
-        <Text style={styles.icon}>📋</Text>
+        <Feather name={icon} size={34} color={colors.primary} />
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
@@ -54,9 +58,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
-  },
-  icon: {
-    fontSize: THEME.typography.displayLg.fontSize,
   },
   title: {
     ...THEME.typography.h2,
