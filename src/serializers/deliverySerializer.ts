@@ -44,18 +44,27 @@ export interface SerializedPersonnelList {
 }
 
 // ─── Raw → UI mappers ────────────────────────────────
+const toNum = (v: any, fallback: number): number => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = parseFloat(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return fallback;
+};
+
 const mapItemLine = (
-  raw: Partial<DeliveryItemLine>,
+  raw: Partial<DeliveryItemLine> & Record<string, any>,
 ): DeliveryItemLine => ({
   itemId: raw.itemId ?? '',
   itemName: raw.itemName ?? '',
   agencyId: raw.agencyId ?? '',
   agencyName: raw.agencyName ?? '',
-  orderedQty: raw.orderedQty ?? (typeof raw.quantity === 'number' ? raw.quantity : 0),
-  quantity: typeof raw.quantity === 'number' ? raw.quantity : 0,
-  deliveredQty: raw.deliveredQty,
-  returnedQty: raw.returnedQty,
-  unitPrice: raw.unitPrice ?? 0,
+  orderedQty: raw.orderedQty !== undefined ? toNum(raw.orderedQty, 0) : toNum(raw.quantity, 0),
+  quantity: toNum(raw.quantity, 0),
+  deliveredQty: raw.deliveredQty !== undefined ? toNum(raw.deliveredQty, 0) : undefined,
+  returnedQty: raw.returnedQty !== undefined ? toNum(raw.returnedQty, 0) : undefined,
+  unitPrice: toNum(raw.unitPrice, 0),
 });
 
 const mapStatusHistory = (
@@ -76,7 +85,7 @@ export const mapDelivery = (
   customerId: raw.customerId ?? raw.customer_id ?? '',
   customerName: raw.customerName ?? raw.customer_name ?? '',
   zone: raw.zone ?? '',
-  scheduledDate: raw.scheduledDate ?? raw.scheduled_date ?? '',
+  scheduledDate: raw.scheduledDate ?? raw.scheduled_date ?? raw.preferredDate ?? raw.preferred_date ?? '',
   priority: raw.priority ?? 'medium',
   status: raw.status ?? 'unassigned',
   assignedTo: raw.assignedTo ?? raw.personnelId ?? raw.assigned_to ?? raw.personnelUserId,
@@ -108,13 +117,6 @@ export const mapDelivery = (
 export const mapDeliveryPerson = (
   raw: Partial<DeliveryPersonApiEntity> & Record<string, any>,
 ): DummyDeliveryPerson => {
-  // Parse numeric strings from backend (e.g. "500.00" → 500)
-  const toNum = (v: any, fallback: number): number => {
-    if (typeof v === 'number' && Number.isFinite(v)) return v;
-    if (typeof v === 'string') { const n = parseFloat(v); if (Number.isFinite(n)) return n; }
-    return fallback;
-  };
-
   // Determine status: default to 'active' since the backend returns them from the personnel endpoint
   const rawStatus = raw.status ?? raw.accountStatus;
   const status: DummyDeliveryPerson['status'] =

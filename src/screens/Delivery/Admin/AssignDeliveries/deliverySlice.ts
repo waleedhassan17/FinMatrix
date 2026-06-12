@@ -111,9 +111,14 @@ export const deliverySlice = createAppSlice({
         notes?: string;
         items: DeliveryItemLine[];
       }) => {
-        const result = await createDeliveryAPI(payload);
+        const sanitizedItems = (payload.items || []).map(item => ({
+          ...item,
+          agencyId: (item.agencyId && item.agencyId.length === 36) ? item.agencyId : null,
+          agencyName: item.agencyName || null,
+        }));
+        const result = await createDeliveryAPI({ ...payload, items: sanitizedItems });
         console.log('[createDelivery] API response:', JSON.stringify(result, null, 2));
-        return { ...payload, apiResult: result };
+        return { ...payload, items: sanitizedItems, apiResult: result };
       },
       {
         fulfilled: (state, action) => {

@@ -105,7 +105,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       Alert.alert('No Phone', 'No customer phone number available.');
       return;
     }
-    Linking.openURL(`tel:${delivery.customerPhone}`).catch(() => 
+    Linking.openURL(`tel:${delivery.customerPhone}`).catch(() =>
       Alert.alert('Call', delivery.customerPhone)
     );
   };
@@ -182,7 +182,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
@@ -209,7 +209,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -230,7 +230,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           <View style={styles.cardBody}>
             <Text style={styles.customerName}>{delivery.customerName}</Text>
-            
+
             <TouchableOpacity style={styles.actionRow} onPress={openMap}>
               <View style={styles.actionRowIcon}>
                 <Feather name="map-pin" size={16} color={DP_BRAND.primary} />
@@ -323,8 +323,8 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={[styles.tableHeaderCell, styles.tableHeaderCellRight]}>Qty</Text>
             </View>
             {delivery.items.map((item, index) => (
-              <View 
-                key={item.itemId} 
+              <View
+                key={item.itemId}
                 style={[styles.tableRow, index === delivery.items.length - 1 && styles.tableRowLast]}
               >
                 <View style={styles.tableRowContent}>
@@ -425,7 +425,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* Action Button */}
         {actionConfig && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: actionConfig.color }]}
             onPress={actionConfig.handler}
             activeOpacity={0.9}
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
     ...THEME.typography.h4,
     fontWeight: '700',
     color: DP_BRAND.white,
-    marginBottom: 4,
+    marginBottom: 5,
   },
   headerBadgeRow: {
     flexDirection: 'row',
@@ -508,6 +508,7 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     ...THEME.typography.labelSm,
+    fontWeight: '600',
   },
   gpsPill: {
     flexDirection: 'row',
@@ -528,7 +529,7 @@ const styles = StyleSheet.create({
   },
   gpsText: {
     ...THEME.typography.overline,
-    color: '#22c55e',
+    color: '#DCFCE7',
     fontWeight: '700',
   },
   moreBtn: {
@@ -554,6 +555,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingTop: 18,
   },
 
   // Cards
@@ -615,6 +617,8 @@ const styles = StyleSheet.create({
     padding: 14,
     backgroundColor: THEME.colors.neutral50,
     borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
     marginBottom: 10,
   },
   actionRowIcon: {
@@ -694,7 +698,7 @@ const styles = StyleSheet.create({
   // Items Table
   itemsTable: {
     padding: 16,
-    paddingTop: 0,
+    paddingTop: 4,
   },
   tableHeader: {
     flexDirection: 'row',
@@ -856,6 +860,7 @@ const styles = StyleSheet.create({
   },
   currentBadgeText: {
     ...THEME.typography.labelSm,
+    fontWeight: '600',
     color: DP_BRAND.primary,
   },
 
@@ -899,7 +904,7 @@ const styles = StyleSheet.create({
   },
   actionButtonSubtitle: {
     ...THEME.typography.bodySm,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.85)',
     marginTop: 2,
   },
   actionButtonArrow: {

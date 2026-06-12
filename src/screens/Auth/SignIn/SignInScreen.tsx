@@ -237,14 +237,7 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
             <SafeAreaView edges={['top']} style={s.headerInner}>
               {/* Nav row */}
               <View style={s.navRow}>
-                <TouchableOpacity
-                  onPress={() => navigation.goBack()}
-                  hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-                  activeOpacity={0.7}>
-                  <View style={s.backBtn}>
-                    <Text style={s.backIcon}>{'\u2190'}</Text>
-                  </View>
-                </TouchableOpacity>
+                <View />
 
                 <View
                   style={[

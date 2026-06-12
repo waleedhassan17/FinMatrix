@@ -50,6 +50,12 @@ const statusColor = (status: InventoryUpdateRequest['status']) => {
   return colors.warning;
 };
 
+// The review/undo backend endpoints require a real UUID. Guard against
+// non-synced / legacy requests so the user gets a clear message instead of a
+// cryptic "uuid is expected / request not found" error.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isSyncedRequest = (id: string) => UUID_RE.test(id);
+
 const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const requests = useAppSelector(selectInventoryApprovalRequests);
@@ -132,6 +138,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   // Native confirmation — reliable on every platform/architecture (avoids the
   // RN <Modal> not presenting under the New Architecture).
   const promptApprove = (request: InventoryUpdateRequest) => {
+    if (!isSyncedRequest(request.id)) { Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again."); return; }
     const count = (request.changes ?? []).length;
     Alert.alert(
       'Approve inventory changes',
@@ -160,6 +167,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
   // Native confirmation for undo (reliable on all platforms/architectures).
   const promptUndo = (request: InventoryUpdateRequest) => {
+    if (!isSyncedRequest(request.id)) { Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again."); return; }
     Alert.alert(
       'Undo approval',
       `Reverse the approval for ${request.deliveryReference || 'this delivery'}? Inventory will be restored and the request returns to Pending for re-review.`,
@@ -198,6 +206,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
   // Native confirmation for reject (reliable on all platforms/architectures).
   const promptReject = (request: InventoryUpdateRequest) => {
+    if (!isSyncedRequest(request.id)) { Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again."); return; }
     Alert.alert(
       'Reject inventory changes',
       `Reject the update from ${request.deliveryReference || 'this delivery'}? Shadow inventory will be reverted and the rider notified.`,

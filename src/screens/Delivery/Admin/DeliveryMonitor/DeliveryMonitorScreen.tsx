@@ -20,7 +20,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
 import type { DashboardStackParamList } from '../../../../navigators/stacks/DashboardStack';
-import { useAppSelector } from '../../../../hooks/useReduxHooks';
+import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks';
 import { selectDeliveries, selectDeliveryPersonnel } from '../AssignDeliveries/deliverySlice';
 import {
   selectMonitorFilter,
@@ -140,6 +140,7 @@ const elapsedLabel = (from: string): string => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
+  const dispatch = useAppDispatch();
   const deliveries = useAppSelector(selectDeliveries);
   const personnel = useAppSelector(selectDeliveryPersonnel);
   const filterStatus = useAppSelector(selectMonitorFilter);
@@ -501,7 +502,7 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
                 <TouchableOpacity
                   key={opt.value}
                   style={[styles.sortChip, sortBy === opt.value && styles.sortChipActive]}
-                  onPress={() => {/* dispatch handled inside slice */ (setFilterStatus as any)(opt.value)}}
+                  onPress={() => dispatch(setSortBy(opt.value))}
                 >
                   <Text style={[styles.sortChipText, sortBy === opt.value && styles.sortChipTextActive]}>
                     {opt.label}
@@ -521,7 +522,7 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
                   <TouchableOpacity
                     key={chip.value}
                     style={[styles.filterChip, active && { backgroundColor: chipColor, borderColor: chipColor }]}
-                    onPress={() => { /* dispatch(setFilterStatus(chip.value)) */ }}
+                    onPress={() => dispatch(setFilterStatus(chip.value))}
                   >
                     <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
                       {chip.label}

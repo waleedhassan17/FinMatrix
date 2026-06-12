@@ -109,7 +109,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -117,7 +117,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.headerTitle}>Inventory</Text>
             <Text style={styles.headerSubtitle}>Manage your assigned items</Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.shadowBtn}
             onPress={() => navigation.navigate('DPShadowInventory')}
           >
@@ -127,7 +127,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -183,7 +183,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
               style={styles.searchInput}
             />
             {searchTerm.length > 0 && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.clearBtn}
                 onPress={() => dispatch(setInventorySearchTerm(''))}
               >
@@ -316,7 +316,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
               {myRequests.map((req, index) => {
                 const config = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
                 return (
-                  <View 
+                  <View
                     key={req.id}
                     style={[styles.requestItem, index === myRequests.length - 1 && styles.requestItemLast]}
                   >
@@ -355,7 +355,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 8,
+    paddingBottom: 18,
   },
   headerTitle: {
     ...THEME.typography.h1,
@@ -365,14 +366,14 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     ...THEME.typography.bodySm,
     color: DP_BRAND.headerTextSecondary,
-    marginTop: 2,
+    marginTop: 3,
   },
   shadowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: DP_BRAND.headerOverlaySolid,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: THEME.radius.full,
   },
   shadowBtnIcon: {
@@ -392,6 +393,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingTop: 18,
   },
 
   // Stats Grid
@@ -415,7 +417,7 @@ const styles = StyleSheet.create({
   },
   statCardSecondary: {
     backgroundColor: THEME.colors.secondaryLight,
-    borderColor: '#D4CCFF',
+    borderColor: '#E2D7FB',
   },
   statIconWrap: {
     width: 44,
@@ -425,6 +427,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    ...THEME.shadows.xs,
   },
   statIcon: {
     fontSize: THEME.typography.h2.fontSize,
@@ -452,6 +455,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: THEME.radius.lg,
     borderLeftWidth: 3,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
     ...THEME.shadows.xs,
   },
   miniStatValue: {
@@ -518,7 +523,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: THEME.radius.full,
     backgroundColor: THEME.colors.neutral50,
     borderWidth: 1,

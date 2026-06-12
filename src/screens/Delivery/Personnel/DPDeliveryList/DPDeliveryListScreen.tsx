@@ -22,8 +22,8 @@ const DeliveryCard: React.FC<{
   const priorityConfig = PRIORITY_CONFIG[delivery.priority] ?? PRIORITY_CONFIG.medium;
 
   return (
-    <TouchableOpacity 
-      style={styles.deliveryCard} 
+    <TouchableOpacity
+      style={styles.deliveryCard}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -143,7 +143,7 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -268,23 +268,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 8,
+    paddingBottom: 18,
   },
   headerTitle: {
-    ...THEME.typography.h2,
+    ...THEME.typography.h1,
     color: DP_BRAND.white,
   },
   headerSubtitle: {
     ...THEME.typography.bodySm,
     color: DP_BRAND.headerTextSecondary,
-    marginTop: 2,
+    marginTop: 3,
   },
   headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: DP_BRAND.headerOverlaySolid,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: THEME.radius.full,
   },
   headerBadgeDot: {
@@ -303,14 +304,16 @@ const styles = StyleSheet.create({
   quickStats: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     gap: 10,
     backgroundColor: THEME.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.borderLight,
   },
   quickStatItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: THEME.radius.lg,
     borderWidth: 1,
   },
@@ -332,9 +335,8 @@ const styles = StyleSheet.create({
   },
   quickStatLabel: {
     ...THEME.typography.overline,
-    fontWeight: '600',
     color: THEME.colors.textSecondary,
-    marginTop: 2,
+    marginTop: 3,
   },
 
   // Scroll
@@ -344,6 +346,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingTop: 18,
   },
 
   // Section Card
@@ -378,7 +381,9 @@ const styles = StyleSheet.create({
     color: THEME.colors.textPrimary,
   },
   sectionCount: {
-    paddingHorizontal: 12,
+    minWidth: 28,
+    alignItems: 'center',
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: THEME.radius.full,
   },
@@ -431,14 +436,13 @@ const styles = StyleSheet.create({
     color: THEME.colors.textPrimary,
   },
   priorityBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: THEME.radius.xs,
   },
   priorityBadgeText: {
     ...THEME.typography.overline,
     fontSize: 9,
-    textTransform: undefined,
     letterSpacing: 0.5,
   },
   referenceNo: {
@@ -460,6 +464,7 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: {
     ...THEME.typography.labelSm,
+    fontWeight: '600',
   },
   deliveryCardBody: {
     paddingHorizontal: 14,
@@ -505,7 +510,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
     backgroundColor: THEME.colors.surface,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.borderLight,

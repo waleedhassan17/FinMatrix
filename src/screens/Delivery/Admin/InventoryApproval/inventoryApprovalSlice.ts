@@ -20,7 +20,6 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import {
-  inventoryUpdateRequests,
   type InventoryUpdateRequest,
   type InventoryUpdateRequestStatus,
 } from '../../../../models/deliveryModel';
@@ -62,7 +61,9 @@ export interface InventoryApprovalSliceState {
 }
 
 const initialState: InventoryApprovalSliceState = {
-  requests: inventoryUpdateRequests,
+  // Real backend requests only (they carry UUID ids the approve endpoint needs).
+  // No seeded dummies — approving a non-UUID dummy id triggers a 400.
+  requests: [],
   activeFilter: 'pending',
   notifications: [],
   auditTrail: [],
@@ -188,14 +189,10 @@ export const inventoryApprovalSlice = createAppSlice({
       async () => getInventoryUpdateRequestsAPI(),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
-          const apiRequests = inventoryUpdateRequestListSerializer(action.payload);
-          if (apiRequests.length > 0) {
-            // Merge: API requests take precedence, but keep local-only requests
-            const apiIds = new Set(apiRequests.map(r => r.id));
-            const localOnly = state.requests.filter(r => !apiIds.has(r.id));
-            state.requests = [...apiRequests, ...localOnly];
-          }
-          // If API returned nothing, keep existing local requests as-is
+          // The backend is authoritative — replace entirely so non-persisted /
+          // dummy requests (which lack real UUID ids) never reach the approve
+          // call. An empty response means there are genuinely no requests.
+          state.requests = inventoryUpdateRequestListSerializer(action.payload);
         },
       },
     ),

@@ -115,7 +115,7 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
@@ -128,7 +128,7 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -136,8 +136,8 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
         {/* Filters Card */}
         <View style={styles.filtersCard}>
           <Text style={styles.filterLabel}>DATE RANGE</Text>
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterChips}
           >
@@ -162,7 +162,7 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
 
           {dateFilter === 'custom' && (
             <View style={styles.customDateRow}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.dateInput}
                 onPress={() => setShowStartPicker(true)}
               >
@@ -172,7 +172,7 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 </Text>
               </TouchableOpacity>
               <Feather name="arrow-right" size={14} color={THEME.colors.textTertiary} />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.dateInput}
                 onPress={() => setShowEndPicker(true)}
               >
@@ -252,7 +252,7 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
               {paginatedDeliveries.map((delivery, index) => {
                 const config = STATUS_CONFIG[delivery.status] ?? STATUS_CONFIG.unassigned;
                 return (
-                  <View 
+                  <View
                     key={delivery.id}
                     style={[
                       styles.historyItem,
@@ -391,6 +391,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingTop: 18,
   },
 
   // Filters Card
@@ -416,7 +417,7 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: THEME.radius.full,
     backgroundColor: THEME.colors.neutral50,
     borderWidth: 1,
@@ -446,7 +447,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 11,
     backgroundColor: THEME.colors.neutral50,
     borderRadius: THEME.radius.md,
     borderWidth: 1,
@@ -519,7 +520,7 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: THEME.colors.border,
+    backgroundColor: THEME.colors.borderLight,
   },
   statValue: {
     ...THEME.typography.h2,
@@ -668,7 +669,7 @@ const styles = StyleSheet.create({
   },
   pageBtn: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: THEME.radius.md,
     backgroundColor: DP_BRAND.primary,
   },

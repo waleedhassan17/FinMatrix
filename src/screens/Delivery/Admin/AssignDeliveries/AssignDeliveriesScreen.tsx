@@ -12,7 +12,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
@@ -45,6 +45,7 @@ import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import CustomInput from '../../../../Custom-Components/CustomInput';
 import { selectCustomers, fetchCustomers } from '../../../Customers/CustomerList/customerListSlice';
+import { selectInventoryItems, fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryListSlice';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
@@ -77,6 +78,7 @@ const AssignDeliveriesScreen: React.FC = () => {
   const pendingApprovalCount = useAppSelector(selectPendingApprovalCount);
 
   const customers = useAppSelector(selectCustomers);
+  const inventoryItems = useAppSelector(selectInventoryItems);
 
   const [quickCustomerId, setQuickCustomerId] = useState('');
   const [quickPriority, setQuickPriority] = useState<'high' | 'medium' | 'low'>('medium');
@@ -87,7 +89,16 @@ const AssignDeliveriesScreen: React.FC = () => {
     dispatch(fetchCustomers());
     dispatch(fetchDeliveries());
     dispatch(fetchDeliveryPersonnel());
+    dispatch(fetchInventoryItems());
   }, [dispatch]);
+
+  // Refresh deliveries whenever this screen regains focus (e.g. after creating
+  // a delivery) so new/updated deliveries appear immediately, ready to assign.
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(fetchDeliveries());
+    }, [dispatch]),
+  );
 
   const customerOptions = useMemo(
     () => customers.map(c => ({ label: `${c.name} • ${c.shippingAddress?.city ?? ''}`, value: c.id })),
@@ -111,39 +122,49 @@ const AssignDeliveriesScreen: React.FC = () => {
     [deliveries],
   );
 
-  const handleQuickCreate = () => {
+  const handleQuickCreate = async () => {
     if (!selectedCustomer) {
       Alert.alert('Customer required', 'Select customer to create a quick delivery.');
       return;
     }
 
-    dispatch(
-      createDelivery({
-        customerId: selectedCustomer.id,
-        customerName: selectedCustomer.name,
-        zone: zoneByCity(selectedCustomer.shippingAddress?.city ?? ''),
-        scheduledDate: selectedDate,
-        priority: quickPriority,
-        notes: quickNotes,
-        items: [
-          {
-            itemId: 'aqua_001',
-            itemName: 'AquaPure Water 500ml',
-            agencyId: 'agency_aquapure',
-            agencyName: 'AquaPure Water Supply',
-            quantity: 10,
-            orderedQty: 10,
-            unitPrice: 0,
-          },
-        ],
-      }),
-    );
+    const firstItem = inventoryItems[0];
+    if (!firstItem) {
+      Alert.alert('Inventory required', 'No inventory items found to create quick delivery.');
+      return;
+    }
 
-    setQuickCustomerId('');
-    setQuickPriority('medium');
-    setQuickNotes('');
-    dispatch(toggleCreateForm(false));
-    Alert.alert('Created', 'Delivery added to unassigned queue.');
+    try {
+      await dispatch(
+        createDelivery({
+          customerId: selectedCustomer.id,
+          customerName: selectedCustomer.name,
+          zone: zoneByCity(selectedCustomer.shippingAddress?.city ?? ''),
+          scheduledDate: selectedDate,
+          priority: quickPriority,
+          notes: quickNotes,
+          items: [
+            {
+              itemId: firstItem.id,
+              itemName: firstItem.name,
+              agencyId: 'agency_aquapure',
+              agencyName: 'AquaPure Water Supply',
+              quantity: 10,
+              orderedQty: 10,
+              unitPrice: firstItem.sellingPrice || 0,
+            },
+          ],
+        }),
+      ).unwrap();
+
+      setQuickCustomerId('');
+      setQuickPriority('medium');
+      setQuickNotes('');
+      dispatch(toggleCreateForm(false));
+      Alert.alert('Created', 'Delivery added to unassigned queue.');
+    } catch (err: any) {
+      Alert.alert('Failed to create', err.message || 'Unable to create delivery.');
+    }
   };
 
   const handleOpenAssignModal = () => {
@@ -154,11 +175,15 @@ const AssignDeliveriesScreen: React.FC = () => {
     setShowPersonnelModal(true);
   };
 
-  const handlePickPersonnel = (personnelId: string, personnelName: string) => {
+  const handlePickPersonnel = async (personnelId: string, personnelName: string) => {
     setShowPersonnelModal(false);
-    dispatch(assignSelectedDeliveries({ deliveryIds: selectedDeliveryIds, personnelId }));
-    dispatch(clearSelectedDeliveries());
-    Alert.alert('Assigned', `${selectedDeliveryIds.length} delivery(ies) assigned to ${personnelName}.`);
+    try {
+      await dispatch(assignSelectedDeliveries({ deliveryIds: selectedDeliveryIds, personnelId })).unwrap();
+      dispatch(clearSelectedDeliveries());
+      Alert.alert('Assigned', `${selectedDeliveryIds.length} delivery(ies) assigned to ${personnelName}.`);
+    } catch (err: any) {
+      Alert.alert('Assignment failed', err.message || 'Unable to assign deliveries.');
+    }
   };
 
   const tabs: Array<{ key: 'assign' | 'monitor' | 'approvals'; label: string }> = [

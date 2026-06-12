@@ -193,9 +193,9 @@ const DPDashboardScreen: React.FC = () => {
 
   const displayName = user?.displayName ?? me?.displayName ?? 'Partner';
   const currentDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', 
-    month: 'long', 
-    day: 'numeric' 
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
   });
 
   const statusConfig = nextDelivery ? STATUS_CONFIG[nextDelivery.status] ?? STATUS_CONFIG.pending : null;
@@ -204,7 +204,7 @@ const DPDashboardScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
-      
+
       {/* Header */}
       <LinearGradient
         colors={[DP_BRAND.primary, DP_BRAND.primaryDark]}
@@ -214,7 +214,7 @@ const DPDashboardScreen: React.FC = () => {
       >
         <View style={styles.headerTopRow}>
           <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>{getGreeting()},</Text>
+            <Text style={styles.greeting}>{getGreeting().toUpperCase()}</Text>
             <Text style={styles.userName} numberOfLines={1}>{displayName}</Text>
           </View>
         </View>
@@ -261,7 +261,7 @@ const DPDashboardScreen: React.FC = () => {
               <View style={styles.progressIconWrap}>
                 <Feather name="trending-up" size={16} color={DP_BRAND.primary} />
               </View>
-              <View>
+              <View style={styles.progressTitleText}>
                 <Text style={styles.progressTitle}>Today's Progress</Text>
                 <Text style={styles.progressSubtitle}>
                   {summary.completed} of {summary.total} deliveries completed
@@ -282,31 +282,31 @@ const DPDashboardScreen: React.FC = () => {
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
             <Animated.View style={[styles.statCard, styles.statCardPending, { transform: [{ scale: scaleAnims[0] }] }]}>
-              <View style={[styles.statIconCircle, { backgroundColor: THEME.colors.primaryLight }]}>
+              <View style={[styles.statIconCircle, { backgroundColor: THEME.colors.surface }]}>
                 <Feather name="clock" size={14} color={THEME.colors.primary} />
               </View>
               <Text style={styles.statValue}>{summary.pending}</Text>
               <Text style={styles.statLabel}>Pending</Text>
             </Animated.View>
-            
+
             <Animated.View style={[styles.statCard, styles.statCardInProgress, { transform: [{ scale: scaleAnims[1] }] }]}>
-              <View style={[styles.statIconCircle, { backgroundColor: THEME.colors.warningLight }]}>
+              <View style={[styles.statIconCircle, { backgroundColor: THEME.colors.surface }]}>
                 <Feather name="truck" size={14} color={THEME.colors.warning} />
               </View>
               <Text style={styles.statValue}>{summary.inProgress}</Text>
               <Text style={styles.statLabel}>In Progress</Text>
             </Animated.View>
-            
+
             <Animated.View style={[styles.statCard, styles.statCardCompleted, { transform: [{ scale: scaleAnims[2] }] }]}>
-              <View style={[styles.statIconCircle, { backgroundColor: THEME.colors.successLight }]}>
+              <View style={[styles.statIconCircle, { backgroundColor: THEME.colors.surface }]}>
                 <Feather name="check-circle" size={14} color={THEME.colors.success} />
               </View>
               <Text style={styles.statValue}>{summary.completed}</Text>
               <Text style={styles.statLabel}>Completed</Text>
             </Animated.View>
-            
+
             <Animated.View style={[styles.statCard, styles.statCardFailed, { transform: [{ scale: scaleAnims[3] }] }]}>
-              <View style={[styles.statIconCircle, { backgroundColor: THEME.colors.dangerLight }]}>
+              <View style={[styles.statIconCircle, { backgroundColor: THEME.colors.surface }]}>
                 <Feather name="alert-circle" size={14} color={THEME.colors.danger} />
               </View>
               <Text style={styles.statValue}>{summary.failed}</Text>
@@ -319,7 +319,7 @@ const DPDashboardScreen: React.FC = () => {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Next Delivery</Text>
           {nextDelivery && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.sectionLinkBtn}
               onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: nextDelivery.id })}
             >
@@ -370,10 +370,10 @@ const DPDashboardScreen: React.FC = () => {
                 </View>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.startDeliveryButton}
                 onPress={handleStartDelivery}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
               >
                 <Text style={styles.startDeliveryButtonText}>
                   {nextDelivery.status === 'pending' ? 'Start Delivery' : 'Continue Delivery'}
@@ -386,7 +386,7 @@ const DPDashboardScreen: React.FC = () => {
               <View style={styles.noDeliveryIconWrap}>
                 <Feather name="check-circle" size={28} color={THEME.colors.success} />
               </View>
-              <Text style={styles.noDeliveryTitle}>All Caught Up!</Text>
+              <Text style={styles.noDeliveryTitle}>All Caught Up</Text>
               <Text style={styles.noDeliveryText}>No pending deliveries right now</Text>
             </View>
           )}
@@ -409,8 +409,8 @@ const DPDashboardScreen: React.FC = () => {
             </View>
           ) : (
             recentActivity.map((item, index) => (
-              <View 
-                key={item.id} 
+              <View
+                key={item.id}
                 style={[
                   styles.activityItem,
                   index === recentActivity.length - 1 && styles.activityItemLast
@@ -457,7 +457,7 @@ const DPDashboardScreen: React.FC = () => {
             </View>
             <View style={styles.performanceDivider} />
             <View style={styles.performanceItem}>
-              <View style={[styles.performanceIconCircle, { backgroundColor: THEME.colors.primaryLight }]}>
+              <View style={[styles.performanceIconCircle, { backgroundColor: THEME.colors.primaryLighter }]}>
                 <Feather name="bar-chart-2" size={18} color={THEME.colors.primary} />
               </View>
               <Text style={styles.performanceValue}>{thisWeekCount}</Text>
@@ -481,13 +481,15 @@ const styles = StyleSheet.create({
   // Header (gradient)
   header: {
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 18,
+    paddingTop: 12,
+    paddingBottom: 22,
+    borderBottomLeftRadius: THEME.radius.xxl,
+    borderBottomRightRadius: THEME.radius.xxl,
     shadowColor: DP_BRAND.primaryDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 6,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -496,12 +498,13 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flex: 1, marginRight: 12 },
   greeting: {
-    ...THEME.typography.bodySm,
+    ...THEME.typography.overline,
     color: DP_BRAND.headerTextSecondary,
-    marginBottom: 2,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   userName: {
-    ...THEME.typography.h2,
+    ...THEME.typography.h1,
     color: DP_BRAND.white,
   },
 
@@ -510,7 +513,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: 18,
   },
   dateBadge: {
     flexDirection: 'row',
@@ -518,11 +521,11 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: DP_BRAND.headerOverlaySolid,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: THEME.radius.full,
   },
   dateText: {
-    ...THEME.typography.caption,
+    ...THEME.typography.labelSm,
     fontWeight: '600',
     color: '#FFFFFF',
   },
@@ -533,25 +536,25 @@ const styles = StyleSheet.create({
     backgroundColor: DP_BRAND.headerOverlay,
     borderWidth: 1,
     borderColor: DP_BRAND.headerOverlayBorder,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     borderRadius: THEME.radius.full,
   },
   dutyPillText: {
-    ...THEME.typography.caption,
+    ...THEME.typography.labelSm,
     fontWeight: '600',
     color: DP_BRAND.white,
   },
   gpsTrackingPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    backgroundColor: 'rgba(22, 163, 74, 0.22)',
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.5)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    borderColor: 'rgba(22, 163, 74, 0.5)',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     borderRadius: THEME.radius.full,
-    gap: 5,
+    gap: 6,
   },
   gpsTrackingDot: {
     width: 7,
@@ -560,9 +563,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#22c55e',
   },
   gpsTrackingText: {
-    ...THEME.typography.caption,
+    ...THEME.typography.labelSm,
     fontWeight: '600',
-    color: '#22c55e',
+    color: '#DCFCE7',
   },
 
   // Scroll
@@ -572,6 +575,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingTop: 18,
   },
 
   // Progress Card
@@ -587,26 +591,28 @@ const styles = StyleSheet.create({
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 18,
   },
   progressTitleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flex: 1,
   },
   progressIconWrap: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: THEME.radius.md,
     backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
+  progressTitleText: {
+    flex: 1,
+  },
   progressTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   progressSubtitle: {
@@ -622,13 +628,13 @@ const styles = StyleSheet.create({
   },
   progressPercentageText: {
     ...THEME.typography.h4,
-    fontWeight: '700',
+    fontWeight: '800',
     color: DP_BRAND.primary,
   },
   progressBarContainer: {
-    height: 6,
+    height: 8,
     backgroundColor: THEME.colors.neutral100,
-    borderRadius: 3,
+    borderRadius: 4,
     marginBottom: 20,
     overflow: 'hidden',
   },
@@ -638,7 +644,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     backgroundColor: DP_BRAND.primary,
-    borderRadius: 3,
+    borderRadius: 4,
   },
 
   // Stats Grid
@@ -649,7 +655,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: THEME.radius.lg,
     borderWidth: 1,
   },
@@ -670,12 +676,13 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.dangerLight,
   },
   statIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
+    ...THEME.shadows.xs,
   },
   statValue: {
     ...THEME.typography.h2,
@@ -683,9 +690,8 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     ...THEME.typography.overline,
-    fontWeight: '600',
     color: THEME.colors.textSecondary,
-    marginTop: 2,
+    marginTop: 3,
   },
 
   // Section Headers
@@ -749,7 +755,7 @@ const styles = StyleSheet.create({
   },
   priorityBadgeText: {
     ...THEME.typography.overline,
-    textTransform: undefined,
+    fontSize: 10,
     letterSpacing: 0.5,
   },
   nextDeliveryRef: {
@@ -764,10 +770,11 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: {
     ...THEME.typography.labelSm,
+    fontWeight: '600',
   },
   nextDeliveryDetails: {
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 18,
     paddingLeft: 2,
   },
   nextDeliveryDetailRow: {
@@ -793,12 +800,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: DP_BRAND.primary,
-    paddingVertical: 14,
+    paddingVertical: 15,
     borderRadius: THEME.radius.lg,
     gap: 8,
+    ...THEME.shadows.sm,
   },
   startDeliveryButtonText: {
-    ...THEME.typography.h4,
+    ...THEME.typography.labelLg,
     color: THEME.colors.textInverse,
   },
 
@@ -811,7 +819,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: THEME.colors.successLight,
+    backgroundColor: THEME.colors.successLighter,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -860,10 +868,10 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   activityCheck: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: THEME.colors.successLight,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: THEME.colors.successLighter,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -904,16 +912,16 @@ const styles = StyleSheet.create({
   },
   performanceDivider: {
     width: 1,
-    height: 48,
+    height: 52,
     backgroundColor: THEME.colors.borderLight,
   },
   performanceIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   performanceValue: {
     ...THEME.typography.h2,
