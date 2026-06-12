@@ -9,9 +9,12 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, Callout, PROVIDER_GOOGLE } from '../../../../components/PlatformMapView';
+import { LinearGradient } from 'expo-linear-gradient';
+import MapView, { Marker, Callout, Polyline, PROVIDER_GOOGLE } from '../../../../components/PlatformMapView';
+import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
@@ -37,10 +40,13 @@ interface MapMarker {
   status: string;
   priority: string;
   customerId: string;
+  customerName?: string | null;
   personnelId: string | null;
   itemCount: number;
   assignedAt: string | null;
   createdAt: string;
+  address?: string | null;
+  destination?: { lat: number; lng: number; address: string | null } | null;
   personnel: {
     vehicleType: string | null;
     rating: string;
@@ -139,7 +145,8 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
   const filterStatus = useAppSelector(selectMonitorFilter);
   const sortBy = useAppSelector(selectMonitorSort);
 
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  // Map view temporarily removed (to be re-added next update) — locked to list.
+  const [viewMode] = useState<'map' | 'list'>('list');
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -197,6 +204,25 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
     (mapData?.markers ?? []).filter(m => m.personnel?.lat != null && m.personnel?.lng != null),
   [mapData]);
 
+  // Destination pins — where each active delivery needs to go (geocoded).
+  const destinationMarkers = useMemo(() =>
+    (mapData?.markers ?? []).filter(
+      m => m.destination?.lat != null && m.destination?.lng != null,
+    ),
+  [mapData]);
+
+  // Route lines — connect a courier's live position to its destination.
+  const routeLines = useMemo(() =>
+    (mapData?.markers ?? []).filter(
+      m =>
+        m.personnel?.lat != null && m.personnel?.lng != null &&
+        m.destination?.lat != null && m.destination?.lng != null,
+    ),
+  [mapData]);
+
+  // Any plottable coordinate (personnel OR destination) — drives "fit" + overlay.
+  const hasAnyCoordinate = mapMarkers.length > 0 || destinationMarkers.length > 0;
+
   // ── List (filtered + sorted) ──────────────────────────────────────────────
   const filteredList = useMemo(() => {
     const list = filterStatus === 'all'
@@ -213,20 +239,27 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
   }, [deliveries, filterStatus, sortBy]);
 
   const fitMapToMarkers = () => {
-    if (!mapMarkers.length || !mapRef.current) return;
-    mapRef.current.fitToCoordinates(
-      mapMarkers.map(m => ({ latitude: m.personnel!.lat!, longitude: m.personnel!.lng! })),
-      { edgePadding: { top: 80, right: 40, bottom: 80, left: 40 }, animated: true },
-    );
+    if (!mapRef.current) return;
+    const coords = [
+      ...mapMarkers.map(m => ({ latitude: m.personnel!.lat!, longitude: m.personnel!.lng! })),
+      ...destinationMarkers.map(m => ({ latitude: m.destination!.lat, longitude: m.destination!.lng })),
+    ];
+    if (!coords.length) return;
+    mapRef.current.fitToCoordinates(coords, {
+      edgePadding: { top: 80, right: 40, bottom: 80, left: 40 },
+      animated: true,
+    });
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <View style={styles.body}>
       {/* ── Header ── */}
-      <View style={styles.header}>
+      <LinearGradient colors={HEADER_NAVY} style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
-          <Feather name="arrow-left" size={20} color={colors.textPrimary} />
+          <Feather name="arrow-left" size={20} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.title}>Delivery Monitor</Text>
@@ -235,9 +268,9 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
         </View>
         <TouchableOpacity onPress={() => fetchMapData(true)} style={styles.headerBtn}>
-          <Feather name="refresh-cw" size={18} color={colors.primary} />
+          <Feather name="refresh-cw" size={18} color="#FFFFFF" />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {/* ── Stats Bar ── */}
       <View style={styles.statsBar}>
@@ -257,31 +290,8 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
         ))}
       </View>
 
-      {/* ── View Toggle ── */}
-      <View style={styles.viewToggleRow}>
-        <View style={styles.viewToggle}>
-          <TouchableOpacity
-            style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
-            onPress={() => setViewMode('map')}
-          >
-            <Feather name="map" size={14} color={viewMode === 'map' ? '#fff' : colors.textSecondary} />
-            <Text style={[styles.toggleBtnText, viewMode === 'map' && styles.toggleBtnTextActive]}>Map</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
-            onPress={() => setViewMode('list')}
-          >
-            <Feather name="list" size={14} color={viewMode === 'list' ? '#fff' : colors.textSecondary} />
-            <Text style={[styles.toggleBtnText, viewMode === 'list' && styles.toggleBtnTextActive]}>List</Text>
-          </TouchableOpacity>
-        </View>
-        {viewMode === 'map' && mapMarkers.length > 0 && (
-          <TouchableOpacity style={styles.fitBtn} onPress={fitMapToMarkers}>
-            <Feather name="maximize-2" size={14} color={colors.primary} />
-            <Text style={styles.fitBtnText}>Fit All</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* ── Map view temporarily removed — to be re-added in a future update.
+           The map block below stays dead while viewMode is locked to 'list'. ── */}
 
       {/* ── Map View ── */}
       {viewMode === 'map' && (
@@ -302,6 +312,24 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
               showsBuildings={false}
               onMapReady={fitMapToMarkers}
             >
+              {/* Route lines: courier → destination (drawn under the markers) */}
+              {routeLines.map(m => {
+                const statusColor = STATUS_COLORS[m.status] ?? '#64748B';
+                return (
+                  <Polyline
+                    key={`route-${m.deliveryId}`}
+                    coordinates={[
+                      { latitude: m.personnel!.lat!, longitude: m.personnel!.lng! },
+                      { latitude: m.destination!.lat, longitude: m.destination!.lng },
+                    ]}
+                    strokeColor={statusColor}
+                    strokeWidth={3}
+                    lineDashPattern={[8, 6]}
+                    geodesic
+                  />
+                );
+              })}
+
               {mapMarkers.map(marker => {
                 const statusColor = STATUS_COLORS[marker.status] ?? '#64748B';
                 const personName = marker.personnelId ? personnelMap[marker.personnelId] : null;
@@ -379,19 +407,74 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
                   </Marker>
                 );
               })}
+
+              {/* Destination pins — where each delivery needs to go */}
+              {destinationMarkers.map(marker => {
+                const statusColor = STATUS_COLORS[marker.status] ?? '#64748B';
+                const customerInfo = customerMap[marker.deliveryId];
+                const name = marker.customerName || customerInfo?.name || 'Delivery';
+                const addr = marker.destination?.address || marker.address || customerInfo?.address;
+                return (
+                  <Marker
+                    key={`dest-${marker.deliveryId}`}
+                    coordinate={{ latitude: marker.destination!.lat, longitude: marker.destination!.lng }}
+                    anchor={{ x: 0.5, y: 1 }}
+                    tracksViewChanges={false}
+                  >
+                    <View style={styles.destMarkerContainer}>
+                      <View style={[styles.destMarkerPin, { borderColor: statusColor }]}>
+                        <Feather name="map-pin" size={12} color={statusColor} />
+                      </View>
+                      <View style={[styles.destMarkerTail, { borderTopColor: statusColor }]} />
+                    </View>
+                    <Callout
+                      onPress={() => navigation.navigate('AdminDeliveryDetail', { deliveryId: marker.deliveryId })}
+                      style={styles.callout}
+                    >
+                      <View style={styles.calloutContent}>
+                        <View style={styles.calloutHeader}>
+                          <Feather name="map-pin" size={12} color={statusColor} />
+                          <Text style={styles.calloutStatus}>Destination</Text>
+                          <View style={[styles.calloutPriority, { backgroundColor: PRIORITY_COLORS[marker.priority] + '22' }]}>
+                            <Text style={[styles.calloutPriorityText, { color: PRIORITY_COLORS[marker.priority] }]}>
+                              {marker.priority.toUpperCase()}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.calloutCustomer} numberOfLines={1}>{name}</Text>
+                        {addr && <Text style={styles.calloutAddress} numberOfLines={2}>{addr}</Text>}
+                        <View style={styles.calloutDivider} />
+                        <View style={styles.calloutMeta}>
+                          <View style={styles.calloutMetaRow}>
+                            <Feather name="package" size={11} color="#64748B" />
+                            <Text style={styles.calloutMetaText}>{marker.itemCount} items</Text>
+                          </View>
+                          <View style={styles.calloutMetaRow}>
+                            <Feather name="flag" size={11} color="#64748B" />
+                            <Text style={styles.calloutMetaText}>{STATUS_LABELS[marker.status] ?? marker.status}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.calloutTapHint}>
+                          <Text style={styles.calloutTapHintText}>Tap to view details →</Text>
+                        </View>
+                      </View>
+                    </Callout>
+                  </Marker>
+                );
+              })}
             </MapView>
           )}
 
-          {/* No GPS data overlay */}
-          {!loading && mapMarkers.length === 0 && (
+          {/* No data overlay — only when neither personnel GPS nor destinations exist */}
+          {!loading && !hasAnyCoordinate && (
             <View style={styles.noGpsOverlay}>
               <View style={styles.noGpsCard}>
                 <View style={styles.noGpsIcon}>
                   <Feather name="map-pin" size={24} color="#64748B" />
                 </View>
-                <Text style={styles.noGpsTitle}>No Live Locations</Text>
+                <Text style={styles.noGpsTitle}>Nothing to Show Yet</Text>
                 <Text style={styles.noGpsText}>
-                  GPS tracking activates when delivery personnel start their routes
+                  Destination pins appear once deliveries are geocoded; live truck pins appear when personnel start their routes
                 </Text>
               </View>
             </View>
@@ -518,6 +601,7 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
           />
         </View>
       )}
+      </View>
     </SafeAreaView>
   );
 };
@@ -525,26 +609,30 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
 // ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
+  body: { flex: 1, backgroundColor: colors.background },
 
   // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    backgroundColor: colors.cardBg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 10,
+    paddingBottom: 14,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerBtn: {
     width: 36, height: 36,
     alignItems: 'center', justifyContent: 'center',
     borderRadius: 18,
-    backgroundColor: colors.background,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   headerCenter: { flex: 1, alignItems: 'center' },
-  title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
-  subtitle: { fontSize: 11, color: colors.textSecondary, marginTop: 1 },
+  title: { fontSize: 17, fontWeight: '700', color: '#FFFFFF' },
+  subtitle: { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
 
   // Stats Bar
   statsBar: {
@@ -625,6 +713,23 @@ const styles = StyleSheet.create({
   markerTail: {
     width: 0, height: 0,
     borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8,
+    borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    marginTop: -1,
+  },
+
+  // Destination pin — hollow white pin with a status-colored border,
+  // visually distinct from the filled "truck" personnel pin.
+  destMarkerContainer: { alignItems: 'center' },
+  destMarkerPin: {
+    width: 30, height: 30, borderRadius: 15,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#fff', borderWidth: 2.5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 3, elevation: 4,
+  },
+  destMarkerTail: {
+    width: 0, height: 0,
+    borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 7,
     borderLeftColor: 'transparent', borderRightColor: 'transparent',
     marginTop: -1,
   },

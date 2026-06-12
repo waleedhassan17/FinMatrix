@@ -87,9 +87,17 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const priorityConfig = PRIORITY_CONFIG[delivery.priority] ?? PRIORITY_CONFIG.medium;
 
   const openMap = () => {
-    const target = delivery.address ?? delivery.zone;
-    const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(target)}`;
-    Linking.openURL(mapUrl).catch(() => Alert.alert('Navigation', `Navigate to: ${target}`));
+    // Prefer precise geocoded coordinates → turn-by-turn directions.
+    // Fall back to the address/zone text query if not geocoded yet.
+    const hasCoords =
+      typeof delivery.destLat === 'number' && typeof delivery.destLng === 'number';
+    const target = delivery.address ?? delivery.zone ?? '';
+    const mapUrl = hasCoords
+      ? `https://www.google.com/maps/dir/?api=1&destination=${delivery.destLat},${delivery.destLng}&travelmode=driving`
+      : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(target)}&travelmode=driving`;
+    Linking.openURL(mapUrl).catch(() =>
+      Alert.alert('Navigation', `Navigate to: ${target || 'destination'}`),
+    );
   };
 
   const callCustomer = () => {
@@ -149,9 +157,22 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           handler: () => navigation.navigate('BillPhotoCapture', { deliveryId: delivery.id }),
         };
       default:
+        // delivered / failed / cancelled / returned → no further action.
         return null;
     }
   })();
+
+  // Read-only banner shown for terminal statuses (no action button).
+  const TERMINAL_CONFIG: Record<string, { label: string; sub: string; icon: string; color: string }> = {
+    delivered: { label: 'Delivered', sub: 'This delivery is complete', icon: 'check-circle', color: THEME.colors.success },
+    failed: { label: 'Delivery Failed', sub: 'This delivery was marked failed', icon: 'x-circle', color: THEME.colors.danger },
+    cancelled: { label: 'Cancelled', sub: 'This delivery was cancelled', icon: 'slash', color: THEME.colors.textSecondary },
+    returned: { label: 'Returned', sub: 'Items were returned', icon: 'corner-up-left', color: THEME.colors.warning },
+  };
+  const terminalConfig = TERMINAL_CONFIG[delivery.status] ?? null;
+  const completedAtLabel = delivery.deliveredAt
+    ? ` · ${new Date(delivery.deliveredAt).toLocaleDateString()}`
+    : '';
 
   const currentStepIndex = Math.max(
     EXECUTION_STEPS.findIndex(step => step.key === delivery.status),
@@ -420,6 +441,17 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Feather name="arrow-right" size={18} color={THEME.colors.textInverse} />
             </View>
           </TouchableOpacity>
+        )}
+
+        {/* Terminal state — read-only, no further delivery action */}
+        {!actionConfig && terminalConfig && (
+          <View style={[styles.completedBanner, { borderColor: terminalConfig.color + '40', backgroundColor: terminalConfig.color + '12' }]}>
+            <Feather name={terminalConfig.icon as any} size={26} color={terminalConfig.color} />
+            <View style={styles.completedTextWrap}>
+              <Text style={[styles.completedTitle, { color: terminalConfig.color }]}>{terminalConfig.label}</Text>
+              <Text style={styles.completedSub}>{terminalConfig.sub}{completedAtLabel}</Text>
+            </View>
+          </View>
         )}
 
         <View style={{ height: 24 }} />
@@ -836,6 +868,16 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     ...THEME.shadows.md,
   },
+  completedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: THEME.radius.xl,
+    borderWidth: 1,
+  },
+  completedTextWrap: { flex: 1, marginLeft: 12 },
+  completedTitle: { ...THEME.typography.h4, fontWeight: '700' },
+  completedSub: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, marginTop: 2 },
   actionButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',

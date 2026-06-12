@@ -7,9 +7,11 @@ import {
   ScrollView,
   Alert,
   Linking,
+  StatusBar,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
@@ -92,16 +94,19 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // ── Not-found guard ──────────────────────────────────────────────────────
   if (!delivery) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Feather name="arrow-left" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Delivery Detail</Text>
-          <View style={{ width: 36 }} />
-        </View>
-        <View style={styles.center}>
-          <Text style={styles.placeholderNote}>Delivery not found</Text>
+      <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+        <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+        <View style={styles.body}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <Feather name="arrow-left" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Delivery Detail</Text>
+            <View style={{ width: 36 }} />
+          </View>
+          <View style={styles.center}>
+            <Text style={styles.placeholderNote}>Delivery not found</Text>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -141,17 +146,19 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+      <View style={styles.body}>
       {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={24} color={colors.primary} />
+          <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.title}>{delivery.referenceNo}</Text>
         </View>
-        <View style={[styles.headerStatusBadge, { backgroundColor: statusColor + '20' }]}>
-          <Text style={[styles.headerStatusText, { color: statusColor }]}>
+        <View style={[styles.headerStatusBadge, { backgroundColor: 'rgba(255,255,255,0.16)' }]}>
+          <Text style={[styles.headerStatusText, { color: '#FFFFFF' }]}>
             {STATUS_ICONS[delivery.status]} {delivery.status.replace('_', ' ')}
           </Text>
         </View>
@@ -442,6 +449,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.bottomBtnText}>📞{'\n'}Contact</Text>
         </TouchableOpacity>
       </View>
+      </View>
     </SafeAreaView>
   );
 };
@@ -449,6 +457,8 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 // ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
+  body: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   // Header
@@ -457,15 +467,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.cardBg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    backgroundColor: HEADER_NAVY[0],
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   backBtn: { padding: spacing.xs },
   back: { ...THEME.typography.displaySm, color: colors.primary },
   headerCenter: { flex: 1, alignItems: 'center' },
-  title: { ...THEME.typography.h3, color: colors.textPrimary },
+  title: { ...THEME.typography.h3, color: '#FFFFFF' },
   headerStatusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,

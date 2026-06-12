@@ -48,7 +48,7 @@ export interface InventoryApprovalNotification {
 export interface InventoryApprovalAuditEntry {
   id: string;
   requestId: string;
-  action: 'approved' | 'rejected';
+  action: 'approved' | 'rejected' | 'undone';
   reviewedBy: string;
   createdAt: string;
   details: string;
@@ -282,16 +282,16 @@ export const inventoryApprovalSlice = createAppSlice({
             id: `notif_${Date.now()}_${updated.id}`,
             userId: updated.personnelId,
             title: 'Inventory approval reversed',
-            message: `The approval for ${updated.deliveryReference} was undone. Inventory restored.`,
+            message: `The approval for ${updated.deliveryReference} was undone and sent back to pending for re-review.`,
             createdAt: now,
           });
           state.auditTrail.unshift({
             id: `audit_${Date.now()}_${updated.id}`,
             requestId: updated.id,
-            action: 'rejected',
+            action: 'undone',
             reviewedBy: updated.reviewedBy ?? 'admin',
             createdAt: now,
-            details: `[UNDONE] ${updated.deliveryReference} | ${summarizeChanges(updated)}`,
+            details: `[UNDONE → PENDING] ${updated.deliveryReference} | ${summarizeChanges(updated)}`,
           });
         },
       },

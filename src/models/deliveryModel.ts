@@ -43,6 +43,8 @@ export interface DeliveryRecord {
   customerPhone?: string;
   customerAddress?: string;
   address?: string;
+  destLat?: number;
+  destLng?: number;
   personnelId?: string;
   personnelName?: string;
   assignedTo?: string;

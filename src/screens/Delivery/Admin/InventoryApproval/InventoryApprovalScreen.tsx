@@ -97,33 +97,28 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     setRejectComment('');
   };
 
-  const confirmApprove = async () => {
-    if (!targetRequest) return;
-
+  // Core approve logic — takes the request directly so it works from the modal
+  // OR the native confirmation dialog.
+  const doApprove = async (request: InventoryUpdateRequest) => {
+    const changes = request.changes ?? [];
     try {
       await dispatch(
-        approveRequestAsync({
-          requestId: targetRequest.id,
-          reviewedBy: 'Admin',
-        }),
+        approveRequestAsync({ requestId: request.id, reviewedBy: 'Admin' }),
       ).unwrap();
 
-      // Apply changes to actual inventory
       dispatch(
         applyDeliveryChanges({
-          changes: targetRequest.changes.map(c => ({
+          changes: changes.map(c => ({
             itemId: c.itemId,
             deliveredQty: c.deliveredQty,
             returnedQty: c.returnedQty,
           })),
         }),
       );
-
-      // Clear shadow inventory entries for this personnel since they are now synced
       dispatch(
         clearShadowInventoryForRequest({
-          personnelId: targetRequest.personnelId,
-          itemIds: targetRequest.changes.map(c => c.itemId),
+          personnelId: request.personnelId,
+          itemIds: changes.map(c => c.itemId),
         }),
       );
 
@@ -134,38 +129,63 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const confirmUndo = async () => {
+  // Native confirmation — reliable on every platform/architecture (avoids the
+  // RN <Modal> not presenting under the New Architecture).
+  const promptApprove = (request: InventoryUpdateRequest) => {
+    const count = (request.changes ?? []).length;
+    Alert.alert(
+      'Approve inventory changes',
+      `Apply ${count} item update${count === 1 ? '' : 's'} from ${request.deliveryReference || 'this delivery'} to real inventory? Shadow inventory will be cleared.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Approve', onPress: () => doApprove(request) },
+      ],
+    );
+  };
+
+  const confirmApprove = async () => {
     if (!targetRequest) return;
+    await doApprove(targetRequest);
+  };
+
+  const doUndo = async (request: InventoryUpdateRequest) => {
     try {
-      await dispatch(undoApprovalAsync({ requestId: targetRequest.id })).unwrap();
+      await dispatch(undoApprovalAsync({ requestId: request.id })).unwrap();
       closeModal();
-      Alert.alert('Undone', 'Approval reversed. Inventory quantities have been restored to their previous values.');
+      Alert.alert('Undone', 'Approval reversed and sent back to pending. You can approve or reject it again.');
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'Failed to undo approval.');
     }
   };
 
-  const confirmReject = async () => {
-    if (!targetRequest) return;
-    if (!rejectComment.trim()) {
-      Alert.alert('Comment required', 'Please add rejection reason before submitting.');
-      return;
-    }
+  // Native confirmation for undo (reliable on all platforms/architectures).
+  const promptUndo = (request: InventoryUpdateRequest) => {
+    Alert.alert(
+      'Undo approval',
+      `Reverse the approval for ${request.deliveryReference || 'this delivery'}? Inventory will be restored and the request returns to Pending for re-review.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Undo', style: 'destructive', onPress: () => doUndo(request) },
+      ],
+    );
+  };
 
+  const confirmUndo = async () => {
+    if (!targetRequest) return;
+    await doUndo(targetRequest);
+  };
+
+  // Core reject logic — takes the request + reason directly.
+  const doReject = async (request: InventoryUpdateRequest, comment: string) => {
     try {
       await dispatch(
-        rejectRequestAsync({
-          requestId: targetRequest.id,
-          reviewedBy: 'Admin',
-          reviewerComment: rejectComment,
-        }),
+        rejectRequestAsync({ requestId: request.id, reviewedBy: 'Admin', reviewerComment: comment }),
       ).unwrap();
 
-      // Revert shadow inventory — items go back since the request was rejected
       dispatch(
         clearShadowInventoryForRequest({
-          personnelId: targetRequest.personnelId,
-          itemIds: targetRequest.changes.map(c => c.itemId),
+          personnelId: request.personnelId,
+          itemIds: (request.changes ?? []).map(c => c.itemId),
         }),
       );
 
@@ -176,8 +196,29 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  // Native confirmation for reject (reliable on all platforms/architectures).
+  const promptReject = (request: InventoryUpdateRequest) => {
+    Alert.alert(
+      'Reject inventory changes',
+      `Reject the update from ${request.deliveryReference || 'this delivery'}? Shadow inventory will be reverted and the rider notified.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Reject', style: 'destructive', onPress: () => doReject(request, 'Rejected by admin') },
+      ],
+    );
+  };
+
+  const confirmReject = async () => {
+    if (!targetRequest) return;
+    if (!rejectComment.trim()) {
+      Alert.alert('Comment required', 'Please add rejection reason before submitting.');
+      return;
+    }
+    await doReject(targetRequest, rejectComment);
+  };
+
   const renderChangeRows = (request: InventoryUpdateRequest) => {
-    return request.changes.map(change => {
+    return (request.changes ?? []).map(change => {
       const afterQty = Math.max(0, change.beforeQty - change.deliveredQty + change.returnedQty);
       const isChanged = change.beforeQty !== afterQty || change.deliveredQty > 0 || change.returnedQty > 0;
 
@@ -229,7 +270,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
           <View key={request.id} style={styles.card}>
             <View style={styles.cardTopRow}>
               <View style={styles.personBlock}>
-                <View style={styles.avatar}><Text style={styles.avatarText}>{request.personnelName.slice(0, 2).toUpperCase()}</Text></View>
+                <View style={styles.avatar}><Text style={styles.avatarText}>{(request.personnelName || '—').slice(0, 2).toUpperCase()}</Text></View>
                 <View style={styles.personMeta}>
                   <Text style={styles.personName}>{request.personnelName}</Text>
                   <Text style={styles.personSub}>{request.deliveryReference} · {request.routeLabel}</Text>
@@ -251,7 +292,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
               {renderChangeRows(request)}
             </View>
 
-            {request.proof.billPhotoUri ? (
+            {request.proof?.billPhotoUri ? (
               <View style={styles.billPhotoRow}>
                 <TouchableOpacity
                   onPress={() => setPhotoFullscreen(request.proof.billPhotoUri ?? null)}
@@ -288,8 +329,8 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
             {request.status === 'pending' && (
               <View style={styles.actionRow}>
-                <View style={styles.actionBtn}><CustomButton title="Approve" onPress={() => openApproveModal(request)} fullWidth /></View>
-                <View style={styles.actionBtn}><CustomButton title="Reject" onPress={() => openRejectModal(request)} variant="danger" fullWidth /></View>
+                <View style={styles.actionBtn}><CustomButton title="Approve" onPress={() => promptApprove(request)} fullWidth /></View>
+                <View style={styles.actionBtn}><CustomButton title="Reject" onPress={() => promptReject(request)} variant="danger" fullWidth /></View>
               </View>
             )}
 
@@ -301,7 +342,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
                   <View style={styles.undoBtnWrap}>
                     <CustomButton
                       title="Undo Approval"
-                      onPress={() => openUndoModal(request)}
+                      onPress={() => promptUndo(request)}
                       variant="danger"
                       size="sm"
                     />
@@ -353,12 +394,12 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </ScrollView>
 
-      <Modal visible={modalMode === 'approve' && !!targetRequest} transparent animationType="fade" onRequestClose={closeModal}>
+      <Modal visible={modalMode === 'approve' && !!targetRequest} transparent statusBarTranslucent animationType="fade" onRequestClose={closeModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Approve Inventory Changes</Text>
             <Text style={styles.modalSub}>Confirm these changes will update real inventory quantities.</Text>
-            {targetRequest?.changes.map(c => {
+            {(targetRequest?.changes ?? []).map(c => {
               const afterQty = Math.max(0, c.beforeQty - c.deliveredQty + c.returnedQty);
               return (
                 <Text key={c.itemId} style={styles.modalLine}>{c.itemName}: {c.beforeQty} - {c.deliveredQty} + {c.returnedQty} = {afterQty}</Text>
@@ -372,7 +413,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </Modal>
 
-      <Modal visible={modalMode === 'reject' && !!targetRequest} transparent animationType="fade" onRequestClose={closeModal}>
+      <Modal visible={modalMode === 'reject' && !!targetRequest} transparent statusBarTranslucent animationType="fade" onRequestClose={closeModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Reject Inventory Changes</Text>
@@ -393,17 +434,17 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </Modal>
 
-      <Modal visible={!!proofFor} transparent animationType="fade" onRequestClose={() => setProofFor(null)}>
+      <Modal visible={!!proofFor} transparent statusBarTranslucent animationType="fade" onRequestClose={() => setProofFor(null)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Delivery Proof</Text>
-            <Text style={styles.modalLine}>Signed by: {proofFor?.proof.signedBy}</Text>
-            <Text style={styles.modalLine}>Verification: {proofFor?.proof.verificationMethod}</Text>
-            <Text style={styles.modalLine}>Verified by: {proofFor?.proof.verifiedBy}</Text>
+            <Text style={styles.modalLine}>Signed by: {proofFor?.proof?.signedBy}</Text>
+            <Text style={styles.modalLine}>Verification: {proofFor?.proof?.verificationMethod}</Text>
+            <Text style={styles.modalLine}>Verified by: {proofFor?.proof?.verifiedBy}</Text>
             <Text style={styles.modalLine}>Verified at: {proofFor ? new Date(proofFor.proof.verifiedAt).toLocaleString() : '-'}</Text>
-            {proofFor?.proof.billPhotoUri ? (
+            {proofFor?.proof?.billPhotoUri ? (
               <TouchableOpacity
-                onPress={() => proofFor?.proof.billPhotoUri && setPhotoFullscreen(proofFor.proof.billPhotoUri)}
+                onPress={() => proofFor?.proof?.billPhotoUri && setPhotoFullscreen(proofFor.proof.billPhotoUri)}
                 activeOpacity={0.85}
                 style={styles.proofPhotoTouchable}
               >
@@ -414,8 +455,8 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
                 />
               </TouchableOpacity>
             ) : (
-              !!proofFor?.proof.signatureBase64 && (
-                <Text style={styles.modalLine} numberOfLines={1}>Signature: {proofFor?.proof.signatureBase64}</Text>
+              !!proofFor?.proof?.signatureBase64 && (
+                <Text style={styles.modalLine} numberOfLines={1}>Signature: {proofFor?.proof?.signatureBase64}</Text>
               )
             )}
             <CustomButton title="Close" onPress={() => setProofFor(null)} fullWidth />
@@ -423,7 +464,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </Modal>
 
-      <Modal visible={modalMode === 'undo' && !!targetRequest} transparent animationType="fade" onRequestClose={closeModal}>
+      <Modal visible={modalMode === 'undo' && !!targetRequest} transparent statusBarTranslucent animationType="fade" onRequestClose={closeModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Undo Approval</Text>
@@ -448,7 +489,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </Modal>
 
-      <Modal visible={!!photoFullscreen} transparent animationType="fade" onRequestClose={() => setPhotoFullscreen(null)}>
+      <Modal visible={!!photoFullscreen} transparent statusBarTranslucent animationType="fade" onRequestClose={() => setPhotoFullscreen(null)}>
         <View style={styles.fullscreenBackdrop}>
           <TouchableOpacity
             style={styles.fullscreenClose}

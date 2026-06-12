@@ -18,7 +18,9 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION"
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
       ],
       "config": {
         "googleMaps": {
@@ -33,7 +35,9 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "FinMatrix needs location access to track your delivery route.",
-          "locationWhenInUsePermission": "FinMatrix needs location access to track your delivery route."
+          "locationWhenInUsePermission": "FinMatrix needs location access to track your delivery route.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ]
     ]

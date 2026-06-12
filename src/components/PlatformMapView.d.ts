@@ -5,6 +5,7 @@ import type { ComponentType } from 'react';
 
 export declare const Marker: ComponentType<any>;
 export declare const Callout: ComponentType<any>;
+export declare const Polyline: ComponentType<any>;
 export declare const PROVIDER_GOOGLE: any;
 
 declare const MapView: ComponentType<any>;

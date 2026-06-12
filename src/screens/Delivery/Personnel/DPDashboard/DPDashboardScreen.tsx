@@ -108,15 +108,6 @@ const DPDashboardScreen: React.FC = () => {
       }).start();
     });
 
-    locationService.requestPermission().then(granted => {
-      if (!granted) {
-        Alert.alert(
-          'Location Access Needed',
-          'Enable location access in Settings to allow GPS tracking during deliveries.',
-          [{ text: 'OK' }],
-        );
-      }
-    });
   }, [dispatch]);
 
   useEffect(() => {
@@ -147,24 +138,10 @@ const DPDashboardScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [hasActiveDelivery, dispatch]);
 
+  // Online location tracking is temporarily disabled — keep the GPS indicator
+  // off until the feature is re-enabled (see locationService.TRACKING_ENABLED).
   useEffect(() => {
-    if (hasActiveDelivery) {
-      locationService.startTracking(30_000);
-      setIsGpsTracking(true);
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(gpsAnim, { toValue: 0.3, duration: 900, useNativeDriver: true }),
-          Animated.timing(gpsAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
-        ]),
-      );
-      pulse.start();
-      return () => {
-        pulse.stop();
-      };
-    } else {
-      locationService.stopTracking();
-      setIsGpsTracking(false);
-    }
+    setIsGpsTracking(false);
   }, [hasActiveDelivery]);
 
   const progressWidth = progressAnim.interpolate({

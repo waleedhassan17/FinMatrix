@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import * as TaskManager from 'expo-task-manager';
 import { updateLocationAPI } from '../network/deliveryNetwork';
 
 export interface LocationData {
@@ -12,12 +13,21 @@ export interface LocationData {
 
 type LocationListener = (data: LocationData) => void;
 
-// Minimum movement in meters to trigger an API update (saves battery)
+// Background task identifier registered with the OS.
+export const BACKGROUND_LOCATION_TASK = 'finmatrix-background-location';
+
+// ⚠️ Online location tracking is temporarily DISABLED (to be re-enabled when
+// the feature ships). While false, the service requests no permission, starts
+// no foreground/background tracking, and sends no GPS to the backend. Flip to
+// true to restore the full implementation below.
+const TRACKING_ENABLED = false;
+
+// Minimum movement in meters before we POST a new fix (saves battery + rows).
 const MIN_DISTANCE_METERS = 10;
-// Maximum interval between updates even if stationary (keep-alive)
-const KEEP_ALIVE_MS = 60_000;
-// Normal polling interval when moving
+// Deliver an update at least this often even when stationary (online heartbeat).
 const TRACKING_INTERVAL_MS = 15_000;
+// OS-level distance filter for delivering updates to the task.
+const DISTANCE_FILTER_METERS = 20;
 
 function haversineDistance(
   lat1: number, lng1: number,
@@ -33,18 +43,29 @@ function haversineDistance(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function toLocationData(pos: Location.LocationObject): LocationData {
+  return {
+    lat: pos.coords.latitude,
+    lng: pos.coords.longitude,
+    heading: pos.coords.heading ?? null,
+    speed: pos.coords.speed != null ? Math.max(0, pos.coords.speed) : null,
+    accuracy: pos.coords.accuracy ?? null,
+    timestamp: pos.timestamp,
+  };
+}
+
 class LocationService {
-  private intervalHandle: ReturnType<typeof setInterval> | null = null;
-  private keepAliveHandle: ReturnType<typeof setInterval> | null = null;
   private _isTracking = false;
   private _lastPosition: LocationData | null = null;
   private _lastSentPosition: LocationData | null = null;
   private _permissionGranted = false;
+  private _backgroundGranted = false;
   private _listeners: Set<LocationListener> = new Set();
 
   get isTracking() { return this._isTracking; }
   get lastPosition() { return this._lastPosition; }
   get permissionGranted() { return this._permissionGranted; }
+  get backgroundGranted() { return this._backgroundGranted; }
 
   addListener(fn: LocationListener): () => void {
     this._listeners.add(fn);
@@ -55,10 +76,20 @@ class LocationService {
     this._listeners.forEach(fn => fn(data));
   }
 
+  /** Request foreground (required) and background (best-effort) permissions. */
   async requestPermission(): Promise<boolean> {
+    if (!TRACKING_ENABLED) return true; // no prompt while tracking is disabled
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      this._permissionGranted = status === 'granted';
+      const fg = await Location.requestForegroundPermissionsAsync();
+      this._permissionGranted = fg.status === 'granted';
+      if (this._permissionGranted) {
+        try {
+          const bg = await Location.requestBackgroundPermissionsAsync();
+          this._backgroundGranted = bg.status === 'granted';
+        } catch {
+          this._backgroundGranted = false;
+        }
+      }
       return this._permissionGranted;
     } catch {
       this._permissionGranted = false;
@@ -72,17 +103,8 @@ class LocationService {
         const granted = await this.requestPermission();
         if (!granted) return null;
       }
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      const data: LocationData = {
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        heading: pos.coords.heading ?? null,
-        speed: pos.coords.speed != null ? Math.max(0, pos.coords.speed) : null,
-        accuracy: pos.coords.accuracy ?? null,
-        timestamp: pos.timestamp,
-      };
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const data = toLocationData(pos);
       this._lastPosition = data;
       this.notifyListeners(data);
       return data;
@@ -91,19 +113,21 @@ class LocationService {
     }
   }
 
-  private shouldSendUpdate(current: LocationData): boolean {
-    if (!this._lastSentPosition) return true;
-    const distance = haversineDistance(
-      this._lastSentPosition.lat, this._lastSentPosition.lng,
-      current.lat, current.lng,
-    );
-    return distance >= MIN_DISTANCE_METERS;
-  }
-
-  private async sendLocation(force = false): Promise<void> {
-    const data = await this.getCurrentPosition();
-    if (!data) return;
-    if (!force && !this.shouldSendUpdate(data)) return;
+  /**
+   * Called by the background task (and the immediate-send path) with a fresh
+   * fix. Updates the in-app UI and POSTs to the backend when we've moved far
+   * enough (or when forced).
+   */
+  async ingest(data: LocationData, force = false): Promise<void> {
+    this._lastPosition = data;
+    this.notifyListeners(data);
+    if (!force && this._lastSentPosition) {
+      const moved = haversineDistance(
+        this._lastSentPosition.lat, this._lastSentPosition.lng,
+        data.lat, data.lng,
+      );
+      if (moved < MIN_DISTANCE_METERS) return;
+    }
     try {
       await updateLocationAPI(data.lat, data.lng, {
         heading: data.heading,
@@ -113,38 +137,79 @@ class LocationService {
       });
       this._lastSentPosition = data;
     } catch {
-      // Silent fail — will retry on next tick
+      // Silent — the OS will deliver another fix shortly.
     }
   }
 
-  /** Send an immediate location update (e.g. on status transition) */
+  /** Send an immediate update (e.g. on a status transition). */
   async sendImmediateUpdate(): Promise<LocationData | null> {
-    await this.sendLocation(true);
-    return this._lastPosition;
+    if (!TRACKING_ENABLED) return null;
+    const data = await this.getCurrentPosition();
+    if (data) await this.ingest(data, true);
+    return data;
   }
 
-  startTracking(intervalMs = TRACKING_INTERVAL_MS): void {
+  /**
+   * Begin continuous tracking. Uses an OS background task so location keeps
+   * flowing when the app is backgrounded or the phone is locked, with an
+   * Android foreground-service notification (required on modern Android).
+   */
+  async startTracking(intervalMs = TRACKING_INTERVAL_MS): Promise<void> {
+    if (!TRACKING_ENABLED) return; // online tracking disabled
     if (this._isTracking) return;
+    const granted = await this.requestPermission();
+    if (!granted) return;
     this._isTracking = true;
-    // Immediate first send
-    this.sendLocation(true);
-    // Periodic smart updates (only sends if moved > MIN_DISTANCE_METERS)
-    this.intervalHandle = setInterval(() => this.sendLocation(), intervalMs);
-    // Keep-alive: force-send even if stationary so admin knows we're online
-    this.keepAliveHandle = setInterval(() => this.sendLocation(true), KEEP_ALIVE_MS);
+
+    // Immediate first fix so the map populates and admin sees us online.
+    this.sendImmediateUpdate();
+
+    try {
+      const already = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => false);
+      if (!already) {
+        await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
+          accuracy: Location.Accuracy.High,
+          timeInterval: intervalMs,
+          distanceInterval: DISTANCE_FILTER_METERS,
+          pausesUpdatesAutomatically: false,
+          showsBackgroundLocationIndicator: true,
+          activityType: Location.ActivityType.AutomotiveNavigation,
+          foregroundService: {
+            notificationTitle: 'FinMatrix — On Delivery',
+            notificationBody: 'Sharing your live location with dispatch.',
+            notificationColor: '#0A1628',
+          },
+        });
+      }
+    } catch {
+      // Background updates unavailable (e.g. permission/sdk) — the immediate
+      // send above still works; foreground status changes still call ingest.
+    }
   }
 
-  stopTracking(): void {
-    if (this.intervalHandle) {
-      clearInterval(this.intervalHandle);
-      this.intervalHandle = null;
-    }
-    if (this.keepAliveHandle) {
-      clearInterval(this.keepAliveHandle);
-      this.keepAliveHandle = null;
-    }
+  async stopTracking(): Promise<void> {
     this._isTracking = false;
+    try {
+      const started = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => false);
+      if (started) await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+    } catch {
+      // ignore
+    }
   }
 }
 
 export const locationService = new LocationService();
+
+// ──────────────────────────────────────────────────────────────────────────
+// Background task — defined at module scope so the OS can invoke it even after
+// the app is relaunched. Import this module from the app entry point so the
+// registration runs on every cold start.
+// ──────────────────────────────────────────────────────────────────────────
+TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
+  if (error) return;
+  const locations = (data as { locations?: Location.LocationObject[] } | undefined)?.locations;
+  if (!locations || !locations.length) return;
+  // Use the freshest fix in the batch.
+  const latest = locations[locations.length - 1];
+  await locationService.ingest(toLocationData(latest));
+});

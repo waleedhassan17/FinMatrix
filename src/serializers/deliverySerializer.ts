@@ -86,6 +86,8 @@ export const mapDelivery = (
   createdAt: raw.createdAt ?? raw.created_at ?? '',
   updatedAt: raw.updatedAt ?? raw.updated_at ?? '',
   address: raw.address ?? raw.deliveryAddress,
+  destLat: raw.destLat ?? raw.dest_lat ?? raw.destination?.lat ?? undefined,
+  destLng: raw.destLng ?? raw.dest_lng ?? raw.destination?.lng ?? undefined,
   customerPhone: raw.customerPhone ?? raw.customer_phone,
   statusHistory: Array.isArray(raw.statusHistory)
     ? raw.statusHistory.map(mapStatusHistory)

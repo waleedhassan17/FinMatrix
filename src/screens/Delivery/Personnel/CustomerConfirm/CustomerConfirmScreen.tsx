@@ -148,10 +148,17 @@ const CustomerConfirmScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   }
 
-  const handleConfirm = () => {
-    dispatch(confirmReceipt({ deliveryId, verifiedBy: delivery.customerName }));
-    dispatch(resetCustomerConfirmState());
-    navigation.replace('DeliveryComplete', { deliveryId });
+  const handleConfirm = async () => {
+    try {
+      // Await the backend confirmation; only advance once it actually persists
+      // the "delivered" status (previously this navigated regardless, so a
+      // failed confirmation silently left the delivery in its old status).
+      await dispatch(confirmReceipt({ deliveryId, verifiedBy: delivery.customerName })).unwrap();
+      dispatch(resetCustomerConfirmState());
+      navigation.replace('DeliveryComplete', { deliveryId });
+    } catch (e: any) {
+      Alert.alert('Could not complete delivery', e?.message || 'Please try again.');
+    }
   };
 
   const handleIssue = () => {

@@ -258,6 +258,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
           <Text style={styles.sectionTitle}>Actions</Text>
           <View style={styles.actionsGrid}>
             {[
+              { label: 'Track on Map', icon: 'T', onPress: () => (navigation as any).navigate('DeliveryMonitor'), color: '#2563EB' },
               { label: person.isAvailable ? 'Set Unavailable' : 'Set Available', icon: person.isAvailable ? 'U' : 'A', onPress: handleToggleAvailability, color: colors.secondary },
               { label: 'Reset Password', icon: 'P', onPress: () => Alert.alert('Reset Password', 'This feature will be available with backend integration.'), color: colors.primary },
               { label: 'Remove', icon: 'R', onPress: handleRemove, color: colors.danger },
