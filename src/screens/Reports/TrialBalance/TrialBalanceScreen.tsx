@@ -1,0 +1,143 @@
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+import { THEME } from '../../../utils/theme';
+import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
+import { fetchTrialBalanceReport, selectTrialBalanceState, setTrialBalanceRange } from './trialBalanceSlice';
+import { formatCurrency } from '../../../utils/formatters';
+import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
+import {
+  ReportContainer,
+  ReportHeader,
+  Card,
+  SectionCard,
+  KpiGrid,
+  DateField,
+  Badge,
+  LoadingBlock,
+  ErrorBlock,
+  EmptyBlock,
+  ACCENT,
+  reportContentStyle,
+} from '../../../components/reports/ReportUI';
+
+type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
+
+const rs = (n: number) => formatCurrency(n, 'Rs ');
+
+const TrialBalanceScreen: React.FC = () => {
+  const navigation = useNavigation<ReportsNav>();
+  const dispatch = useAppDispatch();
+  const state = useAppSelector(selectTrialBalanceState);
+
+  useEffect(() => {
+    dispatch(fetchTrialBalanceReport(state.range));
+  }, [dispatch, state.range.startDate, state.range.endDate]);
+
+  const report = state.report;
+
+  return (
+    <ReportContainer>
+      <ReportHeader title="Trial Balance" subtitle="Debits = Credits" onBack={() => navigation.goBack()} />
+
+      <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
+        <Card>
+          <View style={styles.filterRow}>
+            <DateField
+              label="From"
+              value={state.range.startDate}
+              onChangeText={text => dispatch(setTrialBalanceRange({ ...state.range, startDate: text }))}
+            />
+            <DateField
+              label="To"
+              value={state.range.endDate}
+              onChangeText={text => dispatch(setTrialBalanceRange({ ...state.range, endDate: text }))}
+            />
+          </View>
+        </Card>
+
+        {state.isLoading && <LoadingBlock label="Calculating trial balance…" />}
+        {!!state.error && <ErrorBlock message={state.error} onRetry={() => dispatch(fetchTrialBalanceReport(state.range))} />}
+
+        {report && !state.isLoading && (
+          <>
+            <KpiGrid
+              items={[
+                { label: 'Total Debits', value: rs(report.totalDebits), accent: ACCENT.blue, icon: 'arrow-down-circle' },
+                { label: 'Total Credits', value: rs(report.totalCredits), accent: ACCENT.violet, icon: 'arrow-up-circle' },
+              ]}
+            />
+
+            <View style={styles.statusRow}>
+              <Badge
+                label={report.isBalanced ? 'In Balance' : 'Out of Balance'}
+                color={report.isBalanced ? ACCENT.green : ACCENT.red}
+                dot
+              />
+            </View>
+
+            <SectionCard title="Accounts" icon="list">
+              <View style={styles.headRow}>
+                <Text style={[styles.colAcct, styles.headText]}>Account</Text>
+                <Text style={[styles.colVal, styles.headText]}>Debit</Text>
+                <Text style={[styles.colVal, styles.headText]}>Credit</Text>
+              </View>
+              {report.rows.length === 0 && <EmptyBlock title="No account balances for this period." />}
+              {report.rows.map(row => (
+                <View key={row.accountCode} style={styles.bodyRow}>
+                  <View style={styles.colAcct}>
+                    <Text style={styles.acctName}>{row.accountName}</Text>
+                    <Text style={styles.acctCode}>{row.accountCode}</Text>
+                  </View>
+                  <Text style={[styles.colVal, styles.bodyText]}>{row.debit ? rs(row.debit) : '—'}</Text>
+                  <Text style={[styles.colVal, styles.bodyText]}>{row.credit ? rs(row.credit) : '—'}</Text>
+                </View>
+              ))}
+              <View style={styles.totalRow}>
+                <Text style={[styles.colAcct, styles.totalText]}>Total</Text>
+                <Text style={[styles.colVal, styles.totalText]}>{rs(report.totalDebits)}</Text>
+                <Text style={[styles.colVal, styles.totalText]}>{rs(report.totalCredits)}</Text>
+              </View>
+            </SectionCard>
+          </>
+        )}
+      </ScrollView>
+    </ReportContainer>
+  );
+};
+
+const styles = StyleSheet.create({
+  filterRow: { flexDirection: 'row', gap: THEME.spacing.sm },
+  statusRow: { alignItems: 'flex-start', marginTop: THEME.spacing.sm, marginBottom: THEME.spacing.xs },
+  headRow: {
+    flexDirection: 'row',
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: THEME.colors.border,
+  },
+  headText: { ...THEME.typography.labelMd, color: THEME.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
+  bodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: THEME.colors.borderLight,
+  },
+  bodyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
+  acctName: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
+  acctCode: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
+  colAcct: { flex: 1.6 },
+  colVal: { flex: 1, textAlign: 'right' },
+  totalRow: {
+    flexDirection: 'row',
+    paddingVertical: 11,
+    marginTop: 2,
+    borderTopWidth: 2,
+    borderTopColor: THEME.colors.border,
+  },
+  totalText: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '800' },
+});
+
+export default TrialBalanceScreen;

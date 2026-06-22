@@ -10,6 +10,8 @@ const initialCategories: ReportHubCategory[] = [
     items: [
       { key: 'pl', title: 'P&L', icon: 'PL', target: 'ProfitLoss' },
       { key: 'bs', title: 'Balance Sheet', icon: 'BS', target: 'BalanceSheet' },
+      { key: 'tb', title: 'Trial Balance', icon: 'TB', target: 'TrialBalance' },
+      { key: 'cf', title: 'Cash Flow', icon: 'CF', target: 'CashFlow' },
       { key: 'analytics', title: 'Analytics Dashboard', icon: 'ANL', target: 'AnalyticsDashboard' },
     ],
   },

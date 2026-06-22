@@ -396,22 +396,6 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
               )}
             </TouchableOpacity>
 
-            {/* Delivery credential guidance */}
-            {isDelivery && (
-              <View style={s.infoCard}>
-                <View style={s.infoIconWrap}>
-                  <Text style={s.infoIcon}>i</Text>
-                </View>
-                <View style={s.infoTextWrap}>
-                  <Text style={s.infoTitle}>Need your credentials?</Text>
-                  <Text style={s.infoBody}>
-                    Your company administrator creates your login. Contact them
-                    if you don't have your username and password.
-                  </Text>
-                </View>
-              </View>
-            )}
-
             {/* Admin — bottom link */}
             {!isDelivery && (
               <View style={s.bottomRow}>

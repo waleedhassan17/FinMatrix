@@ -3,6 +3,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ReportsHubScreen from '../../screens/Reports/ReportsHub/ReportsHubScreen';
 import ProfitLossScreen from '../../screens/Reports/ProfitLoss/ProfitLossScreen';
 import BalanceSheetScreen from '../../screens/Reports/BalanceSheet/BalanceSheetScreen';
+import TrialBalanceScreen from '../../screens/Reports/TrialBalance/TrialBalanceScreen';
+import CashFlowScreen from '../../screens/Reports/CashFlow/CashFlowScreen';
 import ARAgingScreen from '../../screens/Reports/ARAging/ARAgingScreen';
 import InventoryValuationScreen from '../../screens/Reports/InventoryValuation/InventoryValuationScreen';
 import AnalyticsDashboardScreen from '../../screens/Reports/AnalyticsDashboard/AnalyticsDashboardScreen';
@@ -13,6 +15,8 @@ export type ReportsStackParamList = {
   ReportsHub: undefined;
   ProfitLoss: undefined;
   BalanceSheet: undefined;
+  TrialBalance: undefined;
+  CashFlow: undefined;
   ARAging: undefined;
   InventoryValuation: undefined;
   AnalyticsDashboard: undefined;
@@ -27,6 +31,8 @@ const ReportsStack: React.FC = () => (
     <Stack.Screen name="ReportsHub" component={ReportsHubScreen} />
     <Stack.Screen name="ProfitLoss" component={ProfitLossScreen} />
     <Stack.Screen name="BalanceSheet" component={BalanceSheetScreen} />
+    <Stack.Screen name="TrialBalance" component={TrialBalanceScreen} />
+    <Stack.Screen name="CashFlow" component={CashFlowScreen} />
     <Stack.Screen name="ARAging" component={ARAgingScreen} />
     <Stack.Screen name="InventoryValuation" component={InventoryValuationScreen} />
     <Stack.Screen name="AnalyticsDashboard" component={AnalyticsDashboardScreen} />

@@ -689,9 +689,9 @@ const styles = StyleSheet.create({
     color: THEME.colors.textPrimary,
   },
   statLabel: {
-    ...THEME.typography.overline,
+    ...THEME.typography.labelSm,
     color: THEME.colors.textSecondary,
-    marginTop: 3,
+    marginTop: 4,
   },
 
   // Section Headers

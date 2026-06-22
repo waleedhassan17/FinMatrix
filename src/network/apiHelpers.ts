@@ -6,7 +6,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ★ BACKEND BASE URL ★
-export const API_BASE_URL = 'https://finmatrix-api-a824f23fbd72.herokuapp.com/api/v1';
+export const API_BASE_URL = 'https://finmatrix-api-prod-665c6b5cb6a1.herokuapp.com/api/v1';
 
 // ─── Token Storage Keys ─────────────────────────────
 const ACCESS_TOKEN_KEY = '@finmatrix/accessToken';

@@ -1,343 +1,296 @@
-/**
- * FinMatrix Enterprise Design System
- * Professional theme tokens for QuickBooks/PeachTree competitor
- */
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Global Design System (THEME)
+// ═══════════════════════════════════════════════════════
+// A single source of truth for colour, type, elevation and shape.
+// Re-skinning these tokens re-skins every screen that consumes them.
+//
+// System philosophy (enterprise / production):
+//   • A cool slate neutral ramp gives the UI a calm, professional base.
+//   • Brand teal is reserved for identity & primary actions (see DP_BRAND).
+//   • Semantic colours each ship in three tiers — base / light / lighter —
+//     so a coloured icon, its tinted chip, and a faint section background
+//     always come from the same family and pass AA contrast on white.
+//   • Elevation is soft and layered (low opacity, cool shadow) rather than
+//     hard drop shadows, which is what separates "enterprise" from "demo".
+//   • Type scale is deliberate: tight tracking on display/headings,
+//     comfortable line-height on body, uppercase utility for overlines.
 
-import { Platform } from 'react-native';
+import { Platform, TextStyle, ViewStyle } from 'react-native';
 
+// ───────────────────────────────────────────────
+// 1. Raw palette
+// ───────────────────────────────────────────────
+const palette = {
+  // Neutral — cool slate ramp (the backbone of the UI)
+  neutral25: '#FCFCFD',
+  neutral50: '#F7F9FB',
+  neutral100: '#EEF2F6',
+  neutral200: '#E2E8F0',
+  neutral300: '#CBD5E1',
+  neutral400: '#94A3B8',
+  neutral500: '#64748B',
+  neutral600: '#475569',
+  neutral700: '#334155',
+  neutral800: '#1E293B',
+  neutral900: '#0F172A',
+
+  // Brand teal (mirrors DP_BRAND so generic primary UI stays on-brand)
+  teal700: '#0F766E',
+  teal600: '#0E8C80',
+  tealDark: '#0B544E',
+  tealLight: '#C5E4DF',
+  tealLighter: '#E9F4F2',
+
+  // Secondary — violet (used for distinct, non-state categories)
+  violet600: '#7C3AED',
+  violetLight: '#EFE9FD',
+
+  // Semantic — success / warning / danger / info
+  green600: '#16A34A',
+  greenLight: '#D8F3E1',
+  greenLighter: '#EFFBF3',
+
+  amber600: '#D97706',
+  amberLight: '#FBEAD0',
+  amberLighter: '#FDF6EA',
+
+  red600: '#DC2626',
+  redLight: '#FBDCDC',
+  redLighter: '#FDF0F0',
+
+  blue600: '#2563EB',
+  blueLight: '#DCE7FE',
+} as const;
+
+// ───────────────────────────────────────────────
+// 2. Semantic colour tokens
+// ───────────────────────────────────────────────
+const colors = {
+  // Brand / primary
+  primary: palette.teal700,
+  primaryLight: palette.tealLight,
+  primaryLighter: palette.tealLighter,
+  primaryDark: palette.tealDark,
+
+  // Secondary
+  secondary: palette.violet600,
+  secondaryLight: palette.violetLight,
+
+  // Success
+  success: palette.green600,
+  successLight: palette.greenLight,
+  successLighter: palette.greenLighter,
+
+  // Warning
+  warning: palette.amber600,
+  warningLight: palette.amberLight,
+  warningLighter: palette.amberLighter,
+
+  // Danger
+  danger: palette.red600,
+  dangerLight: palette.redLight,
+  dangerLighter: palette.redLighter,
+
+  // Info
+  info: palette.blue600,
+  infoLight: palette.blueLight,
+
+  // Neutrals (exposed for direct use)
+  neutral25: palette.neutral25,
+  neutral50: palette.neutral50,
+  neutral100: palette.neutral100,
+  neutral200: palette.neutral200,
+  neutral300: palette.neutral300,
+  neutral400: palette.neutral400,
+  neutral500: palette.neutral500,
+  neutral600: palette.neutral600,
+  neutral700: palette.neutral700,
+  neutral800: palette.neutral800,
+  neutral900: palette.neutral900,
+
+  // Surfaces
+  background: '#F4F6F9', // app canvas — faint cool tint, not pure white
+  surface: '#FFFFFF', // cards / sheets
+  border: '#E4E9EF', // standard hairline
+  borderLight: '#EEF2F6', // subtle internal dividers
+  overlay: 'rgba(15, 23, 42, 0.55)', // modal scrim
+
+  // Text
+  textPrimary: '#0F172A',
+  textSecondary: '#475569',
+  textTertiary: '#94A3B8',
+  textDisabled: '#CBD5E1',
+  textInverse: '#FFFFFF',
+
+  // ───────────────────────────────────────────────
+  // Backward compatibility tokens (preserved)
+  // ───────────────────────────────────────────────
+  primaryHover: palette.teal600,
+  successHover: '#15803d',
+  dangerHover: '#b91c1c',
+  warningHover: '#b45309',
+  neutral0: '#FFFFFF',
+  backgroundAlt: '#FCFCFD',
+  surfaceHover: '#FCFCFD',
+  borderFocus: palette.teal600,
+  textLink: palette.teal700,
+  overlayLight: 'rgba(15, 23, 42, 0.15)',
+} as const;
+
+// ───────────────────────────────────────────────
+// 3. Typography scale
+// ───────────────────────────────────────────────
 const fontFamily = Platform.select({
   android: 'Roboto',
   default: 'System',
 })!;
 
+const typography = {
+  fontFamily,
+
+  displayLg: { fontFamily, fontSize: 36, lineHeight: 44, fontWeight: '800', letterSpacing: -0.5 },
+  displayMd: { fontFamily, fontSize: 32, lineHeight: 40, fontWeight: '800', letterSpacing: -0.5 },
+  displaySm: { fontFamily, fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -0.3 },
+
+  h1: { fontFamily, fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -0.4 },
+  h2: { fontFamily, fontSize: 22, lineHeight: 28, fontWeight: '700', letterSpacing: -0.3 },
+  h3: { fontFamily, fontSize: 19, lineHeight: 26, fontWeight: '700', letterSpacing: -0.2 },
+  h4: { fontFamily, fontSize: 16, lineHeight: 22, fontWeight: '600', letterSpacing: -0.1 },
+  h5: { fontFamily, fontSize: 14, lineHeight: 20, fontWeight: '600', letterSpacing: 0 },
+
+  bodyLg: { fontFamily, fontSize: 16, lineHeight: 24, fontWeight: '400', letterSpacing: 0 },
+  bodyMd: { fontFamily, fontSize: 15, lineHeight: 22, fontWeight: '400', letterSpacing: 0 },
+  bodySm: { fontFamily, fontSize: 13, lineHeight: 19, fontWeight: '400', letterSpacing: 0 },
+
+  labelLg: { fontFamily, fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: 0 },
+  labelMd: { fontFamily, fontSize: 13, lineHeight: 18, fontWeight: '600', letterSpacing: 0.1 },
+  labelSm: { fontFamily, fontSize: 12, lineHeight: 16, fontWeight: '500', letterSpacing: 0.1 },
+
+  caption: { fontFamily, fontSize: 12, lineHeight: 16, fontWeight: '400', letterSpacing: 0.1 },
+  overline: { fontFamily, fontSize: 11, lineHeight: 14, fontWeight: '600', letterSpacing: 0.6, textTransform: 'uppercase' as const },
+} as const satisfies Record<string, TextStyle | string>;
+
+// ───────────────────────────────────────────────
+// 4. Shape (radii)
+// ───────────────────────────────────────────────
+const radius = {
+  xs: 6,
+  sm: 8,
+  md: 10,
+  lg: 12,
+  xl: 16,
+  xxl: 24,
+  full: 999,
+} as const;
+
+// ───────────────────────────────────────────────
+// 5. Elevation (soft, layered, cool)
+// ───────────────────────────────────────────────
+const shadows = {
+  xs: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  sm: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  md: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.09,
+    shadowRadius: 18,
+    elevation: 5,
+  },
+  lg: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.12,
+    shadowRadius: 28,
+    elevation: 9,
+  },
+  // ───────────────────────────────────────────────
+  // Backward compatibility shadow (preserved)
+  // ───────────────────────────────────────────────
+  xl: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.16,
+    shadowRadius: 38,
+    elevation: 12,
+  },
+} as const satisfies Record<string, ViewStyle>;
+
+// ───────────────────────────────────────────────
+// Spacing (preserved for backward compatibility)
+// ───────────────────────────────────────────────
+const spacing = {
+  xxs: 4,
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 20,
+  xl: 24,
+  xxl: 32,
+  xxxl: 40,
+  xxxxl: 48,
+} as const;
+
+// ───────────────────────────────────────────────
+// 6. Public theme object
+// ───────────────────────────────────────────────
 export const THEME = {
-  colors: {
-    // Primary Brand
-    primary: '#059669',
-    primaryHover: '#047857',
-    primaryLight: '#ECFDF5',
-    primaryLighter: '#F0FDF4',
-    
-    // Secondary
-    secondary: '#6554C0',
-    secondaryLight: '#EAE6FF',
-    
-    // Success
-    success: '#00875A',
-    successHover: '#006644',
-    successLight: '#E3FCEF',
-    successLighter: '#F4FFF9',
-    
-    // Danger
-    danger: '#DE350B',
-    dangerHover: '#BF2600',
-    dangerLight: '#FFEBE6',
-    dangerLighter: '#FFF5F3',
-    
-    // Warning
-    warning: '#FF991F',
-    warningHover: '#FF8B00',
-    warningLight: '#FFFAE6',
-    warningLighter: '#FFFCF0',
-    
-    // Info
-    info: '#0065FF',
-    infoLight: '#E6F0FF',
-    
-    // Neutrals (Refined Gray Scale)
-    neutral900: '#091E42',
-    neutral800: '#172B4D',
-    neutral700: '#253858',
-    neutral600: '#344563',
-    neutral500: '#5E6C84',
-    neutral400: '#8993A4',
-    neutral300: '#B3BAC5',
-    neutral200: '#DFE1E6',
-    neutral100: '#EBECF0',
-    neutral50: '#F4F5F7',
-    neutral25: '#FAFBFC',
-    neutral0: '#FFFFFF',
-    
-    // Semantic
-    background: '#F4F5F7',
-    backgroundAlt: '#FAFBFC',
-    surface: '#FFFFFF',
-    surfaceHover: '#F4F5F7',
-    border: '#DFE1E6',
-    borderLight: '#EBECF0',
-    borderFocus: '#34D399',
-    
-    // Text
-    textPrimary: '#172B4D',
-    textSecondary: '#5E6C84',
-    textTertiary: '#8993A4',
-    textDisabled: '#B3BAC5',
-    textInverse: '#FFFFFF',
-    textLink: '#059669',
-    
-    // Overlay
-    overlay: 'rgba(9, 30, 66, 0.54)',
-    overlayLight: 'rgba(9, 30, 66, 0.14)',
-  },
-  
-  shadows: {
-    xs: {
-      shadowColor: '#091E42',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 1,
-      elevation: 1,
-    },
-    sm: {
-      shadowColor: '#091E42',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.08,
-      shadowRadius: 3,
-      elevation: 2,
-    },
-    md: {
-      shadowColor: '#091E42',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.12,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    lg: {
-      shadowColor: '#091E42',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.16,
-      shadowRadius: 16,
-      elevation: 8,
-    },
-    xl: {
-      shadowColor: '#091E42',
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.2,
-      shadowRadius: 24,
-      elevation: 12,
-    },
-    xxl: {
-      shadowColor: '#091E42',
-      shadowOffset: { width: 0, height: 20 },
-      shadowOpacity: 0.25,
-      shadowRadius: 32,
-      elevation: 16,
-    },
-  },
-  
-  radius: {
-    xs: 4,
-    sm: 6,
-    md: 8,
-    lg: 12,
-    xl: 16,
-    xxl: 20,
-    xxxl: 24,
-    full: 9999,
-  },
-  
-  spacing: {
-    xxs: 4,
-    xs: 8,
-    sm: 12,
-    md: 16,
-    lg: 20,
-    xl: 24,
-    xxl: 32,
-    xxxl: 40,
-    xxxxl: 48,
-  },
-  
-  typography: {
-    fontFamily,
+  colors,
+  typography,
+  radius,
+  shadows,
+  spacing,
+} as const;
 
-    // Display
-    displayLg: {
-      fontFamily,
-      fontSize: 36,
-      fontWeight: '700' as const,
-      lineHeight: 44,
-      letterSpacing: -0.5,
-    },
-    displayMd: {
-      fontFamily,
-      fontSize: 28,
-      fontWeight: '700' as const,
-      lineHeight: 36,
-      letterSpacing: -0.3,
-    },
-    displaySm: {
-      fontFamily,
-      fontSize: 24,
-      fontWeight: '700' as const,
-      lineHeight: 32,
-      letterSpacing: -0.2,
-    },
-    
-    // Headings
-    h1: {
-      fontFamily,
-      fontSize: 24,
-      fontWeight: '700' as const,
-      lineHeight: 32,
-      letterSpacing: -0.2,
-    },
-    h2: {
-      fontFamily,
-      fontSize: 20,
-      fontWeight: '700' as const,
-      lineHeight: 28,
-      letterSpacing: -0.1,
-    },
-    h3: {
-      fontFamily,
-      fontSize: 18,
-      fontWeight: '600' as const,
-      lineHeight: 24,
-    },
-    h4: {
-      fontFamily,
-      fontSize: 16,
-      fontWeight: '600' as const,
-      lineHeight: 22,
-    },
-    h5: {
-      fontFamily,
-      fontSize: 14,
-      fontWeight: '600' as const,
-      lineHeight: 20,
-    },
-    
-    // Body
-    bodyLg: {
-      fontFamily,
-      fontSize: 16,
-      fontWeight: '400' as const,
-      lineHeight: 24,
-    },
-    bodyMd: {
-      fontFamily,
-      fontSize: 14,
-      fontWeight: '400' as const,
-      lineHeight: 20,
-    },
-    bodySm: {
-      fontFamily,
-      fontSize: 13,
-      fontWeight: '400' as const,
-      lineHeight: 18,
-    },
-    
-    // Labels
-    labelLg: {
-      fontFamily,
-      fontSize: 14,
-      fontWeight: '600' as const,
-      lineHeight: 20,
-    },
-    labelMd: {
-      fontFamily,
-      fontSize: 12,
-      fontWeight: '600' as const,
-      lineHeight: 16,
-    },
-    labelSm: {
-      fontFamily,
-      fontSize: 11,
-      fontWeight: '600' as const,
-      lineHeight: 14,
-      letterSpacing: 0.5,
-    },
-    
-    // Caption
-    caption: {
-      fontFamily,
-      fontSize: 12,
-      fontWeight: '400' as const,
-      lineHeight: 16,
-    },
-    
-    // Overline
-    overline: {
-      fontFamily,
-      fontSize: 10,
-      fontWeight: '700' as const,
-      lineHeight: 14,
-      letterSpacing: 1,
-      textTransform: 'uppercase' as const,
-    },
-  },
+export type Theme = typeof THEME;
+
+// ───────────────────────────────────────────────
+// 7. Delivery status configuration
+// ───────────────────────────────────────────────
+export interface StatusStyle {
+  label: string;
+  color: string;
+  bg: string;
+  icon: string;
+}
+
+export const STATUS_CONFIG: Record<string, StatusStyle> = {
+  pending: { label: 'Pending', color: colors.primary, bg: colors.primaryLighter, icon: 'clock' },
+  picked_up: { label: 'Picked Up', color: colors.secondary, bg: colors.secondaryLight, icon: 'package' },
+  in_transit: { label: 'In Transit', color: colors.warning, bg: colors.warningLight, icon: 'truck' },
+  arrived: { label: 'Arrived', color: colors.info, bg: colors.infoLight, icon: 'map-pin' },
+  delivered: { label: 'Delivered', color: colors.success, bg: colors.successLight, icon: 'check-circle' },
+  failed: { label: 'Failed', color: colors.danger, bg: colors.dangerLight, icon: 'x-circle' },
+  cancelled: { label: 'Cancelled', color: colors.neutral500, bg: colors.neutral100, icon: 'slash' },
+  returned: { label: 'Returned', color: colors.secondary, bg: colors.secondaryLight, icon: 'corner-up-left' },
+  unassigned: { label: 'Unassigned', color: colors.neutral500, bg: colors.neutral100, icon: 'help-circle' },
 };
 
-// Status configurations for delivery states
-export const STATUS_CONFIG = {
-  pending: {
-    color: THEME.colors.primary,
-    bg: THEME.colors.primaryLight,
-    label: 'Pending',
-    icon: 'clock',
-  },
-  picked_up: {
-    color: THEME.colors.secondary,
-    bg: THEME.colors.secondaryLight,
-    label: 'Picked Up',
-    icon: 'package',
-  },
-  in_transit: {
-    color: THEME.colors.warning,
-    bg: THEME.colors.warningLight,
-    label: 'In Transit',
-    icon: 'truck',
-  },
-  arrived: {
-    color: THEME.colors.info,
-    bg: THEME.colors.infoLight,
-    label: 'Arrived',
-    icon: 'map-pin',
-  },
-  delivered: {
-    color: THEME.colors.success,
-    bg: THEME.colors.successLight,
-    label: 'Delivered',
-    icon: 'check',
-  },
-  failed: {
-    color: THEME.colors.danger,
-    bg: THEME.colors.dangerLight,
-    label: 'Failed',
-    icon: 'x',
-  },
-  returned: {
-    color: THEME.colors.secondary,
-    bg: THEME.colors.secondaryLight,
-    label: 'Returned',
-    icon: 'corner-down-left',
-  },
-  unassigned: {
-    color: THEME.colors.neutral500,
-    bg: THEME.colors.neutral100,
-    label: 'Unassigned',
-    icon: 'minus',
-  },
-};
+// ───────────────────────────────────────────────
+// 8. Priority configuration
+// ───────────────────────────────────────────────
+export interface PriorityStyle {
+  label: string;
+  color: string;
+  bg: string;
+}
 
-// Priority configurations
-export const PRIORITY_CONFIG = {
-  high: {
-    color: THEME.colors.danger,
-    bg: THEME.colors.dangerLight,
-    label: 'High Priority',
-  },
-  medium: {
-    color: THEME.colors.warning,
-    bg: THEME.colors.warningLight,
-    label: 'Medium',
-  },
-  low: {
-    color: THEME.colors.success,
-    bg: THEME.colors.successLight,
-    label: 'Low',
-  },
+export const PRIORITY_CONFIG: Record<string, PriorityStyle> = {
+  low: { label: 'Low', color: colors.success, bg: colors.successLight },
+  medium: { label: 'Medium', color: colors.warning, bg: colors.warningLight },
+  high: { label: 'High', color: colors.danger, bg: colors.dangerLight },
+  urgent: { label: 'Urgent', color: '#FFFFFF', bg: colors.danger },
 };
 
 export default THEME;

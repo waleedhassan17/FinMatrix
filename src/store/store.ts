@@ -87,6 +87,8 @@ import { deliverySlice } from '../screens/Delivery/Admin/AssignDeliveries/delive
 import { reportsHubSlice } from '../screens/Reports/ReportsHub/reportsHubSlice';
 import { profitLossSlice } from '../screens/Reports/ProfitLoss/profitLossSlice';
 import { balanceSheetSlice } from '../screens/Reports/BalanceSheet/balanceSheetSlice';
+import { trialBalanceSlice } from '../screens/Reports/TrialBalance/trialBalanceSlice';
+import { cashFlowSlice } from '../screens/Reports/CashFlow/cashFlowSlice';
 import { arAgingSlice } from '../screens/Reports/ARAging/arAgingSlice';
 import { inventoryValuationSlice } from '../screens/Reports/InventoryValuation/inventoryValuationSlice';
 import { analyticsDashboardSlice } from '../screens/Reports/AnalyticsDashboard/analyticsDashboardSlice';
@@ -108,6 +110,8 @@ const rootReducer = combineReducers({
   reportsHub: reportsHubSlice.reducer,
   profitLoss: profitLossSlice.reducer,
   balanceSheet: balanceSheetSlice.reducer,
+  trialBalance: trialBalanceSlice.reducer,
+  cashFlow: cashFlowSlice.reducer,
   arAging: arAgingSlice.reducer,
   inventoryValuation: inventoryValuationSlice.reducer,
   analyticsDashboard: analyticsDashboardSlice.reducer,

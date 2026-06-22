@@ -334,9 +334,9 @@ const styles = StyleSheet.create({
     color: THEME.colors.textPrimary,
   },
   quickStatLabel: {
-    ...THEME.typography.overline,
+    ...THEME.typography.labelSm,
     color: THEME.colors.textSecondary,
-    marginTop: 3,
+    marginTop: 4,
   },
 
   // Scroll

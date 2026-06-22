@@ -148,9 +148,9 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 
           <RoleCard
             letter="D"
-            letterBg={BRAND.coralLight}
-            letterColor={BRAND.coral}
-            accentColor={BRAND.coral}
+            letterBg={BRAND.blueLight}
+            letterColor={BRAND.blue}
+            accentColor={BRAND.blue}
             title="Delivery Personnel"
             subtitle="Delivery Operations"
             description="View and manage assigned deliveries, capture customer signatures, update delivery status, and sync inventory records."
