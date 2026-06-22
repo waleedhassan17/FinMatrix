@@ -57,6 +57,14 @@ const SALES_ROWS: HubRow[] = [
     subtitle: 'Record and allocate customer payments',
     onPress: nav => nav.navigate('ReceivePayment'),
   },
+  {
+    key: 'creditMemos',
+    icon: 'rotate-ccw',
+    accent: ACCENT.red,
+    label: 'Credit Memos',
+    subtitle: 'Issue customer credits; apply or refund',
+    onPress: nav => nav.navigate('CreditMemoList'),
+  },
 ];
 
 const PURCHASE_ROWS: HubRow[] = [
@@ -83,6 +91,14 @@ const PURCHASE_ROWS: HubRow[] = [
     label: 'Purchase Orders',
     subtitle: 'Create and track vendor purchase orders',
     onPress: nav => nav.navigate('POList'),
+  },
+  {
+    key: 'vendorCredits',
+    icon: 'corner-up-left',
+    accent: ACCENT.teal,
+    label: 'Vendor Credits',
+    subtitle: 'Record vendor returns; apply to bills',
+    onPress: nav => nav.navigate('VendorCreditList'),
   },
 ];
 
