@@ -71,6 +71,8 @@ import { customerFormSlice } from '../screens/Customers/CustomerForm/customerFor
 import { customerDetailSlice } from '../screens/Customers/CustomerDetail/customerDetailSlice';
 import { invoiceListSlice } from '../screens/Invoices/InvoiceList/invoiceListSlice';
 import { invoiceFormSlice } from '../screens/Invoices/InvoiceForm/invoiceFormSlice';
+import { estimateSlice } from '../screens/Estimates/estimateSlice';
+import { salesOrderSlice } from '../screens/SalesOrders/salesOrderSlice';
 import { invoiceDetailSlice } from '../screens/Invoices/InvoiceDetail/invoiceDetailSlice';
 import { receivePaymentSlice } from '../screens/Payments/ReceivePayment/receivePaymentSlice';
 import { vendorListSlice } from '../screens/Vendors/VendorList/vendorListSlice';
@@ -177,6 +179,8 @@ const rootReducer = combineReducers({
   customerForm: customerFormSlice.reducer,
   customerDetail: customerDetailSlice.reducer,
   invoiceList: invoiceListSlice.reducer,
+  estimates: estimateSlice.reducer,
+  salesOrders: salesOrderSlice.reducer,
   invoiceForm: invoiceFormSlice.reducer,
   invoiceDetail: invoiceDetailSlice.reducer,
   receivePayment: receivePaymentSlice.reducer,

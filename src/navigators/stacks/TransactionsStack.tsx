@@ -4,6 +4,11 @@ import TransactionsHubScreen from '../../screens/Transactions/TransactionsHubScr
 import InvoiceListScreen from '../../screens/Invoices/InvoiceList/InvoiceListScreen';
 import InvoiceFormScreen from '../../screens/Invoices/InvoiceForm/InvoiceFormScreen';
 import InvoiceDetailScreen from '../../screens/Invoices/InvoiceDetail/InvoiceDetailScreen';
+import EstimateListScreen from '../../screens/Estimates/EstimateListScreen';
+import EstimateFormScreen from '../../screens/Estimates/EstimateFormScreen';
+import EstimateDetailScreen from '../../screens/Estimates/EstimateDetailScreen';
+import SalesOrderListScreen from '../../screens/SalesOrders/SalesOrderListScreen';
+import SalesOrderDetailScreen from '../../screens/SalesOrders/SalesOrderDetailScreen';
 import ReceivePaymentScreen from '../../screens/Payments/ReceivePayment/ReceivePaymentScreen';
 import BillListScreen from '../../screens/Bills/BillList/BillListScreen';
 import BillFormScreen from '../../screens/Bills/BillForm/BillFormScreen';
@@ -18,6 +23,11 @@ export type TransactionsStackParamList = {
   InvoiceList: undefined;
   InvoiceForm: { invoiceId?: string } | undefined;
   InvoiceDetail: { invoiceId: string };
+  EstimateList: undefined;
+  EstimateForm: { estimateId?: string } | undefined;
+  EstimateDetail: { estimateId: string };
+  SalesOrderList: undefined;
+  SalesOrderDetail: { salesOrderId: string };
   ReceivePayment: { customerId?: string; invoiceId?: string } | undefined;
   BillList: undefined;
   BillForm: { billId?: string; fromPOId?: string } | undefined;
@@ -36,6 +46,11 @@ const TransactionsStack: React.FC = () => (
     <Stack.Screen name="InvoiceList" component={InvoiceListScreen} />
     <Stack.Screen name="InvoiceForm" component={InvoiceFormScreen} />
     <Stack.Screen name="InvoiceDetail" component={InvoiceDetailScreen} />
+    <Stack.Screen name="EstimateList" component={EstimateListScreen} />
+    <Stack.Screen name="EstimateForm" component={EstimateFormScreen} />
+    <Stack.Screen name="EstimateDetail" component={EstimateDetailScreen} />
+    <Stack.Screen name="SalesOrderList" component={SalesOrderListScreen} />
+    <Stack.Screen name="SalesOrderDetail" component={SalesOrderDetailScreen} />
     <Stack.Screen name="ReceivePayment" component={ReceivePaymentScreen} />
     <Stack.Screen name="BillList" component={BillListScreen} />
     <Stack.Screen name="BillForm" component={BillFormScreen} />

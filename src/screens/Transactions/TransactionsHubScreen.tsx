@@ -26,6 +26,22 @@ interface HubRow {
 
 const SALES_ROWS: HubRow[] = [
   {
+    key: 'estimates',
+    icon: 'edit-3',
+    accent: ACCENT.blue,
+    label: 'Estimates',
+    subtitle: 'Create quotes; convert to invoice or sales order',
+    onPress: nav => nav.navigate('EstimateList'),
+  },
+  {
+    key: 'salesOrders',
+    icon: 'clipboard',
+    accent: ACCENT.amber,
+    label: 'Sales Orders',
+    subtitle: 'Track fulfillment and invoice orders',
+    onPress: nav => nav.navigate('SalesOrderList'),
+  },
+  {
     key: 'invoices',
     icon: 'file-text',
     accent: ACCENT.brand,
