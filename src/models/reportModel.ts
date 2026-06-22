@@ -23,6 +23,7 @@ export interface ReportHubItem {
     | 'BalanceSheet'
     | 'CashFlow'
     | 'TrialBalance'
+    | 'GeneralLedger'
     | 'ARAging'
     | 'InventoryValuation'
     | 'AnalyticsDashboard'
