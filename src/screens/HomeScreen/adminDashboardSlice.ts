@@ -58,6 +58,19 @@ export interface AdminDashboardData {
     status: string;
   }[];
   alerts: { id: string; message: string; severity: 'red' | 'amber' | 'blue' }[];
+  setup?: SetupStatus;
+}
+
+export interface SetupStatus {
+  completed: boolean;
+  steps: {
+    openingBalance: boolean;
+    chartOfAccounts: boolean;
+    inventory: boolean;
+    customers: boolean;
+    vendors: boolean;
+    taxRates: boolean;
+  };
 }
 
 export interface AdminDashboardSliceState {
@@ -66,6 +79,7 @@ export interface AdminDashboardSliceState {
   transactions: RecentTransaction[];
   delivery: DeliveryOverviewData;
   alerts: DashboardAlert[];
+  setup: SetupStatus | null;
   isRefreshing: boolean;
   status: 'idle' | 'loading' | 'failed';
   error: string;
@@ -81,6 +95,7 @@ const initialState: AdminDashboardSliceState = {
   transactions: [],
   delivery: EMPTY_DELIVERY,
   alerts: [],
+  setup: null,
   isRefreshing: false,
   status: 'idle',
   error: '',
@@ -145,6 +160,7 @@ async function fetchDashboardData(): Promise<{
   transactions: RecentTransaction[];
   delivery: DeliveryOverviewData;
   alerts: DashboardAlert[];
+  setup: SetupStatus | null;
 }> {
   const summaryRaw = await getAdminDashboardSummaryAPI();
   const summary = summaryRaw?.data ?? summaryRaw;
@@ -209,7 +225,9 @@ async function fetchDashboardData(): Promise<{
     severity: a.severity,
   }));
 
-  return { rawData, stats, transactions, delivery, alerts };
+  const setup: SetupStatus | null = (summary?.setup as SetupStatus) ?? null;
+
+  return { rawData, stats, transactions, delivery, alerts, setup };
 }
 
 export const adminDashboardSlice = createAppSlice({
@@ -227,6 +245,7 @@ export const adminDashboardSlice = createAppSlice({
         state.transactions = action.payload.transactions;
         state.delivery = action.payload.delivery;
         state.alerts = action.payload.alerts;
+        state.setup = action.payload.setup;
         state.isRefreshing = false;
         state.status = 'idle';
       },
@@ -247,6 +266,7 @@ export const adminDashboardSlice = createAppSlice({
         state.transactions = action.payload.transactions;
         state.delivery = action.payload.delivery;
         state.alerts = action.payload.alerts;
+        state.setup = action.payload.setup;
         state.status = 'idle';
       },
       rejected: (state, action) => {
@@ -264,6 +284,7 @@ export const adminDashboardSlice = createAppSlice({
     selectDashboardStatus: state => state.status,
     selectDashboardError: state => state.error,
     selectRawDashboardData: state => state.rawData,
+    selectDashboardSetup: state => state.setup,
   },
 });
 
@@ -278,4 +299,5 @@ export const {
   selectDashboardStatus,
   selectDashboardError,
   selectRawDashboardData,
+  selectDashboardSetup,
 } = adminDashboardSlice.selectors;

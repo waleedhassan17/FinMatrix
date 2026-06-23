@@ -25,7 +25,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppSelector, useAppDispatch } from '../../hooks/useReduxHooks';
 import { selectUser } from '../Auth/authSlice';
 import { selectActiveCompany, loadCompany } from '../Auth/companySlice';
-import { getCompanyAPI } from '../../network/authNetwork';
+import { getCompanyAPI, updateCompanyAPI } from '../../network/authNetwork';
 import {
   selectDashboardStats,
   selectRecentTransactions,
@@ -34,9 +34,11 @@ import {
   selectIsRefreshing,
   selectDashboardStatus,
   selectRawDashboardData,
+  selectDashboardSetup,
   refreshDashboard,
   loadDashboard,
 } from './adminDashboardSlice';
+import SetupChecklist from './SetupChecklist';
 import type { DashboardStackParamList } from '../../navigators/stacks/DashboardStack';
 import type {
   DashboardStat,
@@ -129,6 +131,21 @@ const AdminDashboardScreen: React.FC = () => {
   const isRefreshing = useAppSelector(selectIsRefreshing);
   const status = useAppSelector(selectDashboardStatus);
   const rawData = useAppSelector(selectRawDashboardData);
+  const setup = useAppSelector(selectDashboardSetup);
+
+  // Dismiss/finish the first-run checklist (FinMatrixGuide §5.7). Marks the
+  // company setupCompleted; the checklist then hides but every flow it links to
+  // stays reachable from its section.
+  const dismissSetup = useCallback(async () => {
+    if (company?.companyId) {
+      try {
+        await updateCompanyAPI(company.companyId, { setupCompleted: true });
+      } catch {
+        /* non-blocking — still refresh to reflect any server state */
+      }
+    }
+    dispatch(refreshDashboard());
+  }, [company?.companyId, dispatch]);
 
   useEffect(() => {
     dispatch(loadDashboard());
@@ -237,6 +254,15 @@ const AdminDashboardScreen: React.FC = () => {
               <View style={s.alertsWrap}>
                 {alerts.map(a => <AlertBanner key={a.id} alert={a} />)}
               </View>
+            )}
+
+            {/* ── Guided first-run setup checklist (§5.7) ─ */}
+            {setup && !setup.completed && (
+              <SetupChecklist
+                setup={setup}
+                onNavigate={route => navigation.navigate(route as never)}
+                onDismiss={dismissSetup}
+              />
             )}
 
             {/* ── Profit & loss hero ─────────────────── */}
