@@ -37,6 +37,7 @@ import {
   addLine,
   removeLine,
   updateLine,
+  setLineItem,
   calculateTotals,
   loadInvoiceForEdit,
   resetInvoiceForm,
@@ -47,6 +48,7 @@ import {
   fetchInvoices,
 } from '../InvoiceList/invoiceListSlice';
 import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
+import { selectInventoryItems, fetchInventoryItems } from '../../Inventory/InventoryList/inventoryListSlice';
 import { createInvoiceAPI, updateInvoiceAPI } from '../../../network/invoiceNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -93,8 +95,36 @@ const InvoiceFormScreen: React.FC = () => {
   const isEditing = !!editingId;
   const invoices = useAppSelector(selectInvoices);
   const customers = useAppSelector(selectCustomers);
+  const inventory = useAppSelector(selectInventoryItems);
   const form = useAppSelector(selectInvoiceFormState);
   const hydratedRef = React.useRef(false);
+
+  // ── Inventory item options (optional per line; drives COGS) ──
+  const itemOptions = useMemo(
+    () => [
+      { label: 'No item (free-text)', value: '' },
+      ...inventory.map(it => ({
+        label: `${it.sku} — ${it.name}`,
+        value: it.id,
+      })),
+    ],
+    [inventory],
+  );
+
+  const handleSelectItem = useCallback(
+    (lineId: string, itemId: string) => {
+      const it = inventory.find(i => i.id === itemId);
+      dispatch(
+        setLineItem({
+          id: lineId,
+          itemId,
+          description: it?.name,
+          unitPrice: it ? String(it.sellingPrice) : undefined,
+        }),
+      );
+    },
+    [inventory, dispatch],
+  );
 
   // ── Customer options for dropdown ───────────────
   const customerOptions = useMemo(
@@ -117,6 +147,7 @@ const InvoiceFormScreen: React.FC = () => {
   // ── Load data on mount ──────────────────────────
   useEffect(() => {
     dispatch(fetchCustomers());
+    dispatch(fetchInventoryItems());
 
     if (hydratedRef.current) return;
     hydratedRef.current = true;
@@ -135,6 +166,7 @@ const InvoiceFormScreen: React.FC = () => {
             notes: inv.notes,
             lines: inv.lines.map(l => ({
               id: l.id,
+              itemId: l.itemId ?? '',
               description: l.description,
               quantity: String(l.quantity),
               unitPrice: String(l.unitPrice),
@@ -221,6 +253,9 @@ const InvoiceFormScreen: React.FC = () => {
             quantity: l.quantity || '0',
             unitPrice: l.unitPrice || '0',
             taxRate: l.taxRate || '0',
+            // Only send itemId when an inventory item is linked; an empty
+            // string would fail the backend's @IsUUID validation.
+            ...(l.itemId ? { itemId: l.itemId } : {}),
           })),
           notes: form.notes,
         };
@@ -348,10 +383,18 @@ const InvoiceFormScreen: React.FC = () => {
           )}
 
           {form.lines.map((line, idx) => (
-            <LineItemRow
-              key={line.id}
-              index={idx}
-              description={line.description}
+            <View key={line.id} style={styles.lineItemPicker}>
+              <CustomDropdown
+                label="Inventory Item (optional)"
+                options={itemOptions}
+                value={line.itemId}
+                onChange={v => handleSelectItem(line.id, v)}
+                placeholder="Link an inventory item…"
+                searchable
+              />
+              <LineItemRow
+                index={idx}
+                description={line.description}
               quantity={line.quantity}
               unitPrice={line.unitPrice}
               taxRate={line.taxRate}
@@ -360,9 +403,10 @@ const InvoiceFormScreen: React.FC = () => {
               onQuantityChange={v => dispatch(updateLine({ id: line.id, field: 'quantity', value: v }))}
               onUnitPriceChange={v => dispatch(updateLine({ id: line.id, field: 'unitPrice', value: v }))}
               onTaxRateChange={v => dispatch(updateLine({ id: line.id, field: 'taxRate', value: v }))}
-              onDelete={() => dispatch(removeLine(line.id))}
-              canDelete={form.lines.length > 1}
-            />
+                onDelete={() => dispatch(removeLine(line.id))}
+                canDelete={form.lines.length > 1}
+              />
+            </View>
           ))}
 
           {/* ── Section: Discount ────────────────────── */}
@@ -613,6 +657,9 @@ const styles = StyleSheet.create({
     color: colors.danger,
     marginBottom: spacing.sm,
     fontFamily: THEME.typography.fontFamily,
+  },
+  lineItemPicker: {
+    marginBottom: spacing.sm,
   },
 
   // ── Premium Totals Panel ────────────────────────

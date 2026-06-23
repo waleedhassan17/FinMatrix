@@ -10,6 +10,9 @@ import type { DiscountType, InvoiceStatus } from '../../../types';
 // ── Line item (form representation — string values for inputs) ──
 export interface FormLineItem {
   id: string;
+  // Optional inventory item link. When set, the backend posts COGS/Inventory
+  // and reduces stock on issue (FinMatrixGuide §3.1).
+  itemId: string;
   description: string;
   quantity: string;
   unitPrice: string;
@@ -47,6 +50,7 @@ export interface InvoiceFormSliceState {
 let nextLineId = 1;
 const freshLine = (): FormLineItem => ({
   id: `line_${nextLineId++}_${Date.now()}`,
+  itemId: '',
   description: '',
   quantity: '',
   unitPrice: '',
@@ -145,6 +149,27 @@ export const invoiceFormSlice = createAppSlice({
         }
       },
     ),
+    // Link a line to an inventory item: stamps itemId and auto-fills the
+    // description + unit price from the item (both still editable after).
+    setLineItem: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          id: string;
+          itemId: string;
+          description?: string;
+          unitPrice?: string;
+        }>,
+      ) => {
+        const line = state.lines.find(l => l.id === action.payload.id);
+        if (line) {
+          line.itemId = action.payload.itemId;
+          if (action.payload.description) line.description = action.payload.description;
+          if (action.payload.unitPrice !== undefined) line.unitPrice = action.payload.unitPrice;
+          recalc(state);
+        }
+      },
+    ),
 
     // ── Totals ────────────────────────────────────
     calculateTotals: create.reducer(state => {
@@ -203,6 +228,7 @@ export const {
   addLine,
   removeLine,
   updateLine,
+  setLineItem,
   calculateTotals,
   loadInvoiceForEdit,
   resetInvoiceForm,
