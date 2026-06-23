@@ -11,6 +11,23 @@ Tracks work against `FinMatrixGuide.md`. Newest first.
   and tax-payment post **no** journal entry; opening balances post **no** offset;
   reports compute from documents, not from the ledger.
 
+## Phase 2c — PO receipt → GRNI → bill (2026-06-23, deployed Heroku v17, live-verified)
+Resolves known issue #3 (inventory-vs-bill double count), §3.3/§3.4.
+- `purchase-orders.service.receive()`: item-linked lines raise `quantityOnHand` by the
+  newly-received delta, write a 'receipt' movement, and post DR Inventory 1200 / CR
+  GRNI 2050 at delta×unitCost. `createBill()`: inventory lines debit GRNI (clearing the
+  accrual), expense lines debit their account. `defaultAccountId` made optional.
+- *Verified:* PO 10 units @230 → receive: Inventory +2300, GRNI +2300, qty +10; create
+  bill: GRNI→0, AP +2300, **Inventory unchanged (rose exactly once)**.
+
+## Phase 2b — Invoice COGS (2026-06-23, deployed Heroku v16, live-verified)
+§3.1/§3.13. Invoice lines optionally link an inventory item (`itemId`, migration
+1782600000000). Issuing posts DR COGS 5000 / CR Inventory 1200 at qty×unitCost +
+reduces stock; voiding reverses + restocks. Frontend invoice form has an optional
+"Inventory Item" picker per line (auto-fills description + selling price).
+*Verified:* qty 2 @ cost 230 → COGS +460 / Inventory −460 / qty 335→333; void → all
+reverse, qty→335.
+
 ## Phase 2a — Inventory & tax postings (2026-06-23, deployed Heroku v15, live-verified)
 - **Inventory adjustment (§3.8):** `inventory.service.adjust()` now posts a balanced
   JE valuing the quantity variance at the item's unit cost — decrease = DR Inventory
