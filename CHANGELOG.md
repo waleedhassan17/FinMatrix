@@ -11,6 +11,23 @@ Tracks work against `FinMatrixGuide.md`. Newest first.
   and tax-payment post **no** journal entry; opening balances post **no** offset;
   reports compute from documents, not from the ledger.
 
+## Phase 5 — Hardening: period locking + role enforcement (2026-06-24, deployed, live-verified)
+- **Period locking (§6.4, acceptance #16):** `companies.books_locked_until` (entity +
+  migration 1782800000000 + `UpdateCompanyDto`). `PostingService.assertPeriodOpen()`
+  rejects any POSTED entry dated on/before the lock — enforced centrally in
+  `createEntry` + `postDraft`, so every document type is covered. *Verified:* lock to
+  2025-12-31 → invoice dated 2025-06-15 rejected `PERIOD_LOCKED`; dated today posts;
+  reopen (null) works.
+- **Role enforcement (§6.6, acceptance #18):** tax, inventory and **reports**
+  controllers had `@Roles` but no `RolesGuard` (decorative). Added `RolesGuard` to all
+  three. *Verified:* delivery-rider token → 403 on POST /invoices, GET /taxes/rates,
+  GET /inventory/items, and all financial /reports/*; admin → 200. (Atomicity §6.1 and
+  Decimal money §6.2 were already in place; tenant scoping via `@CurrentCompany` §6.5.)
+- Follow-up: operational controllers (deliveries/agencies/settings/inventory-approvals/
+  shadow-inventory) still have unenforced `@Roles` — not the financial surface; need
+  per-endpoint review to avoid breaking rider flows. Idempotency (§6.3) and optimistic
+  locking (§6.7) remain.
+
 ## MetroMatrix reseed — 1 year through the ledger (2026-06-24, live-verified)
 The legacy seed inserted documents directly (no journal entries), so ledger-derived
 reports showed nothing. New `seed:metromatrix:ledger` boots the Nest app context and
