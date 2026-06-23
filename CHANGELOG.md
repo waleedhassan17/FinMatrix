@@ -11,6 +11,27 @@ Tracks work against `FinMatrixGuide.md`. Newest first.
   and tax-payment post **no** journal entry; opening balances post **no** offset;
   reports compute from documents, not from the ledger.
 
+## MetroMatrix reseed — 1 year through the ledger (2026-06-24, live-verified)
+The legacy seed inserted documents directly (no journal entries), so ledger-derived
+reports showed nothing. New `seed:metromatrix:ledger` boots the Nest app context and
+posts ~12 months of activity THROUGH the services (PO→receive→bill→pay, invoices with
+inventory item lines → COGS, customer payments, monthly expense bills). Keeps the
+company, admin login, riders and chart of accounts; resets only transactional + master
+data. *Verified on prod:* 36 invoices / 12 POs / 24 bills / 56 payments, 0 errors;
+**Trial Balance balanced, Balance Sheet balanced (Assets 233,320 = Liab 158,080 +
+Equity 75,240), P&L Revenue 929,880 − COGS 710,640 − Expenses 144,000 = Net +75,240.**
+
+## Phase 4 — Guided setup checklist (2026-06-24, deployed Heroku v19, live-verified)
+§5.7 (the one authorized new feature — surfaces existing flows, no new accounting).
+- Backend: `companies.setup_completed` column (migration 1782700000000) +
+  `UpdateCompanyDto.setupCompleted`; `GET /reports/dashboard` now returns a `setup`
+  object (per-step done signals + completed flag).
+- Frontend: `SetupChecklist` card on the admin dashboard (shows while incomplete) with
+  ordered steps — Add Opening Balances → COA → Inventory (optional) → Customers →
+  Vendors → Tax rates — each routing to the existing screen; progress + Dismiss
+  (PATCH setupCompleted). The opening-balance CTA opens the General Journal flow, which
+  stays reachable under Transactions → Accounting after dismissal.
+
 ## Phase 3 — Reports from the ledger (2026-06-23, deployed Heroku v20, live-verified)
 §5.2/§5.3. Trial Balance, Balance Sheet and P&L now derive from posted journal
 entries (the `general_ledger` table joined to the chart of accounts) via a shared
