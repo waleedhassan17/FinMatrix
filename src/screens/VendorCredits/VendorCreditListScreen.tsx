@@ -16,7 +16,13 @@ const rs = (n: number) => formatCurrency(n, 'Rs ');
 const STATUS_COLOR: Record<VendorCreditStatus, string> = {
   open: ACCENT.blue, applied: ACCENT.green, closed: ACCENT.violet, void: THEME.colors.textSecondary,
 };
-const FILTERS: VendorCreditStatusFilter[] = ['all', 'open', 'applied', 'closed', 'void'];
+const FILTERS: { label: string; value: VendorCreditStatusFilter }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Open', value: 'open' },
+  { label: 'Applied', value: 'applied' },
+  { label: 'Closed', value: 'closed' },
+  { label: 'Void', value: 'void' },
+];
 
 const VendorCreditListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -29,15 +35,26 @@ const VendorCreditListScreen: React.FC = () => {
 
   return (
     <ReportContainer>
-      <ReportHeader title="Vendor Credits" subtitle="Returns & overcharges"
-        right={<HeaderIconButton icon="plus" onPress={() => navigation.navigate('VendorCreditForm', {})} />} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-        {FILTERS.map(f => (
-          <TouchableOpacity key={f} onPress={() => dispatch(setVendorCreditStatusFilter(f))}
-            style={[styles.chip, state.statusFilter === f && styles.chipActive]}>
-            <Text style={[styles.chipText, state.statusFilter === f && styles.chipTextActive]}>{f.toUpperCase()}</Text>
-          </TouchableOpacity>
-        ))}
+      <ReportHeader 
+        title="Vendor Credits" 
+        subtitle="Returns & overcharges"
+        onBack={() => navigation.goBack()}
+        right={<HeaderIconButton icon="plus" onPress={() => navigation.navigate('VendorCreditForm', {})} />} 
+      />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsRow}>
+        {FILTERS.map(f => {
+          const active = state.statusFilter === f.value;
+          return (
+            <TouchableOpacity 
+              key={f.value} 
+              onPress={() => dispatch(setVendorCreditStatusFilter(f.value))}
+              activeOpacity={0.7}
+              style={[styles.tab, active && styles.tabActive]}
+            >
+              <Text style={[styles.tabText, active && styles.tabTextActive]}>{f.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
       <ScrollView contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
@@ -66,11 +83,12 @@ const VendorCreditListScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  chipsRow: { gap: 8, paddingHorizontal: 16, paddingVertical: 12 },
-  chip: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, backgroundColor: THEME.colors.surface, borderWidth: 1, borderColor: THEME.colors.border },
-  chipActive: { backgroundColor: THEME.colors.primary + '18', borderColor: THEME.colors.primary },
-  chipText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  chipTextActive: { color: THEME.colors.primary, fontWeight: '700' },
+  tabsScroll: { minHeight: 44, flexGrow: 0 },
+  tabsRow: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, alignItems: 'center', gap: 8 },
+  tab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: THEME.colors.surface, borderWidth: 1, borderColor: THEME.colors.border },
+  tabActive: { backgroundColor: THEME.colors.primary, borderColor: THEME.colors.primary },
+  tabText: { fontSize: 13, fontWeight: '600', color: THEME.colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  tabTextActive: { color: THEME.colors.surface },
   content: { padding: 16, paddingTop: 4, gap: 10 },
   card: { backgroundColor: THEME.colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: THEME.colors.border },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
