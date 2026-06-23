@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { getStoredCompanyId } from '../../../network/apiHelpers';
 import { colors, spacing, borderRadius } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
@@ -177,7 +178,7 @@ const COAFormScreen: React.FC = () => {
       } else {
         await dispatch(
           createAccount({
-            companyId: 'comp-001',
+            companyId: (await getStoredCompanyId()) ?? '',
             code: form.code.trim(),
             name: form.name.trim(),
             type: form.type as AccountType,

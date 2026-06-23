@@ -13,6 +13,7 @@ import {
   updatePurchaseOrderAPI,
   getPurchaseOrderByIdAPI,
 } from '../../../network/purchaseOrderNetwork';
+import { getStoredCompanyId } from '../../../network/apiHelpers';
 import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 
 // ── Line item (form representation — string values for inputs) ──
@@ -91,7 +92,10 @@ const buildSavePayload = (
   state: POFormSliceState,
   saveStatus: PurchaseOrderStatus,
 ): Omit<PurchaseOrder, 'id' | 'createdAt' | 'updatedAt'> => ({
-  companyId: 'comp_001',
+  // Tenant is derived server-side from the auth token / x-company-id header;
+  // populated from the stored company id at dispatch time, ignored by the
+  // backend if it disagrees.
+  companyId: '',
   poNumber: state.poNumber.trim(),
   vendorId: state.vendorId,
   vendorName: state.vendorName,
@@ -221,6 +225,7 @@ export const poFormSlice = createAppSlice({
         const root = thunkAPI.getState() as { poForm: POFormSliceState };
         const f = root.poForm;
         const payload = buildSavePayload(f, saveStatus);
+        payload.companyId = (await getStoredCompanyId()) ?? '';
         const envelope = f.isEditMode && f.editingId
           ? await updatePurchaseOrderAPI(f.editingId, payload)
           : await createPurchaseOrderAPI(payload);

@@ -13,6 +13,7 @@ import {
   createBillPaymentAPI,
   updateBillAPI,
 } from '../../../network/billNetwork';
+import { getStoredCompanyId } from '../../../network/apiHelpers';
 import { billListSerializer } from '../../../serializers/billSerializer';
 
 export interface OutstandingBillRow {
@@ -201,7 +202,7 @@ export const payBillsSlice = createAppSlice({
         const amountNumeric = parseFloat(f.amount) || 0;
 
         const payment = await createBillPaymentAPI({
-          companyId: 'comp_001',
+          companyId: (await getStoredCompanyId()) ?? '',
           paymentNumber: args.paymentNumber,
           vendorId: f.vendorId,
           vendorName: f.vendorName,

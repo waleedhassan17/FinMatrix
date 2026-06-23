@@ -12,6 +12,7 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { Invoice, PaymentMethod } from '../../../types';
 import { getInvoicesAPI, updateInvoiceAPI } from '../../../network/invoiceNetwork';
 import { createPaymentAPI } from '../../../network/paymentNetwork';
+import { getStoredCompanyId } from '../../../network/apiHelpers';
 import { invoiceListSerializer } from '../../../serializers/invoiceSerializer';
 
 // ── Outstanding invoice row (used in the allocations table) ────
@@ -246,7 +247,7 @@ export const receivePaymentSlice = createAppSlice({
 
         // 1) Create the payment record
         const created = await createPaymentAPI({
-          companyId: 'comp_001',
+          companyId: (await getStoredCompanyId()) ?? '',
           paymentNumber: f.reference || `PAY-${String(Date.now()).slice(-6)}`,
           customerId: f.customerId,
           customerName: f.customerName,

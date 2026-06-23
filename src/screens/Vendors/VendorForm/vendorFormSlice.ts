@@ -13,6 +13,7 @@ import {
   updateVendorAPI,
   getVendorByIdAPI,
 } from '../../../network/vendorNetwork';
+import { getStoredCompanyId } from '../../../network/apiHelpers';
 import { vendorSingleSerializer } from '../../../serializers/vendorSerializer';
 
 export interface VendorFormSliceState {
@@ -61,7 +62,10 @@ const initialState: VendorFormSliceState = {
 const buildSavePayload = (
   state: VendorFormSliceState,
 ): Omit<Vendor, 'id' | 'balance' | 'createdAt' | 'updatedAt'> => ({
-  companyId: 'comp_001',
+  // Tenant is derived server-side from the auth token / x-company-id header;
+  // this is populated from the stored company id at dispatch time and is
+  // ignored by the backend if it disagrees.
+  companyId: '',
   name: state.name.trim(),
   email: state.email.trim(),
   phone: state.phone.trim(),
@@ -132,6 +136,7 @@ export const vendorFormSlice = createAppSlice({
         const root = thunkAPI.getState() as { vendorForm: VendorFormSliceState };
         const f = root.vendorForm;
         const payload = buildSavePayload(f);
+        payload.companyId = (await getStoredCompanyId()) ?? '';
         const envelope = f.isEditMode && f.editId
           ? await updateVendorAPI(f.editId, payload)
           : await createVendorAPI(payload);

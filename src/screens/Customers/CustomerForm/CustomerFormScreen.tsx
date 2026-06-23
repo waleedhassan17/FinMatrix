@@ -43,6 +43,7 @@ import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { validateCustomer, PAYMENT_TERMS_OPTIONS } from '../../../models/customerModel';
 import { customerToFormData, formDataToCustomerPayload } from '../../../serializers/customerSerializer';
+import { getStoredCompanyId } from '../../../network/apiHelpers';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -135,7 +136,7 @@ const CustomerFormScreen: React.FC = () => {
           taxId: form.taxId,
           notes: form.notes,
         },
-        'comp_001',
+        (await getStoredCompanyId()) ?? '',
       );
 
       if (isEditing) {
