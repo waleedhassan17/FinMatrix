@@ -74,6 +74,7 @@ import { invoiceFormSlice } from '../screens/Invoices/InvoiceForm/invoiceFormSli
 import { estimateSlice } from '../screens/Estimates/estimateSlice';
 import { salesOrderSlice } from '../screens/SalesOrders/salesOrderSlice';
 import { creditMemoSlice } from '../screens/CreditMemos/creditMemoSlice';
+import { journalEntrySlice } from '../screens/GeneralJournal/journalEntrySlice';
 import { vendorCreditSlice } from '../screens/VendorCredits/vendorCreditSlice';
 import { budgetSlice } from '../screens/Budgets/budgetSlice';
 import { payrollSlice } from '../screens/Payroll/payrollSlice';
@@ -186,6 +187,7 @@ const rootReducer = combineReducers({
   estimates: estimateSlice.reducer,
   salesOrders: salesOrderSlice.reducer,
   creditMemos: creditMemoSlice.reducer,
+  journalEntries: journalEntrySlice.reducer,
   vendorCredits: vendorCreditSlice.reducer,
   budgets: budgetSlice.reducer,
   payroll: payrollSlice.reducer,

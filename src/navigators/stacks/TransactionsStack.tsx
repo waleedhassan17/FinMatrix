@@ -23,6 +23,9 @@ import PayBillsScreen from '../../screens/Bills/PayBills/PayBillsScreen';
 import POListScreen from '../../screens/PurchaseOrders/POList/POListScreen';
 import POFormScreen from '../../screens/PurchaseOrders/POForm/POFormScreen';
 import PODetailScreen from '../../screens/PurchaseOrders/PODetail/PODetailScreen';
+import GeneralJournalListScreen from '../../screens/GeneralJournal/GeneralJournalListScreen';
+import GeneralJournalDetailScreen from '../../screens/GeneralJournal/GeneralJournalDetailScreen';
+import GeneralJournalFormScreen from '../../screens/GeneralJournal/GeneralJournalFormScreen';
 
 export type TransactionsStackParamList = {
   TransactionsHub: undefined;
@@ -48,6 +51,9 @@ export type TransactionsStackParamList = {
   POList: undefined;
   POForm: { poId?: string } | undefined;
   PODetail: { poId: string };
+  JournalEntryList: undefined;
+  JournalEntryForm: { entryId?: string } | undefined;
+  JournalEntryDetail: { entryId: string };
 };
 
 const Stack = createNativeStackNavigator<TransactionsStackParamList>();
@@ -77,6 +83,9 @@ const TransactionsStack: React.FC = () => (
     <Stack.Screen name="POList" component={POListScreen} />
     <Stack.Screen name="POForm" component={POFormScreen} />
     <Stack.Screen name="PODetail" component={PODetailScreen} />
+    <Stack.Screen name="JournalEntryList" component={GeneralJournalListScreen} />
+    <Stack.Screen name="JournalEntryForm" component={GeneralJournalFormScreen} />
+    <Stack.Screen name="JournalEntryDetail" component={GeneralJournalDetailScreen} />
   </Stack.Navigator>
 );
 

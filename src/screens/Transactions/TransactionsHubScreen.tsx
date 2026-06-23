@@ -102,6 +102,17 @@ const PURCHASE_ROWS: HubRow[] = [
   },
 ];
 
+const ACCOUNTING_ROWS: HubRow[] = [
+  {
+    key: 'generalJournal',
+    icon: 'book-open',
+    accent: ACCENT.violet,
+    label: 'General Journal',
+    subtitle: 'Record manual double-entry journal entries',
+    onPress: nav => nav.navigate('JournalEntryList'),
+  },
+];
+
 const TransactionsHubScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
 
@@ -133,6 +144,10 @@ const TransactionsHubScreen: React.FC = () => {
 
         <SectionCard title="Purchases" icon="shopping-cart">
           <View style={styles.list}>{PURCHASE_ROWS.map((r, i) => renderRow(r, i === PURCHASE_ROWS.length - 1))}</View>
+        </SectionCard>
+
+        <SectionCard title="Accounting" icon="book">
+          <View style={styles.list}>{ACCOUNTING_ROWS.map((r, i) => renderRow(r, i === ACCOUNTING_ROWS.length - 1))}</View>
         </SectionCard>
 
         <View style={{ height: THEME.spacing.xl }} />

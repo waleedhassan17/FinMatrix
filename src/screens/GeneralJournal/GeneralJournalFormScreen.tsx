@@ -1,0 +1,143 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+import { THEME } from '../../utils/theme';
+import { useAppDispatch } from '../../hooks/useReduxHooks';
+import { saveJournalEntry } from './journalEntrySlice';
+import { getAccountsAPI } from '../../network/coaNetwork';
+import { coaListSerializer } from '../../serializers/coaSerializer';
+import { formatCurrency } from '../../utils/formatters';
+import CustomInput from '../../Custom-Components/CustomInput';
+import CustomButton from '../../Custom-Components/CustomButton';
+import JournalLineRow from '../../components/JournalLineRow';
+import { ReportContainer, ReportHeader, Card, SectionCard } from '../../components/reports/ReportUI';
+import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
+
+type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
+interface LineDraft { accountId: string; description: string; debit: string; credit: string; }
+const blankLine = (): LineDraft => ({ accountId: '', description: '', debit: '', credit: '' });
+const rs = (n: number) => formatCurrency(n, 'Rs ');
+
+const GeneralJournalFormScreen: React.FC = () => {
+  const navigation = useNavigation<Nav>();
+  const dispatch = useAppDispatch();
+
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [memo, setMemo] = useState('');
+  const [lines, setLines] = useState<LineDraft[]>([blankLine(), blankLine()]);
+  const [accountOptions, setAccountOptions] = useState<{ label: string; value: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await getAccountsAPI({ isActive: true });
+        const { accounts } = coaListSerializer(res);
+        setAccountOptions(
+          accounts
+            .filter((a: any) => a.isActive)
+            .map((a: any) => ({ label: `${a.code} · ${a.name}`, value: a.id })),
+        );
+      } catch (e: any) {
+        Alert.alert('Could not load accounts', e?.message ?? 'Please try again.');
+      }
+    })();
+  }, []);
+
+  const totals = useMemo(() => {
+    let debit = 0, credit = 0;
+    lines.forEach(l => { debit += parseFloat(l.debit) || 0; credit += parseFloat(l.credit) || 0; });
+    return { debit, credit, diff: debit - credit };
+  }, [lines]);
+  const balanced = Math.abs(totals.diff) < 0.01 && totals.debit > 0;
+
+  const updateLine = (i: number, patch: Partial<LineDraft>) =>
+    setLines(prev => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+
+  const validLines = () =>
+    lines.filter(l => l.accountId && ((parseFloat(l.debit) || 0) > 0 || (parseFloat(l.credit) || 0) > 0));
+
+  const submit = async (status: 'draft' | 'posted') => {
+    const valid = validLines();
+    if (valid.length < 2) { Alert.alert('Not enough lines', 'Add at least 2 lines with an account and an amount.'); return; }
+    if (status === 'posted' && !balanced) { Alert.alert('Out of balance', 'Total debits must equal total credits before posting.'); return; }
+
+    setSaving(true);
+    const r: any = await dispatch(saveJournalEntry({
+      date,
+      memo: memo || undefined,
+      status,
+      lines: valid.map((l, i) => ({
+        accountId: l.accountId,
+        description: l.description || undefined,
+        debit: (parseFloat(l.debit) || 0).toString(),
+        credit: (parseFloat(l.credit) || 0).toString(),
+        lineOrder: i,
+      })),
+    }));
+    setSaving(false);
+    if (r.meta.requestStatus === 'fulfilled') navigation.goBack();
+    else Alert.alert('Save failed', r.error?.message ?? 'Could not save journal entry');
+  };
+
+  return (
+    <ReportContainer>
+      <ReportHeader title="New Journal Entry" subtitle="Manual double-entry" onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Card>
+          <CustomInput label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
+          <CustomInput label="Memo" value={memo} onChangeText={setMemo} placeholder="Description of this entry" multiline />
+        </Card>
+
+        <SectionCard title="Lines" icon="list">
+          {lines.map((l, i) => (
+            <JournalLineRow
+              key={i}
+              accountId={l.accountId}
+              description={l.description}
+              debit={l.debit}
+              credit={l.credit}
+              accountOptions={accountOptions}
+              onAccountChange={v => updateLine(i, { accountId: v })}
+              onDescriptionChange={v => updateLine(i, { description: v })}
+              onDebitChange={v => updateLine(i, { debit: v })}
+              onCreditChange={v => updateLine(i, { credit: v })}
+              onDelete={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
+              canDelete={lines.length > 2}
+            />
+          ))}
+          <CustomButton title="+ Add Line" variant="secondary" onPress={() => setLines(prev => [...prev, blankLine()])} />
+        </SectionCard>
+
+        <Card>
+          <Row label="Total Debits" value={rs(totals.debit)} />
+          <Row label="Total Credits" value={rs(totals.credit)} />
+          <Row label={balanced ? 'Balanced' : 'Difference'} value={balanced ? '✓' : rs(Math.abs(totals.diff))} strong accent={balanced ? THEME.colors.success : THEME.colors.danger} />
+        </Card>
+
+        <CustomButton title="Save & Post" onPress={() => submit('posted')} isLoading={saving} disabled={!balanced} fullWidth />
+        <CustomButton title="Save as Draft" variant="secondary" onPress={() => submit('draft')} isLoading={saving} fullWidth />
+        <View style={{ height: 24 }} />
+      </ScrollView>
+    </ReportContainer>
+  );
+};
+
+const Row: React.FC<{ label: string; value: string; strong?: boolean; accent?: string }> = ({ label, value, strong, accent }) => (
+  <View style={styles.totalRow}>
+    <Text style={[styles.totalLabel, strong && styles.bold]}>{label}</Text>
+    <Text style={[styles.totalValue, strong && styles.bold, accent ? { color: accent } : null]}>{value}</Text>
+  </View>
+);
+
+const styles = StyleSheet.create({
+  content: { padding: 16, gap: 14 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
+  totalLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
+  totalValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
+  bold: { ...THEME.typography.bodyMd, fontWeight: '800', color: THEME.colors.textPrimary },
+});
+
+export default GeneralJournalFormScreen;
