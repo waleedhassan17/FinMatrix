@@ -13,6 +13,7 @@ const initialCategories: ReportHubCategory[] = [
       { key: 'tb', title: 'Trial Balance', icon: 'TB', target: 'TrialBalance' },
       { key: 'cf', title: 'Cash Flow', icon: 'CF', target: 'CashFlow' },
       { key: 'gl', title: 'General Ledger', icon: 'GL', target: 'GeneralLedger' },
+      { key: 'budgets', title: 'Budgets', icon: 'BUD', target: 'BudgetList' },
       { key: 'analytics', title: 'Analytics Dashboard', icon: 'ANL', target: 'AnalyticsDashboard' },
     ],
   },

@@ -75,6 +75,12 @@ const SECTIONS: MoreSection[] = [
         badgeSelector: 'vendors',
         onPress: nav => nav.navigate('VendorList'),
       },
+      {
+        key: 'payroll', icon: 'briefcase', iconBg: IC.purpleBg, iconColor: IC.purple,
+        label: 'Employees & Payroll',
+        subtitle: 'Staff, run payroll & pay stubs',
+        onPress: nav => nav.navigate('EmployeeList'),
+      },
     ],
   },
   {

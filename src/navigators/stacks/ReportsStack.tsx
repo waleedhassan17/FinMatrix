@@ -6,6 +6,9 @@ import BalanceSheetScreen from '../../screens/Reports/BalanceSheet/BalanceSheetS
 import TrialBalanceScreen from '../../screens/Reports/TrialBalance/TrialBalanceScreen';
 import CashFlowScreen from '../../screens/Reports/CashFlow/CashFlowScreen';
 import GeneralLedgerScreen from '../../screens/Reports/GeneralLedger/GeneralLedgerScreen';
+import BudgetListScreen from '../../screens/Budgets/BudgetListScreen';
+import BudgetFormScreen from '../../screens/Budgets/BudgetFormScreen';
+import BudgetDetailScreen from '../../screens/Budgets/BudgetDetailScreen';
 import ARAgingScreen from '../../screens/Reports/ARAging/ARAgingScreen';
 import InventoryValuationScreen from '../../screens/Reports/InventoryValuation/InventoryValuationScreen';
 import AnalyticsDashboardScreen from '../../screens/Reports/AnalyticsDashboard/AnalyticsDashboardScreen';
@@ -19,6 +22,9 @@ export type ReportsStackParamList = {
   TrialBalance: undefined;
   CashFlow: undefined;
   GeneralLedger: undefined;
+  BudgetList: undefined;
+  BudgetForm: undefined;
+  BudgetDetail: { budgetId: string };
   ARAging: undefined;
   InventoryValuation: undefined;
   AnalyticsDashboard: undefined;
@@ -36,6 +42,9 @@ const ReportsStack: React.FC = () => (
     <Stack.Screen name="TrialBalance" component={TrialBalanceScreen} />
     <Stack.Screen name="CashFlow" component={CashFlowScreen} />
     <Stack.Screen name="GeneralLedger" component={GeneralLedgerScreen} />
+    <Stack.Screen name="BudgetList" component={BudgetListScreen} />
+    <Stack.Screen name="BudgetForm" component={BudgetFormScreen} />
+    <Stack.Screen name="BudgetDetail" component={BudgetDetailScreen} />
     <Stack.Screen name="ARAging" component={ARAgingScreen} />
     <Stack.Screen name="InventoryValuation" component={InventoryValuationScreen} />
     <Stack.Screen name="AnalyticsDashboard" component={AnalyticsDashboardScreen} />

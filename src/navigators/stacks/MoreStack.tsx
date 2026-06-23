@@ -1,6 +1,10 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MoreHubScreen from '../../screens/More/MoreHubScreen';
+import EmployeeListScreen from '../../screens/Payroll/EmployeeListScreen';
+import EmployeeFormScreen from '../../screens/Payroll/EmployeeFormScreen';
+import PayrollRunListScreen from '../../screens/Payroll/PayrollRunListScreen';
+import PayrollRunDetailScreen from '../../screens/Payroll/PayrollRunDetailScreen';
 import COAListScreen from '../../screens/ChartOfAccounts/COAList/COAListScreen';
 import COAFormScreen from '../../screens/ChartOfAccounts/COAForm/COAFormScreen';
 import COADetailScreen from '../../screens/ChartOfAccounts/COADetail/COADetailScreen';
@@ -34,6 +38,10 @@ import GlobalSearchScreen from '../../screens/GlobalSearch/GlobalSearchScreen';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
+  EmployeeList: undefined;
+  EmployeeForm: { employeeId?: string } | undefined;
+  PayrollRunList: undefined;
+  PayrollRunDetail: { payrollRunId: string };
   COAList: undefined;
   COAForm: { accountId?: string } | undefined;
   COADetail: { accountId: string };
@@ -71,6 +79,10 @@ const Stack = createNativeStackNavigator<MoreStackParamList>();
 const MoreStack: React.FC = () => (
   <Stack.Navigator id="MoreStack" screenOptions={{ headerShown: false }}>
     <Stack.Screen name="MoreHub" component={MoreHubScreen} />
+    <Stack.Screen name="EmployeeList" component={EmployeeListScreen} />
+    <Stack.Screen name="EmployeeForm" component={EmployeeFormScreen} />
+    <Stack.Screen name="PayrollRunList" component={PayrollRunListScreen} />
+    <Stack.Screen name="PayrollRunDetail" component={PayrollRunDetailScreen} />
     <Stack.Screen name="COAList" component={COAListScreen} />
     <Stack.Screen name="COAForm" component={COAFormScreen} />
     <Stack.Screen name="COADetail" component={COADetailScreen} />
