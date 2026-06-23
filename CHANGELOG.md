@@ -11,6 +11,21 @@ Tracks work against `FinMatrixGuide.md`. Newest first.
   and tax-payment post **no** journal entry; opening balances post **no** offset;
   reports compute from documents, not from the ledger.
 
+## Phase 3 — Reports from the ledger (2026-06-23, deployed Heroku v20, live-verified)
+§5.2/§5.3. Trial Balance, Balance Sheet and P&L now derive from posted journal
+entries (the `general_ledger` table joined to the chart of accounts) via a shared
+`glByAccount()` helper — not from document tables / a 70-30 purchases guess.
+- P&L: revenue & expense account movements (COGS = subType 'Cost of Goods' / 5xxx).
+- Balance Sheet: asset/liability/equity balances as of date; current-period net
+  income rolls into equity; `isBalanced` computed.
+- Trial Balance: per-account net debit/credit; balances to the paisa.
+- *Verified on prod:* Trial Balance Dr 177,242 = Cr 177,242 (balanced, 11 accounts);
+  Balance Sheet Assets 14,658 = Liabilities 458 + Equity 14,200 (balanced).
+- NOTE: pre-existing seed documents were inserted without journal entries, so on the
+  demo company these reports show only ledger-posted activity. Also: physical count +
+  stock transfer postings landed in v18; remaining = A/R-A/P aging & inventory
+  valuation & cash-flow still document-derived (consistent sub-ledgers).
+
 ## Phase 2c — PO receipt → GRNI → bill (2026-06-23, deployed Heroku v17, live-verified)
 Resolves known issue #3 (inventory-vs-bill double count), §3.3/§3.4.
 - `purchase-orders.service.receive()`: item-linked lines raise `quantityOnHand` by the
