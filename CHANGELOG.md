@@ -11,7 +11,25 @@ Tracks work against `FinMatrixGuide.md`. Newest first.
   and tax-payment post **no** journal entry; opening balances post **no** offset;
   reports compute from documents, not from the ledger.
 
-## Phase 1 — Ledger integrity (2026-06-23)
+## Phase 2a — Inventory & tax postings (2026-06-23, deployed Heroku v15, live-verified)
+- **Inventory adjustment (§3.8):** `inventory.service.adjust()` now posts a balanced
+  JE valuing the quantity variance at the item's unit cost — decrease = DR Inventory
+  Adjustment 6400 / CR Inventory 1200; increase = the reverse — inside the existing
+  transaction, and sets `adjustment.journalEntryId`. Added expense account
+  **Inventory Adjustment/Shrinkage (6400)** to the COA + lazy create. *Verified:*
+  −5 units @ cost 230 → Inventory 1200 −1150, account 6400 +1150 (balanced).
+- **Tax payment (§3.9):** `tax.service.createPayment()` now posts DR Sales Tax
+  Payable 2300 / CR Cash 1000 atomically and sets `journalEntryId`. *Verified:*
+  payment 1000 → Tax Payable 16408→15408, Cash −144434→−145434.
+
+### Phase 2 still outstanding
+- Invoice COGS/Inventory cost entry + `quantityOnHand` reduction + void restock —
+  **requires adding optional `itemId` to invoice lines** (entity + DTO + migration +
+  a frontend item picker); FinMatrix invoice lines are currently free-text only.
+- PO-receipt → GRNI (§3.3); bill GRNI clearing vs direct-expense (§3.4); physical
+  count applying variances; stock-transfer two-sided qty; credit-memo return-to-inventory.
+
+## Phase 1 — Ledger integrity (2026-06-23, deployed Heroku v14, live-verified)
 **Known issue §4.2 / §3.12 — opening-balance offset (backend):**
 - `accounts.constants.ts`: added system accounts **Opening Balance Equity (3900)**
   and **Inventory Received Not Billed / GRNI (2050)** to `DEFAULT_CHART_OF_ACCOUNTS`
