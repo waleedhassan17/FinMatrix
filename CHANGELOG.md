@@ -11,6 +11,23 @@ Tracks work against `FinMatrixGuide.md`. Newest first.
   and tax-payment post **no** journal entry; opening balances post **no** offset;
   reports compute from documents, not from the ledger.
 
+## Phase 6 — Acceptance suite + deliverable docs (2026-06-24)
+- `test/acceptance.ts` (`npm run test:acceptance`) — automated §8 suite against a
+  running API. **32/32 passing on prod**: opening-balance offset, invoice COGS +
+  stock reduction, payment→paid, void + restock, tax payment, idempotency replay,
+  period lock, role enforcement (rider 403), concurrent-payment no-overpay; Trial
+  Balance balanced + Balance Sheet (A=L+E) re-asserted after every mutation.
+- Deliverable docs written: `ACCOUNTING_CONTRACT.md` (as-built postings),
+  `BACKEND_API_CONTRACT.md` (every endpoint + shape + guard), `PRODUCTION_CHECKLIST.md`.
+
+## Phase 5 — Hardening: idempotency + optimistic locking (2026-06-24, deployed, live-verified)
+- **Idempotency (§6.3):** `IdempotencyRecord` + migration + `IdempotencyInterceptor`
+  (outer APP_INTERCEPTOR). POST with `Idempotency-Key` → response stored by
+  (company,key); retry replays it. *Verified:* same invoice id returned twice, no
+  double-post.
+- **Optimistic locking (§6.7):** `@VersionColumn` on Invoice + Bill. *Verified:* two
+  concurrent full payments on one invoice → one 201, one 400, paid exactly once.
+
 ## Phase 5 — Hardening: period locking + role enforcement (2026-06-24, deployed, live-verified)
 - **Period locking (§6.4, acceptance #16):** `companies.books_locked_until` (entity +
   migration 1782800000000 + `UpdateCompanyDto`). `PostingService.assertPeriodOpen()`
