@@ -267,6 +267,7 @@ const POListScreen: React.FC = () => {
 
       {/* ── Filter Tabs — hidden on first-run ───── */}
       {!isFirstRun && (
+      <View style={styles.tabsBar}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -292,6 +293,7 @@ const POListScreen: React.FC = () => {
           );
         })}
       </ScrollView>
+      </View>
       )}
 
       {/* ── List / states ───────────────────────── */}
@@ -310,6 +312,7 @@ const POListScreen: React.FC = () => {
           data={items}
           keyExtractor={i => i.id}
           renderItem={renderCard}
+          style={styles.list}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -395,11 +398,12 @@ const styles = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily,
   },
 
-  tabsScroll: { minHeight: 44 },
+  // Fixed-height bar so the tab row keeps a constant vertical slot and never
+  // shifts between "has results" / "empty filter" list states.
+  tabsBar: { height: 52, justifyContent: 'center' },
+  tabsScroll: { flexGrow: 0, flexShrink: 0 },
   tabsRow: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm + 2,
     alignItems: 'center',
     gap: spacing.sm,
   },
@@ -429,6 +433,7 @@ const styles = StyleSheet.create({
   tabCountText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   tabCountTextActive: { color: colors.white },
 
+  list: { flex: 1 },
   listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 80 },
   card: {
     backgroundColor: colors.white,

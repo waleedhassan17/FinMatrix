@@ -279,6 +279,7 @@ const InvoiceListScreen: React.FC = () => {
 
       {/* Filter tabs — hidden during initial load and first-run */}
       {!initialLoading && !isFirstRun && (
+      <View style={styles.tabsBar}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -306,6 +307,7 @@ const InvoiceListScreen: React.FC = () => {
           );
         })}
       </ScrollView>
+      </View>
       )}
 
       {/* List */}
@@ -346,6 +348,7 @@ const InvoiceListScreen: React.FC = () => {
           data={filtered}
           keyExtractor={i => i.id}
           renderItem={renderCard}
+          style={styles.list}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -432,13 +435,18 @@ const styles = StyleSheet.create({
   },
 
   // ── Tabs ───────────────────────────────────────
+  // Fixed-height bar so the tab row keeps a constant vertical slot and never
+  // shifts between "has results" / "empty filter" list states.
+  tabsBar: {
+    height: 52,
+    justifyContent: 'center',
+  },
   tabsScroll: {
-    minHeight: 44,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   tabsRow: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm + 2,
     alignItems: 'center',
     gap: spacing.sm,
   },
@@ -469,6 +477,7 @@ const styles = StyleSheet.create({
   tabCountTextActive: { color: colors.white },
 
   // ── Cards ──────────────────────────────────────
+  list: { flex: 1 },
   listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl * 3 },
   card: {
     backgroundColor: colors.white,

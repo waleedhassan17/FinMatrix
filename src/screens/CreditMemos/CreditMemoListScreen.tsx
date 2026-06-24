@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -9,74 +9,80 @@ import { fetchCreditMemos, selectCreditMemoState, setCreditMemoStatusFilter, typ
 import { formatCurrency } from '../../utils/formatters';
 import type { CreditMemoStatus } from '../../models/creditMemoModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderIconButton, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderIconButton, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
+
 const STATUS_COLOR: Record<CreditMemoStatus, string> = {
   open: ACCENT.blue, applied: ACCENT.green, closed: ACCENT.violet, refunded: ACCENT.amber, void: THEME.colors.textSecondary,
 };
-const FILTERS: { label: string; value: CreditMemoStatusFilter }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Open', value: 'open' },
-  { label: 'Applied', value: 'applied' },
-  { label: 'Closed', value: 'closed' },
-  { label: 'Refunded', value: 'refunded' },
-  { label: 'Void', value: 'void' },
-];
 
 const CreditMemoListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectCreditMemoState);
-  const load = useCallback(() => {
-    dispatch(fetchCreditMemos({ status: state.statusFilter === 'all' ? undefined : state.statusFilter }));
-  }, [dispatch, state.statusFilter]);
+
+  const load = useCallback(() => { dispatch(fetchCreditMemos({})); }, [dispatch]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: state.creditMemos.length, open: 0, applied: 0, closed: 0, refunded: 0, void: 0 };
+    state.creditMemos.forEach(m => { c[m.status] = (c[m.status] ?? 0) + 1; });
+    return c;
+  }, [state.creditMemos]);
+
+  const TABS: TxnTab<CreditMemoStatusFilter>[] = [
+    { label: 'All', value: 'all', count: counts.all },
+    { label: 'Open', value: 'open', count: counts.open },
+    { label: 'Applied', value: 'applied', count: counts.applied },
+    { label: 'Closed', value: 'closed', count: counts.closed },
+    { label: 'Refunded', value: 'refunded', count: counts.refunded },
+    { label: 'Void', value: 'void', count: counts.void },
+  ];
+
+  const filtered = useMemo(() => {
+    if (state.statusFilter === 'all') return state.creditMemos;
+    return state.creditMemos.filter(m => m.status === state.statusFilter);
+  }, [state.creditMemos, state.statusFilter]);
 
   return (
     <ReportContainer>
-      <ReportHeader 
-        title="Credit Memos" 
+      <ReportHeader
+        title="Credit Memos"
         subtitle="Customer credits & returns"
         onBack={() => navigation.goBack()}
-        right={<HeaderIconButton icon="plus" onPress={() => navigation.navigate('CreditMemoForm', {})} />} 
+        right={<HeaderIconButton icon="plus" onPress={() => navigation.navigate('CreditMemoForm', {})} />}
       />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsRow}>
-        {FILTERS.map(f => {
-          const active = state.statusFilter === f.value;
-          return (
-            <TouchableOpacity 
-              key={f.value} 
-              onPress={() => dispatch(setCreditMemoStatusFilter(f.value))}
-              activeOpacity={0.7}
-              style={[styles.tab, active && styles.tabActive]}
-            >
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>{f.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-      <ScrollView contentContainerStyle={styles.content}
+
+      <TxnTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setCreditMemoStatusFilter(v))} />
+
+      <ScrollView style={styles.list} contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
         {state.isLoading && state.creditMemos.length === 0 && <LoadingBlock label="Loading…" />}
         {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
         {!state.isLoading && state.creditMemos.length === 0 && !state.error && (
           <EmptyBlock icon="rotate-ccw" title="No credit memos" hint="Tap + to issue a customer credit." />
         )}
-        {state.creditMemos.map(c => (
-          <TouchableOpacity key={c.id} style={styles.card} activeOpacity={0.7}
-            onPress={() => navigation.navigate('CreditMemoDetail', { creditMemoId: c.id })}>
-            <View style={styles.cardTop}>
-              <Text style={styles.cardNumber}>{c.creditMemoNumber}</Text>
-              <Badge label={c.status} color={STATUS_COLOR[c.status]} dot />
-            </View>
-            <Text style={styles.cardCustomer}>{c.customerName || 'Customer'}</Text>
-            <View style={styles.cardBottom}>
-              <Text style={styles.cardDate}>{c.date} · {rs(c.balance)} available</Text>
-              <Text style={styles.cardTotal}>{rs(c.total)}</Text>
-            </View>
-          </TouchableOpacity>
+        {state.creditMemos.length > 0 && filtered.length === 0 && !state.error && (
+          <EmptyBlock icon="search" title="No credit memos found" hint="Try a different tab." />
+        )}
+        {filtered.map(c => (
+          <TxnCard
+            key={c.id}
+            number={c.creditMemoNumber}
+            subtitle={c.customerName || 'Customer'}
+            statusLabel={titleCase(c.status)}
+            statusColor={STATUS_COLOR[c.status]}
+            metaLeft={`Date: ${c.date}`}
+            primaryLabel="Total"
+            primaryValue={rs(c.total)}
+            secondaryLabel="Available"
+            secondaryValue={rs(c.balance)}
+            secondaryColor={c.balance > 0 ? THEME.colors.success : undefined}
+            onPress={() => navigation.navigate('CreditMemoDetail', { creditMemoId: c.id })}
+          />
         ))}
       </ScrollView>
     </ReportContainer>
@@ -84,20 +90,8 @@ const CreditMemoListScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  tabsScroll: { minHeight: 44, flexGrow: 0 },
-  tabsRow: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, alignItems: 'center', gap: 8 },
-  tab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: THEME.colors.surface, borderWidth: 1, borderColor: THEME.colors.border },
-  tabActive: { backgroundColor: THEME.colors.primary, borderColor: THEME.colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: THEME.colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  tabTextActive: { color: THEME.colors.surface },
-  content: { padding: 16, paddingTop: 4, gap: 10 },
-  card: { backgroundColor: THEME.colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: THEME.colors.border },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardNumber: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '700' },
-  cardCustomer: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, marginTop: 4 },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
-  cardDate: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  cardTotal: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '800' },
+  list: { flex: 1 },
+  content: { padding: 16, paddingTop: 4, gap: 10, flexGrow: 1 },
 });
 
 export default CreditMemoListScreen;
