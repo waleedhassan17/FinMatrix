@@ -116,6 +116,19 @@ const InvoiceDetailScreen: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceId, dispatch]);
 
+  // Re-fetch whenever the screen regains focus (e.g. after returning from
+  // Record Payment) so the balance, status badge and payment history reflect
+  // the freshly-recorded payment. The initial mount is skipped — the effect
+  // above already loads it.
+  useEffect(() => {
+    let isInitial = true;
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (isInitial) { isInitial = false; return; }
+      dispatch(fetchInvoiceDetail(invoiceId));
+    });
+    return unsubscribe;
+  }, [navigation, invoiceId, dispatch]);
+
   // Resolve the customer record that matches this invoice.
   const customer = useMemo(
     () => customers.find(c => c.id === invoice?.customerId) || null,

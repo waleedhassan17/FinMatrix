@@ -10,10 +10,28 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Invoice, PaymentMethod } from '../../../types';
-import { getInvoicesAPI, updateInvoiceAPI } from '../../../network/invoiceNetwork';
+import { getInvoicesAPI } from '../../../network/invoiceNetwork';
 import { createPaymentAPI } from '../../../network/paymentNetwork';
-import { getStoredCompanyId } from '../../../network/apiHelpers';
 import { invoiceListSerializer } from '../../../serializers/invoiceSerializer';
+
+/**
+ * The UI's payment-method vocabulary differs from the backend's. Map the
+ * client values onto the values accepted by the API's ReceivePaymentDto
+ * (`cash | check | bank_transfer | credit_card | other`).
+ */
+function toBackendPaymentMethod(method: PaymentMethod): string {
+  switch (method) {
+    case 'cheque':
+      return 'check';
+    case 'online':
+      return 'other';
+    case 'cash':
+    case 'bank_transfer':
+      return method;
+    default:
+      return 'other';
+  }
+}
 
 // ── Outstanding invoice row (used in the allocations table) ────
 export interface OutstandingRow {
@@ -91,7 +109,9 @@ function buildOutstandingForCustomer(
     .filter(
       inv =>
         inv.customerId === customerId &&
-        (inv.status === 'sent' || inv.status === 'overdue') &&
+        (inv.status === 'sent' ||
+          inv.status === 'overdue' ||
+          inv.status === 'partial') &&
         inv.total - inv.amountPaid > 0,
     )
     .sort(
@@ -197,7 +217,9 @@ export const receivePaymentSlice = createAppSlice({
     // ── Async thunks ────────────────────────────────
     fetchAllInvoicesForPayment: create.asyncThunk(
       async () => {
-        const envelope = await getInvoicesAPI();
+        // Pull the largest page the API allows so a customer's open invoices
+        // aren't missed by the default page size when building allocations.
+        const envelope = await getInvoicesAPI({ limit: 200 });
         return invoiceListSerializer(envelope);
       },
       {
@@ -220,59 +242,39 @@ export const receivePaymentSlice = createAppSlice({
     ),
 
     /**
-     * Persists the payment record AND updates each allocated
-     * invoice's `amountPaid` / `status`. The thunk returns the
-     * created Payment so the caller can navigate to its detail
-     * screen.
+     * Persists the payment to the backend via `POST /payments`. The
+     * backend atomically applies the payment to each invoice (updating
+     * `amountPaid` / `balance` / `status`), decrements the customer's AR
+     * balance, and posts the double-entry journal — so the client must
+     * NOT separately mutate invoices (that would double-count).
+     *
+     * Any portion of the payment not allocated to an invoice is retained
+     * by the backend as a customer credit (negative AR balance).
      */
     savePayment: create.asyncThunk(
       async (_arg, thunkAPI) => {
         const state = thunkAPI.getState() as { receivePayment: ReceivePaymentSliceState };
         const f = state.receivePayment;
 
-        const paymentAmount = parseFloat(f.amount) || 0;
-        const allocations = f.outstandingRows
+        const paymentAmount = Math.round((parseFloat(f.amount) || 0) * 100) / 100;
+        const applications = f.outstandingRows
           .filter(r => r.allocated > 0)
           .map(r => ({
             invoiceId: r.invoiceId,
-            invoiceNumber: r.invoiceNumber,
-            amount: r.allocated,
+            amount: (Math.round(r.allocated * 100) / 100).toFixed(2),
           }));
-        const totalAllocated = allocations.reduce((s, a) => s + a.amount, 0);
-        const overpayment = Math.max(
-          0,
-          Math.round((paymentAmount - totalAllocated) * 100) / 100,
-        );
-        const creditAmount = f.saveOverpaymentAsCredit ? overpayment : 0;
 
-        // 1) Create the payment record
         const created = await createPaymentAPI({
-          companyId: (await getStoredCompanyId()) ?? '',
-          paymentNumber: f.reference || `PAY-${String(Date.now()).slice(-6)}`,
           customerId: f.customerId,
-          customerName: f.customerName,
-          date: new Date(f.paymentDate).toISOString(),
-          method: f.method,
-          reference: f.reference,
-          amount: paymentAmount,
-          allocations,
-          creditAmount,
-          notes: f.notes,
-          createdBy: 'admin_001',
+          paymentDate: f.paymentDate, // 'YYYY-MM-DD' — valid ISO date
+          paymentMethod: toBackendPaymentMethod(f.method),
+          amount: paymentAmount.toFixed(2),
+          reference: f.reference || undefined,
+          memo: f.notes || undefined,
+          // Omit applications entirely for a pure prepayment/credit so the
+          // backend records the whole amount as a customer credit.
+          applications: applications.length > 0 ? applications : undefined,
         });
-
-        // 2) Update each allocated invoice's amountPaid / status
-        for (const alloc of allocations) {
-          const inv = f.allInvoices.find(i => i.id === alloc.invoiceId);
-          if (!inv) continue;
-          const newAmountPaid =
-            Math.round((inv.amountPaid + alloc.amount) * 100) / 100;
-          const newStatus = newAmountPaid >= inv.total ? 'paid' : inv.status;
-          await updateInvoiceAPI(inv.id, {
-            amountPaid: newAmountPaid,
-            status: newStatus,
-          });
-        }
 
         return created;
       },

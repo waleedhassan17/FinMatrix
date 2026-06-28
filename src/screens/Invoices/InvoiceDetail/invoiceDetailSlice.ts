@@ -12,6 +12,7 @@ import {
 } from '../../../network/invoiceNetwork';
 import { getPaymentsByInvoiceAPI } from '../../../network/paymentNetwork';
 import { invoiceSingleSerializer } from '../../../serializers/invoiceSerializer';
+import { paymentListSerializer } from '../../../serializers/paymentSerializer';
 
 export interface InvoiceDetailSliceState {
   invoice: Invoice | null;
@@ -56,8 +57,7 @@ export const invoiceDetailSlice = createAppSlice({
         },
         fulfilled: (state, action: PayloadAction<any>) => {
           state.invoice = invoiceSingleSerializer(action.payload.invoiceEnvelope);
-          const p = action.payload.payments;
-          state.payments = Array.isArray(p?.data) ? p.data : Array.isArray(p) ? p : [];
+          state.payments = paymentListSerializer(action.payload.payments);
           state.isLoading = false;
         },
         rejected: (state, action) => {
