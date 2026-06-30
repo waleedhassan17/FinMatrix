@@ -42,13 +42,24 @@ export interface ReportHubCategory {
   items: ReportHubItem[];
 }
 
-const toIsoDate = (d: Date): string => d.toISOString().slice(0, 10);
+// Format using LOCAL calendar components. Using `toISOString()` on a Date built
+// from local components shifts the day in positive-UTC zones (e.g. PKT, UTC+5),
+// which would push report ranges a day off.
+const toIsoDate = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 
+// Default report window: year-to-date through today. This shows every
+// transaction recorded so far in the current year (so payments/invoices are
+// visible without changing the filter) and never runs past the current date —
+// matching the QuickBooks "This Year-to-date" default.
 export const getDefaultReportRange = (): ReportDateRange => {
   const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
-  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  return { startDate: toIsoDate(start), endDate: toIsoDate(end) };
+  const start = new Date(today.getFullYear(), 0, 1);
+  return { startDate: toIsoDate(start), endDate: toIsoDate(today) };
 };
 
 export const getComparisonRange = (range: ReportDateRange): ReportDateRange => {

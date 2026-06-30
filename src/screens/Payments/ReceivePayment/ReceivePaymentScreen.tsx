@@ -3,7 +3,7 @@
 // Premium Enterprise UI
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Animated,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -76,6 +79,14 @@ const ReceivePaymentScreen: React.FC = () => {
 
   const form = useAppSelector(selectReceivePaymentState);
   const customers = useAppSelector(selectCustomers);
+
+  // ── Success overlay state ───────────────────────
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [successSub, setSuccessSub] = useState('');
+  const successScale = useRef(new Animated.Value(0)).current;
+  const successOpacity = useRef(new Animated.Value(0)).current;
+  const checkScale = useRef(new Animated.Value(0)).current;
 
   const customerOptions = useMemo(
     () =>
@@ -158,6 +169,26 @@ const ReceivePaymentScreen: React.FC = () => {
     return errs;
   }, [form, paymentAmount, totalAllocated, overpayment]);
 
+  const animateSuccess = useCallback(() => {
+    successScale.setValue(0);
+    successOpacity.setValue(0);
+    checkScale.setValue(0);
+    setShowSuccess(true);
+    Animated.parallel([
+      Animated.spring(successScale, { toValue: 1, friction: 6, tension: 60, useNativeDriver: true }),
+      Animated.timing(successOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start(() => {
+      Animated.spring(checkScale, { toValue: 1, friction: 4, tension: 80, useNativeDriver: true }).start();
+    });
+  }, [successScale, successOpacity, checkScale]);
+
+  const handleSuccessDismiss = useCallback(() => {
+    Animated.timing(successOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+      setShowSuccess(false);
+      navigation.goBack();
+    });
+  }, [successOpacity, navigation]);
+
   const handleSave = useCallback(async () => {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -171,18 +202,19 @@ const ReceivePaymentScreen: React.FC = () => {
       if (result.error) throw new Error(result.error.message);
       dispatch(fetchInvoices());
 
-      const message =
-        overpayment > 0 && form.saveOverpaymentAsCredit
-          ? `${formatCurrency(paymentAmount, 'Rs ')} recorded — ${formatCurrency(overpayment, 'Rs ')} kept as credit.`
-          : `${formatCurrency(paymentAmount, 'Rs ')} from ${form.customerName} has been recorded.`;
-
-      Alert.alert('Payment Recorded', message, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      const amt = formatCurrency(paymentAmount, 'Rs ');
+      if (overpayment > 0 && form.saveOverpaymentAsCredit) {
+        setSuccessMsg(amt);
+        setSuccessSub(`${formatCurrency(overpayment, 'Rs ')} saved as customer credit`);
+      } else {
+        setSuccessMsg(amt);
+        setSuccessSub(`Payment from ${form.customerName} recorded`);
+      }
+      animateSuccess();
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to record payment.');
     }
-  }, [dispatch, navigation, validate, paymentAmount, overpayment, form.saveOverpaymentAsCredit, form.customerName]);
+  }, [dispatch, validate, paymentAmount, overpayment, form.saveOverpaymentAsCredit, form.customerName, animateSuccess]);
 
   // ═════════════════════════════════════════════════════
   return (
@@ -410,6 +442,27 @@ const ReceivePaymentScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* ── Success Overlay Modal ──────────────────── */}
+      <Modal visible={showSuccess} transparent animationType="none" statusBarTranslucent>
+        <Animated.View style={[sStyles.overlay, { opacity: successOpacity }]}>
+          <Animated.View style={[sStyles.card, { transform: [{ scale: successScale }] }]}>
+            <Animated.View style={[sStyles.checkCircle, { transform: [{ scale: checkScale }] }]}>
+              <Feather name="check" size={40} color="#FFFFFF" />
+            </Animated.View>
+            <Text style={sStyles.title}>Payment Recorded!</Text>
+            <Text style={sStyles.amount}>{successMsg}</Text>
+            <Text style={sStyles.sub}>{successSub}</Text>
+            <View style={sStyles.divider} />
+            <TouchableOpacity style={sStyles.btn} onPress={handleSuccessDismiss} activeOpacity={0.8}>
+              <LinearGradient colors={['#059669', '#047857']} style={sStyles.btnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <Feather name="arrow-left" size={16} color="#FFF" />
+                <Text style={sStyles.btnText}>Back to Invoice</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -529,6 +582,54 @@ const styles = StyleSheet.create({
   recordBtn: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.card },
   recordBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: 14 },
   recordBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
+});
+
+// ── Success Overlay Styles ────────────────────────
+const { width: SCREEN_W } = Dimensions.get('window');
+const sStyles = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(15,23,42,0.75)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  card: {
+    width: SCREEN_W * 0.82, backgroundColor: '#FFFFFF',
+    borderRadius: 24, paddingVertical: 36, paddingHorizontal: 28,
+    alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25, shadowRadius: 24, elevation: 20,
+  },
+  checkCircle: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: '#059669', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#059669', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
+  },
+  title: {
+    fontSize: 22, fontWeight: '800', color: '#0F172A',
+    fontFamily: THEME.typography.fontFamily, marginBottom: 6,
+  },
+  amount: {
+    fontSize: 28, fontWeight: '800', color: '#059669',
+    fontFamily: THEME.typography.fontFamily, marginBottom: 4,
+  },
+  sub: {
+    fontSize: 14, color: '#64748B', textAlign: 'center',
+    fontFamily: THEME.typography.fontFamily, lineHeight: 20,
+  },
+  divider: {
+    width: '80%', height: 1, backgroundColor: '#E2E8F0',
+    marginVertical: 22,
+  },
+  btn: { width: '100%', borderRadius: 14, overflow: 'hidden' },
+  btnGrad: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 16,
+  },
+  btnText: {
+    fontSize: 16, fontWeight: '700', color: '#FFFFFF',
+    fontFamily: THEME.typography.fontFamily,
+  },
 });
 
 export default ReceivePaymentScreen;

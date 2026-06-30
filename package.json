@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "android": "expo run:android",
-    "start": "expo start",
-    "web": "expo start --web",
-    "start:clear": "expo start -c",
+    "start": "EXPO_OFFLINE=1 expo start",
+    "web": "EXPO_OFFLINE=1 expo start --web",
+    "start:clear": "EXPO_OFFLINE=1 expo start -c",
     "lint": "eslint './src/**/*.{ts,tsx}'",
     "type-check": "tsc --noEmit",
     "clean-android": "cd android && ./gradlew clean && cd ..",

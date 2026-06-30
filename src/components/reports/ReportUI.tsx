@@ -5,7 +5,7 @@
 // All tokens come from utils/theme (THEME) — single source of truth.
 // ═══════════════════════════════════════════════════════
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
-  TextInput,
   StatusBar,
+  Modal,
   ViewStyle,
   StyleProp,
   TextStyle,
@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import dayjs from 'dayjs';
 import { THEME } from '../../utils/theme';
 
 const T = THEME;
@@ -313,30 +314,156 @@ export const Segmented: React.FC<{
   </View>
 );
 
-// ── Date field ────────────────────────────────────────
+// ── Date field (custom calendar — web · iOS · Android) ────────────
+// Tapping the field opens an in-app calendar built purely from RN primitives,
+// so it works everywhere INCLUDING react-native-web (the native datetimepicker
+// has no web implementation). Values are exchanged as `YYYY-MM-DD` strings
+// (same contract as before) so callers are unchanged. `onChangeText` keeps the
+// legacy name; `onChange` is an alias. By default no future date is selectable
+// (`maximumDate` = today) so reports always run up to the current date.
+const ISO = 'YYYY-MM-DD';
+const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const toIsoD = (d: dayjs.Dayjs): string => d.format(ISO);
+const parseIsoD = (v?: string): dayjs.Dayjs => {
+  const d = v ? dayjs(v, ISO) : dayjs();
+  return d.isValid() ? d : dayjs();
+};
+
 export const DateField: React.FC<{
   label?: string;
   value: string;
-  onChangeText: (t: string) => void;
+  onChangeText?: (t: string) => void;
+  onChange?: (t: string) => void;
   placeholder?: string;
+  minimumDate?: Date;
+  maximumDate?: Date;
   style?: StyleProp<ViewStyle>;
-}> = ({ label, value, onChangeText, placeholder = 'YYYY-MM-DD', style }) => (
-  <View style={[{ flex: 1 }, style]}>
-    {label ? <Text style={S.fieldLabel}>{label}</Text> : null}
-    <View style={S.fieldWrap}>
-      <Feather name="calendar" size={15} color={T.colors.textTertiary} style={{ marginRight: 8 }} />
-      <TextInput
-        style={S.fieldInput}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={T.colors.textTertiary}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
+}> = ({ label, value, onChangeText, onChange, placeholder = 'Select date', minimumDate, maximumDate, style }) => {
+  const [open, setOpen] = useState(false);
+  const [viewMonth, setViewMonth] = useState<dayjs.Dayjs>(() => parseIsoD(value).startOf('month'));
+
+  const min = minimumDate ? dayjs(minimumDate).startOf('day') : null;
+  const max = (maximumDate ? dayjs(maximumDate) : dayjs()).startOf('day'); // default: today
+  const today = dayjs().startOf('day');
+
+  const commit = (t: string) => {
+    onChangeText?.(t);
+    onChange?.(t);
+  };
+  const selected = value && dayjs(value, ISO).isValid() ? dayjs(value, ISO).startOf('day') : null;
+  const display = selected ? selected.format('DD MMM YYYY') : '';
+
+  const isDisabled = (d: dayjs.Dayjs) =>
+    !!((min && d.isBefore(min, 'day')) || (max && d.isAfter(max, 'day')));
+
+  const openPicker = () => {
+    setViewMonth((selected ?? parseIsoD(value)).startOf('month'));
+    setOpen(true);
+  };
+  const pick = (d: dayjs.Dayjs) => {
+    if (isDisabled(d)) return;
+    commit(toIsoD(d));
+    setOpen(false);
+  };
+
+  // Build the day grid: leading blanks before the 1st, then each day, padded
+  // to whole weeks.
+  const firstWeekday = viewMonth.day(); // 0 = Sunday
+  const daysInMonth = viewMonth.daysInMonth();
+  const cells: (dayjs.Dayjs | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(viewMonth.date(d));
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const prevDisabled = !!(min && viewMonth.isSame(min, 'month'));
+  const nextDisabled = !!(max && viewMonth.isSame(max, 'month'));
+  const todayDisabled = isDisabled(today);
+
+  return (
+    <View style={[{ flex: 1 }, style]}>
+      {label ? <Text style={S.fieldLabel}>{label}</Text> : null}
+      <TouchableOpacity style={S.fieldWrap} activeOpacity={0.7} onPress={openPicker}>
+        <Feather name="calendar" size={15} color={T.colors.primary} style={{ marginRight: 8 }} />
+        <Text style={[S.fieldInput, !display && { color: T.colors.textTertiary }]} numberOfLines={1}>
+          {display || placeholder}
+        </Text>
+        <Feather name="chevron-down" size={16} color={T.colors.textTertiary} />
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity style={S.calBackdrop} activeOpacity={1} onPress={() => setOpen(false)}>
+          <TouchableOpacity activeOpacity={1} style={S.calCard}>
+            <LinearGradient colors={HEADER_NAVY} style={S.calHeader}>
+              <TouchableOpacity
+                style={[S.calNav, prevDisabled && S.calNavDisabled]}
+                disabled={prevDisabled}
+                onPress={() => setViewMonth(viewMonth.subtract(1, 'month'))}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Feather name="chevron-left" size={20} color={prevDisabled ? 'rgba(255,255,255,0.3)' : '#FFFFFF'} />
+              </TouchableOpacity>
+              <Text style={S.calMonth}>{viewMonth.format('MMMM YYYY')}</Text>
+              <TouchableOpacity
+                style={[S.calNav, nextDisabled && S.calNavDisabled]}
+                disabled={nextDisabled}
+                onPress={() => setViewMonth(viewMonth.add(1, 'month'))}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Feather name="chevron-right" size={20} color={nextDisabled ? 'rgba(255,255,255,0.3)' : '#FFFFFF'} />
+              </TouchableOpacity>
+            </LinearGradient>
+
+            <View style={S.calBody}>
+              <View style={S.calWeekRow}>
+                {WEEKDAYS.map((w) => (
+                  <Text key={w} style={S.calWeekday}>{w}</Text>
+                ))}
+              </View>
+              <View style={S.calGrid}>
+                {cells.map((d, i) => {
+                  if (!d) return <View key={`blank-${i}`} style={S.calCell} />;
+                  const isSel = !!(selected && d.isSame(selected, 'day'));
+                  const isToday = d.isSame(today, 'day');
+                  const disabled = isDisabled(d);
+                  return (
+                    <TouchableOpacity
+                      key={toIsoD(d)}
+                      style={S.calCell}
+                      activeOpacity={0.7}
+                      disabled={disabled}
+                      onPress={() => pick(d)}
+                    >
+                      <View style={[S.calDay, isSel && S.calDaySel, !isSel && isToday && S.calDayToday]}>
+                        <Text
+                          style={[
+                            S.calDayText,
+                            isSel && S.calDayTextSel,
+                            disabled && S.calDayTextDisabled,
+                          ]}
+                        >
+                          {d.date()}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={S.calFooter}>
+              <TouchableOpacity onPress={() => setOpen(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={S.calCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity disabled={todayDisabled} onPress={() => pick(today)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={[S.calToday, todayDisabled && { color: T.colors.textTertiary }]}>Today</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
-  </View>
-);
+  );
+};
 
 // ── Loading / error / empty states ────────────────────
 export const LoadingBlock: React.FC<{ label?: string }> = ({ label = 'Loading…' }) => (
@@ -557,6 +684,80 @@ const S = StyleSheet.create({
     height: 42,
   },
   fieldInput: { flex: 1, ...T.typography.bodyMd, color: T.colors.textPrimary, paddingVertical: 0 },
+
+  // Calendar picker (custom, cross-platform)
+  calBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: T.spacing.lg,
+    backgroundColor: 'rgba(14,23,38,0.55)',
+  },
+  calCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: T.colors.surface,
+    borderRadius: T.radius.lg,
+    overflow: 'hidden',
+    ...T.shadows.lg,
+  },
+  calHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: T.spacing.md,
+    paddingVertical: T.spacing.md,
+  },
+  calNav: {
+    width: 34,
+    height: 34,
+    borderRadius: T.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  calNavDisabled: { backgroundColor: 'rgba(255,255,255,0.04)' },
+  calMonth: { ...T.typography.h4, color: '#FFFFFF' },
+  calBody: { paddingHorizontal: T.spacing.sm, paddingTop: T.spacing.sm },
+  calWeekRow: { flexDirection: 'row', paddingBottom: 6 },
+  calWeekday: {
+    flex: 1,
+    textAlign: 'center',
+    ...T.typography.labelSm,
+    color: T.colors.textTertiary,
+    textTransform: 'uppercase',
+  },
+  calGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calCell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 2,
+  },
+  calDay: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calDaySel: { backgroundColor: T.colors.primary },
+  calDayToday: { borderWidth: 1, borderColor: T.colors.primary },
+  calDayText: { ...T.typography.bodyMd, color: T.colors.textPrimary },
+  calDayTextSel: { color: '#FFFFFF', fontWeight: '700' },
+  calDayTextDisabled: { color: T.colors.textTertiary, opacity: 0.4 },
+  calFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: T.spacing.md,
+    paddingVertical: T.spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: T.colors.borderLight,
+  },
+  calCancel: { ...T.typography.labelLg, color: T.colors.textTertiary },
+  calToday: { ...T.typography.labelLg, color: T.colors.primary, fontWeight: '700' },
 
   // States
   stateBlock: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 10 },
