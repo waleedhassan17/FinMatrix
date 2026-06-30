@@ -14,7 +14,7 @@ import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
 import LineItemRow from '../../components/LineItemRow';
-import { ReportContainer, ReportHeader, Card, SectionCard } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -106,8 +106,20 @@ const EstimateFormScreen: React.FC = () => {
             options={customers.map((c: any) => ({ label: c.name, value: c.id }))}
             value={customerId} onChange={setCustomerId} />
           <View style={styles.row}>
-            <View style={styles.col}><CustomInput label="Estimate Date" value={estimateDate} onChangeText={setEstimateDate} placeholder="YYYY-MM-DD" /></View>
-            <View style={styles.col}><CustomInput label="Expiry Date" value={expiryDate} onChangeText={setExpiryDate} placeholder="YYYY-MM-DD" /></View>
+            <View style={styles.col}>
+              <DateField label="Estimate Date" value={estimateDate} onChangeText={setEstimateDate} />
+            </View>
+            <View style={styles.col}>
+              {/* Expiry is a future date → allow dates after today; never before the estimate date. */}
+              <DateField
+                label="Expiry Date"
+                value={expiryDate}
+                onChangeText={setExpiryDate}
+                placeholder="Optional"
+                minimumDate={estimateDate ? new Date(estimateDate) : undefined}
+                maximumDate={new Date(2100, 11, 31)}
+              />
+            </View>
           </View>
         </Card>
 
