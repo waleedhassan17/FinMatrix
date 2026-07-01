@@ -61,12 +61,24 @@ const mapUser = (backendUser: any, companyStatus?: string | null): User => ({
 export class AuthError extends Error {
   code?: string;
   email?: string;
-  constructor(message: string, code?: string, email?: string) {
+  companyStatus?: string | null;
+  rejectionReason?: string | null;
+  constructor(
+    message: string,
+    code?: string,
+    email?: string,
+    extra?: { companyStatus?: string | null; rejectionReason?: string | null },
+  ) {
     super(message);
     this.code = code;
     this.email = email;
+    this.companyStatus = extra?.companyStatus ?? null;
+    this.rejectionReason = extra?.rejectionReason ?? null;
   }
 }
+
+// Login-gate codes the server returns when a company is not active.
+const LOGIN_GATE_CODES = ['COMPANY_PENDING', 'COMPANY_INACTIVE', 'COMPANY_REJECTED'];
 
 // ─── Login ────────────────────────────────────────────
 
@@ -97,13 +109,22 @@ export const authLogin = async ({
     console.warn('[authLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
     // Surface the EMAIL_NOT_VERIFIED gate so the UI can route to verification.
     const body = e?.response?.data;
-    const code = body?.error?.code ?? body?.code;
+    const err = body?.error ?? body ?? {};
+    const code = err.code ?? body?.code;
     if (code === 'EMAIL_NOT_VERIFIED') {
       throw new AuthError(
         'Please verify your email before signing in.',
         'EMAIL_NOT_VERIFIED',
-        body?.error?.email ?? body?.email,
+        err.email ?? body?.email,
       );
+    }
+    // Company-status login gate: pending / inactive / rejected → route to the
+    // correct screen with the reason.
+    if (LOGIN_GATE_CODES.includes(code)) {
+      throw new AuthError(err.message ?? 'Sign in is not available yet.', code, err.email, {
+        companyStatus: err.companyStatus ?? null,
+        rejectionReason: err.rejectionReason ?? null,
+      });
     }
     throw new Error(extractErrorMessage(e));
   }

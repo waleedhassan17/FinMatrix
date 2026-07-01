@@ -761,8 +761,8 @@ export type RootStackParamList = {
   CreateCompany: undefined;
   JoinCompany: undefined;
   DeliveryOnboarding: undefined;
-  PendingApproval: undefined;
-  CompanyRejected: undefined;
+  PendingApproval: { fromLogin?: boolean } | undefined;
+  CompanyRejected: { fromLogin?: boolean; mode?: 'rejected' | 'inactive'; reason?: string } | undefined;
   AdminTabs: undefined;
   DeliveryTabs: undefined;
   SuperAdminTabs: undefined;

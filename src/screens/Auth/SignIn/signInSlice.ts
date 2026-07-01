@@ -1,6 +1,6 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import { authLogin, authDeliveryLogin } from '@network/authNetwork';
+import { authLogin, authDeliveryLogin, AuthError } from '@network/authNetwork';
 import type { SignInPayload, DeliverySignInPayload } from '@network/authNetwork';
 import type { User } from '@/types';
 
@@ -51,10 +51,28 @@ export const signInSlice = createAppSlice({
     }),
 
     submitSignInAsync: create.asyncThunk(
-      async ({ email, password }: { email: string; password: string }) => {
+      async (
+        { email, password }: { email: string; password: string },
+        { rejectWithValue },
+      ) => {
         const payload: SignInPayload = { email, password };
-        const result = await authLogin({ signInInfo: payload });
-        return result?.data;
+        try {
+          const result = await authLogin({ signInInfo: payload });
+          return result?.data;
+        } catch (e: any) {
+          // Preserve the structured login-gate info (code + reason) through the
+          // thunk; the default error serialization would drop custom fields.
+          if (e instanceof AuthError) {
+            return rejectWithValue({
+              code: e.code,
+              message: e.message,
+              email: e.email,
+              companyStatus: e.companyStatus,
+              rejectionReason: e.rejectionReason,
+            });
+          }
+          return rejectWithValue({ message: e?.message ?? 'Sign in failed' });
+        }
       },
       {
         pending: state => {
@@ -67,7 +85,8 @@ export const signInSlice = createAppSlice({
         },
         rejected: (state, action) => {
           state.status = 'failed';
-          state.error = action.error.message ?? 'Sign in failed';
+          const payload = action.payload as { message?: string } | undefined;
+          state.error = payload?.message ?? action.error.message ?? 'Sign in failed';
         },
       },
     ),

@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { colors, spacing, typography, radius } from '../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
@@ -17,10 +18,21 @@ import { setStoredCompanyId } from '../../../network/apiHelpers';
 const PendingApprovalScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  // Reached from a blocked login (no session) vs. from a live signup session.
+  const fromLogin = !!route.params?.fromLogin;
   const user = useAppSelector(s => s.auth.user);
   const [checking, setChecking] = useState(false);
 
+  // From login there is no session to poll — send the user back to sign in to
+  // retry once approved.
+  const backToSignIn = useCallback(() => {
+    navigation.navigate('SignIn');
+  }, [navigation]);
+
   const handleRefresh = useCallback(async () => {
+    if (fromLogin) { backToSignIn(); return; }
     setChecking(true);
     try {
       const { data } = await authMe();
@@ -42,9 +54,10 @@ const PendingApprovalScreen: React.FC = () => {
   }, [dispatch]);
 
   const handleSignOut = useCallback(async () => {
+    if (fromLogin) { backToSignIn(); return; }
     await authSignOut();
     dispatch(signOut());
-  }, [dispatch]);
+  }, [dispatch, fromLogin, backToSignIn]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.xxl }]}>
@@ -70,12 +83,12 @@ const PendingApprovalScreen: React.FC = () => {
         {checking ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>Check status</Text>
+          <Text style={styles.buttonText}>{fromLogin ? 'Back to Sign In' : 'Check status'}</Text>
         )}
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.linkButton} onPress={handleSignOut}>
-        <Text style={styles.linkMuted}>Sign out</Text>
+        <Text style={styles.linkMuted}>{fromLogin ? 'Use a different account' : 'Sign out'}</Text>
       </TouchableOpacity>
     </View>
   );

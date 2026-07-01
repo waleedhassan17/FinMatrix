@@ -49,6 +49,8 @@ const BaseNavigator: React.FC = () => {
   const isPending =
     companyStatus === 'pending_approval' || companyStatus === 'pending';
   const isRejected = companyStatus === 'rejected';
+  // Mid-session deactivation (server sets status → inactive) routes the user out.
+  const isInactive = companyStatus === 'inactive' || companyStatus === 'suspended';
   // A created-but-not-submitted company resumes at plan selection + submit.
   const isDraftCompany = hasCompany && companyStatus === 'email_verified';
 
@@ -85,6 +87,15 @@ const BaseNavigator: React.FC = () => {
             <Stack.Screen
               name="EmailVerification"
               component={EmailVerificationScreen}
+            />
+            {/* Reachable from SignIn when the server blocks a non-active login. */}
+            <Stack.Screen
+              name="PendingApproval"
+              component={PendingApprovalScreen}
+            />
+            <Stack.Screen
+              name="CompanyRejected"
+              component={CompanyRejectedScreen}
             />
           </>
         ) : isSuperAdmin ? (
@@ -123,13 +134,14 @@ const BaseNavigator: React.FC = () => {
               options={{ animation: 'none' }}
             />
           </>
-        ) : isRejected ? (
-          // ── Admin: company registration rejected ──
+        ) : isRejected || isInactive ? (
+          // ── Admin: company rejected or deactivated ──
           <>
             <Stack.Screen
               name="CompanyRejected"
               component={CompanyRejectedScreen}
               options={{ animation: 'none' }}
+              initialParams={{ mode: isInactive ? 'inactive' : 'rejected' }}
             />
           </>
         ) : isApproved ? (

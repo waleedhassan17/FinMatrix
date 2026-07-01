@@ -44,6 +44,8 @@ const DS = {
 
 const PLAN_COLORS: Record<string, { gradient: [string, string]; badge: string; accent: string }> = {
   Free:         { gradient: ['#FAFBFC', '#EBECF0'],   badge: '#5E6C84', accent: '#344563' },
+  Standard:     { gradient: ['#ECFDF5', '#D1FAE5'],   badge: '#059669', accent: '#047857' },
+  Pro:          { gradient: ['#EAE6FF', '#C0B6F2'],   badge: '#6554C0', accent: '#5243AA' },
   Starter:      { gradient: ['#ECFDF5', '#D1FAE5'],   badge: '#059669', accent: '#047857' },
   Professional: { gradient: ['#ECFDF5', '#A7F3D0'],   badge: '#047857', accent: '#065F46' },
   Enterprise:   { gradient: ['#EAE6FF', '#C0B6F2'],   badge: '#6554C0', accent: '#5243AA' },
@@ -60,6 +62,10 @@ interface Plan {
   features: string[] | null;
   isActive: boolean;
   sortOrder: number;
+  // Display overrides (Phase1.md: Rs pricing; paid tiers disabled).
+  priceLabel?: string;
+  durationLabel?: string;
+  disabled?: boolean;
 }
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SubscriptionSelect'>;
@@ -84,6 +90,7 @@ const PlanCard: React.FC<{
   }, [delay]);
 
   const handlePress = () => {
+    if (plan.disabled) return; // "Coming soon" — not selectable
     Animated.sequence([
       Animated.timing(scale, { toValue: 0.97, duration: 80, useNativeDriver: true }),
       Animated.timing(scale, { toValue: 1, duration: 120, useNativeDriver: true }),
@@ -97,18 +104,23 @@ const PlanCard: React.FC<{
 
   return (
     <Animated.View style={{ opacity, transform: [{ translateY: slideY }, { scale }] }}>
-      <TouchableOpacity activeOpacity={0.9} onPress={handlePress}>
+      <TouchableOpacity activeOpacity={plan.disabled ? 1 : 0.9} onPress={handlePress}>
         <View
           style={[
             S.planCard,
             selected && { borderColor: cfg.accent, borderWidth: 2.5 },
+            plan.disabled && { opacity: 0.6 },
           ]}
         >
-          {isPopular && (
+          {plan.disabled ? (
+            <View style={[S.popularBadge, { backgroundColor: DS.text.sub }]}>
+              <Text style={S.popularText}>COMING SOON</Text>
+            </View>
+          ) : isPopular ? (
             <View style={[S.popularBadge, { backgroundColor: cfg.accent }]}>
               <Text style={S.popularText}>MOST POPULAR</Text>
             </View>
-          )}
+          ) : null}
 
           <LinearGradient
             colors={cfg.gradient}
@@ -137,6 +149,13 @@ const PlanCard: React.FC<{
             <View style={S.priceRow}>
               {isFree ? (
                 <Text style={[S.priceMain, { color: cfg.accent }]}>Free</Text>
+              ) : plan.priceLabel ? (
+                <>
+                  <Text style={[S.priceMain, { color: cfg.accent }]}>{plan.priceLabel}</Text>
+                  {!!plan.durationLabel && (
+                    <Text style={[S.priceFreq, { color: DS.text.sub }]}> {plan.durationLabel}</Text>
+                  )}
+                </>
               ) : (
                 <>
                   <Text style={[S.priceCurrency, { color: cfg.accent }]}>$</Text>
@@ -147,11 +166,6 @@ const PlanCard: React.FC<{
                 </>
               )}
             </View>
-            {!isFree && (
-              <Text style={[S.priceSavings, { color: cfg.badge }]}>
-                ${Math.round(parseFloat(plan.priceYearly) / 12)}/mo billed annually
-              </Text>
-            )}
 
             {/* Limits */}
             <View style={S.limitsRow}>
@@ -221,10 +235,57 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       const data = await getPublicPlansAPI();
       const list: Plan[] = Array.isArray(data) ? data : (data?.data ?? []);
-      setPlans(list.filter(p => p.isActive));
-      // Pre-select Free plan if available
-      const freePlan = list.find(p => parseFloat(p.priceMonthly) === 0);
-      if (freePlan) setSelectedId(freePlan.id);
+      // Canonical signup tiers (Phase1.md): only Free is selectable; Standard &
+      // Pro are display-only ("Coming soon"). Free is backed by the real free
+      // plan so the subscription is created for real.
+      const realFree = list.find(p => parseFloat(p.priceMonthly) === 0 && p.isActive);
+      const freeId = realFree?.id ?? 'free';
+      const cards: Plan[] = [
+        {
+          id: freeId,
+          name: 'Free',
+          description: 'Everything you need to start running your books.',
+          priceMonthly: '0',
+          priceYearly: '0',
+          maxUsers: realFree?.maxUsers ?? 3,
+          maxInvoices: realFree?.maxInvoices ?? null,
+          features: realFree?.features ?? ['Full accounting', 'Invoices & bills', 'Reports'],
+          isActive: true,
+          sortOrder: 0,
+        },
+        {
+          id: 'standard',
+          name: 'Standard',
+          description: 'For growing teams — more seats and volume.',
+          priceMonthly: '1000',
+          priceYearly: '6000',
+          maxUsers: 10,
+          maxInvoices: null,
+          features: ['Everything in Free', 'Priority support', 'Higher limits'],
+          isActive: true,
+          sortOrder: 1,
+          priceLabel: 'Rs 1,000',
+          durationLabel: '/ 6 months',
+          disabled: true,
+        },
+        {
+          id: 'pro',
+          name: 'Pro',
+          description: 'For established businesses that need it all.',
+          priceMonthly: '2000',
+          priceYearly: '8000',
+          maxUsers: 999,
+          maxInvoices: null,
+          features: ['Everything in Standard', 'Advanced analytics', 'Dedicated support'],
+          isActive: true,
+          sortOrder: 2,
+          priceLabel: 'Rs 2,000',
+          durationLabel: '/ 3 months',
+          disabled: true,
+        },
+      ];
+      setPlans(cards);
+      setSelectedId(freeId); // pre-select Free (the only selectable tier)
     } catch {
       // Fallback: will show empty state
     } finally {

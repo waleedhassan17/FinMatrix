@@ -197,9 +197,20 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
         ).unwrap();
         dispatch(setUser(user));
       } catch (err) {
-        // Stage 1: route unverified company admins to the verification screen.
-        if ((err as { code?: string })?.code === 'EMAIL_NOT_VERIFIED') {
+        const e = err as { code?: string; rejectionReason?: string | null };
+        // Route unverified company admins to the verification screen.
+        if (e?.code === 'EMAIL_NOT_VERIFIED') {
           navigation.navigate('EmailVerification', { email: email.trim() });
+        } else if (e?.code === 'COMPANY_PENDING') {
+          navigation.navigate('PendingApproval', { fromLogin: true });
+        } else if (e?.code === 'COMPANY_INACTIVE') {
+          navigation.navigate('CompanyRejected', { fromLogin: true, mode: 'inactive' });
+        } else if (e?.code === 'COMPANY_REJECTED') {
+          navigation.navigate('CompanyRejected', {
+            fromLogin: true,
+            mode: 'rejected',
+            reason: e?.rejectionReason ?? undefined,
+          });
         }
         /* other errors handled by slice */
       }

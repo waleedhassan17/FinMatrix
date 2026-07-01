@@ -112,6 +112,14 @@ const INDUSTRIES = [
   { label: 'Other', value: 'Other' },
 ];
 
+// Matches backend LEGAL_STRUCTURES.
+const BUSINESS_STRUCTURES = [
+  { label: 'Sole Proprietor', value: 'sole_proprietor' },
+  { label: 'LLC', value: 'llc' },
+  { label: 'Partnership', value: 'partnership' },
+  { label: 'Corporation', value: 'corporation' },
+];
+
 const COUNTRIES = [
   { label: 'Pakistan', value: 'Pakistan' },
   { label: 'UAE', value: 'UAE' },
@@ -168,6 +176,8 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
   // Step 1 fields
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('');
+  // Business structure (QuickBooks-style) — appears on invoices/reports.
+  const [legalStructure, setLegalStructure] = useState('');
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
   const [stateProv, setStateProv] = useState('');
@@ -297,6 +307,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
       const backendCompany = await createCompanyAPI({
         name: companyName.trim(),
         industry,
+        legalStructure: legalStructure || undefined,
         address: {
           street: street.trim(),
           city: city.trim(),
@@ -367,6 +378,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
     isCreating,
     companyName,
     industry,
+    legalStructure,
     street,
     city,
     stateProv,
@@ -592,6 +604,14 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
         value={industry}
         onChange={setIndustry}
         placeholder="Select industry"
+      />
+
+      <CustomDropdown
+        label="Business Structure"
+        options={BUSINESS_STRUCTURES}
+        value={legalStructure}
+        onChange={setLegalStructure}
+        placeholder="Select business structure"
       />
 
       {/* Address section */}

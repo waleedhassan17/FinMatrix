@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { colors, spacing, typography, radius } from '../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
@@ -22,16 +23,23 @@ import { setStoredCompanyId } from '../../../network/apiHelpers';
 const CompanyRejectedScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const fromLogin = !!route.params?.fromLogin;
+  const mode: 'rejected' | 'inactive' = route.params?.mode ?? 'rejected';
+  const isInactive = mode === 'inactive';
   const user = useAppSelector(s => s.auth.user);
   const companyId = user?.companyId ?? null;
 
-  const [reason, setReason] = useState<string | null>(null);
+  const [reason, setReason] = useState<string | null>(route.params?.reason ?? null);
   const [resubmitting, setResubmitting] = useState(false);
 
   useEffect(() => {
+    // With a live session (not from the login gate) we can fetch the latest
+    // reason; from the login gate we only have what was passed in params.
+    if (fromLogin || !companyId || isInactive) return;
     let active = true;
     (async () => {
-      if (!companyId) return;
       try {
         const company = await getCompanyAPI(companyId);
         if (active) setReason(company?.rejectionReason ?? null);
@@ -42,7 +50,7 @@ const CompanyRejectedScreen: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [companyId]);
+  }, [companyId, fromLogin, isInactive]);
 
   const handleResubmit = useCallback(async () => {
     if (!companyId) return;
@@ -61,18 +69,26 @@ const CompanyRejectedScreen: React.FC = () => {
   }, [companyId, dispatch]);
 
   const handleSignOut = useCallback(async () => {
+    if (fromLogin) { navigation.navigate('SignIn'); return; }
     await authSignOut();
     dispatch(signOut());
-  }, [dispatch]);
+  }, [dispatch, fromLogin, navigation]);
+
+  // Resubmit only makes sense for a rejected company with a live session.
+  const canResubmit = !isInactive && !fromLogin && !!companyId;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.xxl }]}>
       <View style={styles.iconWrap}>
-        <Text style={styles.icon}>⚠️</Text>
+        <Text style={styles.icon}>{isInactive ? '🚫' : '⚠️'}</Text>
       </View>
-      <Text style={styles.title}>Registration not approved</Text>
+      <Text style={styles.title}>
+        {isInactive ? 'Account deactivated' : 'Registration not approved'}
+      </Text>
       <Text style={styles.subtitle}>
-        Unfortunately your company registration wasn't approved this time.
+        {isInactive
+          ? 'Your company account has been deactivated. Please contact the FinMatrix administrator to restore access.'
+          : "Unfortunately your company registration wasn't approved this time."}
       </Text>
 
       {reason ? (
@@ -82,20 +98,28 @@ const CompanyRejectedScreen: React.FC = () => {
         </View>
       ) : null}
 
-      <TouchableOpacity
-        style={[styles.button, resubmitting && styles.buttonDisabled]}
-        onPress={handleResubmit}
-        disabled={resubmitting}>
-        {resubmitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Resubmit for review</Text>
-        )}
-      </TouchableOpacity>
+      {canResubmit ? (
+        <TouchableOpacity
+          style={[styles.button, resubmitting && styles.buttonDisabled]}
+          onPress={handleResubmit}
+          disabled={resubmitting}>
+          {resubmitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Resubmit for review</Text>
+          )}
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={styles.button} onPress={handleSignOut}>
+          <Text style={styles.buttonText}>{fromLogin ? 'Back to Sign In' : 'Sign out'}</Text>
+        </TouchableOpacity>
+      )}
 
-      <TouchableOpacity style={styles.linkButton} onPress={handleSignOut}>
-        <Text style={styles.linkMuted}>Sign out</Text>
-      </TouchableOpacity>
+      {canResubmit && (
+        <TouchableOpacity style={styles.linkButton} onPress={handleSignOut}>
+          <Text style={styles.linkMuted}>Sign out</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
