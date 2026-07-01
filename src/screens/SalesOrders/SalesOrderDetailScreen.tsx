@@ -97,6 +97,7 @@ const SalesOrderDetailScreen: React.FC = () => {
         {!!o.notes && <Card><Text style={styles.notes}>{o.notes}</Text></Card>}
 
         <View style={styles.actions}>
+          {o.status === 'open' && <CustomButton title="Edit Sales Order" variant="secondary" onPress={() => navigation.navigate('SalesOrderForm', { salesOrderId })} fullWidth />}
           {active && o.status !== 'fulfilled' && <CustomButton title="Mark Fully Fulfilled" variant="primary" onPress={markFulfilled} isLoading={isSaving} fullWidth />}
           {canInvoice && <CustomButton title="Convert to Invoice" variant="primary" onPress={convert} isLoading={isSaving} fullWidth />}
           {active && <CustomButton title="Cancel Order" variant="secondary" onPress={() => dispatch(cancelSalesOrder(salesOrderId))} fullWidth />}

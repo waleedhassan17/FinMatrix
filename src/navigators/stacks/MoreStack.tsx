@@ -27,6 +27,9 @@ import InventoryApprovalScreen from '../../screens/Delivery/Admin/InventoryAppro
 import DeliveryPersonnelListScreen from '../../screens/Delivery/Admin/DeliveryPersonnelList/DeliveryPersonnelListScreen';
 import AddDeliveryPersonnelScreen from '../../screens/Delivery/Admin/AddDeliveryPersonnel/AddDeliveryPersonnelScreen';
 import DeliveryPersonnelDetailScreen from '../../screens/Delivery/Admin/DeliveryPersonnelDetail/DeliveryPersonnelDetailScreen';
+import BankReconciliationListScreen from '../../screens/BankReconciliation/BankReconciliationListScreen';
+import BankReconciliationScreen from '../../screens/BankReconciliation/BankReconciliationScreen';
+import BankReconciliationDetailScreen from '../../screens/BankReconciliation/BankReconciliationDetailScreen';
 import TaxSettingsScreen from '../../screens/Tax/TaxSettings/TaxSettingsScreen';
 import TaxLiabilityScreen from '../../screens/Tax/TaxLiability/TaxLiabilityScreen';
 import TaxPaymentScreen from '../../screens/Tax/TaxPayment/TaxPaymentScreen';
@@ -64,6 +67,9 @@ export type MoreStackParamList = {
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;
   DeliveryPersonnelDetail: { userId: string };
+  BankReconciliationList: undefined;
+  BankReconciliation: { accountId: string; accountName: string };
+  BankReconciliationDetail: { reconciliationId: string };
   TaxSettings: undefined;
   TaxLiability: undefined;
   TaxPayment: { taxRateId?: string } | undefined;
@@ -105,6 +111,9 @@ const MoreStack: React.FC = () => (
     <Stack.Screen name="DeliveryPersonnelList" component={DeliveryPersonnelListScreen} />
     <Stack.Screen name="AddDeliveryPersonnel" component={AddDeliveryPersonnelScreen} />
     <Stack.Screen name="DeliveryPersonnelDetail" component={DeliveryPersonnelDetailScreen} />
+    <Stack.Screen name="BankReconciliationList" component={BankReconciliationListScreen} />
+    <Stack.Screen name="BankReconciliation" component={BankReconciliationScreen} />
+    <Stack.Screen name="BankReconciliationDetail" component={BankReconciliationDetailScreen} />
     <Stack.Screen name="TaxSettings" component={TaxSettingsScreen} />
     <Stack.Screen name="TaxLiability" component={TaxLiabilityScreen} />
     <Stack.Screen name="TaxPayment" component={TaxPaymentScreen} />

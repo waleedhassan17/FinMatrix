@@ -8,6 +8,7 @@ import EstimateListScreen from '../../screens/Estimates/EstimateListScreen';
 import EstimateFormScreen from '../../screens/Estimates/EstimateFormScreen';
 import EstimateDetailScreen from '../../screens/Estimates/EstimateDetailScreen';
 import SalesOrderListScreen from '../../screens/SalesOrders/SalesOrderListScreen';
+import SalesOrderFormScreen from '../../screens/SalesOrders/SalesOrderFormScreen';
 import SalesOrderDetailScreen from '../../screens/SalesOrders/SalesOrderDetailScreen';
 import CreditMemoListScreen from '../../screens/CreditMemos/CreditMemoListScreen';
 import CreditMemoFormScreen from '../../screens/CreditMemos/CreditMemoFormScreen';
@@ -36,6 +37,7 @@ export type TransactionsStackParamList = {
   EstimateForm: { estimateId?: string } | undefined;
   EstimateDetail: { estimateId: string };
   SalesOrderList: undefined;
+  SalesOrderForm: { salesOrderId?: string } | undefined;
   SalesOrderDetail: { salesOrderId: string };
   CreditMemoList: undefined;
   CreditMemoForm: { creditMemoId?: string } | undefined;
@@ -68,6 +70,7 @@ const TransactionsStack: React.FC = () => (
     <Stack.Screen name="EstimateForm" component={EstimateFormScreen} />
     <Stack.Screen name="EstimateDetail" component={EstimateDetailScreen} />
     <Stack.Screen name="SalesOrderList" component={SalesOrderListScreen} />
+    <Stack.Screen name="SalesOrderForm" component={SalesOrderFormScreen} />
     <Stack.Screen name="SalesOrderDetail" component={SalesOrderDetailScreen} />
     <Stack.Screen name="CreditMemoList" component={CreditMemoListScreen} />
     <Stack.Screen name="CreditMemoForm" component={CreditMemoFormScreen} />

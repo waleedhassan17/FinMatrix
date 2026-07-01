@@ -1,0 +1,48 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Bank Reconciliation model + UI types (FinMatrix.md §27)
+// ═══════════════════════════════════════════════════════
+
+export interface ReconcilableAccount {
+  accountId: string;
+  accountNumber: string;
+  name: string;
+  subType: string;
+  bookBalance: number;
+  lastReconciledDate: string | null;
+  lastReconciledBalance: number | null;
+}
+
+export interface UnreconciledEntry {
+  id: string;
+  date: string;
+  reference: string;
+  memo: string | null;
+  sourceType: string;
+  debit: number;
+  credit: number;
+  // Signed amount for the account (debit-normal): + deposit, − payment.
+  amount: number;
+}
+
+export interface UnreconciledData {
+  accountId: string;
+  accountName: string;
+  accountNumber: string;
+  beginningBalance: number;
+  entries: UnreconciledEntry[];
+}
+
+export interface Reconciliation {
+  id: string;
+  accountId: string;
+  statementDate: string;
+  statementEndingBalance: number;
+  beginningBalance: number;
+  clearedBalance: number;
+  difference: number;
+  clearedCount: number;
+  status: string;
+  notes: string | null;
+  reconciledAt: string | null;
+  entries?: UnreconciledEntry[];
+}

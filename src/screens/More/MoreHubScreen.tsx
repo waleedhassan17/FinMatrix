@@ -56,6 +56,12 @@ const SECTIONS: MoreSection[] = [
         subtitle: 'Manage accounts, balances & categories',
         onPress: nav => nav.navigate('COAList'),
       },
+      {
+        key: 'reconcile', icon: 'check-square', iconBg: IC.tealBg, iconColor: IC.teal,
+        label: 'Bank Reconciliation',
+        subtitle: 'Match cash/bank ledger to a statement',
+        onPress: nav => nav.navigate('BankReconciliationList'),
+      },
     ],
   },
   {

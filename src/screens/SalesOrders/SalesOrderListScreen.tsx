@@ -9,7 +9,7 @@ import { fetchSalesOrders, selectSalesOrderState, setSalesOrderStatusFilter, typ
 import { formatCurrency } from '../../utils/formatters';
 import type { SalesOrderStatus } from '../../models/salesOrderModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderIconButton, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -49,7 +49,12 @@ const SalesOrderListScreen: React.FC = () => {
 
   return (
     <ReportContainer>
-      <ReportHeader title="Sales Orders" subtitle="Fulfillment & invoicing" onBack={() => navigation.goBack()} />
+      <ReportHeader
+        title="Sales Orders"
+        subtitle="Fulfillment & invoicing"
+        onBack={() => navigation.goBack()}
+        right={<HeaderIconButton icon="plus" onPress={() => navigation.navigate('SalesOrderForm', {})} />}
+      />
 
       <TxnTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setSalesOrderStatusFilter(v))} />
 
@@ -58,7 +63,7 @@ const SalesOrderListScreen: React.FC = () => {
         {state.isLoading && state.salesOrders.length === 0 && <LoadingBlock label="Loading sales orders…" />}
         {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
         {!state.isLoading && state.salesOrders.length === 0 && !state.error && (
-          <EmptyBlock icon="clipboard" title="No sales orders" hint="Convert an accepted estimate into a sales order." />
+          <EmptyBlock icon="clipboard" title="No sales orders" hint="Tap + to create one, or convert an accepted estimate." />
         )}
         {state.salesOrders.length > 0 && filtered.length === 0 && !state.error && (
           <EmptyBlock icon="search" title="No sales orders found" hint="Try a different tab." />

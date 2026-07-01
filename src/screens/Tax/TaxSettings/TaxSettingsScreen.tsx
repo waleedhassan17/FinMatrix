@@ -4,7 +4,7 @@
 // Enterprise-consistent with Reports / Transactions (ReportUI kit)
 // ═══════════════════════════════════════════════════════
 
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -43,6 +43,8 @@ import {
   selectTaxIsSaving,
 } from './taxSettingsSlice';
 import type { TaxRate, TaxType } from '../../../types';
+import { getStoredCompanyId } from '../../../network/apiHelpers';
+import { getCompanyAPI, updateCompanyAPI } from '../../../network/authNetwork';
 import {
   ReportContainer,
   ReportHeader,
@@ -79,6 +81,46 @@ const TaxSettingsScreen: React.FC = () => {
   useEffect(() => {
     dispatch(fetchTaxRates());
   }, [dispatch]);
+
+  // GST/Sales-tax registration flag (FinMatrix.md §21). When on, input tax on
+  // bills is reclaimed to Sales Tax Recoverable (1300) and the liability report
+  // shows net tax = output − input. Loaded/saved directly against the company.
+  const [companyId, setCompanyId] = useState('');
+  const [taxRegistered, setTaxRegistered] = useState(false);
+  const [regSaving, setRegSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const cid = await getStoredCompanyId();
+        if (!cid || !alive) return;
+        setCompanyId(cid);
+        const c = await getCompanyAPI(cid);
+        if (alive) setTaxRegistered(!!c?.salesTaxRegistered);
+      } catch {
+        /* leave default (unregistered) */
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const handleToggleRegistered = useCallback(
+    async (value: boolean) => {
+      if (!companyId || regSaving) return;
+      setTaxRegistered(value); // optimistic
+      setRegSaving(true);
+      try {
+        await updateCompanyAPI(companyId, { salesTaxRegistered: value });
+      } catch (e: any) {
+        setTaxRegistered(!value); // revert on failure
+        Alert.alert('Update failed', e?.message ?? 'Could not update tax registration.');
+      } finally {
+        setRegSaving(false);
+      }
+    },
+    [companyId, regSaving],
+  );
 
   const activeCount = useMemo(() => rates.filter(r => r.isActive).length, [rates]);
 
@@ -188,6 +230,26 @@ const TaxSettingsScreen: React.FC = () => {
                   { label: 'Active', value: String(activeCount), accent: ACCENT.green, icon: 'check-circle' },
                 ]}
               />
+
+              <Card style={styles.regCard}>
+                <View style={styles.regRow}>
+                  <View style={styles.regTextWrap}>
+                    <Text style={styles.regTitle}>GST / Sales-tax registered</Text>
+                    <Text style={styles.regSub}>
+                      Reclaim input tax on bills to a recoverable asset. Liability = output tax − input tax.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={taxRegistered}
+                    onValueChange={handleToggleRegistered}
+                    disabled={regSaving || !companyId}
+                    trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.primary + '60' }}
+                    thumbColor={taxRegistered ? THEME.colors.primary : '#B0BAC6'}
+                    ios_backgroundColor={THEME.colors.neutral200}
+                  />
+                </View>
+              </Card>
+
               {!!error && (
                 <View style={styles.errorBanner}>
                   <Feather name="alert-circle" size={14} color={THEME.colors.danger} />
@@ -322,6 +384,11 @@ const styles = StyleSheet.create({
 
   listContent: { padding: THEME.spacing.md, gap: 10, paddingBottom: THEME.spacing.xxxl },
   listHeader: { gap: THEME.spacing.sm + 2, marginBottom: THEME.spacing.xs },
+  regCard: { paddingVertical: 12, paddingHorizontal: 14 },
+  regRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  regTextWrap: { flex: 1 },
+  regTitle: { ...THEME.typography.bodyMd, fontWeight: '700', color: THEME.colors.textPrimary },
+  regSub: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 3, lineHeight: 16 },
 
   errorBanner: {
     flexDirection: 'row',
