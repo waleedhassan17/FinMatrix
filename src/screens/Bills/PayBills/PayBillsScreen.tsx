@@ -43,6 +43,7 @@ import { fetchBills } from '../BillList/billListSlice';
 import { chartOfAccountsData } from '../../../models/coaModel';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
+import { DateField } from '../../../components/reports/ReportUI';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -239,12 +240,10 @@ const PayBillsScreen: React.FC = () => {
               />
               <View style={styles.rowFields}>
                 <View style={{ flex: 1, marginRight: spacing.sm }}>
-                  <CustomInput
+                  <DateField
                     label="Payment Date *"
                     value={form.paymentDate}
                     onChangeText={v => dispatch(setPayBillField({ key: 'paymentDate', value: v }))}
-                    placeholder="YYYY-MM-DD"
-                    error={form.errors.paymentDate}
                   />
                 </View>
                 <View style={{ flex: 1 }}>

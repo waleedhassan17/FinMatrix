@@ -12,7 +12,7 @@ import { formatCurrency } from '../../utils/formatters';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
 import JournalLineRow from '../../components/JournalLineRow';
-import { ReportContainer, ReportHeader, Card, SectionCard } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -87,7 +87,7 @@ const GeneralJournalFormScreen: React.FC = () => {
       <ReportHeader title="New Journal Entry" subtitle="Manual double-entry" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Card>
-          <CustomInput label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
+          <DateField label="Date" value={date} onChangeText={setDate} />
           <CustomInput label="Memo" value={memo} onChangeText={setMemo} placeholder="Description of this entry" multiline />
         </Card>
 

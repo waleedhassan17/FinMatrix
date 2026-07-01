@@ -44,6 +44,7 @@ import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorList
 import { inventoryItemsData } from '../../../models/inventoryModel';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
+import { DateField } from '../../../components/reports/ReportUI';
 import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -238,21 +239,21 @@ const POFormScreen: React.FC = () => {
               />
               <View style={styles.rowFields}>
                 <View style={{ flex: 1, marginRight: spacing.sm }}>
-                  <CustomInput
+                  <DateField
                     label="Order Date *"
                     value={form.orderDate}
                     onChangeText={v => dispatch(setField({ key: 'orderDate', value: v }))}
-                    placeholder="YYYY-MM-DD"
-                    error={form.errors.orderDate}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <CustomInput
+                  {/* Expected delivery is a future date → allow dates after today;
+                      never before the order date. */}
+                  <DateField
                     label="Expected Date *"
                     value={form.expectedDate}
                     onChangeText={v => dispatch(setField({ key: 'expectedDate', value: v }))}
-                    placeholder="YYYY-MM-DD"
-                    error={form.errors.expectedDate}
+                    minimumDate={form.orderDate ? new Date(form.orderDate) : undefined}
+                    maximumDate={new Date(2100, 11, 31)}
                   />
                 </View>
               </View>

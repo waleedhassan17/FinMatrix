@@ -13,7 +13,7 @@ import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
 import LineItemRow from '../../components/LineItemRow';
-import { ReportContainer, ReportHeader, Card, SectionCard } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -83,7 +83,7 @@ const CreditMemoFormScreen: React.FC = () => {
         <Card>
           <CustomDropdown label="Customer" placeholder="Select customer"
             options={customers.map((c: any) => ({ label: c.name, value: c.id }))} value={customerId} onChange={setCustomerId} />
-          <CustomInput label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
+          <DateField label="Date" value={date} onChangeText={setDate} />
           <CustomInput label="Reason" value={reason} onChangeText={setReason} placeholder="e.g. returned goods" />
         </Card>
 

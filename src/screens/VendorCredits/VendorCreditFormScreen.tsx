@@ -12,7 +12,7 @@ import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
-import { ReportContainer, ReportHeader, Card, SectionCard } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -59,7 +59,7 @@ const VendorCreditFormScreen: React.FC = () => {
         <Card>
           <CustomDropdown label="Vendor" placeholder="Select vendor"
             options={vendors.map((v: any) => ({ label: v.name, value: v.id }))} value={vendorId} onChange={setVendorId} />
-          <CustomInput label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
+          <DateField label="Date" value={date} onChangeText={setDate} />
           <CustomInput label="Reason" value={reason} onChangeText={setReason} placeholder="e.g. overcharge / returned stock" />
         </Card>
 
