@@ -29,7 +29,9 @@ import {
   createPlan,
   updatePlan,
   deletePlan,
+  loadSubscriptions,
   selectPlans,
+  selectSubscriptions,
   selectPlansStatus,
   type SubscriptionPlan,
 } from '../superAdminSlice';
@@ -284,46 +286,75 @@ const FormField: React.FC<{
   </View>
 );
 
-// ── Plan Card ─────────────────────────────────────────
-const PlanCard: React.FC<{
-  plan: SubscriptionPlan;
-  gradientIdx: number;
-  onEdit: () => void;
-  onDelete: () => void;
-}> = ({ plan, gradientIdx, onEdit, onDelete }) => {
+// Canonical signup tiers (Phase1.md) — mirrors the signup plan cards.
+interface DisplayPlan {
+  name: string;
+  description: string;
+  isFree: boolean;
+  priceLabel: string;
+  durationLabel?: string;
+  features: string[];
+  maxUsers: number;
+  maxInvoices: number | null;
+  disabled: boolean; // paid tiers are "coming soon"
+  companyCount: number;
+}
+
+const CANONICAL_PLANS: Omit<DisplayPlan, 'companyCount'>[] = [
+  {
+    name: 'Free',
+    description: 'Everything you need to start running your books.',
+    isFree: true,
+    priceLabel: 'Free',
+    features: ['Full accounting', 'Invoices & bills', 'Reports'],
+    maxUsers: 3,
+    maxInvoices: null,
+    disabled: false,
+  },
+  {
+    name: 'Standard',
+    description: 'For growing teams — more seats and volume.',
+    isFree: false,
+    priceLabel: 'Rs 1,000',
+    durationLabel: '/ 6 months',
+    features: ['Everything in Free', 'Priority support', 'Higher limits'],
+    maxUsers: 10,
+    maxInvoices: null,
+    disabled: true,
+  },
+  {
+    name: 'Pro',
+    description: 'For established businesses that need it all.',
+    isFree: false,
+    priceLabel: 'Rs 2,000',
+    durationLabel: '/ 3 months',
+    features: ['Everything in Standard', 'Advanced analytics', 'Dedicated support'],
+    maxUsers: 999,
+    maxInvoices: null,
+    disabled: true,
+  },
+];
+
+// ── Plan Card (display-only; same UI used in signup) ──
+const PlanCard: React.FC<{ plan: DisplayPlan; gradientIdx: number }> = ({ plan, gradientIdx }) => {
   const gradient = PLAN_GRADIENTS[gradientIdx % PLAN_GRADIENTS.length];
-  const monthlyPrice = parseFloat(plan.priceMonthly);
-  const yearlyPrice = parseFloat(plan.priceYearly);
 
   return (
-    <View style={[S.planCard, !plan.isActive && S.planCardInactive]}>
+    <View style={[S.planCard, plan.disabled && S.planCardInactive]}>
       <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={S.planGrad}>
         <View style={S.planDecor} />
         <View style={S.planHeaderRow}>
           <Text style={S.planName}>{plan.name}</Text>
-          {!plan.isActive && (
-            <View style={S.inactiveBadge}>
-              <Text style={S.inactiveBadgeText}>Inactive</Text>
-            </View>
-          )}
+          <View style={[S.statusBadge, plan.disabled && S.statusBadgeMuted]}>
+            <Text style={S.statusBadgeText}>{plan.disabled ? 'Coming soon' : 'Active'}</Text>
+          </View>
         </View>
         {plan.description ? (
           <Text style={S.planDesc} numberOfLines={2}>{plan.description}</Text>
         ) : null}
         <View style={S.planPriceRow}>
-          <View>
-            <Text style={S.planPriceLabel}>Monthly</Text>
-            <Text style={S.planPrice}>
-              Rs {isNaN(monthlyPrice) ? plan.priceMonthly : monthlyPrice.toLocaleString()}
-            </Text>
-          </View>
-          <View style={S.planPriceDivider} />
-          <View>
-            <Text style={S.planPriceLabel}>Yearly</Text>
-            <Text style={S.planPrice}>
-              Rs {isNaN(yearlyPrice) ? plan.priceYearly : yearlyPrice.toLocaleString()}
-            </Text>
-          </View>
+          <Text style={S.planPrice}>{plan.priceLabel}</Text>
+          {!!plan.durationLabel && <Text style={S.planPriceFreq}>{plan.durationLabel}</Text>}
         </View>
       </LinearGradient>
 
@@ -331,17 +362,11 @@ const PlanCard: React.FC<{
         <View style={S.planMetaRow}>
           <View style={S.planMeta}>
             <Feather name="users" size={13} color={C.text.secondary} />
-            <Text style={S.planMetaText}>Up to {plan.maxUsers} users</Text>
+            <Text style={S.planMetaText}>Up to {plan.maxUsers >= 999 ? 'Unlimited' : plan.maxUsers} users</Text>
           </View>
-          {plan.maxInvoices && (
-            <View style={S.planMeta}>
-              <Feather name="file-text" size={13} color={C.text.secondary} />
-              <Text style={S.planMetaText}>{plan.maxInvoices} invoices/mo</Text>
-            </View>
-          )}
         </View>
 
-        {plan.features && plan.features.length > 0 && (
+        {plan.features.length > 0 && (
           <View style={S.featuresList}>
             {plan.features.slice(0, 4).map(f => (
               <View key={f} style={S.featureItem}>
@@ -349,21 +374,16 @@ const PlanCard: React.FC<{
                 <Text style={S.featureText}>{f}</Text>
               </View>
             ))}
-            {plan.features.length > 4 && (
-              <Text style={S.moreFeatures}>+{plan.features.length - 4} more</Text>
-            )}
           </View>
         )}
 
-        <View style={S.planActions}>
-          <TouchableOpacity style={S.editBtn} onPress={onEdit} activeOpacity={0.7}>
-            <Feather name="edit-2" size={14} color={C.primary} />
-            <Text style={S.editBtnText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={S.deleteBtn} onPress={onDelete} activeOpacity={0.7}>
-            <Feather name="trash-2" size={14} color="#EF4444" />
-            <Text style={S.deleteBtnText}>Delete</Text>
-          </TouchableOpacity>
+        <View style={S.planCountRow}>
+          <Feather name="briefcase" size={13} color={C.text.muted} />
+          <Text style={S.planCountText}>
+            {plan.disabled
+              ? 'Not yet available'
+              : `${plan.companyCount} compan${plan.companyCount === 1 ? 'y' : 'ies'} on this plan`}
+          </Text>
         </View>
       </View>
     </View>
@@ -376,75 +396,31 @@ const PlanCard: React.FC<{
 const SubscriptionPlansScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigation = useNavigation();
-  const plans = useAppSelector(selectPlans);
   const plansStatus = useAppSelector(selectPlansStatus);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
+  const subscriptions = useAppSelector(selectSubscriptions);
 
   useEffect(() => {
     dispatch(loadPlans());
+    dispatch(loadSubscriptions());
   }, [dispatch]);
 
-  const openCreate = useCallback(() => {
-    setEditingPlan(null);
-    setModalVisible(true);
-  }, []);
-
-  const openEdit = useCallback((plan: SubscriptionPlan) => {
-    setEditingPlan(plan);
-    setModalVisible(true);
-  }, []);
-
-  const handleSave = useCallback(
-    async (data: PlanFormData) => {
-      const payload = {
-        name: data.name.trim(),
-        description: data.description.trim() || undefined,
-        priceMonthly: parseFloat(data.priceMonthly) || 0,
-        priceYearly: parseFloat(data.priceYearly) || 0,
-        maxUsers: parseInt(data.maxUsers) || 5,
-        maxInvoices: data.maxInvoices ? parseInt(data.maxInvoices) : undefined,
-        features: data.features.length > 0 ? data.features : undefined,
-        isActive: data.isActive,
-      };
-
-      if (editingPlan) {
-        await dispatch(updatePlan({ id: editingPlan.id, data: payload }));
-        Alert.alert('Updated', 'Plan updated successfully');
-      } else {
-        await dispatch(createPlan(payload));
-        Alert.alert('Created', 'Plan created successfully');
-      }
-      setModalVisible(false);
-    },
-    [dispatch, editingPlan],
+  // Companies on the Free tier = active subscriptions to a zero-priced plan.
+  const freeCount = React.useMemo(
+    () =>
+      subscriptions.filter(
+        s =>
+          (s.status === 'active' || s.status === 'trial') &&
+          parseFloat(s.plan?.priceMonthly ?? '0') === 0,
+      ).length,
+    [subscriptions],
   );
 
-  const handleDelete = useCallback(
-    (plan: SubscriptionPlan) => {
-      Alert.alert(
-        'Delete Plan',
-        `Are you sure you want to delete "${plan.name}"? This cannot be undone.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await dispatch(deletePlan(plan.id));
-              } catch {
-                Alert.alert('Error', 'Cannot delete plan with active subscriptions');
-              }
-            },
-          },
-        ],
-      );
-    },
-    [dispatch],
-  );
+  const displayPlans: DisplayPlan[] = CANONICAL_PLANS.map(p => ({
+    ...p,
+    companyCount: p.name === 'Free' ? freeCount : 0,
+  }));
 
-  const isLoading = plansStatus === 'loading' && plans.length === 0;
+  const isLoading = plansStatus === 'loading' && subscriptions.length === 0;
 
   return (
     <SafeAreaView style={S.container} edges={['top']}>
@@ -454,13 +430,8 @@ const SubscriptionPlansScreen: React.FC = () => {
         </TouchableOpacity>
         <View style={S.headerCenter}>
           <Text style={S.headerTitle}>Subscription Plans</Text>
-          <Text style={S.headerSub}>{plans.length} plan{plans.length !== 1 ? 's' : ''} configured</Text>
+          <Text style={S.headerSub}>Free available · Standard &amp; Pro coming soon</Text>
         </View>
-        <TouchableOpacity style={S.addBtn} onPress={openCreate} activeOpacity={0.8}>
-          <LinearGradient colors={['#0052CC', '#0747A6']} style={S.addBtnGrad}>
-            <Feather name="plus" size={18} color="#FFF" />
-          </LinearGradient>
-        </TouchableOpacity>
       </View>
 
       {isLoading ? (
@@ -469,37 +440,12 @@ const SubscriptionPlansScreen: React.FC = () => {
           <Text style={S.loadingText}>Loading plans...</Text>
         </View>
       ) : (
-        <FlatList
-          data={plans}
-          keyExtractor={item => item.id}
-          renderItem={({ item, index }) => (
-            <PlanCard
-              plan={item}
-              gradientIdx={index}
-              onEdit={() => openEdit(item)}
-              onDelete={() => handleDelete(item)}
-            />
-          )}
-          contentContainerStyle={S.listContent}
-          ListEmptyComponent={
-            <View style={S.empty}>
-              <Feather name="credit-card" size={40} color={C.text.muted} />
-              <Text style={S.emptyTitle}>No Plans Yet</Text>
-              <Text style={S.emptyText}>Create your first subscription plan</Text>
-              <TouchableOpacity style={S.emptyCreateBtn} onPress={openCreate}>
-                <Text style={S.emptyCreateText}>Create Plan</Text>
-              </TouchableOpacity>
-            </View>
-          }
-        />
+        <ScrollView contentContainerStyle={S.listContent} showsVerticalScrollIndicator={false}>
+          {displayPlans.map((p, index) => (
+            <PlanCard key={p.name} plan={p} gradientIdx={index} />
+          ))}
+        </ScrollView>
       )}
-
-      <PlanFormModal
-        visible={modalVisible}
-        editPlan={editingPlan}
-        onClose={() => setModalVisible(false)}
-        onSave={handleSave}
-      />
     </SafeAreaView>
   );
 };
@@ -542,13 +488,25 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
   inactiveBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
-  planDesc: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+  statusBadge: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  statusBadgeMuted: { backgroundColor: 'rgba(255,255,255,0.18)' },
+  statusBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+  planDesc: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
   planPriceRow: {
-    flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 20,
+    flexDirection: 'row', alignItems: 'flex-end', marginTop: 14, gap: 6,
   },
   planPriceLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
-  planPrice: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  planPrice: { fontSize: 22, fontWeight: '800', color: '#FFF' },
+  planPriceFreq: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 3 },
   planPriceDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.3)' },
+  planCountRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderTopWidth: 1, borderTopColor: C.border, paddingTop: 12,
+  },
+  planCountText: { fontSize: 12, fontWeight: '600', color: C.text.secondary },
 
   planBody: { padding: 14 },
   planMetaRow: { flexDirection: 'row', gap: 16, marginBottom: 10 },
