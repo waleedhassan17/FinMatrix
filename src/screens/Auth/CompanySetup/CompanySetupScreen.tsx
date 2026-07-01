@@ -112,8 +112,8 @@ const CompanySetupScreen: React.FC<Props> = ({ navigation }) => {
             <View>
               <Text style={s.headerTitle}>Set up your workspace</Text>
               <Text style={s.headerSub}>
-                Create a new company or join an existing one to start managing
-                finances, inventory, and deliveries.
+                Register your company to start managing finances, inventory,
+                and deliveries.
               </Text>
             </View>
 
@@ -176,55 +176,6 @@ const CompanySetupScreen: React.FC<Props> = ({ navigation }) => {
               <View style={s.optionCta}>
                 <Text style={s.optionCtaLabel}>Get Started</Text>
                 <Ionicons name="arrow-forward" size={16} color={DS.white} style={{ marginLeft: 6 }} />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Divider */}
-          <View style={s.divider}>
-            <View style={s.divLine} />
-            <Text style={s.divText}>or</Text>
-            <View style={s.divLine} />
-          </View>
-
-          {/* Join Company Card */}
-          <View>
-            <TouchableOpacity
-              style={s.optionCard}
-              onPress={() => navigation.navigate(ROUTES.JOIN_COMPANY as any)}
-              activeOpacity={0.7}>
-              {/* Icon area */}
-              <View style={s.optionIconArea}>
-                <View style={[s.optionIconOuter, { backgroundColor: DS.green500 + '08' }]}>
-                  <View style={[s.optionIconInner, { backgroundColor: DS.green500 + '14' }]}>
-                    <Ionicons name="people" size={24} color={DS.green500} />
-                  </View>
-                </View>
-              </View>
-
-              {/* Text */}
-              <View style={s.optionTextArea}>
-                <View style={s.optionTitleRow}>
-                  <Text style={s.optionTitle}>Join Existing Company</Text>
-                </View>
-                <Text style={s.optionDesc}>
-                  Enter a 6-digit invite code from your admin to join an existing workspace
-                </Text>
-              </View>
-
-              {/* Code preview */}
-              <View style={s.codePreviewRow}>
-                {['_', '_', '_', '_', '_', '_'].map((c, i) => (
-                  <View key={i} style={s.codePreviewBox}>
-                    <Text style={s.codePreviewChar}>{c}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* CTA */}
-              <View style={[s.optionCtaOutline]}>
-                <Ionicons name="enter-outline" size={16} color={DS.navy800} style={{ marginRight: 6 }} />
-                <Text style={s.optionCtaOutlineLabel}>Enter Invite Code</Text>
               </View>
             </TouchableOpacity>
           </View>
