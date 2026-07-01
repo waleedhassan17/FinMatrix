@@ -46,6 +46,7 @@ import {
   SectionCard,
   SummaryLine,
   LoadingBlock,
+  DateField,
 } from '../../../components/reports/ReportUI';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -203,18 +204,11 @@ const TaxPaymentScreen: React.FC = () => {
 
             <View style={styles.divider} />
 
-            <FieldLabel label="Payment Date" required />
-            <View style={styles.inputWithIcon}>
-              <Feather name="calendar" size={15} color={THEME.colors.textTertiary} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.fieldInput, styles.inputWithIconField]}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={THEME.colors.textTertiary}
-                value={form.date}
-                onChangeText={v => dispatch(setFormField({ date: v }))}
-                autoCorrect={false}
-              />
-            </View>
+            <DateField
+              label="Payment Date *"
+              value={form.date}
+              onChangeText={v => dispatch(setFormField({ date: v }))}
+            />
 
             <View style={styles.divider} />
 

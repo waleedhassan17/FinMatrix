@@ -16,7 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
-import { ReportHeader, HEADER_NAVY } from '../../../../components/reports/ReportUI';
+import { ReportHeader, HEADER_NAVY, DateField } from '../../../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import {
@@ -204,12 +204,11 @@ const AssignDeliveriesScreen: React.FC = () => {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={styles.dateRow}>
         <Text style={styles.dateLabel}>Schedule Date</Text>
-        <TextInput
+        {/* Deliveries can be scheduled for today or a future date. */}
+        <DateField
           value={selectedDate}
           onChangeText={text => dispatch(setSelectedDate(text))}
-          style={styles.dateInput}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={colors.textLight}
+          maximumDate={new Date(2100, 11, 31)}
         />
       </View>
 

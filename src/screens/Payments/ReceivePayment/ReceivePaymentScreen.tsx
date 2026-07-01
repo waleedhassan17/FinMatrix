@@ -46,6 +46,7 @@ import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/cu
 import { fetchInvoices } from '../../Invoices/InvoiceList/invoiceListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
+import { DateField } from '../../../components/reports/ReportUI';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -258,12 +259,10 @@ const ReceivePaymentScreen: React.FC = () => {
               />
               <View style={styles.rowFields}>
                 <View style={{ flex: 1, marginRight: spacing.sm }}>
-                  <CustomInput
+                  <DateField
                     label="Payment Date *"
                     value={form.paymentDate}
                     onChangeText={v => dispatch(setPaymentField({ key: 'paymentDate', value: v }))}
-                    placeholder="YYYY-MM-DD"
-                    error={form.errors.paymentDate}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
