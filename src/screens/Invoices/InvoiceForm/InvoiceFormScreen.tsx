@@ -51,6 +51,7 @@ import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/cu
 import { selectInventoryItems, fetchInventoryItems } from '../../Inventory/InventoryList/inventoryListSlice';
 import { createInvoiceAPI, updateInvoiceAPI } from '../../../network/invoiceNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
+import { DateField } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import LineItemRow from '../../../components/LineItemRow';
@@ -342,21 +343,21 @@ const InvoiceFormScreen: React.FC = () => {
               />
               <View style={styles.rowFields}>
                 <View style={{ flex: 1, marginRight: spacing.sm }}>
-                  <CustomInput
+                  <DateField
                     label="Issue Date *"
                     value={form.issueDate}
                     onChangeText={v => dispatch(setField({ key: 'issueDate', value: v }))}
-                    placeholder="YYYY-MM-DD"
-                    error={form.errors.issueDate}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <CustomInput
+                  {/* Due date is a future date → allow dates after today; never
+                      before the issue date. */}
+                  <DateField
                     label="Due Date *"
                     value={form.dueDate}
                     onChangeText={v => dispatch(setField({ key: 'dueDate', value: v }))}
-                    placeholder="YYYY-MM-DD"
-                    error={form.errors.dueDate}
+                    minimumDate={form.issueDate ? new Date(form.issueDate) : undefined}
+                    maximumDate={new Date(2100, 11, 31)}
                   />
                 </View>
               </View>
