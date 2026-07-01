@@ -6,6 +6,7 @@ export type CreditMemoStatus = 'open' | 'applied' | 'closed' | 'refunded' | 'voi
 
 export interface CreditMemoLine {
   id?: string;
+  itemId?: string | null;
   description: string;
   quantity: number;
   unitPrice: number;

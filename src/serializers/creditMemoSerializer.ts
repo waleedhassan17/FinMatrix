@@ -8,6 +8,7 @@ const toNum = (v: any): number => {
 
 const mapLine = (raw: any): CreditMemoLine => ({
   id: raw.id,
+  itemId: raw.itemId ?? null,
   description: raw.description ?? '',
   quantity: toNum(raw.quantity),
   unitPrice: toNum(raw.unitPrice),
