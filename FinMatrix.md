@@ -99,7 +99,7 @@ For **every feature**: (1) its **purpose / how it should work** by accounting pr
 ## 11. Credit Memos 🟢
 **Purpose.** Mirror of an invoice for returns/corrections; reverses revenue/tax/AR and restocks goods; can be applied or refunded. QuickBooks behaves identically.
 **How FinMatrix implements it.** Posts the reversal through the engine, restocks inventory and reverses COGS, supports apply-to-invoice and cash refund.
-**Verdict:** 🟢 Correct.
+**Verdict:** 🟢 Correct. *(Note: the inventory restock was added this pass — credit-memo lines now take an optional `itemId`; item lines restock qty on hand and post Dr Inventory 1200 / Cr COGS 5000 at cost, mirroring the invoice cost side. Void/delete reverse it. Non-item lines stay free-text. Previously only the AR/Revenue/Tax side posted.)*
 
 ## 12. Sales Receipt / cash sale 🟡
 **Purpose.** QuickBooks has a dedicated **Sales Receipt** for a paid-on-the-spot sale (no receivable) — it posts Dr Cash, Cr Revenue/Tax, Cr Inventory/Dr COGS in one step.
