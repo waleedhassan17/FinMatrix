@@ -70,139 +70,111 @@ interface Plan {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SubscriptionSelect'>;
 
-// ── Animated Plan Card ────────────────────────────────
+// Gradient per tier — matches the Super-Admin Subscription Plans card style.
+const PLAN_GRADIENTS: Record<string, [string, string]> = {
+  Free: ['#42526E', '#253858'],
+  Standard: ['#00875A', '#006644'],
+  Pro: ['#6554C0', '#5243AA'],
+};
+
+// ── Plan Card (same UI/UX as Super-Admin Subscription Plans) ──
 const PlanCard: React.FC<{
   plan: Plan;
   selected: boolean;
   onSelect: () => void;
-  delay: number;
   isPopular?: boolean;
-}> = ({ plan, selected, onSelect, delay, isPopular }) => {
-  const slideY = useRef(new Animated.Value(30)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
-      Animated.timing(slideY, { toValue: 0, duration: 400, delay, useNativeDriver: true }),
-    ]).start();
-  }, [delay]);
-
-  const handlePress = () => {
-    if (plan.disabled) return; // "Coming soon" — not selectable
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 0.97, duration: 80, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1, duration: 120, useNativeDriver: true }),
-    ]).start();
-    onSelect();
-  };
-
-  const cfg = PLAN_COLORS[plan.name] ?? PLAN_COLORS.Starter;
+}> = ({ plan, selected, onSelect, isPopular }) => {
+  const gradient = PLAN_GRADIENTS[plan.name] ?? PLAN_GRADIENTS.Free;
   const price = parseFloat(plan.priceMonthly);
   const isFree = price === 0;
 
   return (
-    <Animated.View style={{ opacity, transform: [{ translateY: slideY }, { scale }] }}>
-      <TouchableOpacity activeOpacity={plan.disabled ? 1 : 0.9} onPress={handlePress}>
-        <View
-          style={[
-            S.planCard,
-            selected && { borderColor: cfg.accent, borderWidth: 2.5 },
-            plan.disabled && { opacity: 0.6 },
-          ]}
-        >
-          {plan.disabled ? (
-            <View style={[S.popularBadge, { backgroundColor: DS.text.sub }]}>
-              <Text style={S.popularText}>COMING SOON</Text>
-            </View>
-          ) : isPopular ? (
-            <View style={[S.popularBadge, { backgroundColor: cfg.accent }]}>
-              <Text style={S.popularText}>MOST POPULAR</Text>
-            </View>
+    <TouchableOpacity
+      activeOpacity={plan.disabled ? 1 : 0.85}
+      onPress={() => { if (!plan.disabled) onSelect(); }}
+    >
+      <View
+        style={[
+          S.planCard,
+          selected && S.planCardSelected,
+          plan.disabled && S.planCardInactive,
+        ]}
+      >
+        {/* Gradient header */}
+        <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={S.planGrad}>
+          <View style={S.planDecor} />
+          <View style={S.planHeaderRow}>
+            <Text style={S.planName}>{plan.name}</Text>
+            {plan.disabled ? (
+              <View style={S.tagBadge}><Text style={S.tagBadgeText}>Coming soon</Text></View>
+            ) : isPopular ? (
+              <View style={S.tagBadge}><Text style={S.tagBadgeText}>Popular</Text></View>
+            ) : selected ? (
+              <Feather name="check-circle" size={22} color="#FFF" />
+            ) : (
+              <Feather name="circle" size={22} color="rgba(255,255,255,0.7)" />
+            )}
+          </View>
+          {plan.description ? (
+            <Text style={S.planDesc} numberOfLines={2}>{plan.description}</Text>
           ) : null}
+          <View style={S.planPriceRow}>
+            {isFree ? (
+              <Text style={S.planPrice}>Free</Text>
+            ) : (
+              <>
+                <Text style={S.planPrice}>{plan.priceLabel ?? `Rs ${Math.round(price).toLocaleString()}`}</Text>
+                {!!plan.durationLabel && <Text style={S.planPriceFreq}>{plan.durationLabel}</Text>}
+              </>
+            )}
+          </View>
+        </LinearGradient>
 
-          <LinearGradient
-            colors={cfg.gradient}
-            style={S.planGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            {/* Top row */}
-            <View style={S.planTopRow}>
-              <View>
-                <Text style={[S.planName, { color: cfg.accent }]}>{plan.name}</Text>
-                <Text style={S.planDesc} numberOfLines={2}>
-                  {plan.description ?? ''}
-                </Text>
-              </View>
-              <View style={[S.planBadge, { backgroundColor: `${cfg.badge}18` }]}>
-                {selected ? (
-                  <Feather name="check-circle" size={22} color={cfg.accent} />
-                ) : (
-                  <Feather name="circle" size={22} color={cfg.badge} />
-                )}
-              </View>
+        {/* Body */}
+        <View style={S.planBody}>
+          <View style={S.planMetaRow}>
+            <View style={S.planMeta}>
+              <Feather name="users" size={13} color={DS.text.sub} />
+              <Text style={S.planMetaText}>Up to {plan.maxUsers >= 999 ? 'Unlimited' : plan.maxUsers} users</Text>
             </View>
-
-            {/* Price */}
-            <View style={S.priceRow}>
-              {isFree ? (
-                <Text style={[S.priceMain, { color: cfg.accent }]}>Free</Text>
-              ) : plan.priceLabel ? (
-                <>
-                  <Text style={[S.priceMain, { color: cfg.accent }]}>{plan.priceLabel}</Text>
-                  {!!plan.durationLabel && (
-                    <Text style={[S.priceFreq, { color: DS.text.sub }]}> {plan.durationLabel}</Text>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Text style={[S.priceCurrency, { color: cfg.accent }]}>$</Text>
-                  <Text style={[S.priceMain, { color: cfg.accent }]}>
-                    {Math.round(price)}
-                  </Text>
-                  <Text style={[S.priceFreq, { color: DS.text.sub }]}>/month</Text>
-                </>
-              )}
+            <View style={S.planMeta}>
+              <Feather name="file-text" size={13} color={DS.text.sub} />
+              <Text style={S.planMetaText}>{plan.maxInvoices == null ? 'Unlimited' : plan.maxInvoices} invoices/mo</Text>
             </View>
+          </View>
 
-            {/* Limits */}
-            <View style={S.limitsRow}>
-              <View style={S.limitChip}>
-                <Feather name="users" size={11} color={cfg.badge} />
-                <Text style={[S.limitText, { color: cfg.badge }]}>
-                  {plan.maxUsers >= 999 ? 'Unlimited' : plan.maxUsers} users
-                </Text>
-              </View>
-              <View style={S.limitChip}>
-                <Feather name="file-text" size={11} color={cfg.badge} />
-                <Text style={[S.limitText, { color: cfg.badge }]}>
-                  {plan.maxInvoices == null ? 'Unlimited' : plan.maxInvoices} invoices
-                </Text>
-              </View>
+          {plan.features && plan.features.length > 0 && (
+            <View style={S.featuresList}>
+              {plan.features.slice(0, 4).map((f, i) => (
+                <View key={i} style={S.featureItem}>
+                  <Feather name="check" size={12} color="#10B981" />
+                  <Text style={S.featureText}>{f}</Text>
+                </View>
+              ))}
             </View>
+          )}
 
-            {/* Features */}
-            {plan.features && plan.features.length > 0 && (
-              <View style={S.featuresList}>
-                {plan.features.slice(0, 4).map((f, i) => (
-                  <View key={i} style={S.featureRow}>
-                    <Feather name="check" size={12} color={cfg.accent} />
-                    <Text style={[S.featureText, { color: DS.text.sub }]}>{f}</Text>
-                  </View>
-                ))}
-                {plan.features.length > 4 && (
-                  <Text style={[S.featureMore, { color: cfg.badge }]}>
-                    +{plan.features.length - 4} more features
-                  </Text>
-                )}
+          {/* Footer: select state / coming soon */}
+          <View style={S.planFooter}>
+            {plan.disabled ? (
+              <View style={S.footerDisabled}>
+                <Feather name="clock" size={14} color={DS.text.muted} />
+                <Text style={S.footerDisabledText}>Coming soon</Text>
+              </View>
+            ) : selected ? (
+              <View style={S.footerSelected}>
+                <Feather name="check" size={14} color="#FFF" />
+                <Text style={S.footerSelectedText}>Selected</Text>
+              </View>
+            ) : (
+              <View style={S.footerSelect}>
+                <Text style={S.footerSelectText}>Select plan</Text>
               </View>
             )}
-          </LinearGradient>
+          </View>
         </View>
-      </TouchableOpacity>
-    </Animated.View>
+      </View>
+    </TouchableOpacity>
   );
 };
 
@@ -397,14 +369,13 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={S.loadingText}>Could not load plans. Tap Continue to proceed.</Text>
             </View>
           ) : (
-            plans.map((p, i) => (
+            plans.map(p => (
               <PlanCard
                 key={p.id}
                 plan={p}
                 selected={selectedId === p.id}
                 onSelect={() => setSelectedId(p.id)}
-                delay={i * 80}
-                isPopular={p.name === 'Professional'}
+                isPopular={p.name === 'Standard'}
               />
             ))
           )}
@@ -488,58 +459,57 @@ const S = StyleSheet.create({
   loadingText: { fontSize: 14, color: DS.text.sub },
 
   // Plan Card
+  // ── Plan card (matches Super-Admin Subscription Plans) ──
   planCard: {
-    borderRadius: DS.radius.xl, overflow: 'hidden',
+    backgroundColor: DS.surface, borderRadius: 16, overflow: 'hidden',
     borderWidth: 1.5, borderColor: DS.border,
-    backgroundColor: DS.surface,
+    shadowColor: '#0052CC', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
-  planGradient: { padding: 18 },
-  popularBadge: {
-    position: 'absolute', top: 0, right: 0,
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderBottomLeftRadius: DS.radius.md,
-    zIndex: 2,
+  planCardSelected: { borderColor: DS.primary, borderWidth: 2.5 },
+  planCardInactive: { opacity: 0.65 },
+  planGrad: { padding: 18, position: 'relative', overflow: 'hidden' },
+  planDecor: {
+    position: 'absolute', right: -20, top: -20,
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  popularText: {
-    fontSize: 9, fontWeight: '800', color: '#FFF', letterSpacing: 0.8,
+  planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  planName: { fontSize: 20, fontWeight: '800', color: '#FFF', fontFamily: THEME.typography.fontFamily },
+  tagBadge: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
-  planTopRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'flex-start', marginBottom: 14,
-  },
-  planName: { fontSize: 18, fontWeight: '800', fontFamily: THEME.typography.fontFamily },
-  planDesc: {
-    fontSize: 12, color: DS.text.sub, marginTop: 3,
-    lineHeight: 17, maxWidth: 240, fontFamily: THEME.typography.fontFamily,
-  },
-  planBadge: {
-    width: 40, height: 40, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  tagBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+  planDesc: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4, lineHeight: 17 },
+  planPriceRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 14, gap: 6 },
+  planPrice: { fontSize: 22, fontWeight: '800', color: '#FFF' },
+  planPriceFreq: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 3 },
 
-  // Price
-  priceRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 4 },
-  priceCurrency: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
-  priceMain: { fontSize: 36, fontWeight: '900', letterSpacing: -1 },
-  priceFreq: { fontSize: 14, color: DS.text.muted, marginBottom: 6, marginLeft: 2 },
-  priceSavings: { fontSize: 11, marginBottom: 12, fontWeight: '500' },
+  planBody: { padding: 14 },
+  planMetaRow: { flexDirection: 'row', gap: 16, marginBottom: 10, flexWrap: 'wrap' },
+  planMeta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  planMetaText: { fontSize: 12, color: DS.text.sub },
+  featuresList: { gap: 5, marginBottom: 12 },
+  featureItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  featureText: { fontSize: 12, color: '#172B4D', fontFamily: THEME.typography.fontFamily },
 
-  // Limits
-  limitsRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-  limitChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+  planFooter: { borderTopWidth: 1, borderTopColor: DS.border, paddingTop: 12 },
+  footerSelect: {
+    alignItems: 'center', paddingVertical: 9, borderRadius: 8,
+    backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: '#C7D2FE',
   },
-  limitText: { fontSize: 11, fontWeight: '600' },
-
-  // Features
-  featuresList: { gap: 5 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  featureText: {
-    fontSize: 12, fontFamily: THEME.typography.fontFamily,
+  footerSelectText: { fontSize: 13, fontWeight: '700', color: DS.primary },
+  footerSelected: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 9, borderRadius: 8, backgroundColor: DS.primary,
   },
-  featureMore: { fontSize: 11, fontWeight: '600', marginTop: 4 },
+  footerSelectedText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+  footerDisabled: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 9, borderRadius: 8, backgroundColor: '#F1F5F9',
+  },
+  footerDisabledText: { fontSize: 13, fontWeight: '600', color: DS.text.muted },
 
   // CTA
   ctaSection: { marginTop: 8, gap: 10 },

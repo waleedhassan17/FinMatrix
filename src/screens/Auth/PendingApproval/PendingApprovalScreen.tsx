@@ -36,12 +36,20 @@ const PendingApprovalScreen: React.FC = () => {
     setChecking(true);
     try {
       const { data } = await authMe();
-      if (data.companyId) await setStoredCompanyId(data.companyId);
-      dispatch(setUser(data.user));
       const status = data.user.companyStatus;
       if (status === 'approved' || status === 'active') {
-        Toast.show({ type: 'success', text1: 'Your company has been approved!' });
-      } else if (status === 'rejected') {
+        // Approved by the super-admin → clear the onboarding session and send
+        // the owner to the sign-in screen to log in fresh.
+        Toast.show({ type: 'success', text1: 'Approved! Please sign in to continue.' });
+        try { await authSignOut(); } catch { /* best effort */ }
+        dispatch(signOut());
+        // Same root navigator — SignIn becomes available once signed out.
+        setTimeout(() => { try { navigation.navigate('SignIn'); } catch { /* noop */ } }, 0);
+        return;
+      }
+      if (data.companyId) await setStoredCompanyId(data.companyId);
+      dispatch(setUser(data.user));
+      if (status === 'rejected') {
         Toast.show({ type: 'info', text1: 'Your registration was reviewed.' });
       } else {
         Toast.show({ type: 'info', text1: 'Still pending review — hang tight!' });
@@ -51,7 +59,7 @@ const PendingApprovalScreen: React.FC = () => {
     } finally {
       setChecking(false);
     }
-  }, [dispatch]);
+  }, [dispatch, fromLogin, backToSignIn, navigation]);
 
   const handleSignOut = useCallback(async () => {
     if (fromLogin) { backToSignIn(); return; }
