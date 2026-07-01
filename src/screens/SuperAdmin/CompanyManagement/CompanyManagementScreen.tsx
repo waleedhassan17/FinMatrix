@@ -46,7 +46,10 @@ const C = {
   text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4' },
   status: {
     active: { bg: '#E3FCEF', text: '#00875A', border: '#ABF5D1' },
+    approved: { bg: '#E3FCEF', text: '#00875A', border: '#ABF5D1' },
     pending: { bg: '#FFFAE6', text: '#FF8B00', border: '#FFF0B3' },
+    pending_approval: { bg: '#FFFAE6', text: '#FF8B00', border: '#FFF0B3' },
+    inactive: { bg: '#FFEBE6', text: '#DE350B', border: '#FFBDAD' },
     suspended: { bg: '#FFEBE6', text: '#DE350B', border: '#FFBDAD' },
     rejected: { bg: '#EBECF0', text: '#5E6C84', border: '#DFE1E6' },
   },
@@ -56,7 +59,7 @@ const FILTERS = [
   { label: 'All', value: 'all' },
   { label: 'Pending', value: 'pending' },
   { label: 'Active', value: 'active' },
-  { label: 'Suspended', value: 'suspended' },
+  { label: 'Inactive', value: 'inactive' },
   { label: 'Rejected', value: 'rejected' },
 ];
 
@@ -96,9 +99,11 @@ const ReviewModal: React.FC<{
   onClose: () => void;
   onApprove: () => void;
   onReject: (reason: string) => void;
-}> = ({ visible, company, onClose, onApprove, onReject }) => {
+  onDeactivate: () => void;
+  onReactivate: () => void;
+}> = ({ visible, company, onClose, onApprove, onReject, onDeactivate, onReactivate }) => {
   const [tab, setTab] = useState<'info' | 'action'>('info');
-  const [action, setAction] = useState<'approve' | 'reject' | null>(null);
+  const [action, setAction] = useState<'approve' | 'reject' | 'deactivate' | 'reactivate' | null>(null);
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -118,6 +123,15 @@ const ReviewModal: React.FC<{
   if (!company) return null;
 
   const cfg = (C.status as any)[company.status] ?? C.status.active;
+  // Normalize status onto the canonical model to pick the available actions.
+  const norm =
+    company.status === 'approved' || company.status === 'active' || !company.status
+      ? 'active'
+      : company.status === 'suspended' || company.status === 'inactive'
+        ? 'inactive'
+        : company.status === 'rejected'
+          ? 'rejected'
+          : 'pending';
 
   const handleSubmit = async () => {
     if (action === 'reject' && !reason.trim()) {
@@ -125,11 +139,10 @@ const ReviewModal: React.FC<{
       return;
     }
     setSubmitting(true);
-    if (action === 'approve') {
-      onApprove();
-    } else if (action === 'reject') {
-      onReject(reason.trim());
-    }
+    if (action === 'approve') onApprove();
+    else if (action === 'reject') onReject(reason.trim());
+    else if (action === 'deactivate') onDeactivate();
+    else if (action === 'reactivate') onReactivate();
   };
 
   return (
@@ -192,46 +205,71 @@ const ReviewModal: React.FC<{
             <ScrollView style={S.modalContent} showsVerticalScrollIndicator={false}>
               <Text style={S.actionPrompt}>Select an action for this company:</Text>
 
-              <TouchableOpacity
-                style={[S.actionOption, action === 'approve' && S.actionOptionActive]}
-                onPress={() => setAction('approve')}
-              >
-                <View style={[S.actionOptionIcon, { backgroundColor: '#DCFCE7' }]}>
-                  <Feather name="check-circle" size={20} color="#16A34A" />
-                </View>
-                <View style={S.actionOptionInfo}>
-                  <Text style={S.actionOptionTitle}>Approve Company</Text>
-                  <Text style={S.actionOptionDesc}>Grant full access to FinMatrix platform</Text>
-                </View>
-                {action === 'approve' && <Feather name="check" size={18} color="#6366F1" />}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[S.actionOption, action === 'reject' && S.actionOptionActive]}
-                onPress={() => setAction('reject')}
-              >
-                <View style={[S.actionOptionIcon, { backgroundColor: '#FEE2E2' }]}>
-                  <Feather name="x-circle" size={20} color="#DC2626" />
-                </View>
-                <View style={S.actionOptionInfo}>
-                  <Text style={S.actionOptionTitle}>Reject Application</Text>
-                  <Text style={S.actionOptionDesc}>Deny access with a reason</Text>
-                </View>
-                {action === 'reject' && <Feather name="check" size={18} color="#6366F1" />}
-              </TouchableOpacity>
-
-              {company.status === 'active' && (
+              {/* Approve — for pending or previously-rejected companies. */}
+              {(norm === 'pending' || norm === 'rejected') && (
                 <TouchableOpacity
-                  style={[S.actionOption, action === ('suspend' as any) && S.actionOptionActive]}
+                  style={[S.actionOption, action === 'approve' && S.actionOptionActive]}
+                  onPress={() => setAction('approve')}
+                >
+                  <View style={[S.actionOptionIcon, { backgroundColor: '#DCFCE7' }]}>
+                    <Feather name="check-circle" size={20} color="#16A34A" />
+                  </View>
+                  <View style={S.actionOptionInfo}>
+                    <Text style={S.actionOptionTitle}>{norm === 'rejected' ? 'Re-approve Company' : 'Approve Company'}</Text>
+                    <Text style={S.actionOptionDesc}>Grant full access; the owner can log in immediately</Text>
+                  </View>
+                  {action === 'approve' && <Feather name="check" size={18} color="#6366F1" />}
+                </TouchableOpacity>
+              )}
+
+              {/* Reject — for pending companies. */}
+              {norm === 'pending' && (
+                <TouchableOpacity
+                  style={[S.actionOption, action === 'reject' && S.actionOptionActive]}
                   onPress={() => setAction('reject')}
+                >
+                  <View style={[S.actionOptionIcon, { backgroundColor: '#FEE2E2' }]}>
+                    <Feather name="x-circle" size={20} color="#DC2626" />
+                  </View>
+                  <View style={S.actionOptionInfo}>
+                    <Text style={S.actionOptionTitle}>Reject Application</Text>
+                    <Text style={S.actionOptionDesc}>Deny access with a reason</Text>
+                  </View>
+                  {action === 'reject' && <Feather name="check" size={18} color="#6366F1" />}
+                </TouchableOpacity>
+              )}
+
+              {/* Deactivate — for active companies (blocks logins immediately). */}
+              {norm === 'active' && (
+                <TouchableOpacity
+                  style={[S.actionOption, action === 'deactivate' && S.actionOptionActive]}
+                  onPress={() => setAction('deactivate')}
                 >
                   <View style={[S.actionOptionIcon, { backgroundColor: '#FEF9C3' }]}>
                     <Feather name="pause-circle" size={20} color="#D97706" />
                   </View>
                   <View style={S.actionOptionInfo}>
-                    <Text style={S.actionOptionTitle}>Suspend Company</Text>
-                    <Text style={S.actionOptionDesc}>Temporarily revoke access</Text>
+                    <Text style={S.actionOptionTitle}>Deactivate Company</Text>
+                    <Text style={S.actionOptionDesc}>Revoke access; users are blocked at login</Text>
                   </View>
+                  {action === 'deactivate' && <Feather name="check" size={18} color="#6366F1" />}
+                </TouchableOpacity>
+              )}
+
+              {/* Reactivate — for inactive companies. */}
+              {norm === 'inactive' && (
+                <TouchableOpacity
+                  style={[S.actionOption, action === 'reactivate' && S.actionOptionActive]}
+                  onPress={() => setAction('reactivate')}
+                >
+                  <View style={[S.actionOptionIcon, { backgroundColor: '#DCFCE7' }]}>
+                    <Feather name="play-circle" size={20} color="#16A34A" />
+                  </View>
+                  <View style={S.actionOptionInfo}>
+                    <Text style={S.actionOptionTitle}>Reactivate Company</Text>
+                    <Text style={S.actionOptionDesc}>Restore access; users can log in again</Text>
+                  </View>
+                  {action === 'reactivate' && <Feather name="check" size={18} color="#6366F1" />}
                 </TouchableOpacity>
               )}
 
@@ -272,7 +310,7 @@ const ReviewModal: React.FC<{
             </TouchableOpacity>
             {tab === 'action' && action && (
               <TouchableOpacity
-                style={[S.submitBtn, action === 'approve' ? S.submitApprove : S.submitReject]}
+                style={[S.submitBtn, action === 'approve' || action === 'reactivate' ? S.submitApprove : S.submitReject]}
                 onPress={handleSubmit}
                 disabled={submitting}
               >
@@ -280,7 +318,13 @@ const ReviewModal: React.FC<{
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
                   <Text style={S.submitBtnText}>
-                    {action === 'approve' ? 'Approve' : 'Reject'}
+                    {action === 'approve'
+                      ? 'Approve'
+                      : action === 'reject'
+                        ? 'Reject'
+                        : action === 'deactivate'
+                          ? 'Deactivate'
+                          : 'Reactivate'}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -397,6 +441,24 @@ const CompanyManagementScreen: React.FC = () => {
     [dispatch, selectedCompany],
   );
 
+  const handleDeactivate = useCallback(async () => {
+    if (!selectedCompany) return;
+    await dispatch(
+      updateCompanyStatusLocal({ id: selectedCompany.id, status: 'inactive' }),
+    );
+    setModalVisible(false);
+    Alert.alert('Deactivated', `${selectedCompany.name} has been deactivated. Its users are now blocked.`);
+  }, [dispatch, selectedCompany]);
+
+  const handleReactivate = useCallback(async () => {
+    if (!selectedCompany) return;
+    await dispatch(
+      updateCompanyStatusLocal({ id: selectedCompany.id, status: 'active' }),
+    );
+    setModalVisible(false);
+    Alert.alert('Reactivated', `${selectedCompany.name} is active again.`);
+  }, [dispatch, selectedCompany]);
+
   const loadMore = useCallback(() => {
     if (status === 'loading') return;
     const currentPage = Math.ceil(companies.length / 20);
@@ -488,6 +550,8 @@ const CompanyManagementScreen: React.FC = () => {
         onClose={() => setModalVisible(false)}
         onApprove={handleApprove}
         onReject={handleReject}
+        onDeactivate={handleDeactivate}
+        onReactivate={handleReactivate}
       />
     </SafeAreaView>
   );
