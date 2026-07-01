@@ -3,7 +3,7 @@
 // Platform configuration and profile management
 // ═══════════════════════════════════════════════════════
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,13 +13,21 @@ import {
   Switch,
   Alert,
   StatusBar,
+  Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser, signOut } from '../../Auth/authSlice';
+import { authForgotPassword, authSignOut } from '../../../network/authNetwork';
 import { NOTIFICATION_ICON_NAME } from '../../../components/NotificationIcon';
+
+// Real destinations for the support links.
+const DOCS_URL = 'https://github.com/waleedhassan17/FinMatrix';
+const SUPPORT_EMAIL = 'waleedhassansfd@gmail.com';
+const NOTIF_PREFS_KEY = 'superadmin.notifPrefs';
 
 // ── Design tokens ─────────────────────────────────────
 const C = {
@@ -53,15 +61,16 @@ const SettingRow: React.FC<{
   onPress?: () => void;
   isLast?: boolean;
   danger?: boolean;
+  disabled?: boolean; // feature not available yet → greyed, non-tappable, "Soon" tag
 }> = ({
   icon, iconColor, label, value, toggle, toggleValue,
-  onToggle, onPress, isLast, danger,
+  onToggle, onPress, isLast, danger, disabled,
 }) => (
   <TouchableOpacity
-    style={[S.settingRow, !isLast && S.settingRowBorder]}
-    onPress={onPress}
-    activeOpacity={toggle ? 1 : 0.7}
-    disabled={toggle && !onPress}
+    style={[S.settingRow, !isLast && S.settingRowBorder, disabled && { opacity: 0.55 }]}
+    onPress={disabled ? undefined : onPress}
+    activeOpacity={toggle || disabled ? 1 : 0.7}
+    disabled={disabled || (toggle && !onToggle) || (!onPress && !toggle)}
   >
     <View style={[S.settingIconWrap, { backgroundColor: danger ? '#FEF2F2' : '#EEF2FF' }]}>
       <Feather name={icon as any} size={16} color={danger ? C.red : (iconColor ?? C.primary)} />
@@ -69,14 +78,16 @@ const SettingRow: React.FC<{
     <Text style={[S.settingLabel, danger && { color: C.red }]}>{label}</Text>
     <View style={S.settingRight}>
       {value ? <Text style={S.settingValue}>{value}</Text> : null}
-      {toggle ? (
+      {disabled ? (
+        <View style={S.soonTag}><Text style={S.soonTagText}>Soon</Text></View>
+      ) : toggle ? (
         <Switch
           value={toggleValue}
           onValueChange={onToggle}
           trackColor={{ false: '#E2E8F0', true: `${C.primary}80` }}
           thumbColor={toggleValue ? C.primary : '#94A3B8'}
         />
-      ) : !danger ? (
+      ) : onPress && !danger ? (
         <Feather name="chevron-right" size={16} color={C.text.muted} />
       ) : null}
     </View>
@@ -102,30 +113,64 @@ const AdminSettingsScreen: React.FC = () => {
 
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [pushAlerts, setPushAlerts] = useState(true);
-  const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [demoMode, setDemoMode] = useState(true);
+  const [sendingReset, setSendingReset] = useState(false);
+
+  // Notification preferences are a real (locally persisted) setting.
+  useEffect(() => {
+    AsyncStorage.getItem(NOTIF_PREFS_KEY).then(raw => {
+      if (!raw) return;
+      try {
+        const p = JSON.parse(raw);
+        if (typeof p.email === 'boolean') setEmailAlerts(p.email);
+        if (typeof p.push === 'boolean') setPushAlerts(p.push);
+      } catch { /* ignore */ }
+    });
+  }, []);
+
+  const persistPrefs = (email: boolean, push: boolean) => {
+    AsyncStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify({ email, push })).catch(() => {});
+  };
+  const onEmailAlerts = (v: boolean) => { setEmailAlerts(v); persistPrefs(v, pushAlerts); };
+  const onPushAlerts = (v: boolean) => { setPushAlerts(v); persistPrefs(emailAlerts, v); };
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => dispatch(signOut()) },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try { await authSignOut(); } catch { /* best effort */ }
+          dispatch(signOut());
+        },
+      },
     ]);
   };
 
-  const handleMaintenanceToggle = (val: boolean) => {
-    if (val) {
-      Alert.alert(
-        'Enable Maintenance Mode',
-        'This will show a maintenance message to all users. Continue?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Enable', onPress: () => setMaintenanceMode(true) },
-        ],
-      );
-    } else {
-      setMaintenanceMode(false);
-    }
+  // Real: sends a password-reset code to the super-admin's email.
+  const handleChangePassword = () => {
+    if (!user?.email) { Alert.alert('No email', 'No email on file for this account.'); return; }
+    Alert.alert('Change Password', `Send a password reset code to ${user.email}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Send',
+        onPress: async () => {
+          setSendingReset(true);
+          try {
+            await authForgotPassword({ forgotPasswordInfo: { email: user.email! } });
+            Alert.alert('Check your email', `A reset code has been sent to ${user.email}.`);
+          } catch (e: any) {
+            Alert.alert('Failed', e?.message ?? 'Could not send reset code.');
+          } finally {
+            setSendingReset(false);
+          }
+        },
+      },
+    ]);
   };
+
+  const openUrl = (url: string) =>
+    Linking.openURL(url).catch(() => Alert.alert('Unavailable', 'Could not open the link on this device.'));
 
   return (
     <SafeAreaView style={S.root} edges={['top']}>
@@ -161,9 +206,6 @@ const AdminSettingsScreen: React.FC = () => {
               <Text style={S.profileRoleText}>Super Admin</Text>
             </View>
           </View>
-          <TouchableOpacity style={S.profileEditBtn} activeOpacity={0.8}>
-            <Feather name="edit-2" size={15} color="rgba(255,255,255,0.85)" />
-          </TouchableOpacity>
         </LinearGradient>
 
         {/* Platform Status */}
@@ -172,53 +214,34 @@ const AdminSettingsScreen: React.FC = () => {
           <View style={S.statusDivider} />
           <InfoBadge label="Version" value="2.4.1" color={C.primary} />
           <View style={S.statusDivider} />
-          <InfoBadge label="Mode" value={demoMode ? 'Demo' : 'Live'} color={demoMode ? '#FF991F' : C.green} />
+          <InfoBadge label="Mode" value="Live" color={C.green} />
           <View style={S.statusDivider} />
           <InfoBadge label="Region" value="US-East" color={C.text.secondary} />
         </View>
 
         {/* Account */}
         <Section title="Account">
-          <SettingRow icon="user" label="Edit Profile" onPress={() => Alert.alert('Edit Profile', 'Profile editing coming soon.')} />
           <SettingRow icon="mail" label="Email Address" value={user?.email ?? ''} />
           <SettingRow icon="phone" label="Phone Number" value={user?.phoneNumber ?? '—'} />
-          <SettingRow icon="lock" label="Change Password" onPress={() => Alert.alert('Change Password', 'Password change coming soon.')} isLast />
-        </Section>
-
-        {/* Platform */}
-        <Section title="Platform">
           <SettingRow
-            icon="tool"
-            iconColor="#F59E0B"
-            label="Maintenance Mode"
-            toggle
-            toggleValue={maintenanceMode}
-            onToggle={handleMaintenanceToggle}
-          />
-          <SettingRow
-            icon="eye"
-            iconColor="#3B82F6"
-            label="Demo Mode"
-            toggle
-            toggleValue={demoMode}
-            onToggle={setDemoMode}
-          />
-          <SettingRow
-            icon="database"
-            iconColor="#10B981"
-            label="Database"
-            value="PostgreSQL"
-          />
-          <SettingRow
-            icon="server"
-            iconColor="#8B5CF6"
-            label="API Endpoint"
-            value="heroku"
+            icon="lock"
+            label="Change Password"
+            value={sendingReset ? 'Sending…' : undefined}
+            onPress={handleChangePassword}
             isLast
           />
         </Section>
 
-        {/* Notifications */}
+        {/* Platform (read-only status) */}
+        <Section title="Platform">
+          <SettingRow icon="database" iconColor="#10B981" label="Database" value="PostgreSQL" />
+          <SettingRow icon="server" iconColor="#8B5CF6" label="API Endpoint" value="Heroku" />
+          {/* No backend yet → clearly disabled rather than a fake toggle. */}
+          <SettingRow icon="tool" iconColor="#F59E0B" label="Maintenance Mode" disabled />
+          <SettingRow icon="key" iconColor="#F59E0B" label="API Keys" disabled isLast />
+        </Section>
+
+        {/* Notifications (locally persisted preferences) */}
         <Section title="Notifications">
           <SettingRow
             icon="mail"
@@ -226,7 +249,7 @@ const AdminSettingsScreen: React.FC = () => {
             label="Email Alerts"
             toggle
             toggleValue={emailAlerts}
-            onToggle={setEmailAlerts}
+            onToggle={onEmailAlerts}
           />
           <SettingRow
             icon={NOTIFICATION_ICON_NAME}
@@ -234,22 +257,21 @@ const AdminSettingsScreen: React.FC = () => {
             label="Push Notifications"
             toggle
             toggleValue={pushAlerts}
-            onToggle={setPushAlerts}
+            onToggle={onPushAlerts}
             isLast
           />
         </Section>
 
         {/* Security */}
         <Section title="Security">
-          <SettingRow icon="shield" iconColor={C.green} label="Two-Factor Auth" value="Enabled" />
-          <SettingRow icon="activity" iconColor={C.primary} label="Audit Log" onPress={() => Alert.alert('Audit Log', 'Audit log viewer coming soon.')} />
-          <SettingRow icon="key" iconColor="#F59E0B" label="API Keys" onPress={() => Alert.alert('API Keys', 'API key management coming soon.')} isLast />
+          <SettingRow icon="shield" iconColor={C.text.muted} label="Two-Factor Auth" disabled />
+          <SettingRow icon="activity" iconColor={C.primary} label="Audit Log" disabled isLast />
         </Section>
 
         {/* Support */}
         <Section title="Support">
-          <SettingRow icon="book-open" iconColor={C.primary} label="Documentation" onPress={() => Alert.alert('Docs', 'Opens documentation.')} />
-          <SettingRow icon="message-circle" iconColor={C.green} label="Contact Support" onPress={() => Alert.alert('Support', 'Opens support chat.')} />
+          <SettingRow icon="book-open" iconColor={C.primary} label="Documentation" onPress={() => openUrl(DOCS_URL)} />
+          <SettingRow icon="message-circle" iconColor={C.green} label="Contact Support" onPress={() => openUrl(`mailto:${SUPPORT_EMAIL}?subject=FinMatrix%20Support`)} />
           <SettingRow icon="info" iconColor={C.text.muted} label="About FinMatrix" value="v2.4.1" isLast />
         </Section>
 
@@ -268,8 +290,8 @@ const AdminSettingsScreen: React.FC = () => {
 
         {/* Footer */}
         <Text style={S.footer}>
-          FinMatrix Platform © 2024{'\n'}
-          All rights reserved. Demo account active.
+          FinMatrix Platform © {new Date().getFullYear()}{'\n'}
+          All rights reserved.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -356,6 +378,8 @@ const S = StyleSheet.create({
   settingLabel: { flex: 1, fontSize: 14, fontWeight: '500', color: C.text.primary },
   settingRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   settingValue: { fontSize: 12, color: C.text.secondary },
+  soonTag: { backgroundColor: '#EBECF0', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  soonTagText: { fontSize: 10, fontWeight: '700', color: C.text.muted, letterSpacing: 0.4 },
 
   footer: {
     textAlign: 'center', fontSize: 11, color: C.text.muted,

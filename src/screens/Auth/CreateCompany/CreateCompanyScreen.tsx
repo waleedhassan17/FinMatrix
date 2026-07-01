@@ -394,8 +394,15 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
     navigation,
   ]);
 
-  const stepCfg = STEP_HEADERS[currentStep - 1];
-  const progressWidth = currentStep === 1 ? '33%' : currentStep === 2 ? '66%' : '100%';
+  // Minimal single-step signup (QuickBooks-style): validate the company details
+  // and create immediately — no warehouse/agency step during onboarding (that
+  // feature lives under More → Agencies).
+  const handleSubmit = () => {
+    if (validateStep1()) handleCreate();
+  };
+
+  const stepCfg = STEP_HEADERS[0];
+  const progressWidth = '100%'; // single-step form (kept for shared render helpers)
 
   // ────────────────────────────────────────
   // Step Indicator (below header, inside card zone)
@@ -728,19 +735,6 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
         autoCapitalize="none"
         error={errors.email}
       />
-      <CustomInput
-        label="Website (optional)"
-        value={website}
-        onChangeText={setWebsite}
-        placeholder="https://www.company.com"
-        autoCapitalize="none"
-      />
-      <CustomInput
-        label="Tax ID / NTN (optional)"
-        value={taxId}
-        onChangeText={setTaxId}
-        placeholder="1234567-8"
-      />
     </View>
   );
 
@@ -1015,70 +1009,48 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
              ═══════════════════════════════ */}
           <View style={s.cardZone}>
             <View style={s.mainCard}>
-              {renderStepIndicator()}
-              {renderProgressTrack()}
+              {renderStep1()}
 
-              {currentStep === 1 && renderStep1()}
-              {currentStep === 2 && renderStep2()}
-              {currentStep === 3 && renderStep3()}
-
-              {/* Action buttons */}
+              {/* Action buttons \u2014 single-step create */}
               <View style={s.actionBar}>
                 <TouchableOpacity
                   style={s.actionSecondary}
                   onPress={handleBack}
                   activeOpacity={0.7}>
                   <Text style={s.actionSecondaryIcon}>{'\u2190'}</Text>
-                  <Text style={s.actionSecondaryLabel}>
-                    {currentStep === 1 ? 'Cancel' : 'Back'}
-                  </Text>
+                  <Text style={s.actionSecondaryLabel}>Cancel</Text>
                 </TouchableOpacity>
 
-                {currentStep < 3 ? (
-                  <TouchableOpacity
-                    style={s.actionPrimary}
-                    onPress={handleNext}
-                    activeOpacity={0.8}>
-                    <Text style={s.actionPrimaryLabel}>Continue</Text>
-                    <Ionicons
-                      name="arrow-forward"
-                      size={16}
-                      color={DS.white}
-                      style={{ marginLeft: 6 }}
-                    />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={[
-                      s.actionPrimary,
-                      s.actionCreate,
-                      isCreating && { opacity: 0.6 },
-                    ]}
-                    onPress={handleCreate}
-                    activeOpacity={0.8}
-                    disabled={isCreating}>
-                    {isCreating ? (
-                      <View style={s.actionPrimaryLoadingRow}>
-                        <ActivityIndicator
-                          size="small"
-                          color={DS.white}
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text style={s.actionPrimaryLabel}>Creating Company...</Text>
-                      </View>
-                    ) : (
-                      <>
-                        <Ionicons
-                          name="rocket-outline"
-                          size={16}
-                          color={DS.white}
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text style={s.actionPrimaryLabel}>Create Company</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={[
+                    s.actionPrimary,
+                    s.actionCreate,
+                    isCreating && { opacity: 0.6 },
+                  ]}
+                  onPress={handleSubmit}
+                  activeOpacity={0.8}
+                  disabled={isCreating}>
+                  {isCreating ? (
+                    <View style={s.actionPrimaryLoadingRow}>
+                      <ActivityIndicator
+                        size="small"
+                        color={DS.white}
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={s.actionPrimaryLabel}>Creating Company...</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="rocket-outline"
+                        size={16}
+                        color={DS.white}
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={s.actionPrimaryLabel}>Create Company</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
 
