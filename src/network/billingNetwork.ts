@@ -5,7 +5,13 @@
 // ═══════════════════════════════════════════════════════
 
 import { Platform } from 'react-native';
-import { api, API_BASE_URL, getAccessToken, extractErrorMessage } from './apiHelpers';
+import {
+  api,
+  API_BASE_URL,
+  getAccessToken,
+  getStoredCompanyId,
+  extractErrorMessage,
+} from './apiHelpers';
 
 // ─── Types ────────────────────────────────────────────
 export type PlanKey = 'free' | 'standard' | 'pro';
@@ -58,7 +64,6 @@ export interface BankDetails {
     accountTitle: string;
     bankName: string;
     iban: string;
-    accountNumber: string;
     instructions: string;
   };
 }
@@ -130,26 +135,49 @@ export const submitPaymentAPI = async (
   plan: PlanKey,
   image: { uri: string; mimeType?: string; fileName?: string },
 ): Promise<PaymentSubmissionView> => {
-  try {
-    const form = new FormData();
-    form.append('plan', plan);
-    const name =
-      image.fileName ?? `payment-${Date.now()}.${(image.mimeType ?? 'image/jpeg').split('/')[1] ?? 'jpg'}`;
-    form.append('screenshot', {
-      // React Native FormData file shape (mirrors the proven bill-photo upload)
-      uri: Platform.OS === 'android' ? image.uri : image.uri.replace('file://', ''),
-      name,
-      type: image.mimeType ?? 'image/jpeg',
-    } as any);
+  // Use fetch (not axios) so React Native sets the multipart boundary itself —
+  // setting Content-Type manually on axios can drop the boundary and the file
+  // never reaches the server. Auth/company headers are attached explicitly.
+  const token = await getAccessToken();
+  const companyId = await getStoredCompanyId();
+  const form = new FormData();
+  form.append('plan', plan);
+  const name =
+    image.fileName ?? `payment-${Date.now()}.${(image.mimeType ?? 'image/jpeg').split('/')[1] ?? 'jpg'}`;
+  form.append('screenshot', {
+    uri: Platform.OS === 'android' ? image.uri : image.uri.replace('file://', ''),
+    name,
+    type: image.mimeType ?? 'image/jpeg',
+  } as any);
 
-    const res = await api.post('/billing/submit', form, {
-      params: { plan }, // belt-and-braces: also send plan as a query fallback
-      headers: { 'Content-Type': 'multipart/form-data' },
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/billing/submit?plan=${plan}`, {
+      method: 'POST',
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+        ...(companyId ? { 'x-company-id': companyId } : {}),
+        // NOTE: deliberately NO Content-Type — RN adds `multipart/form-data;
+        // boundary=...` automatically for FormData bodies.
+      },
+      body: form as any,
     });
-    return unwrap(res);
   } catch (e) {
-    throw new Error(extractErrorMessage(e));
+    throw new Error('Network error — please check your connection and try again.');
   }
+
+  let json: any = null;
+  try {
+    json = await res.json();
+  } catch {
+    /* non-JSON */
+  }
+  if (!res.ok) {
+    const msg =
+      json?.error?.message ?? json?.message ?? `Submission failed (${res.status}).`;
+    throw new Error(typeof msg === 'string' ? msg : 'Submission failed.');
+  }
+  return json?.data ?? json;
 };
 
 // ─── Super-admin review ───────────────────────────────

@@ -185,7 +185,6 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
               <Row label="Account title" value={bank.accountTitle} onCopy={copy} />
               <Row label="Bank" value={bank.bankName} onCopy={copy} />
               <Row label="IBAN" value={bank.iban} onCopy={copy} />
-              <Row label="Account number" value={bank.accountNumber} onCopy={copy} />
             </>
           )}
           <View style={S.noteBox}>
@@ -215,9 +214,9 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
 
         <TouchableOpacity
-          style={[S.cta, (!image || submitting) && S.ctaDisabled]}
+          style={[S.cta, submitting && S.ctaDisabled]}
           onPress={handleSubmit}
-          disabled={!image || submitting}
+          disabled={submitting}
           activeOpacity={0.85}
         >
           {submitting ? (
