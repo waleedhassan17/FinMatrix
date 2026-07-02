@@ -184,7 +184,7 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
             <>
               <Row label="Account title" value={bank.accountTitle} onCopy={copy} />
               <Row label="Bank" value={bank.bankName} onCopy={copy} />
-              <Row label="IBAN" value={bank.iban} onCopy={copy} />
+              <Row label="Account number" value={bank.accountNumber} onCopy={copy} />
             </>
           )}
           <View style={S.noteBox}>

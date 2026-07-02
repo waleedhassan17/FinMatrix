@@ -63,7 +63,7 @@ export interface BankDetails {
   bankAccount: {
     accountTitle: string;
     bankName: string;
-    iban: string;
+    accountNumber: string;
     instructions: string;
   };
 }
