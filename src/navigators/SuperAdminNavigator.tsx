@@ -12,11 +12,13 @@ import SuperAdminDashboardScreen from '../screens/SuperAdmin/SuperAdminDashboard
 import CompanyManagementScreen from '../screens/SuperAdmin/CompanyManagement/CompanyManagementScreen';
 import RevenueAnalyticsScreen from '../screens/SuperAdmin/Analytics/RevenueAnalyticsScreen';
 import SubscriptionPlansScreen from '../screens/SuperAdmin/SubscriptionPlans/SubscriptionPlansScreen';
+import PaymentSubmissionsScreen from '../screens/SuperAdmin/PaymentSubmissions/PaymentSubmissionsScreen';
 import AdminSettingsScreen from '../screens/SuperAdmin/AdminSettings/AdminSettingsScreen';
 
 export type SuperAdminTabParamList = {
   Dashboard: undefined;
   Companies: { filter?: string; focusId?: string } | undefined;
+  Payments: undefined;
   Analytics: undefined;
   Plans: undefined;
   Settings: undefined;
@@ -28,6 +30,7 @@ const Tab = createBottomTabNavigator<SuperAdminTabParamList>();
 const TAB_CONFIG: Record<string, { icon: string; label: string }> = {
   Dashboard: { icon: 'grid', label: 'Dashboard' },
   Companies: { icon: 'briefcase', label: 'Companies' },
+  Payments: { icon: 'check-square', label: 'Payments' },
   Analytics: { icon: 'bar-chart-2', label: 'Analytics' },
   Plans: { icon: 'credit-card', label: 'Plans' },
   Settings: { icon: 'settings', label: 'Settings' },
@@ -68,6 +71,7 @@ const SuperAdminNavigator: React.FC = () => (
   >
     <Tab.Screen name="Dashboard" component={SuperAdminDashboardScreen} />
     <Tab.Screen name="Companies" component={CompanyManagementScreen} />
+    <Tab.Screen name="Payments" component={PaymentSubmissionsScreen} />
     <Tab.Screen name="Analytics" component={RevenueAnalyticsScreen} />
     <Tab.Screen name="Plans" component={SubscriptionPlansScreen} />
     <Tab.Screen name="Settings" component={AdminSettingsScreen} />

@@ -38,6 +38,8 @@ import CompanyProfileScreen from '../../screens/Settings/CompanyProfile/CompanyP
 import UserManagementScreen from '../../screens/Settings/UserManagement/UserManagementScreen';
 import CompanySwitcherScreen from '../../screens/Settings/CompanySwitcher/CompanySwitcherScreen';
 import GlobalSearchScreen from '../../screens/GlobalSearch/GlobalSearchScreen';
+import RenewSubscriptionScreen from '../../screens/Subscription/RenewSubscriptionScreen';
+import SubscriptionPayScreen from '../../screens/Subscription/SubscriptionPayScreen';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
@@ -78,6 +80,8 @@ export type MoreStackParamList = {
   UserManagement: undefined;
   CompanySwitcher: undefined;
   GlobalSearch: undefined;
+  RenewSubscription: { mode?: 'renew' | 'change' } | undefined;
+  SubscriptionPay: { plan: 'standard' | 'pro'; mode?: 'renew' | 'change' };
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -122,6 +126,8 @@ const MoreStack: React.FC = () => (
     <Stack.Screen name="UserManagement" component={UserManagementScreen} />
     <Stack.Screen name="CompanySwitcher" component={CompanySwitcherScreen} />
     <Stack.Screen name="GlobalSearch" component={GlobalSearchScreen} />
+    <Stack.Screen name="RenewSubscription" component={RenewSubscriptionScreen} />
+    <Stack.Screen name="SubscriptionPay" component={SubscriptionPayScreen} />
   </Stack.Navigator>
 );
 

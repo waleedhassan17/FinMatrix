@@ -767,6 +767,9 @@ export type RootStackParamList = {
   DeliveryTabs: undefined;
   SuperAdminTabs: undefined;
   SubscriptionSelect: { companyId?: string } | undefined;
+  RenewSubscription: { mode?: 'renew' | 'change' } | undefined;
+  SubscriptionPay: { plan: 'standard' | 'pro'; mode?: 'renew' | 'change' };
+  PaymentSubmissions: undefined;
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;
   DeliveryPersonnelDetail: { userId: string };

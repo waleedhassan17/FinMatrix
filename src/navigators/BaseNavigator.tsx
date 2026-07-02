@@ -17,6 +17,8 @@ import JoinCompanyScreen from '../screens/Auth/JoinCompany/JoinCompanyScreen';
 import SubscriptionSelectScreen from '../screens/Auth/SubscriptionSelect/SubscriptionSelectScreen';
 import PendingApprovalScreen from '../screens/Auth/PendingApproval/PendingApprovalScreen';
 import CompanyRejectedScreen from '../screens/Auth/CompanyRejected/CompanyRejectedScreen';
+import RenewSubscriptionScreen from '../screens/Subscription/RenewSubscriptionScreen';
+import SubscriptionPayScreen from '../screens/Subscription/SubscriptionPayScreen';
 
 // Splash Overlay
 import SplashOverlay from '../screens/Splash/SplashScreen';
@@ -134,14 +136,28 @@ const BaseNavigator: React.FC = () => {
               options={{ animation: 'none' }}
             />
           </>
-        ) : isRejected || isInactive ? (
-          // ── Admin: company rejected or deactivated ──
+        ) : isInactive ? (
+          // ── Admin: subscription expired / account deactivated → renew-only ──
+          // (phase2.md Flow 2) The ONLY reachable screens are the renew flow;
+          // every business screen stays blocked. Renewing restores the exact
+          // same data on approval.
+          <>
+            <Stack.Screen
+              name="RenewSubscription"
+              component={RenewSubscriptionScreen}
+              options={{ animation: 'none' }}
+              initialParams={{ mode: 'renew' }}
+            />
+            <Stack.Screen name="SubscriptionPay" component={SubscriptionPayScreen} />
+          </>
+        ) : isRejected ? (
+          // ── Admin: company registration rejected ──
           <>
             <Stack.Screen
               name="CompanyRejected"
               component={CompanyRejectedScreen}
               options={{ animation: 'none' }}
-              initialParams={{ mode: isInactive ? 'inactive' : 'rejected' }}
+              initialParams={{ mode: 'rejected' }}
             />
           </>
         ) : isApproved ? (

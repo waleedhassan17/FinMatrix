@@ -1,0 +1,211 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Billing / Subscription Network (phase2.md)
+// One reusable manual bank-transfer flow (bill → screenshot → admin approval)
+// across signup / renewal / upgrade, plus plan-limit + super-admin review APIs.
+// ═══════════════════════════════════════════════════════
+
+import { Platform } from 'react-native';
+import { api, API_BASE_URL, getAccessToken, extractErrorMessage } from './apiHelpers';
+
+// ─── Types ────────────────────────────────────────────
+export type PlanKey = 'free' | 'standard' | 'pro';
+export type SubmissionKind = 'NEW' | 'RENEWAL' | 'UPGRADE';
+export type SubmissionStatus = 'submitted' | 'approved' | 'rejected';
+
+export interface BillingStatus {
+  companyId: string;
+  companyName: string;
+  plan: PlanKey;
+  planLabel: string;
+  accountStatus: 'pending' | 'active' | 'inactive' | 'rejected';
+  subscriptionStatus: 'active' | 'expiring' | 'expired';
+  paymentStatus: 'none' | 'submitted' | 'paid' | 'rejected';
+  startDate: string | null;
+  expiryDate: string | null;
+  daysRemaining: number | null;
+  neverExpires: boolean;
+  priceMinorUnits: number;
+  priceLabel: string;
+  deliveryPersonnelLimit: number;
+  lastSubmission: {
+    id: string;
+    plan: PlanKey;
+    kind: SubmissionKind;
+    status: SubmissionStatus;
+    amountMinorUnits: number;
+    rejectionReason: string | null;
+    createdAt: string;
+  } | null;
+}
+
+export interface PlanLimits {
+  plan: PlanKey;
+  planLabel: string;
+  deliveryPersonnelLimit: number;
+  currentCount: number;
+  canAddMore: boolean;
+  upgradeLimit: number;
+}
+
+export interface BankDetails {
+  plan: PlanKey;
+  planLabel: string;
+  durationMonths: number | null;
+  amountDueMinorUnits: number;
+  amountDueLabel: string;
+  currency: string;
+  bankAccount: {
+    accountTitle: string;
+    bankName: string;
+    iban: string;
+    accountNumber: string;
+    instructions: string;
+  };
+}
+
+export interface PaymentSubmissionView {
+  id: string;
+  companyId: string;
+  companyName?: string;
+  companyEmail?: string;
+  plan: PlanKey;
+  planLabel: string;
+  kind: SubmissionKind;
+  status: SubmissionStatus;
+  amountMinorUnits: number;
+  amountLabel: string;
+  currency: string;
+  hasScreenshot: boolean;
+  rejectionReason: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+const unwrap = (res: any) => res?.data?.data ?? res?.data;
+
+// ─── Company-facing ───────────────────────────────────
+
+export const getBillingStatusAPI = async (): Promise<BillingStatus> => {
+  try {
+    const res = await api.get('/billing/status');
+    return unwrap(res);
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getPlanLimitsAPI = async (): Promise<PlanLimits> => {
+  try {
+    const res = await api.get('/billing/plan-limits');
+    return unwrap(res);
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getBankDetailsAPI = async (plan: PlanKey): Promise<BankDetails> => {
+  try {
+    const res = await api.get('/billing/bank-details', { params: { plan } });
+    return unwrap(res);
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getMySubmissionsAPI = async (): Promise<PaymentSubmissionView[]> => {
+  try {
+    const res = await api.get('/billing/submissions');
+    const data = unwrap(res);
+    return Array.isArray(data) ? data : data?.data ?? [];
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+/**
+ * Submit a manual payment: the plan (server sets the amount) + a screenshot of
+ * the bank-transfer receipt. `image` is an expo-image-picker asset.
+ */
+export const submitPaymentAPI = async (
+  plan: PlanKey,
+  image: { uri: string; mimeType?: string; fileName?: string },
+): Promise<PaymentSubmissionView> => {
+  try {
+    const form = new FormData();
+    form.append('plan', plan);
+    const name =
+      image.fileName ?? `payment-${Date.now()}.${(image.mimeType ?? 'image/jpeg').split('/')[1] ?? 'jpg'}`;
+    form.append('screenshot', {
+      // React Native FormData file shape (mirrors the proven bill-photo upload)
+      uri: Platform.OS === 'android' ? image.uri : image.uri.replace('file://', ''),
+      name,
+      type: image.mimeType ?? 'image/jpeg',
+    } as any);
+
+    const res = await api.post('/billing/submit', form, {
+      params: { plan }, // belt-and-braces: also send plan as a query fallback
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return unwrap(res);
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+// ─── Super-admin review ───────────────────────────────
+
+export const listPaymentSubmissionsAPI = async (
+  status?: SubmissionStatus,
+): Promise<PaymentSubmissionView[]> => {
+  try {
+    const res = await api.get('/admin/payment-submissions', {
+      params: status ? { status } : {},
+    });
+    const data = unwrap(res);
+    return Array.isArray(data) ? data : data?.data ?? [];
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const approvePaymentSubmissionAPI = async (
+  id: string,
+): Promise<PaymentSubmissionView> => {
+  try {
+    const res = await api.patch(`/admin/payment-submissions/${id}/approve`);
+    return unwrap(res);
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const rejectPaymentSubmissionAPI = async (
+  id: string,
+  reason: string,
+): Promise<PaymentSubmissionView> => {
+  try {
+    const res = await api.patch(`/admin/payment-submissions/${id}/reject`, { reason });
+    return unwrap(res);
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+/**
+ * A screenshot is auth-gated, so return the URL + an Authorization header for
+ * use as a React Native <Image source={{ uri, headers }} />.
+ */
+export const getSubmissionScreenshotSource = async (
+  id: string,
+  scope: 'admin' | 'company',
+): Promise<{ uri: string; headers: Record<string, string> }> => {
+  const token = await getAccessToken();
+  const path =
+    scope === 'admin'
+      ? `/admin/payment-submissions/${id}/screenshot`
+      : `/billing/submissions/${id}/screenshot`;
+  return {
+    uri: `${API_BASE_URL}${path}`,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  };
+};

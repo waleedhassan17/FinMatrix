@@ -1,7 +1,13 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, StatusBar,
+  ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import {
+  getBillingStatusAPI, getPlanLimitsAPI,
+  type BillingStatus, type PlanLimits,
+} from '../../../network/billingNetwork';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -96,6 +102,91 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
   <Text style={s.sectionHeader}>{title}</Text>
 );
 
+/* ─── Subscription section (phase2.md Flow 3) ─── */
+const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) => {
+  const [status, setStatus] = useState<BillingStatus | null>(null);
+  const [limits, setLimits] = useState<PlanLimits | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const [st, lim] = await Promise.all([
+        getBillingStatusAPI().catch((): BillingStatus | null => null),
+        getPlanLimitsAPI().catch((): PlanLimits | null => null),
+      ]);
+      setStatus(st);
+      setLimits(lim);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const subColor =
+    status?.subscriptionStatus === 'expired'
+      ? '#DE350B'
+      : status?.subscriptionStatus === 'expiring'
+        ? '#B54708'
+        : P.brand;
+
+  return (
+    <>
+      <SectionHeader title="SUBSCRIPTION" />
+      <View style={s.card}>
+        {loading ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <ActivityIndicator color={P.brand} />
+          </View>
+        ) : (
+          <>
+            <View style={s.row}>
+              <Feather name="award" size={18} color={P.brand} style={s.rowIcon} />
+              <Text style={[s.rowLabel, { flex: 1 }]}>Current Plan</Text>
+              <Text style={[s.rowValue, { color: P.text, fontWeight: '700' }]}>
+                {status?.planLabel ?? 'Free'}
+              </Text>
+            </View>
+            <View style={s.divider} />
+            <View style={s.row}>
+              <Feather name="activity" size={18} color={P.brand} style={s.rowIcon} />
+              <Text style={[s.rowLabel, { flex: 1 }]}>Status</Text>
+              <Text style={[s.rowValue, { color: subColor, fontWeight: '700', textTransform: 'capitalize' }]}>
+                {status?.subscriptionStatus ?? 'active'}
+              </Text>
+            </View>
+            {status?.expiryDate ? (
+              <>
+                <View style={s.divider} />
+                <View style={s.row}>
+                  <Feather name="calendar" size={18} color={P.brand} style={s.rowIcon} />
+                  <Text style={[s.rowLabel, { flex: 1 }]}>
+                    {status.subscriptionStatus === 'expired' ? 'Expired' : 'Renews / Expires'}
+                  </Text>
+                  <Text style={s.rowValue}>{new Date(status.expiryDate).toDateString()}</Text>
+                </View>
+              </>
+            ) : null}
+            <View style={s.divider} />
+            <View style={s.row}>
+              <Feather name="truck" size={18} color={P.brand} style={s.rowIcon} />
+              <Text style={[s.rowLabel, { flex: 1 }]}>Delivery Personnel</Text>
+              <Text style={s.rowValue}>
+                {limits ? `${limits.currentCount} of ${limits.deliveryPersonnelLimit} used` : '—'}
+              </Text>
+            </View>
+            <View style={s.divider} />
+            <TouchableOpacity style={s.manageBtn} activeOpacity={0.85} onPress={onManage}>
+              <Feather name="credit-card" size={16} color="#FFFFFF" />
+              <Text style={s.manageBtnText}>Subscribe / Change Plan</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </>
+  );
+};
+
 /* ─── main screen ─── */
 const SettingsScreen: React.FC = () => {
   const nav = useNavigation<Nav>();
@@ -140,6 +231,9 @@ const SettingsScreen: React.FC = () => {
       </LinearGradient>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        {/* Subscription (phase2.md Flow 3) */}
+        <SubscriptionSection onManage={() => nav.navigate('RenewSubscription', { mode: 'change' })} />
+
         {/* Company */}
         <SectionHeader title="COMPANY" />
         <View style={s.card}>
@@ -283,4 +377,13 @@ const s = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily,
   },
   divider: { height: 1, backgroundColor: P.divider, marginLeft: 50 },
+  manageBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: P.brand, marginHorizontal: spacing.md, marginVertical: 12,
+    paddingVertical: 12, borderRadius: borderRadius.md,
+  },
+  manageBtnText: {
+    fontSize: 15, fontWeight: '700', color: '#FFFFFF',
+    fontFamily: THEME.typography.fontFamily,
+  },
 });

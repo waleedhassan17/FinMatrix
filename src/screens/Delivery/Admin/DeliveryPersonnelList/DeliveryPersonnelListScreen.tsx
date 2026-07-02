@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,12 @@ import {
   StatusBar,
   TextInput,
   FlatList,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import { getPlanLimitsAPI, type PlanLimits } from '../../../../network/billingNetwork';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -53,9 +56,41 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
 
+  const [limits, setLimits] = useState<PlanLimits | null>(null);
+
   useEffect(() => {
     dispatch(fetchDeliveryPersonnel());
   }, [dispatch]);
+
+  // Plan-based limit (phase2.md): refresh whenever the screen refocuses so the
+  // "X of LIMIT used" count and the Add gate stay accurate after changes.
+  useFocusEffect(
+    useCallback(() => {
+      getPlanLimitsAPI().then(setLimits).catch(() => {});
+    }, []),
+  );
+
+  const atLimit = !!limits && !limits.canAddMore;
+
+  const guardedAdd = useCallback(() => {
+    if (atLimit && limits) {
+      Alert.alert(
+        'Personnel limit reached',
+        `Your ${limits.planLabel} plan allows ${limits.deliveryPersonnelLimit} delivery ` +
+          `${limits.deliveryPersonnelLimit === 1 ? 'person' : 'people'}. ` +
+          `Upgrade your plan to add more delivery personnel.`,
+        [
+          { text: 'Not now', style: 'cancel' },
+          {
+            text: 'Upgrade plan',
+            onPress: () => navigation.navigate('RenewSubscription' as any, { mode: 'change' }),
+          },
+        ],
+      );
+      return;
+    }
+    navigation.navigate(ROUTES.ADD_DELIVERY_PERSONNEL as any);
+  }, [atLimit, limits, navigation]);
 
   const getEffectiveStatus = (p: DummyDeliveryPerson): string => {
     if (p.status === 'on_leave' || p.status === 'inactive') return 'on_leave';
@@ -179,12 +214,31 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
           <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Delivery Team</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => navigation.navigate(ROUTES.ADD_DELIVERY_PERSONNEL as any)}>
+        <TouchableOpacity style={styles.addButton} onPress={guardedAdd}>
           <Text style={styles.addButtonText}>+ Add</Text>
         </TouchableOpacity>
       </LinearGradient>
+
+      {/* Plan usage (phase2.md) */}
+      {limits && (
+        <View style={[styles.usageBar, atLimit && styles.usageBarWarn]}>
+          <Feather
+            name={atLimit ? 'alert-triangle' : 'users'}
+            size={15}
+            color={atLimit ? '#B54708' : colors.primary}
+          />
+          <Text style={[styles.usageText, atLimit && { color: '#B54708' }]}>
+            {limits.currentCount} of {limits.deliveryPersonnelLimit} delivery personnel used
+            {atLimit ? ' — plan limit reached' : ''}
+          </Text>
+          {atLimit && (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('RenewSubscription' as any, { mode: 'change' })}>
+              <Text style={styles.usageUpgrade}>Upgrade</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Summary */}
       <View style={styles.summaryBar}>
@@ -263,7 +317,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
             title="No Personnel Found"
             message={searchQuery ? 'Try a different search term.' : 'Add your first delivery team member.'}
             actionLabel={searchQuery ? undefined : '+ Add Personnel'}
-            onAction={searchQuery ? undefined : () => navigation.navigate(ROUTES.ADD_DELIVERY_PERSONNEL as any)}
+            onAction={searchQuery ? undefined : guardedAdd}
           />
         }
       />
@@ -293,6 +347,13 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: colors.white, fontSize: THEME.typography.bodyMd.fontSize, fontWeight: '600', fontFamily: THEME.typography.fontFamily,
   },
+  usageBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#ECFDF5', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+  },
+  usageBarWarn: { backgroundColor: '#FFF7ED' },
+  usageText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  usageUpgrade: { fontSize: 13, fontWeight: '800', color: '#B54708', fontFamily: THEME.typography.fontFamily },
   summaryBar: {
     flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
     gap: spacing.sm, backgroundColor: colors.white,
