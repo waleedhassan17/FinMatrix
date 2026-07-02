@@ -75,18 +75,22 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const pickImage = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Permission needed', 'Allow photo access to attach your transfer screenshot.');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-    });
-    if (!res.canceled && res.assets?.[0]) {
-      const a = res.assets[0];
-      setImage({ uri: a.uri, mimeType: a.mimeType ?? 'image/jpeg', fileName: a.fileName ?? undefined });
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission needed', 'Allow photo access to attach your transfer screenshot.');
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'], // modern API (MediaTypeOptions is deprecated)
+        quality: 0.7,
+      });
+      if (!res.canceled && res.assets?.[0]) {
+        const a = res.assets[0];
+        setImage({ uri: a.uri, mimeType: a.mimeType ?? 'image/jpeg', fileName: a.fileName ?? undefined });
+      }
+    } catch (e: any) {
+      Alert.alert('Could not open gallery', e?.message ?? 'Please try again.');
     }
   };
 
