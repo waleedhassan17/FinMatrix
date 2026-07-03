@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  Platform,
   TextInput,
   StatusBar,
   RefreshControl,
@@ -29,7 +30,7 @@ import {
   listPaymentSubmissionsAPI,
   approvePaymentSubmissionAPI,
   rejectPaymentSubmissionAPI,
-  fetchSubmissionScreenshotDataUri,
+  downloadSubmissionScreenshot,
   type PaymentSubmissionView,
   type SubmissionStatus,
 } from '../../../network/billingNetwork';
@@ -38,6 +39,17 @@ const KIND_COLORS: Record<string, string> = {
   NEW: '#0052CC',
   RENEWAL: '#00875A',
   UPGRADE: '#6554C0',
+};
+
+// RN's Alert is a no-op on react-native-web — fall back to window.alert there
+// so errors are never silently swallowed. Confirmations use real <Modal>s.
+const notify = (title: string, message?: string) => {
+  if (Platform.OS === 'web') {
+    // eslint-disable-next-line no-alert
+    window.alert(message ? `${title}\n\n${message}` : title);
+  } else {
+    Alert.alert(title, message);
+  }
 };
 
 type FilterKey = SubmissionStatus | 'all';
@@ -60,13 +72,14 @@ const PaymentSubmissionsScreen: React.FC = () => {
   const [shotLoading, setShotLoading] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<PaymentSubmissionView | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [approveTarget, setApproveTarget] = useState<PaymentSubmissionView | null>(null);
 
   const load = useCallback(async () => {
     try {
       const data = await listPaymentSubmissionsAPI(filter === 'all' ? undefined : filter);
       setRows(data);
     } catch (e: any) {
-      Alert.alert('Could not load submissions', e?.message ?? 'Please try again.');
+      notify('Could not load submissions', e?.message ?? 'Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -85,10 +98,10 @@ const PaymentSubmissionsScreen: React.FC = () => {
     setShotUri(null);
     setShotLoading(true);
     try {
-      setShotUri(await fetchSubmissionScreenshotDataUri(id, 'admin'));
+      setShotUri(await downloadSubmissionScreenshot(id, 'admin'));
     } catch (e: any) {
       setShotOpen(false);
-      Alert.alert('Screenshot unavailable', e?.message ?? 'Please try again.');
+      notify('Screenshot unavailable', e?.message ?? 'Please try again.');
     } finally {
       setShotLoading(false);
     }
@@ -98,35 +111,25 @@ const PaymentSubmissionsScreen: React.FC = () => {
     setShotUri(null);
   };
 
-  const approve = (sub: PaymentSubmissionView) => {
-    Alert.alert(
-      'Approve payment',
-      `Activate the ${sub.planLabel} plan for ${sub.companyName ?? 'this company'}? ` +
-        `This restores full access and records ${sub.amountLabel} in platform revenue.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Approve',
-          onPress: async () => {
-            setBusyId(sub.id);
-            try {
-              await approvePaymentSubmissionAPI(sub.id);
-              await load();
-            } catch (e: any) {
-              Alert.alert('Approve failed', e?.message ?? 'Please try again.');
-            } finally {
-              setBusyId(null);
-            }
-          },
-        },
-      ],
-    );
+  const confirmApprove = async () => {
+    if (!approveTarget) return;
+    const sub = approveTarget;
+    setBusyId(sub.id);
+    try {
+      await approvePaymentSubmissionAPI(sub.id);
+      setApproveTarget(null);
+      await load();
+    } catch (e: any) {
+      notify('Approve failed', e?.message ?? 'Please try again.');
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const submitReject = async () => {
     if (!rejectTarget) return;
     if (!rejectReason.trim()) {
-      Alert.alert('Reason required', 'Please provide a reason for rejection.');
+      notify('Reason required', 'Please provide a reason for rejection.');
       return;
     }
     setBusyId(rejectTarget.id);
@@ -136,7 +139,7 @@ const PaymentSubmissionsScreen: React.FC = () => {
       setRejectReason('');
       await load();
     } catch (e: any) {
-      Alert.alert('Reject failed', e?.message ?? 'Please try again.');
+      notify('Reject failed', e?.message ?? 'Please try again.');
     } finally {
       setBusyId(null);
     }
@@ -241,7 +244,7 @@ const PaymentSubmissionsScreen: React.FC = () => {
                       <TouchableOpacity
                         style={[S.btn, S.approveBtn]}
                         disabled={busyId === sub.id}
-                        onPress={() => approve(sub)}
+                        onPress={() => setApproveTarget(sub)}
                       >
                         {busyId === sub.id ? (
                           <ActivityIndicator size="small" color="#FFF" />
@@ -270,6 +273,45 @@ const PaymentSubmissionsScreen: React.FC = () => {
           ) : shotUri ? (
             <Image source={{ uri: shotUri }} style={S.shotImage} resizeMode="contain" />
           ) : null}
+        </View>
+      </Modal>
+
+      {/* Approve confirmation — a real Modal, NOT Alert.alert (no-op on web) */}
+      <Modal
+        visible={!!approveTarget}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setApproveTarget(null)}
+      >
+        <View style={S.modalBackdrop}>
+          <View style={S.modalCard}>
+            <Text style={S.modalTitle}>Approve payment</Text>
+            <Text style={S.modalSub}>
+              Activate the {approveTarget?.planLabel} plan for{' '}
+              {approveTarget?.companyName ?? 'this company'}? This restores full access and
+              records {approveTarget?.amountLabel} in platform revenue.
+            </Text>
+            <View style={S.modalActions}>
+              <TouchableOpacity
+                style={[S.btn, S.rejectBtn]}
+                disabled={busyId === approveTarget?.id}
+                onPress={() => setApproveTarget(null)}
+              >
+                <Text style={S.rejectBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[S.btn, S.approveBtn]}
+                disabled={busyId === approveTarget?.id}
+                onPress={confirmApprove}
+              >
+                {busyId === approveTarget?.id ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={S.approveBtnText}>Approve</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
 

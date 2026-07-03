@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  Platform,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,6 +42,17 @@ const DS = {
   text: { h: '#172B4D', sub: '#5E6C84', muted: '#8993A4', inv: '#FFFFFF' },
 };
 
+// RN's Alert is a no-op on react-native-web — fall back to window.alert there
+// so validation/errors are never silently swallowed.
+const notify = (title: string, message?: string) => {
+  if (Platform.OS === 'web') {
+    // eslint-disable-next-line no-alert
+    window.alert(message ? `${title}\n\n${message}` : title);
+  } else {
+    Alert.alert(title, message);
+  }
+};
+
 type Props = NativeStackScreenProps<RootStackParamList, 'SubscriptionPay'>;
 
 const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -62,7 +74,7 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
       try {
         setDetails(await getBankDetailsAPI(plan));
       } catch (e: any) {
-        Alert.alert('Could not load bill', e?.message ?? 'Please try again.');
+        notify('Could not load bill', e?.message ?? 'Please try again.');
       } finally {
         setLoading(false);
       }
@@ -71,14 +83,14 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const copy = async (label: string, value: string) => {
     await Clipboard.setStringAsync(value);
-    Alert.alert('Copied', `${label} copied to clipboard.`);
+    notify('Copied', `${label} copied to clipboard.`);
   };
 
   const pickImage = async () => {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission needed', 'Allow photo access to attach your transfer screenshot.');
+        notify('Permission needed', 'Allow photo access to attach your transfer screenshot.');
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -90,13 +102,13 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
         setImage({ uri: a.uri, mimeType: a.mimeType ?? 'image/jpeg', fileName: a.fileName ?? undefined });
       }
     } catch (e: any) {
-      Alert.alert('Could not open gallery', e?.message ?? 'Please try again.');
+      notify('Could not open gallery', e?.message ?? 'Please try again.');
     }
   };
 
   const handleSubmit = async () => {
     if (!image) {
-      Alert.alert('Screenshot required', 'Please attach a screenshot of your bank transfer.');
+      notify('Screenshot required', 'Please attach a screenshot of your bank transfer.');
       return;
     }
     setSubmitting(true);
@@ -111,7 +123,7 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       setSubmitted(true);
     } catch (e: any) {
-      Alert.alert('Submission failed', e?.message ?? 'Please try again.');
+      notify('Submission failed', e?.message ?? 'Please try again.');
     } finally {
       setSubmitting(false);
     }
