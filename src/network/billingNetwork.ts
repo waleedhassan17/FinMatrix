@@ -33,6 +33,8 @@ export interface BillingStatus {
   neverExpires: boolean;
   priceMinorUnits: number;
   priceLabel: string;
+  monthlyMinorUnits: number;
+  monthlyLabel: string;
   deliveryPersonnelLimit: number;
   lastSubmission: {
     id: string;
@@ -58,6 +60,8 @@ export interface BankDetails {
   plan: PlanKey;
   planLabel: string;
   durationMonths: number | null;
+  monthlyMinorUnits: number;
+  monthlyLabel: string;
   amountDueMinorUnits: number;
   amountDueLabel: string;
   currency: string;
@@ -85,6 +89,36 @@ export interface PaymentSubmissionView {
   rejectionReason: string | null;
   reviewedAt: string | null;
   createdAt: string;
+}
+
+export interface RevenueSummary {
+  totalMinorUnits: number;
+  totalLabel: string;
+  thisMonthMinorUnits: number;
+  thisMonthLabel: string;
+  paymentsCount: number;
+  pendingSubmissions: number;
+  byPlan: { plan: PlanKey; planLabel: string; payments: number; totalMinorUnits: number }[];
+  byCompany: {
+    companyId: string;
+    companyName: string;
+    payments: number;
+    totalMinorUnits: number;
+    lastPlan: string;
+  }[];
+  monthly: { year: number; month: number; totalMinorUnits: number }[];
+  entries: {
+    id: string;
+    submissionId: string;
+    companyId: string;
+    companyName: string;
+    plan: PlanKey;
+    planLabel: string;
+    amountMinorUnits: number;
+    amountLabel: string;
+    currency: string;
+    recordedAt: string;
+  }[];
 }
 
 const unwrap = (res: any) => res?.data?.data ?? res?.data;
@@ -200,6 +234,16 @@ export const listPaymentSubmissionsAPI = async (
     });
     const data = unwrap(res);
     return Array.isArray(data) ? data : data?.data ?? [];
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+/** Platform revenue collected from approved submissions (super-admin). */
+export const getPlatformRevenueAPI = async (): Promise<RevenueSummary> => {
+  try {
+    const res = await api.get('/admin/payment-submissions/revenue/summary');
+    return unwrap(res);
   } catch (e) {
     throw new Error(extractErrorMessage(e));
   }

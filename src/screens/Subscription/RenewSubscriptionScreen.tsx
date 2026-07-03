@@ -40,6 +40,7 @@ interface PlanOption {
   name: string;
   price: string;
   duration: string;
+  total: string;
   perks: string[];
   accent: [string, string];
 }
@@ -50,6 +51,7 @@ const PAID_PLANS: PlanOption[] = [
     name: 'Standard',
     price: 'Rs 1,000',
     duration: '6 months',
+    total: 'Rs 6,000 total',
     perks: ['Up to 3 delivery personnel', 'Full accounting suite', 'Priority support'],
     accent: ['#00875A', '#006644'],
   },
@@ -57,7 +59,8 @@ const PAID_PLANS: PlanOption[] = [
     key: 'pro',
     name: 'Pro',
     price: 'Rs 2,000',
-    duration: '3 months',
+    duration: '2 months',
+    total: 'Rs 4,000 total',
     perks: ['Up to 3 delivery personnel', 'Full accounting suite', 'Advanced analytics'],
     accent: ['#6554C0', '#5243AA'],
   },
@@ -213,9 +216,14 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={{ flex: 1 }}>
               <View style={S.planHeaderRow}>
                 <Text style={S.planName}>{p.name}</Text>
-                <Text style={S.planPrice}>
-                  {p.price} <Text style={S.planDuration}>/ {p.duration}</Text>
-                </Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={S.planPrice}>
+                    {p.price} <Text style={S.planDuration}>/ month</Text>
+                  </Text>
+                  <Text style={S.planTotal}>
+                    {p.duration} · {p.total}
+                  </Text>
+                </View>
               </View>
               {p.perks.map((perk) => (
                 <View key={perk} style={S.perkRow}>
@@ -292,6 +300,7 @@ const S = StyleSheet.create({
   planName: { fontSize: 17, fontWeight: '800', color: DS.text.h },
   planPrice: { fontSize: 15, fontWeight: '800', color: DS.primary },
   planDuration: { fontSize: 12, fontWeight: '600', color: DS.text.muted },
+  planTotal: { fontSize: 11, fontWeight: '600', color: DS.text.sub, marginTop: 2 },
   perkRow: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 2 },
   perkText: { fontSize: 12, color: DS.text.sub },
 

@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Revenue Analytics Screen (Super Admin)
-// Real platform financials computed from live subscriptions,
-// plans, companies and platform stats. No mock data.
+// Driven by PLATFORM REVENUE: every approved manual bank-transfer payment
+// (phase2.md billing flow) is recorded once in platform_revenue on approval
+// and shows up here — totals, monthly trend, by-plan, by-company, recent.
 // ═══════════════════════════════════════════════════════
 
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
@@ -23,15 +24,13 @@ import { Feather } from '@expo/vector-icons';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   loadPlatformStats,
-  loadPlans,
-  loadSubscriptions,
   selectPlatformStats,
   selectStatsStatus,
-  selectPlans,
-  selectSubscriptions,
-  selectSubsStatus,
-  type CompanySubscription,
 } from '../superAdminSlice';
+import {
+  getPlatformRevenueAPI,
+  type RevenueSummary,
+} from '../../../network/billingNetwork';
 
 const { width: W } = Dimensions.get('window');
 
@@ -51,15 +50,8 @@ const C = {
 // Plan badge palette (cycled in order plans appear)
 const PLAN_COLORS = ['#0065FF', '#0052CC', '#6554C0', '#00875A', '#FF991F'];
 
-// ── Currency helpers (PKR) ────────────────────────────
-const isActiveSub = (s: CompanySubscription) =>
-  s.status === 'active' || s.status === 'approved';
-
-const planMonthly = (s: CompanySubscription): number => {
-  const raw = s.plan?.priceMonthly;
-  const n = raw != null ? parseFloat(String(raw)) : 0;
-  return Number.isFinite(n) ? n : 0;
-};
+// ── Currency helpers (PKR; API amounts are minor units = paisa) ──
+const toRs = (minorUnits: number): number => minorUnits / 100;
 
 // Full amount, e.g. "Rs 12,345"
 const fmtRs = (amount: number): string =>
@@ -156,11 +148,11 @@ const RevenueBarChart: React.FC<{
 const PlanRow: React.FC<{
   plan: string;
   label: string;
-  companies: number;
+  payments: number;
   revenue: number;
   total: number;
   color: string;
-}> = ({ plan, label, companies, revenue, total, color }) => {
+}> = ({ plan, label, payments, revenue, total, color }) => {
   const pct = total > 0 ? Math.round((revenue / total) * 100) : 0;
   const fillAnim = useRef(new Animated.Value(0)).current;
 
@@ -176,7 +168,7 @@ const PlanRow: React.FC<{
       <View style={S.planMeta}>
         <View style={S.planTopRow}>
           <Text style={S.planName}>{plan}</Text>
-          <Text style={S.planRevenue}>{fmtRs(revenue)}/mo</Text>
+          <Text style={S.planRevenue}>{fmtRs(revenue)}</Text>
         </View>
         <View style={S.planTrack}>
           <Animated.View
@@ -189,7 +181,7 @@ const PlanRow: React.FC<{
             ]}
           />
         </View>
-        <Text style={S.planSub}>{companies} {companies === 1 ? 'company' : 'companies'} · {pct}% of MRR</Text>
+        <Text style={S.planSub}>{payments} {payments === 1 ? 'payment' : 'payments'} · {pct}% of revenue</Text>
       </View>
     </View>
   );
@@ -201,8 +193,8 @@ const CompanyRow: React.FC<{
   name: string;
   revenue: number;
   plan: string;
-  status: string;
-}> = ({ rank, name, revenue, plan, status }) => (
+  payments: number;
+}> = ({ rank, name, revenue, plan, payments }) => (
   <View style={S.coRow}>
     <View style={S.coRank}>
       <Text style={S.coRankText}>{rank}</Text>
@@ -212,15 +204,31 @@ const CompanyRow: React.FC<{
     </View>
     <View style={S.coMeta}>
       <Text style={S.coName} numberOfLines={1}>{name}</Text>
-      <Text style={S.coPlan}>{plan}</Text>
+      <Text style={S.coPlan}>{plan} · {payments} {payments === 1 ? 'payment' : 'payments'}</Text>
     </View>
     <View style={S.coRight}>
-      <Text style={S.coRevenue}>{fmtRs(revenue)}/mo</Text>
-      {isActiveSub({ status } as CompanySubscription) ? null : (
-        <View style={S.coBadge}>
-          <Text style={S.coBadgeText}>{status}</Text>
-        </View>
-      )}
+      <Text style={S.coRevenue}>{fmtRs(revenue)}</Text>
+    </View>
+  </View>
+);
+
+// ── Recent Payment Row ─────────────────────────────────
+const PaymentRow: React.FC<{
+  company: string;
+  plan: string;
+  amount: string;
+  date: string;
+}> = ({ company, plan, amount, date }) => (
+  <View style={S.coRow}>
+    <View style={[S.coAvatar, { backgroundColor: '#DCFCE7' }]}>
+      <Feather name="check" size={16} color={C.green} />
+    </View>
+    <View style={S.coMeta}>
+      <Text style={S.coName} numberOfLines={1}>{company}</Text>
+      <Text style={S.coPlan}>{plan} · {new Date(date).toLocaleDateString()}</Text>
+    </View>
+    <View style={S.coRight}>
+      <Text style={[S.coRevenue, { color: C.green }]}>+{amount}</Text>
     </View>
   </View>
 );
@@ -243,15 +251,23 @@ const RevenueAnalyticsScreen: React.FC = () => {
 
   const stats = useAppSelector(selectPlatformStats);
   const statsStatus = useAppSelector(selectStatsStatus);
-  const plans = useAppSelector(selectPlans);
-  const subscriptions = useAppSelector(selectSubscriptions);
-  const subsStatus = useAppSelector(selectSubsStatus);
+  const [revenue, setRevenue] = useState<RevenueSummary | null>(null);
+  const [revLoading, setRevLoading] = useState(true);
+
+  const loadRevenue = useCallback(async () => {
+    try {
+      setRevenue(await getPlatformRevenueAPI());
+    } catch {
+      /* keep last */
+    } finally {
+      setRevLoading(false);
+    }
+  }, []);
 
   const loadAll = useCallback(() => {
     dispatch(loadPlatformStats());
-    dispatch(loadPlans());
-    dispatch(loadSubscriptions());
-  }, [dispatch]);
+    loadRevenue();
+  }, [dispatch, loadRevenue]);
 
   useEffect(() => {
     loadAll();
@@ -259,95 +275,66 @@ const RevenueAnalyticsScreen: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([
-      dispatch(loadPlatformStats()),
-      dispatch(loadPlans()),
-      dispatch(loadSubscriptions()),
-    ]);
+    await Promise.all([dispatch(loadPlatformStats()), loadRevenue()]);
     setRefreshing(false);
-  }, [dispatch]);
+  }, [dispatch, loadRevenue]);
 
-  // ── Derived (real) analytics ────────────────────────
+  // ── Derived analytics from collected platform revenue ──
   const analytics = useMemo(() => {
-    const activeSubs = subscriptions.filter(isActiveSub);
+    const total = toRs(revenue?.totalMinorUnits ?? 0);
+    const thisMonth = toRs(revenue?.thisMonthMinorUnits ?? 0);
+    const paymentsCount = revenue?.paymentsCount ?? 0;
+    const avgPayment = paymentsCount > 0 ? total / paymentsCount : 0;
 
-    const mrr = activeSubs.reduce((sum, s) => sum + planMonthly(s), 0);
-    const arr = mrr * 12;
-    const activeCount = activeSubs.length;
-    const avgPerAccount = activeCount > 0 ? mrr / activeCount : 0;
+    const byPlan = (revenue?.byPlan ?? []).map((p, i) => ({
+      plan: p.planLabel,
+      label: p.planLabel.slice(0, 3).toUpperCase(),
+      payments: p.payments,
+      revenue: toRs(p.totalMinorUnits),
+      color: PLAN_COLORS[i % PLAN_COLORS.length],
+    }));
 
-    // Revenue grouped by plan (by plan id, preserving plan sortOrder)
-    const byPlanMap = new Map<
-      string,
-      { plan: string; companies: number; revenue: number }
-    >();
-    activeSubs.forEach(s => {
-      const key = s.plan?.id ?? s.planId ?? 'unknown';
-      const name = s.plan?.name ?? 'Unassigned';
-      const cur = byPlanMap.get(key) ?? { plan: name, companies: 0, revenue: 0 };
-      cur.companies += 1;
-      cur.revenue += planMonthly(s);
-      byPlanMap.set(key, cur);
-    });
-    const byPlan = Array.from(byPlanMap.values())
-      .sort((a, b) => b.revenue - a.revenue)
-      .map((p, i) => ({
-        ...p,
-        label: p.plan.slice(0, 3).toUpperCase(),
-        color: PLAN_COLORS[i % PLAN_COLORS.length],
-      }));
-
-    // Top companies by monthly contribution (incl. non-active for visibility)
-    const topCompanies = [...subscriptions]
-      .map(s => ({
-        name: s.companyName || 'Unknown',
-        revenue: planMonthly(s),
-        plan: s.plan?.name ?? '—',
-        status: s.status,
+    const topCompanies = (revenue?.byCompany ?? [])
+      .map(c => ({
+        name: c.companyName || 'Unknown',
+        revenue: toRs(c.totalMinorUnits),
+        plan: c.lastPlan,
+        payments: c.payments,
       }))
-      .filter(c => c.revenue > 0)
-      .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 8);
 
-    // 6-month MRR trend from subscription start dates (cumulative active MRR)
-    const now = new Date();
-    const monthlyTrend: { month: string; revenue: number }[] = [];
-    for (let back = 5; back >= 0; back--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - back, 1);
-      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-      const revenue = activeSubs.reduce((sum, s) => {
-        const start = s.startDate ? new Date(s.startDate) : null;
-        if (start && start <= monthEnd) return sum + planMonthly(s);
-        return sum;
-      }, 0);
-      monthlyTrend.push({ month: MONTH_LABELS[d.getMonth()], revenue });
-    }
+    const monthlyTrend = (revenue?.monthly ?? []).map(m => ({
+      month: MONTH_LABELS[m.month],
+      revenue: toRs(m.totalMinorUnits),
+    }));
 
-    const prevMrr = monthlyTrend.length >= 2 ? monthlyTrend[monthlyTrend.length - 2].revenue : 0;
-    const growthMoM = prevMrr > 0 ? ((mrr - prevMrr) / prevMrr) * 100 : 0;
-    const firstMrr = monthlyTrend.find(m => m.revenue > 0)?.revenue ?? 0;
-    const trendPct = firstMrr > 0 ? Math.round(((mrr - firstMrr) / firstMrr) * 100) : 0;
+    const prevMonth =
+      monthlyTrend.length >= 2 ? monthlyTrend[monthlyTrend.length - 2].revenue : 0;
+    const growthMoM = prevMonth > 0 ? ((thisMonth - prevMonth) / prevMonth) * 100 : 0;
+    const firstMonth = monthlyTrend.find(m => m.revenue > 0)?.revenue ?? 0;
+    const trendPct =
+      firstMonth > 0 ? Math.round(((thisMonth - firstMonth) / firstMonth) * 100) : 0;
 
     return {
-      mrr,
-      arr,
-      activeCount,
-      avgPerAccount,
+      total,
+      thisMonth,
+      paymentsCount,
+      avgPayment,
       byPlan,
       topCompanies,
       monthlyTrend,
       growthMoM,
       trendPct,
+      recent: revenue?.entries ?? [],
+      pendingSubmissions: revenue?.pendingSubmissions ?? 0,
     };
-  }, [subscriptions]);
+  }, [revenue]);
 
   const totalPlanRevenue = analytics.byPlan.reduce((s, p) => s + p.revenue, 0);
-  const pendingCompanies = stats?.companies.pending ?? 0;
-  const suspendedCompanies = stats?.companies.suspended ?? 0;
   const totalCompanies = stats?.companies.total ?? 0;
 
   const loading =
-    (statsStatus === 'loading' || subsStatus === 'loading') && !refreshing && !stats;
+    (statsStatus === 'loading' || revLoading) && !refreshing && !revenue;
 
   return (
     <SafeAreaView style={S.root} edges={['top']}>
@@ -376,7 +363,7 @@ const RevenueAnalyticsScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />}
         >
-          {/* MRR Banner */}
+          {/* Total Revenue Banner */}
           <LinearGradient
             colors={[C.primary, C.primaryDark]}
             start={{ x: 0, y: 0 }}
@@ -386,24 +373,20 @@ const RevenueAnalyticsScreen: React.FC = () => {
             <View style={S.mrrDecor1} />
             <View style={S.mrrDecor2} />
             <View style={S.mrrLeft}>
-              <Text style={S.mrrLabel}>Monthly Recurring Revenue</Text>
-              <Text style={S.mrrValue}>{fmtRs(analytics.mrr)}</Text>
+              <Text style={S.mrrLabel}>Total Platform Revenue</Text>
+              <Text style={S.mrrValue}>{fmtRs(analytics.total)}</Text>
               <View style={S.mrrGrowthRow}>
-                <Feather
-                  name={analytics.growthMoM >= 0 ? 'trending-up' : 'trending-down'}
-                  size={14}
-                  color="rgba(255,255,255,0.9)"
-                />
+                <Feather name="check-circle" size={14} color="rgba(255,255,255,0.9)" />
                 <Text style={S.mrrGrowthText}>
-                  {analytics.growthMoM >= 0 ? '+' : ''}
-                  {analytics.growthMoM.toFixed(1)}% from last month
+                  {analytics.paymentsCount} approved{' '}
+                  {analytics.paymentsCount === 1 ? 'payment' : 'payments'}
                 </Text>
               </View>
             </View>
             <View style={S.mrrRight}>
               <View style={S.mrrArrBox}>
-                <Text style={S.mrrArrLabel}>ARR</Text>
-                <Text style={S.mrrArrValue}>{fmtRsCompact(analytics.arr)}</Text>
+                <Text style={S.mrrArrLabel}>THIS MONTH</Text>
+                <Text style={S.mrrArrValue}>{fmtRsCompact(analytics.thisMonth)}</Text>
               </View>
             </View>
           </LinearGradient>
@@ -411,9 +394,9 @@ const RevenueAnalyticsScreen: React.FC = () => {
           {/* Key Metrics Grid */}
           <View style={S.metricsGrid}>
             <MetricCard
-              label="Active Subscribers"
-              value={String(analytics.activeCount)}
-              icon="users"
+              label="Approved Payments"
+              value={String(analytics.paymentsCount)}
+              icon="check-circle"
               color={C.primary}
               delay={0}
             />
@@ -425,17 +408,15 @@ const RevenueAnalyticsScreen: React.FC = () => {
               delay={80}
             />
             <MetricCard
-              label="Avg. Revenue/Co."
-              value={fmtRs(analytics.avgPerAccount)}
+              label="Avg. Payment"
+              value={fmtRs(analytics.avgPayment)}
               icon="dollar-sign"
               color={C.amber}
               delay={160}
             />
             <MetricCard
-              label="Pending Approvals"
-              value={String(pendingCompanies)}
-              change={suspendedCompanies > 0 ? `${suspendedCompanies} suspended` : undefined}
-              positive={false}
+              label="Pending Payments"
+              value={String(analytics.pendingSubmissions)}
               icon="clock"
               color={C.red}
               delay={240}
@@ -447,9 +428,9 @@ const RevenueAnalyticsScreen: React.FC = () => {
             <View style={S.cardHeader}>
               <View>
                 <Text style={S.cardTitle}>Revenue Trend</Text>
-                <Text style={S.cardSub}>Last 6 months · MRR</Text>
+                <Text style={S.cardSub}>Last 6 months · collected</Text>
               </View>
-              {analytics.mrr > 0 && (
+              {analytics.total > 0 && (
                 <View style={S.trendBadge}>
                   <Feather
                     name={analytics.trendPct >= 0 ? 'trending-up' : 'trending-down'}
@@ -462,10 +443,10 @@ const RevenueAnalyticsScreen: React.FC = () => {
                 </View>
               )}
             </View>
-            {analytics.mrr > 0 ? (
+            {analytics.total > 0 ? (
               <RevenueBarChart data={analytics.monthlyTrend} />
             ) : (
-              <EmptyHint icon="bar-chart-2" text="No recurring revenue yet" />
+              <EmptyHint icon="bar-chart-2" text="No revenue collected yet" />
             )}
           </View>
 
@@ -474,7 +455,7 @@ const RevenueAnalyticsScreen: React.FC = () => {
             <View style={S.cardHeader}>
               <View>
                 <Text style={S.cardTitle}>Revenue by Plan</Text>
-                <Text style={S.cardSub}>Breakdown of {fmtRs(totalPlanRevenue)} MRR</Text>
+                <Text style={S.cardSub}>Breakdown of {fmtRs(totalPlanRevenue)} collected</Text>
               </View>
             </View>
             {analytics.byPlan.length > 0 ? (
@@ -484,7 +465,7 @@ const RevenueAnalyticsScreen: React.FC = () => {
                     key={p.plan}
                     plan={p.plan}
                     label={p.label}
-                    companies={p.companies}
+                    payments={p.payments}
                     revenue={p.revenue}
                     total={totalPlanRevenue}
                     color={p.color}
@@ -492,7 +473,7 @@ const RevenueAnalyticsScreen: React.FC = () => {
                 ))}
               </View>
             ) : (
-              <EmptyHint icon="layers" text="No active subscriptions yet" />
+              <EmptyHint icon="layers" text="No approved payments yet" />
             )}
           </View>
 
@@ -501,7 +482,7 @@ const RevenueAnalyticsScreen: React.FC = () => {
             <View style={S.cardHeader}>
               <View>
                 <Text style={S.cardTitle}>Top Companies by Revenue</Text>
-                <Text style={S.cardSub}>Sorted by monthly contribution</Text>
+                <Text style={S.cardSub}>Total collected per company</Text>
               </View>
             </View>
             {analytics.topCompanies.length > 0 ? (
@@ -512,7 +493,7 @@ const RevenueAnalyticsScreen: React.FC = () => {
                   name={co.name}
                   revenue={co.revenue}
                   plan={co.plan}
-                  status={co.status}
+                  payments={co.payments}
                 />
               ))
             ) : (
@@ -520,23 +501,28 @@ const RevenueAnalyticsScreen: React.FC = () => {
             )}
           </View>
 
-          {/* Forecast Card */}
-          {analytics.mrr > 0 && (
-            <LinearGradient colors={['#EEF2FF', '#E0E7FF']} style={S.forecastCard}>
-              <View style={S.forecastIcon}>
-                <Feather name="zap" size={20} color={C.primary} />
+          {/* Recent Payments */}
+          <View style={S.card}>
+            <View style={S.cardHeader}>
+              <View>
+                <Text style={S.cardTitle}>Recent Payments</Text>
+                <Text style={S.cardSub}>Approved bank-transfer submissions</Text>
               </View>
-              <View style={S.forecastContent}>
-                <Text style={S.forecastTitle}>Revenue Forecast</Text>
-                <Text style={S.forecastSub}>
-                  At the current growth rate, projected MRR next month is{' '}
-                  <Text style={{ fontWeight: '800', color: C.primary }}>
-                    {fmtRs(Math.round(analytics.mrr * (1 + analytics.growthMoM / 100)))}
-                  </Text>
-                </Text>
-              </View>
-            </LinearGradient>
-          )}
+            </View>
+            {analytics.recent.length > 0 ? (
+              analytics.recent.slice(0, 10).map(e => (
+                <PaymentRow
+                  key={e.id}
+                  company={e.companyName}
+                  plan={e.planLabel}
+                  amount={e.amountLabel}
+                  date={e.recordedAt}
+                />
+              ))
+            ) : (
+              <EmptyHint icon="inbox" text="Approved payments will appear here" />
+            )}
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>

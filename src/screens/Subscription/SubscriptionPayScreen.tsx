@@ -190,7 +190,11 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={S.amount}>{details?.amountDueLabel}</Text>
           <Text style={S.billMeta}>
             {details?.planLabel} plan
-            {details?.durationMonths ? ` · ${details.durationMonths} months` : ''}
+            {details?.durationMonths && details?.monthlyLabel
+              ? ` · ${details.monthlyLabel}/month × ${details.durationMonths} months`
+              : details?.durationMonths
+                ? ` · ${details.durationMonths} months`
+                : ''}
           </Text>
         </View>
 
