@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
 import {
   api,
   API_BASE_URL,
@@ -142,13 +143,21 @@ export const submitPaymentAPI = async (
   const companyId = await getStoredCompanyId();
   const form = new FormData();
   form.append('plan', plan);
-  const name =
-    image.fileName ?? `payment-${Date.now()}.${(image.mimeType ?? 'image/jpeg').split('/')[1] ?? 'jpg'}`;
-  form.append('screenshot', {
-    uri: Platform.OS === 'android' ? image.uri : image.uri.replace('file://', ''),
-    name,
-    type: image.mimeType ?? 'image/jpeg',
-  } as any);
+  const mime = image.mimeType ?? 'image/jpeg';
+  const name = image.fileName ?? `payment-${Date.now()}.${mime.split('/')[1] ?? 'jpg'}`;
+  if (Platform.OS === 'web') {
+    // Browsers serialize the RN {uri,name,type} object to "[object Object]" —
+    // no file reaches the server. Resolve the picker's blob:/data: URI to a
+    // real Blob and append that instead.
+    const blob = await (await fetch(image.uri)).blob();
+    form.append('screenshot', blob, name);
+  } else {
+    form.append('screenshot', {
+      uri: Platform.OS === 'android' ? image.uri : image.uri.replace('file://', ''),
+      name,
+      type: mime,
+    } as any);
+  }
 
   let res: Response;
   try {
@@ -221,11 +230,13 @@ export const rejectPaymentSubmissionAPI = async (
 
 /**
  * The screenshot endpoint is auth-gated. React Native's <Image source={{ uri,
- * headers }} /> does NOT reliably attach auth headers (esp. across Android/iOS),
- * so instead we fetch the bytes with the bearer token and return a base64 data
- * URI that <Image source={{ uri }} /> can always render offline.
+ * headers }} /> does NOT reliably attach auth headers, and fetch→blob→FileReader
+ * base64 is unreliable for binary in RN. The robust path is a NATIVE download
+ * (expo-file-system) that sends the bearer token and writes the real bytes to
+ * disk; <Image source={{ uri: file://… }} /> then always renders it.
+ * Returns a local file:// URI.
  */
-export const fetchSubmissionScreenshotDataUri = async (
+export const downloadSubmissionScreenshot = async (
   id: string,
   scope: 'admin' | 'company',
 ): Promise<string> => {
@@ -236,24 +247,38 @@ export const fetchSubmissionScreenshotDataUri = async (
       ? `/admin/payment-submissions/${id}/screenshot`
       : `/billing/submissions/${id}/screenshot`;
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  if (Platform.OS === 'web') {
+    // expo-file-system has no web implementation — fetch with auth headers
+    // and hand <Image> an object URL instead.
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+        ...(scope === 'company' && companyId ? { 'x-company-id': companyId } : {}),
+      },
+    });
+    if (!res.ok) {
+      throw new Error(
+        res.status === 404
+          ? 'Screenshot is no longer available.'
+          : `Could not load screenshot (${res.status}).`,
+      );
+    }
+    return URL.createObjectURL(await res.blob());
+  }
+
+  const dest = `${FileSystem.cacheDirectory}pay-screenshot-${id}-${Date.now()}.img`;
+  const result = await FileSystem.downloadAsync(`${API_BASE_URL}${path}`, dest, {
     headers: {
       Authorization: token ? `Bearer ${token}` : '',
       ...(scope === 'company' && companyId ? { 'x-company-id': companyId } : {}),
     },
   });
-  if (!res.ok) {
+  if (result.status >= 400) {
     throw new Error(
-      res.status === 404
+      result.status === 404
         ? 'Screenshot is no longer available.'
-        : `Could not load screenshot (${res.status}).`,
+        : `Could not load screenshot (${result.status}).`,
     );
   }
-  const blob = await res.blob();
-  return await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Could not read the screenshot.'));
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.readAsDataURL(blob);
-  });
+  return result.uri;
 };
