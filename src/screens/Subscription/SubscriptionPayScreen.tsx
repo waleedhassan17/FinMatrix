@@ -134,11 +134,11 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={S.successIcon}>
             <Feather name="clock" size={40} color={DS.primary} />
           </View>
-          <Text style={S.successTitle}>Awaiting admin verification</Text>
+          <Text style={S.successTitle}>Bill submitted successfully</Text>
           <Text style={S.successSub}>
-            Your payment for the {details?.planLabel} plan was submitted. An administrator will
-            verify it shortly. Your plan activates automatically once approved
-            {mode === 'renew' ? ' — then sign in again to restore full access.' : '.'}
+            Your payment for the {details?.planLabel} plan was submitted. Please wait for admin
+            approval — your plan activates automatically once the payment is verified
+            {mode === 'renew' ? ', then sign in again to restore full access.' : '.'}
           </Text>
           <TouchableOpacity
             style={S.cta}

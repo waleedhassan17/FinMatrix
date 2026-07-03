@@ -92,8 +92,10 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
   const awaiting = status?.lastSubmission?.status === 'submitted';
   const rejected = status?.lastSubmission?.status === 'rejected';
 
-  const choose = (plan: 'standard' | 'pro') =>
+  const choose = (plan: 'standard' | 'pro') => {
+    if (awaiting) return; // a submission is already with the admin — no double-pay
     navigation.navigate('SubscriptionPay', { plan, mode: mode === 'renew' ? 'renew' : 'change' });
+  };
 
   const doSignOut = async () => {
     await authSignOut();
@@ -180,7 +182,8 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={[S.banner, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
             <Feather name="clock" size={16} color={DS.amber} />
             <Text style={[S.bannerText, { color: DS.amber }]}>
-              A payment is awaiting admin verification. You'll get access once it's approved.
+              Bill submitted successfully — waiting for admin approval. Your plan activates
+              automatically once the payment is verified.
             </Text>
           </View>
         )}
@@ -199,7 +202,13 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
 
         <Text style={S.pickHeading}>{mode === 'renew' ? 'Select a plan to renew' : 'Available plans'}</Text>
         {PAID_PLANS.map((p) => (
-          <TouchableOpacity key={p.key} style={S.planCard} activeOpacity={0.85} onPress={() => choose(p.key)}>
+          <TouchableOpacity
+            key={p.key}
+            style={[S.planCard, awaiting && S.planCardDisabled]}
+            activeOpacity={0.85}
+            disabled={awaiting}
+            onPress={() => choose(p.key)}
+          >
             <View style={[S.planStripe, { backgroundColor: p.accent[0] }]} />
             <View style={{ flex: 1 }}>
               <View style={S.planHeaderRow}>
@@ -277,6 +286,7 @@ const S = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: DS.surface,
     borderRadius: 14, padding: 16, borderWidth: 1, borderColor: DS.border,
   },
+  planCardDisabled: { opacity: 0.45 },
   planStripe: { width: 4, alignSelf: 'stretch', borderRadius: 3 },
   planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   planName: { fontSize: 17, fontWeight: '800', color: DS.text.h },

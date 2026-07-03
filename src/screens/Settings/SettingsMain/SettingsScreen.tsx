@@ -130,6 +130,12 @@ const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) =
         ? '#B54708'
         : P.brand;
 
+  // A payment is sitting with the super-admin — block re-submission until it
+  // is approved (→ paid) or rejected (→ user may submit again).
+  const awaitingApproval =
+    status?.paymentStatus === 'submitted' ||
+    status?.lastSubmission?.status === 'submitted';
+
   return (
     <>
       <SectionHeader title="SUBSCRIPTION" />
@@ -176,9 +182,28 @@ const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) =
               </Text>
             </View>
             <View style={s.divider} />
-            <TouchableOpacity style={s.manageBtn} activeOpacity={0.85} onPress={onManage}>
-              <Feather name="credit-card" size={16} color="#FFFFFF" />
-              <Text style={s.manageBtnText}>Subscribe / Change Plan</Text>
+            {awaitingApproval && (
+              <View style={s.awaitCard}>
+                <Feather name="clock" size={18} color="#B54708" />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.awaitTitle}>Bill submitted successfully</Text>
+                  <Text style={s.awaitText}>
+                    Waiting for admin approval — your plan will activate automatically
+                    once the payment is verified.
+                  </Text>
+                </View>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[s.manageBtn, awaitingApproval && s.manageBtnDisabled]}
+              activeOpacity={0.85}
+              onPress={onManage}
+              disabled={awaitingApproval}
+            >
+              <Feather name={awaitingApproval ? 'clock' : 'credit-card'} size={16} color="#FFFFFF" />
+              <Text style={s.manageBtnText}>
+                {awaitingApproval ? 'Awaiting Admin Approval' : 'Subscribe / Change Plan'}
+              </Text>
             </TouchableOpacity>
           </>
         )}
@@ -381,6 +406,21 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: P.brand, marginHorizontal: spacing.md, marginVertical: 12,
     paddingVertical: 12, borderRadius: borderRadius.md,
+  },
+  manageBtnDisabled: { backgroundColor: '#94A3B8' },
+  awaitCard: {
+    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
+    backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA',
+    borderRadius: borderRadius.md, marginHorizontal: spacing.md, marginTop: 12,
+    padding: 12,
+  },
+  awaitTitle: {
+    fontSize: 14, fontWeight: '700', color: '#B54708',
+    fontFamily: THEME.typography.fontFamily,
+  },
+  awaitText: {
+    fontSize: 12, color: '#92400E', lineHeight: 17, marginTop: 3,
+    fontFamily: THEME.typography.fontFamily,
   },
   manageBtnText: {
     fontSize: 15, fontWeight: '700', color: '#FFFFFF',
