@@ -141,13 +141,14 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
             {mode === 'renew' ? ', then sign in again to restore full access.' : '.'}
           </Text>
           <TouchableOpacity
-            style={S.cta}
+            style={S.doneBtn}
             onPress={() => {
               if (mode === 'change') navigation.goBack();
               else navigation.navigate('RenewSubscription' as never);
             }}
             activeOpacity={0.85}
           >
+            <Feather name="check" size={18} color="#FFF" />
             <Text style={S.ctaLabel}>Done</Text>
           </TouchableOpacity>
         </SafeAreaView>
@@ -309,6 +310,12 @@ const S = StyleSheet.create({
   ctaLabel: { fontSize: 16, fontWeight: '700', color: '#FFF' },
   legal: { fontSize: 11, color: DS.text.muted, textAlign: 'center', lineHeight: 16, marginTop: 4 },
 
+  doneBtn: {
+    flexDirection: 'row', gap: 8, alignSelf: 'stretch', height: 54, borderRadius: 14,
+    backgroundColor: DS.primary, alignItems: 'center', justifyContent: 'center',
+    shadowColor: DS.primaryDark, shadowOpacity: 0.25, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 }, elevation: 4,
+  },
   successIcon: {
     width: 84, height: 84, borderRadius: 42, backgroundColor: '#ECFDF5',
     alignItems: 'center', justifyContent: 'center', marginBottom: 20,
