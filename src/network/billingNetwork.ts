@@ -220,20 +220,40 @@ export const rejectPaymentSubmissionAPI = async (
 };
 
 /**
- * A screenshot is auth-gated, so return the URL + an Authorization header for
- * use as a React Native <Image source={{ uri, headers }} />.
+ * The screenshot endpoint is auth-gated. React Native's <Image source={{ uri,
+ * headers }} /> does NOT reliably attach auth headers (esp. across Android/iOS),
+ * so instead we fetch the bytes with the bearer token and return a base64 data
+ * URI that <Image source={{ uri }} /> can always render offline.
  */
-export const getSubmissionScreenshotSource = async (
+export const fetchSubmissionScreenshotDataUri = async (
   id: string,
   scope: 'admin' | 'company',
-): Promise<{ uri: string; headers: Record<string, string> }> => {
+): Promise<string> => {
   const token = await getAccessToken();
+  const companyId = await getStoredCompanyId();
   const path =
     scope === 'admin'
       ? `/admin/payment-submissions/${id}/screenshot`
       : `/billing/submissions/${id}/screenshot`;
-  return {
-    uri: `${API_BASE_URL}${path}`,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  };
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      Authorization: token ? `Bearer ${token}` : '',
+      ...(scope === 'company' && companyId ? { 'x-company-id': companyId } : {}),
+    },
+  });
+  if (!res.ok) {
+    throw new Error(
+      res.status === 404
+        ? 'Screenshot is no longer available.'
+        : `Could not load screenshot (${res.status}).`,
+    );
+  }
+  const blob = await res.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the screenshot.'));
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
 };

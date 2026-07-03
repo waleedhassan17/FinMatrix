@@ -29,7 +29,7 @@ import {
   listPaymentSubmissionsAPI,
   approvePaymentSubmissionAPI,
   rejectPaymentSubmissionAPI,
-  getSubmissionScreenshotSource,
+  fetchSubmissionScreenshotDataUri,
   type PaymentSubmissionView,
   type SubmissionStatus,
 } from '../../../network/billingNetwork';
@@ -55,7 +55,9 @@ const PaymentSubmissionsScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const [viewShot, setViewShot] = useState<{ uri: string; headers: Record<string, string> } | null>(null);
+  const [shotOpen, setShotOpen] = useState(false);
+  const [shotUri, setShotUri] = useState<string | null>(null);
+  const [shotLoading, setShotLoading] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<PaymentSubmissionView | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
@@ -79,11 +81,21 @@ const PaymentSubmissionsScreen: React.FC = () => {
   );
 
   const openScreenshot = async (id: string) => {
+    setShotOpen(true);
+    setShotUri(null);
+    setShotLoading(true);
     try {
-      setViewShot(await getSubmissionScreenshotSource(id, 'admin'));
-    } catch {
-      Alert.alert('Screenshot unavailable');
+      setShotUri(await fetchSubmissionScreenshotDataUri(id, 'admin'));
+    } catch (e: any) {
+      setShotOpen(false);
+      Alert.alert('Screenshot unavailable', e?.message ?? 'Please try again.');
+    } finally {
+      setShotLoading(false);
     }
+  };
+  const closeShot = () => {
+    setShotOpen(false);
+    setShotUri(null);
   };
 
   const approve = (sub: PaymentSubmissionView) => {
@@ -248,14 +260,16 @@ const PaymentSubmissionsScreen: React.FC = () => {
       </View>
 
       {/* Screenshot viewer */}
-      <Modal visible={!!viewShot} transparent animationType="fade" onRequestClose={() => setViewShot(null)}>
+      <Modal visible={shotOpen} transparent animationType="fade" onRequestClose={closeShot}>
         <View style={S.shotBackdrop}>
-          <TouchableOpacity style={S.shotClose} onPress={() => setViewShot(null)}>
+          <TouchableOpacity style={S.shotClose} onPress={closeShot}>
             <Feather name="x" size={26} color="#FFF" />
           </TouchableOpacity>
-          {viewShot && (
-            <Image source={{ uri: viewShot.uri, headers: viewShot.headers }} style={S.shotImage} resizeMode="contain" />
-          )}
+          {shotLoading ? (
+            <ActivityIndicator size="large" color="#FFF" />
+          ) : shotUri ? (
+            <Image source={{ uri: shotUri }} style={S.shotImage} resizeMode="contain" />
+          ) : null}
         </View>
       </Modal>
 
