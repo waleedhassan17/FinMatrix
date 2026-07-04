@@ -43,7 +43,6 @@ import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { validateCustomer, PAYMENT_TERMS_OPTIONS } from '../../../models/customerModel';
 import { customerToFormData, formDataToCustomerPayload } from '../../../serializers/customerSerializer';
-import { getStoredCompanyId } from '../../../network/apiHelpers';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -136,7 +135,6 @@ const CustomerFormScreen: React.FC = () => {
           taxId: form.taxId,
           notes: form.notes,
         },
-        (await getStoredCompanyId()) ?? '',
       );
 
       if (isEditing) {
@@ -152,8 +150,8 @@ const CustomerFormScreen: React.FC = () => {
         `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`,
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
-    } catch {
-      Alert.alert('Error', 'Failed to save customer. Please try again.');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Failed to save customer. Please try again.');
     } finally {
       dispatch(setIsSaving(false));
     }

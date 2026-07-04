@@ -2,18 +2,20 @@
 // FinMatrix — Vendor Detail Screen
 // ═══════════════════════════════════════════════════════
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
@@ -26,16 +28,26 @@ import {
   selectVendorDetail,
   selectVendorDetailTab,
   selectVendorDetailStatus,
+  selectVendorDetailBills,
+  selectVendorDetailPayments,
   setActiveTab,
   resetVendorDetail,
   fetchVendorDetail,
+  fetchVendorBills,
+  fetchVendorPayments,
   toggleActiveOnDetail,
   type VendorDetailTab,
 } from './vendorDetailSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { PAYMENT_TERMS_LABELS } from '../../../models/vendorModel';
-import { vendorSingleSerializer } from '../../../serializers/vendorSerializer';
+import {
+  vendorSingleSerializer,
+  type VendorBillRow,
+  type VendorPaymentRow,
+} from '../../../serializers/vendorSerializer';
+import { getVendorStatementAPI } from '../../../network/vendorNetwork';
+import { shareVendorStatementPdf } from '../../../utils/statementPdf';
 import type { PaymentTerms, Vendor } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
@@ -48,46 +60,14 @@ const TABS: { key: VendorDetailTab; label: string }[] = [
   { key: 'payments', label: 'Payments' },
 ];
 
-// ── Mock Bills (filtered by vendor) ───────────────
-interface MockBill {
-  id: string;
-  billNumber: string;
-  date: string;
-  dueDate: string;
-  amount: number;
-  status: 'paid' | 'received' | 'overdue' | 'draft';
-}
-
-const MOCK_BILLS: MockBill[] = [
-  { id: 'bill_1', billNumber: 'BILL-2026-001', date: '2026-03-01', dueDate: '2026-03-31', amount: 95000, status: 'received' },
-  { id: 'bill_2', billNumber: 'BILL-2026-002', date: '2026-02-15', dueDate: '2026-03-17', amount: 52000, status: 'overdue' },
-  { id: 'bill_3', billNumber: 'BILL-2026-003', date: '2026-01-20', dueDate: '2026-02-19', amount: 140000, status: 'paid' },
-  { id: 'bill_4', billNumber: 'BILL-2025-048', date: '2025-12-10', dueDate: '2026-01-09', amount: 73000, status: 'paid' },
-  { id: 'bill_5', billNumber: 'BILL-2025-039', date: '2025-11-05', dueDate: '2025-12-05', amount: 88000, status: 'paid' },
-];
-
-// ── Mock Payments ─────────────────────────────────
-interface MockPayment {
-  id: string;
-  reference: string;
-  date: string;
-  amount: number;
-  method: string;
-}
-
-const MOCK_PAYMENTS: MockPayment[] = [
-  { id: 'vpay_1', reference: 'VPAY-2026-012', date: '2026-03-05', amount: 140000, method: 'Bank Transfer' },
-  { id: 'vpay_2', reference: 'VPAY-2026-008', date: '2026-02-20', amount: 73000, method: 'Cheque' },
-  { id: 'vpay_3', reference: 'VPAY-2026-003', date: '2026-01-15', amount: 88000, method: 'Bank Transfer' },
-  { id: 'vpay_4', reference: 'VPAY-2025-045', date: '2025-12-28', amount: 60000, method: 'Cash' },
-  { id: 'vpay_5', reference: 'VPAY-2025-038', date: '2025-11-30', amount: 45000, method: 'Bank Transfer' },
-];
-
 const BILL_STATUS_COLORS: Record<string, string> = {
   paid: colors.success,
+  open: colors.secondary,
   received: colors.secondary,
+  partial: colors.warning,
   overdue: colors.danger,
   draft: colors.textLight,
+  void: colors.textLight,
 };
 
 // ═══════════════════════════════════════════════════════
@@ -114,10 +94,38 @@ const VendorDetailScreen: React.FC = () => {
     return acct ? `${acct.code} – ${acct.name}` : vendor.defaultExpenseAccountId;
   }, [vendor, accounts]);
 
+  const billsTab = useAppSelector(selectVendorDetailBills);
+  const paymentsTab = useAppSelector(selectVendorDetailPayments);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSharingStatement, setIsSharingStatement] = useState(false);
+  const vendorId = route.params.vendorId;
+
   React.useEffect(() => {
-    dispatch(fetchVendorDetail(route.params.vendorId));
     return () => { dispatch(resetVendorDetail()); };
-  }, [dispatch, route.params.vendorId]);
+  }, [dispatch]);
+
+  // Refetch whenever the screen gains focus so the balance and histories
+  // stay fresh after paying a bill / creating one elsewhere.
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(fetchVendorDetail(vendorId));
+      dispatch(fetchVendorBills({ vendorId }));
+      dispatch(fetchVendorPayments({ vendorId }));
+    }, [dispatch, vendorId]),
+  );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        dispatch(fetchVendorDetail(vendorId)),
+        dispatch(fetchVendorBills({ vendorId })),
+        dispatch(fetchVendorPayments({ vendorId })),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [dispatch, vendorId]);
 
   if (!vendor) {
     return (
@@ -139,13 +147,40 @@ const VendorDetailScreen: React.FC = () => {
 
   // ── Action handlers ─────────────────────────────
   const handleCreateBill = () => {
-    Alert.alert('Create Bill', `Bill creation for ${vendor.name} will be available in the Bills module.`);
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
+      .navigate('TransactionsStack', {
+        screen: 'BillForm',
+        params: { vendorId: vendor.id },
+      });
   };
   const handleRecordPayment = () => {
-    Alert.alert('Record Payment', `Payment recording for ${vendor.name} will be available in the Payments module.`);
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
+      .navigate('TransactionsStack', {
+        screen: 'PayBills',
+        params: { vendorId: vendor.id },
+      });
   };
-  const handleSendStatement = () => {
-    Alert.alert('Send Statement', `Account statement for ${vendor.name} sent successfully (simulated).`);
+  const handleSendStatement = async () => {
+    if (isSharingStatement) return;
+    setIsSharingStatement(true);
+    try {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), 0, 1);
+      const toIso = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const payload = await getVendorStatementAPI(vendor.id, {
+        startDate: toIso(start),
+        endDate: toIso(now),
+      });
+      const result = await shareVendorStatementPdf(payload);
+      if (!result.shared && result.reason) {
+        Alert.alert('Statement', result.reason);
+      }
+    } catch (e: any) {
+      Alert.alert('Statement failed', e?.message || 'Could not generate the statement. Please try again.');
+    } finally {
+      setIsSharingStatement(false);
+    }
   };
   const handleToggleActive = async () => {
     const result: any = await dispatch(toggleActiveOnDetail(vendor.id));
@@ -174,7 +209,13 @@ const VendorDetailScreen: React.FC = () => {
         />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+        }
+      >
         {/* ── Top Card: Balance ───────────────────── */}
         <View style={styles.topCard}>
           <View style={styles.topCardRow}>
@@ -195,16 +236,21 @@ const VendorDetailScreen: React.FC = () => {
         {/* ── Action Buttons ─────────────────────── */}
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.actionBtn} onPress={handleCreateBill} activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>📄</Text>
+            <Feather name="file-text" size={20} color={colors.primary} style={{ marginBottom: spacing.xs }} />
             <Text style={styles.actionLabel}>Create Bill</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={handleRecordPayment} activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>💰</Text>
+            <Feather name="dollar-sign" size={20} color={colors.primary} style={{ marginBottom: spacing.xs }} />
             <Text style={styles.actionLabel}>Record Payment</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleSendStatement} activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>📨</Text>
-            <Text style={styles.actionLabel}>Send Statement</Text>
+          <TouchableOpacity
+            style={[styles.actionBtn, isSharingStatement && { opacity: 0.5 }]}
+            onPress={handleSendStatement}
+            activeOpacity={0.7}
+            disabled={isSharingStatement}
+          >
+            <Feather name="send" size={20} color={colors.primary} style={{ marginBottom: spacing.xs }} />
+            <Text style={styles.actionLabel}>{isSharingStatement ? 'Preparing…' : 'Send Statement'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -229,8 +275,20 @@ const VendorDetailScreen: React.FC = () => {
         {activeTab === 'overview' && (
           <OverviewTab vendor={vendor} expenseAccountName={expenseAccountName} onToggleActive={handleToggleActive} />
         )}
-        {activeTab === 'bills' && <BillsTab />}
-        {activeTab === 'payments' && <PaymentsTab />}
+        {activeTab === 'bills' && (
+          <BillsTab
+            tab={billsTab}
+            onRetry={() => dispatch(fetchVendorBills({ vendorId }))}
+            onLoadMore={() => dispatch(fetchVendorBills({ vendorId, page: billsTab.page + 1 }))}
+          />
+        )}
+        {activeTab === 'payments' && (
+          <PaymentsTab
+            tab={paymentsTab}
+            onRetry={() => dispatch(fetchVendorPayments({ vendorId }))}
+            onLoadMore={() => dispatch(fetchVendorPayments({ vendorId, page: paymentsTab.page + 1 }))}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -293,47 +351,129 @@ const OverviewTab: React.FC<{
   </View>
 );
 
-const BillsTab: React.FC = () => (
-  <View style={styles.tabContent}>
-    {MOCK_BILLS.map(bill => (
-      <View key={bill.id} style={styles.listCard}>
-        <View style={styles.listCardTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.listCardTitle}>{bill.billNumber}</Text>
-            <Text style={styles.listCardSub}>{formatDate(bill.date)}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.listCardAmount}>{formatCurrency(bill.amount, 'Rs ')}</Text>
-            <View style={[styles.miniStatusBadge, { backgroundColor: BILL_STATUS_COLORS[bill.status] + '18' }]}>
-              <Text style={[styles.miniStatusText, { color: BILL_STATUS_COLORS[bill.status] }]}>
-                {bill.status.charAt(0).toUpperCase() + bill.status.slice(1)}
-              </Text>
+const TabStateBlock: React.FC<{
+  loading: boolean;
+  failed: boolean;
+  error: string;
+  isEmpty: boolean;
+  emptyText: string;
+  onRetry: () => void;
+  children: React.ReactNode;
+}> = ({ loading, failed, error, isEmpty, emptyText, onRetry, children }) => {
+  if (loading && isEmpty) {
+    return (
+      <View style={styles.tabStateBlock}>
+        <ActivityIndicator size="small" color={colors.primary} />
+        <Text style={styles.tabStateText}>Loading…</Text>
+      </View>
+    );
+  }
+  if (failed && isEmpty) {
+    return (
+      <View style={styles.tabStateBlock}>
+        <Feather name="alert-circle" size={28} color={colors.danger} />
+        <Text style={styles.tabStateText}>{error || 'Something went wrong.'}</Text>
+        <CustomButton title="Retry" onPress={onRetry} variant="secondary" size="sm" />
+      </View>
+    );
+  }
+  if (isEmpty) {
+    return (
+      <View style={styles.tabStateBlock}>
+        <Feather name="inbox" size={28} color={colors.textLight} />
+        <Text style={styles.tabStateText}>{emptyText}</Text>
+      </View>
+    );
+  }
+  return <>{children}</>;
+};
+
+const BILL_STATUS_LABELS: Record<string, string> = {
+  paid: 'Paid',
+  open: 'Open',
+  received: 'Received',
+  partial: 'Partial',
+  overdue: 'Overdue',
+  draft: 'Draft',
+  void: 'Void',
+};
+
+const BillsTab: React.FC<{
+  tab: { rows: VendorBillRow[]; status: string; error: string; page: number; totalPages: number };
+  onRetry: () => void;
+  onLoadMore: () => void;
+}> = ({ tab, onRetry, onLoadMore }) => (
+  <TabStateBlock
+    loading={tab.status === 'loading' || tab.status === 'idle'}
+    failed={tab.status === 'failed'}
+    error={tab.error}
+    isEmpty={tab.rows.length === 0}
+    emptyText="No bills from this vendor yet."
+    onRetry={onRetry}
+  >
+    <View style={styles.tabContent}>
+      {tab.rows.map(bill => (
+        <View key={bill.id} style={styles.listCard}>
+          <View style={styles.listCardTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.listCardTitle}>{bill.billNumber}</Text>
+              <Text style={styles.listCardSub}>{formatDate(bill.date)}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.listCardAmount}>{formatCurrency(bill.amount, 'Rs ')}</Text>
+              <View style={[styles.miniStatusBadge, { backgroundColor: (BILL_STATUS_COLORS[bill.status] ?? colors.textLight) + '18' }]}>
+                <Text style={[styles.miniStatusText, { color: BILL_STATUS_COLORS[bill.status] ?? colors.textLight }]}>
+                  {BILL_STATUS_LABELS[bill.status] ?? bill.status}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
-        <Text style={styles.listCardDetail}>Due: {formatDate(bill.dueDate)}</Text>
-      </View>
-    ))}
-  </View>
-);
-
-const PaymentsTab: React.FC = () => (
-  <View style={styles.tabContent}>
-    {MOCK_PAYMENTS.map(pay => (
-      <View key={pay.id} style={styles.listCard}>
-        <View style={styles.listCardTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.listCardTitle}>{pay.reference}</Text>
-            <Text style={styles.listCardSub}>{formatDate(pay.date)}</Text>
-          </View>
-          <Text style={[styles.listCardAmount, { color: colors.success }]}>
-            {formatCurrency(pay.amount, 'Rs ')}
+          <Text style={styles.listCardDetail}>
+            {bill.dueDate ? `Due: ${formatDate(bill.dueDate)}` : ''}
+            {bill.balance > 0 ? `  ·  Balance: ${formatCurrency(bill.balance, 'Rs ')}` : ''}
           </Text>
         </View>
-        <Text style={styles.listCardDetail}>Method: {pay.method}</Text>
-      </View>
-    ))}
-  </View>
+      ))}
+      {tab.page < tab.totalPages && (
+        <CustomButton title="Load more" variant="secondary" size="sm" onPress={onLoadMore} />
+      )}
+    </View>
+  </TabStateBlock>
+);
+
+const PaymentsTab: React.FC<{
+  tab: { rows: VendorPaymentRow[]; status: string; error: string; page: number; totalPages: number };
+  onRetry: () => void;
+  onLoadMore: () => void;
+}> = ({ tab, onRetry, onLoadMore }) => (
+  <TabStateBlock
+    loading={tab.status === 'loading' || tab.status === 'idle'}
+    failed={tab.status === 'failed'}
+    error={tab.error}
+    isEmpty={tab.rows.length === 0}
+    emptyText="No payments made to this vendor yet."
+    onRetry={onRetry}
+  >
+    <View style={styles.tabContent}>
+      {tab.rows.map(pay => (
+        <View key={pay.id} style={styles.listCard}>
+          <View style={styles.listCardTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.listCardTitle}>{pay.reference}</Text>
+              <Text style={styles.listCardSub}>{formatDate(pay.date)}</Text>
+            </View>
+            <Text style={[styles.listCardAmount, { color: colors.success }]}>
+              {formatCurrency(pay.amount, 'Rs ')}
+            </Text>
+          </View>
+          <Text style={styles.listCardDetail}>Method: {pay.method}</Text>
+        </View>
+      ))}
+      {tab.page < tab.totalPages && (
+        <CustomButton title="Load more" variant="secondary" size="sm" onPress={onLoadMore} />
+      )}
+    </View>
+  </TabStateBlock>
 );
 
 const InfoRow: React.FC<{ icon: string; label: string; value: string }> = ({ icon, label, value }) => (
@@ -466,6 +606,13 @@ const styles = StyleSheet.create({
   listCardDetail: { ...THEME.typography.caption, color: colors.textLight, marginTop: spacing.sm },
 
   miniStatusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginTop: 4 },
+  tabStateBlock: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  tabStateText: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
   miniStatusText: { ...THEME.typography.labelSm, fontWeight: '700' },
 
   // ── Empty / Center ─────────────────────────────

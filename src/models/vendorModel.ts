@@ -81,6 +81,7 @@ export const PAYMENT_TERMS_OPTIONS: { label: string; value: PaymentTerms }[] = [
   { label: 'Net 30', value: 'net_30' },
   { label: 'Net 45', value: 'net_45' },
   { label: 'Net 60', value: 'net_60' },
+  { label: '2/10 Net 30', value: '2_10_net30' },
   { label: 'Custom', value: 'custom' },
 ];
 
@@ -90,6 +91,7 @@ export const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
   net_30: 'Net 30',
   net_45: 'Net 45',
   net_60: 'Net 60',
+  '2_10_net30': '2/10 Net 30',
   custom: 'Custom',
 };
 

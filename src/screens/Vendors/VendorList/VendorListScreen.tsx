@@ -31,6 +31,9 @@ import {
   selectVendorStatusFilter,
   selectVendorSortField,
   selectVendorIsLoading,
+  selectVendorIsLoadingMore,
+  selectVendorPage,
+  selectVendorTotalPages,
   selectVendorError,
   setSearchQuery,
   setStatusFilter,
@@ -70,21 +73,42 @@ const VendorListScreen: React.FC = () => {
   const statusFilter = useAppSelector(selectVendorStatusFilter);
   const sortField = useAppSelector(selectVendorSortField);
   const isLoading = useAppSelector(selectVendorIsLoading);
+  const isLoadingMore = useAppSelector(selectVendorIsLoadingMore);
+  const page = useAppSelector(selectVendorPage);
+  const totalPages = useAppSelector(selectVendorTotalPages);
   const error = useAppSelector(selectVendorError);
   const [showSearch, setShowSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const searchDebounce = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       dispatch(fetchVendors());
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dispatch]),
   );
+
+  // Server-side search, debounced (the thunk reads searchQuery from state).
+  React.useEffect(() => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => {
+      dispatch(fetchVendors());
+    }, 350);
+    return () => {
+      if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    };
+  }, [searchQuery, dispatch]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await dispatch(fetchVendors());
     setRefreshing(false);
   }, [dispatch]);
+
+  const onEndReached = useCallback(() => {
+    if (isLoading || isLoadingMore || page >= totalPages) return;
+    dispatch(fetchVendors({ page: page + 1, append: true }));
+  }, [dispatch, isLoading, isLoadingMore, page, totalPages]);
 
   // ── Filtered & sorted list ──────────────────────
   const filtered = useMemo(() => {
@@ -94,19 +118,7 @@ const VendorListScreen: React.FC = () => {
     if (statusFilter === 'active') list = list.filter(v => v.isActive);
     else if (statusFilter === 'inactive') list = list.filter(v => !v.isActive);
 
-    // Search
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(
-        v =>
-          v.name.toLowerCase().includes(q) ||
-          v.contactPerson.toLowerCase().includes(q) ||
-          v.email.toLowerCase().includes(q) ||
-          v.phone.includes(q),
-      );
-    }
-
-    // Sort
+    // Sort (search happens server-side)
     list = [...list].sort((a, b) => {
       switch (sortField) {
         case 'name': return a.name.localeCompare(b.name);
@@ -117,7 +129,7 @@ const VendorListScreen: React.FC = () => {
     });
 
     return list;
-  }, [vendors, statusFilter, searchQuery, sortField]);
+  }, [vendors, statusFilter, sortField]);
 
   // ── Summary ─────────────────────────────────────
   const totalVendors = vendors.length;
@@ -295,6 +307,13 @@ const VendorListScreen: React.FC = () => {
           renderItem={renderCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.md }} />
+            ) : null
+          }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
           }

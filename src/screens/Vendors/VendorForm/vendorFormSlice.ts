@@ -13,8 +13,8 @@ import {
   updateVendorAPI,
   getVendorByIdAPI,
 } from '../../../network/vendorNetwork';
-import { getStoredCompanyId } from '../../../network/apiHelpers';
 import { vendorSingleSerializer } from '../../../serializers/vendorSerializer';
+import { PAYMENT_TERMS_TO_API } from '../../../models/customerModel';
 
 export interface VendorFormSliceState {
   name: string;
@@ -59,28 +59,35 @@ const initialState: VendorFormSliceState = {
 };
 
 // ─── Save payload builder ───────────────────────────
-const buildSavePayload = (
-  state: VendorFormSliceState,
-): Omit<Vendor, 'id' | 'balance' | 'createdAt' | 'updatedAt'> => ({
-  // Tenant is derived server-side from the auth token / x-company-id header;
-  // this is populated from the stored company id at dispatch time and is
-  // ignored by the backend if it disagrees.
-  companyId: '',
-  name: state.name.trim(),
-  email: state.email.trim(),
-  phone: state.phone.trim(),
-  address: state.address.trim(),
-  city: state.city.trim(),
-  state: state.state.trim(),
-  zipCode: state.zipCode.trim(),
-  country: state.country.trim() || 'Pakistan',
-  taxId: state.taxId.trim(),
-  contactPerson: state.contactPerson.trim(),
-  notes: state.notes.trim(),
-  paymentTerms: state.paymentTerms as string,
-  defaultExpenseAccountId: state.defaultExpenseAccountId,
-  isActive: true,
-});
+// Shapes the payload the way the API's CreateVendorDto expects:
+// `companyName` (not `name`), a structured `address` object with
+// `postalCode`, and `net30`-style payment-terms codes. Anything else is
+// stripped by DTO whitelisting or rejected by validation.
+const buildSavePayload = (state: VendorFormSliceState): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {
+    companyName: state.name.trim(),
+    contactPerson: state.contactPerson.trim() || undefined,
+    email: state.email.trim() || undefined,
+    phone: state.phone.trim() || undefined,
+    address: {
+      street: state.address.trim(),
+      city: state.city.trim(),
+      state: state.state.trim(),
+      postalCode: state.zipCode.trim(),
+      country: state.country.trim() || 'Pakistan',
+    },
+    taxId: state.taxId.trim() || undefined,
+    notes: state.notes.trim() || undefined,
+  };
+  if (state.paymentTerms) {
+    payload.paymentTerms = PAYMENT_TERMS_TO_API[state.paymentTerms];
+  }
+  // Empty string would fail the API's @IsUUID check — only send a real id.
+  if (state.defaultExpenseAccountId) {
+    payload.defaultExpenseAccountId = state.defaultExpenseAccountId;
+  }
+  return payload;
+};
 
 export const vendorFormSlice = createAppSlice({
   name: 'vendorForm',
@@ -136,7 +143,6 @@ export const vendorFormSlice = createAppSlice({
         const root = thunkAPI.getState() as { vendorForm: VendorFormSliceState };
         const f = root.vendorForm;
         const payload = buildSavePayload(f);
-        payload.companyId = (await getStoredCompanyId()) ?? '';
         const envelope = f.isEditMode && f.editId
           ? await updateVendorAPI(f.editId, payload)
           : await createVendorAPI(payload);

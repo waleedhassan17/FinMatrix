@@ -10,6 +10,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   TouchableOpacity,
   Switch,
   Modal,
@@ -69,6 +70,15 @@ const TYPE_COLOR: Record<TaxType, string> = {
 const TaxSettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
+  const [isPullRefreshing, setIsPullRefreshing] = React.useState(false);
+  const handlePullRefresh = React.useCallback(async () => {
+    setIsPullRefreshing(true);
+    try {
+      await dispatch(fetchTaxRates());
+    } finally {
+      setIsPullRefreshing(false);
+    }
+  }, [dispatch]);
 
   const rates = useAppSelector(selectTaxRates);
   const isLoading = useAppSelector(selectTaxSettingsLoading);
@@ -217,6 +227,13 @@ const TaxSettingsScreen: React.FC = () => {
         <LoadingBlock label="Loading tax rates…" />
       ) : (
         <FlatList
+          refreshControl={
+            <RefreshControl
+              refreshing={isPullRefreshing}
+              onRefresh={handlePullRefresh}
+              tintColor="#059669"
+            />
+          }
           data={rates}
           keyExtractor={item => item.id}
           renderItem={renderItem}

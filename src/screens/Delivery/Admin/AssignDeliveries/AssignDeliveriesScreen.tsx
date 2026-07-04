@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   TextInput,
   Alert,
   Modal,
@@ -66,6 +67,18 @@ const zoneByCity = (city: string): string => {
 const AssignDeliveriesScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
+  const [isPullRefreshing, setIsPullRefreshing] = React.useState(false);
+  const handlePullRefresh = React.useCallback(async () => {
+    setIsPullRefreshing(true);
+    try {
+      await Promise.all([
+        dispatch(fetchDeliveries()),
+        dispatch(fetchDeliveryPersonnel()),
+      ]);
+    } finally {
+      setIsPullRefreshing(false);
+    }
+  }, [dispatch]);
 
   const activeTab = useAppSelector(selectActiveTab);
   const selectedDate = useAppSelector(selectSelectedDate);
@@ -227,7 +240,16 @@ const AssignDeliveriesScreen: React.FC = () => {
         })}
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={isPullRefreshing}
+            onRefresh={handlePullRefresh}
+            tintColor="#059669"
+          />
+        }
+      >
         {activeTab === 'assign' && (
           <>
             <View style={styles.section}>

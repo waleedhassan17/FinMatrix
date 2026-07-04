@@ -49,18 +49,24 @@ export const updateVendorAPI = async (id: string, data: any): Promise<any> => {
   }
 };
 
-export const getVendorBillsAPI = async (vendorId: string): Promise<any> => {
+export const getVendorBillsAPI = async (
+  vendorId: string,
+  params: { page?: number; limit?: number } = {},
+): Promise<any> => {
   try {
-    const response = await api.get(`/vendors/${vendorId}/bills`);
+    const response = await api.get(`/vendors/${vendorId}/bills`, { params });
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }
 };
 
-export const getVendorPaymentsAPI = async (vendorId: string): Promise<any> => {
+export const getVendorPaymentsAPI = async (
+  vendorId: string,
+  params: { page?: number; limit?: number } = {},
+): Promise<any> => {
   try {
-    const response = await api.get(`/vendors/${vendorId}/payments`);
+    const response = await api.get(`/vendors/${vendorId}/payments`, { params });
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -69,7 +75,19 @@ export const getVendorPaymentsAPI = async (vendorId: string): Promise<any> => {
 
 export const toggleVendorActiveAPI = async (id: string): Promise<any> => {
   try {
-    const response = await api.patch(`/vendors/${id}`, { isActive: true });
+    const response = await api.patch(`/vendors/${id}/toggle-active`);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getVendorStatementAPI = async (
+  vendorId: string,
+  params: { startDate: string; endDate: string },
+): Promise<any> => {
+  try {
+    const response = await api.get(`/vendors/${vendorId}/statement`, { params });
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));

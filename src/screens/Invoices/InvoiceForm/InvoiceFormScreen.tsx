@@ -181,6 +181,10 @@ const InvoiceFormScreen: React.FC = () => {
     } else {
       dispatch(setField({ key: 'invoiceNumber', value: generateInvoiceNumber() }));
       dispatch(setField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
+      // Preselect the customer when launched from a customer's detail screen.
+      if (route.params?.customerId) {
+        dispatch(setField({ key: 'customerId', value: route.params.customerId }));
+      }
     }
 
     return () => { dispatch(resetInvoiceForm()); };

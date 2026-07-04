@@ -1,20 +1,54 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, ScrollView, StatusBar } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, Linking, Platform, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectDPSettings, setPushNotifications, setSmsNotifications, setEmailNotifications } from './dpSettingsSlice';
+import { selectUser } from '../../../Auth/authSlice';
+import { authForgotPassword } from '../../../../network/authNetwork';
 import NotificationIcon from '../../../../components/NotificationIcon';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPProfileStackParamList, 'DPSettings'>;
 
+// Plain alerts need a web fallback (Alert.alert is a no-op on react-native-web).
+const notifyDP = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    // eslint-disable-next-line no-alert
+    (globalThis as any).alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+};
+
 const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const settings = useAppSelector(selectDPSettings);
+  const user = useAppSelector(selectUser);
+  const [isSendingReset, setIsSendingReset] = useState(false);
+
+  const handleChangePassword = async () => {
+    if (!user?.email) {
+      notifyDP('No email', 'No email on file for this account.');
+      return;
+    }
+    if (isSendingReset) return;
+    setIsSendingReset(true);
+    try {
+      await authForgotPassword({ forgotPasswordInfo: { email: user.email } });
+      notifyDP(
+        'Reset code sent',
+        `A password reset code was sent to ${user.email}. Sign out and use "Forgot password" on the sign-in screen to set a new password.`,
+      );
+    } catch (e: any) {
+      notifyDP('Could not send code', e?.message || 'Please try again.');
+    } finally {
+      setIsSendingReset(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -128,51 +162,16 @@ const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.actionsList}>
             <TouchableOpacity 
-              style={styles.actionItem}
-              onPress={() => Alert.alert('Change Password', 'Password reset functionality coming soon.')}
+              style={[styles.actionItem, isSendingReset && { opacity: 0.5 }]}
+              onPress={handleChangePassword}
+              disabled={isSendingReset}
               activeOpacity={0.7}
             >
               <View style={styles.actionLeft}>
                 <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.infoLight }]}>
                   <Feather name="key" size={16} color={THEME.colors.info} />
                 </View>
-                <Text style={styles.actionLabel}>Change Password</Text>
-              </View>
-              <View style={styles.actionArrow}>
-                <Feather name="chevron-right" size={14} color={THEME.colors.textTertiary} />
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.actionDivider} />
-
-            <TouchableOpacity 
-              style={styles.actionItem}
-              onPress={() => Alert.alert('Two-Factor Authentication', '2FA setup coming soon.')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.actionLeft}>
-                <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.successLight }]}>
-                  <Feather name="shield" size={16} color={THEME.colors.success} />
-                </View>
-                <Text style={styles.actionLabel}>Two-Factor Authentication</Text>
-              </View>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusBadgeText}>Off</Text>
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.actionDivider} />
-
-            <TouchableOpacity 
-              style={styles.actionItem}
-              onPress={() => Alert.alert('Active Sessions', 'Session management coming soon.')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.actionLeft}>
-                <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.secondaryLight }]}>
-                  <Feather name="monitor" size={16} color={THEME.colors.secondary} />
-                </View>
-                <Text style={styles.actionLabel}>Active Sessions</Text>
+                <Text style={styles.actionLabel}>{isSendingReset ? 'Sending reset code…' : 'Change Password'}</Text>
               </View>
               <View style={styles.actionArrow}>
                 <Feather name="chevron-right" size={14} color={THEME.colors.textTertiary} />
@@ -198,7 +197,11 @@ const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.actionsList}>
             <TouchableOpacity 
               style={styles.actionItem}
-              onPress={() => Alert.alert('Help Center', 'Contact support@finmatrix.pk for assistance.')}
+              onPress={() => {
+                Linking.openURL('mailto:support@finmatrix.pk?subject=FinMatrix%20Delivery%20Support').catch(() =>
+                  notifyDP('Help Center', 'Contact support@finmatrix.pk for assistance.'),
+                );
+              }}
               activeOpacity={0.7}
             >
               <View style={styles.actionLeft}>
@@ -216,7 +219,11 @@ const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
             <TouchableOpacity 
               style={styles.actionItem}
-              onPress={() => Alert.alert('Privacy Policy', 'View our privacy policy at finmatrix.pk/privacy')}
+              onPress={() => {
+                Linking.openURL('https://github.com/waleedhassan17/FinMatrix#readme').catch(() =>
+                  notifyDP('Privacy Policy', 'Visit the FinMatrix documentation for the privacy policy.'),
+                );
+              }}
               activeOpacity={0.7}
             >
               <View style={styles.actionLeft}>
@@ -234,7 +241,7 @@ const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
             <TouchableOpacity 
               style={styles.actionItem}
-              onPress={() => Alert.alert('About FinMatrix', 'FinMatrix Delivery v1.0\n\nBuilt for delivery excellence.')}
+              onPress={() => notifyDP('About FinMatrix', 'FinMatrix Delivery v1.0\n\nBuilt for delivery excellence.')}
               activeOpacity={0.7}
             >
               <View style={styles.actionLeft}>

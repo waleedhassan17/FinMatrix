@@ -38,30 +38,20 @@ const CompanySwitcherScreen: React.FC = () => {
 
   useEffect(() => { dispatch(loadCompanies()); }, [dispatch]);
 
+  // Switch directly and go back — Alert button callbacks never fire on
+  // react-native-web, so no confirmation dialog is used here.
   const handleSwitch = useCallback(
     (id: string) => {
       dispatch(setActiveCompany(id));
-      Alert.alert('Switched', 'Active company changed.', [
-        { text: 'OK', onPress: () => nav.goBack() },
-      ]);
+      nav.goBack();
     },
     [dispatch, nav],
   );
 
   const handleLongPress = useCallback(
-    (item: CompanySwitcherItem) => {
-      Alert.alert(item.name, 'Choose an action', [
-        { text: 'Switch', onPress: () => handleSwitch(item.companyId) },
-        { text: 'Edit', onPress: () => nav.navigate('CompanyProfile') },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    },
-    [handleSwitch, nav],
+    () => nav.navigate('CompanyProfile'),
+    [nav],
   );
-
-  const handleNewCompany = useCallback(() => {
-    Alert.alert('New Company', 'Company creation wizard coming soon.');
-  }, []);
 
   const renderCompany = ({ item }: { item: CompanySwitcherItem }) => {
     const isActive = item.companyId === activeId;
@@ -70,7 +60,7 @@ const CompanySwitcherScreen: React.FC = () => {
         style={[s.companyCard, isActive && s.activeCard]}
         activeOpacity={0.6}
         onPress={() => handleSwitch(item.companyId)}
-        onLongPress={() => handleLongPress(item)}
+        onLongPress={handleLongPress}
       >
         <View style={s.cardTop}>
           <View style={[s.companyIcon, isActive && { backgroundColor: P.activeBg }]}>
@@ -109,9 +99,7 @@ const CompanySwitcherScreen: React.FC = () => {
           <Feather name="arrow-left" size={22} color={P.text} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Companies</Text>
-        <TouchableOpacity onPress={handleNewCompany}>
-          <Feather name="plus" size={22} color={P.brand} />
-        </TouchableOpacity>
+        <View style={{ width: 22 }} />
       </View>
 
       <FlatList
@@ -128,10 +116,10 @@ const CompanySwitcherScreen: React.FC = () => {
           )
         }
         ListFooterComponent={
-          <TouchableOpacity style={s.newBtn} activeOpacity={0.6} onPress={handleNewCompany}>
-            <Feather name="plus-circle" size={20} color={P.brand} />
-            <Text style={s.newBtnText}>New Company</Text>
-          </TouchableOpacity>
+          <Text style={s.footerNote}>
+            New companies are registered through sign-up and reviewed by the
+            platform team before they appear here.
+          </Text>
         }
       />
     </SafeAreaView>
@@ -240,23 +228,13 @@ const s = StyleSheet.create({
     color: P.sub,
     fontFamily: THEME.typography.fontFamily,
   },
-  newBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: P.brandLight,
-    borderRadius: borderRadius.md,
-    paddingVertical: 16,
-    marginTop: spacing.sm,
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: P.brand,
-    borderStyle: 'dashed',
-  },
-  newBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: P.brand,
+  footerNote: {
+    marginTop: spacing.md,
+    marginHorizontal: spacing.sm,
+    fontSize: 12,
+    lineHeight: 18,
+    color: P.sub,
+    textAlign: 'center',
     fontFamily: THEME.typography.fontFamily,
   },
 });

@@ -31,7 +31,7 @@ import GeneralJournalFormScreen from '../../screens/GeneralJournal/GeneralJourna
 export type TransactionsStackParamList = {
   TransactionsHub: undefined;
   InvoiceList: undefined;
-  InvoiceForm: { invoiceId?: string } | undefined;
+  InvoiceForm: { invoiceId?: string; customerId?: string } | undefined;
   InvoiceDetail: { invoiceId: string };
   EstimateList: undefined;
   EstimateForm: { estimateId?: string } | undefined;
@@ -47,7 +47,7 @@ export type TransactionsStackParamList = {
   VendorCreditDetail: { vendorCreditId: string };
   ReceivePayment: { customerId?: string; invoiceId?: string } | undefined;
   BillList: undefined;
-  BillForm: { billId?: string; fromPOId?: string } | undefined;
+  BillForm: { billId?: string; fromPOId?: string; vendorId?: string } | undefined;
   BillDetail: { billId: string };
   PayBills: { vendorId?: string; billId?: string } | undefined;
   POList: undefined;

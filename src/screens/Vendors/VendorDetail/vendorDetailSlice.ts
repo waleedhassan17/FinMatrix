@@ -12,11 +12,37 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { Vendor } from '../../../types';
 import {
   getVendorByIdAPI,
+  getVendorBillsAPI,
+  getVendorPaymentsAPI,
   toggleVendorActiveAPI,
 } from '../../../network/vendorNetwork';
-import { vendorSingleSerializer } from '../../../serializers/vendorSerializer';
+import {
+  vendorSingleSerializer,
+  vendorBillsSerializer,
+  vendorPaymentsSerializer,
+  type VendorBillRow,
+  type VendorPaymentRow,
+} from '../../../serializers/vendorSerializer';
 
 export type VendorDetailTab = 'overview' | 'bills' | 'payments';
+
+type TabLoadStatus = 'idle' | 'loading' | 'failed' | 'loaded';
+
+interface VendorTabListState<T> {
+  rows: T[];
+  status: TabLoadStatus;
+  error: string;
+  page: number;
+  totalPages: number;
+}
+
+const emptyTabList = <T,>(): VendorTabListState<T> => ({
+  rows: [],
+  status: 'idle',
+  error: '',
+  page: 1,
+  totalPages: 1,
+});
 
 export interface VendorDetailSliceState {
   activeTab: VendorDetailTab;
@@ -24,6 +50,8 @@ export interface VendorDetailSliceState {
   status: 'idle' | 'loading' | 'failed';
   error: string;
   isToggling: boolean;
+  bills: VendorTabListState<VendorBillRow>;
+  payments: VendorTabListState<VendorPaymentRow>;
 }
 
 const initialState: VendorDetailSliceState = {
@@ -32,7 +60,11 @@ const initialState: VendorDetailSliceState = {
   status: 'idle',
   error: '',
   isToggling: false,
+  bills: emptyTabList<VendorBillRow>(),
+  payments: emptyTabList<VendorPaymentRow>(),
 };
+
+const PAGE_SIZE = 25;
 
 export const vendorDetailSlice = createAppSlice({
   name: 'vendorDetail',
@@ -44,13 +76,7 @@ export const vendorDetailSlice = createAppSlice({
     setVendorDetail: create.reducer((state, action: PayloadAction<Vendor | null>) => {
       state.vendor = action.payload;
     }),
-    resetVendorDetail: create.reducer(state => {
-      state.activeTab = 'overview';
-      state.vendor = null;
-      state.status = 'idle';
-      state.error = '';
-      state.isToggling = false;
-    }),
+    resetVendorDetail: create.reducer(() => initialState),
 
     fetchVendorDetail: create.asyncThunk(
       async (id: string) => getVendorByIdAPI(id),
@@ -63,6 +89,58 @@ export const vendorDetailSlice = createAppSlice({
         rejected: (state, action) => {
           state.status = 'failed';
           state.error = action.error?.message ?? 'Failed to load vendor';
+        },
+      },
+    ),
+
+    fetchVendorBills: create.asyncThunk(
+      async (arg: { vendorId: string; page?: number }) => {
+        const payload = await getVendorBillsAPI(arg.vendorId, {
+          page: arg.page ?? 1,
+          limit: PAGE_SIZE,
+        });
+        return { payload, append: (arg.page ?? 1) > 1 };
+      },
+      {
+        pending: state => { state.bills.status = 'loading'; state.bills.error = ''; },
+        fulfilled: (state, action: PayloadAction<{ payload: any; append: boolean }>) => {
+          const data = vendorBillsSerializer(action.payload.payload);
+          state.bills.rows = action.payload.append
+            ? [...state.bills.rows, ...data.rows]
+            : data.rows;
+          state.bills.page = data.page;
+          state.bills.totalPages = data.totalPages;
+          state.bills.status = 'loaded';
+        },
+        rejected: (state, action) => {
+          state.bills.status = 'failed';
+          state.bills.error = action.error?.message ?? 'Failed to load bills';
+        },
+      },
+    ),
+
+    fetchVendorPayments: create.asyncThunk(
+      async (arg: { vendorId: string; page?: number }) => {
+        const payload = await getVendorPaymentsAPI(arg.vendorId, {
+          page: arg.page ?? 1,
+          limit: PAGE_SIZE,
+        });
+        return { payload, append: (arg.page ?? 1) > 1 };
+      },
+      {
+        pending: state => { state.payments.status = 'loading'; state.payments.error = ''; },
+        fulfilled: (state, action: PayloadAction<{ payload: any; append: boolean }>) => {
+          const data = vendorPaymentsSerializer(action.payload.payload);
+          state.payments.rows = action.payload.append
+            ? [...state.payments.rows, ...data.rows]
+            : data.rows;
+          state.payments.page = data.page;
+          state.payments.totalPages = data.totalPages;
+          state.payments.status = 'loaded';
+        },
+        rejected: (state, action) => {
+          state.payments.status = 'failed';
+          state.payments.error = action.error?.message ?? 'Failed to load payments';
         },
       },
     ),
@@ -87,6 +165,8 @@ export const vendorDetailSlice = createAppSlice({
     selectVendorDetail: state => state.vendor,
     selectVendorDetailError: state => state.error,
     selectVendorDetailIsToggling: state => state.isToggling,
+    selectVendorDetailBills: state => state.bills,
+    selectVendorDetailPayments: state => state.payments,
   },
 });
 
@@ -95,6 +175,8 @@ export const {
   setVendorDetail,
   resetVendorDetail,
   fetchVendorDetail,
+  fetchVendorBills,
+  fetchVendorPayments,
   toggleActiveOnDetail,
 } = vendorDetailSlice.actions;
 
@@ -104,4 +186,6 @@ export const {
   selectVendorDetail,
   selectVendorDetailError,
   selectVendorDetailIsToggling,
+  selectVendorDetailBills,
+  selectVendorDetailPayments,
 } = vendorDetailSlice.selectors;

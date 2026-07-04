@@ -138,6 +138,11 @@ const BillFormScreen: React.FC = () => {
     } else {
       dispatch(setBillField({ key: 'billNumber', value: generateBillNumber() }));
       dispatch(setBillField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
+      // Preselect the vendor when launched from a vendor's detail screen.
+      const preVendorId = route.params?.vendorId;
+      if (preVendorId) {
+        dispatch(setBillField({ key: 'vendorId', value: preVendorId }));
+      }
     }
 
     return () => { dispatch(resetBillForm()); };

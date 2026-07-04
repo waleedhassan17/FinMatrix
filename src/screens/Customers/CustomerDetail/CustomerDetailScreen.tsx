@@ -2,35 +2,48 @@
 // FinMatrix — Customer Detail Screen
 // ═══════════════════════════════════════════════════════
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  FlatList,
+  ActivityIndicator,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { selectCustomers, toggleCustomerActive } from '../CustomerList/customerListSlice';
+import { toggleCustomerActive, upsertCustomer } from '../CustomerList/customerListSlice';
 import {
   selectCustomerDetailTab,
+  selectCustomerDetail,
+  selectCustomerDetailStatus,
+  selectCustomerDetailError,
+  selectCustomerDetailInvoices,
+  selectCustomerDetailPayments,
   setActiveTab,
   resetCustomerDetail,
+  upsertDetailCustomer,
+  fetchCustomerDetail,
+  fetchCustomerInvoices,
+  fetchCustomerPayments,
   type CustomerDetailTab,
 } from './customerDetailSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { PAYMENT_TERMS_LABELS } from '../../../models/customerModel';
+import { getCustomerStatementAPI } from '../../../network/customerNetwork';
+import { statementSerializer, shareStatementPdf } from '../../../utils/statementPdf';
+import { mapCustomer } from '../../../serializers/customerSerializer';
 import type { PaymentTerms, Customer } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
@@ -43,46 +56,22 @@ const TABS: { key: CustomerDetailTab; label: string }[] = [
   { key: 'payments', label: 'Payments' },
 ];
 
-// ── Mock Invoices (filtered by customer) ──────────
-interface MockInvoice {
-  id: string;
-  invoiceNumber: string;
-  date: string;
-  dueDate: string;
-  amount: number;
-  status: 'paid' | 'sent' | 'overdue' | 'draft';
-}
-
-const MOCK_INVOICES: MockInvoice[] = [
-  { id: 'inv_1', invoiceNumber: 'INV-2026-001', date: '2026-03-01', dueDate: '2026-03-31', amount: 85000, status: 'sent' },
-  { id: 'inv_2', invoiceNumber: 'INV-2026-002', date: '2026-02-15', dueDate: '2026-03-17', amount: 45000, status: 'overdue' },
-  { id: 'inv_3', invoiceNumber: 'INV-2026-003', date: '2026-01-20', dueDate: '2026-02-19', amount: 120000, status: 'paid' },
-  { id: 'inv_4', invoiceNumber: 'INV-2025-048', date: '2025-12-10', dueDate: '2026-01-09', amount: 67000, status: 'paid' },
-  { id: 'inv_5', invoiceNumber: 'INV-2025-039', date: '2025-11-05', dueDate: '2025-12-05', amount: 93000, status: 'paid' },
-];
-
-// ── Mock Payments ─────────────────────────────────
-interface MockPayment {
-  id: string;
-  reference: string;
-  date: string;
-  amount: number;
-  method: string;
-}
-
-const MOCK_PAYMENTS: MockPayment[] = [
-  { id: 'pay_1', reference: 'PAY-2026-012', date: '2026-03-05', amount: 120000, method: 'Bank Transfer' },
-  { id: 'pay_2', reference: 'PAY-2026-008', date: '2026-02-20', amount: 67000, method: 'Cheque' },
-  { id: 'pay_3', reference: 'PAY-2026-003', date: '2026-01-15', amount: 93000, method: 'Bank Transfer' },
-  { id: 'pay_4', reference: 'PAY-2025-045', date: '2025-12-28', amount: 55000, method: 'Cash' },
-  { id: 'pay_5', reference: 'PAY-2025-038', date: '2025-11-30', amount: 78000, method: 'Bank Transfer' },
-];
-
 const INVOICE_STATUS_COLORS: Record<string, string> = {
   paid: colors.success,
   sent: colors.secondary,
+  partial: colors.warning,
   overdue: colors.danger,
   draft: colors.textLight,
+  void: colors.textLight,
+};
+
+const INVOICE_STATUS_LABELS: Record<string, string> = {
+  paid: 'Paid',
+  sent: 'Sent',
+  partial: 'Partial',
+  overdue: 'Overdue',
+  draft: 'Draft',
+  void: 'Void',
 };
 
 // ═══════════════════════════════════════════════════════
@@ -92,23 +81,73 @@ const CustomerDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DetailRoute>();
   const dispatch = useAppDispatch();
+  const customerId = route.params.customerId;
 
-  const customers = useAppSelector(selectCustomers);
+  const customer = useAppSelector(selectCustomerDetail);
+  const status = useAppSelector(selectCustomerDetailStatus);
+  const error = useAppSelector(selectCustomerDetailError);
   const activeTab = useAppSelector(selectCustomerDetailTab);
+  const invoicesTab = useAppSelector(selectCustomerDetailInvoices);
+  const paymentsTab = useAppSelector(selectCustomerDetailPayments);
 
-  const customer = customers.find(c => c.id === route.params.customerId);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSharingStatement, setIsSharingStatement] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     return () => { dispatch(resetCustomerDetail()); };
   }, [dispatch]);
+
+  // Refetch whenever the screen gains focus so the balance and histories
+  // stay fresh after recording a payment / creating an invoice elsewhere.
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(fetchCustomerDetail(customerId));
+      dispatch(fetchCustomerInvoices({ customerId }));
+      dispatch(fetchCustomerPayments({ customerId }));
+    }, [dispatch, customerId]),
+  );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        dispatch(fetchCustomerDetail(customerId)),
+        dispatch(fetchCustomerInvoices({ customerId })),
+        dispatch(fetchCustomerPayments({ customerId })),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [dispatch, customerId]);
+
+  // ── Loading / error states for the record itself ──
+  if (!customer && status === 'loading') {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScreenHeader title="Customer" onBack={() => navigation.goBack()} />
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.emptyText}>Loading customer…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!customer) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <ScreenHeader title="Customer" onBack={() => navigation.goBack()} />
         <View style={styles.center}>
-          <Text style={styles.emptyIcon}>👤</Text>
-          <Text style={styles.emptyText}>Customer not found</Text>
-          <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="primary" size="md" />
+          <Feather name="user-x" size={40} color={colors.textLight} />
+          <Text style={styles.emptyText}>{error || 'Customer not found'}</Text>
+          <CustomButton
+            title="Retry"
+            onPress={() => dispatch(fetchCustomerDetail(customerId))}
+            variant="primary"
+            size="md"
+          />
+          <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="secondary" size="md" />
         </View>
       </SafeAreaView>
     );
@@ -126,16 +165,62 @@ const CustomerDetailScreen: React.FC = () => {
 
   // ── Action handlers ─────────────────────────────
   const handleCreateInvoice = () => {
-    Alert.alert('Create Invoice', `Invoice creation for ${customer.name} will be available in Module 2.`);
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
+      .navigate('TransactionsStack', {
+        screen: 'InvoiceForm',
+        params: { customerId: customer.id },
+      });
   };
   const handleRecordPayment = () => {
-    Alert.alert('Record Payment', `Payment recording for ${customer.name} will be available in Module 2.`);
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
+      .navigate('TransactionsStack', {
+        screen: 'ReceivePayment',
+        params: { customerId: customer.id },
+      });
   };
-  const handleSendStatement = () => {
-    Alert.alert('Send Statement', `Account statement for ${customer.name} sent successfully (simulated).`);
+  const handleSendStatement = async () => {
+    if (isSharingStatement) return;
+    setIsSharingStatement(true);
+    try {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), 0, 1);
+      const toIso = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const payload = await getCustomerStatementAPI(customer.id, {
+        startDate: toIso(start),
+        endDate: toIso(now),
+      });
+      const data = statementSerializer(payload);
+      if (!data) throw new Error('Could not load the statement.');
+      const result = await shareStatementPdf(data);
+      if (!result.shared && result.reason) {
+        Alert.alert('Statement', result.reason);
+      }
+    } catch (e: any) {
+      Alert.alert('Statement failed', e?.message || 'Could not generate the statement. Please try again.');
+    } finally {
+      setIsSharingStatement(false);
+    }
   };
   const handleToggleActive = async () => {
-    await dispatch(toggleCustomerActive(customer.id));
+    if (isToggling) return;
+    setIsToggling(true);
+    try {
+      const action: any = await dispatch(toggleCustomerActive(customer.id));
+      if (toggleCustomerActive.rejected.match(action)) {
+        throw new Error(action.error?.message);
+      }
+      const updatedRaw = action.payload?.data;
+      if (updatedRaw?.id) {
+        const updated: Customer = mapCustomer(updatedRaw);
+        dispatch(upsertDetailCustomer(updated));
+        dispatch(upsertCustomer(updated));
+      }
+    } catch (e: any) {
+      Alert.alert('Update failed', e?.message || 'Could not update the customer. Please try again.');
+    } finally {
+      setIsToggling(false);
+    }
   };
 
   return (
@@ -161,7 +246,13 @@ const CustomerDetailScreen: React.FC = () => {
         />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+        }
+      >
         {/* ── Top Card: Balance + Credit Usage ────── */}
         <View style={styles.topCard}>
           <View style={styles.topCardRow}>
@@ -205,18 +296,14 @@ const CustomerDetailScreen: React.FC = () => {
 
         {/* ── Action Buttons ─────────────────────── */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleCreateInvoice} activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>📄</Text>
-            <Text style={styles.actionLabel}>Create Invoice</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleRecordPayment} activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>💰</Text>
-            <Text style={styles.actionLabel}>Record Payment</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleSendStatement} activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>📨</Text>
-            <Text style={styles.actionLabel}>Send Statement</Text>
-          </TouchableOpacity>
+          <ActionButton icon="file-text" label="Create Invoice" onPress={handleCreateInvoice} />
+          <ActionButton icon="dollar-sign" label="Record Payment" onPress={handleRecordPayment} />
+          <ActionButton
+            icon="send"
+            label={isSharingStatement ? 'Preparing…' : 'Send Statement'}
+            onPress={handleSendStatement}
+            disabled={isSharingStatement}
+          />
         </View>
 
         {/* ── Tabs ───────────────────────────────── */}
@@ -237,9 +324,87 @@ const CustomerDetailScreen: React.FC = () => {
         </View>
 
         {/* ── Tab Content ────────────────────────── */}
-        {activeTab === 'overview' && <OverviewTab customer={customer} onToggleActive={handleToggleActive} />}
-        {activeTab === 'invoices' && <InvoicesTab />}
-        {activeTab === 'payments' && <PaymentsTab />}
+        {activeTab === 'overview' && (
+          <OverviewTab customer={customer} onToggleActive={handleToggleActive} isToggling={isToggling} />
+        )}
+        {activeTab === 'invoices' && (
+          <ListTabState
+            status={invoicesTab.status}
+            error={invoicesTab.error}
+            isEmpty={invoicesTab.rows.length === 0}
+            emptyIcon="file-text"
+            emptyText="No invoices for this customer yet."
+            onRetry={() => dispatch(fetchCustomerInvoices({ customerId }))}
+          >
+            <View style={styles.tabContent}>
+              {invoicesTab.rows.map(inv => (
+                <View key={inv.id} style={styles.listCard}>
+                  <View style={styles.listCardTop}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.listCardTitle}>{inv.invoiceNumber}</Text>
+                      <Text style={styles.listCardSub}>{formatDate(inv.date)}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.listCardAmount}>{formatCurrency(inv.amount, 'Rs ')}</Text>
+                      <View style={[styles.miniStatusBadge, { backgroundColor: (INVOICE_STATUS_COLORS[inv.status] ?? colors.textLight) + '18' }]}>
+                        <Text style={[styles.miniStatusText, { color: INVOICE_STATUS_COLORS[inv.status] ?? colors.textLight }]}>
+                          {INVOICE_STATUS_LABELS[inv.status] ?? inv.status}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Text style={styles.listCardDetail}>
+                    {inv.dueDate ? `Due: ${formatDate(inv.dueDate)}` : ''}
+                    {inv.balance > 0 ? `  ·  Balance: ${formatCurrency(inv.balance, 'Rs ')}` : ''}
+                  </Text>
+                </View>
+              ))}
+              {invoicesTab.page < invoicesTab.totalPages && (
+                <CustomButton
+                  title="Load more"
+                  variant="secondary"
+                  size="sm"
+                  onPress={() => dispatch(fetchCustomerInvoices({ customerId, page: invoicesTab.page + 1 }))}
+                />
+              )}
+            </View>
+          </ListTabState>
+        )}
+        {activeTab === 'payments' && (
+          <ListTabState
+            status={paymentsTab.status}
+            error={paymentsTab.error}
+            isEmpty={paymentsTab.rows.length === 0}
+            emptyIcon="dollar-sign"
+            emptyText="No payments recorded for this customer yet."
+            onRetry={() => dispatch(fetchCustomerPayments({ customerId }))}
+          >
+            <View style={styles.tabContent}>
+              {paymentsTab.rows.map(pay => (
+                <View key={pay.id} style={styles.listCard}>
+                  <View style={styles.listCardTop}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.listCardTitle}>{pay.reference}</Text>
+                      <Text style={styles.listCardSub}>{formatDate(pay.date)}</Text>
+                    </View>
+                    <Text style={[styles.listCardAmount, { color: colors.success }]}>
+                      {formatCurrency(pay.amount, 'Rs ')}
+                    </Text>
+                  </View>
+                  <Text style={styles.listCardDetail}>Method: {pay.method}</Text>
+                </View>
+              ))}
+              {paymentsTab.page < paymentsTab.totalPages && (
+                <CustomButton
+                  title="Load more"
+                  variant="secondary"
+                  size="sm"
+                  onPress={() => dispatch(fetchCustomerPayments({ customerId, page: paymentsTab.page + 1 }))}
+                />
+              )}
+            </View>
+          </ListTabState>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -249,48 +414,109 @@ const CustomerDetailScreen: React.FC = () => {
 // SUB-COMPONENTS
 // ═══════════════════════════════════════════════════════
 
+const ScreenHeader: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
+  <View style={styles.header}>
+    <View style={styles.headerLeft}>
+      <View style={styles.headerTitleRow}>
+        <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={24} color={colors.secondary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+      </View>
+    </View>
+  </View>
+);
+
+const ActionButton: React.FC<{
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}> = ({ icon, label, onPress, disabled }) => (
+  <TouchableOpacity
+    style={[styles.actionBtn, disabled && { opacity: 0.5 }]}
+    onPress={onPress}
+    activeOpacity={0.7}
+    disabled={disabled}
+  >
+    <Feather name={icon} size={20} color={colors.primary} style={{ marginBottom: spacing.xs }} />
+    <Text style={styles.actionLabel}>{label}</Text>
+  </TouchableOpacity>
+);
+
+/** Loading / error / empty / success wrapper for the list tabs. */
+const ListTabState: React.FC<{
+  status: 'idle' | 'loading' | 'failed' | 'loaded';
+  error: string;
+  isEmpty: boolean;
+  emptyIcon: keyof typeof Feather.glyphMap;
+  emptyText: string;
+  onRetry: () => void;
+  children: React.ReactNode;
+}> = ({ status, error, isEmpty, emptyIcon, emptyText, onRetry, children }) => {
+  if ((status === 'loading' || status === 'idle') && isEmpty) {
+    return (
+      <View style={styles.tabStateBlock}>
+        <ActivityIndicator size="small" color={colors.primary} />
+        <Text style={styles.tabStateText}>Loading…</Text>
+      </View>
+    );
+  }
+  if (status === 'failed' && isEmpty) {
+    return (
+      <View style={styles.tabStateBlock}>
+        <Feather name="alert-circle" size={28} color={colors.danger} />
+        <Text style={styles.tabStateText}>{error || 'Something went wrong.'}</Text>
+        <CustomButton title="Retry" onPress={onRetry} variant="secondary" size="sm" />
+      </View>
+    );
+  }
+  if (isEmpty) {
+    return (
+      <View style={styles.tabStateBlock}>
+        <Feather name={emptyIcon} size={28} color={colors.textLight} />
+        <Text style={styles.tabStateText}>{emptyText}</Text>
+      </View>
+    );
+  }
+  return <>{children}</>;
+};
+
 const OverviewTab: React.FC<{
   customer: Customer;
   onToggleActive: () => void;
-}> = ({ customer, onToggleActive }) => (
+  isToggling: boolean;
+}> = ({ customer, onToggleActive, isToggling }) => (
   <View style={styles.tabContent}>
     {/* Contact Info */}
     <View style={styles.infoCard}>
       <Text style={styles.infoCardTitle}>Contact Information</Text>
-      <InfoRow icon="✉️" label="Email" value={customer.email} />
-      <InfoRow icon="📞" label="Phone" value={customer.phone} />
-      {!!customer.contactPerson && <InfoRow icon="👤" label="Contact" value={customer.contactPerson} />}
-      {!!customer.company && <InfoRow icon="🏢" label="Company" value={customer.company} />}
-      {!!customer.taxId && <InfoRow icon="🆔" label="Tax ID" value={customer.taxId} />}
+      <InfoRow icon="mail" label="Email" value={customer.email || '—'} />
+      <InfoRow icon="phone" label="Phone" value={customer.phone || '—'} />
+      {!!customer.contactPerson && <InfoRow icon="user" label="Contact" value={customer.contactPerson} />}
+      {!!customer.company && <InfoRow icon="briefcase" label="Company" value={customer.company} />}
+      {!!customer.taxId && <InfoRow icon="hash" label="Tax ID" value={customer.taxId} />}
     </View>
 
     {/* Billing Address */}
     <View style={styles.infoCard}>
       <Text style={styles.infoCardTitle}>Billing Address</Text>
-      <Text style={styles.addressText}>
-        {customer.billingAddress.street}{'\n'}
-        {customer.billingAddress.city}, {customer.billingAddress.state} {customer.billingAddress.zipCode}{'\n'}
-        {customer.billingAddress.country}
-      </Text>
+      <Text style={styles.addressText}>{formatAddress(customer.billingAddress)}</Text>
     </View>
 
     {/* Shipping Address */}
     <View style={styles.infoCard}>
       <Text style={styles.infoCardTitle}>Shipping Address</Text>
-      <Text style={styles.addressText}>
-        {customer.shippingAddress.street}{'\n'}
-        {customer.shippingAddress.city}, {customer.shippingAddress.state} {customer.shippingAddress.zipCode}{'\n'}
-        {customer.shippingAddress.country}
-      </Text>
+      <Text style={styles.addressText}>{formatAddress(customer.shippingAddress)}</Text>
     </View>
 
     {/* Terms & Dates */}
     <View style={styles.infoCard}>
       <Text style={styles.infoCardTitle}>Terms & Details</Text>
-      <InfoRow icon="📋" label="Payment Terms" value={PAYMENT_TERMS_LABELS[customer.paymentTerms as PaymentTerms] ?? customer.paymentTerms} />
-      <InfoRow icon="💳" label="Credit Limit" value={formatCurrency(customer.creditLimit, 'Rs ')} />
-      <InfoRow icon="📅" label="Customer Since" value={formatDate(customer.createdAt)} />
-      <InfoRow icon="🔄" label="Last Updated" value={formatDate(customer.updatedAt)} />
+      <InfoRow icon="clipboard" label="Payment Terms" value={PAYMENT_TERMS_LABELS[customer.paymentTerms as PaymentTerms] ?? customer.paymentTerms} />
+      <InfoRow icon="credit-card" label="Credit Limit" value={formatCurrency(customer.creditLimit, 'Rs ')} />
+      <InfoRow icon="calendar" label="Customer Since" value={formatDate(customer.createdAt)} />
+      <InfoRow icon="refresh-cw" label="Last Updated" value={formatDate(customer.updatedAt)} />
     </View>
 
     {/* Notes */}
@@ -303,61 +529,26 @@ const OverviewTab: React.FC<{
 
     {/* Toggle Active */}
     <CustomButton
-      title={customer.isActive ? 'Deactivate Customer' : 'Activate Customer'}
+      title={isToggling ? 'Updating…' : customer.isActive ? 'Deactivate Customer' : 'Activate Customer'}
       onPress={onToggleActive}
       variant={customer.isActive ? 'danger' : 'primary'}
       size="md"
       fullWidth
+      disabled={isToggling}
     />
   </View>
 );
 
-const InvoicesTab: React.FC = () => (
-  <View style={styles.tabContent}>
-    {MOCK_INVOICES.map(inv => (
-      <View key={inv.id} style={styles.listCard}>
-        <View style={styles.listCardTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.listCardTitle}>{inv.invoiceNumber}</Text>
-            <Text style={styles.listCardSub}>{formatDate(inv.date)}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.listCardAmount}>{formatCurrency(inv.amount, 'Rs ')}</Text>
-            <View style={[styles.miniStatusBadge, { backgroundColor: INVOICE_STATUS_COLORS[inv.status] + '18' }]}>
-              <Text style={[styles.miniStatusText, { color: INVOICE_STATUS_COLORS[inv.status] }]}>
-                {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <Text style={styles.listCardDetail}>Due: {formatDate(inv.dueDate)}</Text>
-      </View>
-    ))}
-  </View>
-);
+function formatAddress(addr: Customer['billingAddress']): string {
+  const line1 = addr.street;
+  const line2 = [addr.city, addr.state, addr.zipCode].filter(Boolean).join(', ');
+  const parts = [line1, line2, addr.country].filter(Boolean);
+  return parts.length ? parts.join('\n') : 'Not provided';
+}
 
-const PaymentsTab: React.FC = () => (
-  <View style={styles.tabContent}>
-    {MOCK_PAYMENTS.map(pay => (
-      <View key={pay.id} style={styles.listCard}>
-        <View style={styles.listCardTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.listCardTitle}>{pay.reference}</Text>
-            <Text style={styles.listCardSub}>{formatDate(pay.date)}</Text>
-          </View>
-          <Text style={[styles.listCardAmount, { color: colors.success }]}>
-            {formatCurrency(pay.amount, 'Rs ')}
-          </Text>
-        </View>
-        <Text style={styles.listCardDetail}>Method: {pay.method}</Text>
-      </View>
-    ))}
-  </View>
-);
-
-const InfoRow: React.FC<{ icon: string; label: string; value: string }> = ({ icon, label, value }) => (
+const InfoRow: React.FC<{ icon: keyof typeof Feather.glyphMap; label: string; value: string }> = ({ icon, label, value }) => (
   <View style={styles.infoRow}>
-    <Text style={styles.infoIcon}>{icon}</Text>
+    <Feather name={icon} size={14} color={colors.textSecondary} style={styles.infoIcon} />
     <Text style={styles.infoLabel}>{label}</Text>
     <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>
   </View>
@@ -382,7 +573,6 @@ const styles = StyleSheet.create({
   headerLeft: { flex: 1, marginRight: spacing.sm },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
   backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
   headerTitle: { flex: 1, fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   scrollContent: { paddingBottom: spacing.xl },
 
@@ -438,7 +628,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadows.small,
   },
-  actionIcon: { fontSize: 22, marginBottom: spacing.xs },
   actionLabel: { fontSize: 11, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
 
   // ── Tabs ───────────────────────────────────────
@@ -458,7 +647,14 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.white },
 
   // ── Tab Content ────────────────────────────────
-  tabContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  tabContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: 0 },
+  tabStateBlock: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  tabStateText: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
 
   // ── Info Cards ─────────────────────────────────
   infoCard: {
@@ -480,7 +676,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xs + 1,
   },
-  infoIcon: { fontSize: 14, marginRight: spacing.sm, width: 22 },
+  infoIcon: { marginRight: spacing.sm, width: 22 },
   infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, width: 100 },
   infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
 
@@ -505,9 +701,8 @@ const styles = StyleSheet.create({
   miniStatusText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
 
   // ── Empty / Center ─────────────────────────────
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  emptyIcon: { fontSize: 48 },
-  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xl },
+  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
 });
 
 export default CustomerDetailScreen;

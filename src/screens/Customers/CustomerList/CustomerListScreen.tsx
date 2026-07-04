@@ -2,7 +2,7 @@
 // FinMatrix — Customer List Screen
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -31,7 +31,11 @@ import {
   selectCustomerStatusFilter,
   selectCustomerSortField,
   selectCustomerIsLoading,
+  selectCustomerIsLoadingMore,
   selectCustomerError,
+  selectCustomerPage,
+  selectCustomerTotalPages,
+  selectCustomerTotal,
   setSearchQuery,
   setStatusFilter,
   setSortField,
@@ -70,41 +74,51 @@ const CustomerListScreen: React.FC = () => {
   const statusFilter = useAppSelector(selectCustomerStatusFilter);
   const sortField = useAppSelector(selectCustomerSortField);
   const isLoading = useAppSelector(selectCustomerIsLoading);
+  const isLoadingMore = useAppSelector(selectCustomerIsLoadingMore);
   const error = useAppSelector(selectCustomerError);
+  const page = useAppSelector(selectCustomerPage);
+  const totalPages = useAppSelector(selectCustomerTotalPages);
+  const serverTotal = useAppSelector(selectCustomerTotal);
   const [showSearch, setShowSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      dispatch(fetchCustomers());
+      dispatch(fetchCustomers({ search: searchQuery }));
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dispatch]),
   );
 
+  // Server-side search, debounced so we don't fire a request per keystroke.
+  useEffect(() => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => {
+      dispatch(fetchCustomers({ search: searchQuery }));
+    }, 350);
+    return () => {
+      if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    };
+  }, [searchQuery, dispatch]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await dispatch(fetchCustomers());
+    await dispatch(fetchCustomers({ search: searchQuery }));
     setRefreshing(false);
-  }, [dispatch]);
+  }, [dispatch, searchQuery]);
 
-  // ── Filtered & sorted list ──────────────────────
+  const onEndReached = useCallback(() => {
+    if (isLoading || isLoadingMore || page >= totalPages) return;
+    dispatch(fetchCustomers({ page: page + 1, search: searchQuery, append: true }));
+  }, [dispatch, isLoading, isLoadingMore, page, totalPages, searchQuery]);
+
+  // ── Filtered & sorted list (search happens server-side) ──
   const filtered = useMemo(() => {
     let list = customers;
 
     // Status filter
     if (statusFilter === 'active') list = list.filter(c => c.isActive);
     else if (statusFilter === 'inactive') list = list.filter(c => !c.isActive);
-
-    // Search
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(
-        c =>
-          c.name.toLowerCase().includes(q) ||
-          c.company.toLowerCase().includes(q) ||
-          c.email.toLowerCase().includes(q) ||
-          c.phone.includes(q),
-      );
-    }
 
     // Sort
     list = [...list].sort((a, b) => {
@@ -117,10 +131,10 @@ const CustomerListScreen: React.FC = () => {
     });
 
     return list;
-  }, [customers, statusFilter, searchQuery, sortField]);
+  }, [customers, statusFilter, sortField]);
 
   // ── Summary ─────────────────────────────────────
-  const totalCustomers = customers.length;
+  const totalCustomers = serverTotal || customers.length;
   const activeCustomers = customers.filter(c => c.isActive).length;
   const totalBalance = customers.reduce((sum, c) => sum + c.balance, 0);
 
@@ -305,6 +319,13 @@ const CustomerListScreen: React.FC = () => {
           renderItem={renderCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.md }} />
+            ) : null
+          }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
           }

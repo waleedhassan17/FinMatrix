@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -7,22 +7,27 @@ import {
   StatusBar,
   ScrollView,
   Alert,
+  ActivityIndicator,
   Linking,
+  Modal,
+  Platform,
+  RefreshControl,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../../Custom-Components/CustomButton';
-import { colors, spacing, borderRadius, shadows } from '../../../../theme';
+import { colors, spacing, borderRadius } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
-import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import {
-  selectActiveCompany,
-  updateDeliveryPersonnel,
-  removeDeliveryPersonnel,
-  removeMember,
-} from '../../../Auth/companySlice';
-import { dummyDeliveryPersonnel } from '../../../../models/deliveryModel';
+  getPersonnelDetailAPI,
+  getDeliveriesAPI,
+  updatePersonnelAPI,
+  togglePersonnelAvailabilityAPI,
+  resetPersonnelPasswordAPI,
+} from '../../../../network/deliveryNetwork';
 import type { RootStackParamList } from '../../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryPersonnelDetail'>;
@@ -35,42 +40,154 @@ const STATUS_COLORS: Record<string, string> = {
 
 const VEHICLE_LABELS: Record<string, string> = {
   motorcycle: 'Motorcycle',
+  bike: 'Bike',
+  car: 'Car',
   van: 'Van',
   truck: 'Truck',
 };
 
-const generateDummyDeliveries = () => [
-  { id: 'd1', customer: 'Ahmed Markets', status: 'delivered', time: '09:30 AM', items: 3 },
-  { id: 'd2', customer: 'Super Mart Gulberg', status: 'in_transit', time: '11:00 AM', items: 5 },
-  { id: 'd3', customer: 'Al-Fatah Store', status: 'pending', time: '02:00 PM', items: 2 },
-];
+const ACTIVE_STATUSES = ['pending', 'picked_up', 'in_transit', 'arrived'];
 
-const generateDummyHistory = () => [
-  { id: 'h1', date: '2026-03-10', deliveries: 12, onTime: 11 },
-  { id: 'h2', date: '2026-03-09', deliveries: 14, onTime: 13 },
-  { id: 'h3', date: '2026-03-08', deliveries: 10, onTime: 10 },
-  { id: 'h4', date: '2026-03-07', deliveries: 15, onTime: 14 },
-  { id: 'h5', date: '2026-03-06', deliveries: 11, onTime: 10 },
-];
+interface RiderProfile {
+  userId: string;
+  displayName: string;
+  email: string;
+  phone: string;
+  vehicleType: string;
+  vehicleNumber: string;
+  zones: string[];
+  status: string;
+  isAvailable: boolean;
+  rating: number;
+  totalDeliveries: number;
+  onTimeRate: number;
+  currentLoad: number;
+}
+
+interface RiderDelivery {
+  id: string;
+  referenceNo: string;
+  customerName: string;
+  status: string;
+  itemCount: number;
+  date: string;
+}
+
+const toNum = (v: unknown): number => {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
+  return Number.isFinite(n) ? n : 0;
+};
+
+const mapProfile = (raw: any): RiderProfile => ({
+  userId: raw?.userId ?? '',
+  displayName: raw?.name ?? raw?.displayName ?? 'Rider',
+  email: raw?.email ?? '',
+  phone: raw?.phone ?? '',
+  vehicleType: raw?.vehicleType ?? '',
+  vehicleNumber: raw?.vehicleNumber ?? '',
+  zones: Array.isArray(raw?.zones) ? raw.zones : [],
+  status: raw?.status ?? 'active',
+  isAvailable: raw?.isAvailable ?? false,
+  rating: toNum(raw?.rating),
+  totalDeliveries: toNum(raw?.totalDeliveries),
+  onTimeRate: toNum(raw?.onTimeRate),
+  currentLoad: toNum(raw?.currentLoad),
+});
+
+const mapDelivery = (raw: any): RiderDelivery => ({
+  id: raw?.id ?? '',
+  referenceNo: raw?.referenceNo ?? '',
+  customerName: raw?.customerName ?? 'Customer',
+  status: raw?.status ?? 'pending',
+  itemCount: Array.isArray(raw?.items) ? raw.items.length : 0,
+  date: raw?.completedAt ?? raw?.scheduledDate ?? raw?.preferredDate ?? raw?.createdAt ?? '',
+});
+
+// Confirmations must be Modals in this app — Alert.alert button callbacks
+// are a no-op on react-native-web.
+const notify = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    // eslint-disable-next-line no-alert
+    (globalThis as any).alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+};
 
 const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { userId } = route.params;
-  const dispatch = useAppDispatch();
-  const activeCompany = useAppSelector(selectActiveCompany);
   const [activeSection, setActiveSection] = useState<'assignments' | 'history'>('assignments');
 
-  const person = useMemo(() => {
-    const fromCompany = activeCompany?.deliveryPersonnel.find(p => p.userId === userId);
-    if (fromCompany) return fromCompany;
-    return dummyDeliveryPersonnel.find(p => p.userId === userId) ?? null;
-  }, [userId, activeCompany]);
+  const [person, setPerson] = useState<RiderProfile | null>(null);
+  const [loadState, setLoadState] = useState<'loading' | 'failed' | 'loaded'>('loading');
+  const [loadError, setLoadError] = useState('');
+  const [deliveries, setDeliveries] = useState<RiderDelivery[]>([]);
+  const [deliveriesState, setDeliveriesState] = useState<'loading' | 'failed' | 'loaded'>('loading');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isActing, setIsActing] = useState(false);
+  const [confirm, setConfirm] = useState<null | 'reset' | 'deactivate' | 'reactivate'>(null);
+  const [tempCredentials, setTempCredentials] = useState<{ email: string; password: string } | null>(null);
+
+  const fetchAll = useCallback(async () => {
+    try {
+      setLoadError('');
+      const payload = await getPersonnelDetailAPI(userId);
+      const raw = payload?.data;
+      if (!raw) throw new Error('Rider not found');
+      setPerson(mapProfile(raw));
+      setLoadState('loaded');
+    } catch (e: any) {
+      setLoadState('failed');
+      setLoadError(e?.message || 'Failed to load rider');
+    }
+    try {
+      setDeliveriesState('loading');
+      const payload = await getDeliveriesAPI({ personnelId: userId, limit: 50 });
+      const rows: any[] = Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload?.data?.data)
+          ? payload.data.data
+          : [];
+      setDeliveries(rows.map(mapDelivery));
+      setDeliveriesState('loaded');
+    } catch {
+      setDeliveriesState('failed');
+    }
+  }, [userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAll();
+    }, [fetchAll]),
+  );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await fetchAll();
+    setIsRefreshing(false);
+  }, [fetchAll]);
+
+  if (loadState === 'loading' && !person) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScreenHeader onBack={() => navigation.goBack()} />
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.emptyText}>Loading rider…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!person) {
     return (
       <SafeAreaView style={styles.container}>
+        <ScreenHeader onBack={() => navigation.goBack()} />
         <View style={styles.centerContent}>
-          <Text style={styles.emptyText}>Personnel not found</Text>
-          <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="primary" size="md" />
+          <Feather name="user-x" size={40} color={colors.textLight} />
+          <Text style={styles.emptyText}>{loadError || 'Personnel not found'}</Text>
+          <CustomButton title="Retry" onPress={fetchAll} variant="primary" size="md" />
+          <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="secondary" size="md" />
         </View>
       </SafeAreaView>
     );
@@ -79,75 +196,128 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
   const getInitials = (name: string) =>
     name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
+  const isDeactivated = person.status === 'inactive';
   const statusColor = person.isAvailable && person.status === 'active'
     ? colors.success
     : STATUS_COLORS[person.status] || '#9CA3AF';
 
-  const todayDeliveries = generateDummyDeliveries();
-  const history = generateDummyHistory();
+  const activeDeliveries = deliveries.filter(d => ACTIVE_STATUSES.includes(d.status));
+  const completedDeliveries = deliveries.filter(d => !ACTIVE_STATUSES.includes(d.status) && d.status !== 'unassigned');
 
-  const handleCallPhone = () => Linking.openURL(`tel:${person.phone}`);
-
-  const handleToggleAvailability = () => {
-    if (!activeCompany) return;
-    dispatch(updateDeliveryPersonnel({
-      companyId: activeCompany.companyId,
-      userId: person.userId,
-      updates: { isAvailable: !person.isAvailable },
-    }));
+  const handleCallPhone = () => {
+    if (!person.phone) {
+      notify('No phone', 'This rider has no phone number on file.');
+      return;
+    }
+    Linking.openURL(`tel:${person.phone}`).catch(() => notify('Call', person.phone));
   };
 
-  const handleRemove = () => {
-    Alert.alert('Remove Personnel', `Remove ${person.displayName} from the company?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove', style: 'destructive',
-        onPress: () => {
-          if (!activeCompany) return;
-          dispatch(removeDeliveryPersonnel({ companyId: activeCompany.companyId, userId: person.userId }));
-          dispatch(removeMember({ companyId: activeCompany.companyId, userId: person.userId }));
-          navigation.goBack();
-        },
-      },
-    ]);
+  const runAction = async (fn: () => Promise<void>) => {
+    if (isActing) return;
+    setIsActing(true);
+    try {
+      await fn();
+      await fetchAll();
+    } catch (e: any) {
+      notify('Action failed', e?.message || 'Something went wrong. Please try again.');
+    } finally {
+      setIsActing(false);
+    }
+  };
+
+  const handleToggleAvailability = () =>
+    runAction(async () => {
+      await togglePersonnelAvailabilityAPI(person.userId);
+    });
+
+  const handleResetPassword = () =>
+    runAction(async () => {
+      const payload = await resetPersonnelPasswordAPI(person.userId);
+      const creds = payload?.data?.credentials;
+      if (creds?.temporaryPassword) {
+        setTempCredentials({
+          email: creds.email || person.email,
+          password: creds.temporaryPassword,
+        });
+      } else {
+        notify('Password reset', 'A temporary password has been set for this rider.');
+      }
+    });
+
+  const handleSetStatus = (status: 'active' | 'inactive') =>
+    runAction(async () => {
+      await updatePersonnelAPI(person.userId, { status });
+    });
+
+  const confirmCopy: Record<string, { title: string; body: string; cta: string; danger: boolean; run: () => void }> = {
+    reset: {
+      title: 'Reset Password',
+      body: `Generate a new temporary password for ${person.displayName}? Their current password stops working immediately.`,
+      cta: 'Reset Password',
+      danger: false,
+      run: handleResetPassword,
+    },
+    deactivate: {
+      title: 'Deactivate Rider',
+      body: `${person.displayName} will no longer be able to sign in or receive deliveries. Their delivery records and history are kept.`,
+      cta: 'Deactivate',
+      danger: true,
+      run: () => handleSetStatus('inactive'),
+    },
+    reactivate: {
+      title: 'Reactivate Rider',
+      body: `${person.displayName} will be able to sign in and receive deliveries again. Plan limits apply to active riders.`,
+      cta: 'Reactivate',
+      danger: false,
+      run: () => handleSetStatus('active'),
+    },
   };
 
   const deliveryStatusColors: Record<string, string> = {
     delivered: colors.success,
     in_transit: colors.secondary,
+    arrived: colors.secondary,
+    picked_up: colors.secondary,
     pending: '#FF991F',
     failed: colors.danger,
+    cancelled: colors.textLight,
+    returned: '#FF991F',
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <ScreenHeader onBack={() => navigation.goBack()} />
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <View style={styles.backIconContainer}>
-            <Feather name="arrow-left" size={20} color={colors.textPrimary} />
-          </View>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Personnel Details</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+        }
+      >
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={[styles.largeAvatar, { backgroundColor: statusColor + '10' }]}>
             <Text style={[styles.largeAvatarText, { color: statusColor }]}>{getInitials(person.displayName)}</Text>
           </View>
           <Text style={styles.personName}>{person.displayName}</Text>
-          <Text style={styles.personEmail}>{person.email}</Text>
-          <TouchableOpacity onPress={handleCallPhone}>
-            <Text style={styles.personPhone}>{person.phone}</Text>
-          </TouchableOpacity>
+          {!!person.email && <Text style={styles.personEmail}>{person.email}</Text>}
+          {!!person.phone && (
+            <TouchableOpacity onPress={handleCallPhone}>
+              <Text style={styles.personPhone}>{person.phone}</Text>
+            </TouchableOpacity>
+          )}
           <View style={[styles.profileStatusBadge, { backgroundColor: statusColor + '10' }]}>
             <View style={[styles.profileStatusDot, { backgroundColor: statusColor }]} />
             <Text style={[styles.profileStatusText, { color: statusColor }]}>
-              {person.status === 'on_leave' ? 'On Leave' : person.isAvailable ? 'Available' : 'Busy'}
+              {isDeactivated
+                ? 'Deactivated'
+                : person.status === 'on_leave'
+                  ? 'On Leave'
+                  : person.isAvailable
+                    ? 'Available'
+                    : 'Busy'}
             </Text>
           </View>
         </View>
@@ -157,20 +327,22 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
           <Text style={styles.sectionTitle}>Vehicle & Assignment</Text>
           <View style={styles.vehicleInfo}>
             <View style={styles.vehicleIconBox}>
-              <Text style={styles.vehicleIconLetter}>{VEHICLE_LABELS[person.vehicleType]?.charAt(0) || 'V'}</Text>
+              <Feather name="truck" size={18} color={colors.primary} />
             </View>
             <View style={styles.vehicleDetails}>
-              <Text style={styles.vehicleType}>{VEHICLE_LABELS[person.vehicleType] || person.vehicleType}</Text>
-              <Text style={styles.vehiclePlate}>{person.vehicleNumber}</Text>
+              <Text style={styles.vehicleType}>
+                {VEHICLE_LABELS[person.vehicleType] || person.vehicleType || 'Not set'}
+              </Text>
+              <Text style={styles.vehiclePlate}>{person.vehicleNumber || '—'}</Text>
             </View>
           </View>
-          <View style={styles.zonesRow}>
-            {person.zones.map(zone => (
-              <React.Fragment key={zone}>
-                <View style={styles.zoneTag}><Text style={styles.zoneTagText}>{zone}</Text></View>
-              </React.Fragment>
-            ))}
-          </View>
+          {person.zones.length > 0 && (
+            <View style={styles.zonesRow}>
+              {person.zones.map(zone => (
+                <View key={zone} style={styles.zoneTag}><Text style={styles.zoneTagText}>{zone}</Text></View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Metrics */}
@@ -182,7 +354,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
               <Text style={styles.metricLabel}>Total</Text>
             </View>
             <View style={styles.metricItem}>
-              <Text style={styles.metricNumber}>{person.onTimeRate}%</Text>
+              <Text style={styles.metricNumber}>{person.onTimeRate.toFixed(0)}%</Text>
               <Text style={styles.metricLabel}>On-Time</Text>
             </View>
             <View style={styles.metricItem}>
@@ -190,15 +362,15 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
               <Text style={styles.metricLabel}>Rating</Text>
             </View>
             <View style={styles.metricItem}>
-              <Text style={styles.metricNumber}>{person.currentLoad}</Text>
-              <Text style={styles.metricLabel}>This Month</Text>
+              <Text style={styles.metricNumber}>{activeDeliveries.length}</Text>
+              <Text style={styles.metricLabel}>Active Now</Text>
             </View>
           </View>
           <View style={styles.progressWrapper}>
             <Text style={styles.progressLabel}>On-Time Rate</Text>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, {
-                width: `${person.onTimeRate}%`,
+                width: `${Math.min(person.onTimeRate, 100)}%`,
                 backgroundColor: person.onTimeRate >= 90 ? colors.success : person.onTimeRate >= 70 ? '#FF991F' : colors.danger,
               }]} />
             </View>
@@ -213,74 +385,204 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
               style={[styles.toggleBtn, activeSection === section && styles.toggleActive]}
               onPress={() => setActiveSection(section)}>
               <Text style={[styles.toggleText, activeSection === section && styles.toggleTextActive]}>
-                {section === 'assignments' ? 'Current' : 'History (30d)'}
+                {section === 'assignments' ? `Current (${activeDeliveries.length})` : 'Recent'}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {activeSection === 'assignments' ? (
-          <View style={styles.sectionCard}>
-            {todayDeliveries.map(d => (
-              <React.Fragment key={d.id}>
-                <View style={styles.deliveryRow}>
+        <View style={styles.sectionCard}>
+          {deliveriesState === 'loading' && deliveries.length === 0 ? (
+            <View style={styles.listStateBlock}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : deliveriesState === 'failed' && deliveries.length === 0 ? (
+            <View style={styles.listStateBlock}>
+              <Text style={styles.listStateText}>Could not load deliveries.</Text>
+              <CustomButton title="Retry" onPress={fetchAll} variant="secondary" size="sm" />
+            </View>
+          ) : (
+            (() => {
+              const rows = activeSection === 'assignments' ? activeDeliveries : completedDeliveries.slice(0, 15);
+              if (rows.length === 0) {
+                return (
+                  <View style={styles.listStateBlock}>
+                    <Feather name="inbox" size={24} color={colors.textLight} />
+                    <Text style={styles.listStateText}>
+                      {activeSection === 'assignments'
+                        ? 'No active deliveries assigned right now.'
+                        : 'No completed deliveries yet.'}
+                    </Text>
+                  </View>
+                );
+              }
+              return rows.map(d => (
+                <TouchableOpacity
+                  key={d.id}
+                  style={styles.deliveryRow}
+                  activeOpacity={0.7}
+                  onPress={() => (navigation as any).navigate('AdminDeliveryDetail', { deliveryId: d.id })}
+                >
                   <View style={styles.deliveryInfo}>
-                    <Text style={styles.deliveryCustomer}>{d.customer}</Text>
-                    <Text style={styles.deliveryTime}>{d.time} · {d.items} items</Text>
+                    <Text style={styles.deliveryCustomer}>{d.customerName}</Text>
+                    <Text style={styles.deliveryTime}>
+                      {d.referenceNo}
+                      {d.itemCount ? ` · ${d.itemCount} item${d.itemCount === 1 ? '' : 's'}` : ''}
+                      {d.date ? ` · ${new Date(d.date).toLocaleDateString('en-PK', { month: 'short', day: 'numeric' })}` : ''}
+                    </Text>
                   </View>
                   <View style={[styles.deliveryStatusBadge, { backgroundColor: (deliveryStatusColors[d.status] || colors.textLight) + '10' }]}>
                     <Text style={[styles.deliveryStatusText, { color: deliveryStatusColors[d.status] || colors.textLight }]}>
                       {d.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
                     </Text>
                   </View>
-                </View>
-              </React.Fragment>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.sectionCard}>
-            {history.map(h => (
-              <React.Fragment key={h.id}>
-                <View style={styles.historyRow}>
-                  <Text style={styles.historyDate}>
-                    {new Date(h.date).toLocaleDateString('en-PK', { month: 'short', day: 'numeric' })}
-                  </Text>
-                  <Text style={styles.historyDeliveries}>{h.deliveries} deliveries</Text>
-                  <Text style={styles.historyOnTime}>{h.onTime}/{h.deliveries} on time</Text>
-                </View>
-              </React.Fragment>
-            ))}
-          </View>
-        )}
+                </TouchableOpacity>
+              ));
+            })()
+          )}
+        </View>
 
         {/* Actions */}
         <View style={styles.actionsCard}>
           <Text style={styles.sectionTitle}>Actions</Text>
           <View style={styles.actionsGrid}>
             {[
-              { label: 'Track on Map', icon: 'T', onPress: () => (navigation as any).navigate('DeliveryMonitor'), color: '#2563EB' },
-              { label: person.isAvailable ? 'Set Unavailable' : 'Set Available', icon: person.isAvailable ? 'U' : 'A', onPress: handleToggleAvailability, color: colors.secondary },
-              { label: 'Reset Password', icon: 'P', onPress: () => Alert.alert('Reset Password', 'This feature will be available with backend integration.'), color: colors.primary },
-              { label: 'Remove', icon: 'R', onPress: handleRemove, color: colors.danger },
+              {
+                label: 'Track on Map',
+                icon: 'map-pin' as const,
+                onPress: () => (navigation as any).navigate('DeliveryMonitor'),
+                color: '#2563EB',
+                disabled: false,
+              },
+              {
+                label: person.isAvailable ? 'Set Unavailable' : 'Set Available',
+                icon: (person.isAvailable ? 'pause-circle' : 'play-circle') as 'pause-circle' | 'play-circle',
+                onPress: handleToggleAvailability,
+                color: colors.secondary,
+                disabled: isActing || isDeactivated,
+              },
+              {
+                label: 'Reset Password',
+                icon: 'key' as const,
+                onPress: () => setConfirm('reset'),
+                color: colors.primary,
+                disabled: isActing,
+              },
+              isDeactivated
+                ? {
+                    label: 'Reactivate',
+                    icon: 'user-check' as const,
+                    onPress: () => setConfirm('reactivate'),
+                    color: colors.success,
+                    disabled: isActing,
+                  }
+                : {
+                    label: 'Deactivate',
+                    icon: 'user-x' as const,
+                    onPress: () => setConfirm('deactivate'),
+                    color: colors.danger,
+                    disabled: isActing,
+                  },
             ].map((action, i) => (
-              <TouchableOpacity key={i} style={styles.actionBtn} onPress={action.onPress}>
+              <TouchableOpacity
+                key={i}
+                style={[styles.actionBtn, action.disabled && { opacity: 0.5 }]}
+                onPress={action.onPress}
+                disabled={action.disabled}
+              >
                 <View style={[styles.actionIconCircle, { backgroundColor: action.color + '0A' }]}>
-                  <Text style={[styles.actionIconText, { color: action.color }]}>{action.icon}</Text>
+                  <Feather name={action.icon} size={16} color={action.color} />
                 </View>
-                <Text style={[styles.actionLabel, action.color === colors.danger && { color: colors.danger }]}>{action.label}</Text>
+                <Text style={[styles.actionLabel, action.color === colors.danger && { color: colors.danger }]}>
+                  {action.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
+          {isDeactivated && (
+            <Text style={styles.deactivatedNote}>
+              This rider is deactivated: they cannot sign in or be assigned deliveries. All their
+              records are preserved.
+            </Text>
+          )}
         </View>
       </ScrollView>
+
+      {/* Confirm modal (web-safe — Alert.alert buttons don't fire on web) */}
+      <Modal visible={confirm !== null} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setConfirm(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            {confirm && (
+              <>
+                <Text style={styles.modalTitle}>{confirmCopy[confirm].title}</Text>
+                <Text style={styles.modalBody}>{confirmCopy[confirm].body}</Text>
+                <View style={styles.modalActions}>
+                  <CustomButton title="Cancel" variant="secondary" size="md" onPress={() => setConfirm(null)} />
+                  <CustomButton
+                    title={confirmCopy[confirm].cta}
+                    variant={confirmCopy[confirm].danger ? 'danger' : 'primary'}
+                    size="md"
+                    onPress={() => {
+                      const run = confirmCopy[confirm].run;
+                      setConfirm(null);
+                      run();
+                    }}
+                  />
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Temporary-credentials modal after a password reset */}
+      <Modal visible={tempCredentials !== null} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setTempCredentials(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Feather name="check-circle" size={28} color={colors.success} style={{ alignSelf: 'center', marginBottom: spacing.sm }} />
+            <Text style={styles.modalTitle}>Password Reset</Text>
+            <Text style={styles.modalBody}>Share these credentials with the rider securely. The temporary password is shown only once.</Text>
+            <View style={styles.credsBox}>
+              <Text style={styles.credsLine}>Email: {tempCredentials?.email}</Text>
+              <Text style={styles.credsLine}>Password: {tempCredentials?.password}</Text>
+            </View>
+            <View style={styles.modalActions}>
+              <CustomButton
+                title="Share"
+                variant="secondary"
+                size="md"
+                onPress={() => {
+                  if (!tempCredentials) return;
+                  Share.share({
+                    message: `FinMatrix rider login\nEmail: ${tempCredentials.email}\nTemporary password: ${tempCredentials.password}`,
+                  }).catch(() => { /* user cancelled */ });
+                }}
+              />
+              <CustomButton title="Done" variant="primary" size="md" onPress={() => setTempCredentials(null)} />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
 
+const ScreenHeader: React.FC<{ onBack: () => void }> = ({ onBack }) => (
+  <View style={styles.header}>
+    <TouchableOpacity onPress={onBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+      <View style={styles.backIconContainer}>
+        <Feather name="arrow-left" size={20} color={colors.textPrimary} />
+      </View>
+    </TouchableOpacity>
+    <Text style={styles.headerTitle}>Personnel Details</Text>
+    <View style={styles.headerSpacer} />
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
-  emptyText: { fontSize: THEME.typography.bodyLg.fontSize, color: colors.textSecondary, marginBottom: spacing.lg, fontFamily: THEME.typography.fontFamily },
+  centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg, gap: spacing.md },
+  emptyText: { fontSize: THEME.typography.bodyLg.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
   header: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm + 4, backgroundColor: colors.white,
@@ -290,7 +592,6 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 10, backgroundColor: colors.background,
     borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center',
   },
-  backArrow: { fontSize: 24, color: colors.textPrimary, marginTop: -2, fontWeight: '300' },
   headerTitle: {
     flex: 1, textAlign: 'center', fontSize: THEME.typography.h3.fontSize, fontWeight: '600',
     color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
@@ -330,11 +631,10 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primary + '0A',
     justifyContent: 'center', alignItems: 'center', marginRight: spacing.md,
   },
-  vehicleIconLetter: { fontSize: 18, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
   vehicleDetails: {},
   vehicleType: { fontSize: THEME.typography.bodyLg.fontSize, fontWeight: '500', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
   vehiclePlate: { fontSize: THEME.typography.bodyLg.fontSize, color: colors.textSecondary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
-  zonesRow: { flexDirection: 'row', gap: spacing.sm },
+  zonesRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
   zoneTag: { backgroundColor: colors.secondary + '0C', paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs, borderRadius: 6 },
   zoneTagText: { fontSize: THEME.typography.caption.fontSize, color: colors.secondary, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
 
@@ -359,6 +659,9 @@ const styles = StyleSheet.create({
   toggleText: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
   toggleTextActive: { color: colors.primary, fontWeight: '600' },
 
+  listStateBlock: { alignItems: 'center', paddingVertical: spacing.lg, gap: spacing.sm },
+  listStateText: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
+
   deliveryRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
@@ -368,14 +671,6 @@ const styles = StyleSheet.create({
   deliveryTime: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily },
   deliveryStatusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 6 },
   deliveryStatusText: { fontSize: THEME.typography.caption.fontSize, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
-
-  historyRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  historyDate: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textPrimary, fontWeight: '500', flex: 1, fontFamily: THEME.typography.fontFamily },
-  historyDeliveries: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, flex: 1, textAlign: 'center', fontFamily: THEME.typography.fontFamily },
-  historyOnTime: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.success, fontWeight: '500', flex: 1, textAlign: 'right', fontFamily: THEME.typography.fontFamily },
 
   actionsCard: {
     backgroundColor: colors.white, borderRadius: borderRadius.md + 2, padding: spacing.md,
@@ -389,10 +684,36 @@ const styles = StyleSheet.create({
   actionIconCircle: {
     width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xs,
   },
-  actionIconText: { fontSize: 16, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
   actionLabel: {
     fontSize: 11, color: colors.textPrimary, fontWeight: '500', textAlign: 'center', fontFamily: THEME.typography.fontFamily,
   },
+  deactivatedNote: {
+    marginTop: spacing.md, fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary,
+    fontFamily: THEME.typography.fontFamily, lineHeight: 18,
+  },
+
+  modalBackdrop: {
+    flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'center',
+    alignItems: 'center', padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.white, borderRadius: borderRadius.md + 4, padding: spacing.lg,
+    width: '100%', maxWidth: 420,
+  },
+  modalTitle: {
+    fontSize: THEME.typography.h3.fontSize, fontWeight: '700', color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm, textAlign: 'center',
+  },
+  modalBody: {
+    fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary,
+    fontFamily: THEME.typography.fontFamily, lineHeight: 20, textAlign: 'center',
+  },
+  modalActions: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, marginTop: spacing.lg },
+  credsBox: {
+    backgroundColor: colors.background, borderRadius: 10, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, marginTop: spacing.md, gap: spacing.xs,
+  },
+  credsLine: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textPrimary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
 });
 
 export default DeliveryPersonnelDetailScreen;

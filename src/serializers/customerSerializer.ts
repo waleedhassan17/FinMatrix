@@ -6,7 +6,8 @@
 // UI-ready data structure with inline field mapping.
 
 import type { Customer, PaymentTerms } from '../types';
-import type { CustomerApiEntity, CustomerFormData } from '../models/customerModel';
+import type { CustomerFormData } from '../models/customerModel';
+import { PAYMENT_TERMS_TO_API, paymentTermsFromApi } from '../models/customerModel';
 
 // ─── Serialized outputs for the slice ────────────────
 
@@ -17,30 +18,47 @@ export interface SerializedCustomerList {
   totalCustomers: number;
 }
 
+// The API stores decimals as strings ("1500.0000") and addresses with
+// `postalCode`; the app uses numbers and `zipCode`. Coerce both here so
+// every screen sees consistent values.
+const toNumber = (v: unknown): number => {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
+  return Number.isFinite(n) ? n : 0;
+};
+
+const mapAddress = (raw: any) => ({
+  street: raw?.street ?? '',
+  city: raw?.city ?? '',
+  state: raw?.state ?? '',
+  zipCode: raw?.zipCode ?? raw?.postalCode ?? '',
+  country: raw?.country ?? 'Pakistan',
+});
+
 // ─── Raw entity → UI Customer ────────────────────────
 
-export const mapCustomer = (raw: Partial<CustomerApiEntity>): Customer => {
-  const emptyAddress = { street: '', city: '', state: '', zipCode: '', country: 'Pakistan' };
+export const mapCustomer = (raw: any): Customer => {
+  const billing = mapAddress(raw?.billingAddress);
+  const shipping = mapAddress(raw?.shippingAddress);
   return {
-    id: raw.id ?? '',
-    companyId: raw.companyId ?? '',
-    name: raw.name ?? '',
-    company: raw.company ?? '',
-    email: raw.email ?? '',
-    phone: raw.phone ?? '',
-    address: raw.address ?? '',
-    billingAddress: { ...emptyAddress, ...(raw.billingAddress ?? {}) },
-    shippingAddress: { ...emptyAddress, ...(raw.shippingAddress ?? {}) },
-    balance: typeof raw.balance === 'number' ? raw.balance : 0,
-    creditLimit: typeof raw.creditLimit === 'number' ? raw.creditLimit : 0,
-    totalPurchases: typeof raw.totalPurchases === 'number' ? raw.totalPurchases : 0,
-    paymentTerms: (raw.paymentTerms ?? 'net_30') as PaymentTerms,
-    contactPerson: raw.contactPerson ?? '',
-    taxId: raw.taxId ?? '',
-    notes: raw.notes ?? '',
-    isActive: raw.isActive ?? true,
-    createdAt: raw.createdAt ?? '',
-    updatedAt: raw.updatedAt ?? '',
+    id: raw?.id ?? '',
+    companyId: raw?.companyId ?? '',
+    name: raw?.name ?? '',
+    company: raw?.company ?? '',
+    email: raw?.email ?? '',
+    phone: raw?.phone ?? '',
+    address: raw?.address ?? [billing.street, billing.city].filter(Boolean).join(', '),
+    billingAddress: billing,
+    shippingAddress: shipping,
+    balance: toNumber(raw?.balance),
+    creditLimit: toNumber(raw?.creditLimit),
+    totalPurchases: toNumber(raw?.totalPurchases),
+    paymentTerms: paymentTermsFromApi(raw?.paymentTerms),
+    contactPerson: raw?.contactPerson ?? '',
+    taxId: raw?.taxId ?? '',
+    notes: raw?.notes ?? '',
+    isActive: raw?.isActive ?? true,
+    createdAt: raw?.createdAt ?? '',
+    updatedAt: raw?.updatedAt ?? '',
   };
 };
 
@@ -50,9 +68,11 @@ export function customerListSerializer(payload: any): SerializedCustomerList {
   const data = payload?.data;
   const rawCustomers: any[] = Array.isArray(data)
     ? data
-    : Array.isArray(data?.customers)
-      ? data.customers
-      : [];
+    : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.customers)
+        ? data.customers
+        : [];
   const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
 
   return {
@@ -66,13 +86,93 @@ export function customerListSerializer(payload: any): SerializedCustomerList {
 // ─── Single-customer serializer ──────────────────────
 
 export function customerSingleSerializer(payload: any): Customer | null {
-  const raw = payload?.data?.customer;
+  const data = payload?.data;
+  const raw = data?.customer ?? (data?.id ? data : null);
   if (!raw) return null;
-  return mapCustomer(raw);
+  const customer = mapCustomer(raw);
+  // GET /customers/:id returns totalPurchases alongside the record.
+  if (data?.totalPurchases != null) customer.totalPurchases = toNumber(data.totalPurchases);
+  return customer;
+}
+
+// ─── Customer sub-resource serializers (detail tabs) ─
+
+export interface CustomerInvoiceRow {
+  id: string;
+  invoiceNumber: string;
+  date: string;
+  dueDate: string;
+  amount: number;
+  balance: number;
+  status: string;
+}
+
+export interface CustomerPaymentRow {
+  id: string;
+  reference: string;
+  date: string;
+  amount: number;
+  method: string;
+}
+
+interface PagedRows<T> {
+  rows: T[];
+  page: number;
+  totalPages: number;
+  total: number;
+}
+
+function unwrapPagedList(payload: any): { rows: any[]; pagination: any } {
+  const data = payload?.data;
+  if (Array.isArray(data)) return { rows: data, pagination: {} };
+  if (Array.isArray(data?.data)) return { rows: data.data, pagination: data.pagination ?? {} };
+  return { rows: [], pagination: {} };
+}
+
+export function customerInvoicesSerializer(payload: any): PagedRows<CustomerInvoiceRow> {
+  const { rows, pagination } = unwrapPagedList(payload);
+  return {
+    rows: rows.map((raw: any) => ({
+      id: raw?.id ?? '',
+      invoiceNumber: raw?.invoiceNumber ?? raw?.number ?? '—',
+      date: raw?.invoiceDate ?? raw?.date ?? '',
+      dueDate: raw?.dueDate ?? '',
+      amount: toNumber(raw?.total),
+      balance: toNumber(raw?.balanceDue ?? raw?.balance),
+      status: raw?.status ?? 'sent',
+    })),
+    page: pagination.page ?? 1,
+    totalPages: pagination.totalPages ?? 1,
+    total: pagination.total ?? rows.length,
+  };
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  check: 'Cheque',
+  bank_transfer: 'Bank Transfer',
+  credit_card: 'Credit Card',
+  other: 'Other',
+};
+
+export function customerPaymentsSerializer(payload: any): PagedRows<CustomerPaymentRow> {
+  const { rows, pagination } = unwrapPagedList(payload);
+  return {
+    rows: rows.map((raw: any) => ({
+      id: raw?.id ?? '',
+      reference: raw?.reference || `PAY-${String(raw?.id ?? '').slice(0, 8).toUpperCase()}`,
+      date: raw?.paymentDate ?? raw?.date ?? '',
+      amount: toNumber(raw?.amount),
+      method: PAYMENT_METHOD_LABELS[String(raw?.paymentMethod ?? '')] ?? 'Other',
+    })),
+    page: pagination.page ?? 1,
+    totalPages: pagination.totalPages ?? 1,
+    total: pagination.total ?? rows.length,
+  };
 }
 
 // ═══════════════════════════════════════════════════════
-// Form ↔ API helpers (kept from existing implementation)
+// Form ↔ API helpers
 // ═══════════════════════════════════════════════════════
 
 /**
@@ -111,17 +211,17 @@ export const customerToFormData = (customer: Customer): CustomerFormData => {
 };
 
 /**
- * Converts form data into the API payload for creating / updating a customer.
+ * Converts form data into the API payload for creating / updating a
+ * customer. Shapes every field the way the API's DTO expects — decimals as
+ * strings, `postalCode` addresses, `net30`-style terms — so nothing is
+ * stripped or rejected by server-side validation.
  */
-export const formDataToCustomerPayload = (
-  form: CustomerFormData,
-  companyId: string,
-): Omit<Customer, 'id' | 'balance' | 'totalPurchases' | 'createdAt' | 'updatedAt'> => {
+export const formDataToCustomerPayload = (form: CustomerFormData) => {
   const billingAddress = {
     street: form.billingStreet.trim(),
     city: form.billingCity.trim(),
     state: form.billingState.trim(),
-    zipCode: form.billingZipCode.trim(),
+    postalCode: form.billingZipCode.trim(),
     country: form.billingCountry.trim() || 'Pakistan',
   };
 
@@ -131,24 +231,21 @@ export const formDataToCustomerPayload = (
         street: form.shippingStreet.trim(),
         city: form.shippingCity.trim(),
         state: form.shippingState.trim(),
-        zipCode: form.shippingZipCode.trim(),
+        postalCode: form.shippingZipCode.trim(),
         country: form.shippingCountry.trim() || 'Pakistan',
       };
 
   return {
-    companyId,
     name: form.name.trim(),
-    company: form.company.trim(),
-    email: form.email.trim(),
-    phone: form.phone.trim(),
-    address: `${billingAddress.street}, ${billingAddress.city}`,
+    company: form.company.trim() || undefined,
+    email: form.email.trim() || undefined,
+    phone: form.phone.trim() || undefined,
     billingAddress,
     shippingAddress,
-    creditLimit: parseFloat(form.creditLimit) || 0,
-    paymentTerms: form.paymentTerms as PaymentTerms,
-    contactPerson: form.contactPerson.trim(),
-    taxId: form.taxId.trim(),
-    notes: form.notes.trim(),
-    isActive: true,
+    creditLimit: String(parseFloat(form.creditLimit) || 0),
+    paymentTerms: PAYMENT_TERMS_TO_API[(form.paymentTerms || 'net_30') as PaymentTerms],
+    contactPerson: form.contactPerson.trim() || undefined,
+    taxId: form.taxId.trim() || undefined,
+    notes: form.notes.trim() || undefined,
   };
 };

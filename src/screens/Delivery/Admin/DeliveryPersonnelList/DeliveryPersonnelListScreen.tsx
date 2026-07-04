@@ -7,6 +7,7 @@ import {
   StatusBar,
   TextInput,
   FlatList,
+  RefreshControl,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -52,6 +53,15 @@ const TAB_COLORS: Record<FilterKey, string> = {
 
 const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
+  const [isPullRefreshing, setIsPullRefreshing] = React.useState(false);
+  const handlePullRefresh = React.useCallback(async () => {
+    setIsPullRefreshing(true);
+    try {
+      await dispatch(fetchDeliveryPersonnel());
+    } finally {
+      setIsPullRefreshing(false);
+    }
+  }, [dispatch]);
   const allPersonnel = useAppSelector(selectDeliveryPersonnel);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
@@ -307,6 +317,13 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* List */}
       <FlatList
+        refreshControl={
+          <RefreshControl
+            refreshing={isPullRefreshing}
+            onRefresh={handlePullRefresh}
+            tintColor="#059669"
+          />
+        }
         data={filteredPersonnel}
         renderItem={renderPersonCard}
         keyExtractor={item => item.userId}

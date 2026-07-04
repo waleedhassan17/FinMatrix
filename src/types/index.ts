@@ -141,7 +141,7 @@ export interface JournalEntry {
 }
 
 // ─── Customer ─────────────────────────────────────────
-export type PaymentTerms = 'net_15' | 'net_30' | 'net_45' | 'net_60' | 'due_on_receipt' | 'custom';
+export type PaymentTerms = 'net_15' | 'net_30' | 'net_45' | 'net_60' | 'due_on_receipt' | '2_10_net30' | 'custom';
 
 export interface CustomerAddress {
   street: string;

@@ -27,6 +27,7 @@ export interface VendorListSliceState {
   statusFilter: VendorStatusFilter;
   sortField: VendorSortField;
   isLoading: boolean;
+  isLoadingMore: boolean;
   error: string;
   page: number;
   totalPages: number;
@@ -42,6 +43,7 @@ const initialState: VendorListSliceState = {
   statusFilter: 'all',
   sortField: 'name',
   isLoading: false,
+  isLoadingMore: false,
   error: '',
   page: 1,
   totalPages: 1,
@@ -84,20 +86,34 @@ export const vendorListSlice = createAppSlice({
 
     // ── Async thunks ────────────────────────────────
     fetchVendors: create.asyncThunk(
-      async (_arg, thunkAPI) => {
+      async (arg: { page?: number; append?: boolean } | void, thunkAPI) => {
+        const a = (arg ?? {}) as { page?: number; append?: boolean };
         const root = thunkAPI.getState() as { vendorList: VendorListSliceState };
         const { searchQuery, statusFilter, sortField } = root.vendorList;
-        return getVendorsAPI({
+        const payload = await getVendorsAPI({
           ...(searchQuery ? { search: searchQuery } : {}),
           status: statusFilter,
           sort: sortField,
+          page: a.page ?? 1,
+          limit: 50,
         });
+        return { payload, append: a.append === true };
       },
       {
-        pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action: PayloadAction<any>) => {
-          const data = vendorListSerializer(action.payload);
-          state.vendors = data.vendors;
+        pending: (state, action) => {
+          const a = (action.meta.arg ?? {}) as { append?: boolean };
+          if (a.append) state.isLoadingMore = true;
+          else state.isLoading = true;
+          state.error = '';
+        },
+        fulfilled: (state, action: PayloadAction<{ payload: any; append: boolean }>) => {
+          const data = vendorListSerializer(action.payload.payload);
+          if (action.payload.append) {
+            const existing = new Set(state.vendors.map(v => v.id));
+            state.vendors.push(...data.vendors.filter(v => !existing.has(v.id)));
+          } else {
+            state.vendors = data.vendors;
+          }
           state.page = data.page;
           state.totalPages = data.totalPages;
           state.totalVendors = data.totalVendors;
@@ -105,17 +121,18 @@ export const vendorListSlice = createAppSlice({
           state.inactiveCount = data.inactiveCount;
           state.totalBalance = data.totalBalance;
           state.isLoading = false;
+          state.isLoadingMore = false;
         },
         rejected: (state, action) => {
           state.isLoading = false;
+          state.isLoadingMore = false;
           state.error = action.error?.message ?? 'Failed to fetch vendors';
         },
       },
     ),
 
     createVendor: create.asyncThunk(
-      async (data: Omit<Vendor, 'id' | 'balance' | 'createdAt' | 'updatedAt'>) =>
-        createVendorAPI(data),
+      async (data: Record<string, unknown>) => createVendorAPI(data),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
           const v = vendorSingleSerializer(action.payload);
@@ -124,7 +141,7 @@ export const vendorListSlice = createAppSlice({
       },
     ),
     editVendor: create.asyncThunk(
-      async ({ id, data }: { id: string; data: Partial<Vendor> }) =>
+      async ({ id, data }: { id: string; data: Record<string, unknown> }) =>
         updateVendorAPI(id, data),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
@@ -165,6 +182,9 @@ export const vendorListSlice = createAppSlice({
     selectVendorStatusFilter: state => state.statusFilter,
     selectVendorSortField: state => state.sortField,
     selectVendorIsLoading: state => state.isLoading,
+    selectVendorIsLoadingMore: state => state.isLoadingMore,
+    selectVendorPage: state => state.page,
+    selectVendorTotalPages: state => state.totalPages,
     selectVendorError: state => state.error,
     selectVendorTotalVendors: state => state.totalVendors,
     selectVendorActiveCount: state => state.activeCount,
@@ -193,6 +213,9 @@ export const {
   selectVendorStatusFilter,
   selectVendorSortField,
   selectVendorIsLoading,
+  selectVendorIsLoadingMore,
+  selectVendorPage,
+  selectVendorTotalPages,
   selectVendorError,
   selectVendorTotalVendors,
   selectVendorActiveCount,

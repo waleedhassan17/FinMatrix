@@ -41,6 +41,7 @@ export const PAYMENT_TERMS_OPTIONS: { label: string; value: PaymentTerms }[] = [
   { label: 'Net 30', value: 'net_30' },
   { label: 'Net 45', value: 'net_45' },
   { label: 'Net 60', value: 'net_60' },
+  { label: '2/10 Net 30', value: '2_10_net30' },
   { label: 'Custom', value: 'custom' },
 ];
 
@@ -50,7 +51,38 @@ export const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
   net_30: 'Net 30',
   net_45: 'Net 45',
   net_60: 'Net 60',
+  '2_10_net30': '2/10 Net 30',
   custom: 'Custom',
+};
+
+// ─── API ↔ app payment-terms mapping ─────────────────
+// The API uses `net30`-style codes; the app uses `net_30`-style codes.
+// Sending the app code raw fails the API's enum validation (400).
+export const PAYMENT_TERMS_TO_API: Record<PaymentTerms, string> = {
+  due_on_receipt: 'due_on_receipt',
+  net_15: 'net15',
+  net_30: 'net30',
+  net_45: 'net45',
+  net_60: 'net60',
+  '2_10_net30': '2_10_net30',
+  custom: 'custom',
+};
+
+export const paymentTermsFromApi = (raw: unknown): PaymentTerms => {
+  const map: Record<string, PaymentTerms> = {
+    due_on_receipt: 'due_on_receipt',
+    net15: 'net_15',
+    net30: 'net_30',
+    net45: 'net_45',
+    net60: 'net_60',
+    '2_10_net30': '2_10_net30',
+    custom: 'custom',
+    net_15: 'net_15',
+    net_30: 'net_30',
+    net_45: 'net_45',
+    net_60: 'net_60',
+  };
+  return map[String(raw ?? '')] ?? 'net_30';
 };
 
 export const validateCustomer = (data: CustomerFormData): ValidationErrors => {

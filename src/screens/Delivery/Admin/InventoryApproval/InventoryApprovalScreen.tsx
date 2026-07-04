@@ -4,6 +4,7 @@ import {
   Image,
   Modal,
   ScrollView,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -58,6 +59,15 @@ const isSyncedRequest = (id: string) => UUID_RE.test(id);
 
 const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
+  const [isPullRefreshing, setIsPullRefreshing] = React.useState(false);
+  const handlePullRefresh = React.useCallback(async () => {
+    setIsPullRefreshing(true);
+    try {
+      await dispatch(fetchApprovalRequests());
+    } finally {
+      setIsPullRefreshing(false);
+    }
+  }, [dispatch]);
   const requests = useAppSelector(selectInventoryApprovalRequests);
   const activeFilter = useAppSelector(selectInventoryApprovalFilter);
   const pendingCount = useAppSelector(selectPendingApprovalCount);
@@ -259,7 +269,17 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isPullRefreshing}
+            onRefresh={handlePullRefresh}
+            tintColor="#059669"
+          />
+        }
+      >
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {FILTERS.map(filter => {
             const active = activeFilter === filter.key;

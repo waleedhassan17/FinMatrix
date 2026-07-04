@@ -26,6 +26,7 @@ export interface CustomerListSliceState {
   statusFilter: CustomerStatusFilter;
   sortField: CustomerSortField;
   isLoading: boolean;
+  isLoadingMore: boolean;
   error: string;
   page: number;
   totalPages: number;
@@ -38,11 +39,20 @@ const initialState: CustomerListSliceState = {
   statusFilter: 'all',
   sortField: 'name',
   isLoading: false,
+  isLoadingMore: false,
   error: '',
   page: 1,
   totalPages: 1,
   totalCustomers: 0,
 };
+
+const PAGE_SIZE = 50;
+
+interface FetchCustomersArg {
+  page?: number;
+  search?: string;
+  append?: boolean;
+}
 
 export const customerListSlice = createAppSlice({
   name: 'customerList',
@@ -50,6 +60,11 @@ export const customerListSlice = createAppSlice({
   reducers: create => ({
     setCustomers: create.reducer((state, action: PayloadAction<Customer[]>) => {
       state.customers = action.payload;
+    }),
+    upsertCustomer: create.reducer((state, action: PayloadAction<Customer>) => {
+      const idx = state.customers.findIndex(c => c.id === action.payload.id);
+      if (idx !== -1) state.customers[idx] = action.payload;
+      else state.customers.unshift(action.payload);
     }),
     setSearchQuery: create.reducer((state, action: PayloadAction<string>) => {
       state.searchQuery = action.payload;
@@ -70,26 +85,45 @@ export const customerListSlice = createAppSlice({
 
     // ── Async thunks (flow: Network → Serializer → State) ──
     fetchCustomers: create.asyncThunk(
-      async () => getCustomersAPI(),
+      async (arg: FetchCustomersArg | void) => {
+        const a = (arg ?? {}) as FetchCustomersArg;
+        const payload = await getCustomersAPI({
+          page: a.page ?? 1,
+          limit: PAGE_SIZE,
+          search: a.search?.trim() || undefined,
+        });
+        return { payload, append: a.append === true };
+      },
       {
-        pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action: PayloadAction<any>) => {
-          const data = customerListSerializer(action.payload);
-          state.customers = data.customers;
+        pending: (state, action) => {
+          const a = (action.meta.arg ?? {}) as FetchCustomersArg;
+          if (a.append) state.isLoadingMore = true;
+          else state.isLoading = true;
+          state.error = '';
+        },
+        fulfilled: (state, action: PayloadAction<{ payload: any; append: boolean }>) => {
+          const data = customerListSerializer(action.payload.payload);
+          if (action.payload.append) {
+            const existing = new Set(state.customers.map(c => c.id));
+            state.customers.push(...data.customers.filter(c => !existing.has(c.id)));
+          } else {
+            state.customers = data.customers;
+          }
           state.page = data.page;
           state.totalPages = data.totalPages;
           state.totalCustomers = data.totalCustomers;
           state.isLoading = false;
+          state.isLoadingMore = false;
         },
         rejected: (state, action) => {
           state.isLoading = false;
+          state.isLoadingMore = false;
           state.error = action.error?.message ?? 'Failed to fetch customers';
         },
       },
     ),
     createCustomer: create.asyncThunk(
-      async (data: Omit<Customer, 'id' | 'balance' | 'totalPurchases' | 'createdAt' | 'updatedAt'>) =>
-        createCustomerAPI(data),
+      async (data: Record<string, unknown>) => createCustomerAPI(data),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
           const customer = customerSingleSerializer(action.payload);
@@ -98,7 +132,7 @@ export const customerListSlice = createAppSlice({
       },
     ),
     editCustomer: create.asyncThunk(
-      async ({ id, data }: { id: string; data: Partial<Customer> }) =>
+      async ({ id, data }: { id: string; data: Record<string, unknown> }) =>
         updateCustomerAPI(id, data),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
@@ -139,12 +173,17 @@ export const customerListSlice = createAppSlice({
     selectCustomerStatusFilter: state => state.statusFilter,
     selectCustomerSortField: state => state.sortField,
     selectCustomerIsLoading: state => state.isLoading,
+    selectCustomerIsLoadingMore: state => state.isLoadingMore,
     selectCustomerError: state => state.error,
+    selectCustomerPage: state => state.page,
+    selectCustomerTotalPages: state => state.totalPages,
+    selectCustomerTotal: state => state.totalCustomers,
   },
 });
 
 export const {
   setCustomers,
+  upsertCustomer,
   setSearchQuery,
   setStatusFilter,
   setSortField,
@@ -162,5 +201,9 @@ export const {
   selectCustomerStatusFilter,
   selectCustomerSortField,
   selectCustomerIsLoading,
+  selectCustomerIsLoadingMore,
   selectCustomerError,
+  selectCustomerPage,
+  selectCustomerTotalPages,
+  selectCustomerTotal,
 } = customerListSlice.selectors;

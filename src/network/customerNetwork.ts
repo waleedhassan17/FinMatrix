@@ -68,25 +68,31 @@ export const deleteCustomerAPI = async (id: string): Promise<any> => {
 
 export const toggleCustomerActiveAPI = async (id: string): Promise<any> => {
   try {
-    const response = await api.patch(`/customers/${id}`, { isActive: true });
+    const response = await api.patch(`/customers/${id}/toggle-active`);
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }
 };
 
-export const getCustomerInvoicesAPI = async (customerId: string): Promise<any> => {
+export const getCustomerInvoicesAPI = async (
+  customerId: string,
+  params: { page?: number; limit?: number } = {},
+): Promise<any> => {
   try {
-    const response = await api.get(`/customers/${customerId}/invoices`);
+    const response = await api.get(`/customers/${customerId}/invoices`, { params });
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }
 };
 
-export const getCustomerPaymentsAPI = async (customerId: string): Promise<any> => {
+export const getCustomerPaymentsAPI = async (
+  customerId: string,
+  params: { page?: number; limit?: number } = {},
+): Promise<any> => {
   try {
-    const response = await api.get(`/customers/${customerId}/payments`);
+    const response = await api.get(`/customers/${customerId}/payments`, { params });
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
