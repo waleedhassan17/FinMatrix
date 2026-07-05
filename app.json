@@ -21,12 +21,7 @@
         "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION"
-      ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCnqOTDgr3_6IPTz9yBKd8daDDLMfV3r44"
-        }
-      }
+      ]
     },
     "plugins": [
       "expo-font",

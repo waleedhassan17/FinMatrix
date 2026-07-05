@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import MapView, { Marker, Callout, Polyline, PROVIDER_GOOGLE } from '../../../../components/PlatformMapView';
 import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -122,12 +121,6 @@ const SORT_OPTIONS: Array<{ label: string; value: MonitorSortBy }> = [
 
 // Default map region (Lahore, Pakistan)
 type Region = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
-const DEFAULT_REGION: Region = {
-  latitude: 31.5204,
-  longitude: 74.3587,
-  latitudeDelta: 0.15,
-  longitudeDelta: 0.15,
-};
 
 const elapsedLabel = (from: string): string => {
   const diff = Date.now() - new Date(from).getTime();
@@ -146,13 +139,11 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
   const filterStatus = useAppSelector(selectMonitorFilter);
   const sortBy = useAppSelector(selectMonitorSort);
 
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  const mapRef = useRef<any>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const personnelMap = useMemo(
@@ -199,29 +190,6 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
     unassigned: deliveries.filter(d => d.status === 'unassigned').length,
   }), [deliveries]);
 
-  // ── Map markers (only GPS-located) ────────────────────────────────────────
-  const mapMarkers = useMemo(() =>
-    (mapData?.markers ?? []).filter(m => m.personnel?.lat != null && m.personnel?.lng != null),
-  [mapData]);
-
-  // Destination pins — where each active delivery needs to go (geocoded).
-  const destinationMarkers = useMemo(() =>
-    (mapData?.markers ?? []).filter(
-      m => m.destination?.lat != null && m.destination?.lng != null,
-    ),
-  [mapData]);
-
-  // Route lines — connect a courier's live position to its destination.
-  const routeLines = useMemo(() =>
-    (mapData?.markers ?? []).filter(
-      m =>
-        m.personnel?.lat != null && m.personnel?.lng != null &&
-        m.destination?.lat != null && m.destination?.lng != null,
-    ),
-  [mapData]);
-
-  // Any plottable coordinate (personnel OR destination) — drives "fit" + overlay.
-  const hasAnyCoordinate = mapMarkers.length > 0 || destinationMarkers.length > 0;
 
   // ── List (filtered + sorted) ──────────────────────────────────────────────
   const filteredList = useMemo(() => {
@@ -238,18 +206,6 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [deliveries, filterStatus, sortBy]);
 
-  const fitMapToMarkers = () => {
-    if (!mapRef.current) return;
-    const coords = [
-      ...mapMarkers.map(m => ({ latitude: m.personnel!.lat!, longitude: m.personnel!.lng! })),
-      ...destinationMarkers.map(m => ({ latitude: m.destination!.lat, longitude: m.destination!.lng })),
-    ];
-    if (!coords.length) return;
-    mapRef.current.fitToCoordinates(coords, {
-      edgePadding: { top: 80, right: 40, bottom: 80, left: 40 },
-      animated: true,
-    });
-  };
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -290,235 +246,12 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
         ))}
       </View>
 
-      {/* ── Map / List toggle ── */}
-      <View style={styles.viewToggleRow}>
-        <View style={styles.viewToggle}>
-          {(['map', 'list'] as const).map(mode => (
-            <TouchableOpacity
-              key={mode}
-              style={[styles.toggleBtn, viewMode === mode && styles.toggleBtnActive]}
-              onPress={() => setViewMode(mode)}
-              activeOpacity={0.7}
-            >
-              <Feather
-                name={mode === 'map' ? 'map' : 'list'}
-                size={14}
-                color={viewMode === mode ? '#FFFFFF' : colors.textSecondary}
-              />
-              <Text style={[styles.toggleBtnText, viewMode === mode && styles.toggleBtnTextActive]}>
-                {mode === 'map' ? 'Map' : 'List'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {viewMode === 'map' && hasAnyCoordinate && (
-          <TouchableOpacity style={styles.fitBtn} onPress={fitMapToMarkers} activeOpacity={0.7}>
-            <Feather name="maximize-2" size={13} color={colors.primary} />
-            <Text style={styles.fitBtnText}>Fit all</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* ── Map View ── */}
-      {viewMode === 'map' && (
-        <View style={styles.mapContainer}>
-          {loading ? (
-            <View style={styles.mapLoading}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.mapLoadingText}>Loading live positions…</Text>
-            </View>
-          ) : (
-            <MapView
-              ref={mapRef}
-              style={styles.map}
-              provider={PROVIDER_GOOGLE}
-              initialRegion={DEFAULT_REGION}
-              showsUserLocation={false}
-              showsTraffic={false}
-              showsBuildings={false}
-              onMapReady={fitMapToMarkers}
-            >
-              {/* Route lines: courier → destination (drawn under the markers) */}
-              {routeLines.map(m => {
-                const statusColor = STATUS_COLORS[m.status] ?? '#64748B';
-                return (
-                  <Polyline
-                    key={`route-${m.deliveryId}`}
-                    coordinates={[
-                      { latitude: m.personnel!.lat!, longitude: m.personnel!.lng! },
-                      { latitude: m.destination!.lat, longitude: m.destination!.lng },
-                    ]}
-                    strokeColor={statusColor}
-                    strokeWidth={3}
-                    lineDashPattern={[8, 6]}
-                    geodesic
-                  />
-                );
-              })}
-
-              {mapMarkers.map(marker => {
-                const statusColor = STATUS_COLORS[marker.status] ?? '#64748B';
-                const personName = marker.personnelId ? personnelMap[marker.personnelId] : null;
-                const customerInfo = customerMap[marker.deliveryId];
-                const minutesSinceUpdate = marker.personnel?.locationUpdatedAt
-                  ? Math.floor((Date.now() - new Date(marker.personnel.locationUpdatedAt).getTime()) / 60000)
-                  : null;
-
-                return (
-                  <Marker
-                    key={marker.deliveryId}
-                    coordinate={{ latitude: marker.personnel!.lat!, longitude: marker.personnel!.lng! }}
-                    pinColor={statusColor}
-                  >
-                    <View style={styles.markerContainer}>
-                      <View style={[styles.markerPin, { backgroundColor: statusColor }]}>
-                        <Feather name="truck" size={12} color="#fff" />
-                      </View>
-                      <View style={[styles.markerTail, { borderTopColor: statusColor }]} />
-                    </View>
-                    <Callout
-                      onPress={() => navigation.navigate('AdminDeliveryDetail', { deliveryId: marker.deliveryId })}
-                      style={styles.callout}
-                    >
-                      <View style={styles.calloutContent}>
-                        <View style={styles.calloutHeader}>
-                          <View style={[styles.calloutStatusDot, { backgroundColor: statusColor }]} />
-                          <Text style={styles.calloutStatus}>
-                            {STATUS_LABELS[marker.status] ?? marker.status}
-                          </Text>
-                          <View style={[styles.calloutPriority, { backgroundColor: PRIORITY_COLORS[marker.priority] + '22' }]}>
-                            <Text style={[styles.calloutPriorityText, { color: PRIORITY_COLORS[marker.priority] }]}>
-                              {marker.priority.toUpperCase()}
-                            </Text>
-                          </View>
-                        </View>
-                        {customerInfo && (
-                          <Text style={styles.calloutCustomer} numberOfLines={1}>{customerInfo.name}</Text>
-                        )}
-                        {customerInfo?.address && (
-                          <Text style={styles.calloutAddress} numberOfLines={1}>{customerInfo.address}</Text>
-                        )}
-                        <View style={styles.calloutDivider} />
-                        <View style={styles.calloutMeta}>
-                          {personName && (
-                            <View style={styles.calloutMetaRow}>
-                              <Feather name="user" size={11} color="#64748B" />
-                              <Text style={styles.calloutMetaText}>{personName}</Text>
-                            </View>
-                          )}
-                          {marker.personnel?.vehicleType && (
-                            <View style={styles.calloutMetaRow}>
-                              <Feather name="truck" size={11} color="#64748B" />
-                              <Text style={styles.calloutMetaText}>{marker.personnel.vehicleType}</Text>
-                            </View>
-                          )}
-                          <View style={styles.calloutMetaRow}>
-                            <Feather name="package" size={11} color="#64748B" />
-                            <Text style={styles.calloutMetaText}>{marker.itemCount} items</Text>
-                          </View>
-                          {minutesSinceUpdate !== null && (
-                            <View style={styles.calloutMetaRow}>
-                              <Feather name="clock" size={11} color="#64748B" />
-                              <Text style={styles.calloutMetaText}>
-                                GPS {minutesSinceUpdate < 1 ? 'just now' : `${minutesSinceUpdate}m ago`}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                        <View style={styles.calloutTapHint}>
-                          <Text style={styles.calloutTapHintText}>Tap to view details →</Text>
-                        </View>
-                      </View>
-                    </Callout>
-                  </Marker>
-                );
-              })}
-
-              {/* Destination pins — where each delivery needs to go */}
-              {destinationMarkers.map(marker => {
-                const statusColor = STATUS_COLORS[marker.status] ?? '#64748B';
-                const customerInfo = customerMap[marker.deliveryId];
-                const name = marker.customerName || customerInfo?.name || 'Delivery';
-                const addr = marker.destination?.address || marker.address || customerInfo?.address;
-                return (
-                  <Marker
-                    key={`dest-${marker.deliveryId}`}
-                    coordinate={{ latitude: marker.destination!.lat, longitude: marker.destination!.lng }}
-                    anchor={{ x: 0.5, y: 1 }}
-                    tracksViewChanges={false}
-                  >
-                    <View style={styles.destMarkerContainer}>
-                      <View style={[styles.destMarkerPin, { borderColor: statusColor }]}>
-                        <Feather name="map-pin" size={12} color={statusColor} />
-                      </View>
-                      <View style={[styles.destMarkerTail, { borderTopColor: statusColor }]} />
-                    </View>
-                    <Callout
-                      onPress={() => navigation.navigate('AdminDeliveryDetail', { deliveryId: marker.deliveryId })}
-                      style={styles.callout}
-                    >
-                      <View style={styles.calloutContent}>
-                        <View style={styles.calloutHeader}>
-                          <Feather name="map-pin" size={12} color={statusColor} />
-                          <Text style={styles.calloutStatus}>Destination</Text>
-                          <View style={[styles.calloutPriority, { backgroundColor: PRIORITY_COLORS[marker.priority] + '22' }]}>
-                            <Text style={[styles.calloutPriorityText, { color: PRIORITY_COLORS[marker.priority] }]}>
-                              {marker.priority.toUpperCase()}
-                            </Text>
-                          </View>
-                        </View>
-                        <Text style={styles.calloutCustomer} numberOfLines={1}>{name}</Text>
-                        {addr && <Text style={styles.calloutAddress} numberOfLines={2}>{addr}</Text>}
-                        <View style={styles.calloutDivider} />
-                        <View style={styles.calloutMeta}>
-                          <View style={styles.calloutMetaRow}>
-                            <Feather name="package" size={11} color="#64748B" />
-                            <Text style={styles.calloutMetaText}>{marker.itemCount} items</Text>
-                          </View>
-                          <View style={styles.calloutMetaRow}>
-                            <Feather name="flag" size={11} color="#64748B" />
-                            <Text style={styles.calloutMetaText}>{STATUS_LABELS[marker.status] ?? marker.status}</Text>
-                          </View>
-                        </View>
-                        <View style={styles.calloutTapHint}>
-                          <Text style={styles.calloutTapHintText}>Tap to view details →</Text>
-                        </View>
-                      </View>
-                    </Callout>
-                  </Marker>
-                );
-              })}
-            </MapView>
-          )}
-
-          {/* No data overlay — only when neither personnel GPS nor destinations exist */}
-          {!loading && !hasAnyCoordinate && (
-            <View style={styles.noGpsOverlay}>
-              <View style={styles.noGpsCard}>
-                <View style={styles.noGpsIcon}>
-                  <Feather name="map-pin" size={24} color="#64748B" />
-                </View>
-                <Text style={styles.noGpsTitle}>Nothing to Show Yet</Text>
-                <Text style={styles.noGpsText}>
-                  Destination pins appear once deliveries are geocoded; live truck pins appear when personnel start their routes
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* GPS count badge */}
-          {mapMarkers.length > 0 && (
-            <View style={styles.gpsCountBadge}>
-              <View style={styles.gpsDot} />
-              <Text style={styles.gpsCountText}>{mapMarkers.length} live</Text>
-            </View>
-          )}
-        </View>
-      )}
+      {/* The admin live-tracking map was removed by product decision (no Maps
+           SDK key shipped). Riders navigate via Google Maps deep links from
+           their delivery screens, which need no API key. */}
 
       {/* ── List View ── */}
-      {viewMode === 'list' && (
-        <View style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
           {/* Sort + Filter */}
           <View style={styles.listControls}>
             <View style={styles.sortRow}>
@@ -626,7 +359,6 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
             }}
           />
         </View>
-      )}
       </View>
     </SafeAreaView>
   );

@@ -448,8 +448,8 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
           <View style={styles.actionsGrid}>
             {[
               {
-                label: 'Track on Map',
-                icon: 'map-pin' as const,
+                label: 'Monitor Deliveries',
+                icon: 'activity' as const,
                 onPress: () => (navigation as any).navigate('DeliveryMonitor'),
                 color: '#2563EB',
                 disabled: false,
