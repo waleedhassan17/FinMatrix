@@ -28,6 +28,7 @@ import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DP
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { locationService } from '../../../../services/locationService';
+import { togglePersonnelAvailabilityAPI } from '../../../../network/deliveryNetwork';
 
 type Nav = NativeStackNavigationProp<DPDashboardStackParamList>;
 
@@ -57,10 +58,11 @@ const DPDashboardScreen: React.FC = () => {
   const user = useAppSelector(selectUser);
   const deliveries = useAppSelector(selectDeliveries);
   const personnel = useAppSelector(selectDeliveryPersonnel);
-  const userId = user?.uid ?? 'dp_002';
+  const userId = user?.uid ?? '';
 
   const [isGpsTracking, setIsGpsTracking] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isTogglingDuty, setIsTogglingDuty] = useState(false);
   const gpsAnim = useRef(new Animated.Value(1)).current;
 
   // Animations
@@ -138,11 +140,46 @@ const DPDashboardScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [hasActiveDelivery, dispatch]);
 
-  // Online location tracking is temporarily disabled — keep the GPS indicator
-  // off until the feature is re-enabled (see locationService.TRACKING_ENABLED).
+  // Live tracking runs while the rider is ON DUTY with active work, and
+  // stops off-shift — no needless battery/data drain.
+  const isOnDuty = me?.isAvailable ?? false;
   useEffect(() => {
-    setIsGpsTracking(false);
-  }, [hasActiveDelivery]);
+    let cancelled = false;
+    (async () => {
+      if (isOnDuty && hasActiveDelivery) {
+        const granted = await locationService.requestPermission();
+        if (cancelled) return;
+        if (granted) {
+          await locationService.startTracking();
+          if (!cancelled) setIsGpsTracking(locationService.isTracking);
+        } else {
+          setIsGpsTracking(false);
+        }
+      } else {
+        await locationService.stopTracking();
+        if (!cancelled) setIsGpsTracking(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOnDuty, hasActiveDelivery]);
+
+  const handleToggleDuty = useCallback(async () => {
+    if (isTogglingDuty || !userId) return;
+    setIsTogglingDuty(true);
+    try {
+      await togglePersonnelAvailabilityAPI(userId);
+      await dispatch(fetchDeliveryPersonnel());
+      // Off duty → stop sharing location immediately.
+      if (isOnDuty) {
+        await locationService.stopTracking();
+        setIsGpsTracking(false);
+      }
+    } catch (e: any) {
+      Alert.alert('Could not update duty status', e?.message || 'Please try again.');
+    } finally {
+      setIsTogglingDuty(false);
+    }
+  }, [isTogglingDuty, userId, isOnDuty, dispatch]);
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -224,17 +261,25 @@ const DPDashboardScreen: React.FC = () => {
             <Feather name="calendar" size={12} color="rgba(255,255,255,0.95)" />
             <Text style={styles.dateText}>{currentDate}</Text>
           </View>
-          {isGpsTracking ? (
-            <View style={styles.gpsTrackingPill}>
-              <Animated.View style={[styles.gpsTrackingDot, { opacity: gpsAnim }]} />
-              <Text style={styles.gpsTrackingText}>GPS Active</Text>
-            </View>
-          ) : (
-            <View style={styles.dutyPill}>
-              <Feather name="briefcase" size={11} color={DP_BRAND.white} />
-              <Text style={styles.dutyPillText}>On Duty</Text>
-            </View>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {isGpsTracking && (
+              <View style={styles.gpsTrackingPill}>
+                <Animated.View style={[styles.gpsTrackingDot, { opacity: gpsAnim }]} />
+                <Text style={styles.gpsTrackingText}>GPS Active</Text>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[styles.dutyPill, !isOnDuty && styles.dutyPillOff, isTogglingDuty && { opacity: 0.6 }]}
+              onPress={handleToggleDuty}
+              disabled={isTogglingDuty}
+              activeOpacity={0.7}
+            >
+              <Feather name={isOnDuty ? 'briefcase' : 'moon'} size={11} color={DP_BRAND.white} />
+              <Text style={styles.dutyPillText}>
+                {isTogglingDuty ? 'Updating…' : isOnDuty ? 'On Duty' : 'Off Duty'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
@@ -528,6 +573,10 @@ const styles = StyleSheet.create({
     ...THEME.typography.labelSm,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  dutyPillOff: {
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   dutyPill: {
     flexDirection: 'row',

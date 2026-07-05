@@ -117,7 +117,6 @@ export const deliverySlice = createAppSlice({
           agencyName: item.agencyName || null,
         }));
         const result = await createDeliveryAPI({ ...payload, items: sanitizedItems });
-        console.log('[createDelivery] API response:', JSON.stringify(result, null, 2));
         return { ...payload, items: sanitizedItems, apiResult: result };
       },
       {
@@ -149,9 +148,6 @@ export const deliverySlice = createAppSlice({
             });
           }
         },
-        rejected: (_state, action) => {
-          console.warn('[createDelivery] FAILED:', action.error?.message);
-        },
       },
     ),
 
@@ -161,7 +157,6 @@ export const deliverySlice = createAppSlice({
           deliveryIds: payload.deliveryIds,
           personnelId: payload.personnelId,
         });
-        console.log('[assignDeliveries] API response:', JSON.stringify(result, null, 2));
         return { ...payload, apiResult: result };
       },
       {
@@ -194,9 +189,6 @@ export const deliverySlice = createAppSlice({
             ...person,
             currentLoad: loadMap[person.userId] ?? 0,
           }));
-        },
-        rejected: (_state, action) => {
-          console.warn('[assignDeliveries] FAILED:', action.error?.message);
         },
       },
     ),
@@ -488,18 +480,12 @@ export const deliverySlice = createAppSlice({
     fetchDeliveries: create.asyncThunk(
       async () => {
         const response = await getDeliveriesAPI();
-        console.log('[fetchDeliveries] raw API response:', JSON.stringify(response, null, 2));
         return response;
       },
       {
         fulfilled: (state, action: PayloadAction<any>) => {
           const serialized = deliveryListSerializer(action.payload);
-          console.log('[fetchDeliveries] serialized count:', serialized.deliveries.length,
-            'first:', serialized.deliveries[0] ? JSON.stringify({ id: serialized.deliveries[0].id, assignedTo: serialized.deliveries[0].assignedTo, status: serialized.deliveries[0].status }) : 'none');
           state.deliveries = serialized.deliveries;
-        },
-        rejected: (_state, action) => {
-          console.warn('[fetchDeliveries] FAILED:', action.error?.message);
         },
       },
     ),
@@ -507,17 +493,12 @@ export const deliverySlice = createAppSlice({
     fetchDeliveryPersonnel: create.asyncThunk(
       async () => {
         const response = await getDeliveryPersonnelAPI();
-        console.log('[fetchDeliveryPersonnel] raw API response:', JSON.stringify(response, null, 2));
         return response;
       },
       {
         fulfilled: (state, action: PayloadAction<any>) => {
           const serialized = personnelListSerializer(action.payload);
-          console.log('[fetchDeliveryPersonnel] serialized personnel:', JSON.stringify(serialized.personnel, null, 2));
           state.deliveryPersonnel = serialized.personnel;
-        },
-        rejected: (_state, action) => {
-          console.warn('[fetchDeliveryPersonnel] FAILED:', action.error?.message);
         },
       },
     ),
@@ -541,9 +522,6 @@ export const deliverySlice = createAppSlice({
               updatedAt: item.updatedAt ?? item.updated_at ?? new Date().toISOString(),
             }));
           }
-        },
-        rejected: (_state, action) => {
-          console.warn('[fetchShadowInventory] FAILED:', action.error?.message);
         },
       },
     ),

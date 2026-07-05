@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, StatusBar, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking, Alert, Platform, StatusBar, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
-import { updateDeliveryExecutionStatus } from './dpDeliveryDetailSlice';
+import { updateDeliveryExecutionStatus, selectDPDeliveryDetailState } from './dpDeliveryDetailSlice';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
@@ -27,7 +27,31 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { deliveryId } = route.params;
   const dispatch = useAppDispatch();
   const deliveries = useAppSelector(selectDeliveries);
+  const { isUpdatingStatus } = useAppSelector(selectDPDeliveryDetailState);
   const [isTracking, setIsTracking] = useState(locationService.isTracking);
+
+  // Status updates must never be lost silently: await the request, surface
+  // failures with a retry prompt, and block double-taps while in flight.
+  const advanceStatus = React.useCallback(
+    async (status: 'picked_up' | 'in_transit' | 'arrived', note: string) => {
+      if (isUpdatingStatus) return;
+      const action: any = await dispatch(
+        updateDeliveryExecutionStatus({ deliveryId, status, note }),
+      );
+      if (updateDeliveryExecutionStatus.rejected.match(action)) {
+        const message =
+          (action.error?.message as string) ||
+          'Could not update the delivery status. Check your connection and try again.';
+        if (Platform.OS === 'web') {
+          // eslint-disable-next-line no-alert
+          (globalThis as any).alert(`Update failed\n\n${message}\n\nNothing was lost — tap the button again to retry.`);
+        } else {
+          Alert.alert('Update failed', `${message}\n\nNothing was lost — tap the button again to retry.`);
+        }
+      }
+    },
+    [dispatch, deliveryId, isUpdatingStatus],
+  );
   const gpsAnim = useRef(new Animated.Value(1)).current;
 
   const delivery = useMemo(
@@ -118,11 +142,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           subtitle: 'Collect items from warehouse',
           icon: 'package',
           color: THEME.colors.secondary,
-          handler: () => dispatch(updateDeliveryExecutionStatus({
-            deliveryId: delivery.id,
-            status: 'picked_up',
-            note: `Items picked up at ${new Date().toISOString()}`,
-          })),
+          handler: () => advanceStatus('picked_up', `Items picked up at ${new Date().toISOString()}`),
         };
       case 'picked_up':
         return {
@@ -130,11 +150,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           subtitle: 'Begin your route',
           icon: 'truck',
           color: THEME.colors.warning,
-          handler: () => dispatch(updateDeliveryExecutionStatus({
-            deliveryId: delivery.id,
-            status: 'in_transit',
-            note: `Delivery started at ${new Date().toISOString()}`,
-          })),
+          handler: () => advanceStatus('in_transit', `Delivery started at ${new Date().toISOString()}`),
         };
       case 'in_transit':
         return {
@@ -142,11 +158,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           subtitle: 'Confirm arrival at destination',
           icon: 'map-pin',
           color: THEME.colors.info,
-          handler: () => dispatch(updateDeliveryExecutionStatus({
-            deliveryId: delivery.id,
-            status: 'arrived',
-            note: `Arrived at location at ${new Date().toISOString()}`,
-          })),
+          handler: () => advanceStatus('arrived', `Arrived at location at ${new Date().toISOString()}`),
         };
       case 'arrived':
         return {
@@ -204,9 +216,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
         </View>
-        <TouchableOpacity style={styles.moreBtn}>
-          <Text style={styles.moreIcon}>⋯</Text>
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
@@ -426,14 +436,19 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {/* Action Button */}
         {actionConfig && (
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: actionConfig.color }]}
+            style={[styles.actionButton, { backgroundColor: actionConfig.color }, isUpdatingStatus && { opacity: 0.65 }]}
             onPress={actionConfig.handler}
             activeOpacity={0.9}
+            disabled={isUpdatingStatus}
           >
             <View style={styles.actionButtonContent}>
-              <Feather name={actionConfig.icon as any} size={24} color={THEME.colors.textInverse} style={{ marginRight: 4 }} />
+              {isUpdatingStatus ? (
+                <ActivityIndicator size="small" color={THEME.colors.textInverse} style={{ marginRight: 4 }} />
+              ) : (
+                <Feather name={actionConfig.icon as any} size={24} color={THEME.colors.textInverse} style={{ marginRight: 4 }} />
+              )}
               <View style={styles.actionButtonText}>
-                <Text style={styles.actionButtonTitle}>{actionConfig.title}</Text>
+                <Text style={styles.actionButtonTitle}>{isUpdatingStatus ? 'Updating…' : actionConfig.title}</Text>
                 <Text style={styles.actionButtonSubtitle}>{actionConfig.subtitle}</Text>
               </View>
             </View>

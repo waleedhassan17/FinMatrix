@@ -16,11 +16,14 @@ type LocationListener = (data: LocationData) => void;
 // Background task identifier registered with the OS.
 export const BACKGROUND_LOCATION_TASK = 'finmatrix-background-location';
 
-// ⚠️ Online location tracking is temporarily DISABLED (to be re-enabled when
-// the feature ships). While false, the service requests no permission, starts
-// no foreground/background tracking, and sends no GPS to the backend. Flip to
-// true to restore the full implementation below.
-const TRACKING_ENABLED = false;
+// Master kill-switch for online location tracking. When false, the service
+// requests no permission, starts no foreground/background tracking, and
+// sends no GPS to the backend. Re-enabled for phase3 Chunk 1 (delivery
+// module production-ready); tracking runs only while the rider is on duty
+// or actively working a delivery, and stops off-shift.
+// NOTE: background tracking needs a dev/standalone build — Expo Go and web
+// fall back to foreground-only updates (handled below).
+const TRACKING_ENABLED = true;
 
 // Minimum movement in meters before we POST a new fix (saves battery + rows).
 const MIN_DISTANCE_METERS = 10;

@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
+  Modal,
+  TextInput,
   View,
   Text,
   StyleSheet,
@@ -22,6 +24,7 @@ import {
   selectDeliveryPersonnel,
   reassignDelivery,
   cancelDelivery,
+  fetchDeliveries,
 } from '../AssignDeliveries/deliverySlice';
 import {
   selectDetailUIState,
@@ -32,6 +35,7 @@ import {
 } from './adminDeliveryDetailSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
+import { updateDeliveryAPI } from '../../../../network/deliveryNetwork';
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'AdminDeliveryDetail'>;
 
@@ -70,6 +74,11 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const uiState = useAppSelector(selectDetailUIState);
 
   const delivery = deliveries.find(d => d.id === deliveryId);
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [manualAddress, setManualAddress] = useState('');
+  const [manualLat, setManualLat] = useState('');
+  const [manualLng, setManualLng] = useState('');
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
   const assignedPerson = allPersonnel.find(p => p.userId === delivery?.assignedTo);
 
   const personnelOptions = useMemo(
@@ -144,6 +153,52 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
+  // Manual destination fallback: when automatic geocoding failed at
+  // creation, the dispatcher supplies the address and (optionally) exact
+  // coordinates from Google Maps here.
+  const openLocationModal = () => {
+    setManualAddress(delivery.address ?? '');
+    setManualLat(delivery.destLat != null ? String(delivery.destLat) : '');
+    setManualLng(delivery.destLng != null ? String(delivery.destLng) : '');
+    setLocationModalVisible(true);
+  };
+
+  const handleSaveLocation = async () => {
+    if (isSavingLocation) return;
+    const lat = manualLat.trim() ? parseFloat(manualLat) : undefined;
+    const lng = manualLng.trim() ? parseFloat(manualLng) : undefined;
+    const hasCoords = lat != null || lng != null;
+    if (hasCoords) {
+      if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+        Alert.alert('Invalid coordinates', 'Enter BOTH latitude and longitude as numbers, or leave both empty.');
+        return;
+      }
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        Alert.alert('Invalid coordinates', 'Latitude must be -90…90 and longitude -180…180.');
+        return;
+      }
+    }
+    if (!manualAddress.trim() && !hasCoords) {
+      Alert.alert('Nothing to save', 'Enter a delivery address and/or coordinates.');
+      return;
+    }
+    setIsSavingLocation(true);
+    try {
+      await updateDeliveryAPI(delivery.id, {
+        destAddress: manualAddress.trim() || undefined,
+        ...(hasCoords ? { destLat: lat, destLng: lng } : {}),
+      });
+      await dispatch(fetchDeliveries());
+      setLocationModalVisible(false);
+    } catch (e: any) {
+      Alert.alert('Could not save location', e?.message || 'Please try again.');
+    } finally {
+      setIsSavingLocation(false);
+    }
+  };
+
+  const hasPin = delivery.destLat != null && delivery.destLng != null;
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
@@ -165,6 +220,33 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* ── Delivery Location (map pin) ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Delivery Location</Text>
+          {hasPin ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Map pin</Text>
+              <Text style={styles.infoValue}>
+                {Number(delivery.destLat).toFixed(5)}, {Number(delivery.destLng).toFixed(5)}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.noPinBanner}>
+              <Feather name="map-pin" size={16} color="#B45309" />
+              <Text style={styles.noPinText}>
+                The address could not be located on the map automatically. Riders will
+                navigate by the address text until a pin is set.
+              </Text>
+            </View>
+          )}
+          <CustomButton
+            title={hasPin ? 'Edit Location' : 'Set Location Manually'}
+            variant="secondary"
+            size="sm"
+            onPress={openLocationModal}
+          />
+        </View>
 
         {/* ── Customer Info ── */}
         <View style={styles.section}>
@@ -449,6 +531,73 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.bottomBtnText}>📞{'\n'}Contact</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Manual delivery-location modal (geocode-failure fallback) */}
+      <Modal
+        visible={locationModalVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setLocationModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Delivery Location</Text>
+            <Text style={styles.modalHint}>
+              Enter the delivery address. To place an exact map pin, paste the
+              coordinates from Google Maps (long-press the spot → copy).
+            </Text>
+            <Text style={styles.modalFieldLabel}>Address</Text>
+            <TextInput
+              style={[styles.modalInput, { minHeight: 64 }]}
+              value={manualAddress}
+              onChangeText={setManualAddress}
+              placeholder="Street, area, city"
+              placeholderTextColor="#94A3B8"
+              multiline
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalFieldLabel}>Latitude</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={manualLat}
+                  onChangeText={setManualLat}
+                  placeholder="31.5204"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalFieldLabel}>Longitude</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={manualLng}
+                  onChangeText={setManualLng}
+                  placeholder="74.3587"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+            </View>
+            <View style={styles.modalActions}>
+              <CustomButton
+                title="Cancel"
+                variant="secondary"
+                size="md"
+                onPress={() => setLocationModalVisible(false)}
+              />
+              <CustomButton
+                title={isSavingLocation ? 'Saving…' : 'Save Location'}
+                variant="primary"
+                size="md"
+                onPress={handleSaveLocation}
+                disabled={isSavingLocation}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
       </View>
     </SafeAreaView>
   );
@@ -457,6 +606,77 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 // ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  noPinBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  noPinText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#92400E',
+    fontFamily: THEME.typography.fontFamily,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 440,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+    fontFamily: THEME.typography.fontFamily,
+    marginBottom: 6,
+  },
+  modalHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#64748B',
+    fontFamily: THEME.typography.fontFamily,
+    marginBottom: 14,
+  },
+  modalFieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+    fontFamily: THEME.typography.fontFamily,
+    marginBottom: 4,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#0F172A',
+    fontFamily: THEME.typography.fontFamily,
+    backgroundColor: '#F8FAFC',
+    marginBottom: 12,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 4,
+  },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
   body: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },

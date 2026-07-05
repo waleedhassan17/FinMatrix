@@ -142,9 +142,11 @@ const CreateDeliveryScreen: React.FC = () => {
     setQty('1');
   };
 
-  const canCreate = !!draft.customerId && draft.items.length > 0;
+  const [isCreating, setIsCreating] = useState(false);
+  const canCreate = !!draft.customerId && draft.items.length > 0 && !isCreating;
 
   const handleCreate = async () => {
+    if (isCreating) return;
     if (!customer) {
       Alert.alert('Customer required', 'Select a customer first.');
       return;
@@ -153,6 +155,7 @@ const CreateDeliveryScreen: React.FC = () => {
       Alert.alert('Items required', 'Add at least one delivery item.');
       return;
     }
+    setIsCreating(true);
     try {
       await dispatch(
         createDelivery({
@@ -170,6 +173,8 @@ const CreateDeliveryScreen: React.FC = () => {
       navigation.goBack();
     } catch (err: any) {
       Alert.alert('Failed to create', err.message || 'Unable to create delivery.');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -343,7 +348,7 @@ const CreateDeliveryScreen: React.FC = () => {
             activeOpacity={0.9}
           >
             <Feather name="check" size={18} color="#FFFFFF" />
-            <Text style={styles.createBtnText}>Create Delivery</Text>
+            <Text style={styles.createBtnText}>{isCreating ? 'Creating…' : 'Create Delivery'}</Text>
           </TouchableOpacity>
         </View>
       </View>

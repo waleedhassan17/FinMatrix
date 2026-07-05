@@ -66,18 +66,18 @@ export const dpBillPhotoCaptureSlice = createAppSlice({
     submitBillPhoto: create.asyncThunk(
       async (payload: SubmitBillPhotoPayload, thunkAPI) => {
         const now = new Date().toISOString();
-        let result: SubmitBillPhotoResult | null = null;
 
-        // Try the API call — but never let a bad response block cross-slice updates
-        try {
-          const apiResponse = await submitBillPhotoAPI(payload);
-          result = dpBillPhotoCaptureSerializer(apiResponse);
-        } catch (e: any) {
-          console.warn('[submitBillPhoto] API call failed, using local fallback:', e?.message);
-        }
+        // The upload MUST reach the server — a failure rejects this thunk so
+        // the screen shows a retryable error and the rider re-taps Submit.
+        // (Previously a failure was swallowed and a fake local request was
+        // fabricated: the rider saw "success" while the server never received
+        // the photo — a silent data loss.) The network layer already retries
+        // transient connection drops, and the backend treats a replayed
+        // submission as a 409 duplicate, so retrying is always safe.
+        const apiResponse = await submitBillPhotoAPI(payload);
+        const result = dpBillPhotoCaptureSerializer(apiResponse);
 
-        // Build values: use API result when available, fallback to payload data
-        const requestId = result?.requestId ?? `local_req_${Date.now()}_${payload.deliveryId}`;
+        const requestId = result?.requestId ?? `req_${Date.now()}_${payload.deliveryId}`;
         const photoUrl = result?.photoUrl ?? payload.photoUri;
         const capturedAt = result?.uploadedAt ?? now;
 

@@ -146,8 +146,7 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
   const filterStatus = useAppSelector(selectMonitorFilter);
   const sortBy = useAppSelector(selectMonitorSort);
 
-  // Map view temporarily removed (to be re-added next update) — locked to list.
-  const [viewMode] = useState<'map' | 'list'>('list');
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -291,8 +290,34 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
         ))}
       </View>
 
-      {/* ── Map view temporarily removed — to be re-added in a future update.
-           The map block below stays dead while viewMode is locked to 'list'. ── */}
+      {/* ── Map / List toggle ── */}
+      <View style={styles.viewToggleRow}>
+        <View style={styles.viewToggle}>
+          {(['map', 'list'] as const).map(mode => (
+            <TouchableOpacity
+              key={mode}
+              style={[styles.toggleBtn, viewMode === mode && styles.toggleBtnActive]}
+              onPress={() => setViewMode(mode)}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name={mode === 'map' ? 'map' : 'list'}
+                size={14}
+                color={viewMode === mode ? '#FFFFFF' : colors.textSecondary}
+              />
+              <Text style={[styles.toggleBtnText, viewMode === mode && styles.toggleBtnTextActive]}>
+                {mode === 'map' ? 'Map' : 'List'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {viewMode === 'map' && hasAnyCoordinate && (
+          <TouchableOpacity style={styles.fitBtn} onPress={fitMapToMarkers} activeOpacity={0.7}>
+            <Feather name="maximize-2" size={13} color={colors.primary} />
+            <Text style={styles.fitBtnText}>Fit all</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* ── Map View ── */}
       {viewMode === 'map' && (

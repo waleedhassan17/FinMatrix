@@ -4,6 +4,29 @@
 
 import { api, extractErrorMessage } from './apiHelpers';
 
+// ─── Bad-network resilience ─────────────────────────
+// Retries a request when it failed at the NETWORK level (no HTTP response —
+// timeouts, dropped connections). Server 4xx/5xx responses are never
+// retried. Safe for delivery status updates and photo uploads because the
+// backend made both idempotent (a replay of an applied update is a no-op /
+// 409, never a double-advance).
+const RETRY_DELAYS_MS = [1000, 3000];
+
+async function withNetworkRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: any;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      lastError = e;
+      const isNetworkFailure = !e?.response;
+      if (!isNetworkFailure || attempt === RETRY_DELAYS_MS.length) throw e;
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+  }
+  throw lastError;
+}
+
 // ─── Delivery Personnel Management ──────────────────
 
 export const getDeliveryPersonnelAPI = async (params: any = {}): Promise<any> => {
@@ -120,7 +143,7 @@ export const updateDeliveryAPI = async (id: string, data: any): Promise<any> => 
 
 export const updateDeliveryStatusAPI = async (id: string, data: { status: string; notes?: string }): Promise<any> => {
   try {
-    const response = await api.patch(`/deliveries/${id}/status`, data);
+    const response = await withNetworkRetry(() => api.patch(`/deliveries/${id}/status`, data));
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -132,7 +155,7 @@ export const updateDeliveryStatusAPI = async (id: string, data: { status: string
 export const getMyDeliveriesAPI = async (params: any = {}): Promise<any> => {
   try {
     const queryParams = { page: 1, limit: 50, ...params };
-    const response = await api.get('/deliveries/my', { params: queryParams });
+    const response = await api.get('/deliveries/my/assigned', { params: queryParams });
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -150,9 +173,11 @@ export const getMyDashboardAPI = async (): Promise<any> => {
 
 export const uploadBillPhotoAPI = async (deliveryId: string, formData: FormData): Promise<any> => {
   try {
-    const response = await api.post(`/deliveries/${deliveryId}/bill-photo`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await withNetworkRetry(() =>
+      api.post(`/deliveries/${deliveryId}/bill-photo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }),
+    );
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -161,7 +186,7 @@ export const uploadBillPhotoAPI = async (deliveryId: string, formData: FormData)
 
 export const confirmCustomerReceiptAPI = async (id: string, data: any): Promise<any> => {
   try {
-    const response = await api.post(`/deliveries/${id}/confirm`, data);
+    const response = await withNetworkRetry(() => api.post(`/deliveries/${id}/confirm`, data));
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
