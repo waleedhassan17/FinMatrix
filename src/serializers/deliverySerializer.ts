@@ -177,6 +177,12 @@ export const mapInventoryUpdateRequest = (
   reviewedAt: raw.reviewedAt,
   reviewedBy: raw.reviewedBy,
   reviewerComment: raw.reviewerComment,
+  paidStatus: (raw as any).paidStatus === 'paid' ? 'paid' : 'unpaid',
+  prepaid: Boolean((raw as any).prepaid),
+  ledgerStatus: (raw as any).ledgerStatus ?? 'none',
+  customerId: (raw as any).customerId ?? '',
+  customerName: (raw as any).customerName ?? '',
+  saleAmount: (raw as any).saleAmount ?? '0',
   changes: Array.isArray(raw.changes) ? raw.changes.map(mapInventoryChange) : [],
   proof: raw.proof
     ? (() => {

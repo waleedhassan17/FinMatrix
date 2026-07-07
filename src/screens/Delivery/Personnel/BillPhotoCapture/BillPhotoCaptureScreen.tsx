@@ -28,10 +28,12 @@ import {
   clearBillPhoto,
   setSignedBy,
   setNote,
+  setPaidStatus,
   submitBillPhoto,
   selectBillPhotoUri,
   selectBillPhotoSignedBy,
   selectBillPhotoNote,
+  selectBillPhotoPaidStatus,
   selectBillPhotoIsSubmitting,
 } from './dpBillPhotoCaptureSlice';
 import { THEME } from '../../../../utils/theme';
@@ -50,6 +52,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
   const photoUri = useAppSelector(selectBillPhotoUri);
   const signedBy = useAppSelector(selectBillPhotoSignedBy);
   const note = useAppSelector(selectBillPhotoNote);
+  const paidStatus = useAppSelector(selectBillPhotoPaidStatus);
   const isSubmitting = useAppSelector(selectBillPhotoIsSubmitting);
 
   const delivery = useMemo(
@@ -161,6 +164,13 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert('Customer name required', 'Enter the name printed on the signed bill.');
       return;
     }
+    if (!paidStatus) {
+      Alert.alert(
+        'Payment status required',
+        'Select whether the customer PAID (cash collected) or NOT PAID (on credit) before submitting.',
+      );
+      return;
+    }
     if (!delivery.assignedTo) {
       Alert.alert('Unassigned delivery', 'This delivery has no assigned personnel.');
       return;
@@ -180,6 +190,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           photoUri,
           source: 'camera',
           signedBy: signedBy.trim(),
+          paidStatus,
           note: note.trim() || undefined,
           changes: delivery.items.map(item => ({
             itemId: item.itemId,
@@ -370,6 +381,72 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
 
           <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Payment collected?</Text>
+            <View style={paidStyles.row}>
+              <TouchableOpacity
+                style={[paidStyles.option, paidStatus === 'paid' && paidStyles.optionPaid]}
+                onPress={() => dispatch(setPaidStatus('paid'))}
+                disabled={isSubmitting}
+                activeOpacity={0.85}
+              >
+                <Feather
+                  name="check-circle"
+                  size={18}
+                  color={paidStatus === 'paid' ? THEME.colors.textInverse : THEME.colors.success}
+                />
+                <Text
+                  style={[
+                    paidStyles.optionText,
+                    { color: paidStatus === 'paid' ? THEME.colors.textInverse : THEME.colors.success },
+                  ]}
+                >
+                  PAID
+                </Text>
+                <Text
+                  style={[
+                    paidStyles.optionHint,
+                    paidStatus === 'paid' && { color: THEME.colors.textInverse },
+                  ]}
+                >
+                  Cash collected
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[paidStyles.option, paidStatus === 'unpaid' && paidStyles.optionUnpaid]}
+                onPress={() => dispatch(setPaidStatus('unpaid'))}
+                disabled={isSubmitting}
+                activeOpacity={0.85}
+              >
+                <Feather
+                  name="clock"
+                  size={18}
+                  color={paidStatus === 'unpaid' ? THEME.colors.textInverse : THEME.colors.warning}
+                />
+                <Text
+                  style={[
+                    paidStyles.optionText,
+                    { color: paidStatus === 'unpaid' ? THEME.colors.textInverse : THEME.colors.warning },
+                  ]}
+                >
+                  NOT PAID
+                </Text>
+                <Text
+                  style={[
+                    paidStyles.optionHint,
+                    paidStatus === 'unpaid' && { color: THEME.colors.textInverse },
+                  ]}
+                >
+                  On credit
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={paidStyles.note}>
+              This choice posts nothing to the books. Accounting happens only when the
+              admin approves: PAID records the cash, NOT PAID leaves an open invoice.
+            </Text>
+          </View>
+
+          <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Note for admin (optional)</Text>
             <TextInput
               style={[styles.input, styles.inputMultiline]}
@@ -394,10 +471,10 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           <TouchableOpacity
             style={[
               styles.submitBtn,
-              (!photoUri || isSubmitting || alreadySubmitted) && styles.submitBtnDisabled,
+              (!photoUri || !paidStatus || isSubmitting || alreadySubmitted) && styles.submitBtnDisabled,
             ]}
             onPress={handleSubmit}
-            disabled={!photoUri || isSubmitting || alreadySubmitted}
+            disabled={!photoUri || !paidStatus || isSubmitting || alreadySubmitted}
             activeOpacity={0.9}
           >
             {isSubmitting ? (
@@ -653,6 +730,49 @@ const styles = StyleSheet.create({
     ...THEME.shadows.sm,
   },
   emptyButtonText: { ...THEME.typography.labelLg, color: THEME.colors.textInverse },
+});
+
+const paidStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  option: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.radius.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+  },
+  optionPaid: {
+    backgroundColor: THEME.colors.success,
+    borderColor: THEME.colors.success,
+  },
+  optionUnpaid: {
+    backgroundColor: THEME.colors.warning,
+    borderColor: THEME.colors.warning,
+  },
+  optionText: {
+    ...THEME.typography.labelLg,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginTop: 4,
+  },
+  optionHint: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+  },
+  note: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textTertiary,
+    marginTop: 8,
+    lineHeight: 16,
+  },
 });
 
 const successStyles = StyleSheet.create({

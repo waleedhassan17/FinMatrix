@@ -18,6 +18,8 @@ export interface BillPhotoChange {
   returnedQty: number;
 }
 
+export type DeliveryPaidStatus = 'paid' | 'unpaid';
+
 export interface SubmitBillPhotoPayload {
   deliveryId: string;
   deliveryReference: string;
@@ -29,6 +31,12 @@ export interface SubmitBillPhotoPayload {
   source: BillPhotoSource;
   /** Customer name written on the bill. */
   signedBy: string;
+  /**
+   * PAID: cash collected at the doorstep. NOT PAID: on credit.
+   * Posts nothing by itself — it decides whether the admin's approval
+   * debits Cash or Accounts Receivable.
+   */
+  paidStatus: DeliveryPaidStatus;
   changes: BillPhotoChange[];
   note?: string;
 }

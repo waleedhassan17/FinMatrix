@@ -150,9 +150,15 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const promptApprove = (request: InventoryUpdateRequest) => {
     if (!isSyncedRequest(request.id)) { Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again."); return; }
     const count = (request.changes ?? []).length;
+    const amount = Number(request.saleAmount ?? '0');
+    const postingLine = request.prepaid
+      ? 'Posts COGS and relieves Goods in Transit (sale was pre-paid).'
+      : request.paidStatus === 'paid'
+        ? `Posts the sale (Rs ${amount.toLocaleString()}) as CASH received, plus COGS.`
+        : `Posts the sale (Rs ${amount.toLocaleString()}) on CREDIT (open invoice in A/R), plus COGS.`;
     Alert.alert(
-      'Approve inventory changes',
-      `Apply ${count} item update${count === 1 ? '' : 's'} from ${request.deliveryReference || 'this delivery'} to real inventory? Shadow inventory will be cleared.`,
+      'Approve delivery',
+      `Apply ${count} item update${count === 1 ? '' : 's'} from ${request.deliveryReference || 'this delivery'}? ${postingLine}`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Approve', onPress: () => doApprove(request) },
@@ -309,6 +315,47 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={[styles.statusText, { color: statusColor(request.status) }]}>{request.status.toUpperCase()}</Text>
               </View>
             </View>
+
+            {/* phase1.md: the rider's PAID/NOT PAID flag + the sale the approval will post */}
+            <View style={styles.ledgerStrip}>
+              <View
+                style={[
+                  styles.paidBadge,
+                  { backgroundColor: (request.paidStatus === 'paid' ? colors.success : colors.warning) + '1A' },
+                ]}
+              >
+                <Feather
+                  name={request.paidStatus === 'paid' ? 'check-circle' : 'clock'}
+                  size={13}
+                  color={request.paidStatus === 'paid' ? colors.success : colors.warning}
+                />
+                <Text
+                  style={[
+                    styles.paidBadgeText,
+                    { color: request.paidStatus === 'paid' ? colors.success : colors.warning },
+                  ]}
+                >
+                  {request.prepaid ? 'PRE-PAID' : request.paidStatus === 'paid' ? 'PAID' : 'NOT PAID'}
+                </Text>
+              </View>
+              <View style={styles.ledgerMeta}>
+                {!!request.customerName && (
+                  <Text style={styles.ledgerCustomer} numberOfLines={1}>
+                    {request.customerName}
+                  </Text>
+                )}
+                <Text style={styles.ledgerAmount}>Rs {Number(request.saleAmount ?? '0').toLocaleString()}</Text>
+              </View>
+            </View>
+            {request.status === 'pending' && (
+              <Text style={styles.ledgerHint}>
+                {request.prepaid
+                  ? 'Pre-paid sale — approval posts COGS and relieves Goods in Transit.'
+                  : request.paidStatus === 'paid'
+                    ? 'Approving invoices this delivery and records the cash the rider collected.'
+                    : 'Approving invoices this delivery on credit — it will age in A/R until payment.'}
+              </Text>
+            )}
 
             <View style={styles.tableWrap}>
               <View style={styles.tableHead}>
@@ -606,6 +653,26 @@ const styles = StyleSheet.create({
   statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: borderRadius.sm },
   statusText: { ...THEME.typography.caption, fontWeight: '700' },
 
+  ledgerStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+    gap: spacing.sm,
+  },
+  paidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  paidBadgeText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.4 },
+  ledgerMeta: { flex: 1, alignItems: 'flex-end' },
+  ledgerCustomer: { fontSize: 12, color: colors.textSecondary },
+  ledgerAmount: { fontSize: 15, fontWeight: '800', color: colors.textPrimary },
+  ledgerHint: { fontSize: 11, color: colors.textTertiary, marginBottom: spacing.sm, lineHeight: 15 },
   tableWrap: { borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm, overflow: 'hidden', marginBottom: spacing.sm },
   tableHead: { flexDirection: 'row', backgroundColor: colors.background },
   tableHeadCell: { ...THEME.typography.caption, color: colors.textSecondary, fontWeight: '700', paddingVertical: 8, paddingHorizontal: 6 },

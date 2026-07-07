@@ -42,6 +42,7 @@ export const submitBillPhotoAPI = async (payload: any): Promise<any> => {
   if (payload.routeLabel) formData.append('routeLabel', payload.routeLabel);
   if (payload.source) formData.append('source', payload.source);
   if (payload.signedBy) formData.append('signedBy', payload.signedBy);
+  if (payload.paidStatus) formData.append('paidStatus', payload.paidStatus);
   if (payload.note) formData.append('note', payload.note);
 
   // Append complex fields as JSON strings

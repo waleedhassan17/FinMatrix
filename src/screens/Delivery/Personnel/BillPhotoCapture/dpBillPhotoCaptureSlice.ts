@@ -13,6 +13,7 @@
 import { createAppSlice } from '@store/createAppSlice';
 import type {
   BillPhotoSource,
+  DeliveryPaidStatus,
   SubmitBillPhotoPayload,
   SubmitBillPhotoResult,
 } from '../../../../models/dpBillPhotoCaptureModel';
@@ -26,6 +27,8 @@ export interface DPBillPhotoCaptureSliceState {
   source: BillPhotoSource | null;
   signedBy: string;
   note: string;
+  /** PAID / NOT PAID choice — required before submitting (phase1.md Stage 2). */
+  paidStatus: DeliveryPaidStatus | null;
   isSubmitting: boolean;
   error: string;
   lastResult: SubmitBillPhotoResult | null;
@@ -36,6 +39,7 @@ const initialState: DPBillPhotoCaptureSliceState = {
   source: null,
   signedBy: '',
   note: '',
+  paidStatus: null,
   isSubmitting: false,
   error: '',
   lastResult: null,
@@ -60,6 +64,9 @@ export const dpBillPhotoCaptureSlice = createAppSlice({
     }),
     setNote: create.reducer((state, action: { payload: string }) => {
       state.note = action.payload;
+    }),
+    setPaidStatus: create.reducer((state, action: { payload: DeliveryPaidStatus }) => {
+      state.paidStatus = action.payload;
     }),
     resetBillPhotoState: create.reducer(() => initialState),
 
@@ -147,6 +154,7 @@ export const dpBillPhotoCaptureSlice = createAppSlice({
     selectBillPhotoUri: state => state.photoUri,
     selectBillPhotoSignedBy: state => state.signedBy,
     selectBillPhotoNote: state => state.note,
+    selectBillPhotoPaidStatus: state => state.paidStatus,
     selectBillPhotoIsSubmitting: state => state.isSubmitting,
   },
 });
@@ -156,6 +164,7 @@ export const {
   clearBillPhoto,
   setSignedBy,
   setNote,
+  setPaidStatus,
   resetBillPhotoState,
   submitBillPhoto,
 } = dpBillPhotoCaptureSlice.actions;
@@ -165,5 +174,6 @@ export const {
   selectBillPhotoUri,
   selectBillPhotoSignedBy,
   selectBillPhotoNote,
+  selectBillPhotoPaidStatus,
   selectBillPhotoIsSubmitting,
 } = dpBillPhotoCaptureSlice.selectors;

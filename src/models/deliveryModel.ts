@@ -139,6 +139,16 @@ export interface InventoryUpdateRequest {
   reviewedBy?: string;
   reviewNotes?: string;
   reviewerComment?: string;
+  /** Rider's PAID / NOT PAID flag — decides Cash vs A/R at approval (phase1.md). */
+  paidStatus?: 'paid' | 'unpaid';
+  /** Sale was collected before dispatch (invoiced at assignment). */
+  prepaid?: boolean;
+  /** 'none' | 'in_transit' | 'committed' | 'returned' */
+  ledgerStatus?: string;
+  customerId?: string;
+  customerName?: string;
+  /** Amount approval will invoice (delivered qty × price, tax incl.). */
+  saleAmount?: string;
 }
 
 export interface ShadowInventoryChange {

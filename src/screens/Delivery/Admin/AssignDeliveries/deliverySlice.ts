@@ -109,6 +109,8 @@ export const deliverySlice = createAppSlice({
         scheduledDate: string;
         priority: DeliveryPriority;
         notes?: string;
+        /** Sale collected before dispatch → backend posts Invoice + Payment at assignment (phase1.md Stage 1). */
+        prePaid?: boolean;
         items: DeliveryItemLine[];
       }) => {
         const sanitizedItems = (payload.items || []).map(item => ({

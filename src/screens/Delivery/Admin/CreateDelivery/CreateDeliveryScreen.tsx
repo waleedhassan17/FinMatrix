@@ -143,6 +143,7 @@ const CreateDeliveryScreen: React.FC = () => {
   };
 
   const [isCreating, setIsCreating] = useState(false);
+  const [prePaid, setPrePaid] = useState(false);
   const canCreate = !!draft.customerId && draft.items.length > 0 && !isCreating;
 
   const handleCreate = async () => {
@@ -165,11 +166,18 @@ const CreateDeliveryScreen: React.FC = () => {
           scheduledDate: new Date().toISOString().slice(0, 10),
           priority: draft.priority,
           notes: draft.notes,
+          prePaid,
           items: draft.items,
         }),
       ).unwrap();
       dispatch(resetCreateDeliveryDraft());
-      Alert.alert('Delivery created', 'The delivery has been added and is ready to assign.');
+      setPrePaid(false);
+      Alert.alert(
+        'Delivery created',
+        prePaid
+          ? 'The delivery is ready to assign. On assignment the stock moves to Goods in Transit and, because it is pre-paid, the invoice and cash payment are recorded immediately.'
+          : 'The delivery is ready to assign. On assignment a Sales Order is created (non-posting) and the stock moves to Goods in Transit — revenue posts only after you approve the completed delivery.',
+      );
       navigation.goBack();
     } catch (err: any) {
       Alert.alert('Failed to create', err.message || 'Unable to create delivery.');
@@ -329,6 +337,25 @@ const CreateDeliveryScreen: React.FC = () => {
                 placeholder="Special instructions (optional)"
                 multiline
               />
+
+              {/* phase1.md Stage 1: pre-paid sale option */}
+              <View style={{ height: spacing.sm }} />
+              <TouchableOpacity
+                style={[styles.prepaidRow, prePaid && styles.prepaidRowActive]}
+                onPress={() => setPrePaid(v => !v)}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.prepaidCheck, prePaid && styles.prepaidCheckActive]}>
+                  {prePaid && <Feather name="check" size={14} color="#FFFFFF" />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.prepaidTitle}>Pre-paid sale</Text>
+                  <Text style={styles.prepaidSub}>
+                    Customer already paid. Assigning this delivery will record an invoice and
+                    the cash payment immediately instead of a sales order.
+                  </Text>
+                </View>
+              </TouchableOpacity>
             </SectionCard>
 
             <View style={{ height: spacing.xl * 2 }} />
@@ -470,6 +497,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
   },
   createBtnDisabled: { opacity: 0.45 },
+
+  prepaidRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.sm,
+    backgroundColor: colors.surface,
+  },
+  prepaidRowActive: { borderColor: colors.success, backgroundColor: colors.success + '0D' },
+  prepaidCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  prepaidCheckActive: { backgroundColor: colors.success, borderColor: colors.success },
+  prepaidTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  prepaidSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 16 },
   createBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15, fontFamily: THEME.typography.fontFamily },
 });
 

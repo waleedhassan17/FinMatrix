@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
-  TextInput,
   Alert,
   Modal,
   FlatList,
@@ -23,30 +22,23 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks'
 import {
   setActiveTab,
   setSelectedDate,
-  toggleCreateForm,
   toggleDeliverySelection,
   clearSelectedDeliveries,
   setSelectedPersonnelId,
   selectActiveTab,
   selectSelectedDate,
-  selectShowCreateForm,
   selectSelectedDeliveryIds,
   selectSelectedPersonnelId,
 } from './assignDeliveriesSlice';
 import {
   selectDeliveries,
   selectDeliveryPersonnel,
-  createDelivery,
   assignSelectedDeliveries,
   fetchDeliveries,
   fetchDeliveryPersonnel,
 } from './deliverySlice';
 import { selectPendingApprovalCount } from '../InventoryApproval/inventoryApprovalSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
-import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
-import CustomInput from '../../../../Custom-Components/CustomInput';
-import { selectCustomers, fetchCustomers } from '../../../Customers/CustomerList/customerListSlice';
-import { selectInventoryItems, fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryListSlice';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
@@ -54,14 +46,6 @@ const PRIORITY_COLORS: Record<string, string> = {
   high: '#B91C1C',
   medium: '#B45309',
   low: '#0F766E',
-};
-
-const zoneByCity = (city: string): string => {
-  const c = city.toLowerCase();
-  if (c.includes('lahore') || c.includes('gujranwala')) return 'Zone A';
-  if (c.includes('karachi') || c.includes('rawalpindi')) return 'Zone B';
-  if (c.includes('islamabad') || c.includes('faisalabad')) return 'Zone C';
-  return 'Zone D';
 };
 
 const AssignDeliveriesScreen: React.FC = () => {
@@ -82,7 +66,6 @@ const AssignDeliveriesScreen: React.FC = () => {
 
   const activeTab = useAppSelector(selectActiveTab);
   const selectedDate = useAppSelector(selectSelectedDate);
-  const showCreateForm = useAppSelector(selectShowCreateForm);
   const selectedDeliveryIds = useAppSelector(selectSelectedDeliveryIds);
   const selectedPersonnelId = useAppSelector(selectSelectedPersonnelId);
 
@@ -90,19 +73,11 @@ const AssignDeliveriesScreen: React.FC = () => {
   const personnel = useAppSelector(selectDeliveryPersonnel);
   const pendingApprovalCount = useAppSelector(selectPendingApprovalCount);
 
-  const customers = useAppSelector(selectCustomers);
-  const inventoryItems = useAppSelector(selectInventoryItems);
-
-  const [quickCustomerId, setQuickCustomerId] = useState('');
-  const [quickPriority, setQuickPriority] = useState<'high' | 'medium' | 'low'>('medium');
-  const [quickNotes, setQuickNotes] = useState('');
   const [showPersonnelModal, setShowPersonnelModal] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchCustomers());
     dispatch(fetchDeliveries());
     dispatch(fetchDeliveryPersonnel());
-    dispatch(fetchInventoryItems());
   }, [dispatch]);
 
   // Refresh deliveries whenever this screen regains focus (e.g. after creating
@@ -112,13 +87,6 @@ const AssignDeliveriesScreen: React.FC = () => {
       dispatch(fetchDeliveries());
     }, [dispatch]),
   );
-
-  const customerOptions = useMemo(
-    () => customers.map(c => ({ label: `${c.name} • ${c.shippingAddress?.city ?? ''}`, value: c.id })),
-    [customers],
-  );
-
-  const selectedCustomer = customers.find(c => c.id === quickCustomerId);
 
   const filteredUnassigned = useMemo(
     () => deliveries.filter(d => d.status === 'unassigned' && (!selectedDate || d.scheduledDate === selectedDate)),
@@ -135,51 +103,6 @@ const AssignDeliveriesScreen: React.FC = () => {
     [deliveries],
   );
 
-  const handleQuickCreate = async () => {
-    if (!selectedCustomer) {
-      Alert.alert('Customer required', 'Select customer to create a quick delivery.');
-      return;
-    }
-
-    const firstItem = inventoryItems[0];
-    if (!firstItem) {
-      Alert.alert('Inventory required', 'No inventory items found to create quick delivery.');
-      return;
-    }
-
-    try {
-      await dispatch(
-        createDelivery({
-          customerId: selectedCustomer.id,
-          customerName: selectedCustomer.name,
-          zone: zoneByCity(selectedCustomer.shippingAddress?.city ?? ''),
-          scheduledDate: selectedDate,
-          priority: quickPriority,
-          notes: quickNotes,
-          items: [
-            {
-              itemId: firstItem.id,
-              itemName: firstItem.name,
-              agencyId: 'agency_aquapure',
-              agencyName: 'AquaPure Water Supply',
-              quantity: 10,
-              orderedQty: 10,
-              unitPrice: firstItem.sellingPrice || 0,
-            },
-          ],
-        }),
-      ).unwrap();
-
-      setQuickCustomerId('');
-      setQuickPriority('medium');
-      setQuickNotes('');
-      dispatch(toggleCreateForm(false));
-      Alert.alert('Created', 'Delivery added to unassigned queue.');
-    } catch (err: any) {
-      Alert.alert('Failed to create', err.message || 'Unable to create delivery.');
-    }
-  };
-
   const handleOpenAssignModal = () => {
     if (!selectedDeliveryIds.length) {
       Alert.alert('No deliveries', 'Select at least one unassigned delivery.');
@@ -191,9 +114,33 @@ const AssignDeliveriesScreen: React.FC = () => {
   const handlePickPersonnel = async (personnelId: string, personnelName: string) => {
     setShowPersonnelModal(false);
     try {
-      await dispatch(assignSelectedDeliveries({ deliveryIds: selectedDeliveryIds, personnelId })).unwrap();
+      const res = await dispatch(
+        assignSelectedDeliveries({ deliveryIds: selectedDeliveryIds, personnelId }),
+      ).unwrap();
+
       dispatch(clearSelectedDeliveries());
-      Alert.alert('Assigned', `${selectedDeliveryIds.length} delivery(ies) assigned to ${personnelName}.`);
+
+      // phase1.md Stage 1: the backend created a Sales Order per delivery and
+      // moved the stock to Goods in Transit — surface that to the dispatcher.
+      const assigned: any[] = res?.apiResult?.data?.deliveries ?? [];
+      const ledgers = assigned.map(d => d?.ledger).filter(Boolean);
+      const committed = ledgers.filter((l: any) => l.committed);
+      const soNumbers = committed.map((l: any) => l.salesOrderNumber).filter(Boolean);
+      const gitTotal = committed.reduce(
+        (s: number, l: any) => s + Number(l.goodsInTransitCost ?? 0),
+        0,
+      );
+      const accountingLine = committed.length
+        ? `\n\nAccounting: ${
+            soNumbers.length
+              ? `Sales Order${soNumbers.length === 1 ? '' : 's'} ${soNumbers.join(', ')} created (non-posting)`
+              : 'sale document created'
+          }. Stock moved to Goods in Transit at cost (Rs ${gitTotal.toLocaleString()}). Revenue posts only when you approve the completed delivery.`
+        : '';
+      Alert.alert(
+        'Assigned',
+        `${selectedDeliveryIds.length} delivery(ies) assigned to ${personnelName}.${accountingLine}`,
+      );
     } catch (err: any) {
       Alert.alert('Assignment failed', err.message || 'Unable to assign deliveries.');
     }
@@ -225,7 +172,7 @@ const AssignDeliveriesScreen: React.FC = () => {
         />
       </View>
 
-      <View style={styles.tabRow}>
+      <View style={styles.tabBar}>
         {tabs.map(tab => {
           const active = tab.key === activeTab;
           return (
@@ -233,8 +180,10 @@ const AssignDeliveriesScreen: React.FC = () => {
               key={tab.key}
               style={[styles.tab, active && styles.tabActive]}
               onPress={() => dispatch(setActiveTab(tab.key))}
+              activeOpacity={0.7}
             >
               <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
+              {active && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           );
         })}
@@ -252,49 +201,15 @@ const AssignDeliveriesScreen: React.FC = () => {
       >
         {activeTab === 'assign' && (
           <>
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Section 1: Create Delivery</Text>
-                <TouchableOpacity onPress={() => dispatch(toggleCreateForm(undefined))}>
-                  <Text style={styles.linkText}>{showCreateForm ? 'Hide Form' : 'Create Delivery'}</Text>
-                </TouchableOpacity>
-              </View>
-
-              {showCreateForm && (
-                <View style={styles.quickFormCard}>
-                  <CustomDropdown
-                    label="Customer"
-                    options={customerOptions}
-                    value={quickCustomerId}
-                    onChange={setQuickCustomerId}
-                    placeholder="Select customer"
-                    searchable
-                  />
-                  <CustomDropdown
-                    label="Priority"
-                    options={[
-                      { label: 'High', value: 'high' },
-                      { label: 'Medium', value: 'medium' },
-                      { label: 'Low', value: 'low' },
-                    ]}
-                    value={quickPriority}
-                    onChange={value => setQuickPriority(value as 'high' | 'medium' | 'low')}
-                  />
-                  <CustomInput label="Notes" value={quickNotes} onChangeText={setQuickNotes} placeholder="Optional notes" />
-                  <CustomButton title="Create" onPress={handleQuickCreate} fullWidth />
-                </View>
-              )}
-
-              <TouchableOpacity
-                style={styles.navButton}
-                onPress={() => navigation.navigate('CreateDelivery')}
-              >
-                <Text style={styles.navButtonText}>Open Full Create Delivery Form</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => navigation.navigate('CreateDelivery')}
+            >
+              <Text style={styles.navButtonText}>Open Full Create Delivery Form</Text>
+            </TouchableOpacity>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Section 2: Unassigned Deliveries</Text>
+              <Text style={styles.sectionTitle}>Unassigned Deliveries</Text>
               {filteredUnassigned.map(d => {
                 const checked = selectedDeliveryIds.includes(d.id);
                 return (
@@ -487,32 +402,37 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     fontFamily: THEME.typography.fontFamily,
   },
-  tabRow: {
+  tabBar: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.md,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.sm,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: 10,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingVertical: 12,
+    position: 'relative',
   },
-  tabActive: {
-    backgroundColor: colors.primary + '15',
-    borderColor: colors.primary,
-  },
+  tabActive: {},
   tabText: {
+    fontSize: 14,
     color: colors.textSecondary,
     fontFamily: THEME.typography.fontFamily,
     fontWeight: '600',
   },
   tabTextActive: {
     color: colors.primary,
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: spacing.md,
+    right: spacing.md,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: colors.primary,
   },
   content: {
     padding: spacing.lg,
@@ -538,19 +458,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: THEME.typography.fontFamily,
   },
-  linkText: {
-    color: colors.primary,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
-  },
-  quickFormCard: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: spacing.md,
-    backgroundColor: colors.background,
-    marginBottom: spacing.sm,
-  },
+
   navButton: {
     backgroundColor: colors.secondary + '12',
     borderRadius: 10,
