@@ -17,6 +17,7 @@ import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
+import { selectFeatures } from '../../Auth/authSlice';
 import {
   selectPreferences, selectSettingsLoading, selectSettingsSaving,
   setPreference, loadPreferences, savePreferences,
@@ -217,6 +218,9 @@ const SettingsScreen: React.FC = () => {
   const nav = useNavigation<Nav>();
   const dispatch = useAppDispatch();
   const prefs = useAppSelector(selectPreferences);
+  // Three-tier model: team management is large_org+ (multiUser flag).
+  const features = useAppSelector(selectFeatures);
+  const showUserManagement = !features || !!features.multiUser;
   const loading = useAppSelector(selectSettingsLoading);
   const saving = useAppSelector(selectSettingsSaving);
 
@@ -263,8 +267,12 @@ const SettingsScreen: React.FC = () => {
         <SectionHeader title="COMPANY" />
         <View style={s.card}>
           <NavRow icon="briefcase" label="Company Profile" onPress={() => nav.navigate('CompanyProfile')} />
-          <View style={s.divider} />
-          <NavRow icon="users" label="User Management" onPress={() => nav.navigate('UserManagement')} />
+          {showUserManagement && (
+            <>
+              <View style={s.divider} />
+              <NavRow icon="users" label="User Management" onPress={() => nav.navigate('UserManagement')} />
+            </>
+          )}
         </View>
 
         {/* Preferences */}

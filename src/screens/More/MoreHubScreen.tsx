@@ -7,6 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows } from '../../theme';
 import { THEME } from '../../utils/theme';
 import { useAppSelector } from '../../hooks/useReduxHooks';
+import { selectFeatures } from '../Auth/authSlice';
 import { selectCustomers } from '../Customers/CustomerList/customerListSlice';
 import { selectVendors } from '../Vendors/VendorList/vendorListSlice';
 import { selectUnassignedDeliveries } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
@@ -25,6 +26,8 @@ interface MoreRow {
   subtitle: string;
   badgeSelector?: string;
   onPress: (nav: Nav) => void;
+  /** Three-tier model: row only shows when this feature is on (undefined = always). */
+  feature?: string;
 }
 
 interface MoreSection {
@@ -61,6 +64,7 @@ const SECTIONS: MoreSection[] = [
         label: 'Bank Reconciliation',
         subtitle: 'Match cash/bank ledger to a statement',
         onPress: nav => nav.navigate('BankReconciliationList'),
+        feature: 'bankReconciliation',
       },
     ],
   },
@@ -86,6 +90,7 @@ const SECTIONS: MoreSection[] = [
         label: 'Employees & Payroll',
         subtitle: 'Staff, run payroll & pay stubs',
         onPress: nav => nav.navigate('EmployeeList'),
+        feature: 'payroll',
       },
     ],
   },
@@ -109,18 +114,21 @@ const SECTIONS: MoreSection[] = [
         subtitle: 'Assign, monitor & approve deliveries',
         badgeSelector: 'delivery',
         onPress: nav => nav.navigate('AssignDeliveries'),
+        feature: 'delivery',
       },
       {
         key: 'personnel', icon: 'user-plus', iconBg: IC.purpleBg, iconColor: IC.purple,
         label: 'Delivery Personnel',
         subtitle: 'Add riders & assign login credentials',
         onPress: nav => nav.navigate('DeliveryPersonnelList'),
+        feature: 'delivery',
       },
       {
         key: 'agencies', icon: 'box', iconBg: IC.amberBg, iconColor: IC.amber,
         label: 'Warehouse Agencies',
         subtitle: 'Manage agencies, inventory & sync',
         onPress: nav => nav.navigate('AgencyList'),
+        feature: 'agencies',
       },
     ],
   },
@@ -140,6 +148,15 @@ const SECTIONS: MoreSection[] = [
 const MoreHubScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
 
+  // Three-tier model: hide rows the company's tier can't open (server 403s
+  // are the real enforcement; this keeps the UX free of dead links). Legacy
+  // sessions without flags see everything.
+  const features = useAppSelector(selectFeatures);
+  const sections = SECTIONS.map(section => ({
+    ...section,
+    rows: section.rows.filter(r => !r.feature || !features || features[r.feature]),
+  })).filter(section => section.rows.length > 0);
+
   const customerCount = useAppSelector(selectCustomers).length;
   const vendorCount = useAppSelector(selectVendors).length;
   const pendingDeliveries = useAppSelector(selectUnassignedDeliveries).length;
@@ -158,7 +175,7 @@ const MoreHubScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
       <ReportHeader title="More" subtitle="Tools, modules & settings" />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} style={{ backgroundColor: colors.background }}>
-        {SECTIONS.map(section => (
+        {sections.map(section => (
           <View key={section.title}>
             <Text style={styles.sectionHeader}>{section.title}</Text>
             <View style={styles.sectionCard}>

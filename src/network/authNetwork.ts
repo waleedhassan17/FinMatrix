@@ -41,7 +41,11 @@ export interface CheckVerificationPayload {
 }
 
 // ─── Helper: map backend user to app User type ───────
-const mapUser = (backendUser: any, companyStatus?: string | null): User => ({
+const mapUser = (
+  backendUser: any,
+  companyStatus?: string | null,
+  tier?: { companyType?: string | null; features?: Record<string, boolean> | null },
+): User => ({
   uid: backendUser.id,
   email: backendUser.email,
   displayName: backendUser.displayName,
@@ -53,6 +57,8 @@ const mapUser = (backendUser: any, companyStatus?: string | null): User => ({
   isActive: true,
   isEmailVerified: backendUser.isEmailVerified ?? true,
   companyStatus: companyStatus ?? null,
+  companyType: tier?.companyType ?? null,
+  features: tier?.features ?? null,
   createdAt: backendUser.createdAt || new Date().toISOString(),
   updatedAt: backendUser.updatedAt || new Date().toISOString(),
 });
@@ -94,7 +100,7 @@ export const authLogin = async ({
     });
     console.log('[authLogin] response.data:', JSON.stringify(response.data, null, 2));
     const responseData = response.data?.data ?? response.data;
-    const { user: backendUser, tokens, companyId, companyStatus } = responseData;
+    const { user: backendUser, tokens, companyId, companyStatus, companyType, features } = responseData;
     if (!tokens?.accessToken) {
       throw new Error('Login succeeded but no token received. Please try again.');
     }
@@ -103,7 +109,7 @@ export const authLogin = async ({
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
-    const user = mapUser(backendUser, companyStatus);
+    const user = mapUser(backendUser, companyStatus, { companyType, features });
     return { data: user };
   } catch (e: any) {
     console.warn('[authLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
@@ -176,12 +182,12 @@ export const authRegister = async ({
       phone: registerInfo.phone,
       role: 'admin',
     });
-    const { user: backendUser, tokens, companyId, companyStatus } = response.data.data;
+    const { user: backendUser, tokens, companyId, companyStatus, companyType, features } = response.data.data;
     await setTokens(tokens.accessToken, tokens.refreshToken);
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
-    const user = mapUser(backendUser, companyStatus);
+    const user = mapUser(backendUser, companyStatus, { companyType, features });
     return { data: user };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -193,8 +199,8 @@ export const authRegister = async ({
 export const authMe = async () => {
   try {
     const response = await api.get('/auth/me');
-    const { user: backendUser, companies, companyId, companyStatus } = response.data.data;
-    const user = mapUser(backendUser, companyStatus);
+    const { user: backendUser, companies, companyId, companyStatus, companyType, features } = response.data.data;
+    const user = mapUser(backendUser, companyStatus, { companyType, features });
     return { data: { user, companies, companyId } };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));

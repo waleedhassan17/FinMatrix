@@ -18,6 +18,8 @@ export interface ReportHubItem {
   key: string;
   title: string;
   icon: string;
+  /** Three-tier model: item only shows when this feature is on. */
+  feature?: string;
   target:
     | 'ProfitLoss'
     | 'BalanceSheet'
@@ -40,6 +42,8 @@ export interface ReportHubCategory {
   title: string;
   icon: string;
   items: ReportHubItem[];
+  /** Three-tier model: category only shows when this feature is on. */
+  feature?: string;
 }
 
 // Format using LOCAL calendar components. Using `toISOString()` on a Date built

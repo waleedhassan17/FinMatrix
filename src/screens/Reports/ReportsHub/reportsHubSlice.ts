@@ -13,7 +13,7 @@ const initialCategories: ReportHubCategory[] = [
       { key: 'tb', title: 'Trial Balance', icon: 'TB', target: 'TrialBalance' },
       { key: 'cf', title: 'Cash Flow', icon: 'CF', target: 'CashFlow' },
       { key: 'gl', title: 'General Ledger', icon: 'GL', target: 'GeneralLedger' },
-      { key: 'budgets', title: 'Budgets', icon: 'BUD', target: 'BudgetList' },
+      { key: 'budgets', title: 'Budgets', icon: 'BUD', target: 'BudgetList', feature: 'budgets' },
       { key: 'analytics', title: 'Analytics Dashboard', icon: 'ANL', target: 'AnalyticsDashboard' },
     ],
   },
@@ -29,6 +29,7 @@ const initialCategories: ReportHubCategory[] = [
     key: 'inventory',
     title: 'Inventory',
     icon: 'INV',
+    feature: 'inventory',
     items: [
       { key: 'inv-valuation', title: 'Valuation', icon: 'VAL', target: 'InventoryValuation' },
     ],
@@ -37,6 +38,7 @@ const initialCategories: ReportHubCategory[] = [
     key: 'delivery',
     title: 'Delivery',
     icon: 'DEL',
+    feature: 'delivery',
     items: [
       { key: 'delivery-daily', title: 'Daily Report', icon: 'DR', target: 'DeliveryDailyReport' },
       { key: 'delivery-performance', title: 'Performance', icon: 'DP', target: 'DeliveryPerformance' },
@@ -70,6 +72,27 @@ export const reportsHubSlice = createAppSlice({
 export const { setReportCategories } = reportsHubSlice.actions;
 export const selectReportCategories = (rootState: { reportsHub?: ReportsHubState }) =>
   (rootState.reportsHub ?? initialState).categories;
+
+/**
+ * Three-tier model: report categories/items filtered by the company's
+ * feature flags (from auth). Legacy sessions (no flags) see everything —
+ * matching the server's fully-unlocked fallback for pre-tiering companies.
+ */
+export const selectVisibleReportCategories = createSelector(
+  selectReportCategories,
+  (rootState: { auth?: { user?: { features?: Record<string, boolean> | null } | null } }) =>
+    rootState.auth?.user?.features ?? null,
+  (categories, features): ReportHubCategory[] => {
+    if (!features) return categories;
+    return categories
+      .filter(c => !(c as any).feature || features[(c as any).feature])
+      .map(c => ({
+        ...c,
+        items: c.items.filter(i => !(i as any).feature || features[(i as any).feature]),
+      }))
+      .filter(c => c.items.length > 0);
+  },
+);
 
 /* ── Derived selectors ── */
 

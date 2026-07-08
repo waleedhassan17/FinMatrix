@@ -6,7 +6,7 @@ import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../utils/theme';
 import { useAppSelector } from '../../../hooks/useReduxHooks';
-import { selectReportCategories } from './reportsHubSlice';
+import { selectVisibleReportCategories } from './reportsHubSlice';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import {
   ReportContainer,
@@ -31,7 +31,7 @@ const getCatIcon = (key: string): keyof typeof Feather.glyphMap => CATEGORY_ICON
 
 const ReportsHubScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
-  const categories = useAppSelector(selectReportCategories);
+  const categories = useAppSelector(selectVisibleReportCategories);
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {

@@ -67,6 +67,10 @@ export interface User {
   isEmailVerified?: boolean;
   /** Stage 1: onboarding/approval state of the user's company. */
   companyStatus?: string | null;
+  /** Three-tier model: small_business | large_org | warehouse (null = legacy). */
+  companyType?: string | null;
+  /** Effective feature flags for the company (server-computed, kill switch applied). */
+  features?: Record<string, boolean> | null;
   createdAt: string;
   updatedAt: string;
 }

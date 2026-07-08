@@ -23,7 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAppSelector, useAppDispatch } from '../../hooks/useReduxHooks';
-import { selectUser } from '../Auth/authSlice';
+import { selectUser, selectFeatures } from '../Auth/authSlice';
 import { selectActiveCompany, loadCompany } from '../Auth/companySlice';
 import { getCompanyAPI, updateCompanyAPI } from '../../network/authNetwork';
 import {
@@ -127,6 +127,13 @@ const AdminDashboardScreen: React.FC = () => {
   const stats = useAppSelector(selectDashboardStats);
   const transactions = useAppSelector(selectRecentTransactions);
   const delivery = useAppSelector(selectDeliveryOverview);
+  // Three-tier model: the SAME dashboard adapts per type via feature flags —
+  // small business sees the financial cards only; large org adds inventory
+  // when toggled on; warehouse sees everything. Legacy (no flags) = all on.
+  const features = useAppSelector(selectFeatures);
+  const showDelivery = !features || !!features.delivery;
+  const showInventory = !features || !!features.inventory;
+  const showAgencies = !features || !!features.agencies;
   const alerts = useAppSelector(selectDashboardAlerts);
   const isRefreshing = useAppSelector(selectIsRefreshing);
   const status = useAppSelector(selectDashboardStatus);
@@ -296,24 +303,32 @@ const AdminDashboardScreen: React.FC = () => {
               />
             </View>
 
-            {/* ── Deliveries ─────────────────────────── */}
-            <SectionHeader title="Deliveries" action="View all" onAction={() => navigation.navigate('DeliveryPersonnelList')} />
-            <DeliveryProgressCard delivery={delivery} completedPct={completedPct} />
+            {/* ── Deliveries (warehouse tier only) ───── */}
+            {showDelivery && (
+              <>
+                <SectionHeader title="Deliveries" action="View all" onAction={() => navigation.navigate('DeliveryPersonnelList')} />
+                <DeliveryProgressCard delivery={delivery} completedPct={completedPct} />
+              </>
+            )}
 
             {/* ── Quick actions ──────────────────────── */}
             <SectionHeader title="Quick actions" />
             <View style={s.actionsGrid}>
               <ActionTile icon="file-text" label="New invoice" color={C.brand} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceForm' })} />
               <ActionTile icon="file-plus" label="New bill" color={C.info} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'BillForm' })} />
-              <ActionTile icon="package" label="Inventory" color={C.teal} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })} />
-              <ActionTile icon="truck" label="Deliveries" color={C.indigo} onPress={() => navigation.navigate('DeliveryPersonnelList')} />
-              <ActionTile icon="map-pin" label="Agencies" color={C.warn} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('MoreStack', { screen: 'AgencyList' })} />
+              {showInventory && <ActionTile icon="package" label="Inventory" color={C.teal} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })} />}
+              {showDelivery && <ActionTile icon="truck" label="Deliveries" color={C.indigo} onPress={() => navigation.navigate('DeliveryPersonnelList')} />}
+              {showAgencies && <ActionTile icon="map-pin" label="Agencies" color={C.warn} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('MoreStack', { screen: 'AgencyList' })} />}
               <ActionTile icon="search" label="Search" color={C.slate} onPress={() => navigation.navigate('GlobalSearch')} />
             </View>
 
-            {/* ── Inventory ──────────────────────────── */}
-            <SectionHeader title="Inventory" action="View all" onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })} />
-            <InventoryCard count={rawData?.inventoryItems ?? 0} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })} />
+            {/* ── Inventory (inventory-enabled tiers) ── */}
+            {showInventory && (
+              <>
+                <SectionHeader title="Inventory" action="View all" onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })} />
+                <InventoryCard count={rawData?.inventoryItems ?? 0} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })} />
+              </>
+            )}
 
             {/* ── Recent transactions ────────────────── */}
             <SectionHeader title="Recent transactions" action={transactions.length > 0 ? 'View all' : undefined} onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceList' })} />

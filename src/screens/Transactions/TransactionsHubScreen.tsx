@@ -10,6 +10,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
+import { useAppSelector } from '../../hooks/useReduxHooks';
+import { selectFeatures } from '../Auth/authSlice';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import { ReportContainer, ReportHeader, SectionCard, ACCENT } from '../../components/reports/ReportUI';
 
@@ -22,6 +24,8 @@ interface HubRow {
   label: string;
   subtitle: string;
   onPress: (nav: Nav) => void;
+  /** Three-tier model: row only shows when this feature is on (undefined = always). */
+  feature?: string;
 }
 
 const SALES_ROWS: HubRow[] = [
@@ -40,6 +44,7 @@ const SALES_ROWS: HubRow[] = [
     label: 'Sales Orders',
     subtitle: 'Track fulfillment and invoice orders',
     onPress: nav => nav.navigate('SalesOrderList'),
+    feature: 'salesOrders',
   },
   {
     key: 'invoices',
@@ -91,6 +96,7 @@ const PURCHASE_ROWS: HubRow[] = [
     label: 'Purchase Orders',
     subtitle: 'Create and track vendor purchase orders',
     onPress: nav => nav.navigate('POList'),
+    feature: 'purchaseOrders',
   },
   {
     key: 'vendorCredits',
@@ -115,6 +121,14 @@ const ACCOUNTING_ROWS: HubRow[] = [
 
 const TransactionsHubScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  // Feature-filtered rows (three-tier model): legacy sessions (no flags)
+  // see everything, matching the server's fully-unlocked fallback.
+  const features = useAppSelector(selectFeatures);
+  const visible = (rows: HubRow[]) =>
+    rows.filter(r => !r.feature || !features || features[r.feature]);
+  const salesRows = visible(SALES_ROWS);
+  const purchaseRows = visible(PURCHASE_ROWS);
+  const accountingRows = visible(ACCOUNTING_ROWS);
 
   const renderRow = (row: HubRow, last: boolean) => (
     <TouchableOpacity
@@ -139,15 +153,15 @@ const TransactionsHubScreen: React.FC = () => {
       <ReportHeader title="Transactions" subtitle="Sales & purchases" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <SectionCard title="Sales" icon="trending-up">
-          <View style={styles.list}>{SALES_ROWS.map((r, i) => renderRow(r, i === SALES_ROWS.length - 1))}</View>
+          <View style={styles.list}>{salesRows.map((r, i) => renderRow(r, i === salesRows.length - 1))}</View>
         </SectionCard>
 
         <SectionCard title="Purchases" icon="shopping-cart">
-          <View style={styles.list}>{PURCHASE_ROWS.map((r, i) => renderRow(r, i === PURCHASE_ROWS.length - 1))}</View>
+          <View style={styles.list}>{purchaseRows.map((r, i) => renderRow(r, i === purchaseRows.length - 1))}</View>
         </SectionCard>
 
         <SectionCard title="Accounting" icon="book">
-          <View style={styles.list}>{ACCOUNTING_ROWS.map((r, i) => renderRow(r, i === ACCOUNTING_ROWS.length - 1))}</View>
+          <View style={styles.list}>{accountingRows.map((r, i) => renderRow(r, i === accountingRows.length - 1))}</View>
         </SectionCard>
 
         <View style={{ height: THEME.spacing.xl }} />

@@ -86,6 +86,9 @@ export const authSlice = createAppSlice({
 
   selectors: {
     selectUser: state => state.user,
+    // Three-tier model: which app the user sees + what their company may do.
+    selectCompanyType: state => state.user?.companyType ?? null,
+    selectFeatures: state => state.user?.features ?? null,
     selectPendingUser: state => state.pendingUser,
     selectIsAuthenticated: state => state.isAuthenticated,
     selectHasSeenOnboarding: state => state.hasSeenOnboarding,
@@ -111,6 +114,8 @@ export const {
 
 export const {
   selectUser,
+  selectCompanyType,
+  selectFeatures,
   selectPendingUser,
   selectIsAuthenticated,
   selectHasSeenOnboarding,

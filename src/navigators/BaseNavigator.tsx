@@ -28,6 +28,8 @@ import SplashOverlay from '../screens/Splash/SplashScreen';
 import AdminTabNavigator from './AdminTabNavigator';
 import DeliveryTabNavigator from './DeliveryTabNavigator';
 import SuperAdminNavigator from './SuperAdminNavigator';
+import SmallBusinessNavigator from './tiers/SmallBusinessNavigator';
+import LargeOrgNavigator from './tiers/LargeOrgNavigator';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -43,6 +45,20 @@ const BaseNavigator: React.FC = () => {
   const hasCompany = Boolean(user?.companyId);
   const isDeliveryUser = user?.role === 'delivery';
   const isSuperAdmin = user?.role === 'super_admin';
+
+  // ─── Three-tier model (FinMatrix.md): the ONE place that decides which
+  // app an approved company sees. small_business / large_org mount their
+  // own navigators (explicit per-tier route lists); warehouse and legacy
+  // (no companyType) keep the full AdminTabNavigator; riders are handled by
+  // the role switch above. Server-side FeatureGuard 403s remain the real
+  // enforcement — this is the matching UX.
+  const companyType = user?.companyType ?? null;
+  const TierNavigator =
+    companyType === 'small_business'
+      ? SmallBusinessNavigator
+      : companyType === 'large_org'
+        ? LargeOrgNavigator
+        : AdminTabNavigator;
 
   // ─── Stage 1: company-admin onboarding/approval gate ───
   const companyStatus = user?.companyStatus ?? null;
@@ -162,11 +178,11 @@ const BaseNavigator: React.FC = () => {
             />
           </>
         ) : isApproved ? (
-          // ── Admin: approved → full app ──
+          // ── Admin: approved → the tier's app ──
           <>
             <Stack.Screen
               name="AdminTabs"
-              component={AdminTabNavigator}
+              component={TierNavigator}
               options={{ animation: 'none' }}
             />
           </>
