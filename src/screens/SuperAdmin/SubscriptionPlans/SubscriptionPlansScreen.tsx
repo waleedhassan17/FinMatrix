@@ -286,19 +286,29 @@ const FormField: React.FC<{
   </View>
 );
 
-// Canonical signup tiers (Phase1.md) — mirrors the signup plan cards.
+// Three-tier model: the six plans come from the server's PLAN_CONFIG via
+// GET /super-admin/plans — this screen displays them read-only (pricing is
+// changed in server config, not from the app).
 interface DisplayPlan {
   name: string;
   description: string;
   isFree: boolean;
   priceLabel: string;
   durationLabel?: string;
+  totalLabel?: string;
+  companyType?: string | null;
   features: string[];
   maxUsers: number;
   maxInvoices: number | null;
-  disabled: boolean; // paid tiers are "coming soon"
+  disabled: boolean;
   companyCount: number;
 }
+
+const TIER_LABELS: Record<string, string> = {
+  small_business: 'Small Business',
+  large_org: 'Large Organization',
+  warehouse: 'Warehouse',
+};
 
 const CANONICAL_PLANS: Omit<DisplayPlan, 'companyCount'>[] = [
   {
@@ -380,9 +390,11 @@ const PlanCard: React.FC<{ plan: DisplayPlan; gradientIdx: number }> = ({ plan, 
         <View style={S.planCountRow}>
           <Feather name="briefcase" size={13} color={C.text.muted} />
           <Text style={S.planCountText}>
-            {plan.disabled
-              ? 'Not yet available'
-              : `${plan.companyCount} compan${plan.companyCount === 1 ? 'y' : 'ies'} on this plan`}
+            {plan.totalLabel
+              ? `${plan.totalLabel} billed once for the full period`
+              : plan.disabled
+                ? 'Not yet available'
+                : `${plan.companyCount} compan${plan.companyCount === 1 ? 'y' : 'ies'} on this plan`}
           </Text>
         </View>
       </View>
@@ -396,31 +408,40 @@ const PlanCard: React.FC<{ plan: DisplayPlan; gradientIdx: number }> = ({ plan, 
 const SubscriptionPlansScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigation = useNavigation();
+  const plans = useAppSelector(selectPlans);
   const plansStatus = useAppSelector(selectPlansStatus);
-  const subscriptions = useAppSelector(selectSubscriptions);
 
   useEffect(() => {
     dispatch(loadPlans());
     dispatch(loadSubscriptions());
   }, [dispatch]);
 
-  // Companies on the Free tier = active subscriptions to a zero-priced plan.
-  const freeCount = React.useMemo(
-    () =>
-      subscriptions.filter(
-        s =>
-          (s.status === 'active' || s.status === 'trial') &&
-          parseFloat(s.plan?.priceMonthly ?? '0') === 0,
-      ).length,
-    [subscriptions],
-  );
+  // The six tier plans from the server's PLAN_CONFIG (single source of
+  // truth); falls back to the legacy canonical cards only if the API gave
+  // nothing (old server).
+  const displayPlans: DisplayPlan[] = React.useMemo(() => {
+    const tierPlans = (plans ?? []).filter(p => (p as any).companyType);
+    if (tierPlans.length === 0) {
+      return CANONICAL_PLANS.map(p => ({ ...p, companyCount: 0 }));
+    }
+    return tierPlans.map(p => ({
+      name: p.name,
+      description:
+        p.description ?? `${TIER_LABELS[(p as any).companyType] ?? ''} plan`,
+      isFree: false,
+      priceLabel: (p as any).monthlyLabel ?? `Rs ${Number(p.priceMonthly).toLocaleString()}`,
+      durationLabel: `/month · ${(p as any).durationMonths} months`,
+      totalLabel: (p as any).totalLabel,
+      companyType: (p as any).companyType,
+      features: p.features ?? [],
+      maxUsers: p.maxUsers,
+      maxInvoices: p.maxInvoices,
+      disabled: false,
+      companyCount: 0,
+    }));
+  }, [plans]);
 
-  const displayPlans: DisplayPlan[] = CANONICAL_PLANS.map(p => ({
-    ...p,
-    companyCount: p.name === 'Free' ? freeCount : 0,
-  }));
-
-  const isLoading = plansStatus === 'loading' && subscriptions.length === 0;
+  const isLoading = plansStatus === 'loading' && displayPlans.length === 0;
 
   return (
     <SafeAreaView style={S.container} edges={['top']}>
@@ -430,7 +451,7 @@ const SubscriptionPlansScreen: React.FC = () => {
         </TouchableOpacity>
         <View style={S.headerCenter}>
           <Text style={S.headerTitle}>Subscription Plans</Text>
-          <Text style={S.headerSub}>Free available · Standard &amp; Pro coming soon</Text>
+          <Text style={S.headerSub}>Six plans · two per business type · PKR · defined in server config</Text>
         </View>
       </View>
 
@@ -441,9 +462,24 @@ const SubscriptionPlansScreen: React.FC = () => {
         </View>
       ) : (
         <ScrollView contentContainerStyle={S.listContent} showsVerticalScrollIndicator={false}>
-          {displayPlans.map((p, index) => (
-            <PlanCard key={p.name} plan={p} gradientIdx={index} />
-          ))}
+          {['small_business', 'large_org', 'warehouse'].some(t => displayPlans.some(p => p.companyType === t)) ? (
+            ['small_business', 'large_org', 'warehouse'].map(tier => {
+              const tierPlans = displayPlans.filter(p => p.companyType === tier);
+              if (tierPlans.length === 0) return null;
+              return (
+                <View key={tier} style={{ gap: 12 }}>
+                  <Text style={S.tierHeading}>{TIER_LABELS[tier]}</Text>
+                  {tierPlans.map((p, index) => (
+                    <PlanCard key={p.name} plan={p} gradientIdx={index} />
+                  ))}
+                </View>
+              );
+            })
+          ) : (
+            displayPlans.map((p, index) => (
+              <PlanCard key={p.name} plan={p} gradientIdx={index} />
+            ))
+          )}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -468,6 +504,10 @@ const S = StyleSheet.create({
   loadingText: { fontSize: 13, color: C.text.secondary },
 
   listContent: { padding: 16, gap: 16, paddingBottom: 30 },
+  tierHeading: {
+    fontSize: 13, fontWeight: '800', color: C.text.secondary,
+    letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 4,
+  },
   planCard: {
     backgroundColor: C.surface, borderRadius: 16, overflow: 'hidden',
     borderWidth: 1, borderColor: C.border,

@@ -67,7 +67,14 @@ export interface SubscriptionPlan {
   features: string[] | null;
   isActive: boolean;
   sortOrder: number;
-  createdAt: string;
+  createdAt?: string;
+  // Three-tier model (served from the server's PLAN_CONFIG):
+  companyType?: 'small_business' | 'large_org' | 'warehouse' | null;
+  durationMonths?: number | null;
+  monthlyLabel?: string;
+  totalLabel?: string;
+  currency?: string;
+  deliveryPersonnelLimit?: number;
 }
 
 export interface CompanySubscription {
