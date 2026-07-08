@@ -12,7 +12,8 @@ Everything needed to return to the exact pre-tiering state if anything misbehave
 | Frontend — tiering commits being pushed | `cadf098` → `6bf69cb` → `fcced2a` → `1b775e6` |
 | Heroku app | `finmatrix-api-prod` |
 | **Heroku release BEFORE this deploy** | **v56** |
-| Prod DB backup | captured with `heroku pg:backups:capture -a finmatrix-api-prod` immediately before the migration (see `heroku pg:backups -a finmatrix-api-prod` for the id, e.g. `b001`) |
+| Heroku release AFTER this deploy | **v57** (commit `2cccafa`) — verified live: schema applied, demo seed ALL TIES HOLD, tiering acceptance **80/80 against prod** |
+| Prod DB backup (pre-migration, VERIFIED) | **`b001`** — captured 2026-07-08 16:14 UTC, Completed, 326 KB |
 
 ## How to roll back
 
