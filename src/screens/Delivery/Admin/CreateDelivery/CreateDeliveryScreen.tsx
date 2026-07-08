@@ -127,6 +127,10 @@ const CreateDeliveryScreen: React.FC = () => {
       Alert.alert('Invalid item', 'Select an item and a valid quantity.');
       return;
     }
+    if (!Number.isInteger(numericQty)) {
+      Alert.alert('Invalid quantity', 'Quantity must be a whole number of units.');
+      return;
+    }
     dispatch(
       addDraftItem({
         agencyId: item.agencyId ?? '',
