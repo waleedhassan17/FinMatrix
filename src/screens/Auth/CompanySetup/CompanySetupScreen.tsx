@@ -132,7 +132,7 @@ const CompanySetupScreen: React.FC<Props> = ({ navigation }) => {
           <View>
             <TouchableOpacity
               style={s.optionCard}
-              onPress={() => navigation.navigate(ROUTES.CREATE_COMPANY as any)}
+              onPress={() => navigation.navigate(ROUTES.COMPANY_TYPE_SELECT as any)}
               activeOpacity={0.7}>
               {/* Icon area */}
               <View style={s.optionIconArea}>

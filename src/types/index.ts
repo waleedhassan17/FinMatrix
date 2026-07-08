@@ -758,7 +758,8 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
   EmailVerification: { email?: string; token?: string } | undefined;
   CompanySetup: undefined;
-  CreateCompany: undefined;
+  CompanyTypeSelect: undefined;
+  CreateCompany: { companyType?: 'small_business' | 'large_org' | 'warehouse' } | undefined;
   JoinCompany: undefined;
   DeliveryOnboarding: undefined;
   PendingApproval: { fromLogin?: boolean } | undefined;
@@ -766,9 +767,9 @@ export type RootStackParamList = {
   AdminTabs: undefined;
   DeliveryTabs: undefined;
   SuperAdminTabs: undefined;
-  SubscriptionSelect: { companyId?: string } | undefined;
+  SubscriptionSelect: { companyId?: string; companyType?: string } | undefined;
   RenewSubscription: { mode?: 'renew' | 'change' } | undefined;
-  SubscriptionPay: { plan: 'standard' | 'pro'; mode?: 'renew' | 'change' };
+  SubscriptionPay: { plan: string; mode?: 'renew' | 'change' | 'signup'; companyId?: string };
   PaymentSubmissions: undefined;
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;

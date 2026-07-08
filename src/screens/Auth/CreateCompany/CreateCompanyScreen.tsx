@@ -166,7 +166,10 @@ const STEP_HEADERS: {
 // ═══════════════════════════════════════════════════════
 // Screen
 // ═══════════════════════════════════════════════════════
-const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
+const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
+  // Three-tier model: chosen on the type-select step; rides into the create
+  // payload and on to plan selection (which shows only this type's plans).
+  const companyType = route.params?.companyType;
   const dispatch = useAppDispatch();
   const user = useAppSelector(state => state.auth.user);
 
@@ -307,6 +310,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
       const backendCompany = await createCompanyAPI({
         name: companyName.trim(),
         industry,
+        companyType,
         legalStructure: legalStructure || undefined,
         address: {
           street: street.trim(),
@@ -368,7 +372,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation }) => {
 
       dispatch(createCompany(companyData));
       setIsCreating(false);
-      navigation.navigate('SubscriptionSelect', { companyId });
+      navigation.navigate('SubscriptionSelect', { companyId, companyType });
     } catch (err: any) {
       setIsCreating(false);
       Alert.alert('Error', err?.message ?? 'Unable to create company. Please try again.');

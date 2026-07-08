@@ -24,6 +24,7 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser, setUser } from '../authSlice';
 import { getPublicPlansAPI, selfSubscribeAPI } from '../../../network/superAdminNetwork';
 import { submitCompanyAPI } from '../../../network/authNetwork';
+import { getPlansForTypeAPI, type TierPlanCard } from '../../../network/billingNetwork';
 import { getStoredCompanyId } from '../../../network/apiHelpers';
 import { THEME } from '../../../utils/theme';
 
@@ -178,6 +179,49 @@ const PlanCard: React.FC<{
   );
 };
 
+// ── Tier plan card (three-tier model: 3mo vs 6mo side by side) ──
+const TIER_TITLES: Record<string, string> = {
+  small_business: 'Small Business',
+  large_org: 'Large Organization',
+  warehouse: 'Warehouse',
+};
+
+const TierCard: React.FC<{
+  plan: TierPlanCard;
+  selected: boolean;
+  onSelect: () => void;
+}> = ({ plan, selected, onSelect }) => {
+  const isSix = plan.durationMonths === 6;
+  return (
+    <TouchableOpacity activeOpacity={0.85} onPress={onSelect} style={{ flex: 1 }}>
+      <View style={[S.tierCard, selected && S.tierCardSelected]}>
+        {isSix && plan.monthlySavingsLabel ? (
+          <View style={S.saveBadge}>
+            <Feather name="zap" size={10} color="#FFF" />
+            <Text style={S.saveBadgeText}>Save {plan.monthlySavingsLabel}</Text>
+          </View>
+        ) : (
+          <View style={S.saveBadgeSpacer} />
+        )}
+        <Text style={S.tierDuration}>{plan.durationMonths} months</Text>
+        <View style={S.tierPriceRow}>
+          <Text style={S.tierPrice}>{plan.monthlyLabel}</Text>
+          <Text style={S.tierPriceUnit}>/mo</Text>
+        </View>
+        <Text style={S.tierTotal}>
+          {plan.totalLabel} billed once{'\n'}for {plan.durationMonths} months
+        </Text>
+        <View style={[S.tierSelect, selected && S.tierSelectOn]}>
+          <Feather name={selected ? 'check-circle' : 'circle'} size={15} color={selected ? '#FFF' : DS.text.muted} />
+          <Text style={[S.tierSelectText, selected && S.tierSelectTextOn]}>
+            {selected ? 'Selected' : 'Select'}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
 // ═══════════════════════════════════════════════════════
 // MAIN SCREEN
 // ═══════════════════════════════════════════════════════
@@ -185,6 +229,14 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
   const user = useAppSelector(selectUser);
+
+  // Three-tier flow (FinMatrix.md): when the company registered with a type,
+  // show ONLY that type's TWO plans (3-month and 6-month) from the server's
+  // PLAN_CONFIG, then hand off to the bank-transfer payment screen. The
+  // legacy plan list below remains for pre-tiering drafts (no companyType).
+  const companyType = route.params?.companyType ?? (user as any)?.companyType ?? null;
+  const [tierPlans, setTierPlans] = useState<TierPlanCard[]>([]);
+  const [selectedTierKey, setSelectedTierKey] = useState<string | null>(null);
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -200,8 +252,37 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
       Animated.timing(headerY, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
 
-    loadPlans();
+    if (companyType) loadTierPlans();
+    else loadPlans();
   }, []);
+
+  const loadTierPlans = async () => {
+    try {
+      const data = await getPlansForTypeAPI(companyType);
+      const list = data?.plans ?? [];
+      setTierPlans(list);
+      // Pre-select the 6-month plan (best value).
+      setSelectedTierKey(list.find(p => p.durationMonths === 6)?.key ?? list[0]?.key ?? null);
+    } catch {
+      // Empty state below
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
+
+  const handleContinueTier = async () => {
+    if (!selectedTierKey) {
+      Alert.alert('Select a Plan', 'Please choose a subscription plan to continue.');
+      return;
+    }
+    const storedId = await getStoredCompanyId();
+    const companyId = storedId ?? route.params?.companyId ?? user?.companyId ?? '';
+    navigation.navigate('SubscriptionPay', {
+      plan: selectedTierKey,
+      mode: 'signup',
+      companyId,
+    });
+  };
 
   const loadPlans = async () => {
     try {
@@ -364,6 +445,35 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
               <ActivityIndicator size="large" color={DS.primary} />
               <Text style={S.loadingText}>Loading plans…</Text>
             </View>
+          ) : companyType ? (
+            tierPlans.length === 0 ? (
+              <View style={S.loaderWrap}>
+                <Text style={S.loadingText}>Could not load plans. Check your connection and try again.</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={S.tierHeading}>
+                  {TIER_TITLES[companyType] ?? 'Your'} plans — pick a billing period
+                </Text>
+                <View style={S.tierRow}>
+                  {tierPlans.map(p => (
+                    <TierCard
+                      key={p.key}
+                      plan={p}
+                      selected={selectedTierKey === p.key}
+                      onSelect={() => setSelectedTierKey(p.key)}
+                    />
+                  ))}
+                </View>
+                <View style={S.tierNote}>
+                  <Feather name="info" size={13} color={DS.primary} />
+                  <Text style={S.tierNoteText}>
+                    Pay once by bank transfer and upload the receipt — your company activates as
+                    soon as an administrator verifies the payment.
+                  </Text>
+                </View>
+              </>
+            )
           ) : plans.length === 0 ? (
             <View style={S.loaderWrap}>
               <Text style={S.loadingText}>Could not load plans. Tap Continue to proceed.</Text>
@@ -384,7 +494,7 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={S.ctaSection}>
             <TouchableOpacity
               style={[S.cta, submitting && S.ctaDisabled]}
-              onPress={handleContinue}
+              onPress={companyType ? handleContinueTier : handleContinue}
               activeOpacity={0.85}
               disabled={submitting}
             >
@@ -393,6 +503,10 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
                   <ActivityIndicator size="small" color="#FFF" />
                   <Text style={S.ctaLabel}>Setting up…</Text>
                 </View>
+              ) : companyType ? (
+                <Text style={S.ctaLabel}>
+                  {selectedTierKey ? 'Continue to payment' : 'Select a plan'}
+                </Text>
               ) : (
                 <Text style={S.ctaLabel}>
                   {selectedPlan && parseFloat(selectedPlan.priceMonthly) === 0
@@ -530,6 +644,46 @@ const S = StyleSheet.create({
     fontSize: 14, color: DS.text.muted,
     fontFamily: THEME.typography.fontFamily, fontWeight: '500',
   },
+
+  // ── Tier plan cards (three-tier model) ──
+  tierHeading: {
+    fontSize: 15, fontWeight: '700', color: DS.text.h,
+    fontFamily: THEME.typography.fontFamily, marginBottom: 2,
+  },
+  tierRow: { flexDirection: 'row', gap: 12 },
+  tierCard: {
+    backgroundColor: DS.surface, borderRadius: 16, borderWidth: 1.5, borderColor: DS.border,
+    padding: 14, alignItems: 'center',
+    shadowColor: '#0052CC', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+  },
+  tierCardSelected: { borderColor: DS.primary, borderWidth: 2.5 },
+  saveBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: DS.amber, borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 3, marginBottom: 8,
+  },
+  saveBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+  saveBadgeSpacer: { height: 19, marginBottom: 8 },
+  tierDuration: { fontSize: 13, fontWeight: '700', color: DS.text.sub },
+  tierPriceRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 6 },
+  tierPrice: { fontSize: 24, fontWeight: '800', color: DS.text.h },
+  tierPriceUnit: { fontSize: 13, color: DS.text.muted, marginBottom: 3 },
+  tierTotal: {
+    fontSize: 11, color: DS.text.muted, textAlign: 'center', lineHeight: 16, marginTop: 6,
+  },
+  tierSelect: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    alignSelf: 'stretch', paddingVertical: 8, borderRadius: 8, marginTop: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  tierSelectOn: { backgroundColor: DS.primary },
+  tierSelectText: { fontSize: 12, fontWeight: '700', color: DS.text.sub },
+  tierSelectTextOn: { color: '#FFF' },
+  tierNote: {
+    flexDirection: 'row', gap: 8, backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12,
+  },
+  tierNoteText: { flex: 1, fontSize: 12, color: DS.text.sub, lineHeight: 18 },
 
   legalText: {
     fontSize: 10, color: DS.text.muted, textAlign: 'center',

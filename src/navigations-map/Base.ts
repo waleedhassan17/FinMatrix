@@ -7,6 +7,7 @@ export const ROUTES = {
   FORGOT_PASSWORD: 'ForgotPassword',
   EMAIL_VERIFICATION: 'EmailVerification',
   COMPANY_SETUP: 'CompanySetup',
+  COMPANY_TYPE_SELECT: 'CompanyTypeSelect',
   CREATE_COMPANY: 'CreateCompany',
   JOIN_COMPANY: 'JoinCompany',
   DELIVERY_ONBOARDING: 'DeliveryOnboarding',

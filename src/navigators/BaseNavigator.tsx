@@ -13,6 +13,7 @@ import ForgotPasswordScreen from '../screens/Auth/ForgotPassword/ForgotPasswordS
 import EmailVerificationScreen from '../screens/Auth/EmailVerification/EmailVerificationScreen';
 import CompanySetupScreen from '../screens/Auth/CompanySetup/CompanySetupScreen';
 import CreateCompanyScreen from '../screens/Auth/CreateCompany/CreateCompanyScreen';
+import CompanyTypeSelectScreen from '../screens/Auth/CompanyTypeSelect/CompanyTypeSelectScreen';
 import JoinCompanyScreen from '../screens/Auth/JoinCompany/JoinCompanyScreen';
 import SubscriptionSelectScreen from '../screens/Auth/SubscriptionSelect/SubscriptionSelectScreen';
 import PendingApprovalScreen from '../screens/Auth/PendingApproval/PendingApprovalScreen';
@@ -177,6 +178,7 @@ const BaseNavigator: React.FC = () => {
               component={SubscriptionSelectScreen}
               options={{ animation: 'none' }}
             />
+            <Stack.Screen name="SubscriptionPay" component={SubscriptionPayScreen} />
             <Stack.Screen
               name="AdminTabs"
               component={AdminTabNavigator}
@@ -189,6 +191,11 @@ const BaseNavigator: React.FC = () => {
             <Stack.Screen
               name="CompanySetup"
               component={CompanySetupScreen}
+              options={{ animation: 'none' }}
+            />
+            <Stack.Screen
+              name="CompanyTypeSelect"
+              component={CompanyTypeSelectScreen}
               options={{ animation: 'none' }}
             />
             <Stack.Screen
@@ -205,6 +212,7 @@ const BaseNavigator: React.FC = () => {
               name="SubscriptionSelect"
               component={SubscriptionSelectScreen}
             />
+            <Stack.Screen name="SubscriptionPay" component={SubscriptionPayScreen} />
             <Stack.Screen
               name="AdminTabs"
               component={AdminTabNavigator}

@@ -15,7 +15,31 @@ import {
 } from './apiHelpers';
 
 // ─── Types ────────────────────────────────────────────
-export type PlanKey = 'free' | 'standard' | 'pro';
+export type PlanKey =
+  | 'free'
+  | 'standard'
+  | 'pro'
+  // Three-tier plans (FinMatrix.md): two per company type.
+  | 'small_business_3mo'
+  | 'small_business_6mo'
+  | 'large_org_3mo'
+  | 'large_org_6mo'
+  | 'warehouse_3mo'
+  | 'warehouse_6mo';
+
+export interface TierPlanCard {
+  key: PlanKey;
+  label: string;
+  durationMonths: number;
+  monthlyMinorUnits: number;
+  monthlyLabel: string;
+  totalMinorUnits: number;
+  totalLabel: string;
+  currency: string;
+  deliveryPersonnelLimit: number;
+  monthlySavingsMinorUnits: number;
+  monthlySavingsLabel: string | null;
+}
 export type SubmissionKind = 'NEW' | 'RENEWAL' | 'UPGRADE';
 export type SubmissionStatus = 'submitted' | 'approved' | 'rejected';
 
@@ -128,6 +152,20 @@ const unwrap = (res: any) => res?.data?.data ?? res?.data;
 export const getBillingStatusAPI = async (): Promise<BillingStatus> => {
   try {
     const res = await api.get('/billing/status');
+    return unwrap(res);
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+/** The type's TWO plan cards (3mo + 6mo), priced server-side. */
+export const getPlansForTypeAPI = async (
+  companyType?: string,
+): Promise<{ companyType: string; plans: TierPlanCard[] }> => {
+  try {
+    const res = await api.get('/billing/plans', {
+      params: companyType ? { companyType } : undefined,
+    });
     return unwrap(res);
   } catch (e) {
     throw new Error(extractErrorMessage(e));

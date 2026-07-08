@@ -25,11 +25,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { selectUser, setUser } from '../Auth/authSlice';
-import { authMe } from '../../network/authNetwork';
+import { authMe, submitCompanyAPI } from '../../network/authNetwork';
 import {
   getBankDetailsAPI,
   submitPaymentAPI,
   type BankDetails,
+  type PlanKey,
 } from '../../network/billingNetwork';
 
 const DS = {
@@ -58,7 +59,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SubscriptionPay'>;
 const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUser);
-  const plan = route.params?.plan ?? 'standard';
+  const plan = (route.params?.plan ?? 'standard') as PlanKey;
   const mode = route.params?.mode ?? 'change';
 
   const [loading, setLoading] = useState(true);
@@ -114,6 +115,16 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
     setSubmitting(true);
     try {
       await submitPaymentAPI(plan, image);
+      // Signup flow (three-tier registration): the payment is in — now submit
+      // the company for platform-admin approval. Approval activates the
+      // company with this plan's feature set and expiry.
+      if (mode === 'signup' && route.params?.companyId) {
+        try {
+          await submitCompanyAPI(route.params.companyId);
+        } catch {
+          /* company may already be submitted — approval flow proceeds */
+        }
+      }
       // Refresh the session so paymentStatus reflects "submitted".
       try {
         const me = await authMe();
@@ -150,12 +161,22 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={S.successSub}>
             Your payment for the {details?.planLabel} plan was submitted. Please wait for admin
             approval — your plan activates automatically once the payment is verified
-            {mode === 'renew' ? ', then sign in again to restore full access.' : '.'}
+            {mode === 'renew'
+              ? ', then sign in again to restore full access.'
+              : mode === 'signup'
+                ? ' — you will be able to sign in with full access once approved.'
+                : '.'}
           </Text>
           <TouchableOpacity
             style={S.doneBtn}
             onPress={() => {
-              if (mode === 'change') navigation.goBack();
+              if (mode === 'signup') {
+                // Route the admin to the awaiting-approval screen; BaseNavigator
+                // keeps them there until the platform admin approves.
+                if (user) {
+                  dispatch(setUser({ ...user, companyId: route.params?.companyId ?? user.companyId, companyStatus: 'pending_approval' }));
+                }
+              } else if (mode === 'change') navigation.goBack();
               else navigation.navigate('RenewSubscription' as never);
             }}
             activeOpacity={0.85}

@@ -312,6 +312,8 @@ export const authCheckVerificationStatus = async (_args?: unknown) => {
 export interface CreateCompanyData {
   name: string;
   industry?: string;
+  /** Three-tier model: small_business | large_org | warehouse. */
+  companyType?: string;
   legalStructure?: string;
   // Accepts a structured address (preferred) or a legacy concatenated string.
   address?:
