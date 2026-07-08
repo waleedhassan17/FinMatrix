@@ -140,3 +140,37 @@ Frontend: `screens/Auth/CompanyTypeSelect` (three cards) · `navigators/tiers/{S
 5. **MetroMatrix demo conflict**: Phase 4 re-casts MetroMatrix as the LARGE ORG demo (no deliveries) and moves the delivery world to "Warehouse Co" — that means reseeding MetroMatrix without riders/deliveries and moving saim/haseeb-style riders to warehouse@gmail.com's company. Confirm you're OK changing the current demo data this way.
 
 — END OF PHASE 0 — stopping for review as instructed. No code has been changed.
+
+---
+
+## 9. Post-audit outcome (Phases 1–5 executed after approval)
+
+User approved with: three views per tier; **no GitHub push / no deploy** (all work local commits
+only, migration run against the local/staging DB only — production untouched). Decisions taken per
+the recommendations in §8: existing companies default `warehouse`; plan-select converged onto the
+billing flow; module placement per §8 Q3; the 4-role matrix + bills-approval-workflow deferred as a
+gated follow-up (flags `multiUser`/`auditLog`/`periodClose` exist and gate today's screens).
+
+**Delivered:** `FeatureGuard` + `FEATURE_MAP` + `@RequiresFeature` on 17 controllers (posting
+engine untouched); additive `CompanyTiering` migration (up + down verified on a scratch DB;
+Heroku-safe `apply-tiering-schema.js` ready); six-plan `PLAN_CONFIG` (PKR, 6-month cheaper);
+type-selection registration + two plan cards + signup payment flow; per-tier navigators
+(SmallBusiness / LargeOrg / AdminTab-as-Warehouse / existing DP portal) behind the single
+`BaseNavigator` switch with feature-filtered hubs and dashboard; `seed:tier-demos` (three demo
+companies through the real ledger — ALL TIES HOLD); `test:tiering` acceptance **80/80**.
+
+**Extra defects found & fixed by the new suite:** riders could READ financial data (8 financial
+controllers had undecorated GET routes — now class-level `@Roles('admin','staff')`); fresh-signup
+JWTs (no companyId yet) couldn't reach `/billing/*` (now resolves the caller's own membership);
+`platform_payment_submissions.plan` / `platform_revenue.plan` were varchar(16), too short for tier
+plan keys (widened to 32 in entity + migration + apply script).
+
+**Verification (all local):** tiering 80/80 · acceptance 135/135 (now runs on the Warehouse Co
+demo) · delivery-ledger 83/83 · chunk2 89/89 · chunk1 58/58 · jest 31/31 · `tsc --noEmit` clean
+both repos · backend builds. Kill switch exercised live (unlock → 200s, revert → 403s). Rollback:
+migration down-script tested; each phase is its own commit range.
+
+**Still open before any production rollout:** run `heroku pg:backups:capture`, deploy, run
+`apply-tiering-schema.js`, re-run `seed:tier-demos` there if demo data is wanted, and (optional
+follow-up) build the Accountant/Approver/Viewer matrix + bills-over-threshold approvals behind the
+existing flags. Credentials for everything seeded: `CREDENTIALS.md`.
