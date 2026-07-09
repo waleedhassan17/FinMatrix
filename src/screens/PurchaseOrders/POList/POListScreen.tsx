@@ -42,7 +42,7 @@ import {
   setStatusFilter,
   type POStatusFilter,
 } from './poListSlice';
-import EmptyState from '../../../components/EmptyState';
+import EmptyState from '../../../components/shared/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { PO_STATUS_COLORS, PO_STATUS_LABELS } from '../../../models/purchaseOrderModel';

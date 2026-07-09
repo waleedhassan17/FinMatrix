@@ -1,6 +1,6 @@
 import React from 'react';
 import { Feather } from '@expo/vector-icons';
-import { colors } from '../theme';
+import { colors } from '../../theme';
 
 export const NOTIFICATION_ICON_NAME: React.ComponentProps<typeof Feather>['name'] = 'bell';
 

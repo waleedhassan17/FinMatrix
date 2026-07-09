@@ -54,7 +54,7 @@ import CustomInput from '../../../Custom-Components/CustomInput';
 import { DateField } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import LineItemRow from '../../../components/LineItemRow';
+import LineItemRow from '../../../components/shared/LineItemRow';
 import { formatCurrency } from '../../../utils/formatters';
 import type { DiscountType, InvoiceStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';

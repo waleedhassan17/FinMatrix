@@ -43,7 +43,7 @@ import {
 import type { StockFilter, ViewMode } from './inventoryListSlice';
 import type { InventoryItemData } from '../../../models/inventoryModel';
 import { warehouseAgencies } from '../../../models/agencyModel';
-import EmptyState from '../../../components/EmptyState';
+import EmptyState from '../../../components/shared/EmptyState';
 import { formatCurrency } from '../../../utils/formatters';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

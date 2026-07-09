@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../theme';
-import { THEME } from '../utils/theme';
+import { colors } from '../../theme';
+import { THEME } from '../../utils/theme';
 
 interface NotificationBadgeProps {
   count: number;

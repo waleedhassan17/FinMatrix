@@ -11,9 +11,9 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import CustomDropdown from '../Custom-Components/CustomDropdown';
-import { colors, spacing, borderRadius } from '../theme';
-import { THEME } from '../utils/theme';
+import CustomDropdown from '../../Custom-Components/CustomDropdown';
+import { colors, spacing, borderRadius } from '../../theme';
+import { THEME } from '../../utils/theme';
 
 interface AccountOption {
   label: string;

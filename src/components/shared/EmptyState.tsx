@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import CustomButton from '../Custom-Components/CustomButton';
-import { colors, spacing } from '../theme';
-import { THEME } from '../utils/theme';
+import CustomButton from '../../Custom-Components/CustomButton';
+import { colors, spacing } from '../../theme';
+import { THEME } from '../../utils/theme';
 
 interface EmptyStateProps {
   title: string;

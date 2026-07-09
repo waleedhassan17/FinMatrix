@@ -20,7 +20,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
 import { ROUTES } from '../../../../navigations-maps/Base';
-import EmptyState from '../../../../components/EmptyState';
+import EmptyState from '../../../../components/shared/EmptyState';
 import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks';
 import { selectDeliveryPersonnel, fetchDeliveryPersonnel } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DummyDeliveryPerson } from '../../../../models/deliveryModel';

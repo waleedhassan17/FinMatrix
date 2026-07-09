@@ -41,7 +41,7 @@ import {
   type VendorStatusFilter,
   type VendorSortField,
 } from './vendorListSlice';
-import EmptyState from '../../../components/EmptyState';
+import EmptyState from '../../../components/shared/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency } from '../../../utils/formatters';
 import { PAYMENT_TERMS_LABELS } from '../../../models/vendorModel';

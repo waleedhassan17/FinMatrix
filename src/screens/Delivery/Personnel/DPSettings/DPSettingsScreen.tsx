@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks'
 import { selectDPSettings, setPushNotifications, setSmsNotifications, setEmailNotifications } from './dpSettingsSlice';
 import { selectUser } from '../../../Auth/authSlice';
 import { authForgotPassword } from '../../../../networks/auth/authNetwork';
-import NotificationIcon from '../../../../components/NotificationIcon';
+import NotificationIcon from '../../../../components/shared/NotificationIcon';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 

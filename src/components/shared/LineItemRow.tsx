@@ -14,9 +14,9 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { colors, spacing, borderRadius, shadows } from '../theme';
-import { THEME } from '../utils/theme';
-import { formatCurrency } from '../utils/formatters';
+import { colors, spacing, borderRadius, shadows } from '../../theme';
+import { THEME } from '../../utils/theme';
+import { formatCurrency } from '../../utils/formatters';
 
 const TAX_OPTIONS = [
   { label: '0 %', value: '0' },

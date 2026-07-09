@@ -37,7 +37,7 @@ import {
   setStatusFilter,
   type BillStatusFilter,
 } from './billListSlice';
-import EmptyState from '../../../components/EmptyState';
+import EmptyState from '../../../components/shared/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { BILL_STATUS_COLORS, BILL_STATUS_LABELS } from '../../../models/billModel';

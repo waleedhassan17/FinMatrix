@@ -7,7 +7,7 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { store, persistor } from './src/store/store';
 import { colors } from './src/theme';
 import AppContainer from './src/components/app-container/AppContainer';
-import ErrorBoundary from './src/components/ErrorBoundary';
+import ErrorBoundary from './src/components/shared/ErrorBoundary';
 
 const LoadingFallback = () => (
   <View style={styles.loading}>
