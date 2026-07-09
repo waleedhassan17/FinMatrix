@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { getStoredCompanyId } from '../../../networks/network/apiHelpers';
+import { getStoredCompanyId } from '../../../utils/storageUtils';
 import { colors, spacing, borderRadius } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';

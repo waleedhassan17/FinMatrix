@@ -25,7 +25,7 @@ import { selectUser, setUser } from '../authSlice';
 import { getPublicPlansAPI, selfSubscribeAPI } from '../../../networks/billing/superAdminNetwork';
 import { submitCompanyAPI } from '../../../networks/auth/authNetwork';
 import { getPlansForTypeAPI, type TierPlanCard } from '../../../networks/billing/billingNetwork';
-import { getStoredCompanyId } from '../../../networks/network/apiHelpers';
+import { getStoredCompanyId } from '../../../utils/storageUtils';
 import { THEME } from '../../../utils/theme';
 
 // ── Design tokens ─────────────────────────────────────

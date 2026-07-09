@@ -13,7 +13,7 @@ import { colors, spacing, typography, radius } from '../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser, signOut } from '../authSlice';
 import { authMe, authSignOut } from '../../../networks/auth/authNetwork';
-import { setStoredCompanyId } from '../../../networks/network/apiHelpers';
+import { setStoredCompanyId } from '../../../utils/storageUtils';
 
 const PendingApprovalScreen: React.FC = () => {
   const insets = useSafeAreaInsets();

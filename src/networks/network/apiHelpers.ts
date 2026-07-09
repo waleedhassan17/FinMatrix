@@ -3,42 +3,28 @@
 // ═══════════════════════════════════════════════════════
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  setTokens,
+  getAccessToken,
+  getRefreshToken,
+  setStoredCompanyId,
+  getStoredCompanyId,
+  clearTokens,
+} from '../../utils/storageUtils';
 
 // ★ BACKEND BASE URL ★
 export const API_BASE_URL = 'https://finmatrix-api-prod-665c6b5cb6a1.herokuapp.com/api/v1';
 
-// ─── Token Storage Keys ─────────────────────────────
-const ACCESS_TOKEN_KEY = '@finmatrix/accessToken';
-const REFRESH_TOKEN_KEY = '@finmatrix/refreshToken';
-const COMPANY_ID_KEY = '@finmatrix/companyId';
-
-// ─── Token Helpers ──────────────────────────────────
-export const setTokens = async (accessToken: string, refreshToken: string) => {
-  await AsyncStorage.multiSet([
-    [ACCESS_TOKEN_KEY, accessToken],
-    [REFRESH_TOKEN_KEY, refreshToken],
-  ]);
-};
-
-export const getAccessToken = async (): Promise<string | null> => {
-  return AsyncStorage.getItem(ACCESS_TOKEN_KEY);
-};
-
-export const getRefreshToken = async (): Promise<string | null> => {
-  return AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-};
-
-export const setStoredCompanyId = async (companyId: string) => {
-  await AsyncStorage.setItem(COMPANY_ID_KEY, companyId);
-};
-
-export const getStoredCompanyId = async (): Promise<string | null> => {
-  return AsyncStorage.getItem(COMPANY_ID_KEY);
-};
-
-export const clearTokens = async () => {
-  await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, COMPANY_ID_KEY]);
+// Token/company storage lives in utils/storageUtils.ts (Consultant_Mobile
+// convention); re-exported here so the domain network files keep importing
+// everything they need from the shared client module.
+export {
+  setTokens,
+  getAccessToken,
+  getRefreshToken,
+  setStoredCompanyId,
+  getStoredCompanyId,
+  clearTokens,
 };
 
 // ─── Axios Instance ─────────────────────────────────

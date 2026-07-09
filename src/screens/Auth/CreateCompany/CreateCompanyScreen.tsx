@@ -33,7 +33,7 @@ import {
   type WarehouseAgency,
 } from '../../../models/agencyModel';
 import { dummyDeliveryPersonnel } from '../../../models/deliveryModel';
-import { setStoredCompanyId } from '../../../networks/network/apiHelpers';
+import { setStoredCompanyId } from '../../../utils/storageUtils';
 import { createCompanyAPI } from '../../../networks/auth/authNetwork';
 import type { RootStackParamList } from '../../../types';
 

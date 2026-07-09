@@ -13,7 +13,7 @@ import {
   updatePurchaseOrderAPI,
   getPurchaseOrderByIdAPI,
 } from '../../../networks/purchases/purchaseOrderNetwork';
-import { getStoredCompanyId } from '../../../networks/network/apiHelpers';
+import { getStoredCompanyId } from '../../../utils/storageUtils';
 import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 
 // ── Line item (form representation — string values for inputs) ──

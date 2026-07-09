@@ -1,9 +1,14 @@
 /**
- * @deprecated Legacy theme – use THEME from '../utils/theme' for all typography.
- * colors, spacing, borderRadius, and shadows are still used from here.
- * The `typography` export below is no longer referenced by any screen.
+ * FinMatrix theme — single canonical module.
+ * - THEME / STATUS_CONFIG / PRIORITY_CONFIG (the design system) live in
+ *   ./theme.ts and are re-exported here.
+ * - The legacy tokens below (colors, spacing, borderRadius, radius, shadows)
+ *   predate THEME and are still consumed by older screens; prefer THEME for
+ *   new work. The `typography` export is no longer referenced by any screen.
  */
 import { Platform } from 'react-native';
+
+export * from './theme';
 
 export const colors = {
   primary: '#059669',

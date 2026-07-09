@@ -18,7 +18,7 @@ import {
   getCompanyAPI,
   submitCompanyAPI,
 } from '../../../networks/auth/authNetwork';
-import { setStoredCompanyId } from '../../../networks/network/apiHelpers';
+import { setStoredCompanyId } from '../../../utils/storageUtils';
 
 const CompanyRejectedScreen: React.FC = () => {
   const insets = useSafeAreaInsets();

@@ -18,7 +18,7 @@ import {
   authVerifyEmail,
   authMe,
 } from '../../../networks/auth/authNetwork';
-import { setStoredCompanyId } from '../../../networks/network/apiHelpers';
+import { setStoredCompanyId } from '../../../utils/storageUtils';
 import Toast from 'react-native-toast-message';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'EmailVerification'>;

@@ -44,7 +44,7 @@ import {
   selectTaxIsSaving,
 } from './taxSettingsSlice';
 import type { TaxRate, TaxType } from '../../../types';
-import { getStoredCompanyId } from '../../../networks/network/apiHelpers';
+import { getStoredCompanyId } from '../../../utils/storageUtils';
 import { getCompanyAPI, updateCompanyAPI } from '../../../networks/auth/authNetwork';
 import {
   ReportContainer,

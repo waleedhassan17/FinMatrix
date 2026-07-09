@@ -7,7 +7,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '../../store/createAppSlice';
 import { authMe } from '../../networks/auth/authNetwork';
-import { getAccessToken, clearTokens, setStoredCompanyId } from '../../networks/network/apiHelpers';
+import { getAccessToken, clearTokens, setStoredCompanyId } from '../../utils/storageUtils';
 import { setUser, signOut } from '../../screens/Auth/authSlice';
 
 export interface AppContainerSliceState {
