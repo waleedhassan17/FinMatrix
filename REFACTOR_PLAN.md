@@ -63,6 +63,21 @@ rendered UI. Every commit leaves `npx tsc --noEmit` clean and the app building.
    Verification: `tsc` clean, `expo export` bundles, zero grep hits for old paths.
 
 ### Phase 2 — Navigation & App.tsx (the biggest quality win)
+
+**UPDATE (user-approved scope change):** FinMatrix adopts the reference's **AppContainer +
+`fetchMe()` session-restore flow** exactly as Consultant_Mobile implements it:
+- On cold start AppContainer reads the stored access token; if present it dispatches a
+  `bootstrapSession` thunk (FinMatrix's `authMe()` = the reference's `me()`), refreshes the
+  user (role, companyStatus, companyType, features) and marks the app ready — the user goes
+  STRAIGHT to their view without signing in again, until the token is invalid/expired.
+- `renderNavigator()` in AppContainer picks the mounted navigator (reference pattern, with keys):
+  unauthenticated or status-gated admin → BaseNavigator (auth/onboarding/status flows);
+  super_admin → SuperAdminNavigator; delivery → DeliveryTabNavigator; approved admin → tier
+  navigator by companyType. BaseNavigator keeps only the auth/gate branches.
+- `FreshLoginGate` (purge-persistor-on-cold-start in App.tsx) is REMOVED — this is the one
+  deliberate behavior change of the refactor, explicitly requested: persistent sessions like
+  Consultant_Mobile. 401 during bootstrap → tokens cleared → sign-in; offline → last persisted
+  session stays usable.
 1. Build reference-style maps in `src/navigations-maps/`, one per navigator, each exporting
    `<Name>RouteNames` (as const) + `IRoute[]` array: `Auth.ts` (BaseNavigator's auth/onboarding
    branches), `Dashboard.ts`, `Transactions.ts`, `Reports.ts`, `Inventory.ts`, `More.ts`,

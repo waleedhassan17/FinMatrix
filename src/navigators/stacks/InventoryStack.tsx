@@ -1,11 +1,9 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — InventoryStack (dumb mapper over navigations-maps/Inventory)
+// ═══════════════════════════════════════════════════════
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import InventoryListScreen from '../../screens/Inventory/InventoryList/InventoryListScreen';
-import InventoryFormScreen from '../../screens/Inventory/InventoryForm/InventoryFormScreen';
-import InventoryDetailScreen from '../../screens/Inventory/InventoryDetail/InventoryDetailScreen';
-import AdjustmentScreen from '../../screens/Inventory/Adjustment/AdjustmentScreen';
-import PhysicalCountScreen from '../../screens/Inventory/PhysicalCount/PhysicalCountScreen';
-import StockTransferScreen from '../../screens/Inventory/StockTransfer/StockTransferScreen';
+import { INVENTORY_ROUTES } from '../../navigations-maps/Inventory';
 
 export type InventoryStackParamList = {
   InventoryList: undefined;
@@ -16,16 +14,18 @@ export type InventoryStackParamList = {
   StockTransfer: undefined;
 };
 
-const Stack = createNativeStackNavigator<InventoryStackParamList>();
+const Stack = createNativeStackNavigator();
 
 const InventoryStack: React.FC = () => (
   <Stack.Navigator id="InventoryStack" screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="InventoryList" component={InventoryListScreen} />
-    <Stack.Screen name="InventoryForm" component={InventoryFormScreen} />
-    <Stack.Screen name="InventoryDetail" component={InventoryDetailScreen} />
-    <Stack.Screen name="Adjustment" component={AdjustmentScreen} />
-    <Stack.Screen name="PhysicalCount" component={PhysicalCountScreen} />
-    <Stack.Screen name="StockTransfer" component={StockTransferScreen} />
+    {INVENTORY_ROUTES.map(route => (
+      <Stack.Screen
+        key={route.title}
+        name={route.title}
+        component={route.component}
+        options={route.options}
+      />
+    ))}
   </Stack.Navigator>
 );
 
