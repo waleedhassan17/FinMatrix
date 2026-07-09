@@ -1,12 +1,13 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Root AppContainer
 // ═══════════════════════════════════════════════════════
-// This is the top-level app shell rendered inside Provider/PersistGate.
-// Handles: navigation container, status bar, network error overlay,
-// app readiness, and toast notifications.
+// Top-level app shell rendered inside Provider/PersistGate
+// (Consultant_Mobile convention). Owns: session bootstrap (fetch-me),
+// the renderNavigator() role/tier switch, navigation container, deep
+// linking, status bar, splash overlay, and toast notifications.
 
 import React, { useEffect } from 'react';
-import { StyleSheet, StatusBar } from 'react-native';
+import { View, StyleSheet, StatusBar, ActivityIndicator } from 'react-native';
 import {
   NavigationContainer,
   LinkingOptions,
@@ -15,12 +16,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { colors } from '../../theme';
-import BaseNavigator from '../../navigators/BaseNavigator';
 import type { RootStackParamList } from '../../types';
-import {
-  setAppIsReady,
-  selectIsAppReady,
-} from './appContainerSlice';
+
+import BaseNavigator from '../../navigators/BaseNavigator';
+import AdminTabNavigator from '../../navigators/AdminTabNavigator';
+import DeliveryTabNavigator from '../../navigators/DeliveryTabNavigator';
+import SuperAdminNavigator from '../../navigators/SuperAdminNavigator';
+import SmallBusinessNavigator from '../../navigators/tiers/SmallBusinessNavigator';
+import LargeOrgNavigator from '../../navigators/tiers/LargeOrgNavigator';
+import SplashOverlay from '../../screens/Splash/SplashScreen';
+
+import { bootstrapSession, selectIsAppReady } from './appContainerSlice';
 import {
   selectIsAuthenticated,
   selectUser,
@@ -43,40 +49,112 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 };
 
+// Splash plays only once per app cold start (module-level flag survives
+// AppContainer remounts, resets on process restart).
+let splashHasPlayed = false;
+
 export const AppContainer: React.FC = () => {
   const dispatch = useAppDispatch();
   const isAppReady = useAppSelector(selectIsAppReady);
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
-  const currentUser = useAppSelector(selectUser);
+  const user = useAppSelector(selectUser);
+  const [showSplash, setShowSplash] = React.useState(!splashHasPlayed);
 
-  // ─── Mark app ready once mounted (PersistGate already handles rehydration) ──
+  // ─── Session restore on cold start (Consultant_Mobile fetchMe pattern):
+  // stored token → GET /auth/me refreshes the user and the app opens on
+  // their view; missing/invalid token → sign-in. Sets isAppReady when done.
   useEffect(() => {
-    dispatch(setAppIsReady(true));
+    dispatch(bootstrapSession());
   }, [dispatch]);
 
   // ─── Clear auth form slices when user becomes authenticated ──
   useEffect(() => {
-    if (isAuthenticated && currentUser) {
+    if (isAuthenticated && user) {
       dispatch(resetSignInForm());
       dispatch(resetSignUpForm());
       dispatch(resetForgotPasswordForm());
       dispatch(resetVerificationForm());
     }
-  }, [isAuthenticated, currentUser, dispatch]);
+  }, [isAuthenticated, user, dispatch]);
 
-  if (!isAppReady) {
-    return null;
-  }
+  // ─── Which top-level navigator mounts (was BaseNavigator's role switch).
+  // Role first (riders/super-admins have no company gates); an approved,
+  // email-verified admin gets their tier's app; every other state —
+  // unauthenticated, email verify, pending, inactive, rejected, draft,
+  // onboarding — is a session gate handled inside BaseNavigator.
+  const renderNavigator = () => {
+    if (!isAuthenticated || !user) {
+      return <BaseNavigator key="base-unauthenticated" />;
+    }
+    if (user.role === 'super_admin') {
+      return <SuperAdminNavigator key="super-admin" />;
+    }
+    if (user.role === 'delivery') {
+      return <DeliveryTabNavigator key="delivery" />;
+    }
+
+    const companyStatus = user.companyStatus ?? null;
+    const emailVerified = user.isEmailVerified !== false; // default true (legacy)
+    const isApproved =
+      companyStatus === 'approved' || companyStatus === 'active';
+
+    if (emailVerified && isApproved) {
+      // ── Three-tier model (FinMatrix.md): small_business / large_org mount
+      // their own navigators; warehouse and legacy (no companyType) keep the
+      // full AdminTabNavigator. Server-side FeatureGuard 403s remain the real
+      // enforcement — this is the matching UX.
+      switch (user.companyType ?? null) {
+        case 'small_business':
+          return <SmallBusinessNavigator key="tier-small-business" />;
+        case 'large_org':
+          return <LargeOrgNavigator key="tier-large-org" />;
+        default:
+          return <AdminTabNavigator key="tier-admin" />;
+      }
+    }
+
+    return <BaseNavigator key="base-gates" />;
+  };
 
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <NavigationContainer linking={linking}>
-        <BaseNavigator />
-      </NavigationContainer>
+      <View style={styles.container}>
+        {isAppReady ? (
+          <NavigationContainer linking={linking}>
+            {renderNavigator()}
+          </NavigationContainer>
+        ) : (
+          // Session restore still in flight after the splash finished.
+          <View style={styles.loading}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        )}
+        {showSplash && (
+          <SplashOverlay
+            onFinish={() => {
+              splashHasPlayed = true;
+              setShowSplash(false);
+            }}
+          />
+        )}
+      </View>
       <Toast />
     </SafeAreaProvider>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+});
 
 export default AppContainer;
