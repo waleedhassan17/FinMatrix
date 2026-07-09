@@ -18,6 +18,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "paths": {
+      "expo-file-system/legacy": ["./node_modules/expo-file-system/build/legacy/index.d.ts"],
       "@/*": ["./src/*"],
       "@screens/*": ["./src/screens/*"],
       "@components/*": ["./src/components/*"],

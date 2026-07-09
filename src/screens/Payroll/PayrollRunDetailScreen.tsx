@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Modal, TouchableOpacity, Share, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Modal, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import { fetchPayrollRun, selectPayrollState, processRun, removeRun } from './pa
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, Badge, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { viewPayslipPdf, downloadPayslipPdf, sharePayslipPdf, type PayslipRef, type PayslipActionResult } from '../../utils/payslipPdf';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -24,29 +25,31 @@ const PayrollRunDetailScreen: React.FC = () => {
   const { payrollRunId } = route.params;
   const dispatch = useAppDispatch();
   const { currentRun: r, isLoading, isSaving, error } = useAppSelector(selectPayrollState);
-  // QuickBooks flow: a payslip per employee — tap a row to view/share it.
+  // QuickBooks flow: a payslip per employee — tap a row to open it; the
+  // official document is a backend-rendered PDF (view / download / share).
   const [payslipItem, setPayslipItem] = useState<any | null>(null);
+  const [pdfBusy, setPdfBusy] = useState<'view' | 'download' | 'share' | null>(null);
 
-  const sharePayslip = async (it: any) => {
-    const lines = [
-      `PAYSLIP — ${r?.payPeriod ?? ''}`,
-      `Employee: ${it.employeeName || 'Employee'}`,
-      `Pay date: ${r?.payDate ?? ''}`,
-      `Period: ${r?.periodStart ?? ''} → ${r?.periodEnd ?? ''}`,
-      '',
-      `Gross pay:      ${rs(it.gross)}`,
-      `Deductions:     ${rs(it.deductions)}`,
-      `NET PAY:        ${rs(it.net)}`,
-    ].join('\n');
+  const runPdfAction = async (
+    kind: 'view' | 'download' | 'share',
+    action: (ref: PayslipRef) => Promise<PayslipActionResult>,
+    it: any,
+  ) => {
+    if (!r || pdfBusy) return;
+    setPdfBusy(kind);
     try {
-      if (Platform.OS === 'web') {
-        // RN Share has no web implementation.
-        // eslint-disable-next-line no-alert
-        window.alert(lines);
-      } else {
-        await Share.share({ message: lines });
-      }
-    } catch { /* user cancelled */ }
+      const res = await action({
+        runId: payrollRunId,
+        employeeId: it.employeeId,
+        payPeriod: r.payPeriod,
+        employeeName: it.employeeName || 'Employee',
+      });
+      if (!res.done && res.reason) Alert.alert('Payslip', res.reason);
+    } catch (e: any) {
+      Alert.alert('Payslip PDF failed', e?.message ?? 'Could not fetch the payslip PDF.');
+    } finally {
+      setPdfBusy(null);
+    }
   };
 
   useFocusEffect(useCallback(() => { dispatch(fetchPayrollRun(payrollRunId)); }, [dispatch, payrollRunId]));
@@ -120,7 +123,23 @@ const PayrollRunDetailScreen: React.FC = () => {
                 <SlipRow label="Tax / deductions withheld" value={`− ${rs(payslipItem.deductions)}`} />
                 <View style={styles.slipDivider} />
                 <SlipRow label="NET PAY" value={rs(payslipItem.net)} strong />
-                <CustomButton title="Share Payslip" variant="secondary" onPress={() => sharePayslip(payslipItem)} fullWidth />
+                {r.status === 'paid' ? (
+                  <>
+                    <CustomButton title="View PDF" variant="primary" isLoading={pdfBusy === 'view'} onPress={() => runPdfAction('view', viewPayslipPdf, payslipItem)} fullWidth />
+                    <View style={styles.slipActionRow}>
+                      <View style={styles.slipActionHalf}>
+                        <CustomButton title="Download" variant="secondary" isLoading={pdfBusy === 'download'} onPress={() => runPdfAction('download', downloadPayslipPdf, payslipItem)} fullWidth />
+                      </View>
+                      <View style={styles.slipActionHalf}>
+                        <CustomButton title="Share PDF" variant="secondary" isLoading={pdfBusy === 'share'} onPress={() => runPdfAction('share', sharePayslipPdf, payslipItem)} fullWidth />
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <Text style={styles.slipDraftHint}>
+                    The official PDF payslip is issued once payroll is processed.
+                  </Text>
+                )}
               </>
             )}
           </View>
@@ -157,6 +176,9 @@ const styles = StyleSheet.create({
   slipMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   slipDivider: { height: StyleSheet.hairlineWidth, backgroundColor: THEME.colors.border, marginVertical: 6 },
   slipRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  slipActionRow: { flexDirection: 'row', gap: 10 },
+  slipActionHalf: { flex: 1 },
+  slipDraftHint: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, textAlign: 'center', paddingTop: 6 },
   slipLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
   slipValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
 });
