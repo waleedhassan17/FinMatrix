@@ -15,81 +15,30 @@ import {
   assignSubscriptionAPI,
   getAllSubscriptionsAPI,
 } from '../../networks/billing/superAdminNetwork';
+import type {
+  PlatformStats,
+  CompanyListItem,
+  SubscriptionPlan,
+  CompanySubscription,
+} from '../../models/superAdminModel';
+import {
+  platformStatsResponseSerializer,
+  companyListResponseSerializer,
+  companyStatusResponseSerializer,
+  planListResponseSerializer,
+  planResponseSerializer,
+  subscriptionListResponseSerializer,
+  subscriptionResponseSerializer,
+} from '../../serializers/superAdminSerializer';
 
-// ─── Interfaces ──────────────────────────────────────────────────────────────
-
-export interface PlatformStats {
-  companies: {
-    total: number;
-    pending: number;
-    active: number;
-    suspended: number;
-    rejected: number;
-    recentWeek: number;
-  };
-  subscriptions: {
-    totalPlans: number;
-    totalSubscriptions: number;
-    activeSubscriptions: number;
-  };
-  recentRegistrations: {
-    id: string;
-    name: string;
-    industry: string | null;
-    email: string | null;
-    status: string;
-    createdAt: string;
-  }[];
-}
-
-export interface CompanyListItem {
-  id: string;
-  name: string;
-  industry: string | null;
-  email: string | null;
-  phone: string | null;
-  status: string;
-  rejectionReason: string | null;
-  memberCount: number;
-  planName: string | null;
-  createdAt: string;
-  reviewedAt: string | null;
-}
-
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  description: string | null;
-  priceMonthly: string;
-  priceYearly: string;
-  maxUsers: number;
-  maxInvoices: number | null;
-  features: string[] | null;
-  isActive: boolean;
-  sortOrder: number;
-  createdAt?: string;
-  // Three-tier model (served from the server's PLAN_CONFIG):
-  companyType?: 'small_business' | 'large_org' | 'warehouse' | null;
-  durationMonths?: number | null;
-  monthlyLabel?: string;
-  totalLabel?: string;
-  currency?: string;
-  deliveryPersonnelLimit?: number;
-}
-
-export interface CompanySubscription {
-  id: string;
-  companyId: string;
-  companyName: string;
-  companyEmail: string | null;
-  planId: string;
-  plan: SubscriptionPlan | null;
-  status: string;
-  startDate: string;
-  endDate: string | null;
-  notes: string | null;
-  createdAt: string;
-}
+// Entity shapes live in models/superAdminModel.ts; re-exported here so
+// existing `import type { … } from './superAdminSlice'` keeps working.
+export type {
+  PlatformStats,
+  CompanyListItem,
+  SubscriptionPlan,
+  CompanySubscription,
+};
 
 export interface SuperAdminState {
   stats: PlatformStats | null;
@@ -148,7 +97,7 @@ export const superAdminSlice = createAppSlice({
     loadPlatformStats: create.asyncThunk(
       async () => {
         const res = await getSuperAdminStatsAPI();
-        return (res?.data ?? res) as PlatformStats;
+        return platformStatsResponseSerializer(res);
       },
       {
         pending: state => {
@@ -175,12 +124,7 @@ export const superAdminSlice = createAppSlice({
         const page = args?.page ?? state.companiesPage;
         const filter = args?.filter ?? state.companiesFilter;
         const res = await getAllCompaniesAPI(page, 20, filter === 'all' ? undefined : filter);
-        const envelope = res?.data ?? res;
-        return {
-          data: (envelope?.data ?? []) as CompanyListItem[],
-          total: (envelope?.pagination?.total ?? 0) as number,
-          page,
-        };
+        return { ...companyListResponseSerializer(res), page };
       },
       {
         pending: state => {
@@ -207,7 +151,7 @@ export const superAdminSlice = createAppSlice({
     updateCompanyStatusLocal: create.asyncThunk(
       async (args: { id: string; status: string; rejectionReason?: string }) => {
         const res = await updateCompanyStatusAPI(args.id, args.status, args.rejectionReason);
-        return (res?.data ?? res) as { id: string; status: string; rejectionReason: string | null };
+        return companyStatusResponseSerializer(res);
       },
       {
         fulfilled: (state, action) => {
@@ -228,7 +172,7 @@ export const superAdminSlice = createAppSlice({
     loadPlans: create.asyncThunk(
       async () => {
         const res = await getSubscriptionPlansAPI();
-        return (res?.data ?? res) as SubscriptionPlan[];
+        return planListResponseSerializer(res);
       },
       {
         pending: state => {
@@ -249,7 +193,7 @@ export const superAdminSlice = createAppSlice({
     createPlan: create.asyncThunk(
       async (planData: Parameters<typeof createSubscriptionPlanAPI>[0]) => {
         const res = await createSubscriptionPlanAPI(planData);
-        return (res?.data ?? res) as SubscriptionPlan;
+        return planResponseSerializer(res);
       },
       {
         fulfilled: (state, action) => {
@@ -261,7 +205,7 @@ export const superAdminSlice = createAppSlice({
     updatePlan: create.asyncThunk(
       async (args: { id: string; data: Parameters<typeof updateSubscriptionPlanAPI>[1] }) => {
         const res = await updateSubscriptionPlanAPI(args.id, args.data);
-        return (res?.data ?? res) as SubscriptionPlan;
+        return planResponseSerializer(res);
       },
       {
         fulfilled: (state, action) => {
@@ -286,11 +230,7 @@ export const superAdminSlice = createAppSlice({
     loadSubscriptions: create.asyncThunk(
       async () => {
         const res = await getAllSubscriptionsAPI(1, 50);
-        const envelope = res?.data ?? res;
-        return {
-          data: (envelope?.data ?? []) as CompanySubscription[],
-          total: (envelope?.pagination?.total ?? 0) as number,
-        };
+        return subscriptionListResponseSerializer(res);
       },
       {
         pending: state => { state.subsStatus = 'loading'; },
@@ -306,7 +246,7 @@ export const superAdminSlice = createAppSlice({
     assignPlan: create.asyncThunk(
       async (args: Parameters<typeof assignSubscriptionAPI>[0]) => {
         const res = await assignSubscriptionAPI(args);
-        return (res?.data ?? res) as CompanySubscription;
+        return subscriptionResponseSerializer(res);
       },
       {
         fulfilled: (state, action) => {

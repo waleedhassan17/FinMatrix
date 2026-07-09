@@ -44,3 +44,26 @@ export const PAYMENT_TERMS_OPTIONS: string[] = [];
 
 /** Members for the User Management screen. Populated from /api/v1/users. */
 export const DUMMY_USERS: CompanyMember[] = [];
+
+// ─── Settings network entity shapes ──────────────────
+// (moved verbatim from settingsNetwork — Consultant_Mobile convention)
+
+export interface CompanyProfilePayload {
+  name?: string;
+  industry?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  taxId?: string;
+}
+
+export interface CompanySwitcherItem {
+  id: string;
+  companyId?: string;
+  name: string;
+  role: string;
+  industry?: string;
+  memberCount?: number;
+  inviteCode?: string;
+  [key: string]: any;
+}

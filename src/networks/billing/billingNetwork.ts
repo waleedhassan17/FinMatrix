@@ -15,137 +15,37 @@ import {
 } from '../network/apiHelpers';
 
 // ─── Types ────────────────────────────────────────────
-export type PlanKey =
-  | 'free'
-  | 'standard'
-  | 'pro'
-  // Three-tier plans (FinMatrix.md): two per company type.
-  | 'small_business_3mo'
-  | 'small_business_6mo'
-  | 'large_org_3mo'
-  | 'large_org_6mo'
-  | 'warehouse_3mo'
-  | 'warehouse_6mo';
+// Entity shapes live in models/billingModel.ts; re-exported here so
+// existing `import { … } from 'networks/billing/billingNetwork'` keeps working.
+import type {
+  PlanKey,
+  TierPlanCard,
+  SubmissionKind,
+  SubmissionStatus,
+  BillingStatus,
+  PlanLimits,
+  BankDetails,
+  PaymentSubmissionView,
+  RevenueSummary,
+} from '../../models/billingModel';
+import {
+  billingEnvelopeSerializer,
+  submissionListSerializer,
+} from '../../serializers/billingSerializer';
 
-export interface TierPlanCard {
-  key: PlanKey;
-  label: string;
-  durationMonths: number;
-  monthlyMinorUnits: number;
-  monthlyLabel: string;
-  totalMinorUnits: number;
-  totalLabel: string;
-  currency: string;
-  deliveryPersonnelLimit: number;
-  monthlySavingsMinorUnits: number;
-  monthlySavingsLabel: string | null;
-}
-export type SubmissionKind = 'NEW' | 'RENEWAL' | 'UPGRADE';
-export type SubmissionStatus = 'submitted' | 'approved' | 'rejected';
+export type {
+  PlanKey,
+  TierPlanCard,
+  SubmissionKind,
+  SubmissionStatus,
+  BillingStatus,
+  PlanLimits,
+  BankDetails,
+  PaymentSubmissionView,
+  RevenueSummary,
+} from '../../models/billingModel';
 
-export interface BillingStatus {
-  companyId: string;
-  companyName: string;
-  plan: PlanKey;
-  planLabel: string;
-  accountStatus: 'pending' | 'active' | 'inactive' | 'rejected';
-  subscriptionStatus: 'active' | 'expiring' | 'expired';
-  paymentStatus: 'none' | 'submitted' | 'paid' | 'rejected';
-  startDate: string | null;
-  expiryDate: string | null;
-  daysRemaining: number | null;
-  neverExpires: boolean;
-  priceMinorUnits: number;
-  priceLabel: string;
-  monthlyMinorUnits: number;
-  monthlyLabel: string;
-  deliveryPersonnelLimit: number;
-  lastSubmission: {
-    id: string;
-    plan: PlanKey;
-    kind: SubmissionKind;
-    status: SubmissionStatus;
-    amountMinorUnits: number;
-    rejectionReason: string | null;
-    createdAt: string;
-  } | null;
-}
-
-export interface PlanLimits {
-  plan: PlanKey;
-  planLabel: string;
-  deliveryPersonnelLimit: number;
-  currentCount: number;
-  canAddMore: boolean;
-  upgradeLimit: number;
-}
-
-export interface BankDetails {
-  plan: PlanKey;
-  planLabel: string;
-  durationMonths: number | null;
-  monthlyMinorUnits: number;
-  monthlyLabel: string;
-  amountDueMinorUnits: number;
-  amountDueLabel: string;
-  currency: string;
-  bankAccount: {
-    accountTitle: string;
-    bankName: string;
-    accountNumber: string;
-    instructions: string;
-  };
-}
-
-export interface PaymentSubmissionView {
-  id: string;
-  companyId: string;
-  companyName?: string;
-  companyEmail?: string;
-  plan: PlanKey;
-  planLabel: string;
-  kind: SubmissionKind;
-  status: SubmissionStatus;
-  amountMinorUnits: number;
-  amountLabel: string;
-  currency: string;
-  hasScreenshot: boolean;
-  rejectionReason: string | null;
-  reviewedAt: string | null;
-  createdAt: string;
-}
-
-export interface RevenueSummary {
-  totalMinorUnits: number;
-  totalLabel: string;
-  thisMonthMinorUnits: number;
-  thisMonthLabel: string;
-  paymentsCount: number;
-  pendingSubmissions: number;
-  byPlan: { plan: PlanKey; planLabel: string; payments: number; totalMinorUnits: number }[];
-  byCompany: {
-    companyId: string;
-    companyName: string;
-    payments: number;
-    totalMinorUnits: number;
-    lastPlan: string;
-  }[];
-  monthly: { year: number; month: number; totalMinorUnits: number }[];
-  entries: {
-    id: string;
-    submissionId: string;
-    companyId: string;
-    companyName: string;
-    plan: PlanKey;
-    planLabel: string;
-    amountMinorUnits: number;
-    amountLabel: string;
-    currency: string;
-    recordedAt: string;
-  }[];
-}
-
-const unwrap = (res: any) => res?.data?.data ?? res?.data;
+const unwrap = billingEnvelopeSerializer;
 
 // ─── Company-facing ───────────────────────────────────
 
@@ -193,8 +93,7 @@ export const getBankDetailsAPI = async (plan: PlanKey): Promise<BankDetails> => 
 export const getMySubmissionsAPI = async (): Promise<PaymentSubmissionView[]> => {
   try {
     const res = await api.get('/billing/submissions');
-    const data = unwrap(res);
-    return Array.isArray(data) ? data : data?.data ?? [];
+    return submissionListSerializer(res);
   } catch (e) {
     throw new Error(extractErrorMessage(e));
   }
@@ -270,8 +169,7 @@ export const listPaymentSubmissionsAPI = async (
     const res = await api.get('/admin/payment-submissions', {
       params: status ? { status } : {},
     });
-    const data = unwrap(res);
-    return Array.isArray(data) ? data : data?.data ?? [];
+    return submissionListSerializer(res);
   } catch (e) {
     throw new Error(extractErrorMessage(e));
   }

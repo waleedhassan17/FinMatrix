@@ -3,6 +3,18 @@
 // ═══════════════════════════════════════════════════════
 
 import { api, extractErrorMessage } from '../network/apiHelpers';
+import {
+  preferencesResponseSerializer,
+  companiesResponseSerializer,
+} from '../../serializers/settingsSerializer';
+import type { CompanyProfilePayload } from '../../models/settingsModel';
+
+// Entity shapes live in models/settingsModel.ts; re-exported here so
+// existing imports from this module keep working.
+export type {
+  CompanyProfilePayload,
+  CompanySwitcherItem,
+} from '../../models/settingsModel';
 
 export const getSettingsAPI = async (): Promise<any> => {
   try {
@@ -43,33 +55,13 @@ export const inviteUserAPI = async (data: { email: string; role: string; display
 // ─── Aliases used by settingsSlice ──────────────────
 export const fetchPreferences = async (): Promise<any> => {
   const res = await getSettingsAPI();
-  return res?.data?.preferences ?? res?.data ?? res;
+  return preferencesResponseSerializer(res);
 };
 
 export const savePreferences = async (preferences: any): Promise<any> => {
   const res = await updateSettingsAPI({ preferences });
   return res?.data?.preferences ?? res?.data ?? preferences;
 };
-
-export interface CompanyProfilePayload {
-  name?: string;
-  industry?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  taxId?: string;
-}
-
-export interface CompanySwitcherItem {
-  id: string;
-  companyId?: string;
-  name: string;
-  role: string;
-  industry?: string;
-  memberCount?: number;
-  inviteCode?: string;
-  [key: string]: any;
-}
 
 export const saveCompanyProfile = async (data: CompanyProfilePayload): Promise<any> => {
   return updateSettingsAPI(data);
@@ -78,7 +70,7 @@ export const saveCompanyProfile = async (data: CompanyProfilePayload): Promise<a
 export const fetchCompanies = async (): Promise<any> => {
   try {
     const response = await api.get('/auth/me');
-    return response.data?.data?.companies ?? [];
+    return companiesResponseSerializer(response.data);
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }

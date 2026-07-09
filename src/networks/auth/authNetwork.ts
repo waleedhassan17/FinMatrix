@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { api, setTokens, setStoredCompanyId, clearTokens, extractErrorMessage } from '../network/apiHelpers';
-import type { User } from '../../types';
+import { userResponseSerializer } from '../../serializers/authSerializer';
 
 // ─── Types ────────────────────────────────────────────
 
@@ -40,28 +40,8 @@ export interface CheckVerificationPayload {
   email: string;
 }
 
-// ─── Helper: map backend user to app User type ───────
-const mapUser = (
-  backendUser: any,
-  companyStatus?: string | null,
-  tier?: { companyType?: string | null; features?: Record<string, boolean> | null },
-): User => ({
-  uid: backendUser.id,
-  email: backendUser.email,
-  displayName: backendUser.displayName,
-  role: backendUser.role,
-  companyId: backendUser.companyId || backendUser.defaultCompanyId || null,
-  phoneNumber: backendUser.phone || '',
-  photoURL: backendUser.photoURL || null,
-  username: backendUser.username,
-  isActive: true,
-  isEmailVerified: backendUser.isEmailVerified ?? true,
-  companyStatus: companyStatus ?? null,
-  companyType: tier?.companyType ?? null,
-  features: tier?.features ?? null,
-  createdAt: backendUser.createdAt || new Date().toISOString(),
-  updatedAt: backendUser.updatedAt || new Date().toISOString(),
-});
+// Backend→app user mapping lives in serializers/authSerializer.ts.
+const mapUser = userResponseSerializer;
 
 // Error augmented with a backend error code (used to detect EMAIL_NOT_VERIFIED).
 export class AuthError extends Error {
