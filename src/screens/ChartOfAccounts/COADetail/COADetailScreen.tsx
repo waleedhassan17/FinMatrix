@@ -2,7 +2,7 @@
 // FinMatrix — COA Detail Screen
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Platform,
   Alert,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,7 +31,7 @@ import {
 } from './coaDetailSlice';
 import type { DetailTab } from './coaDetailSlice';
 import {
-  getAccountTransactions,
+  fetchAccountTransactions,
   type AccountTransaction,
 } from '../../../models/accountTransactionModel';
 import type { AccountType } from '../../../types';
@@ -82,10 +83,19 @@ const COADetailScreen: React.FC = () => {
     return () => { dispatch(resetCoaDetail()); };
   }, [dispatch]);
 
-  const transactions = useMemo(
-    () => (account ? getAccountTransactions(account.id) : []),
-    [account],
-  );
+  // Real ledger activity for this account (was a hardcoded-empty stub).
+  const [transactions, setTransactions] = useState<AccountTransaction[]>([]);
+  const [txnsLoading, setTxnsLoading] = useState(false);
+  useEffect(() => {
+    if (!account) return;
+    let cancelled = false;
+    setTxnsLoading(true);
+    fetchAccountTransactions(account.id)
+      .then(rows => { if (!cancelled) setTransactions(rows); })
+      .catch(() => { if (!cancelled) setTransactions([]); })
+      .finally(() => { if (!cancelled) setTxnsLoading(false); });
+    return () => { cancelled = true; };
+  }, [account?.id]);
 
   const handleEdit = useCallback(() => {
     if (account) {
@@ -275,7 +285,17 @@ const COADetailScreen: React.FC = () => {
               <Text style={[styles.txnHeaderText, styles.txnAmount]}>Credit</Text>
               <Text style={[styles.txnHeaderText, styles.txnRunning]}>Balance</Text>
             </View>
-            {transactions.map((txn, idx) => renderTxnRow({ item: txn, index: idx }))}
+            {txnsLoading ? (
+              <View style={{ paddingVertical: 28, alignItems: 'center' }}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : transactions.length === 0 ? (
+              <View style={{ paddingVertical: 28, alignItems: 'center' }}>
+                <Text style={styles.infoLabel}>No ledger activity on this account yet.</Text>
+              </View>
+            ) : (
+              transactions.map((txn, idx) => renderTxnRow({ item: txn, index: idx }))
+            )}
           </View>
         ) : (
           <View style={styles.infoCard}>

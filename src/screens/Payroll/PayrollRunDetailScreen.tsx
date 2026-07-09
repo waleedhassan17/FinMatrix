@@ -1,5 +1,6 @@
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, Modal, TouchableOpacity, Share, Platform } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -23,6 +24,30 @@ const PayrollRunDetailScreen: React.FC = () => {
   const { payrollRunId } = route.params;
   const dispatch = useAppDispatch();
   const { currentRun: r, isLoading, isSaving, error } = useAppSelector(selectPayrollState);
+  // QuickBooks flow: a payslip per employee — tap a row to view/share it.
+  const [payslipItem, setPayslipItem] = useState<any | null>(null);
+
+  const sharePayslip = async (it: any) => {
+    const lines = [
+      `PAYSLIP — ${r?.payPeriod ?? ''}`,
+      `Employee: ${it.employeeName || 'Employee'}`,
+      `Pay date: ${r?.payDate ?? ''}`,
+      `Period: ${r?.periodStart ?? ''} → ${r?.periodEnd ?? ''}`,
+      '',
+      `Gross pay:      ${rs(it.gross)}`,
+      `Deductions:     ${rs(it.deductions)}`,
+      `NET PAY:        ${rs(it.net)}`,
+    ].join('\n');
+    try {
+      if (Platform.OS === 'web') {
+        // RN Share has no web implementation.
+        // eslint-disable-next-line no-alert
+        window.alert(lines);
+      } else {
+        await Share.share({ message: lines });
+      }
+    } catch { /* user cancelled */ }
+  };
 
   useFocusEffect(useCallback(() => { dispatch(fetchPayrollRun(payrollRunId)); }, [dispatch, payrollRunId]));
 
@@ -58,13 +83,14 @@ const PayrollRunDetailScreen: React.FC = () => {
             <Text style={[styles.colVal, styles.headText]}>Net</Text>
           </View>
           {r.items.map((it, i) => (
-            <View key={it.id ?? i} style={styles.bodyRow}>
+            <TouchableOpacity key={it.id ?? i} style={styles.bodyRow} activeOpacity={0.6} onPress={() => setPayslipItem(it)}>
               <Text style={[styles.colName, styles.bodyText]}>{it.employeeName || 'Employee'}</Text>
               <Text style={[styles.colVal, styles.bodyText]}>{rs(it.gross)}</Text>
               <Text style={[styles.colVal, styles.bodyText]}>{rs(it.deductions)}</Text>
               <Text style={[styles.colVal, styles.bodyText, styles.bold]}>{rs(it.net)}</Text>
-            </View>
+            </TouchableOpacity>
           ))}
+          <Text style={styles.hint}>Tap an employee to view & share their payslip.</Text>
         </SectionCard>
 
         <View style={styles.actions}>
@@ -73,9 +99,43 @@ const PayrollRunDetailScreen: React.FC = () => {
         </View>
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* ── Payslip (per employee) ── */}
+      <Modal visible={!!payslipItem} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setPayslipItem(null)}>
+        <View style={styles.slipBackdrop}>
+          <View style={styles.slipCard}>
+            <View style={styles.slipHead}>
+              <Text style={styles.slipTitle}>Payslip</Text>
+              <TouchableOpacity onPress={() => setPayslipItem(null)} style={styles.slipClose}>
+                <Feather name="x" size={18} color={THEME.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            {payslipItem && (
+              <>
+                <Text style={styles.slipEmployee}>{payslipItem.employeeName || 'Employee'}</Text>
+                <Text style={styles.slipMeta}>{r.payPeriod} · paid {r.payDate}</Text>
+                <View style={styles.slipDivider} />
+                <SlipRow label="Gross pay" value={rs(payslipItem.gross)} />
+                {Number(payslipItem.hours) > 0 && <SlipRow label="Hours" value={String(payslipItem.hours)} />}
+                <SlipRow label="Tax / deductions withheld" value={`− ${rs(payslipItem.deductions)}`} />
+                <View style={styles.slipDivider} />
+                <SlipRow label="NET PAY" value={rs(payslipItem.net)} strong />
+                <CustomButton title="Share Payslip" variant="secondary" onPress={() => sharePayslip(payslipItem)} fullWidth />
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ReportContainer>
   );
 };
+
+const SlipRow: React.FC<{ label: string; value: string; strong?: boolean }> = ({ label, value, strong }) => (
+  <View style={styles.slipRow}>
+    <Text style={[styles.slipLabel, strong && styles.bold]}>{label}</Text>
+    <Text style={[styles.slipValue, strong && styles.bold]}>{value}</Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
@@ -87,6 +147,18 @@ const styles = StyleSheet.create({
   colName: { flex: 1.4 }, colVal: { flex: 1, textAlign: 'right' },
   bold: { fontWeight: '800' },
   actions: { gap: 10 },
+  hint: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, paddingTop: 8 },
+  slipBackdrop: { flex: 1, backgroundColor: 'rgba(9,30,66,0.5)', justifyContent: 'center', padding: 24 },
+  slipCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 18, gap: 8 },
+  slipHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  slipTitle: { ...THEME.typography.bodyLg, fontWeight: '800', color: THEME.colors.textPrimary },
+  slipClose: { padding: 4 },
+  slipEmployee: { ...THEME.typography.bodyLg, fontWeight: '700', color: THEME.colors.textPrimary },
+  slipMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
+  slipDivider: { height: StyleSheet.hairlineWidth, backgroundColor: THEME.colors.border, marginVertical: 6 },
+  slipRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  slipLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
+  slipValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
 });
 
 export default PayrollRunDetailScreen;

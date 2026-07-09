@@ -69,6 +69,10 @@ import CompanyProfileScreen from '../../screens/Settings/CompanyProfile/CompanyP
 import CompanySwitcherScreen from '../../screens/Settings/CompanySwitcher/CompanySwitcherScreen';
 import RenewSubscriptionScreen from '../../screens/Subscription/RenewSubscriptionScreen';
 import SubscriptionPayScreen from '../../screens/Subscription/SubscriptionPayScreen';
+// Bank Reconciliation is a CORE feature (phase3.md): every tier gets it.
+import BankReconciliationListScreen from '../../screens/BankReconciliation/BankReconciliationListScreen';
+import BankReconciliationScreen from '../../screens/BankReconciliation/BankReconciliationScreen';
+import BankReconciliationDetailScreen from '../../screens/BankReconciliation/BankReconciliationDetailScreen';
 
 // ── Large-organization additions ──
 import EmployeeListScreen from '../../screens/Payroll/EmployeeListScreen';
@@ -79,9 +83,6 @@ import BudgetListScreen from '../../screens/Budgets/BudgetListScreen';
 import BudgetFormScreen from '../../screens/Budgets/BudgetFormScreen';
 import BudgetDetailScreen from '../../screens/Budgets/BudgetDetailScreen';
 import UserManagementScreen from '../../screens/Settings/UserManagement/UserManagementScreen';
-import BankReconciliationListScreen from '../../screens/BankReconciliation/BankReconciliationListScreen';
-import BankReconciliationScreen from '../../screens/BankReconciliation/BankReconciliationScreen';
-import BankReconciliationDetailScreen from '../../screens/BankReconciliation/BankReconciliationDetailScreen';
 
 export interface TierRoute {
   name: string;
@@ -141,6 +142,9 @@ export const SB_MORE_ROUTES: TierRoute[] = [
   { name: 'VendorList', component: VendorListScreen },
   { name: 'VendorDetail', component: VendorDetailScreen },
   { name: 'VendorForm', component: VendorFormScreen },
+  { name: 'BankReconciliationList', component: BankReconciliationListScreen },
+  { name: 'BankReconciliation', component: BankReconciliationScreen },
+  { name: 'BankReconciliationDetail', component: BankReconciliationDetailScreen },
   { name: 'TaxSettings', component: TaxSettingsScreen },
   { name: 'TaxLiability', component: TaxLiabilityScreen },
   { name: 'TaxPayment', component: TaxPaymentScreen },
@@ -178,7 +182,4 @@ export const LO_MORE_ROUTES: TierRoute[] = [
   { name: 'PayrollRunList', component: PayrollRunListScreen },
   { name: 'PayrollRunDetail', component: PayrollRunDetailScreen },
   { name: 'UserManagement', component: UserManagementScreen },
-  { name: 'BankReconciliationList', component: BankReconciliationListScreen },
-  { name: 'BankReconciliation', component: BankReconciliationScreen },
-  { name: 'BankReconciliationDetail', component: BankReconciliationDetailScreen },
 ];

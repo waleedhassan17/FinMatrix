@@ -6,7 +6,7 @@ import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../utils/theme';
 import { getAccountsAPI } from '../../network/coaNetwork';
-import { createBudgetAPI } from '../../network/budgetNetwork';
+import { createBudgetAPI, getBudgetPrefillAPI } from '../../network/budgetNetwork';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
@@ -15,7 +15,12 @@ import { ReportContainer, ReportHeader, Card, SectionCard } from '../../componen
 import type { ReportsStackParamList } from '../../navigators/stacks/ReportsStack';
 
 type Nav = NativeStackNavigationProp<ReportsStackParamList>;
-interface LineDraft { accountId: string; annual: string; }
+interface LineDraft {
+  accountId: string;
+  annual: string;
+  /** Monthly seasonality from prior-year actuals (prefill); even split when absent. */
+  months?: number[];
+}
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
 const BudgetFormScreen: React.FC = () => {
@@ -25,6 +30,34 @@ const BudgetFormScreen: React.FC = () => {
   const [fiscalYear, setFiscalYear] = useState(String(new Date().getFullYear()));
   const [lines, setLines] = useState<LineDraft[]>([{ accountId: '', annual: '0' }]);
   const [saving, setSaving] = useState(false);
+  const [prefilling, setPrefilling] = useState(false);
+
+  // QuickBooks "create budget from previous year's data": pulls per-account
+  // monthly ACTUALS from the ledger and uses them as the starting lines
+  // (keeping each month's real seasonality, not an even split).
+  const prefill = async () => {
+    const fy = (parseInt(fiscalYear, 10) || new Date().getFullYear()) - 1;
+    setPrefilling(true);
+    try {
+      const data = await getBudgetPrefillAPI(fy);
+      const rows: any[] = data?.lines ?? [];
+      if (rows.length === 0) {
+        Alert.alert('Nothing to pre-fill', `No income/expense activity found in ${fy}.`);
+        return;
+      }
+      setLines(rows.map(r => ({
+        accountId: r.accountId,
+        annual: String(r.annualTotal ?? 0),
+        months: r.monthlyAmounts,
+      })));
+      if (!name.trim()) setName(`FY${fiscalYear} Operating Budget`);
+      Alert.alert('Pre-filled', `${rows.length} account line${rows.length === 1 ? '' : 's'} loaded from ${fy} actuals. Adjust the amounts, then create.`);
+    } catch (e: any) {
+      Alert.alert('Pre-fill failed', e?.message ?? 'Could not load prior-year actuals');
+    } finally {
+      setPrefilling(false);
+    }
+  };
 
   useEffect(() => {
     getAccountsAPI({ limit: 200 } as any).then((res: any) => {
@@ -45,6 +78,9 @@ const BudgetFormScreen: React.FC = () => {
       await createBudgetAPI({
         name, fiscalYear: parseInt(fiscalYear, 10) || new Date().getFullYear(), status: 'active',
         lines: valid.map(l => {
+          if (l.months && l.months.length === 12) {
+            return { accountId: l.accountId, monthlyAmounts: l.months };
+          }
           const monthly = (parseFloat(l.annual) || 0) / 12;
           return { accountId: l.accountId, monthlyAmounts: Array.from({ length: 12 }, () => Math.round(monthly * 100) / 100) };
         }),
@@ -61,6 +97,13 @@ const BudgetFormScreen: React.FC = () => {
         <Card>
           <CustomInput label="Budget Name" value={name} onChangeText={setName} placeholder="FY2026 Operating Budget" />
           <CustomInput label="Fiscal Year" value={fiscalYear} onChangeText={setFiscalYear} keyboardType="numeric" />
+          <CustomButton
+            title={`Pre-fill from ${(parseInt(fiscalYear, 10) || new Date().getFullYear()) - 1} actuals`}
+            variant="secondary"
+            onPress={prefill}
+            isLoading={prefilling}
+            fullWidth
+          />
         </Card>
 
         <SectionCard title="Budget Lines" icon="list">
@@ -68,7 +111,7 @@ const BudgetFormScreen: React.FC = () => {
             <View key={i} style={styles.lineRow}>
               <View style={styles.lineMain}>
                 <CustomDropdown label={`Account ${i + 1}`} placeholder="Select account" options={accounts} value={l.accountId} onChange={v => updateLine(i, { accountId: v })} />
-                <CustomInput label="Annual Amount" value={l.annual} onChangeText={v => updateLine(i, { annual: v })} keyboardType="numeric" />
+                <CustomInput label="Annual Amount" value={l.annual} onChangeText={v => updateLine(i, { annual: v, months: undefined })} keyboardType="numeric" />
               </View>
               {lines.length > 1 && (
                 <TouchableOpacity onPress={() => setLines(prev => prev.filter((_, idx) => idx !== i))} style={styles.del}>

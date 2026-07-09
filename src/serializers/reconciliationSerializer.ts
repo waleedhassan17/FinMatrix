@@ -48,6 +48,8 @@ export const mapReconciliation = (raw: any): Reconciliation => ({
   notes: raw.notes ?? null,
   reconciledAt: raw.reconciledAt ?? null,
   entries: Array.isArray(raw.entries) ? raw.entries.map(mapEntry) : undefined,
+  outstanding: Array.isArray(raw.outstanding) ? raw.outstanding.map(mapEntry) : undefined,
+  outstandingTotal: raw.outstandingTotal == null ? undefined : num(raw.outstandingTotal),
 });
 
 export function accountsSerializer(payload: any): ReconcilableAccount[] {
@@ -63,6 +65,10 @@ export function unreconciledSerializer(payload: any): UnreconciledData {
     accountName: d?.accountName ?? '',
     accountNumber: d?.accountNumber ?? '',
     beginningBalance: num(d?.beginningBalance),
+    lastStatementDate: d?.lastStatementDate ?? null,
+    lastStatementEndingBalance:
+      d?.lastStatementEndingBalance == null ? null : num(d.lastStatementEndingBalance),
+    beginningMismatch: d?.beginningMismatch == null ? null : num(d.beginningMismatch),
     entries: Array.isArray(d?.entries) ? d.entries.map(mapEntry) : [],
   };
 }

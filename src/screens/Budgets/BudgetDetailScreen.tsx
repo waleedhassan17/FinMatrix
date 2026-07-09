@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -15,8 +15,10 @@ import type { ReportsStackParamList } from '../../navigators/stacks/ReportsStack
 type Nav = NativeStackNavigationProp<ReportsStackParamList>;
 type Rt = RouteProp<Record<string, { budgetId: string }>, string>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const BudgetDetailScreen: React.FC = () => {
+  const [expanded, setExpanded] = useState<string | null>(null);
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rt>();
   const { budgetId } = route.params;
@@ -46,19 +48,44 @@ const BudgetDetailScreen: React.FC = () => {
           ]} />
         )}
 
-        <SectionCard title="Budget vs Actual" subtitle="By account" icon="bar-chart-2">
+        <SectionCard title="Budget vs Actual" subtitle="By account — tap a row for the monthly breakdown" icon="bar-chart-2">
           {(vsActual?.rows ?? []).map(r => {
             const pct = r.budgeted > 0 ? Math.min(1, r.actual / r.budgeted) : 0;
             const over = r.actual > r.budgeted;
+            const open = expanded === r.accountId;
+            const months: any[] = (r as any).months ?? [];
             return (
-              <View key={r.accountId} style={styles.row}>
+              <TouchableOpacity
+                key={r.accountId}
+                style={styles.row}
+                activeOpacity={0.7}
+                onPress={() => setExpanded(open ? null : r.accountId)}
+              >
                 <View style={styles.rowTop}>
                   <Text style={styles.acctName}>{r.accountCode} {r.accountName}</Text>
                   <Text style={styles.acctVar}>{r.percentUsed}%</Text>
                 </View>
                 <Text style={styles.acctMeta}>{rs(r.actual)} of {rs(r.budgeted)} · var {rs(r.variance)}</Text>
                 <ProgressBar pct={pct} color={over ? ACCENT.red : ACCENT.green} />
-              </View>
+                {open && months.length > 0 && (
+                  <View style={styles.monthTable}>
+                    <View style={styles.monthHead}>
+                      <Text style={[styles.monthCell, styles.monthHeadText]}>Month</Text>
+                      <Text style={[styles.monthCellNum, styles.monthHeadText]}>Budget</Text>
+                      <Text style={[styles.monthCellNum, styles.monthHeadText]}>Actual</Text>
+                      <Text style={[styles.monthCellNum, styles.monthHeadText]}>Var</Text>
+                    </View>
+                    {months.map(m => (
+                      <View key={m.month} style={styles.monthRow}>
+                        <Text style={styles.monthCell}>{MONTH_NAMES[m.month - 1]}</Text>
+                        <Text style={styles.monthCellNum}>{rs(m.budgeted)}</Text>
+                        <Text style={styles.monthCellNum}>{rs(m.actual)}</Text>
+                        <Text style={[styles.monthCellNum, { color: m.variance >= 0 ? ACCENT.green : ACCENT.red }]}>{rs(m.variance)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </TouchableOpacity>
             );
           })}
           {!vsActual && <Text style={styles.acctMeta}>Comparison unavailable.</Text>}
@@ -81,6 +108,12 @@ const styles = StyleSheet.create({
   acctVar: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, fontWeight: '700' },
   acctMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  monthTable: { marginTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.border },
+  monthHead: { flexDirection: 'row', paddingVertical: 5 },
+  monthHeadText: { fontWeight: '700', textTransform: 'uppercase' },
+  monthRow: { flexDirection: 'row', paddingVertical: 3 },
+  monthCell: { flex: 1, ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
+  monthCellNum: { flex: 1.2, textAlign: 'right', ...THEME.typography.labelSm, color: THEME.colors.textPrimary },
   bold: { ...THEME.typography.bodyMd, fontWeight: '800', color: THEME.colors.textPrimary },
 });
 

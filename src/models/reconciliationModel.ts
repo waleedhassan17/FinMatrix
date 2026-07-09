@@ -29,6 +29,10 @@ export interface UnreconciledData {
   accountName: string;
   accountNumber: string;
   beginningBalance: number;
+  lastStatementDate: string | null;
+  lastStatementEndingBalance: number | null;
+  /** Non-null = WARN: beginning balance is off by this amount vs the last reconciliation. */
+  beginningMismatch: number | null;
   entries: UnreconciledEntry[];
 }
 
@@ -45,4 +49,7 @@ export interface Reconciliation {
   notes: string | null;
   reconciledAt: string | null;
   entries?: UnreconciledEntry[];
+  /** Report: uncleared book items as of the statement date (timing differences). */
+  outstanding?: UnreconciledEntry[];
+  outstandingTotal?: number;
 }

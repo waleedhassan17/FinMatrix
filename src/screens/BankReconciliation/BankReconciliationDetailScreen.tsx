@@ -93,6 +93,32 @@ const BankReconciliationDetailScreen: React.FC = () => {
           </SectionCard>
         )}
 
+        {/* RECONCILIATION REPORT (QuickBooks): outstanding = book items dated
+            on/before the statement that this reconciliation did NOT clear —
+            they explain the book-vs-bank timing difference. */}
+        {recon.outstanding && recon.outstanding.length > 0 && (
+          <SectionCard
+            title={`Outstanding Items (${recon.outstanding.length})`}
+            subtitle={recon.outstandingTotal !== undefined ? `Uncleared total ${rs(recon.outstandingTotal)}` : 'Uncleared as of the statement date'}
+            icon="clock"
+          >
+            {recon.outstanding.map(e => {
+              const isDeposit = e.amount >= 0;
+              return (
+                <View key={e.id} style={styles.entryRow}>
+                  <View style={styles.entryInfo}>
+                    <Text style={styles.entryRef} numberOfLines={1}>{e.reference || e.sourceType}</Text>
+                    <Text style={styles.entryMeta} numberOfLines={1}>{e.date}{e.memo ? ` · ${e.memo}` : ''}</Text>
+                  </View>
+                  <Text style={[styles.entryAmt, { color: isDeposit ? ACCENT.green : ACCENT.red }]}>
+                    {isDeposit ? '+' : '−'}{rs(Math.abs(e.amount))}
+                  </Text>
+                </View>
+              );
+            })}
+          </SectionCard>
+        )}
+
         {!!recon.notes && <Card><Text style={styles.notes}>{recon.notes}</Text></Card>}
 
         <CustomButton title="Undo Reconciliation" variant="danger" onPress={undo} isLoading={undoing} fullWidth />

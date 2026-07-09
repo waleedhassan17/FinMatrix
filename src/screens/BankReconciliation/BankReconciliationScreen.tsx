@@ -31,6 +31,8 @@ const BankReconciliationScreen: React.FC = () => {
   const [statementDate, setStatementDate] = useState(today());
   const [statementBalance, setStatementBalance] = useState('');
   const [beginningBalance, setBeginningBalance] = useState(0);
+  const [beginningMismatch, setBeginningMismatch] = useState<number | null>(null);
+  const [lastStatementDate, setLastStatementDate] = useState<string | null>(null);
   const [entries, setEntries] = useState<UnreconciledEntry[]>([]);
   const [cleared, setCleared] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
@@ -43,6 +45,8 @@ const BankReconciliationScreen: React.FC = () => {
       const raw = await getUnreconciledAPI(accountId, statementDate || undefined);
       const data = unreconciledSerializer(raw);
       setBeginningBalance(data.beginningBalance);
+      setBeginningMismatch(data.beginningMismatch);
+      setLastStatementDate(data.lastStatementDate);
       setEntries(data.entries);
       setCleared(new Set());
       setLoaded(true);
@@ -111,6 +115,17 @@ const BankReconciliationScreen: React.FC = () => {
             fullWidth
           />
         </Card>
+
+        {loaded && beginningMismatch !== null && (
+          <View style={[styles.banner, styles.bannerDanger]}>
+            <Feather name="alert-octagon" size={16} color={THEME.colors.danger} />
+            <Text style={[styles.bannerText, { color: THEME.colors.danger }]}>
+              Beginning balance is off by <Text style={{ fontWeight: '700' }}>{rs(beginningMismatch)}</Text> versus the last
+              reconciliation{lastStatementDate ? ` (${lastStatementDate})` : ''}. A reconciled transaction was changed outside
+              the app — resolve this before reconciling further.
+            </Text>
+          </View>
+        )}
 
         {loaded && (
           <KpiGrid
@@ -182,6 +197,7 @@ const styles = StyleSheet.create({
   entryMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 1 },
   entryAmt: { ...THEME.typography.bodySm, fontWeight: '700' },
   banner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: THEME.colors.warningLight, borderRadius: THEME.radius.md, borderWidth: StyleSheet.hairlineWidth, borderColor: THEME.colors.warning + '40', paddingHorizontal: 12, paddingVertical: 11 },
+  bannerDanger: { backgroundColor: THEME.colors.dangerLight, borderColor: THEME.colors.danger + '40' },
   bannerText: { flex: 1, ...THEME.typography.bodySm, color: THEME.colors.warningHover, lineHeight: 18 },
 });
 
