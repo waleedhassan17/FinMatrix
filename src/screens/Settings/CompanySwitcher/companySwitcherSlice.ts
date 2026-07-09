@@ -3,7 +3,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import {
   fetchCompanies as apiFetchCompanies,
   type CompanySwitcherItem,
-} from '../../../network/settingsNetwork';
+} from '../../../networks/settings/settingsNetwork';
 
 interface CompanySwitcherState {
   companies: CompanySwitcherItem[];

@@ -6,7 +6,7 @@ import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../utils/theme';
 import { formatCurrency } from '../../utils/formatters';
-import { getReconciliationByIdAPI, deleteReconciliationAPI } from '../../network/reconciliationNetwork';
+import { getReconciliationByIdAPI, deleteReconciliationAPI } from '../../networks/accounting/reconciliationNetwork';
 import { reconciliationSingleSerializer } from '../../serializers/reconciliationSerializer';
 import type { Reconciliation } from '../../models/reconciliationModel';
 import CustomButton from '../../Custom-Components/CustomButton';

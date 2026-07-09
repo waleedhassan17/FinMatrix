@@ -9,7 +9,7 @@
 
 import { createAppSlice } from '@store/createAppSlice';
 import type { DeliveryCompleteResult } from '../../../../models/dpDeliveryCompleteModel';
-import { submitDeliveryCompleteAPI } from '../../../../network/dpDeliveryCompleteNetwork';
+import { submitDeliveryCompleteAPI } from '../../../../networks/delivery/dpDeliveryCompleteNetwork';
 import { dpDeliveryCompleteSerializer } from '../../../../serializers/dpDeliveryCompleteSerializer';
 import { submitShadowInventoryUpdateForDelivery } from '../../Admin/AssignDeliveries/deliverySlice';
 

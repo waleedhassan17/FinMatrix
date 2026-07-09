@@ -14,7 +14,7 @@ import {
   updateCompanyStatusAPI,
   assignSubscriptionAPI,
   getAllSubscriptionsAPI,
-} from '../../network/superAdminNetwork';
+} from '../../networks/billing/superAdminNetwork';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 

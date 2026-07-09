@@ -5,7 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../utils/theme';
-import { getEmployeeByIdAPI, createEmployeeAPI, updateEmployeeAPI } from '../../network/payrollNetwork';
+import { getEmployeeByIdAPI, createEmployeeAPI, updateEmployeeAPI } from '../../networks/payroll/payrollNetwork';
 import { employeeSingleSerializer } from '../../serializers/payrollSerializer';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';

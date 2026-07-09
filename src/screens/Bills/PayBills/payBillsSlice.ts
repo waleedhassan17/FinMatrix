@@ -12,8 +12,8 @@ import {
   getBillsAPI,
   createBillPaymentAPI,
   updateBillAPI,
-} from '../../../network/billNetwork';
-import { getStoredCompanyId } from '../../../network/apiHelpers';
+} from '../../../networks/purchases/billNetwork';
+import { getStoredCompanyId } from '../../../networks/network/apiHelpers';
 import { billListSerializer } from '../../../serializers/billSerializer';
 
 export interface OutstandingBillRow {

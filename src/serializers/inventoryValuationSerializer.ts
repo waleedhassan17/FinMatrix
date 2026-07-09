@@ -2,7 +2,7 @@ import type {
   InventoryValuationReport,
   InventoryValuationReportResponse,
 } from '../models/inventoryValuationModel';
-import { unwrapEnvelope } from '../network/_reportHelpers';
+import { unwrapEnvelope } from '../networks/reports/reportHelpers';
 
 export const inventoryValuationSerializer = (
   payload: InventoryValuationReportResponse,

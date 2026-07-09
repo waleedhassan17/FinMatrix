@@ -25,13 +25,13 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { selectUser, setUser } from '../Auth/authSlice';
-import { authMe, submitCompanyAPI } from '../../network/authNetwork';
+import { authMe, submitCompanyAPI } from '../../networks/auth/authNetwork';
 import {
   getBankDetailsAPI,
   submitPaymentAPI,
   type BankDetails,
   type PlanKey,
-} from '../../network/billingNetwork';
+} from '../../networks/billing/billingNetwork';
 
 const DS = {
   navy: '#091E42',

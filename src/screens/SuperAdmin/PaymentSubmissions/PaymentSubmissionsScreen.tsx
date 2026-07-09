@@ -33,7 +33,7 @@ import {
   downloadSubmissionScreenshot,
   type PaymentSubmissionView,
   type SubmissionStatus,
-} from '../../../network/billingNetwork';
+} from '../../../networks/billing/billingNetwork';
 
 const KIND_COLORS: Record<string, string> = {
   NEW: '#0052CC',

@@ -14,7 +14,7 @@ import type {
 import {
   confirmCustomerReceiptAPI,
   reportDeliveryIssueAPI,
-} from '../../../../network/dpCustomerConfirmNetwork';
+} from '../../../../networks/delivery/dpCustomerConfirmNetwork';
 import {
   confirmReceiptSerializer,
   reportIssueSerializer,

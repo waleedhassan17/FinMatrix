@@ -12,8 +12,8 @@ import {
   createPurchaseOrderAPI,
   updatePurchaseOrderAPI,
   getPurchaseOrderByIdAPI,
-} from '../../../network/purchaseOrderNetwork';
-import { getStoredCompanyId } from '../../../network/apiHelpers';
+} from '../../../networks/purchases/purchaseOrderNetwork';
+import { getStoredCompanyId } from '../../../networks/network/apiHelpers';
 import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 
 // ── Line item (form representation — string values for inputs) ──

@@ -4,7 +4,7 @@ import type { VendorCredit, VendorCreditStatus } from '../../models/vendorCredit
 import {
   getVendorCreditsAPI, getVendorCreditByIdAPI, createVendorCreditAPI,
   applyVendorCreditAPI, voidVendorCreditAPI, deleteVendorCreditAPI,
-} from '../../network/vendorCreditNetwork';
+} from '../../networks/purchases/vendorCreditNetwork';
 import { vendorCreditListSerializer, vendorCreditSingleSerializer } from '../../serializers/vendorCreditSerializer';
 
 export type VendorCreditStatusFilter = 'all' | VendorCreditStatus;

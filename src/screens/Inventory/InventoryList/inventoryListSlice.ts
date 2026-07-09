@@ -14,7 +14,7 @@ import {
   updateInventoryItemAPI,
   adjustStockAPI,
   toggleInventoryItemAPI,
-} from '../../../network/inventoryNetwork';
+} from '../../../networks/inventory/inventoryNetwork';
 import {
   inventoryListSerializer,
   inventorySingleSerializer,

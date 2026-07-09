@@ -2,7 +2,7 @@ import type {
   DeliveryPerformanceReport,
   DeliveryPerformanceReportResponse,
 } from '../models/deliveryPerformanceModel';
-import { unwrapEnvelope } from '../network/_reportHelpers';
+import { unwrapEnvelope } from '../networks/reports/reportHelpers';
 
 export const deliveryPerformanceSerializer = (
   payload: DeliveryPerformanceReportResponse,

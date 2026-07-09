@@ -19,7 +19,7 @@ import {
   authForgotPassword,
   authVerifyOtp,
   authResetPassword,
-} from '../../../network/authNetwork';
+} from '../../../networks/auth/authNetwork';
 import type { RootStackParamList } from '../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;

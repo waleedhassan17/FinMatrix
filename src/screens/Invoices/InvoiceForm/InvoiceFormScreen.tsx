@@ -49,7 +49,7 @@ import {
 } from '../InvoiceList/invoiceListSlice';
 import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
 import { selectInventoryItems, fetchInventoryItems } from '../../Inventory/InventoryList/inventoryListSlice';
-import { createInvoiceAPI, updateInvoiceAPI } from '../../../network/invoiceNetwork';
+import { createInvoiceAPI, updateInvoiceAPI } from '../../../networks/sales/invoiceNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { DateField } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';

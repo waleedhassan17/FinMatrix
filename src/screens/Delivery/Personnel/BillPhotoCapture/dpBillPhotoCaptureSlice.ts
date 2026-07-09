@@ -17,7 +17,7 @@ import type {
   SubmitBillPhotoPayload,
   SubmitBillPhotoResult,
 } from '../../../../models/dpBillPhotoCaptureModel';
-import { submitBillPhotoAPI } from '../../../../network/dpBillPhotoCaptureNetwork';
+import { submitBillPhotoAPI } from '../../../../networks/delivery/dpBillPhotoCaptureNetwork';
 import { dpBillPhotoCaptureSerializer } from '../../../../serializers/dpBillPhotoCaptureSerializer';
 import { attachBillPhotoToDelivery, deductShadowInventory } from '../../Admin/AssignDeliveries/deliverySlice';
 import { submitInventoryRequestFromBillPhoto } from '../../Admin/InventoryApproval/inventoryApprovalSlice';

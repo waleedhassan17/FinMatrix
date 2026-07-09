@@ -9,7 +9,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
   fetchVendorCredit, selectVendorCreditState, applyVendorCredit, voidVendorCredit, removeVendorCredit,
 } from './vendorCreditSlice';
-import { getBillsAPI } from '../../network/billNetwork';
+import { getBillsAPI } from '../../networks/purchases/billNetwork';
 import { billListSerializer } from '../../serializers/billSerializer';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';

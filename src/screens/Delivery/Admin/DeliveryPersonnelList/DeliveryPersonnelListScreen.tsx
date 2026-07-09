@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
-import { getPlanLimitsAPI, type PlanLimits } from '../../../../network/billingNetwork';
+import { getPlanLimitsAPI, type PlanLimits } from '../../../../networks/billing/billingNetwork';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';

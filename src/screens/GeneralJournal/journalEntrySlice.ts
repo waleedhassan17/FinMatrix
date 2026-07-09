@@ -4,7 +4,7 @@ import type { JournalEntry, JournalEntryStatus } from '../../models/journalEntry
 import {
   getJournalEntriesAPI, getJournalEntryByIdAPI, createJournalEntryAPI,
   postJournalEntryAPI, voidJournalEntryAPI,
-} from '../../network/journalEntryNetwork';
+} from '../../networks/accounting/journalEntryNetwork';
 import { journalEntryListSerializer, journalEntrySingleSerializer } from '../../serializers/journalEntrySerializer';
 
 export type JournalEntryStatusFilter = 'all' | JournalEntryStatus;

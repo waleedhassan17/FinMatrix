@@ -10,8 +10,8 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Invoice, PaymentMethod } from '../../../types';
-import { getInvoicesAPI } from '../../../network/invoiceNetwork';
-import { createPaymentAPI } from '../../../network/paymentNetwork';
+import { getInvoicesAPI } from '../../../networks/sales/invoiceNetwork';
+import { createPaymentAPI } from '../../../networks/sales/paymentNetwork';
 import { invoiceListSerializer } from '../../../serializers/invoiceSerializer';
 
 /**

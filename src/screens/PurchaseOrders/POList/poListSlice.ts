@@ -12,7 +12,7 @@ import type { PurchaseOrder, PurchaseOrderStatus } from '../../../types';
 import {
   getPurchaseOrdersAPI,
   deletePurchaseOrderAPI,
-} from '../../../network/purchaseOrderNetwork';
+} from '../../../networks/purchases/purchaseOrderNetwork';
 import {
   purchaseOrderListSerializer,
 } from '../../../serializers/purchaseOrderSerializer';

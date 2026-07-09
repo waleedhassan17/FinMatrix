@@ -4,7 +4,7 @@ import type { CreditMemo, CreditMemoStatus } from '../../models/creditMemoModel'
 import {
   getCreditMemosAPI, getCreditMemoByIdAPI, createCreditMemoAPI,
   applyCreditMemoAPI, refundCreditMemoAPI, voidCreditMemoAPI, deleteCreditMemoAPI,
-} from '../../network/creditMemoNetwork';
+} from '../../networks/sales/creditMemoNetwork';
 import { creditMemoListSerializer, creditMemoSingleSerializer } from '../../serializers/creditMemoSerializer';
 
 export type CreditMemoStatusFilter = 'all' | CreditMemoStatus;

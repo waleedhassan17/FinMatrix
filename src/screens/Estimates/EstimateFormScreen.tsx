@@ -7,7 +7,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchCustomers, selectCustomers } from '../Customers/CustomerList/customerListSlice';
-import { getEstimateByIdAPI, createEstimateAPI, updateEstimateAPI } from '../../network/estimateNetwork';
+import { getEstimateByIdAPI, createEstimateAPI, updateEstimateAPI } from '../../networks/sales/estimateNetwork';
 import { estimateSingleSerializer } from '../../serializers/estimateSerializer';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';

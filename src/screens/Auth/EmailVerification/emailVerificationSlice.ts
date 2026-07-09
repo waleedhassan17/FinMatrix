@@ -4,12 +4,12 @@ import {
   authVerifyEmail,
   authResendVerification,
   authCheckVerificationStatus,
-} from '@network/authNetwork';
+} from '@networks/auth/authNetwork';
 import type {
   VerifyEmailPayload,
   ResendVerificationPayload,
   CheckVerificationPayload,
-} from '@network/authNetwork';
+} from '@networks/auth/authNetwork';
 
 export interface EmailVerificationSliceState {
   resendCooldown: number;

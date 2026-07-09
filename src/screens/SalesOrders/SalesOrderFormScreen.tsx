@@ -7,7 +7,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchCustomers, selectCustomers } from '../Customers/CustomerList/customerListSlice';
-import { getSalesOrderByIdAPI, createSalesOrderAPI, updateSalesOrderAPI } from '../../network/salesOrderNetwork';
+import { getSalesOrderByIdAPI, createSalesOrderAPI, updateSalesOrderAPI } from '../../networks/sales/salesOrderNetwork';
 import { salesOrderSingleSerializer } from '../../serializers/salesOrderSerializer';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';

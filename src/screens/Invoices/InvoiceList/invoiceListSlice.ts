@@ -9,7 +9,7 @@ import type { Invoice, InvoiceStatus } from '../../../types';
 import {
   getInvoicesAPI,
   deleteInvoiceAPI,
-} from '../../../network/invoiceNetwork';
+} from '../../../networks/sales/invoiceNetwork';
 import {
   invoiceListSerializer,
   invoiceSingleSerializer,

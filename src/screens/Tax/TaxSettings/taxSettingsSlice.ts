@@ -10,7 +10,7 @@ import {
   createTaxRateAPI,
   updateTaxRateAPI,
   deleteTaxRateAPI,
-} from '../../../network/taxNetwork';
+} from '../../../networks/purchases/taxNetwork';
 import {
   taxRateDeleteSerializer,
   taxRateListSerializer,

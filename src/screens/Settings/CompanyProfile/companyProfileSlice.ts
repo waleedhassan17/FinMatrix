@@ -1,6 +1,6 @@
 import { createAppSlice } from '@store/createAppSlice';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import { saveCompanyProfile, type CompanyProfilePayload } from '../../../network/settingsNetwork';
+import { saveCompanyProfile, type CompanyProfilePayload } from '../../../networks/settings/settingsNetwork';
 
 interface CompanyProfileForm {
   name: string;

@@ -28,7 +28,7 @@ import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DP
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { locationService } from '../../../../services/locationService';
-import { togglePersonnelAvailabilityAPI } from '../../../../network/deliveryNetwork';
+import { togglePersonnelAvailabilityAPI } from '../../../../networks/delivery/deliveryNetwork';
 
 type Nav = NativeStackNavigationProp<DPDashboardStackParamList>;
 

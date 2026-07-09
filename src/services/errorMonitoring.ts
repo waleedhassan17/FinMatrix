@@ -12,7 +12,7 @@
 // red-boxes and console output keep working.
 
 import { Platform } from 'react-native';
-import { api } from '../network/apiHelpers';
+import { api } from '../networks/network/apiHelpers';
 
 let installed = false;
 let currentScreen = 'unknown';

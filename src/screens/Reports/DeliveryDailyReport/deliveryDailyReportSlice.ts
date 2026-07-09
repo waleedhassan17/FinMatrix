@@ -1,7 +1,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { DeliveryDailyReport } from '../../../models/deliveryDailyReportModel';
-import { getDeliveryDailyReportAPI } from '../../../network/deliveryDailyReportNetwork';
+import { getDeliveryDailyReportAPI } from '../../../networks/reports/deliveryDailyReportNetwork';
 import { deliveryDailyReportSerializer } from '../../../serializers/deliveryDailyReportSerializer';
 
 interface DeliveryDailyReportState {

@@ -3,7 +3,7 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { ReportDateRange } from '../../../models/reportModel';
 import { getLastNDaysRange } from '../../../models/reportModel';
 import type { DeliveryPerformanceReport } from '../../../models/deliveryPerformanceModel';
-import { getDeliveryPerformanceAPI } from '../../../network/deliveryPerformanceNetwork';
+import { getDeliveryPerformanceAPI } from '../../../networks/reports/deliveryPerformanceNetwork';
 import { deliveryPerformanceSerializer } from '../../../serializers/deliveryPerformanceSerializer';
 
 interface DeliveryPerformanceState {

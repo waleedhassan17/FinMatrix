@@ -1,5 +1,5 @@
 import type { ARAgingReport, ARAgingReportResponse } from '../models/arAgingModel';
-import { unwrapEnvelope } from '../network/_reportHelpers';
+import { unwrapEnvelope } from '../networks/reports/reportHelpers';
 
 export const arAgingSerializer = (
   payload: ARAgingReportResponse,

@@ -35,7 +35,7 @@ import {
 } from './adminDeliveryDetailSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
-import { updateDeliveryAPI } from '../../../../network/deliveryNetwork';
+import { updateDeliveryAPI } from '../../../../networks/delivery/deliveryNetwork';
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'AdminDeliveryDetail'>;
 

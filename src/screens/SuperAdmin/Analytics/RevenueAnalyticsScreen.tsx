@@ -30,7 +30,7 @@ import {
 import {
   getPlatformRevenueAPI,
   type RevenueSummary,
-} from '../../../network/billingNetwork';
+} from '../../../networks/billing/billingNetwork';
 
 const { width: W } = Dimensions.get('window');
 

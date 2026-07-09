@@ -41,7 +41,7 @@ import {
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { PAYMENT_TERMS_LABELS } from '../../../models/customerModel';
-import { getCustomerStatementAPI } from '../../../network/customerNetwork';
+import { getCustomerStatementAPI } from '../../../networks/sales/customerNetwork';
 import { statementSerializer, shareStatementPdf } from '../../../utils/statementPdf';
 import { mapCustomer } from '../../../serializers/customerSerializer';
 import type { PaymentTerms, Customer } from '../../../types';

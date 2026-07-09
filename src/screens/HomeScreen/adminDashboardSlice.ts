@@ -7,7 +7,7 @@ import {
   getAdminDashboardSummaryAPI,
   getRecentInvoicesAPI,
   getDeliveryStatsAPI,
-} from '../../network/adminDashboardNetwork';
+} from '../../networks/dashboards/adminDashboardNetwork';
 import type {
   DashboardStat,
   RecentTransaction,

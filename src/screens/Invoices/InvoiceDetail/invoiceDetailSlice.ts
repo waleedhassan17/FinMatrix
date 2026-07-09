@@ -9,8 +9,8 @@ import type { Invoice, Payment } from '../../../types';
 import {
   getInvoiceByIdAPI,
   sendInvoiceAPI,
-} from '../../../network/invoiceNetwork';
-import { getPaymentsByInvoiceAPI } from '../../../network/paymentNetwork';
+} from '../../../networks/sales/invoiceNetwork';
+import { getPaymentsByInvoiceAPI } from '../../../networks/sales/paymentNetwork';
 import { invoiceSingleSerializer } from '../../../serializers/invoiceSerializer';
 import { paymentListSerializer } from '../../../serializers/paymentSerializer';
 

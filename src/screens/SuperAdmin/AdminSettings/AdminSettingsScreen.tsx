@@ -21,7 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser, signOut } from '../../Auth/authSlice';
-import { authForgotPassword, authSignOut } from '../../../network/authNetwork';
+import { authForgotPassword, authSignOut } from '../../../networks/auth/authNetwork';
 import { NOTIFICATION_ICON_NAME } from '../../../components/NotificationIcon';
 
 // Real destinations for the support links.

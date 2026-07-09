@@ -29,7 +29,7 @@ import {
   type MonitorFilterStatus,
   type MonitorSortBy,
 } from './deliveryMonitorSlice';
-import { getDeliveryMapDataAPI } from '../../../../network/deliveryNetwork';
+import { getDeliveryMapDataAPI } from '../../../../networks/delivery/deliveryNetwork';
 
 type Props = NativeStackScreenProps<DashboardStackParamList, 'DeliveryMonitor'>;
 

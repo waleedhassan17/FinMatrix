@@ -1,7 +1,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import { authRegister } from '@network/authNetwork';
-import type { RegisterPayload } from '@network/authNetwork';
+import { authRegister } from '@networks/auth/authNetwork';
+import type { RegisterPayload } from '@networks/auth/authNetwork';
 import type { User } from '@/types';
 
 export interface SignUpSliceState {

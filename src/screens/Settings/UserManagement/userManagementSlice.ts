@@ -6,7 +6,7 @@ import {
   inviteUser as apiInviteUser,
   updateUserRole as apiUpdateRole,
   removeUser as apiRemoveUser,
-} from '../../../network/settingsNetwork';
+} from '../../../networks/settings/settingsNetwork';
 
 interface UserManagementState {
   users: CompanyMember[];

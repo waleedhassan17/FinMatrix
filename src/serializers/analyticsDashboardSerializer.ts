@@ -2,7 +2,7 @@ import type {
   AnalyticsDashboardData,
   AnalyticsDashboardResponse,
 } from '../models/analyticsDashboardModel';
-import { unwrapEnvelope } from '../network/_reportHelpers';
+import { unwrapEnvelope } from '../networks/reports/reportHelpers';
 
 export const analyticsDashboardSerializer = (
   payload: AnalyticsDashboardResponse,

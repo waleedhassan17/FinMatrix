@@ -12,8 +12,8 @@ import Toast from 'react-native-toast-message';
 import { colors, spacing, typography, radius } from '../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser, signOut } from '../authSlice';
-import { authMe, authSignOut } from '../../../network/authNetwork';
-import { setStoredCompanyId } from '../../../network/apiHelpers';
+import { authMe, authSignOut } from '../../../networks/auth/authNetwork';
+import { setStoredCompanyId } from '../../../networks/network/apiHelpers';
 
 const PendingApprovalScreen: React.FC = () => {
   const insets = useSafeAreaInsets();

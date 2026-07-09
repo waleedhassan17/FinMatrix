@@ -14,7 +14,7 @@ import {
   createBillAPI,
   updateBillAPI,
   deleteBillAPI,
-} from '../../../network/billNetwork';
+} from '../../../networks/purchases/billNetwork';
 import {
   billListSerializer,
   billSingleSerializer,

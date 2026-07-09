@@ -12,7 +12,7 @@ import {
   getCustomerByIdAPI,
   getCustomerInvoicesAPI,
   getCustomerPaymentsAPI,
-} from '../../../network/customerNetwork';
+} from '../../../networks/sales/customerNetwork';
 import {
   customerSingleSerializer,
   customerInvoicesSerializer,

@@ -1,7 +1,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { BalanceSheetReport } from '../../../models/balanceSheetModel';
-import { getBalanceSheetReportAPI } from '../../../network/balanceSheetNetwork';
+import { getBalanceSheetReportAPI } from '../../../networks/reports/balanceSheetNetwork';
 import { balanceSheetSerializer } from '../../../serializers/balanceSheetSerializer';
 
 interface BalanceSheetState {

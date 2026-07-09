@@ -5,7 +5,7 @@
 // account, newest first, paginated {data:{data,pagination}} after the
 // response envelope).
 
-import { getAccountTransactionsAPI } from '../network/coaNetwork';
+import { getAccountTransactionsAPI } from '../networks/accounting/coaNetwork';
 
 export interface AccountTransaction {
   id: string;

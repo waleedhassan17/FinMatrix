@@ -2,7 +2,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import { type ReportDateRange, getDefaultReportRange } from '../../../models/reportModel';
 import type { CashFlowReport } from '../../../models/cashFlowModel';
-import { getCashFlowReportAPI } from '../../../network/cashFlowNetwork';
+import { getCashFlowReportAPI } from '../../../networks/reports/cashFlowNetwork';
 import { cashFlowSerializer } from '../../../serializers/cashFlowSerializer';
 
 interface CashFlowState {

@@ -1,7 +1,7 @@
 import type {
   GeneralLedgerReport, GeneralLedgerResponse, LedgerAccountsReport, LedgerAccountsResponse,
 } from '../models/generalLedgerModel';
-import { unwrapEnvelope } from '../network/_reportHelpers';
+import { unwrapEnvelope } from '../networks/reports/reportHelpers';
 
 export const generalLedgerSerializer = (
   payload: GeneralLedgerResponse,

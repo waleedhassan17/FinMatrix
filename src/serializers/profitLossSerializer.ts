@@ -1,5 +1,5 @@
 import type { ProfitLossReport, ProfitLossReportResponse } from '../models/profitLossModel';
-import { unwrapEnvelope } from '../network/_reportHelpers';
+import { unwrapEnvelope } from '../networks/reports/reportHelpers';
 
 export const profitLossSerializer = (
   payload: ProfitLossReportResponse,

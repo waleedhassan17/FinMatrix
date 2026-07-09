@@ -3,7 +3,7 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { Budget, BudgetVsActual } from '../../models/budgetModel';
 import {
   getBudgetsAPI, getBudgetByIdAPI, getBudgetVsActualAPI, createBudgetAPI, deleteBudgetAPI,
-} from '../../network/budgetNetwork';
+} from '../../networks/payroll/budgetNetwork';
 import { budgetListSerializer, budgetSingleSerializer, budgetVsActualSerializer } from '../../serializers/budgetSerializer';
 
 interface BudgetState {

@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   getBillingStatusAPI, getPlanLimitsAPI,
   type BillingStatus, type PlanLimits,
-} from '../../../network/billingNetwork';
+} from '../../../networks/billing/billingNetwork';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';

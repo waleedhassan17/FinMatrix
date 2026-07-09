@@ -1,7 +1,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import { authLogin, authDeliveryLogin, AuthError } from '@network/authNetwork';
-import type { SignInPayload, DeliverySignInPayload } from '@network/authNetwork';
+import { authLogin, authDeliveryLogin, AuthError } from '@networks/auth/authNetwork';
+import type { SignInPayload, DeliverySignInPayload } from '@networks/auth/authNetwork';
 import type { User } from '@/types';
 
 export interface SignInSliceState {

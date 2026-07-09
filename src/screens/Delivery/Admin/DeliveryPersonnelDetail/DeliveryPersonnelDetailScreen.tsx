@@ -27,7 +27,7 @@ import {
   updatePersonnelAPI,
   togglePersonnelAvailabilityAPI,
   resetPersonnelPasswordAPI,
-} from '../../../../network/deliveryNetwork';
+} from '../../../../networks/delivery/deliveryNetwork';
 import type { RootStackParamList } from '../../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryPersonnelDetail'>;

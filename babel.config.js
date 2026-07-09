@@ -13,7 +13,7 @@ module.exports = function (api) {
           '@components': './src/components',
           '@custom': './src/Custom-Components',
           '@store': './src/store',
-          '@network': './src/network',
+          '@networks': './src/networks',
           '@models': './src/models',
           '@serializers': './src/serializers',
           '@hooks': './src/hooks',
