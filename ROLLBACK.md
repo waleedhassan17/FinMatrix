@@ -13,6 +13,7 @@ Everything needed to return to the exact pre-tiering state if anything misbehave
 | Heroku app | `finmatrix-api-prod` |
 | **Heroku release BEFORE this deploy** | **v56** |
 | Heroku release AFTER this deploy | **v57** (commit `2cccafa`) — verified live: schema applied, demo seed ALL TIES HOLD, tiering acceptance **80/80 against prod** |
+| Follow-up release | **v60** (BE `aeb0bbc`, FE `b109a4a`) — PDF payslips (payslip.md): new read-only endpoint `GET /payroll/runs/:runId/payslip/:employeeId/pdf` + app view/download/share; payroll calc/JE unchanged, NO schema change — roll back with `heroku rollback v59`. Verified live: health 200, route auth-guarded (401). Pre-deploy: five-features 49/49, payslip smoke 23/23. |
 | Follow-up release | **v59** (BE `ddb01d0`, FE `f3f9942`) — phase3 four-feature hardening (payroll idempotency, budget months+prefill, bank-rec guards+report, bank-rec all-tier). Backup **`b002`** taken before deploy; NO schema change — roll back with `heroku rollback v58`. |
 | Follow-up release | **v58** (BE `8051b3a`, FE `e03c896`) — super-admin plans now serve the six tier plans from PLAN_CONFIG (verified live: 6 plans, edit → 400 PLANS_CONFIG_DEFINED). Roll back this one alone with `heroku rollback v57`. |
 | Prod DB backup (pre-migration, VERIFIED) | **`b001`** — captured 2026-07-08 16:14 UTC, Completed, 326 KB |
