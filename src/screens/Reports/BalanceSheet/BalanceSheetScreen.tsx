@@ -108,8 +108,8 @@ const AccountSection: React.FC<{ title: string; icon: any; items?: AcctItem[] }>
       {safe.length === 0 ? (
         <Text style={styles.empty}>No accounts</Text>
       ) : (
-        safe.map(item => (
-          <View key={item.accountId} style={styles.acctRow}>
+        safe.map((item, idx) => (
+          <View key={`${item.accountId ?? ''}-${item.accountCode ?? ''}-${idx}`} style={styles.acctRow}>
             <Text style={styles.acctName} numberOfLines={1}>
               <Text style={styles.acctCode}>{item.accountCode}</Text>  {item.accountName}
             </Text>
