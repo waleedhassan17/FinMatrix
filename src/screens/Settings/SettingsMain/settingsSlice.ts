@@ -3,7 +3,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import {
   fetchPreferences as apiFetchPrefs,
   savePreferences as apiSavePrefs,
-} from '../../../network/settingsNetwork';
+} from '../../../networks/settings/settingsNetwork';
 import type { AppPreferences } from '../../../models/settingsModel';
 import { DEFAULT_PREFERENCES } from '../../../models/settingsModel';
 

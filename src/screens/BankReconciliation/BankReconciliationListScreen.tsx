@@ -6,7 +6,7 @@ import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../utils/theme';
 import { formatCurrency } from '../../utils/formatters';
-import { getReconcilableAccountsAPI, getReconciliationsAPI } from '../../network/reconciliationNetwork';
+import { getReconcilableAccountsAPI, getReconciliationsAPI } from '../../networks/accounting/reconciliationNetwork';
 import { accountsSerializer, reconciliationListSerializer } from '../../serializers/reconciliationSerializer';
 import type { ReconcilableAccount, Reconciliation } from '../../models/reconciliationModel';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';

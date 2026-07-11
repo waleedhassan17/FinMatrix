@@ -20,7 +20,7 @@ import { Linking, Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 
-import { getPayslipPdfAPI } from '../network/payrollNetwork';
+import { getPayslipPdfAPI } from '../networks/payroll/payrollNetwork';
 
 export interface PayslipRef {
   runId: string;

@@ -22,10 +22,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../types';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser, setUser } from '../authSlice';
-import { getPublicPlansAPI, selfSubscribeAPI } from '../../../network/superAdminNetwork';
-import { submitCompanyAPI } from '../../../network/authNetwork';
-import { getPlansForTypeAPI, type TierPlanCard } from '../../../network/billingNetwork';
-import { getStoredCompanyId } from '../../../network/apiHelpers';
+import { getPublicPlansAPI, selfSubscribeAPI } from '../../../networks/billing/superAdminNetwork';
+import { submitCompanyAPI } from '../../../networks/auth/authNetwork';
+import { getPlansForTypeAPI, type TierPlanCard } from '../../../networks/billing/billingNetwork';
+import { getStoredCompanyId } from '../../../utils/storageUtils';
 import { THEME } from '../../../utils/theme';
 
 // ── Design tokens ─────────────────────────────────────

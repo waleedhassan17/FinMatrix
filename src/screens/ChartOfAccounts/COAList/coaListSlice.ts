@@ -14,7 +14,7 @@ import {
   createAccountAPI,
   updateAccountAPI,
   toggleAccountAPI,
-} from '../../../network/coaNetwork';
+} from '../../../networks/accounting/coaNetwork';
 import { coaListSerializer, coaSingleSerializer } from '../../../serializers/coaSerializer';
 import type { COAApiAccount } from '../../../models/coaModel';
 

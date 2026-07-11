@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
+import { createAppSlice } from '@store/createAppSlice';
 import type { WarehouseAgency } from '@models/agencyModel';
 import type { DummyDeliveryPerson } from '@models/deliveryModel';
 import { signOut } from './authSlice';
@@ -42,21 +43,6 @@ export interface CompanyState {
   error: string | null;
 }
 
-// Helper — derive active company
-export const selectActiveCompany = (state: { company: CompanyState }) => {
-  const { companies, activeCompanyId } = state.company;
-  return companies.find(c => c.companyId === activeCompanyId) ?? null;
-};
-
-export const selectCompanyByInviteCode = (
-  state: { company: CompanyState },
-  code: string,
-) => {
-  return state.company.companies.find(
-    c => c.inviteCode.toUpperCase() === code.toUpperCase(),
-  ) ?? null;
-};
-
 const initialState: CompanyState = {
   companies: [],
   activeCompanyId: null,
@@ -64,138 +50,140 @@ const initialState: CompanyState = {
   error: null,
 };
 
-const companySlice = createSlice({
+// NOTE: slice name 'company' is redux-persist-whitelisted — never rename.
+const companySlice = createAppSlice({
   name: 'company',
   initialState,
-  reducers: {
-    createCompany(state, action: PayloadAction<CompanyData>) {
+  reducers: create => ({
+    createCompany: create.reducer((state, action: PayloadAction<CompanyData>) => {
       state.companies.push(action.payload);
       state.activeCompanyId = action.payload.companyId;
       state.error = null;
-    },
-    setActiveCompany(state, action: PayloadAction<string>) {
+    }),
+    setActiveCompany: create.reducer((state, action: PayloadAction<string>) => {
       state.activeCompanyId = action.payload;
-    },
-    clearCompany(state) {
+    }),
+    clearCompany: create.reducer(state => {
       state.activeCompanyId = null;
-    },
-    addAgency(
-      state,
-      action: PayloadAction<{ companyId: string; agency: WarehouseAgency }>,
-    ) {
-      const company = state.companies.find(
-        c => c.companyId === action.payload.companyId,
-      );
-      if (company) {
-        company.agencies.push(action.payload.agency);
-      }
-    },
-    removeAgency(
-      state,
-      action: PayloadAction<{ companyId: string; agencyId: string }>,
-    ) {
-      const company = state.companies.find(
-        c => c.companyId === action.payload.companyId,
-      );
-      if (company) {
-        company.agencies = company.agencies.filter(
-          a => a.id !== action.payload.agencyId,
+    }),
+    addAgency: create.reducer(
+      (state, action: PayloadAction<{ companyId: string; agency: WarehouseAgency }>) => {
+        const company = state.companies.find(
+          c => c.companyId === action.payload.companyId,
         );
-      }
-    },
-    addMember(
-      state,
-      action: PayloadAction<{ companyId: string; member: CompanyMember }>,
-    ) {
-      const company = state.companies.find(
-        c => c.companyId === action.payload.companyId,
-      );
-      if (company) {
-        company.members.push(action.payload.member);
-      }
-    },
-    removeMember(
-      state,
-      action: PayloadAction<{ companyId: string; userId: string }>,
-    ) {
-      const company = state.companies.find(
-        c => c.companyId === action.payload.companyId,
-      );
-      if (company) {
-        company.members = company.members.filter(
-          m => m.userId !== action.payload.userId,
-        );
-      }
-    },
-    updateMemberRole(
-      state,
-      action: PayloadAction<{
-        companyId: string;
-        userId: string;
-        role: 'admin' | 'delivery';
-      }>,
-    ) {
-      const company = state.companies.find(
-        c => c.companyId === action.payload.companyId,
-      );
-      if (company) {
-        const member = company.members.find(
-          m => m.userId === action.payload.userId,
-        );
-        if (member) {
-          member.role = action.payload.role;
+        if (company) {
+          company.agencies.push(action.payload.agency);
         }
-      }
-    },
-    addDeliveryPersonnel(
-      state,
-      action: PayloadAction<{
-        companyId: string;
-        person: DummyDeliveryPerson;
-      }>,
-    ) {
-      const company = state.companies.find(
-        c => c.companyId === action.payload.companyId,
-      );
-      if (company) {
-        company.deliveryPersonnel.push(action.payload.person);
-      }
-    },
-    removeDeliveryPersonnel(
-      state,
-      action: PayloadAction<{ companyId: string; userId: string }>,
-    ) {
-      const company = state.companies.find(
-        c => c.companyId === action.payload.companyId,
-      );
-      if (company) {
-        company.deliveryPersonnel = company.deliveryPersonnel.filter(
-          p => p.userId !== action.payload.userId,
+      },
+    ),
+    removeAgency: create.reducer(
+      (state, action: PayloadAction<{ companyId: string; agencyId: string }>) => {
+        const company = state.companies.find(
+          c => c.companyId === action.payload.companyId,
         );
-      }
-    },
-    updateDeliveryPersonnel(
-      state,
-      action: PayloadAction<{
-        companyId: string;
-        userId: string;
-        updates: Partial<DummyDeliveryPerson>;
-      }>,
-    ) {
-      const company = state.companies.find(
-        c => c.companyId === action.payload.companyId,
-      );
-      if (company) {
-        const person = company.deliveryPersonnel.find(
-          p => p.userId === action.payload.userId,
-        );
-        if (person) {
-          Object.assign(person, action.payload.updates);
+        if (company) {
+          company.agencies = company.agencies.filter(
+            a => a.id !== action.payload.agencyId,
+          );
         }
-      }
-    },
+      },
+    ),
+    addMember: create.reducer(
+      (state, action: PayloadAction<{ companyId: string; member: CompanyMember }>) => {
+        const company = state.companies.find(
+          c => c.companyId === action.payload.companyId,
+        );
+        if (company) {
+          company.members.push(action.payload.member);
+        }
+      },
+    ),
+    removeMember: create.reducer(
+      (state, action: PayloadAction<{ companyId: string; userId: string }>) => {
+        const company = state.companies.find(
+          c => c.companyId === action.payload.companyId,
+        );
+        if (company) {
+          company.members = company.members.filter(
+            m => m.userId !== action.payload.userId,
+          );
+        }
+      },
+    ),
+    updateMemberRole: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          companyId: string;
+          userId: string;
+          role: 'admin' | 'delivery';
+        }>,
+      ) => {
+        const company = state.companies.find(
+          c => c.companyId === action.payload.companyId,
+        );
+        if (company) {
+          const member = company.members.find(
+            m => m.userId === action.payload.userId,
+          );
+          if (member) {
+            member.role = action.payload.role;
+          }
+        }
+      },
+    ),
+    addDeliveryPersonnel: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          companyId: string;
+          person: DummyDeliveryPerson;
+        }>,
+      ) => {
+        const company = state.companies.find(
+          c => c.companyId === action.payload.companyId,
+        );
+        if (company) {
+          company.deliveryPersonnel.push(action.payload.person);
+        }
+      },
+    ),
+    removeDeliveryPersonnel: create.reducer(
+      (state, action: PayloadAction<{ companyId: string; userId: string }>) => {
+        const company = state.companies.find(
+          c => c.companyId === action.payload.companyId,
+        );
+        if (company) {
+          company.deliveryPersonnel = company.deliveryPersonnel.filter(
+            p => p.userId !== action.payload.userId,
+          );
+        }
+      },
+    ),
+    updateDeliveryPersonnel: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          companyId: string;
+          userId: string;
+          updates: Partial<DummyDeliveryPerson>;
+        }>,
+      ) => {
+        const company = state.companies.find(
+          c => c.companyId === action.payload.companyId,
+        );
+        if (company) {
+          const person = company.deliveryPersonnel.find(
+            p => p.userId === action.payload.userId,
+          );
+          if (person) {
+            Object.assign(person, action.payload.updates);
+          }
+        }
+      },
+    ),
     // Upsert company from API response (used on login for existing users)
-    loadCompany(state, action: PayloadAction<CompanyData>) {
+    loadCompany: create.reducer((state, action: PayloadAction<CompanyData>) => {
       const idx = state.companies.findIndex(c => c.companyId === action.payload.companyId);
       if (idx >= 0) {
         state.companies[idx] = action.payload;
@@ -203,16 +191,29 @@ const companySlice = createSlice({
         state.companies.push(action.payload);
       }
       state.activeCompanyId = action.payload.companyId;
-    },
-    setCompanyLoading(state, action: PayloadAction<boolean>) {
+    }),
+    setCompanyLoading: create.reducer((state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
-    },
-    setCompanyError(state, action: PayloadAction<string | null>) {
+    }),
+    setCompanyError: create.reducer((state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
-    },
-  },
+    }),
+  }),
   extraReducers: builder => {
     builder.addCase(signOut, () => initialState);
+  },
+  selectors: {
+    selectCompanies: state => state.companies,
+    selectActiveCompanyId: state => state.activeCompanyId,
+    selectCompanyLoading: state => state.isLoading,
+    selectCompanyError: state => state.error,
+    // Derive active company
+    selectActiveCompany: state =>
+      state.companies.find(c => c.companyId === state.activeCompanyId) ?? null,
+    selectCompanyByInviteCode: (state, code: string) =>
+      state.companies.find(
+        c => c.inviteCode.toUpperCase() === code.toUpperCase(),
+      ) ?? null,
   },
 });
 
@@ -232,5 +233,14 @@ export const {
   setCompanyLoading,
   setCompanyError,
 } = companySlice.actions;
+
+export const {
+  selectCompanies,
+  selectActiveCompanyId,
+  selectCompanyLoading,
+  selectCompanyError,
+  selectActiveCompany,
+  selectCompanyByInviteCode,
+} = companySlice.selectors;
 
 export default companySlice.reducer;

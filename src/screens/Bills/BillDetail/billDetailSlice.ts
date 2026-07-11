@@ -13,7 +13,7 @@ import {
   getBillByIdAPI,
   getBillPaymentsByBillAPI,
   updateBillAPI,
-} from '../../../network/billNetwork';
+} from '../../../networks/purchases/billNetwork';
 import {
   billSingleSerializer,
   billPaymentsSerializer,

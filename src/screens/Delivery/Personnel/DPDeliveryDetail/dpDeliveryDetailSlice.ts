@@ -11,7 +11,7 @@ import type {
   DeliveryExecutionStatus,
   UpdateDeliveryStatusResult,
 } from '../../../../models/dpDeliveryDetailModel';
-import { updateDeliveryStatusAPI } from '../../../../network/dpDeliveryDetailNetwork';
+import { updateDeliveryStatusAPI } from '../../../../networks/delivery/dpDeliveryDetailNetwork';
 import { dpDeliveryDetailSerializer } from '../../../../serializers/dpDeliveryDetailSerializer';
 import { updateDeliveryStatus } from '../../Admin/AssignDeliveries/deliverySlice';
 import { locationService } from '../../../../services/locationService';

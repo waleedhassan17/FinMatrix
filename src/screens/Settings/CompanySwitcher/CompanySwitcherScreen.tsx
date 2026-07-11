@@ -11,7 +11,7 @@ import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectActiveCompany, setActiveCompany } from '../../Auth/companySlice';
 import { selectCompanies, selectSwitcherLoading, loadCompanies } from './companySwitcherSlice';
-import type { CompanySwitcherItem } from '../../../network/settingsNetwork';
+import type { CompanySwitcherItem } from '../../../networks/settings/settingsNetwork';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;

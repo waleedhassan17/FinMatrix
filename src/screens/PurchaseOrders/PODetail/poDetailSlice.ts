@@ -14,7 +14,7 @@ import {
   getPurchaseOrderByIdAPI,
   updatePOStatusAPI,
   receivePOItemsAPI,
-} from '../../../network/purchaseOrderNetwork';
+} from '../../../networks/purchases/purchaseOrderNetwork';
 import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 
 // ─── Receiving-mode line state ───────────────────────

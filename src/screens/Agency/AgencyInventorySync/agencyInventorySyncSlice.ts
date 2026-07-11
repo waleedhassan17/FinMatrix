@@ -6,7 +6,7 @@
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import { syncAgencyInventoryAPI } from '../../../network/agencyNetwork';
+import { syncAgencyInventoryAPI } from '../../../networks/inventory/agencyNetwork';
 import { agencySingleSerializer } from '../../../serializers/agencySerializer';
 
 export type SyncStatus = 'synced' | 'mismatch' | 'agency_only' | 'system_only';

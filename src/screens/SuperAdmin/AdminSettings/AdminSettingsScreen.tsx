@@ -21,8 +21,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser, signOut } from '../../Auth/authSlice';
-import { authForgotPassword, authSignOut } from '../../../network/authNetwork';
-import { NOTIFICATION_ICON_NAME } from '../../../components/NotificationIcon';
+import { authForgotPassword, authSignOut } from '../../../networks/auth/authNetwork';
+import { NOTIFICATION_ICON_NAME } from '../../../components/shared/NotificationIcon';
 
 // Real destinations for the support links.
 const DOCS_URL = 'https://github.com/waleedhassan17/FinMatrix';

@@ -6,12 +6,12 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch } from '../../hooks/useReduxHooks';
 import { saveJournalEntry } from './journalEntrySlice';
-import { getAccountsAPI } from '../../network/coaNetwork';
+import { getAccountsAPI } from '../../networks/accounting/coaNetwork';
 import { coaListSerializer } from '../../serializers/coaSerializer';
 import { formatCurrency } from '../../utils/formatters';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
-import JournalLineRow from '../../components/JournalLineRow';
+import JournalLineRow from '../../components/shared/JournalLineRow';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 

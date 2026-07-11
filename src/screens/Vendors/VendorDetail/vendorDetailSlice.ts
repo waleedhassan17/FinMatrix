@@ -15,7 +15,7 @@ import {
   getVendorBillsAPI,
   getVendorPaymentsAPI,
   toggleVendorActiveAPI,
-} from '../../../network/vendorNetwork';
+} from '../../../networks/purchases/vendorNetwork';
 import {
   vendorSingleSerializer,
   vendorBillsSerializer,

@@ -23,7 +23,7 @@ import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectActiveCompany, addDeliveryPersonnel, addMember } from '../../../Auth/companySlice';
-import { registerAdminCreatedPersonnel } from '../../../../network/authNetwork';
+import { registerAdminCreatedPersonnel } from '../../../../networks/auth/authNetwork';
 import type { DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import type { RootStackParamList } from '../../../../types';
 

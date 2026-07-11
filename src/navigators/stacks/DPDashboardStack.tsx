@@ -1,10 +1,9 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — DPDashboardStack (dumb mapper over navigations-maps/DPDashboard)
+// ═══════════════════════════════════════════════════════
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import DPDashboardScreen from '../../screens/Delivery/Personnel/DPDashboard/DPDashboardScreen';
-import DPDeliveryDetailScreen from '../../screens/Delivery/Personnel/DPDeliveryDetail/DPDeliveryDetailScreen';
-import BillPhotoCaptureScreen from '../../screens/Delivery/Personnel/BillPhotoCapture/BillPhotoCaptureScreen';
-import CustomerConfirmScreen from '../../screens/Delivery/Personnel/CustomerConfirm/CustomerConfirmScreen';
-import DeliveryCompleteScreen from '../../screens/Delivery/Personnel/DeliveryComplete/DeliveryCompleteScreen';
+import { DP_DASHBOARD_ROUTES } from '../../navigations-maps/DPDashboard';
 
 export type DPDashboardStackParamList = {
   DPDashboard: undefined;
@@ -14,15 +13,18 @@ export type DPDashboardStackParamList = {
   DeliveryComplete: { deliveryId: string };
 };
 
-const Stack = createNativeStackNavigator<DPDashboardStackParamList>();
+const Stack = createNativeStackNavigator();
 
 const DPDashboardStack: React.FC = () => (
   <Stack.Navigator id="DPDashboardStack" screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="DPDashboard" component={DPDashboardScreen} />
-    <Stack.Screen name="DPDeliveryDetail" component={DPDeliveryDetailScreen} />
-    <Stack.Screen name="BillPhotoCapture" component={BillPhotoCaptureScreen} />
-    <Stack.Screen name="CustomerConfirm" component={CustomerConfirmScreen} />
-    <Stack.Screen name="DeliveryComplete" component={DeliveryCompleteScreen} />
+    {DP_DASHBOARD_ROUTES.map(route => (
+      <Stack.Screen
+        key={route.title}
+        name={route.title}
+        component={route.component}
+        options={route.options}
+      />
+    ))}
   </Stack.Navigator>
 );
 

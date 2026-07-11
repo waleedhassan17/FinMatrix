@@ -12,7 +12,7 @@ import {
   createAgencyAPI,
   updateAgencyAPI,
   deleteAgencyAPI,
-} from '../../../network/agencyNetwork';
+} from '../../../networks/inventory/agencyNetwork';
 import {
   agencyDeleteSerializer,
   agencyListSerializer,

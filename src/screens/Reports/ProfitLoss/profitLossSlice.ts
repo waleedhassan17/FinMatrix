@@ -6,7 +6,7 @@ import {
   getDefaultReportRange,
 } from '../../../models/reportModel';
 import type { ProfitLossReport } from '../../../models/profitLossModel';
-import { getProfitLossReportAPI } from '../../../network/profitLossNetwork';
+import { getProfitLossReportAPI } from '../../../networks/reports/profitLossNetwork';
 import { profitLossSerializer } from '../../../serializers/profitLossSerializer';
 
 interface ProfitLossState {

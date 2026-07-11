@@ -33,8 +33,8 @@ import {
   type WarehouseAgency,
 } from '../../../models/agencyModel';
 import { dummyDeliveryPersonnel } from '../../../models/deliveryModel';
-import { setStoredCompanyId } from '../../../network/apiHelpers';
-import { createCompanyAPI } from '../../../network/authNetwork';
+import { setStoredCompanyId } from '../../../utils/storageUtils';
+import { createCompanyAPI } from '../../../networks/auth/authNetwork';
 import type { RootStackParamList } from '../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateCompany'>;

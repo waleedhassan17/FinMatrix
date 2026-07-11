@@ -7,8 +7,8 @@ import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPPr
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectDPSettings, setPushNotifications, setSmsNotifications, setEmailNotifications } from './dpSettingsSlice';
 import { selectUser } from '../../../Auth/authSlice';
-import { authForgotPassword } from '../../../../network/authNetwork';
-import NotificationIcon from '../../../../components/NotificationIcon';
+import { authForgotPassword } from '../../../../networks/auth/authNetwork';
+import NotificationIcon from '../../../../components/shared/NotificationIcon';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 

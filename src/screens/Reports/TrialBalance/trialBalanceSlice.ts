@@ -2,7 +2,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import { type ReportDateRange, getDefaultReportRange } from '../../../models/reportModel';
 import type { TrialBalanceReport } from '../../../models/trialBalanceModel';
-import { getTrialBalanceReportAPI } from '../../../network/trialBalanceNetwork';
+import { getTrialBalanceReportAPI } from '../../../networks/reports/trialBalanceNetwork';
 import { trialBalanceSerializer } from '../../../serializers/trialBalanceSerializer';
 
 interface TrialBalanceState {

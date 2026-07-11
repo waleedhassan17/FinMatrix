@@ -1,45 +1,9 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — MoreStack (dumb mapper over navigations-maps/More)
+// ═══════════════════════════════════════════════════════
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import MoreHubScreen from '../../screens/More/MoreHubScreen';
-import EmployeeListScreen from '../../screens/Payroll/EmployeeListScreen';
-import EmployeeFormScreen from '../../screens/Payroll/EmployeeFormScreen';
-import PayrollRunListScreen from '../../screens/Payroll/PayrollRunListScreen';
-import PayrollRunDetailScreen from '../../screens/Payroll/PayrollRunDetailScreen';
-import COAListScreen from '../../screens/ChartOfAccounts/COAList/COAListScreen';
-import COAFormScreen from '../../screens/ChartOfAccounts/COAForm/COAFormScreen';
-import COADetailScreen from '../../screens/ChartOfAccounts/COADetail/COADetailScreen';
-import AgencyListScreen from '../../screens/Agency/AgencyList/AgencyListScreen';
-import AgencyDetailScreen from '../../screens/Agency/AgencyDetail/AgencyDetailScreen';
-import AgencyFormScreen from '../../screens/Agency/AgencyForm/AgencyFormScreen';
-import AgencyInventorySyncScreen from '../../screens/Agency/AgencyInventorySync/AgencyInventorySyncScreen';
-import CustomerListScreen from '../../screens/Customers/CustomerList/CustomerListScreen';
-import CustomerDetailScreen from '../../screens/Customers/CustomerDetail/CustomerDetailScreen';
-import CustomerFormScreen from '../../screens/Customers/CustomerForm/CustomerFormScreen';
-import VendorListScreen from '../../screens/Vendors/VendorList/VendorListScreen';
-import VendorDetailScreen from '../../screens/Vendors/VendorDetail/VendorDetailScreen';
-import VendorFormScreen from '../../screens/Vendors/VendorForm/VendorFormScreen';
-import AssignDeliveriesScreen from '../../screens/Delivery/Admin/AssignDeliveries/AssignDeliveriesScreen';
-import CreateDeliveryScreen from '../../screens/Delivery/Admin/CreateDelivery/CreateDeliveryScreen';
-import AssignWorkScreen from '../../screens/Delivery/Admin/AssignWork/AssignWorkScreen';
-import DeliveryMonitorScreen from '../../screens/Delivery/Admin/DeliveryMonitor/DeliveryMonitorScreen';
-import AdminDeliveryDetailScreen from '../../screens/Delivery/Admin/AdminDeliveryDetail/AdminDeliveryDetailScreen';
-import InventoryApprovalScreen from '../../screens/Delivery/Admin/InventoryApproval/InventoryApprovalScreen';
-import DeliveryPersonnelListScreen from '../../screens/Delivery/Admin/DeliveryPersonnelList/DeliveryPersonnelListScreen';
-import AddDeliveryPersonnelScreen from '../../screens/Delivery/Admin/AddDeliveryPersonnel/AddDeliveryPersonnelScreen';
-import DeliveryPersonnelDetailScreen from '../../screens/Delivery/Admin/DeliveryPersonnelDetail/DeliveryPersonnelDetailScreen';
-import BankReconciliationListScreen from '../../screens/BankReconciliation/BankReconciliationListScreen';
-import BankReconciliationScreen from '../../screens/BankReconciliation/BankReconciliationScreen';
-import BankReconciliationDetailScreen from '../../screens/BankReconciliation/BankReconciliationDetailScreen';
-import TaxSettingsScreen from '../../screens/Tax/TaxSettings/TaxSettingsScreen';
-import TaxLiabilityScreen from '../../screens/Tax/TaxLiability/TaxLiabilityScreen';
-import TaxPaymentScreen from '../../screens/Tax/TaxPayment/TaxPaymentScreen';
-import SettingsScreen from '../../screens/Settings/SettingsMain/SettingsScreen';
-import CompanyProfileScreen from '../../screens/Settings/CompanyProfile/CompanyProfileScreen';
-import UserManagementScreen from '../../screens/Settings/UserManagement/UserManagementScreen';
-import CompanySwitcherScreen from '../../screens/Settings/CompanySwitcher/CompanySwitcherScreen';
-import GlobalSearchScreen from '../../screens/GlobalSearch/GlobalSearchScreen';
-import RenewSubscriptionScreen from '../../screens/Subscription/RenewSubscriptionScreen';
-import SubscriptionPayScreen from '../../screens/Subscription/SubscriptionPayScreen';
+import { MORE_ROUTES } from '../../navigations-maps/More';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
@@ -84,50 +48,18 @@ export type MoreStackParamList = {
   SubscriptionPay: { plan: 'standard' | 'pro'; mode?: 'renew' | 'change' };
 };
 
-const Stack = createNativeStackNavigator<MoreStackParamList>();
+const Stack = createNativeStackNavigator();
 
 const MoreStack: React.FC = () => (
   <Stack.Navigator id="MoreStack" screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="MoreHub" component={MoreHubScreen} />
-    <Stack.Screen name="EmployeeList" component={EmployeeListScreen} />
-    <Stack.Screen name="EmployeeForm" component={EmployeeFormScreen} />
-    <Stack.Screen name="PayrollRunList" component={PayrollRunListScreen} />
-    <Stack.Screen name="PayrollRunDetail" component={PayrollRunDetailScreen} />
-    <Stack.Screen name="COAList" component={COAListScreen} />
-    <Stack.Screen name="COAForm" component={COAFormScreen} />
-    <Stack.Screen name="COADetail" component={COADetailScreen} />
-    <Stack.Screen name="AgencyList" component={AgencyListScreen} />
-    <Stack.Screen name="AgencyDetail" component={AgencyDetailScreen} />
-    <Stack.Screen name="AgencyForm" component={AgencyFormScreen} />
-    <Stack.Screen name="AgencyInventorySync" component={AgencyInventorySyncScreen} />
-    <Stack.Screen name="CustomerList" component={CustomerListScreen} />
-    <Stack.Screen name="CustomerDetail" component={CustomerDetailScreen} />
-    <Stack.Screen name="CustomerForm" component={CustomerFormScreen} />
-    <Stack.Screen name="VendorList" component={VendorListScreen} />
-    <Stack.Screen name="VendorDetail" component={VendorDetailScreen} />
-    <Stack.Screen name="VendorForm" component={VendorFormScreen} />
-    <Stack.Screen name="AssignDeliveries" component={AssignDeliveriesScreen} />
-    <Stack.Screen name="CreateDelivery" component={CreateDeliveryScreen} />
-    <Stack.Screen name="AssignWork" component={AssignWorkScreen} />
-    <Stack.Screen name="DeliveryMonitor" component={DeliveryMonitorScreen} />
-    <Stack.Screen name="AdminDeliveryDetail" component={AdminDeliveryDetailScreen} />
-    <Stack.Screen name="InventoryApproval" component={InventoryApprovalScreen} />
-    <Stack.Screen name="DeliveryPersonnelList" component={DeliveryPersonnelListScreen} />
-    <Stack.Screen name="AddDeliveryPersonnel" component={AddDeliveryPersonnelScreen} />
-    <Stack.Screen name="DeliveryPersonnelDetail" component={DeliveryPersonnelDetailScreen} />
-    <Stack.Screen name="BankReconciliationList" component={BankReconciliationListScreen} />
-    <Stack.Screen name="BankReconciliation" component={BankReconciliationScreen} />
-    <Stack.Screen name="BankReconciliationDetail" component={BankReconciliationDetailScreen} />
-    <Stack.Screen name="TaxSettings" component={TaxSettingsScreen} />
-    <Stack.Screen name="TaxLiability" component={TaxLiabilityScreen} />
-    <Stack.Screen name="TaxPayment" component={TaxPaymentScreen} />
-    <Stack.Screen name="Settings" component={SettingsScreen} />
-    <Stack.Screen name="CompanyProfile" component={CompanyProfileScreen} />
-    <Stack.Screen name="UserManagement" component={UserManagementScreen} />
-    <Stack.Screen name="CompanySwitcher" component={CompanySwitcherScreen} />
-    <Stack.Screen name="GlobalSearch" component={GlobalSearchScreen} />
-    <Stack.Screen name="RenewSubscription" component={RenewSubscriptionScreen} />
-    <Stack.Screen name="SubscriptionPay" component={SubscriptionPayScreen} />
+    {MORE_ROUTES.map(route => (
+      <Stack.Screen
+        key={route.title}
+        name={route.title}
+        component={route.component}
+        options={route.options}
+      />
+    ))}
   </Stack.Navigator>
 );
 

@@ -25,7 +25,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppSelector, useAppDispatch } from '../../hooks/useReduxHooks';
 import { selectUser, selectFeatures } from '../Auth/authSlice';
 import { selectActiveCompany, loadCompany } from '../Auth/companySlice';
-import { getCompanyAPI, updateCompanyAPI } from '../../network/authNetwork';
+import { getCompanyAPI, updateCompanyAPI } from '../../networks/auth/authNetwork';
 import {
   selectDashboardStats,
   selectRecentTransactions,

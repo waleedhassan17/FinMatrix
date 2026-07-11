@@ -12,7 +12,7 @@ import {
   createVendorAPI,
   updateVendorAPI,
   getVendorByIdAPI,
-} from '../../../network/vendorNetwork';
+} from '../../../networks/purchases/vendorNetwork';
 import { vendorSingleSerializer } from '../../../serializers/vendorSerializer';
 import { PAYMENT_TERMS_TO_API } from '../../../models/customerModel';
 

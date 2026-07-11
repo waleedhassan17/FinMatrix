@@ -1,6 +1,6 @@
 import { createAppSlice } from '@store/createAppSlice';
 import type { InventoryValuationReport } from '../../../models/inventoryValuationModel';
-import { getInventoryValuationReportAPI } from '../../../network/inventoryValuationNetwork';
+import { getInventoryValuationReportAPI } from '../../../networks/reports/inventoryValuationNetwork';
 import { inventoryValuationSerializer } from '../../../serializers/inventoryValuationSerializer';
 
 interface InventoryValuationState {

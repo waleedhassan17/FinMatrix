@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, shadows } from '../../theme';
 import { THEME } from '../../utils/theme';
-import { ROUTES } from '../../navigations-map/Base';
+import { ROUTES } from '../../navigations-maps/Base';
 import { useAppDispatch } from '../../hooks/useReduxHooks';
 import { setRole } from './roleSelectionSlice';
 import { setSelectedRole } from '../Auth/authSlice';

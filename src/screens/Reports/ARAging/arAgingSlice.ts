@@ -1,7 +1,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { ARAgingReport } from '../../../models/arAgingModel';
-import { getARAgingReportAPI } from '../../../network/arAgingNetwork';
+import { getARAgingReportAPI } from '../../../networks/reports/arAgingNetwork';
 import { arAgingSerializer } from '../../../serializers/arAgingSerializer';
 
 interface ARAgingState {

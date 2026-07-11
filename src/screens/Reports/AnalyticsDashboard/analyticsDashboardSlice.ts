@@ -1,6 +1,6 @@
 import { createAppSlice } from '@store/createAppSlice';
 import type { AnalyticsDashboardData } from '../../../models/analyticsDashboardModel';
-import { getAnalyticsDashboardAPI } from '../../../network/analyticsDashboardNetwork';
+import { getAnalyticsDashboardAPI } from '../../../networks/dashboards/analyticsDashboardNetwork';
 import { analyticsDashboardSerializer } from '../../../serializers/analyticsDashboardSerializer';
 
 interface AnalyticsDashboardState {

@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -7,9 +7,7 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { store, persistor } from './src/store/store';
 import { colors } from './src/theme';
 import AppContainer from './src/components/app-container/AppContainer';
-import ErrorBoundary from './src/components/ErrorBoundary';
-import { useAppDispatch } from './src/hooks/useReduxHooks';
-import { signOut } from './src/screens/Auth/authSlice';
+import ErrorBoundary from './src/components/shared/ErrorBoundary';
 
 const LoadingFallback = () => (
   <View style={styles.loading}>
@@ -17,45 +15,16 @@ const LoadingFallback = () => (
   </View>
 );
 
-const FreshLoginGate = () => {
-  const dispatch = useAppDispatch();
-  const [sessionResetComplete, setSessionResetComplete] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const resetSession = async () => {
-      try {
-        await persistor.purge();
-      } finally {
-        store.dispatch(signOut());
-        dispatch(signOut());
-        if (isMounted) {
-          setSessionResetComplete(true);
-        }
-      }
-    };
-
-    resetSession();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [dispatch]);
-
-  if (!sessionResetComplete) {
-    return <LoadingFallback />;
-  }
-
-  return <AppContainer />;
-};
-
+// Session persistence (Consultant_Mobile fetchMe pattern): the persisted
+// auth state rehydrates and AppContainer.bootstrapSession() re-validates it
+// against GET /auth/me on cold start — the user signs in again only when
+// the stored token is missing or no longer refreshable.
 const App = () => (
   <ErrorBoundary>
     <GestureHandlerRootView style={styles.root}>
       <Provider store={store}>
         <PersistGate loading={<LoadingFallback />} persistor={persistor}>
-          <FreshLoginGate />
+          <AppContainer />
         </PersistGate>
       </Provider>
     </GestureHandlerRootView>

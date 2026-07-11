@@ -7,7 +7,7 @@ import type { SalesOrder, SalesOrderStatus } from '../../models/salesOrderModel'
 import {
   getSalesOrdersAPI, getSalesOrderByIdAPI, fulfillSalesOrderAPI,
   convertSalesOrderToInvoiceAPI, cancelSalesOrderAPI, deleteSalesOrderAPI,
-} from '../../network/salesOrderNetwork';
+} from '../../networks/sales/salesOrderNetwork';
 import { salesOrderListSerializer, salesOrderSingleSerializer } from '../../serializers/salesOrderSerializer';
 
 export type SalesOrderStatusFilter = 'all' | SalesOrderStatus;

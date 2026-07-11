@@ -9,7 +9,7 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks'
 import { signOut, setUser } from '../../../Auth/authSlice';
 import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
-import NotificationIcon from '../../../../components/NotificationIcon';
+import NotificationIcon from '../../../../components/shared/NotificationIcon';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 

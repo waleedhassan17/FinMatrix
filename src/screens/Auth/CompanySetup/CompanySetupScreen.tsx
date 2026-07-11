@@ -14,7 +14,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME } from '../../../utils/theme';
 import { useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectActiveCompany } from '../companySlice';
-import { ROUTES } from '../../../navigations-map/Base';
+import { ROUTES } from '../../../navigations-maps/Base';
 import type { RootStackParamList } from '../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanySetup'>;

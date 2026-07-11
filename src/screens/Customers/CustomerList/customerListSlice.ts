@@ -11,7 +11,7 @@ import {
   updateCustomerAPI,
   deleteCustomerAPI,
   toggleCustomerActiveAPI,
-} from '../../../network/customerNetwork';
+} from '../../../networks/sales/customerNetwork';
 import {
   customerListSerializer,
   customerSingleSerializer,

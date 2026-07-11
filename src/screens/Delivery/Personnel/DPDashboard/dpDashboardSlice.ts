@@ -8,7 +8,7 @@
 
 import { createAppSlice } from '@store/createAppSlice';
 import type { StartDeliveryResult } from '../../../../models/dpDashboardModel';
-import { startDeliveryAPI } from '../../../../network/dpDashboardNetwork';
+import { startDeliveryAPI } from '../../../../networks/delivery/dpDashboardNetwork';
 import { dpDashboardSerializer } from '../../../../serializers/dpDashboardSerializer';
 import { updateDeliveryStatus } from '../../Admin/AssignDeliveries/deliverySlice';
 

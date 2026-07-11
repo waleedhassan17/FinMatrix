@@ -15,7 +15,7 @@ import {
   updateVendorAPI,
   deleteVendorAPI,
   toggleVendorActiveAPI,
-} from '../../../network/vendorNetwork';
+} from '../../../networks/purchases/vendorNetwork';
 import { vendorListSerializer, vendorSingleSerializer } from '../../../serializers/vendorSerializer';
 
 export type VendorStatusFilter = 'all' | 'active' | 'inactive';

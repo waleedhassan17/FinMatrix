@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../utils/theme';
-import NotificationBadge from '../components/NotificationBadge';
+import NotificationBadge from '../components/shared/NotificationBadge';
 
 import DPDashboardStack from './stacks/DPDashboardStack';
 import DPDeliveriesStack from './stacks/DPDeliveriesStack';

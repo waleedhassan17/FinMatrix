@@ -12,8 +12,8 @@ import {
   createBillAPI,
   updateBillAPI,
   getBillByIdAPI,
-} from '../../../network/billNetwork';
-import { getPurchaseOrderByIdAPI } from '../../../network/purchaseOrderNetwork';
+} from '../../../networks/purchases/billNetwork';
+import { getPurchaseOrderByIdAPI } from '../../../networks/purchases/purchaseOrderNetwork';
 import { billSingleSerializer } from '../../../serializers/billSerializer';
 import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 

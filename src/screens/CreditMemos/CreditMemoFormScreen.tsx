@@ -7,12 +7,12 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchCustomers, selectCustomers } from '../Customers/CustomerList/customerListSlice';
 import { selectInventoryItems, fetchInventoryItems } from '../Inventory/InventoryList/inventoryListSlice';
-import { createCreditMemoAPI } from '../../network/creditMemoNetwork';
+import { createCreditMemoAPI } from '../../networks/sales/creditMemoNetwork';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
-import LineItemRow from '../../components/LineItemRow';
+import LineItemRow from '../../components/shared/LineItemRow';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 

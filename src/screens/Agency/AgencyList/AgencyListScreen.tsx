@@ -34,7 +34,7 @@ import {
   setSearchQuery,
   setTypeFilter,
 } from './agencyListSlice';
-import EmptyState from '../../../components/EmptyState';
+import EmptyState from '../../../components/shared/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency } from '../../../utils/formatters';
 import { AGENCY_TYPE_COLORS } from '../../../models/agencyModel';

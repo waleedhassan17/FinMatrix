@@ -1,5 +1,5 @@
 import type { CashFlowReport, CashFlowReportResponse } from '../models/cashFlowModel';
-import { unwrapEnvelope } from '../network/_reportHelpers';
+import { unwrapEnvelope } from '../networks/reports/reportHelpers';
 
 export const cashFlowSerializer = (
   payload: CashFlowReportResponse,

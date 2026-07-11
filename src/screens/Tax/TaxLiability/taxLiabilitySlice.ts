@@ -6,7 +6,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { TaxLiabilityRow, TaxLiabilityReport } from '../../../types';
-import { getTaxLiabilityAPI } from '../../../network/taxNetwork';
+import { getTaxLiabilityAPI } from '../../../networks/purchases/taxNetwork';
 import { taxLiabilitySerializer } from '../../../serializers/taxSerializer';
 
 export interface DateRange {

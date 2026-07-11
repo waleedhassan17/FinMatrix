@@ -46,7 +46,7 @@ import {
   type VendorBillRow,
   type VendorPaymentRow,
 } from '../../../serializers/vendorSerializer';
-import { getVendorStatementAPI } from '../../../network/vendorNetwork';
+import { getVendorStatementAPI } from '../../../networks/purchases/vendorNetwork';
 import { shareVendorStatementPdf } from '../../../utils/statementPdf';
 import type { PaymentTerms, Vendor } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';

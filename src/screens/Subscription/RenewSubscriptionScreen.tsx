@@ -22,8 +22,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
 import { useAppDispatch } from '../../hooks/useReduxHooks';
 import { signOut } from '../Auth/authSlice';
-import { authSignOut } from '../../network/authNetwork';
-import { getBillingStatusAPI, type BillingStatus } from '../../network/billingNetwork';
+import { authSignOut } from '../../networks/auth/authNetwork';
+import { getBillingStatusAPI, type BillingStatus } from '../../networks/billing/billingNetwork';
 
 const DS = {
   navy: '#091E42',

@@ -7,7 +7,7 @@ import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../utils/theme';
 import { formatCurrency } from '../../utils/formatters';
-import { getUnreconciledAPI, createReconciliationAPI } from '../../network/reconciliationNetwork';
+import { getUnreconciledAPI, createReconciliationAPI } from '../../networks/accounting/reconciliationNetwork';
 import { unreconciledSerializer } from '../../serializers/reconciliationSerializer';
 import type { UnreconciledEntry } from '../../models/reconciliationModel';
 import CustomInput from '../../Custom-Components/CustomInput';

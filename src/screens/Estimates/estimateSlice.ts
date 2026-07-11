@@ -7,7 +7,7 @@ import type { Estimate, EstimateStatus } from '../../models/estimateModel';
 import {
   getEstimatesAPI, getEstimateByIdAPI, createEstimateAPI, updateEstimateAPI,
   setEstimateStatusAPI, convertEstimateToInvoiceAPI, convertEstimateToSalesOrderAPI, deleteEstimateAPI,
-} from '../../network/estimateNetwork';
+} from '../../networks/sales/estimateNetwork';
 import { estimateListSerializer, estimateSingleSerializer } from '../../serializers/estimateSerializer';
 
 export type EstimateStatusFilter = 'all' | EstimateStatus;

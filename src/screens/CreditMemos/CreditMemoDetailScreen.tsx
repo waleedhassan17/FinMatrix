@@ -9,7 +9,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
   fetchCreditMemo, selectCreditMemoState, applyCreditMemo, refundCreditMemo, voidCreditMemo, removeCreditMemo,
 } from './creditMemoSlice';
-import { getInvoicesAPI } from '../../network/invoiceNetwork';
+import { getInvoicesAPI } from '../../networks/sales/invoiceNetwork';
 import { invoiceListSerializer } from '../../serializers/invoiceSerializer';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';

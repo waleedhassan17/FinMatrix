@@ -5,8 +5,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../utils/theme';
-import { getAccountsAPI } from '../../network/coaNetwork';
-import { createBudgetAPI, getBudgetPrefillAPI } from '../../network/budgetNetwork';
+import { getAccountsAPI } from '../../networks/accounting/coaNetwork';
+import { createBudgetAPI, getBudgetPrefillAPI } from '../../networks/payroll/budgetNetwork';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';

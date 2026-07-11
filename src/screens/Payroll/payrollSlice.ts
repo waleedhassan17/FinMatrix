@@ -4,7 +4,7 @@ import type { Employee, PayrollRun } from '../../models/payrollModel';
 import {
   getEmployeesAPI, getPayrollRunsAPI, getPayrollRunByIdAPI, createPayrollRunAPI,
   processPayrollRunAPI, deletePayrollRunAPI, deleteEmployeeAPI,
-} from '../../network/payrollNetwork';
+} from '../../networks/payroll/payrollNetwork';
 import {
   employeeListSerializer, payrollRunListSerializer, payrollRunSingleSerializer,
 } from '../../serializers/payrollSerializer';

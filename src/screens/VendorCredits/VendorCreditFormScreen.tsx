@@ -7,7 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchVendors, selectVendors } from '../Vendors/VendorList/vendorListSlice';
-import { createVendorCreditAPI } from '../../network/vendorCreditNetwork';
+import { createVendorCreditAPI } from '../../networks/purchases/vendorCreditNetwork';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';

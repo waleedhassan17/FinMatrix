@@ -2,7 +2,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import { type ReportDateRange, getDefaultReportRange } from '../../../models/reportModel';
 import type { GeneralLedgerReport, LedgerAccountsReport } from '../../../models/generalLedgerModel';
-import { getGeneralLedgerAPI, getLedgerAccountsAPI } from '../../../network/generalLedgerNetwork';
+import { getGeneralLedgerAPI, getLedgerAccountsAPI } from '../../../networks/reports/generalLedgerNetwork';
 import { generalLedgerSerializer, ledgerAccountsSerializer } from '../../../serializers/generalLedgerSerializer';
 
 interface GeneralLedgerState {

@@ -28,7 +28,7 @@ import {
   approveInventoryUpdateRequestAPI,
   rejectInventoryUpdateRequestAPI,
   undoInventoryApprovalAPI,
-} from '../../../../network/deliveryNetwork';
+} from '../../../../networks/delivery/deliveryNetwork';
 import {
   inventoryUpdateRequestListSerializer,
   inventoryUpdateRequestSingleSerializer,

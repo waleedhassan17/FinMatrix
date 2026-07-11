@@ -11,7 +11,7 @@ import { selectFeatures } from '../Auth/authSlice';
 import { selectCustomers } from '../Customers/CustomerList/customerListSlice';
 import { selectVendors } from '../Vendors/VendorList/vendorListSlice';
 import { selectUnassignedDeliveries } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
-import NotificationBadge from '../../components/NotificationBadge';
+import NotificationBadge from '../../components/shared/NotificationBadge';
 import { ReportHeader, HEADER_NAVY } from '../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 

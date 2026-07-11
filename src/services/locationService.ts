@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import { updateLocationAPI } from '../network/deliveryNetwork';
+import { updateLocationAPI } from '../networks/delivery/deliveryNetwork';
 
 export interface LocationData {
   lat: number;

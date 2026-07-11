@@ -26,7 +26,7 @@ import {
   assignDeliveriesAPI,
   createDeliveryAPI,
   getShadowInventoryAPI,
-} from '../../../../network/deliveryNetwork';
+} from '../../../../networks/delivery/deliveryNetwork';
 import {
   deliveryListSerializer,
   personnelListSerializer,

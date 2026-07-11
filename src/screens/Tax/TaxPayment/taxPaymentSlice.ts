@@ -5,7 +5,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { TaxRate, TaxType } from '../../../types';
-import { getTaxRatesAPI, createTaxPaymentAPI } from '../../../network/taxNetwork';
+import { getTaxRatesAPI, createTaxPaymentAPI } from '../../../networks/purchases/taxNetwork';
 import {
   taxPaymentSingleSerializer,
   taxRateListSerializer,

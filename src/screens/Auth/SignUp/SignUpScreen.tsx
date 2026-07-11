@@ -16,7 +16,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { THEME } from '../../../utils/theme';
-import { ROUTES } from '../../../navigations-map/Base';
+import { ROUTES } from '../../../navigations-maps/Base';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setPendingUser } from '../authSlice';
 import {

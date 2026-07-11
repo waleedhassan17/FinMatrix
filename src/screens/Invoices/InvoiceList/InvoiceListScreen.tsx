@@ -37,7 +37,7 @@ import {
   setStatusFilter,
   type InvoiceStatusFilter,
 } from './invoiceListSlice';
-import EmptyState from '../../../components/EmptyState';
+import EmptyState from '../../../components/shared/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { formatCurrency, formatDate } from '../../../utils/formatters';

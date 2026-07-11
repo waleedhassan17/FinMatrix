@@ -36,7 +36,7 @@ import {
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { AGENCY_TYPE_COLORS } from '../../../models/agencyModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
-import { getAgencyItemsAPI, addAgencyItemAPI } from '../../../network/agencyNetwork';
+import { getAgencyItemsAPI, addAgencyItemAPI } from '../../../networks/inventory/agencyNetwork';
 import { formatCurrency } from '../../../utils/formatters';
 
 type DetailRoute = RouteProp<MoreStackParamList, 'AgencyDetail'>;

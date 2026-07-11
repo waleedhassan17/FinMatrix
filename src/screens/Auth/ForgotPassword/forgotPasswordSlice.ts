@@ -1,7 +1,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import { authForgotPassword } from '@network/authNetwork';
-import type { ForgotPasswordPayload } from '@network/authNetwork';
+import { authForgotPassword } from '@networks/auth/authNetwork';
+import type { ForgotPasswordPayload } from '@networks/auth/authNetwork';
 
 export interface ForgotPasswordSliceState {
   email: string;
