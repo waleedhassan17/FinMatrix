@@ -17,6 +17,7 @@ import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
+import { useSignOut } from '../../../hooks/useSignOut';
 import { selectFeatures } from '../../Auth/authSlice';
 import {
   selectPreferences, selectSettingsLoading, selectSettingsSaving,
@@ -244,6 +245,8 @@ const SettingsScreen: React.FC = () => {
     dispatch(savePreferences());
   }, [dispatch]);
 
+  const { signingOut, confirmSignOut } = useSignOut();
+
   return (
     <SafeAreaView style={[s.safe, s.safeTop]} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
@@ -329,6 +332,23 @@ const SettingsScreen: React.FC = () => {
             <Text style={[s.rowLabel, { flex: 1 }]}>Version</Text>
             <Text style={s.rowValue}>1.0.0</Text>
           </View>
+        </View>
+
+        {/* Account */}
+        <SectionHeader title="ACCOUNT" />
+        <View style={s.card}>
+          <TouchableOpacity
+            style={[s.row, signingOut && { opacity: 0.6 }]}
+            activeOpacity={0.55}
+            onPress={confirmSignOut}
+            disabled={signingOut}
+          >
+            <Feather name="log-out" size={18} color={P.danger} style={s.rowIcon} />
+            <Text style={[s.rowLabel, { flex: 1, color: P.danger }]}>
+              {signingOut ? 'Signing Out…' : 'Sign Out'}
+            </Text>
+            {signingOut && <ActivityIndicator size="small" color={P.danger} />}
+          </TouchableOpacity>
         </View>
 
         <View style={{ height: 40 }} />

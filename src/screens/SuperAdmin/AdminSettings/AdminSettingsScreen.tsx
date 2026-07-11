@@ -19,9 +19,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { selectUser, signOut } from '../../Auth/authSlice';
-import { authForgotPassword, authSignOut } from '../../../networks/auth/authNetwork';
+import { useAppSelector } from '../../../hooks/useReduxHooks';
+import { useSignOut } from '../../../hooks/useSignOut';
+import { selectUser } from '../../Auth/authSlice';
+import { authForgotPassword } from '../../../networks/auth/authNetwork';
 import { NOTIFICATION_ICON_NAME } from '../../../components/shared/NotificationIcon';
 
 // Real destinations for the support links.
@@ -106,7 +107,6 @@ const InfoBadge: React.FC<{ label: string; value: string; color: string }> = ({ 
 // MAIN SCREEN
 // ═══════════════════════════════════════════════════════
 const AdminSettingsScreen: React.FC = () => {
-  const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
   const user = useAppSelector(selectUser);
   const displayName = user?.displayName ?? 'Admin';
@@ -133,19 +133,7 @@ const AdminSettingsScreen: React.FC = () => {
   const onEmailAlerts = (v: boolean) => { setEmailAlerts(v); persistPrefs(v, pushAlerts); };
   const onPushAlerts = (v: boolean) => { setPushAlerts(v); persistPrefs(emailAlerts, v); };
 
-  const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          try { await authSignOut(); } catch { /* best effort */ }
-          dispatch(signOut());
-        },
-      },
-    ]);
-  };
+  const { signingOut, confirmSignOut } = useSignOut();
 
   // Real: sends a password-reset code to the super-admin's email.
   const handleChangePassword = () => {
@@ -280,8 +268,8 @@ const AdminSettingsScreen: React.FC = () => {
           <View style={S.sectionCard}>
             <SettingRow
               icon="log-out"
-              label="Sign Out"
-              onPress={handleSignOut}
+              label={signingOut ? 'Signing Out…' : 'Sign Out'}
+              onPress={confirmSignOut}
               isLast
               danger
             />

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, Linking, Platform, ScrollView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, Linking, Platform, ScrollView, StatusBar, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
+import { useSignOut } from '../../../../hooks/useSignOut';
 import { selectDPSettings, setPushNotifications, setSmsNotifications, setEmailNotifications } from './dpSettingsSlice';
 import { selectUser } from '../../../Auth/authSlice';
 import { authForgotPassword } from '../../../../networks/auth/authNetwork';
@@ -29,6 +30,7 @@ const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const settings = useAppSelector(selectDPSettings);
   const user = useAppSelector(selectUser);
   const [isSendingReset, setIsSendingReset] = useState(false);
+  const { signingOut, confirmSignOut } = useSignOut();
 
   const handleChangePassword = async () => {
     if (!user?.email) {
@@ -176,6 +178,31 @@ const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.actionArrow}>
                 <Feather name="chevron-right" size={14} color={THEME.colors.textTertiary} />
               </View>
+            </TouchableOpacity>
+
+            <View style={styles.actionDivider} />
+
+            <TouchableOpacity
+              style={[styles.actionItem, signingOut && { opacity: 0.5 }]}
+              onPress={confirmSignOut}
+              disabled={signingOut}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.dangerLight }]}>
+                  <Feather name="log-out" size={16} color={THEME.colors.danger} />
+                </View>
+                <Text style={[styles.actionLabel, { color: THEME.colors.danger }]}>
+                  {signingOut ? 'Signing Out…' : 'Sign Out'}
+                </Text>
+              </View>
+              {signingOut ? (
+                <ActivityIndicator size="small" color={THEME.colors.danger} />
+              ) : (
+                <View style={styles.actionArrow}>
+                  <Feather name="chevron-right" size={14} color={THEME.colors.textTertiary} />
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>

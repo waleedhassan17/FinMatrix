@@ -5,8 +5,8 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
-import { signOut, setUser } from '../../../Auth/authSlice';
+import { useAppSelector } from '../../../../hooks/useReduxHooks';
+import { useSignOut } from '../../../../hooks/useSignOut';
 import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
 import NotificationIcon from '../../../../components/shared/NotificationIcon';
@@ -16,7 +16,7 @@ import { DP_BRAND } from '../../../../utils/deliveryTheme';
 type Props = NativeStackScreenProps<DPProfileStackParamList, 'DPProfile'>;
 
 const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
-  const dispatch = useAppDispatch();
+  const { signingOut, confirmSignOut } = useSignOut();
   const user = useAppSelector(state => state.auth.user);
   const deliveries = useAppSelector(selectDeliveries);
 
@@ -248,13 +248,14 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         {/* Sign Out Button */}
-        <TouchableOpacity 
-          style={styles.signOutButton}
-          onPress={() => dispatch(signOut())}
+        <TouchableOpacity
+          style={[styles.signOutButton, signingOut && { opacity: 0.5 }]}
+          onPress={confirmSignOut}
+          disabled={signingOut}
           activeOpacity={0.7}
         >
           <Feather name="log-out" size={16} color={THEME.colors.danger} />
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>{signingOut ? 'Signing Out…' : 'Sign Out'}</Text>
         </TouchableOpacity>
 
         {/* Footer */}

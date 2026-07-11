@@ -206,6 +206,21 @@ const rootReducer = combineReducers({
   poDetail: poDetailSlice.reducer,
 });
 
+// Sign-out must wipe the WHOLE store, not just the auth slice: `company` and
+// `inventoryApproval` are persisted and every per-screen slice caches the
+// previous user's data (invoices, payroll, dashboards, …) — none of it may
+// leak into the next session. Handing combineReducers only the auth slice
+// resets every other slice to its initial state, while authSlice's own
+// signOut reducer still runs (it deliberately keeps hasSeenOnboarding so a
+// returning user doesn't see onboarding again). redux-persist then flushes
+// the reset whitelist slices back to AsyncStorage.
+const appReducer: typeof rootReducer = (state, action) => {
+  if (state && action.type === 'auth/signOut') {
+    state = { auth: state.auth } as typeof state;
+  }
+  return rootReducer(state, action);
+};
+
 const persistConfig = {
   key: 'finmatrix-root',
   storage: AsyncStorage,
@@ -213,7 +228,7 @@ const persistConfig = {
   stateReconciler: autoMergeLevel2 as any,
 };
 
-const persistedReducer = persistReducer(persistConfig, rootReducer);
+const persistedReducer = persistReducer(persistConfig, appReducer);
 
 export const store = configureStore({
   reducer: persistedReducer,
