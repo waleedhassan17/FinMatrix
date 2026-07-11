@@ -9,4 +9,11 @@ export const getPayrollRunsAPI = () => wrap(api.get('/payroll/runs'));
 export const getPayrollRunByIdAPI = (id: string) => wrap(api.get(`/payroll/runs/${id}`));
 export const createPayrollRunAPI = (data: any) => wrap(api.post('/payroll/runs', data));
 export const processPayrollRunAPI = (id: string) => wrap(api.post(`/payroll/runs/${id}/process`, {}));
+// Official PDF payslip (backend-rendered; figures tie to the posted entry).
+export const getPayslipPdfAPI = async (runId: string, employeeId: string): Promise<Blob> => {
+  try {
+    const res = await api.get(`/payroll/runs/${runId}/payslip/${employeeId}/pdf`, { responseType: 'blob' });
+    return res.data;
+  } catch (e: any) { throw new Error(extractErrorMessage(e)); }
+};
 export const deletePayrollRunAPI = (id: string) => wrap(api.delete(`/payroll/runs/${id}`));
