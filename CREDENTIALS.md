@@ -12,6 +12,11 @@
 | Large organization | **MetroMatrix** | `metromatrix@gmail.com` | `123456` | large_org_6mo (Rs 4,000/mo · Rs 24,000/6mo) |
 | Warehouse | **Warehouse Co** | `warehouse@gmail.com` | `123456` | warehouse_3mo (Rs 4,000/mo · Rs 12,000/3mo) |
 
+> **PROD note (2026-07-14):** MetroMatrix on prod was retyped to **warehouse**. A dedicated
+> large-org verifier exists ON PROD: **LargeOrg Test Co** — `largeorg@gmail.com` / `123456`
+> (large_org_6mo, approved/active; seeded by `npm run seed:largeorg-test`). It gets
+> payroll/budgets/team/bank-rec but NO inventory, delivery, or agencies anywhere.
+
 What each login shows:
 - **Sukoon** — accounting only: service invoices (zero COGS), bills, customers/vendors, COA, tax, reports. No inventory/payroll/delivery anywhere in the app or API (server 403s).
 - **MetroMatrix** — everything Sukoon has PLUS 3 employees with a **processed payroll run**, an active **budget vs actual**, team management and bank reconciliation. Inventory is off by default (per-company toggle); the delivery module is never available on this tier.
