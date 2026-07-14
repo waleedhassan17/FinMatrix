@@ -47,6 +47,7 @@ import type {
   DeliveryOverviewData,
 } from '../../models/dashboardModel';
 import { THEME } from '../../utils/theme';
+import { isFeatureVisible } from '../../utils/featureGates';
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
 
@@ -127,13 +128,14 @@ const AdminDashboardScreen: React.FC = () => {
   const stats = useAppSelector(selectDashboardStats);
   const transactions = useAppSelector(selectRecentTransactions);
   const delivery = useAppSelector(selectDeliveryOverview);
-  // Three-tier model: the SAME dashboard adapts per type via feature flags —
-  // small business sees the financial cards only; large org adds inventory
-  // when toggled on; warehouse sees everything. Legacy (no flags) = all on.
+  // Three-tier model: the SAME dashboard adapts per type — small business /
+  // large org see the financial cards only; warehouse sees everything; legacy
+  // (no flags, no type) = all on. Warehouse operations are hard-gated by
+  // company type on top of the flags (see featureGates.ts).
   const features = useAppSelector(selectFeatures);
-  const showDelivery = !features || !!features.delivery;
-  const showInventory = !features || !!features.inventory;
-  const showAgencies = !features || !!features.agencies;
+  const showDelivery = isFeatureVisible('delivery', features, user?.companyType);
+  const showInventory = isFeatureVisible('inventory', features, user?.companyType);
+  const showAgencies = isFeatureVisible('agencies', features, user?.companyType);
   const alerts = useAppSelector(selectDashboardAlerts);
   const isRefreshing = useAppSelector(selectIsRefreshing);
   const status = useAppSelector(selectDashboardStatus);

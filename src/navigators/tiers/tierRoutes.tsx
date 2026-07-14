@@ -49,7 +49,6 @@ import CashFlowScreen from '../../screens/Reports/CashFlow/CashFlowScreen';
 import GeneralLedgerScreen from '../../screens/Reports/GeneralLedger/GeneralLedgerScreen';
 import ARAgingScreen from '../../screens/Reports/ARAging/ARAgingScreen';
 import AnalyticsDashboardScreen from '../../screens/Reports/AnalyticsDashboard/AnalyticsDashboardScreen';
-import InventoryValuationScreen from '../../screens/Reports/InventoryValuation/InventoryValuationScreen';
 
 import MoreHubScreen from '../../screens/More/MoreHubScreen';
 import COAListScreen from '../../screens/ChartOfAccounts/COAList/COAListScreen';
@@ -157,9 +156,8 @@ export const SB_MORE_ROUTES: TierRoute[] = [
 ];
 
 // ═══ LARGE ORGANIZATION — small business + payroll/budgets/roles/bank-rec ═══
-// (inventory is a per-company toggle: the Inventory TAB is added dynamically
-// by LargeOrgNavigator from the feature flags; there is still NO delivery
-// and NO purchase orders on this tier.)
+// (warehouse operations — inventory, delivery, purchase orders — are NEVER
+// available on this tier.)
 
 export const LO_DASHBOARD_ROUTES: TierRoute[] = SB_DASHBOARD_ROUTES;
 
@@ -170,9 +168,6 @@ export const LO_REPORTS_ROUTES: TierRoute[] = [
   { name: 'BudgetList', component: BudgetListScreen },
   { name: 'BudgetForm', component: BudgetFormScreen },
   { name: 'BudgetDetail', component: BudgetDetailScreen },
-  // Meaningful once the company's inventory toggle is on; harmless (empty
-  // report) when off — the hub row for it is feature-filtered.
-  { name: 'InventoryValuation', component: InventoryValuationScreen },
 ];
 
 export const LO_MORE_ROUTES: TierRoute[] = [

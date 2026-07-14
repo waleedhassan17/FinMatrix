@@ -1,6 +1,7 @@
 import { createAppSlice } from '@store/createAppSlice';
 import { createSelector } from '@reduxjs/toolkit';
 import type { ReportHubCategory } from '../../../models/reportModel';
+import { isFeatureVisible } from '../../../utils/featureGates';
 
 const initialCategories: ReportHubCategory[] = [
   {
@@ -77,18 +78,28 @@ export const selectReportCategories = (rootState: { reportsHub?: ReportsHubState
  * Three-tier model: report categories/items filtered by the company's
  * feature flags (from auth). Legacy sessions (no flags) see everything —
  * matching the server's fully-unlocked fallback for pre-tiering companies.
+ * Warehouse-only categories (inventory/delivery) are additionally hard-gated
+ * by company type (see featureGates.ts).
  */
+type AuthUserState = {
+  auth?: {
+    user?: {
+      features?: Record<string, boolean> | null;
+      companyType?: string | null;
+    } | null;
+  };
+};
+
 export const selectVisibleReportCategories = createSelector(
   selectReportCategories,
-  (rootState: { auth?: { user?: { features?: Record<string, boolean> | null } | null } }) =>
-    rootState.auth?.user?.features ?? null,
-  (categories, features): ReportHubCategory[] => {
-    if (!features) return categories;
+  (rootState: AuthUserState) => rootState.auth?.user?.features ?? null,
+  (rootState: AuthUserState) => rootState.auth?.user?.companyType ?? null,
+  (categories, features, companyType): ReportHubCategory[] => {
     return categories
-      .filter(c => !(c as any).feature || features[(c as any).feature])
+      .filter(c => isFeatureVisible((c as any).feature, features, companyType))
       .map(c => ({
         ...c,
-        items: c.items.filter(i => !(i as any).feature || features[(i as any).feature]),
+        items: c.items.filter(i => isFeatureVisible((i as any).feature, features, companyType)),
       }))
       .filter(c => c.items.length > 0);
   },

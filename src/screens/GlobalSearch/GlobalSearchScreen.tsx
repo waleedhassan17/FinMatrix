@@ -13,6 +13,8 @@ import {
   selectSearchQuery, selectSearchResults, selectIsSearching, selectRecentSearches,
   setQuery, clearSearch, addRecentSearch, performSearch,
 } from './globalSearchSlice';
+import { selectFeatures, selectUser } from '../Auth/authSlice';
+import { isFeatureVisible } from '../../utils/featureGates';
 import type { SearchResult, SearchModule } from '../../models/auditModel';
 import { MODULE_COLORS } from '../../models/auditModel';
 
@@ -33,6 +35,12 @@ const GlobalSearchScreen: React.FC = () => {
   const results = useAppSelector(selectSearchResults);
   const searching = useAppSelector(selectIsSearching);
   const recentSearches = useAppSelector(selectRecentSearches);
+  const features = useAppSelector(selectFeatures);
+  const companyType = useAppSelector(selectUser)?.companyType;
+  // Three-tier model: only mention inventory when the tier can search it.
+  const searchPlaceholder = isFeatureVisible('inventory', features, companyType)
+    ? 'Search customers, invoices, inventory…'
+    : 'Search customers, invoices, bills…';
   const inputRef = useRef<TextInput>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -85,7 +93,7 @@ const GlobalSearchScreen: React.FC = () => {
           <TextInput
             ref={inputRef}
             style={s.input}
-            placeholder="Search customers, invoices, inventory…"
+            placeholder={searchPlaceholder}
             placeholderTextColor={P.sub}
             value={query}
             onChangeText={handleChangeText}

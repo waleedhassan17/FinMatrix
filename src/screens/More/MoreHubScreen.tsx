@@ -7,7 +7,8 @@ import { Feather } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows } from '../../theme';
 import { THEME } from '../../utils/theme';
 import { useAppSelector } from '../../hooks/useReduxHooks';
-import { selectFeatures } from '../Auth/authSlice';
+import { selectFeatures, selectUser } from '../Auth/authSlice';
+import { isFeatureVisible } from '../../utils/featureGates';
 import { selectCustomers } from '../Customers/CustomerList/customerListSlice';
 import { selectVendors } from '../Vendors/VendorList/vendorListSlice';
 import { selectUnassignedDeliveries } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
@@ -150,11 +151,13 @@ const MoreHubScreen: React.FC = () => {
 
   // Three-tier model: hide rows the company's tier can't open (server 403s
   // are the real enforcement; this keeps the UX free of dead links). Legacy
-  // sessions without flags see everything.
+  // sessions without flags see everything; warehouse-only rows are hard-gated
+  // by company type (see featureGates.ts).
   const features = useAppSelector(selectFeatures);
+  const companyType = useAppSelector(selectUser)?.companyType;
   const sections = SECTIONS.map(section => ({
     ...section,
-    rows: section.rows.filter(r => !r.feature || !features || features[r.feature]),
+    rows: section.rows.filter(r => isFeatureVisible(r.feature, features, companyType)),
   })).filter(section => section.rows.length > 0);
 
   const customerCount = useAppSelector(selectCustomers).length;

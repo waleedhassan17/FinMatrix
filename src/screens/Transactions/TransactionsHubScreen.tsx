@@ -11,7 +11,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
 import { useAppSelector } from '../../hooks/useReduxHooks';
-import { selectFeatures } from '../Auth/authSlice';
+import { selectFeatures, selectUser } from '../Auth/authSlice';
+import { isFeatureVisible } from '../../utils/featureGates';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import { ReportContainer, ReportHeader, SectionCard, ACCENT } from '../../components/reports/ReportUI';
 
@@ -122,10 +123,12 @@ const ACCOUNTING_ROWS: HubRow[] = [
 const TransactionsHubScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   // Feature-filtered rows (three-tier model): legacy sessions (no flags)
-  // see everything, matching the server's fully-unlocked fallback.
+  // see everything, matching the server's fully-unlocked fallback;
+  // warehouse-only rows are hard-gated by company type (featureGates.ts).
   const features = useAppSelector(selectFeatures);
+  const companyType = useAppSelector(selectUser)?.companyType;
   const visible = (rows: HubRow[]) =>
-    rows.filter(r => !r.feature || !features || features[r.feature]);
+    rows.filter(r => isFeatureVisible(r.feature, features, companyType));
   const salesRows = visible(SALES_ROWS);
   const purchaseRows = visible(PURCHASE_ROWS);
   const accountingRows = visible(ACCOUNTING_ROWS);

@@ -1,9 +1,8 @@
 /**
  * LARGE ORGANIZATION navigator (FinMatrix.md Phase 3) — everything Small
  * Business has PLUS payroll/employees, budgets, team & roles, bank
- * reconciliation. The Inventory tab appears only when the company's
- * per-company inventory toggle is on (feature flag from /me) — and even then
- * there is NO delivery module and NO purchase orders on this tier.
+ * reconciliation. Warehouse operations (inventory, delivery, purchase
+ * orders) are NEVER available on this tier.
  */
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
@@ -12,9 +11,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../utils/theme';
-import { useAppSelector } from '../../hooks/useReduxHooks';
-import { selectFeatures } from '../../screens/Auth/authSlice';
-import InventoryStack from '../stacks/InventoryStack';
 import {
   LO_DASHBOARD_ROUTES,
   LO_TRANSACTIONS_ROUTES,
@@ -58,8 +54,6 @@ const TabIcon: React.FC<{ icon: IconName; focused: boolean }> = ({ icon, focused
 
 const LargeOrgNavigator: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const features = useAppSelector(selectFeatures);
-  const inventoryOn = !!features?.inventory;
 
   return (
     <Tab.Navigator
@@ -108,16 +102,6 @@ const LargeOrgNavigator: React.FC = () => {
           tabBarIcon: ({ focused }) => <TabIcon icon="bar-chart-2" focused={focused} />,
         }}
       />
-      {inventoryOn && (
-        <Tab.Screen
-          name="InventoryStack"
-          component={InventoryStack}
-          options={{
-            tabBarLabel: 'Inventory',
-            tabBarIcon: ({ focused }) => <TabIcon icon="archive" focused={focused} />,
-          }}
-        />
-      )}
       <Tab.Screen
         name="MoreStack"
         component={LOMoreStack}
