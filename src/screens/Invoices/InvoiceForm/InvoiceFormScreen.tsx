@@ -49,6 +49,7 @@ import {
 } from '../InvoiceList/invoiceListSlice';
 import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
 import { selectInventoryItems, fetchInventoryItems } from '../../Inventory/InventoryList/inventoryListSlice';
+import { selectFeatures } from '../../Auth/authSlice';
 import { createInvoiceAPI, updateInvoiceAPI } from '../../../networks/sales/invoiceNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { DateField } from '../../../components/reports/ReportUI';
@@ -97,6 +98,7 @@ const InvoiceFormScreen: React.FC = () => {
   const invoices = useAppSelector(selectInvoices);
   const customers = useAppSelector(selectCustomers);
   const inventory = useAppSelector(selectInventoryItems);
+  const features = useAppSelector(selectFeatures);
   const form = useAppSelector(selectInvoiceFormState);
   const hydratedRef = React.useRef(false);
 
@@ -148,7 +150,11 @@ const InvoiceFormScreen: React.FC = () => {
   // ── Load data on mount ──────────────────────────
   useEffect(() => {
     dispatch(fetchCustomers());
-    dispatch(fetchInventoryItems());
+    // Inventory is tier-gated (FinMatrix.md) — skip the fetch entirely for
+    // companies without the feature instead of firing a guaranteed 403.
+    if (features?.inventory !== false) {
+      dispatch(fetchInventoryItems());
+    }
 
     if (hydratedRef.current) return;
     hydratedRef.current = true;

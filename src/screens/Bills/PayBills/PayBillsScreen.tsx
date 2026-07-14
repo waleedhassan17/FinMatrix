@@ -40,7 +40,7 @@ import {
 } from './payBillsSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
 import { fetchBills } from '../BillList/billListSlice';
-import { chartOfAccountsData } from '../../../models/coaModel';
+import { fetchAccounts, selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import { DateField } from '../../../components/reports/ReportUI';
@@ -77,24 +77,28 @@ const PayBillsScreen: React.FC = () => {
 
   const form = useAppSelector(selectPayBillsState);
   const vendors = useAppSelector(selectVendors);
+  const accounts = useAppSelector(selectAccounts);
 
   const vendorOptions = useMemo(
     () => vendors.filter(v => v.isActive).map(v => ({ label: v.name, value: v.id })),
     [vendors],
   );
 
+  // Cash/Bank asset accounts from the backend chart of accounts —
+  // the payment source QuickBooks lets you pick when paying bills.
   const bankAccountOptions = useMemo(
     () =>
-      chartOfAccountsData
-        .filter(a => a.isActive && a.type === 'asset' && a.subType === 'current_asset' && ['1000', '1010', '1020'].includes(a.code))
+      accounts
+        .filter(a => a.isActive && a.type === 'asset' && ['Cash', 'Bank'].includes(String(a.subType)))
         .map(a => ({ label: `${a.name} (${a.code})`, value: a.id })),
-    [],
+    [accounts],
   );
 
   const generatePaymentNumber = useCallback(() => `BPAY-${String(Date.now()).slice(-6)}`, []);
 
   useEffect(() => {
     dispatch(fetchVendors());
+    dispatch(fetchAccounts());
     dispatch(fetchAllBillsForPayment());
     dispatch(setPayBillField({ key: 'reference', value: generatePaymentNumber() }));
     return () => { dispatch(resetPayBills()); };

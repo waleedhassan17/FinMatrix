@@ -166,5 +166,5 @@ export const validateAccount = (
   return errors;
 };
 
-// ─── Empty default for screens that reference COA data locally ──
-export const chartOfAccountsData: COAApiAccount[] = [];
+// NOTE: the old static `chartOfAccountsData` array was removed — the chart of
+// accounts is backend-driven. Screens must fetch via coaListSlice.fetchAccounts.

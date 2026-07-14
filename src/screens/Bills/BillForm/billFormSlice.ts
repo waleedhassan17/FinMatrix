@@ -14,8 +14,10 @@ import {
   getBillByIdAPI,
 } from '../../../networks/purchases/billNetwork';
 import { getPurchaseOrderByIdAPI } from '../../../networks/purchases/purchaseOrderNetwork';
+import { getAccountsAPI } from '../../../networks/accounting/coaNetwork';
 import { billSingleSerializer } from '../../../serializers/billSerializer';
 import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
+import { coaListSerializer } from '../../../serializers/coaSerializer';
 
 // ── Line item (form representation — string values for inputs) ──
 export interface BillFormLine {
@@ -266,13 +268,28 @@ export const billFormSlice = createAppSlice({
     /** Activity-diagram: "Tap Convert to Bill" → "Bill created — JE: DR
      *  Inventory, CR AP". Pre-populates the bill form from a PO: copies
      *  vendor, references PO# in notes, and creates one bill line per
-     *  PO line targeting the Inventory account (acct-1200). The user
-     *  can then review and Save & Open to post the JE. */
+     *  PO line targeting the company's real Inventory account (resolved
+     *  from the backend chart of accounts — code 1200 / Inventory
+     *  sub-type). The user can then review and Save & Open to post the JE. */
     fetchBillFromPO: create.asyncThunk(
-      async (poId: string) => getPurchaseOrderByIdAPI(poId),
+      async (poId: string) => {
+        const [poEnvelope, accountsEnvelope] = await Promise.all([
+          getPurchaseOrderByIdAPI(poId),
+          getAccountsAPI().catch((): any => null),
+        ]);
+        const accounts = accountsEnvelope
+          ? coaListSerializer(accountsEnvelope).accounts
+          : [];
+        const inventoryAccount =
+          accounts.find(a => a.isActive && a.code === '1200') ??
+          accounts.find(a => a.isActive && String(a.subType) === 'Inventory') ??
+          null;
+        return { poEnvelope, inventoryAccount };
+      },
       {
         fulfilled: (state, action: PayloadAction<any>) => {
-          const po = purchaseOrderSingleSerializer(action.payload);
+          const { poEnvelope, inventoryAccount } = action.payload;
+          const po = purchaseOrderSingleSerializer(poEnvelope);
           if (!po) return;
           // Brand-new bill — clear any prior edit context.
           state.isEditMode = false;
@@ -289,8 +306,10 @@ export const billFormSlice = createAppSlice({
             .filter(l => l.receivedQuantity > 0 || l.quantity > 0)
             .map(l => ({
               id: `bfl_${nextLineId++}_${Date.now()}`,
-              accountId: 'acct-1200',
-              accountName: 'Inventory',
+              // Falls back to empty when no Inventory account exists so the
+              // form's "select an account" validation prompts the user.
+              accountId: inventoryAccount?.id ?? '',
+              accountName: inventoryAccount?.name ?? '',
               description: `${l.itemName}${l.description ? ` — ${l.description}` : ''} (Qty ${l.receivedQuantity || l.quantity} @ ${l.unitPrice})`,
               amount: String(
                 Math.round((l.receivedQuantity || l.quantity) * l.unitPrice * 100) / 100,

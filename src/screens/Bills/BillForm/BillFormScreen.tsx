@@ -45,7 +45,7 @@ import {
 } from './billFormSlice';
 import { selectBills, fetchBills, upsertBill } from '../BillList/billListSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
-import { chartOfAccountsData } from '../../../models/coaModel';
+import { fetchAccounts, selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { DateField } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -92,6 +92,7 @@ const BillFormScreen: React.FC = () => {
   const isFromPO = !!fromPOId;
   const bills = useAppSelector(selectBills);
   const vendors = useAppSelector(selectVendors);
+  const accounts = useAppSelector(selectAccounts);
   const form = useAppSelector(selectBillFormState);
   const hydratedRef = React.useRef(false);
 
@@ -104,14 +105,19 @@ const BillFormScreen: React.FC = () => {
     [vendors],
   );
 
-  // ── COA expense account options ─────────────────
-  const accountOptions = useMemo(
-    () =>
-      chartOfAccountsData
-        .filter(a => a.isActive && (a.type === 'expense' || a.subType === 'cost_of_goods'))
-        .map(a => ({ label: `${a.code} — ${a.name}`, value: a.id })),
-    [],
-  );
+  // ── COA account options (backend chart of accounts) ──
+  // QuickBooks-style bill categories: every expense account (incl. COGS)
+  // plus purchasable assets (Inventory, Fixed Asset, Prepaid, Other Asset).
+  const accountOptions = useMemo(() => {
+    const assetSubTypes = ['Inventory', 'Fixed Asset', 'Prepaid', 'Other Asset', 'fixed_asset'];
+    return accounts
+      .filter(a => {
+        if (!a.isActive) return false;
+        if (a.type === 'expense') return true;
+        return a.type === 'asset' && assetSubTypes.includes(String(a.subType));
+      })
+      .map(a => ({ label: `${a.code} — ${a.name}`, value: a.id }));
+  }, [accounts]);
 
   // ── Auto-generate bill number ───────────────────
   const generateBillNumber = useCallback(() => {
@@ -125,6 +131,7 @@ const BillFormScreen: React.FC = () => {
   // ── Load data on mount ──────────────────
   useEffect(() => {
     dispatch(fetchVendors());
+    dispatch(fetchAccounts());
 
     if (hydratedRef.current) return;
     hydratedRef.current = true;
@@ -168,12 +175,12 @@ const BillFormScreen: React.FC = () => {
   // ── Account change for a line ───────────────────
   const handleAccountChange = useCallback(
     (lineId: string, accountId: string) => {
-      const acct = chartOfAccountsData.find(a => a.id === accountId);
+      const acct = accounts.find(a => a.id === accountId);
       if (acct) {
         dispatch(setBillLineAccount({ lineId, accountId: acct.id, accountName: acct.name }));
       }
     },
-    [dispatch],
+    [accounts, dispatch],
   );
 
   // ── Validation ──────────────────────────────────
@@ -220,8 +227,8 @@ const BillFormScreen: React.FC = () => {
           `${form.billNumber} has been ${isEditing ? 'updated' : 'created'} as ${saveStatus}. ${jeNarrative}`,
           [{ text: 'OK', onPress: () => navigation.goBack() }],
         );
-      } catch {
-        Alert.alert('Error', 'Failed to save bill. Please try again.');
+      } catch (e: any) {
+        Alert.alert('Error', e?.message || 'Failed to save bill. Please try again.');
       }
     },
     [form, isEditing, dispatch, navigation, validate],

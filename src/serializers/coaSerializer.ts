@@ -20,10 +20,12 @@ export interface SerializedCOASingleData {
 // ─── Helpers ─────────────────────────────────────────
 
 function serializeAccount(raw: any): COAApiAccount {
+  // Backend sends `accountNumber` and numeric strings for balances.
+  const balance = typeof raw.balance === 'number' ? raw.balance : parseFloat(raw.balance);
   return {
     id: raw.id || '',
     companyId: raw.companyId || '',
-    code: raw.code || '',
+    code: raw.code || raw.accountNumber || '',
     name: raw.name || '',
     type: raw.type || 'asset',
     subType: raw.subType || 'current_asset',
@@ -31,7 +33,7 @@ function serializeAccount(raw: any): COAApiAccount {
     parentId: raw.parentId ?? null,
     isActive: typeof raw.isActive === 'boolean' ? raw.isActive : true,
     isSystemAccount: typeof raw.isSystemAccount === 'boolean' ? raw.isSystemAccount : false,
-    balance: typeof raw.balance === 'number' ? raw.balance : 0,
+    balance: isNaN(balance) ? 0 : balance,
     normalBalance: raw.normalBalance === 'credit' ? 'credit' : 'debit',
     createdAt: raw.createdAt || '',
     updatedAt: raw.updatedAt || '',
