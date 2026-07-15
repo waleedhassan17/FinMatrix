@@ -4,7 +4,7 @@
 // From Settings it is opened as a plan chooser (mode='change').
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -20,10 +20,16 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
-import { useAppDispatch } from '../../hooks/useReduxHooks';
+import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { signOut } from '../Auth/authSlice';
 import { authSignOut } from '../../networks/auth/authNetwork';
-import { getBillingStatusAPI, type BillingStatus } from '../../networks/billing/billingNetwork';
+import { bootstrapSession } from '../../components/app-container/appContainerSlice';
+import {
+  getBillingStatusAPI,
+  getPlansForTypeAPI,
+  type BillingStatus,
+  type TierPlanCard,
+} from '../../networks/billing/billingNetwork';
 
 const DS = {
   navy: '#091E42',
@@ -35,56 +41,65 @@ const DS = {
   text: { h: '#172B4D', sub: '#5E6C84', muted: '#8993A4', inv: '#FFFFFF' },
 };
 
-interface PlanOption {
-  key: 'standard' | 'pro';
-  name: string;
-  price: string;
-  duration: string;
-  total: string;
-  perks: string[];
-  accent: [string, string];
-}
+// Plan cards come from GET /billing/plans — the two tier plans (3mo + 6mo)
+// for THIS company's type, with server-set prices. The legacy standard/pro
+// cards that used to be hardcoded here are no longer offered anywhere (the
+// backend also rejects them for tier companies with PLAN_TYPE_MISMATCH).
+const PLAN_ACCENTS = ['#00875A', '#6554C0'];
 
-const PAID_PLANS: PlanOption[] = [
-  {
-    key: 'standard',
-    name: 'Standard',
-    price: 'Rs 1,000',
-    duration: '6 months',
-    total: 'Rs 6,000 total',
-    perks: ['Up to 3 delivery personnel', 'Full accounting suite', 'Priority support'],
-    accent: ['#00875A', '#006644'],
-  },
-  {
-    key: 'pro',
-    name: 'Pro',
-    price: 'Rs 2,000',
-    duration: '2 months',
-    total: 'Rs 4,000 total',
-    perks: ['Up to 3 delivery personnel', 'Full accounting suite', 'Advanced analytics'],
-    accent: ['#6554C0', '#5243AA'],
-  },
-];
+const perksFor = (p: TierPlanCard): string[] => {
+  const perks = ['Full accounting suite'];
+  if (p.deliveryPersonnelLimit > 0) {
+    perks.push(`Up to ${p.deliveryPersonnelLimit} delivery personnel`);
+  }
+  if (p.monthlySavingsLabel) {
+    perks.push(`Save ${p.monthlySavingsLabel}/month vs the 3-month plan`);
+  }
+  return perks;
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RenewSubscription'>;
 
 const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
   const dispatch = useAppDispatch();
   const mode = route.params?.mode ?? 'renew';
+  const companyStatus = useAppSelector(s => s.auth.user?.companyStatus ?? null);
   const [status, setStatus] = useState<BillingStatus | null>(null);
+  const [plans, setPlans] = useState<TierPlanCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const resyncing = useRef(false);
 
   const load = useCallback(async () => {
     try {
-      setStatus(await getBillingStatusAPI());
+      const [s, p] = await Promise.all([
+        getBillingStatusAPI(),
+        getPlansForTypeAPI().then(r => r.plans).catch(() => [] as TierPlanCard[]),
+      ]);
+      setStatus(s);
+      if (p.length > 0) setPlans(p);
+      // Approved while we sat here (renew-only gate): billing says the
+      // account is active again but Redux still holds the stale 'inactive'
+      // companyStatus that keeps this gate mounted. Re-run the session
+      // bootstrap — /auth/me refreshes the user and the navigator swaps
+      // straight back into the app. Without this the user stayed stuck on
+      // this screen until a full app restart.
+      if (
+        mode === 'renew' &&
+        s.accountStatus === 'active' &&
+        companyStatus !== 'active' &&
+        !resyncing.current
+      ) {
+        resyncing.current = true;
+        dispatch(bootstrapSession());
+      }
     } catch {
       /* keep last */
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [mode, companyStatus, dispatch]);
 
   useFocusEffect(
     useCallback(() => {
@@ -95,7 +110,15 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
   const awaiting = status?.lastSubmission?.status === 'submitted';
   const rejected = status?.lastSubmission?.status === 'rejected';
 
-  const choose = (plan: 'standard' | 'pro') => {
+  // While a submission is with the admin, poll so approval lands without the
+  // user having to pull-to-refresh (20s is plenty for a manual review flow).
+  useEffect(() => {
+    if (!awaiting) return;
+    const id = setInterval(load, 20000);
+    return () => clearInterval(id);
+  }, [awaiting, load]);
+
+  const choose = (plan: string) => {
     if (awaiting) return; // a submission is already with the admin — no double-pay
     navigation.navigate('SubscriptionPay', { plan, mode: mode === 'renew' ? 'renew' : 'change' });
   };
@@ -204,41 +227,50 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
         )}
 
         <Text style={S.pickHeading}>{mode === 'renew' ? 'Select a plan to renew' : 'Available plans'}</Text>
-        {PAID_PLANS.map((p) => (
-          <TouchableOpacity
-            key={p.key}
-            style={[S.planCard, awaiting && S.planCardDisabled]}
-            activeOpacity={0.85}
-            disabled={awaiting}
-            onPress={() => choose(p.key)}
-          >
-            <View style={[S.planStripe, { backgroundColor: p.accent[0] }]} />
-            <View style={{ flex: 1 }}>
-              <View style={S.planHeaderRow}>
-                <Text style={S.planName}>{p.name}</Text>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={S.planPrice}>
-                    {p.price} <Text style={S.planDuration}>/ month</Text>
-                  </Text>
-                  <Text style={S.planTotal}>
-                    {p.duration} · {p.total}
-                  </Text>
+        {plans.length === 0 ? (
+          <View style={S.banner}>
+            <Feather name="wifi-off" size={16} color={DS.text.sub} />
+            <Text style={[S.bannerText, { color: DS.text.sub }]}>
+              Could not load the plans. Pull down to try again.
+            </Text>
+          </View>
+        ) : (
+          plans.map((p, i) => (
+            <TouchableOpacity
+              key={p.key}
+              style={[S.planCard, awaiting && S.planCardDisabled]}
+              activeOpacity={0.85}
+              disabled={awaiting}
+              onPress={() => choose(p.key)}
+            >
+              <View style={[S.planStripe, { backgroundColor: PLAN_ACCENTS[i % PLAN_ACCENTS.length] }]} />
+              <View style={{ flex: 1 }}>
+                <View style={S.planHeaderRow}>
+                  <Text style={S.planName}>{p.durationMonths} months</Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={S.planPrice}>
+                      {p.monthlyLabel} <Text style={S.planDuration}>/ month</Text>
+                    </Text>
+                    <Text style={S.planTotal}>
+                      {p.durationMonths} months · {p.totalLabel} total
+                    </Text>
+                  </View>
                 </View>
+                {perksFor(p).map((perk) => (
+                  <View key={perk} style={S.perkRow}>
+                    <Feather name="check" size={13} color={DS.primary} />
+                    <Text style={S.perkText}>{perk}</Text>
+                  </View>
+                ))}
               </View>
-              {p.perks.map((perk) => (
-                <View key={perk} style={S.perkRow}>
-                  <Feather name="check" size={13} color={DS.primary} />
-                  <Text style={S.perkText}>{perk}</Text>
-                </View>
-              ))}
-            </View>
-            <Feather name="chevron-right" size={20} color={DS.text.muted} />
-          </TouchableOpacity>
-        ))}
+              <Feather name="chevron-right" size={20} color={DS.text.muted} />
+            </TouchableOpacity>
+          ))
+        )}
 
         <Text style={S.footnote}>
-          All accounting features are available on every plan — including Free. Paid plans raise
-          the delivery-personnel limit from 1 to 3.
+          Prices are for your company's tier. All features of your tier stay available for the
+          whole subscription period, and your data is never deleted between renewals.
         </Text>
 
         {mode === 'renew' && (
