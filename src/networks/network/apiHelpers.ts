@@ -11,6 +11,7 @@ import {
   getStoredCompanyId,
   clearTokens,
 } from '../../utils/storageUtils';
+import { emitSessionExpired } from '../../utils/authEvents';
 
 // ★ BACKEND BASE URL ★
 export const API_BASE_URL = 'https://finmatrix-api-prod-665c6b5cb6a1.herokuapp.com/api/v1';
@@ -105,7 +106,16 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         await clearTokens();
-        // The app should detect auth state change and redirect to login
+        // Tell the app the session is gone so it dispatches signOut() and
+        // returns to sign-in (handler registered in AppContainer). Without
+        // this, Redux stays "authenticated" on screens whose every request
+        // now fails until the next cold start. Skipped for the signout
+        // endpoint itself — that flow already resets the store, and the
+        // "Session expired" toast would be wrong during an intentional
+        // sign-out.
+        if (!url.includes('/auth/signout') && !url.includes('/auth/logout')) {
+          emitSessionExpired();
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

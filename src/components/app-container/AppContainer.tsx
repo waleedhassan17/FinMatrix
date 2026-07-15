@@ -30,7 +30,9 @@ import { bootstrapSession, selectIsAppReady } from './appContainerSlice';
 import {
   selectIsAuthenticated,
   selectUser,
+  signOut,
 } from '../../screens/Auth/authSlice';
+import { setSessionExpiredHandler } from '../../utils/authEvents';
 import { resetSignInForm } from '../../screens/Auth/SignIn/signInSlice';
 import { resetSignUpForm } from '../../screens/Auth/SignUp/signUpSlice';
 import { resetForgotPasswordForm } from '../../screens/Auth/ForgotPassword/forgotPasswordSlice';
@@ -65,6 +67,22 @@ export const AppContainer: React.FC = () => {
   // their view; missing/invalid token → sign-in. Sets isAppReady when done.
   useEffect(() => {
     dispatch(bootstrapSession());
+  }, [dispatch]);
+
+  // ─── Session-expired bridge: when the axios 401-refresh flow gives up it
+  // has already cleared the stored tokens; this handler resets the store so
+  // the navigator switches back to sign-in instead of leaving the user on
+  // authenticated screens whose every request fails.
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      dispatch(signOut());
+      Toast.show({
+        type: 'info',
+        text1: 'Session expired',
+        text2: 'Please sign in again.',
+      });
+    });
+    return () => setSessionExpiredHandler(null);
   }, [dispatch]);
 
   // ─── Clear auth form slices when user becomes authenticated ──

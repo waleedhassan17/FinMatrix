@@ -191,7 +191,10 @@ export const authMe = async () => {
 
 export const authSignOut = async () => {
   try {
-    await api.post('/auth/signout');
+    // Short timeout: revocation is best-effort — offline users should not
+    // stare at a spinner for the client's default 30s before the local
+    // sign-out proceeds.
+    await api.post('/auth/signout', undefined, { timeout: 8000 });
   } catch {
     // Ignore errors on signout
   } finally {

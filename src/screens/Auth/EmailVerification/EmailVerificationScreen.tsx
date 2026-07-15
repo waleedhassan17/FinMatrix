@@ -17,6 +17,7 @@ import {
   authResendVerification,
   authVerifyEmail,
   authMe,
+  authSignOut,
 } from '../../../networks/auth/authNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
 import Toast from 'react-native-toast-message';
@@ -118,7 +119,10 @@ const EmailVerificationScreen: React.FC = () => {
     }
   };
 
-  const handleBackToSignIn = () => {
+  const handleBackToSignIn = async () => {
+    // Signup stores tokens before the email is verified — revoke + clear them
+    // (best effort, never throws) or a cold start restores this half-session.
+    await authSignOut();
     dispatch(signOut());
     navigation.navigate('SignIn');
   };

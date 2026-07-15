@@ -25,7 +25,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
-import { selectUser, signOut } from '../Auth/authSlice';
+import { selectUser } from '../Auth/authSlice';
+import { useSignOut } from '../../hooks/useSignOut';
 import {
   loadPlatformStats,
   selectPlatformStats,
@@ -221,10 +222,15 @@ const SuperAdminDashboardScreen: React.FC = () => {
     setRefreshing(false);
   }, [dispatch]);
 
+  // Full sign-out (confirm → revoke server-side → clear tokens → reset store);
+  // a raw dispatch(signOut()) here left the AsyncStorage tokens behind, so a
+  // cold start silently signed the super admin back in.
+  const { confirmSignOut } = useSignOut();
   const onSignOut = useCallback(() => {
     setDrawerOpen(false);
-    dispatch(signOut());
-  }, [dispatch]);
+    // Let the drawer close before the confirm alert appears.
+    setTimeout(confirmSignOut, 150);
+  }, [confirmSignOut]);
 
   const isLoading = statsStatus === 'loading' && !stats;
   const displayName = user?.displayName ?? 'Super Admin';
