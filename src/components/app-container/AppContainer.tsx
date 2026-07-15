@@ -32,7 +32,10 @@ import {
   selectUser,
   signOut,
 } from '../../screens/Auth/authSlice';
-import { setSessionExpiredHandler } from '../../utils/authEvents';
+import {
+  setSessionExpiredHandler,
+  setCompanyStatusStaleHandler,
+} from '../../utils/authEvents';
 import { resetSignInForm } from '../../screens/Auth/SignIn/signInSlice';
 import { resetSignUpForm } from '../../screens/Auth/SignUp/signUpSlice';
 import { resetForgotPasswordForm } from '../../screens/Auth/ForgotPassword/forgotPasswordSlice';
@@ -83,6 +86,23 @@ export const AppContainer: React.FC = () => {
       });
     });
     return () => setSessionExpiredHandler(null);
+  }, [dispatch]);
+
+  // ─── Company-status-stale bridge: a business request 403'd with
+  // COMPANY_NOT_ACTIVE (subscription expired mid-session, account
+  // deactivated, …). Re-run the session bootstrap — /auth/me returns the
+  // fresh companyStatus, setUser updates Redux, and renderNavigator swaps to
+  // the matching gate (RenewSubscription for inactive). Debounced: a screen
+  // firing several requests at once must trigger only one refresh.
+  const statusRefreshAt = React.useRef(0);
+  useEffect(() => {
+    setCompanyStatusStaleHandler(() => {
+      const now = Date.now();
+      if (now - statusRefreshAt.current < 5000) return;
+      statusRefreshAt.current = now;
+      dispatch(bootstrapSession());
+    });
+    return () => setCompanyStatusStaleHandler(null);
   }, [dispatch]);
 
   // ─── Clear auth form slices when user becomes authenticated ──

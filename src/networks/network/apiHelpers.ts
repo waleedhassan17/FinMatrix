@@ -11,7 +11,10 @@ import {
   getStoredCompanyId,
   clearTokens,
 } from '../../utils/storageUtils';
-import { emitSessionExpired } from '../../utils/authEvents';
+import {
+  emitSessionExpired,
+  emitCompanyStatusStale,
+} from '../../utils/authEvents';
 
 // ★ BACKEND BASE URL ★
 export const API_BASE_URL = 'https://finmatrix-api-prod-665c6b5cb6a1.herokuapp.com/api/v1';
@@ -74,6 +77,21 @@ api.interceptors.response.use(
     // Skip refresh for auth endpoints — a 401 there IS the real error
     const url = originalRequest?.url ?? '';
     const isAuthRoute = url.includes('/auth/signin') || url.includes('/auth/signup') || url.includes('/auth/refresh-token');
+
+    // ── Company no longer active (server gate) ──────────────────────────
+    // CompanyGuard 403s every business request once the company stops being
+    // active — subscription lapsed (enforced live, ahead of the billing
+    // cron), deactivated, or un-approved. Redux only learns companyStatus at
+    // signin / cold start, so without this the user would stay on dead
+    // screens until the next restart. The handler (AppContainer) re-fetches
+    // /auth/me and the navigator routes to the matching gate screen.
+    if (error.response?.status === 403) {
+      const body: any = error.response.data;
+      const code = body?.error?.code ?? body?.code;
+      if (code === 'COMPANY_NOT_ACTIVE') {
+        emitCompanyStatusStale();
+      }
+    }
 
     // Only attempt refresh on 401 and if we haven't already retried
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {

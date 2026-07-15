@@ -20,3 +20,25 @@ export const setSessionExpiredHandler = (h: SessionExpiredHandler | null) => {
 export const emitSessionExpired = () => {
   handler?.();
 };
+
+// ─── Company-status-stale (403 COMPANY_NOT_ACTIVE) ───────────────────────
+// Fired when a business request is rejected because the company is no longer
+// active — e.g. the subscription lapsed mid-session (server enforces expiry
+// live) or a super admin deactivated the account. The registered handler
+// re-fetches /auth/me so Redux picks up the fresh companyStatus and the
+// navigator routes to the matching gate (RenewSubscription for inactive)
+// without waiting for an app restart.
+
+type CompanyStatusStaleHandler = () => void;
+
+let statusStaleHandler: CompanyStatusStaleHandler | null = null;
+
+export const setCompanyStatusStaleHandler = (
+  h: CompanyStatusStaleHandler | null,
+) => {
+  statusStaleHandler = h;
+};
+
+export const emitCompanyStatusStale = () => {
+  statusStaleHandler?.();
+};
