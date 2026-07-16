@@ -2,7 +2,7 @@
 // FinMatrix — Settings Network (Production API)
 // ═══════════════════════════════════════════════════════
 
-import { api, extractErrorMessage } from '../network/apiHelpers';
+import { api, extractErrorMessage, getStoredCompanyId } from '../network/apiHelpers';
 import {
   preferencesResponseSerializer,
   companiesResponseSerializer,
@@ -63,8 +63,46 @@ export const savePreferences = async (preferences: any): Promise<any> => {
   return res?.data?.preferences ?? res?.data ?? preferences;
 };
 
-export const saveCompanyProfile = async (data: CompanyProfilePayload): Promise<any> => {
-  return updateSettingsAPI(data);
+/**
+ * Persist the Company Profile onto the COMPANY RECORD (PATCH /companies/:id)
+ * — the identity printed on invoices, statements and payslips. The previous
+ * implementation PATCHed /settings, which writes the CompanySettings
+ * preferences table: the profile silently never saved, so documents fell
+ * back to placeholder branding.
+ */
+export const saveCompanyProfile = async (
+  data: CompanyProfilePayload & {
+    city?: string; state?: string; zipCode?: string; country?: string; website?: string;
+  },
+): Promise<any> => {
+  const companyId = await getStoredCompanyId();
+  if (!companyId) throw new Error('No active company.');
+  // Empty strings fail backend field validators (@IsEmail etc.) — send only
+  // filled values; address travels as the nested DTO shape.
+  const clean = (v?: string) => (v && v.trim() !== '' ? v.trim() : undefined);
+  const payload: Record<string, unknown> = {
+    name: clean(data.name),
+    industry: clean(data.industry),
+    phone: clean(data.phone),
+    email: clean(data.email),
+    website: clean(data.website),
+    taxId: clean(data.taxId),
+  };
+  const address = {
+    street: clean(data.address),
+    city: clean(data.city),
+    state: clean(data.state),
+    postalCode: clean(data.zipCode),
+    country: clean(data.country),
+  };
+  if (Object.values(address).some(v => v !== undefined)) payload.address = address;
+  Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+  try {
+    const response = await api.patch(`/companies/${companyId}`, payload);
+    return response.data?.data ?? response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
 };
 
 export const fetchCompanies = async (): Promise<any> => {

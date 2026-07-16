@@ -53,6 +53,7 @@ import {
   openWhatsAppChat,
   sanitizePhoneForWhatsApp,
 } from '../../../utils/invoiceShare';
+import { useCompanyInfo } from '../../../utils/companyInfo';
 import type { InvoiceStatus, Payment } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
@@ -94,6 +95,7 @@ const InvoiceDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DetailRoute>();
   const dispatch = useAppDispatch();
+  const companyInfo = useCompanyInfo();
 
   const invoiceId = route.params.invoiceId;
   const invoice = useAppSelector(selectInvoiceDetail);
@@ -171,7 +173,7 @@ const InvoiceDetailScreen: React.FC = () => {
 
   const handleSendViaWhatsApp = useCallback(async () => {
     if (!invoice) return;
-    const result = await shareInvoiceViaWhatsApp({ invoice, customer });
+    const result = await shareInvoiceViaWhatsApp({ invoice, customer, company: companyInfo });
     if (result.shared) {
       await markAsSentOnBackend(
         'whatsapp',
@@ -182,7 +184,7 @@ const InvoiceDetailScreen: React.FC = () => {
 
   const handleSharePdf = useCallback(async () => {
     if (!invoice) return;
-    const result = await shareInvoicePdf({ invoice, customer });
+    const result = await shareInvoicePdf({ invoice, customer, company: companyInfo });
     if (result.shared && invoice.status === 'draft') {
       await markAsSentOnBackend('share');
     }

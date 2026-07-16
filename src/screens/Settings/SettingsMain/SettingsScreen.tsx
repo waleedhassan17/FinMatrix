@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, StatusBar,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -9,11 +9,10 @@ import {
   type BillingStatus, type PlanLimits,
 } from '../../../networks/billing/billingNetwork';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
-import { HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { ReportHeader, HeaderAction, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
@@ -23,10 +22,6 @@ import {
   selectPreferences, selectSettingsLoading, selectSettingsSaving,
   setPreference, loadPreferences, savePreferences,
 } from './settingsSlice';
-import {
-  DATE_FORMAT_OPTIONS, NUMBER_FORMAT_OPTIONS,
-  CURRENCY_OPTIONS, PAYMENT_TERMS_OPTIONS,
-} from '../../../models/settingsModel';
 import type { AppPreferences } from '../../../models/settingsModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
@@ -42,12 +37,6 @@ const P = {
   sub: '#94A3B8',
   divider: '#E2E8F0',
   danger: '#DE350B',
-};
-
-/* ─── helpers ─── */
-const cyclePick = (options: string[], current: string) => {
-  const idx = options.indexOf(current);
-  return options[(idx + 1) % options.length];
 };
 
 /* ─── section row components ─── */
@@ -85,20 +74,6 @@ const ToggleRow: React.FC<ToggleRowProps> = ({ icon, label, value, onChange }) =
   </View>
 );
 
-interface PickRowProps {
-  icon: keyof typeof Feather.glyphMap;
-  label: string;
-  value: string;
-  onPress: () => void;
-}
-const PickRow: React.FC<PickRowProps> = ({ icon, label, value, onPress }) => (
-  <TouchableOpacity style={s.row} activeOpacity={0.55} onPress={onPress}>
-    <Feather name={icon} size={18} color={P.brand} style={s.rowIcon} />
-    <Text style={[s.rowLabel, { flex: 1 }]}>{label}</Text>
-    <Text style={s.pickValue}>{value}</Text>
-    <Feather name="repeat" size={14} color={P.sub} style={{ marginLeft: 6 }} />
-  </TouchableOpacity>
-);
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
   <Text style={s.sectionHeader}>{title}</Text>
@@ -234,12 +209,6 @@ const SettingsScreen: React.FC = () => {
     [dispatch],
   );
 
-  const pick = useCallback(
-    (key: keyof AppPreferences, options: string[]) => () => {
-      dispatch(setPreference({ key, value: cyclePick(options, prefs[key] as string) }));
-    },
-    [dispatch, prefs],
-  );
 
   const handleSave = useCallback(() => {
     dispatch(savePreferences());
@@ -249,18 +218,13 @@ const SettingsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[s.safe, s.safeTop]} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
       <View style={s.body}>
-      {/* Header */}
-      <LinearGradient colors={HEADER_NAVY} style={s.header}>
-        <TouchableOpacity onPress={() => nav.goBack()} style={s.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Feather name="arrow-left" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Settings</Text>
-        <TouchableOpacity onPress={handleSave} disabled={saving} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={[s.saveText, saving && { opacity: 0.5 }]}>{saving ? 'Saving…' : 'Save'}</Text>
-        </TouchableOpacity>
-      </LinearGradient>
+      <ReportHeader
+        title="Settings"
+        subtitle="Plan, company & notifications"
+        onBack={() => nav.goBack()}
+        right={<HeaderAction label={saving ? 'Saving…' : 'Save'} icon="check" onPress={handleSave} disabled={saving} />}
+      />
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {/* Subscription (phase2.md Flow 3) */}
@@ -276,38 +240,6 @@ const SettingsScreen: React.FC = () => {
               <NavRow icon="users" label="User Management" onPress={() => nav.navigate('UserManagement')} />
             </>
           )}
-        </View>
-
-        {/* Preferences */}
-        <SectionHeader title="PREFERENCES" />
-        <View style={s.card}>
-          <PickRow
-            icon="calendar"
-            label="Date Format"
-            value={prefs.dateFormat}
-            onPress={pick('dateFormat', DATE_FORMAT_OPTIONS)}
-          />
-          <View style={s.divider} />
-          <PickRow
-            icon="hash"
-            label="Number Format"
-            value={prefs.numberFormat}
-            onPress={pick('numberFormat', NUMBER_FORMAT_OPTIONS)}
-          />
-          <View style={s.divider} />
-          <PickRow
-            icon="dollar-sign"
-            label="Currency"
-            value={prefs.currency}
-            onPress={pick('currency', CURRENCY_OPTIONS)}
-          />
-          <View style={s.divider} />
-          <PickRow
-            icon="clock"
-            label="Default Payment Terms"
-            value={prefs.defaultPaymentTerms}
-            onPress={pick('defaultPaymentTerms', PAYMENT_TERMS_OPTIONS)}
-          />
         </View>
 
         {/* Notifications */}
@@ -365,29 +297,6 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: P.pageBg },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
   body: { flex: 1, backgroundColor: P.pageBg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  backBtn: { padding: 2 },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: THEME.typography.fontFamily,
-  },
-  saveText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: THEME.typography.fontFamily,
-  },
   scroll: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   sectionHeader: {
     fontSize: 12,
@@ -421,12 +330,6 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: P.sub,
     marginRight: 6,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  pickValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: P.brand,
     fontFamily: THEME.typography.fontFamily,
   },
   divider: { height: 1, backgroundColor: P.divider, marginLeft: 50 },

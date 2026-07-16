@@ -48,6 +48,7 @@ import {
 } from '../../../serializers/vendorSerializer';
 import { getVendorStatementAPI } from '../../../networks/purchases/vendorNetwork';
 import { shareVendorStatementPdf } from '../../../utils/statementPdf';
+import { useCompanyInfo } from '../../../utils/companyInfo';
 import type { PaymentTerms, Vendor } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
@@ -77,6 +78,7 @@ const VendorDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DetailRoute>();
   const dispatch = useAppDispatch();
+  const companyInfo = useCompanyInfo();
 
   const vendors = useAppSelector(selectVendors);
   const accounts = useAppSelector(selectAccounts);
@@ -172,7 +174,7 @@ const VendorDetailScreen: React.FC = () => {
         startDate: toIso(start),
         endDate: toIso(now),
       });
-      const result = await shareVendorStatementPdf(payload);
+      const result = await shareVendorStatementPdf(payload, companyInfo);
       if (!result.shared && result.reason) {
         Alert.alert('Statement', result.reason);
       }

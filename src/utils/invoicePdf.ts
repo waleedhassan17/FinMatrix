@@ -30,12 +30,15 @@ export interface CompanyInfo {
   website?: string;
 }
 
+/**
+ * Neutral last-resort fallback ONLY. Every share/download call site passes
+ * the signed-in company via useCompanyInfo() (utils/companyInfo.ts) so the
+ * documents carry the REAL business identity from Company Profile — a
+ * customer-facing slip must never show the app vendor's branding.
+ */
 export const DEFAULT_COMPANY: CompanyInfo = {
-  name: 'FinMatrix Corp.',
-  addressLine1: 'Office 23, Gulberg III',
-  addressLine2: 'Lahore, Pakistan',
-  email: 'info@finmatrix.pk',
-  phone: '+92 42 3578 0001',
+  name: 'Your Company',
+  addressLine1: '',
 };
 
 // ─── HTML escaping (defence-in-depth for user-supplied text) ──
@@ -333,7 +336,7 @@ export function buildInvoiceHtml({
       <div class="company">
         <div class="company-name">${esc(company.name)}</div>
         <div class="company-meta">
-          ${esc(company.addressLine1)}${company.addressLine2 ? `<br/>${esc(company.addressLine2)}` : ''}
+          ${company.addressLine1 ? esc(company.addressLine1) : ''}${company.addressLine2 ? `<br/>${esc(company.addressLine2)}` : ''}
           ${company.email || company.phone ? `<br/>${esc(company.email ?? '')}${company.email && company.phone ? '  •  ' : ''}${esc(company.phone ?? '')}` : ''}
           ${company.taxId ? `<br/>Tax ID: ${esc(company.taxId)}` : ''}
         </div>

@@ -1,3 +1,12 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Company Profile
+// ═══════════════════════════════════════════════════════
+// The business identity screen. Everything here prints on the documents the
+// company sends out — invoices, statements, payslips — so the screen leads
+// with that promise, saves onto the real company record
+// (PATCH /companies/:id), and refreshes the store so the very next share
+// uses the new details.
+
 import React, { useEffect, useCallback } from 'react';
 import {
   View,
@@ -8,7 +17,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Alert } from '../../../utils/alert';
+import Toast from 'react-native-toast-message';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,8 +29,11 @@ import {
   selectCompanyProfileForm, selectCompanyProfileSaving,
   setField, loadCompanyData, saveProfile,
 } from './companyProfileSlice';
-import { selectActiveCompany } from '../../Auth/companySlice';
+import { selectActiveCompany, loadCompany } from '../../Auth/companySlice';
+import { selectUser } from '../../Auth/authSlice';
+import { getCompanyAPI } from '../../../networks/auth/authNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
+import { ReportHeader, HeaderAction, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -48,7 +60,11 @@ const CompanyProfileScreen: React.FC = () => {
   const form = useAppSelector(selectCompanyProfileForm);
   const saving = useAppSelector(selectCompanyProfileSaving);
   const company = useAppSelector(selectActiveCompany);
+  const user = useAppSelector(selectUser);
 
+  // Hydrate the form from the store; if the store has no company yet (deep
+  // navigation before the dashboard fetched it), pull it from the API so the
+  // profile never opens blank.
   useEffect(() => {
     if (company) {
       dispatch(loadCompanyData({
@@ -64,8 +80,27 @@ const CompanyProfileScreen: React.FC = () => {
         taxId: company.taxId,
         industry: company.industry,
       }));
+    } else if (user?.companyId) {
+      getCompanyAPI(user.companyId)
+        .then(api => {
+          if (!api?.id) return;
+          dispatch(loadCompanyData({
+            name: api.name ?? '',
+            industry: api.industry ?? '',
+            address: typeof api.address === 'string' ? api.address : api.address?.street ?? '',
+            city: api.address?.city ?? '',
+            state: api.address?.state ?? '',
+            zipCode: api.address?.postalCode ?? '',
+            country: api.address?.country ?? '',
+            phone: api.phone ?? '',
+            email: api.email ?? '',
+            website: api.website ?? '',
+            taxId: api.taxId ?? '',
+          }));
+        })
+        .catch((): void => undefined);
     }
-  }, [dispatch, company]);
+  }, [dispatch, company, user?.companyId]);
 
   const update = useCallback(
     (key: keyof typeof form) => (value: string) => {
@@ -76,50 +111,80 @@ const CompanyProfileScreen: React.FC = () => {
 
   const handleSave = useCallback(() => {
     if (!form.name.trim()) {
-      Alert.alert('Validation', 'Company name is required.');
+      Toast.show({ type: 'error', text1: 'Company name required', text2: 'Enter your company name before saving.' });
       return;
     }
-    dispatch(saveProfile()).then(() => {
-      Alert.alert('Saved', 'Company profile updated successfully.', [
-        { text: 'OK', onPress: () => nav.goBack() },
-      ]);
-    });
-  }, [dispatch, form.name, nav]);
+    dispatch(saveProfile())
+      .unwrap()
+      .then(() => {
+        // Refresh the store copy so the NEXT invoice/statement share prints
+        // the new identity without needing an app restart.
+        if (company) {
+          dispatch(loadCompany({ ...company, ...form }));
+        }
+        Toast.show({ type: 'success', text1: 'Profile saved', text2: 'Your documents now use the updated company details.' });
+        nav.goBack();
+      })
+      .catch((e: any) => {
+        Toast.show({ type: 'error', text1: 'Could not save', text2: e?.message ?? 'Please try again.' });
+      });
+  }, [dispatch, form, company, nav]);
 
   const cycleFiscal = useCallback(() => {
     const idx = FISCAL_MONTHS.indexOf(form.fiscalYearStart);
     dispatch(setField({ key: 'fiscalYearStart', value: FISCAL_MONTHS[(idx + 1) % 12] }));
   }, [dispatch, form.fiscalYearStart]);
 
+  const initials = (form.name || 'C')
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => nav.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Feather name="arrow-left" size={22} color={P.text} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Company Profile</Text>
-        <TouchableOpacity onPress={handleSave} disabled={saving}>
-          <Feather name="check" size={22} color={saving ? P.sub : P.brand} />
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={[s.safe, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
+      <ReportHeader
+        title="Company Profile"
+        subtitle="Shown on invoices, statements & payslips"
+        onBack={() => nav.goBack()}
+        right={<HeaderAction label={saving ? 'Saving…' : 'Save'} icon="check" onPress={handleSave} disabled={saving} />}
+      />
 
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: P.pageBg }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-          {/* Logo Placeholder */}
-          <View style={s.logoCard}>
-            <View style={s.logoCircle}>
-              <Feather name="camera" size={28} color={P.sub} />
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          {/* Identity card: live preview of the document letterhead */}
+          <View style={s.identityCard}>
+            <View style={s.identityAvatar}>
+              <Text style={s.identityInitials}>{initials}</Text>
             </View>
-            <Text style={s.logoHint}>Tap to upload logo</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.identityName} numberOfLines={1}>{form.name || 'Your Company'}</Text>
+              <Text style={s.identityMeta} numberOfLines={2}>
+                {[form.address, [form.city, form.country].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
+                  || 'Add your address and contact details below'}
+              </Text>
+              {(form.phone || form.email) ? (
+                <Text style={s.identityMeta} numberOfLines={1}>
+                  {[form.phone, form.email].filter(Boolean).join('  ·  ')}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          <View style={s.hintRow}>
+            <Feather name="file-text" size={13} color={P.sectionLabel} />
+            <Text style={s.hintText}>
+              This letterhead appears on every invoice, statement and payslip you download or share.
+            </Text>
           </View>
 
           {/* Basic Info */}
           <Text style={s.sectionLabel}>BASIC INFORMATION</Text>
           <View style={s.card}>
-            <CustomInput label="Company Name" value={form.name} onChangeText={update('name')} placeholder="Enter company name" />
+            <CustomInput label="Company Name *" value={form.name} onChangeText={update('name')} placeholder="Enter company name" />
             <CustomInput label="Industry" value={form.industry} onChangeText={update('industry')} placeholder="e.g. Trading, Manufacturing" />
             <CustomInput label="Tax ID / NTN" value={form.taxId} onChangeText={update('taxId')} placeholder="Enter tax ID" />
           </View>
@@ -176,45 +241,55 @@ export default CompanyProfileScreen;
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: P.pageBg },
-  header: {
+  scroll: { padding: spacing.md },
+  identityCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    gap: spacing.md,
     backgroundColor: P.card,
-    borderBottomWidth: 1,
-    borderBottomColor: P.divider,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    ...shadows.card,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  identityAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: P.brandLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  identityInitials: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: P.brand,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  identityName: {
+    fontSize: 17,
+    fontWeight: '800',
     color: P.text,
     fontFamily: THEME.typography.fontFamily,
   },
-  scroll: { padding: spacing.md },
-  logoCard: {
-    alignItems: 'center',
-    backgroundColor: P.card,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.lg,
-    ...shadows.card,
-  },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: P.brandLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: P.divider,
-    borderStyle: 'dashed',
-  },
-  logoHint: {
-    fontSize: 13,
+  identityMeta: {
+    fontSize: 12,
     color: P.sub,
-    marginTop: spacing.sm,
+    marginTop: 2,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  hintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.xs,
+    marginLeft: spacing.xs,
+  },
+  hintText: {
+    flex: 1,
+    fontSize: 11,
+    color: P.sectionLabel,
     fontFamily: THEME.typography.fontFamily,
   },
   sectionLabel: {

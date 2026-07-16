@@ -43,6 +43,7 @@ import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { PAYMENT_TERMS_LABELS } from '../../../models/customerModel';
 import { getCustomerStatementAPI } from '../../../networks/sales/customerNetwork';
 import { statementSerializer, shareStatementPdf } from '../../../utils/statementPdf';
+import { useCompanyInfo } from '../../../utils/companyInfo';
 import { mapCustomer } from '../../../serializers/customerSerializer';
 import type { PaymentTerms, Customer } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
@@ -81,6 +82,7 @@ const CustomerDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DetailRoute>();
   const dispatch = useAppDispatch();
+  const companyInfo = useCompanyInfo();
   const customerId = route.params.customerId;
 
   const customer = useAppSelector(selectCustomerDetail);
@@ -192,7 +194,7 @@ const CustomerDetailScreen: React.FC = () => {
       });
       const data = statementSerializer(payload);
       if (!data) throw new Error('Could not load the statement.');
-      const result = await shareStatementPdf(data);
+      const result = await shareStatementPdf(data, companyInfo);
       if (!result.shared && result.reason) {
         Alert.alert('Statement', result.reason);
       }
