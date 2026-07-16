@@ -113,3 +113,34 @@ Remaining (honest) gaps: `theme/index.ts` and `utils/theme.ts` still coexist as 
 spacing sources (merging them touches 88+ files — out of presentation-only scope);
 the simple record forms (Customer/Vendor/…) have no section headers, which is
 acceptable (single-section forms); per-field focus order relies on RN defaults.
+
+---
+
+## FOLLOW-UP PASS — headers, dialogs, app-wide polish (2026-07-16, commits 3e48127..888d4db)
+
+**One professional header action (user request).** New `HeaderAction` in ReportUI —
+a brand-green labeled pill (plus icon + "New", THEME.form.addPill spec, identical to the
+in-form AddButton) is now the ONLY create affordance. Replaced across 17 screens: bare
+"+" icon buttons (7 list screens), local "Add" pills (COA/Inventory/TaxSettings),
+"+ New"/"+ Add" buttons (Invoice/Bill/PO/Customer/Vendor/Agency lists), the text-only
+"+ Add" on DeliveryPersonnelList — and the duplicate "+" FABs were removed (one create
+affordance per screen).
+
+**One header, app-wide.** Eleven form screens that hand-rolled their own headers now use
+the shared navy `ReportHeader` (standard white back button, title + subtitle): Invoice,
+Bill, PO, PayBills, ReceivePayment (slightly-off navy gradients, violet back arrows) and
+Customer, Vendor, Item, Agency, Adjustment, Add-Personnel (three different white-header
+layouts, violet arrows).
+
+**Dialogs that actually work on web.** All 49 form `Alert.alert` calls became toasts —
+this also fixed a real bug: the document forms' success dialogs gated `goBack()` behind
+an OK callback that never fires on react-native-web, so saving never navigated back on
+web. For the ~50 remaining dialogs (delete/void confirmations on detail screens etc.),
+new `src/utils/alert.ts` is a drop-in web-safe Alert (native passthrough;
+window.confirm/alert/prompt on web) — 48 screens switched by import swap alone.
+
+**Detail polish.** Emoji glyph buttons (🔄/✕/📞 bottom bar on AdminDeliveryDetail, ✕
+modal closes) replaced with Feather icons.
+
+Verified: `tsc --noEmit` clean, `expo export` bundles, handlers and payloads untouched
+(import/JSX-wrapper changes only).
