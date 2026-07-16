@@ -13,6 +13,7 @@ import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
+import { AddButton } from '../../components/form/FormUI';
 import LineItemRow from '../../components/shared/LineItemRow';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
@@ -135,7 +136,7 @@ const EstimateFormScreen: React.FC = () => {
               onDelete={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
               canDelete={lines.length > 1} />
           ))}
-          <CustomButton title="+ Add Item" variant="secondary" onPress={() => setLines(prev => [...prev, blankLine()])} />
+          <AddButton label="Add Item" onPress={() => setLines(prev => [...prev, blankLine()])} />
         </SectionCard>
 
         <Card>
