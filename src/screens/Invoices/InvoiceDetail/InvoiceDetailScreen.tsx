@@ -257,9 +257,17 @@ const InvoiceDetailScreen: React.FC = () => {
       >
         {/* ── Company Info ────────────────────────── */}
         <View style={styles.invoiceCard}>
-          <Text style={styles.companyName}>FinMatrix Corp.</Text>
-          <Text style={styles.companyMeta}>Office 23, Gulberg III, Lahore, Pakistan</Text>
-          <Text style={styles.companyMeta}>info@finmatrix.pk  •  +92 42 3578 0001</Text>
+          <Text style={styles.companyName}>{companyInfo.name}</Text>
+          {(companyInfo.addressLine1 || companyInfo.addressLine2) ? (
+            <Text style={styles.companyMeta}>
+              {[companyInfo.addressLine1, companyInfo.addressLine2].filter(Boolean).join(', ')}
+            </Text>
+          ) : null}
+          {(companyInfo.email || companyInfo.phone) ? (
+            <Text style={styles.companyMeta}>
+              {[companyInfo.email, companyInfo.phone].filter(Boolean).join('  •  ')}
+            </Text>
+          ) : null}
 
           <View style={styles.divider} />
 

@@ -18,6 +18,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
+import { useCompanyInfo } from '../../../utils/companyInfo';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -61,6 +62,7 @@ const BillDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DetailRoute>();
   const dispatch = useAppDispatch();
+  const companyInfo = useCompanyInfo();
 
   const billId = route.params.billId;
   const bill = useAppSelector(selectBillDetail);
@@ -187,9 +189,17 @@ const BillDetailScreen: React.FC = () => {
       >
         {/* ── Bill Card ───────────────────────────── */}
         <View style={styles.billCard}>
-          <Text style={styles.companyName}>FinMatrix Corp.</Text>
-          <Text style={styles.companyMeta}>Office 23, Gulberg III, Lahore, Pakistan</Text>
-          <Text style={styles.companyMeta}>info@finmatrix.pk  •  +92 42 3578 0001</Text>
+          <Text style={styles.companyName}>{companyInfo.name}</Text>
+          {(companyInfo.addressLine1 || companyInfo.addressLine2) ? (
+            <Text style={styles.companyMeta}>
+              {[companyInfo.addressLine1, companyInfo.addressLine2].filter(Boolean).join(', ')}
+            </Text>
+          ) : null}
+          {(companyInfo.email || companyInfo.phone) ? (
+            <Text style={styles.companyMeta}>
+              {[companyInfo.email, companyInfo.phone].filter(Boolean).join('  •  ')}
+            </Text>
+          ) : null}
 
           <View style={styles.divider} />
 
