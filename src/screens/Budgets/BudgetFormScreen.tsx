@@ -11,6 +11,7 @@ import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
+import { AddButton } from '../../components/form/FormUI';
 import { ReportContainer, ReportHeader, Card, SectionCard } from '../../components/reports/ReportUI';
 import type { ReportsStackParamList } from '../../navigators/stacks/ReportsStack';
 
@@ -120,7 +121,7 @@ const BudgetFormScreen: React.FC = () => {
               )}
             </View>
           ))}
-          <CustomButton title="+ Add Account" variant="secondary" onPress={() => setLines(prev => [...prev, { accountId: '', annual: '0' }])} />
+          <AddButton label="Add Account" onPress={() => setLines(prev => [...prev, { accountId: '', annual: '0' }])} />
         </SectionCard>
 
         <Card>
