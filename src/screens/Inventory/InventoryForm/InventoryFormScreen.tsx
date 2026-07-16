@@ -40,6 +40,7 @@ import {
   resetInventoryForm,
 } from './inventoryFormSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
+import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import {
@@ -265,20 +266,15 @@ const InventoryFormScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Feather name="arrow-left" size={17} color={colors.secondary} style={{ marginRight: 2 }} /><Text style={styles.backBtn}>Back</Text></View>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isEdit ? 'Edit Item' : 'Add Item'}
-        </Text>
-        <View style={styles.headerSpacer} />
-      </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
+      <ReportHeader
+        title={isEdit ? 'Edit Item' : 'Add Item'}
+        subtitle="Inventory item"
+        onBack={() => navigation.goBack()}
+      />
 
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={[styles.flex, { backgroundColor: colors.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
@@ -561,30 +557,6 @@ const InventoryFormScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backBtn: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.secondary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  headerSpacer: { width: 60 },
   form: {
     padding: spacing.lg,
   },

@@ -33,6 +33,7 @@ import {
 import { fetchVendors, upsertVendor } from '../VendorList/vendorListSlice';
 import { selectAccounts, fetchAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
+import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { validateVendor, PAYMENT_TERMS_OPTIONS } from '../../../models/vendorModel';
@@ -133,16 +134,14 @@ const VendorFormScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={24} color={colors.secondary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isEditing ? 'Edit Vendor' : 'Add Vendor'}</Text>
-      </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
+      <ReportHeader
+        title={isEditing ? 'Edit Vendor' : 'Add Vendor'}
+        subtitle="Supplier profile"
+        onBack={() => navigation.goBack()}
+      />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -299,19 +298,7 @@ const VendorFormScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
   backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg },
 
   sectionTitle: {

@@ -18,6 +18,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { v4 as uuidv4 } from 'uuid';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomInput from '../../../../Custom-Components/CustomInput';
+import { ReportHeader, HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
@@ -258,16 +259,13 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <View style={styles.backIconContainer}><Feather name="arrow-left" size={20} color={colors.textPrimary} /></View>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Personnel</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
+      <KeyboardAvoidingView style={[styles.flex, { backgroundColor: colors.background }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ReportHeader
+          title="Add Personnel"
+          subtitle="Delivery team member"
+          onBack={() => navigation.goBack()}
+        />
 
         {renderQuickAddTab()}
 
@@ -307,18 +305,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 4, backgroundColor: colors.white,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  backIconContainer: {
-    width: 36, height: 36, borderRadius: 10, backgroundColor: colors.background,
-    borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center',
-  },
   backArrow: { fontSize: 24, color: colors.textPrimary, marginTop: -2, fontWeight: '300' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: THEME.typography.h3.fontSize, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  headerSpacer: { width: 36 },
   tabContent: { padding: spacing.lg, paddingBottom: spacing.xl + 40 },
 
   quickAddDesc: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, marginBottom: spacing.lg, lineHeight: 20, fontFamily: THEME.typography.fontFamily },
