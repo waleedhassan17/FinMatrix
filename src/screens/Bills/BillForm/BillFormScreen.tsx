@@ -49,6 +49,12 @@ import { fetchAccounts, selectAccounts } from '../../ChartOfAccounts/COAList/coa
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { DateField } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
+import {
+  AddButton,
+  FormSectionHeader,
+  PrimaryButton,
+  SecondaryButton,
+} from '../../../components/form/FormUI';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency } from '../../../utils/formatters';
 import type { BillStatus } from '../../../types';
@@ -344,10 +350,7 @@ const BillFormScreen: React.FC = () => {
           contentContainerStyle={styles.scrollContent}
         >
           {/* ── Section: Vendor & Dates ──────────────── */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: P.accent }]} />
-            <Text style={styles.sectionTitle}>BILL DETAILS</Text>
-          </View>
+          <FormSectionHeader title="BILL DETAILS" dotColor={P.accent} />
           <View style={styles.sectionCard}>
             <View style={[styles.cardAccent, { backgroundColor: P.accent }]} />
             <View style={styles.cardBody}>
@@ -392,20 +395,11 @@ const BillFormScreen: React.FC = () => {
           </View>
 
           {/* ── Section: Line Items ──────────────────── */}
-          <View style={styles.linesSectionHeader}>
-            <View style={styles.sectionLabelRow}>
-              <View style={[styles.sectionDot, { backgroundColor: '#6554C0' }]} />
-              <Text style={styles.sectionTitle}>LINE ITEMS</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.addLineBtn}
-              onPress={() => dispatch(addBillLine())}
-              activeOpacity={0.7}
-            >
-              <Feather name="plus" size={14} color="#FFFFFF" />
-              <Text style={styles.addLineBtnText}>Add Line</Text>
-            </TouchableOpacity>
-          </View>
+          <FormSectionHeader
+            title="LINE ITEMS"
+            dotColor="#6554C0"
+            right={<AddButton label="Add Line" onPress={() => dispatch(addBillLine())} />}
+          />
           {form.errors.lines && (
             <Text style={styles.lineError}>{form.errors.lines}</Text>
           )}
@@ -413,10 +407,7 @@ const BillFormScreen: React.FC = () => {
           {form.lines.map((line, idx) => renderLineItem(line, idx))}
 
           {/* ── Section: Notes ───────────────────────── */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: '#8B5CF6' }]} />
-            <Text style={styles.sectionTitle}>NOTES</Text>
-          </View>
+          <FormSectionHeader title="NOTES" dotColor="#8B5CF6" />
           <View style={styles.sectionCard}>
             <View style={[styles.cardAccent, { backgroundColor: '#8B5CF6' }]} />
             <View style={styles.cardBody}>
@@ -460,35 +451,20 @@ const BillFormScreen: React.FC = () => {
           {/* ── Action Buttons ───────────────────────── */}
           <View style={styles.btnRow}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <TouchableOpacity
-                style={styles.secondaryBtn}
+              <SecondaryButton
+                title="Save Draft"
                 onPress={() => handleSave('draft')}
-                activeOpacity={0.7}
                 disabled={form.isSaving}
-              >
-                <Feather name="save" size={16} color={P.accent} />
-                <Text style={[styles.secondaryBtnText, { color: P.accent }]}>Save Draft</Text>
-              </TouchableOpacity>
+                icon={<Feather name="save" size={16} color={colors.primary} />}
+              />
             </View>
             <View style={{ flex: 1.4 }}>
-              <TouchableOpacity
-                style={styles.primaryBtn}
+              <PrimaryButton
+                title={form.isSaving ? 'Saving…' : isEditing ? 'Update & Open' : 'Save & Open'}
                 onPress={() => handleSave('open')}
-                activeOpacity={0.7}
-                disabled={form.isSaving}
-              >
-                <LinearGradient
-                  colors={['#DE350B', '#BF2600']}
-                  style={styles.primaryBtnGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Feather name="check-circle" size={16} color="#FFFFFF" />
-                  <Text style={styles.primaryBtnText}>
-                    {form.isSaving ? 'Saving…' : isEditing ? 'Update & Open' : 'Save & Open'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                isLoading={form.isSaving}
+                icon={<Feather name="check-circle" size={16} color="#FFFFFF" />}
+              />
             </View>
           </View>
         </ScrollView>
@@ -524,9 +500,6 @@ const styles = StyleSheet.create({
 
   scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl },
 
-  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.sm, gap: spacing.xs + 2 },
-  sectionDot: { width: 8, height: 8, borderRadius: 4 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#64748B', fontFamily: THEME.typography.fontFamily, letterSpacing: 1 },
 
   sectionCard: {
     flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: borderRadius.md,
@@ -536,16 +509,6 @@ const styles = StyleSheet.create({
   cardBody: { flex: 1, padding: spacing.md },
   rowFields: { flexDirection: 'row' },
 
-  linesSectionHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginTop: spacing.lg, marginBottom: spacing.sm,
-  },
-  addLineBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: spacing.sm + 6, paddingVertical: spacing.xs + 4,
-    backgroundColor: '#6554C0', borderRadius: 20,
-  },
-  addLineBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
   lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
 
   // ── Line Item Card ──────────────────────────────
@@ -569,18 +532,17 @@ const styles = StyleSheet.create({
   },
 
   descInput: {
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm,
-    fontSize: 14, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.sm, backgroundColor: '#F8FAFC',
+    borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
+    ...THEME.typography.bodyMd, color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   lineNumRow: { flexDirection: 'row', marginBottom: spacing.xs },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  fieldLabel: { ...THEME.typography.caption, fontWeight: '500', color: colors.textSecondary, marginBottom: spacing.xs },
   numericInput: {
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm,
-    fontSize: 14, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
-    backgroundColor: '#F8FAFC',
+    borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
+    ...THEME.typography.bodyMd, color: colors.textPrimary,
   },
   lineTotalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: spacing.xs },
   lineTotal: { fontSize: 14, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
@@ -597,18 +559,6 @@ const styles = StyleSheet.create({
   grandTotalValue: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 
   btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.md },
-  secondaryBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
-    paddingVertical: 14, borderRadius: borderRadius.md,
-    borderWidth: 1.5, borderColor: '#DE350B', backgroundColor: '#FFF1F0',
-  },
-  secondaryBtnText: { fontSize: 15, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
-  primaryBtn: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.card },
-  primaryBtnGradient: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: spacing.xs, paddingVertical: 14,
-  },
-  primaryBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 });
 
 export default BillFormScreen;
