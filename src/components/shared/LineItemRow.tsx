@@ -67,6 +67,13 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
   const taxLabel =
     TAX_OPTIONS.find(o => o.value === taxRate)?.label ?? `${taxRate} %`;
 
+  // Ledger rule: the complete number must always be visible at full size.
+  // Static minimums aren't enough for big figures, so each column GROWS
+  // with its own value (~9px per digit at bodyMd + field padding) and the
+  // row pans horizontally when the grown columns exceed the screen width.
+  const qtyWidth = Math.max(84, quantity.length * 9 + 30);
+  const rateWidth = Math.max(132, unitPrice.length * 9 + 30);
+
   return (
     <View style={styles.container}>
       {/* Row header */}
@@ -101,7 +108,7 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
         contentContainerStyle={styles.numericScroll}
       >
         <View style={styles.numericRow}>
-          <View style={[styles.numericField, styles.colQty]}>
+          <View style={[styles.numericField, { minWidth: qtyWidth }]}>
             <Text style={styles.fieldLabel}>Qty</Text>
             <TextInput
               style={styles.numericInput}
@@ -112,7 +119,7 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
               keyboardType="decimal-pad"
             />
           </View>
-          <View style={[styles.numericField, styles.colRate]}>
+          <View style={[styles.numericField, { minWidth: rateWidth }]}>
             <Text style={styles.fieldLabel}>Rate</Text>
             <TextInput
               style={styles.numericInput}
@@ -245,9 +252,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   numericField: { flex: 1 },
-  // Usable floors per column — Rate widest (large amounts), Tax fixed-ish.
-  colQty: { minWidth: 84 },
-  colRate: { minWidth: 132 },
   colTax: { minWidth: 96 },
   fieldLabel: {
     ...THEME.typography.caption,
@@ -301,11 +305,15 @@ const styles = StyleSheet.create({
     ...THEME.typography.bodySm,
     fontWeight: '600',
     color: colors.textSecondary,
+    flexShrink: 1,
   },
+  // The figure never shrinks or clips — the label gives way instead.
   amountValue: {
     ...THEME.typography.h4,
     fontWeight: '700',
     color: colors.primary,
+    flexShrink: 0,
+    marginLeft: spacing.sm,
   },
 
   // Tax picker modal
