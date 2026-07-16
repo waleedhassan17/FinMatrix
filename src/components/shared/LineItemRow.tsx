@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Modal,
   FlatList,
+  ScrollView,
 } from 'react-native';
 import { colors, spacing, borderRadius, shadows } from '../../theme';
 import { THEME } from '../../utils/theme';
@@ -88,42 +89,53 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
       />
 
       {/* Qty + Rate + Tax row — all three columns share identical
-          label typography and field height for visual consistency. */}
-      <View style={styles.numericRow}>
-        <View style={styles.numericField}>
-          <Text style={styles.fieldLabel}>Qty</Text>
-          <TextInput
-            style={styles.numericInput}
-            value={quantity}
-            onChangeText={v => sanitizeNumeric(v, onQuantityChange)}
-            placeholder="0"
-            placeholderTextColor={colors.textLight}
-            keyboardType="decimal-pad"
-          />
+          label typography and field height for visual consistency.
+          Ledger rule applied to inputs too: columns keep a usable minimum
+          width and the row PANS horizontally on narrow screens instead of
+          squeezing the fields into each other. On wide screens the columns
+          grow to fill the card and nothing changes visually. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.numericScroll}
+      >
+        <View style={styles.numericRow}>
+          <View style={[styles.numericField, styles.colQty]}>
+            <Text style={styles.fieldLabel}>Qty</Text>
+            <TextInput
+              style={styles.numericInput}
+              value={quantity}
+              onChangeText={v => sanitizeNumeric(v, onQuantityChange)}
+              placeholder="0"
+              placeholderTextColor={colors.textLight}
+              keyboardType="decimal-pad"
+            />
+          </View>
+          <View style={[styles.numericField, styles.colRate]}>
+            <Text style={styles.fieldLabel}>Rate</Text>
+            <TextInput
+              style={styles.numericInput}
+              value={unitPrice}
+              onChangeText={v => sanitizeNumeric(v, onUnitPriceChange)}
+              placeholder="0.00"
+              placeholderTextColor={colors.textLight}
+              keyboardType="decimal-pad"
+            />
+          </View>
+          <View style={[styles.numericField, styles.colTax]}>
+            <Text style={styles.fieldLabel}>Tax</Text>
+            <TouchableOpacity
+              style={styles.taxTrigger}
+              onPress={() => setTaxPickerOpen(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.taxTriggerText}>{taxLabel}</Text>
+              <Text style={styles.taxChevron}>▾</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.numericField}>
-          <Text style={styles.fieldLabel}>Rate</Text>
-          <TextInput
-            style={styles.numericInput}
-            value={unitPrice}
-            onChangeText={v => sanitizeNumeric(v, onUnitPriceChange)}
-            placeholder="0.00"
-            placeholderTextColor={colors.textLight}
-            keyboardType="decimal-pad"
-          />
-        </View>
-        <View style={styles.numericField}>
-          <Text style={styles.fieldLabel}>Tax</Text>
-          <TouchableOpacity
-            style={styles.taxTrigger}
-            onPress={() => setTaxPickerOpen(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.taxTriggerText}>{taxLabel}</Text>
-            <Text style={styles.taxChevron}>▾</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </ScrollView>
 
       {/* Calculated amount */}
       <View style={styles.amountRow}>
@@ -226,11 +238,17 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
+  numericScroll: { minWidth: '100%' },
   numericRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+    flexGrow: 1,
   },
   numericField: { flex: 1 },
+  // Usable floors per column — Rate widest (large amounts), Tax fixed-ish.
+  colQty: { minWidth: 84 },
+  colRate: { minWidth: 132 },
+  colTax: { minWidth: 96 },
   fieldLabel: {
     ...THEME.typography.caption,
     fontWeight: '500',

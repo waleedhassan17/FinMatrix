@@ -282,7 +282,7 @@ const BillFormScreen: React.FC = () => {
           />
 
           <View style={styles.lineNumRow}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={{ flex: 1, minWidth: 132, marginRight: spacing.sm }}>
               <Text style={styles.fieldLabel}>Amount (Rs)</Text>
               <TextInput
                 style={styles.numericInput}
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     ...THEME.typography.bodyMd, color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
-  lineNumRow: { flexDirection: 'row', marginBottom: spacing.xs },
+  lineNumRow: { flexDirection: 'row', marginBottom: spacing.xs, flexWrap: 'wrap', rowGap: spacing.xs },
   fieldLabel: { ...THEME.typography.caption, fontWeight: '500', color: colors.textSecondary, marginBottom: spacing.xs },
   numericInput: {
     borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm,

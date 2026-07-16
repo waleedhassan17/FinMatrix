@@ -296,7 +296,7 @@ const POFormScreen: React.FC = () => {
                 />
 
                 <View style={styles.lineNumRow}>
-                  <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <View style={{ flex: 1, minWidth: 132, marginRight: spacing.sm }}>
                     <Text style={styles.fieldLabel}>Quantity</Text>
                     <TextInput
                       style={styles.numericInput}
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
     ...THEME.typography.bodyMd, color: colors.textPrimary, marginTop: spacing.xs,
   },
-  lineNumRow: { flexDirection: 'row', marginTop: spacing.sm },
+  lineNumRow: { flexDirection: 'row', marginTop: spacing.sm, flexWrap: 'wrap', rowGap: spacing.xs },
   fieldLabel: { ...THEME.typography.caption, fontWeight: '500', color: colors.textSecondary, marginBottom: spacing.xs },
   numericInput: {
     borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm,
