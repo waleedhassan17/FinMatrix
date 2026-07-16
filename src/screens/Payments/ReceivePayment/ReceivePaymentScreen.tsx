@@ -46,6 +46,7 @@ import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/cu
 import { fetchInvoices } from '../../Invoices/InvoiceList/invoiceListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
+import { PrimaryButton, SecondaryButton } from '../../../components/form/FormUI';
 import { DateField } from '../../../components/reports/ReportUI';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
@@ -428,17 +429,15 @@ const ReceivePaymentScreen: React.FC = () => {
       {/* ── Sticky Action Bar ─────────────────────── */}
       <View style={styles.actionBar}>
         <View style={{ flex: 1, marginRight: spacing.sm }}>
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Text style={styles.cancelBtnText}>Cancel</Text>
-          </TouchableOpacity>
+          <SecondaryButton title="Cancel" onPress={() => navigation.goBack()} disabled={form.isSaving} />
         </View>
         <View style={{ flex: 1.4 }}>
-          <TouchableOpacity style={styles.recordBtn} onPress={handleSave} activeOpacity={0.7} disabled={form.isSaving}>
-            <LinearGradient colors={['#059669', '#047857']} style={styles.recordBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Feather name="check-circle" size={16} color="#FFFFFF" />
-              <Text style={styles.recordBtnText}>{form.isSaving ? 'Recording…' : 'Record Payment'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          <PrimaryButton
+            title={form.isSaving ? 'Recording…' : 'Record Payment'}
+            onPress={handleSave}
+            isLoading={form.isSaving}
+            icon={<Feather name="check-circle" size={16} color="#FFFFFF" />}
+          />
         </View>
       </View>
 
@@ -573,14 +572,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2, backgroundColor: '#FFFFFF',
     borderTopWidth: 1, borderTopColor: '#E2E8F0', ...shadows.card,
   },
-  cancelBtn: {
-    alignItems: 'center', justifyContent: 'center', paddingVertical: 14,
-    borderRadius: borderRadius.md, borderWidth: 1.5, borderColor: '#CBD5E1', backgroundColor: '#F8FAFC',
-  },
-  cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#64748B', fontFamily: THEME.typography.fontFamily },
-  recordBtn: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.card },
-  recordBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: 14 },
-  recordBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 });
 
 // ── Success Overlay Styles ────────────────────────

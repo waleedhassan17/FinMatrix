@@ -43,6 +43,7 @@ import { fetchBills } from '../BillList/billListSlice';
 import { fetchAccounts, selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
+import { PrimaryButton, SecondaryButton } from '../../../components/form/FormUI';
 import { DateField } from '../../../components/reports/ReportUI';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
@@ -388,17 +389,15 @@ const PayBillsScreen: React.FC = () => {
           {/* ── Actions ──────────────────────────────── */}
           <View style={styles.btnRow}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} disabled={form.isSaving}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
+              <SecondaryButton title="Cancel" onPress={() => navigation.goBack()} disabled={form.isSaving} />
             </View>
             <View style={{ flex: 1.4 }}>
-              <TouchableOpacity style={styles.recordBtn} onPress={handleSave} activeOpacity={0.7} disabled={form.isSaving}>
-                <LinearGradient colors={['#DE350B', '#BF2600']} style={styles.recordBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  <Feather name="check-circle" size={16} color="#FFFFFF" />
-                  <Text style={styles.recordBtnText}>{form.isSaving ? 'Recording…' : 'Record Payment'}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+              <PrimaryButton
+                title={form.isSaving ? 'Recording…' : 'Record Payment'}
+                onPress={handleSave}
+                isLoading={form.isSaving}
+                icon={<Feather name="check-circle" size={16} color="#FFFFFF" />}
+              />
             </View>
           </View>
         </ScrollView>
@@ -496,14 +495,6 @@ const styles = StyleSheet.create({
   summaryValue: { fontSize: 14, fontWeight: '700', color: '#F1F5F9', fontFamily: THEME.typography.fontFamily },
 
   btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.md },
-  cancelBtn: {
-    alignItems: 'center', justifyContent: 'center', paddingVertical: 14,
-    borderRadius: borderRadius.md, borderWidth: 1.5, borderColor: '#CBD5E1', backgroundColor: '#F8FAFC',
-  },
-  cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#64748B', fontFamily: THEME.typography.fontFamily },
-  recordBtn: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.card },
-  recordBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: 14 },
-  recordBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 });
 
 export default PayBillsScreen;
