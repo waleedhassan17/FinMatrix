@@ -50,7 +50,7 @@ import {
   PrimaryButton,
   SecondaryButton,
 } from '../../../components/form/FormUI';
-import { DateField } from '../../../components/reports/ReportUI';
+import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -194,23 +194,11 @@ const POFormScreen: React.FC = () => {
   // ═════════════════════════════════════════════════════
   return (
     <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={P.headerFrom} />
-      <LinearGradient colors={[P.headerFrom, P.headerTo]} style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={24} color={colors.secondary} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {isEditing ? `Edit ${form.poNumber}` : 'New Purchase Order'}
-          </Text>
-          <Text style={styles.headerSub}>
-            {isEditing ? 'Update PO details' : 'Order items from a vendor'}
-          </Text>
-        </View>
-        <View style={[styles.headerBadge, { backgroundColor: P.accentLight }]}>
-          <Feather name="package" size={16} color={P.accent} />
-        </View>
-      </LinearGradient>
+      <ReportHeader
+        title={isEditing ? `Edit ${form.poNumber}` : 'New Purchase Order'}
+        subtitle={isEditing ? 'Update PO details' : 'Order items from a vendor'}
+        onBack={() => navigation.goBack()}
+      />
 
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F1F5F9' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
@@ -411,18 +399,8 @@ const POFormScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F1F5F9' },
-  safeTop: { backgroundColor: P.headerFrom },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm, paddingBottom: spacing.lg,
-    borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
-  },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  headerCenter: { flex: 1, marginLeft: spacing.sm },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
-  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: THEME.typography.fontFamily, marginTop: 2 },
-  headerBadge: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 
   scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl },
 

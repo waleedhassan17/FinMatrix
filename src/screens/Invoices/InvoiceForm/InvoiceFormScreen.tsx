@@ -52,7 +52,7 @@ import { selectInventoryItems, fetchInventoryItems } from '../../Inventory/Inven
 import { selectFeatures } from '../../Auth/authSlice';
 import { createInvoiceAPI, updateInvoiceAPI } from '../../../networks/sales/invoiceNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
-import { DateField } from '../../../components/reports/ReportUI';
+import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import LineItemRow from '../../../components/shared/LineItemRow';
@@ -304,27 +304,12 @@ const InvoiceFormScreen: React.FC = () => {
   // ═════════════════════════════════════════════════════
   return (
     <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={P.headerFrom} />
       {/* ── Premium Gradient Header ─────────────────── */}
-      <LinearGradient colors={[P.headerFrom, P.headerTo]} style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          activeOpacity={0.7}>
-          <Feather name="arrow-left" size={24} color={colors.secondary} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>
-            {isEditing ? `Edit ${form.invoiceNumber}` : 'New Invoice'}
-          </Text>
-          <Text style={styles.headerSub}>
-            {isEditing ? 'Update invoice details' : 'Create a professional invoice'}
-          </Text>
-        </View>
-        <View style={styles.headerBadge}>
-          <Feather name="file-text" size={16} color={P.accent} />
-        </View>
-      </LinearGradient>
+      <ReportHeader
+        title={isEditing ? `Edit ${form.invoiceNumber}` : 'New Invoice'}
+        subtitle={isEditing ? 'Update invoice details' : 'Create a professional invoice'}
+        onBack={() => navigation.goBack()}
+      />
 
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F1F5F9' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
@@ -532,40 +517,9 @@ const InvoiceFormScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F1F5F9' },
-  safeTop: { backgroundColor: P.headerFrom },
+  safeTop: { backgroundColor: HEADER_NAVY[0] },
 
   // ── Header ──────────────────────────────────────
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  headerCenter: { flex: 1, marginLeft: spacing.sm },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: THEME.typography.fontFamily,
-  },
-  headerSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
-    fontFamily: THEME.typography.fontFamily,
-    marginTop: 2,
-  },
-  headerBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: P.accentLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
   scrollContent: {
     paddingHorizontal: spacing.md,
