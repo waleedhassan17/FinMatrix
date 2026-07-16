@@ -234,7 +234,7 @@ const InvoiceDetailScreen: React.FC = () => {
               onPress={() => navigation.goBack()}
               style={styles.backBtn}
               activeOpacity={0.7}>
-              <Feather name="arrow-left" size={24} color={colors.secondary} />
+              <Feather name="arrow-left" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{invoice.invoiceNumber}</Text>
           </View>
