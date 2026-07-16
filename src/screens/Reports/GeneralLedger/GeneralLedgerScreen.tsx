@@ -73,7 +73,7 @@ const GeneralLedgerScreen: React.FC = () => {
                       <Text style={styles.acctName}>{a.accountName}</Text>
                       <Text style={styles.acctCode}>{a.accountCode} · {a.entries} entries</Text>
                     </View>
-                    <Text style={styles.acctBal}>{rs(a.balance)}</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.acctBal}>{rs(a.balance)}</Text>
                   </View>
                 ))}
               </SectionCard>
@@ -98,15 +98,15 @@ const GeneralLedgerScreen: React.FC = () => {
                     <Text style={styles.bodyText}>{e.accountCode} {e.accountName.split(' ')[0]}</Text>
                     <Text style={styles.refText}>{e.reference}</Text>
                   </View>
-                  <Text style={[styles.colVal, styles.bodyText]}>{e.debit ? rs(e.debit) : '—'}</Text>
-                  <Text style={[styles.colVal, styles.bodyText]}>{e.credit ? rs(e.credit) : '—'}</Text>
+                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText]}>{e.debit ? rs(e.debit) : '—'}</Text>
+                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText]}>{e.credit ? rs(e.credit) : '—'}</Text>
                 </View>
               ))}
               <View style={styles.totalRow}>
                 <Text style={[styles.colDate, styles.totalText]}>Total</Text>
                 <Text style={[styles.colAcct, styles.totalText]} />
-                <Text style={[styles.colVal, styles.totalText]}>{rs(ledger.totals.debit)}</Text>
-                <Text style={[styles.colVal, styles.totalText]}>{rs(ledger.totals.credit)}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.totalText]}>{rs(ledger.totals.debit)}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.totalText]}>{rs(ledger.totals.credit)}</Text>
               </View>
             </SectionCard>
           </>
@@ -133,15 +133,15 @@ const styles = StyleSheet.create({
   acctName: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
   acctCode: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   acctBal: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '700' },
-  headRow: { flexDirection: 'row', paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.border },
+  headRow: { gap: 10, flexDirection: 'row', paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.border },
   headText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
-  bodyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
+  bodyRow: { gap: 10, flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   bodyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
   refText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   colDate: { width: 78 },
   colAcct: { flex: 1.3 },
   colVal: { flex: 1, textAlign: 'right' },
-  totalRow: { flexDirection: 'row', paddingVertical: 10, marginTop: 2, borderTopWidth: 2, borderTopColor: THEME.colors.border },
+  totalRow: { gap: 10, flexDirection: 'row', paddingVertical: 10, marginTop: 2, borderTopWidth: 2, borderTopColor: THEME.colors.border },
   totalText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '800' },
 });
 

@@ -91,14 +91,14 @@ const TrialBalanceScreen: React.FC = () => {
                     <Text style={styles.acctName}>{row.accountName}</Text>
                     <Text style={styles.acctCode}>{row.accountCode}</Text>
                   </View>
-                  <Text style={[styles.colVal, styles.bodyText]}>{row.debit ? rs(row.debit) : '—'}</Text>
-                  <Text style={[styles.colVal, styles.bodyText]}>{row.credit ? rs(row.credit) : '—'}</Text>
+                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText]}>{row.debit ? rs(row.debit) : '—'}</Text>
+                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText]}>{row.credit ? rs(row.credit) : '—'}</Text>
                 </View>
               ))}
               <View style={styles.totalRow}>
                 <Text style={[styles.colAcct, styles.totalText]}>Total</Text>
-                <Text style={[styles.colVal, styles.totalText]}>{rs(report.totalDebits)}</Text>
-                <Text style={[styles.colVal, styles.totalText]}>{rs(report.totalCredits)}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.totalText]}>{rs(report.totalDebits)}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.totalText]}>{rs(report.totalCredits)}</Text>
               </View>
             </SectionCard>
           </>
@@ -112,6 +112,7 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: 'row', gap: THEME.spacing.sm },
   statusRow: { alignItems: 'flex-start', marginTop: THEME.spacing.sm, marginBottom: THEME.spacing.xs },
   headRow: {
+    gap: 10,
     flexDirection: 'row',
     paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -119,6 +120,7 @@ const styles = StyleSheet.create({
   },
   headText: { ...THEME.typography.labelMd, color: THEME.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
   bodyRow: {
+    gap: 10,
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 9,
@@ -131,6 +133,7 @@ const styles = StyleSheet.create({
   colAcct: { flex: 1.6 },
   colVal: { flex: 1, textAlign: 'right' },
   totalRow: {
+    gap: 10,
     flexDirection: 'row',
     paddingVertical: 11,
     marginTop: 2,

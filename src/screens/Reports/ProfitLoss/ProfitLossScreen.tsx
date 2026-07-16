@@ -143,8 +143,8 @@ const Line: React.FC<{ label: string; current: number; prior?: number; show: boo
 }) => (
   <View style={styles.bodyRow}>
     <Text style={[styles.colMetric, styles.bodyText, strong && styles.bold]}>{label}</Text>
-    <Text style={[styles.colVal, styles.bodyText, strong && styles.bold]}>{rs(current)}</Text>
-    {show && <Text style={[styles.colVal, styles.bodyText, strong && styles.bold]}>{rs(prior ?? 0)}</Text>}
+    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText, strong && styles.bold]}>{rs(current)}</Text>
+    {show && <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText, strong && styles.bold]}>{rs(prior ?? 0)}</Text>}
   </View>
 );
 
@@ -159,6 +159,7 @@ const styles = StyleSheet.create({
   switchLabel: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary },
 
   headRow: {
+    gap: 10,
     flexDirection: 'row',
     paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -166,6 +167,7 @@ const styles = StyleSheet.create({
   },
   headText: { ...THEME.typography.labelMd, color: THEME.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
   bodyRow: {
+    gap: 10,
     flexDirection: 'row',
     paddingVertical: 9,
     borderTopWidth: StyleSheet.hairlineWidth,
