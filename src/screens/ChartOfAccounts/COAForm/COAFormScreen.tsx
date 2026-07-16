@@ -9,7 +9,6 @@ import {
   StyleSheet,
   ScrollView,
   Switch,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -18,6 +17,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { getStoredCompanyId } from '../../../utils/storageUtils';
@@ -174,7 +174,7 @@ const COAFormScreen: React.FC = () => {
             },
           }),
         ).unwrap();
-        Alert.alert('Success', 'Account updated successfully.');
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Account updated successfully.' });
       } else {
         await dispatch(
           createAccount({
@@ -191,11 +191,11 @@ const COAFormScreen: React.FC = () => {
             isSystemAccount: false,
           }),
         ).unwrap();
-        Alert.alert('Success', 'Account created successfully.');
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Account created successfully.' });
       }
       navigation.goBack();
     } catch {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Something went wrong. Please try again.' });
     } finally {
       dispatch(setIsSaving(false));
     }

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 
@@ -39,9 +40,9 @@ const VendorCreditFormScreen: React.FC = () => {
     setLines(prev => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
   const save = async () => {
-    if (!vendorId) { Alert.alert('Missing vendor', 'Please select a vendor.'); return; }
+    if (!vendorId) { Toast.show({ type: 'error', text1: 'Missing vendor', text2: 'Please select a vendor.' }); return; }
     const valid = lines.filter(l => l.description.trim() && parseFloat(l.amount) > 0);
-    if (valid.length === 0) { Alert.alert('No items', 'Add at least one credit line with an amount.'); return; }
+    if (valid.length === 0) { Toast.show({ type: 'error', text1: 'No items', text2: 'Add at least one credit line with an amount.' }); return; }
     setSaving(true);
     try {
       await createVendorCreditAPI({
@@ -49,7 +50,7 @@ const VendorCreditFormScreen: React.FC = () => {
         lines: valid.map(l => ({ description: l.description, amount: l.amount })),
       });
       navigation.goBack();
-    } catch (e: any) { Alert.alert('Save failed', e?.message ?? 'Could not save vendor credit'); }
+    } catch (e: any) { Toast.show({ type: 'error', text1: 'Save failed', text2: e?.message ?? 'Could not save vendor credit' }); }
     finally { setSaving(false); }
   };
 

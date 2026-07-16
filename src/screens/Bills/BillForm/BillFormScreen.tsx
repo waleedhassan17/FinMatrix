@@ -9,7 +9,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -19,6 +18,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -212,7 +212,7 @@ const BillFormScreen: React.FC = () => {
       const validationErrors = validate();
       if (Object.keys(validationErrors).length > 0) {
         dispatch(setBillErrors(validationErrors));
-        Alert.alert('Validation Error', Object.values(validationErrors)[0]);
+        Toast.show({ type: 'error', text1: 'Validation Error', text2: Object.values(validationErrors)[0] });
         return;
       }
 
@@ -228,13 +228,14 @@ const BillFormScreen: React.FC = () => {
         const jeNarrative = isFromPO
           ? 'JE posted: DR Inventory, CR AP. Inventory quantities updated.'
           : 'JE posted: DR Expense, CR AP.';
-        Alert.alert(
-          isEditing ? 'Bill Updated' : 'Bill Created',
-          `${form.billNumber} has been ${isEditing ? 'updated' : 'created'} as ${saveStatus}. ${jeNarrative}`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }],
-        );
+        Toast.show({
+            type: 'success',
+            text1: isEditing ? 'Bill Updated' : 'Bill Created',
+            text2: `${form.billNumber} has been ${isEditing ? 'updated' : 'created'} as ${saveStatus}. ${jeNarrative}`,
+          });
+          navigation.goBack();
       } catch (e: any) {
-        Alert.alert('Error', e?.message || 'Failed to save bill. Please try again.');
+        Toast.show({ type: 'error', text1: 'Error', text2: e?.message || 'Failed to save bill. Please try again.' });
       }
     },
     [form, isEditing, dispatch, navigation, validate],

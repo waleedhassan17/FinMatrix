@@ -11,7 +11,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -20,6 +19,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -250,7 +250,7 @@ const InvoiceFormScreen: React.FC = () => {
       const validationErrors = validate();
       if (Object.keys(validationErrors).length > 0) {
         dispatch(setErrors(validationErrors));
-        Alert.alert('Validation Error', Object.values(validationErrors)[0]);
+        Toast.show({ type: 'error', text1: 'Validation Error', text2: Object.values(validationErrors)[0] });
         return;
       }
 
@@ -285,13 +285,14 @@ const InvoiceFormScreen: React.FC = () => {
 
         await dispatch(fetchInvoices());
 
-        Alert.alert(
-          isEditing ? 'Invoice Updated' : 'Invoice Created',
-          `${form.invoiceNumber} has been ${isEditing ? 'updated' : 'created'} as ${saveStatus}.`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }],
-        );
+        Toast.show({
+            type: 'success',
+            text1: isEditing ? 'Invoice Updated' : 'Invoice Created',
+            text2: `${form.invoiceNumber} has been ${isEditing ? 'updated' : 'created'} as ${saveStatus}.`,
+          });
+          navigation.goBack();
       } catch {
-        Alert.alert('Error', 'Failed to save invoice. Please try again.');
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save invoice. Please try again.' });
       } finally {
         dispatch(setIsSaving(false));
       }

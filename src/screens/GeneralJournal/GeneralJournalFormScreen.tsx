@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
@@ -42,7 +43,7 @@ const GeneralJournalFormScreen: React.FC = () => {
             .map((a: any) => ({ label: `${a.code} · ${a.name}`, value: a.id })),
         );
       } catch (e: any) {
-        Alert.alert('Could not load accounts', e?.message ?? 'Please try again.');
+        Toast.show({ type: 'error', text1: 'Could not load accounts', text2: e?.message ?? 'Please try again.' });
       }
     })();
   }, []);
@@ -62,8 +63,8 @@ const GeneralJournalFormScreen: React.FC = () => {
 
   const submit = async (status: 'draft' | 'posted') => {
     const valid = validLines();
-    if (valid.length < 2) { Alert.alert('Not enough lines', 'Add at least 2 lines with an account and an amount.'); return; }
-    if (status === 'posted' && !balanced) { Alert.alert('Out of balance', 'Total debits must equal total credits before posting.'); return; }
+    if (valid.length < 2) { Toast.show({ type: 'error', text1: 'Not enough lines', text2: 'Add at least 2 lines with an account and an amount.' }); return; }
+    if (status === 'posted' && !balanced) { Toast.show({ type: 'error', text1: 'Out of balance', text2: 'Total debits must equal total credits before posting.' }); return; }
 
     setSaving(true);
     const r: any = await dispatch(saveJournalEntry({
@@ -80,7 +81,7 @@ const GeneralJournalFormScreen: React.FC = () => {
     }));
     setSaving(false);
     if (r.meta.requestStatus === 'fulfilled') navigation.goBack();
-    else Alert.alert('Save failed', r.error?.message ?? 'Could not save journal entry');
+    else Toast.show({ type: 'error', text1: 'Save failed', text2: r.error?.message ?? 'Could not save journal entry' });
   };
 
   return (

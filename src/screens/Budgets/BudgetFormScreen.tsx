@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 
@@ -43,7 +44,7 @@ const BudgetFormScreen: React.FC = () => {
       const data = await getBudgetPrefillAPI(fy);
       const rows: any[] = data?.lines ?? [];
       if (rows.length === 0) {
-        Alert.alert('Nothing to pre-fill', `No income/expense activity found in ${fy}.`);
+        Toast.show({ type: 'error', text1: 'Nothing to pre-fill', text2: `No income/expense activity found in ${fy}.` });
         return;
       }
       setLines(rows.map(r => ({
@@ -52,9 +53,9 @@ const BudgetFormScreen: React.FC = () => {
         months: r.monthlyAmounts,
       })));
       if (!name.trim()) setName(`FY${fiscalYear} Operating Budget`);
-      Alert.alert('Pre-filled', `${rows.length} account line${rows.length === 1 ? '' : 's'} loaded from ${fy} actuals. Adjust the amounts, then create.`);
+      Toast.show({ type: 'success', text1: 'Pre-filled', text2: `${rows.length} account line${rows.length === 1 ? '' : 's'} loaded from ${fy} actuals. Adjust the amounts, then create.` });
     } catch (e: any) {
-      Alert.alert('Pre-fill failed', e?.message ?? 'Could not load prior-year actuals');
+      Toast.show({ type: 'error', text1: 'Pre-fill failed', text2: e?.message ?? 'Could not load prior-year actuals' });
     } finally {
       setPrefilling(false);
     }
@@ -71,9 +72,9 @@ const BudgetFormScreen: React.FC = () => {
   const updateLine = (i: number, patch: Partial<LineDraft>) => setLines(prev => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
   const save = async () => {
-    if (!name.trim()) { Alert.alert('Missing name', 'Enter a budget name.'); return; }
+    if (!name.trim()) { Toast.show({ type: 'error', text1: 'Missing name', text2: 'Enter a budget name.' }); return; }
     const valid = lines.filter(l => l.accountId && parseFloat(l.annual) > 0);
-    if (valid.length === 0) { Alert.alert('No lines', 'Add at least one account with an annual amount.'); return; }
+    if (valid.length === 0) { Toast.show({ type: 'error', text1: 'No lines', text2: 'Add at least one account with an annual amount.' }); return; }
     setSaving(true);
     try {
       await createBudgetAPI({
@@ -87,7 +88,7 @@ const BudgetFormScreen: React.FC = () => {
         }),
       });
       navigation.goBack();
-    } catch (e: any) { Alert.alert('Save failed', e?.message ?? 'Could not save budget'); }
+    } catch (e: any) { Toast.show({ type: 'error', text1: 'Save failed', text2: e?.message ?? 'Could not save budget' }); }
     finally { setSaving(false); }
   };
 

@@ -9,7 +9,6 @@ import {
   StyleSheet,
   ScrollView,
   Switch,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -19,6 +18,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, borderRadius } from '../../../theme';
@@ -138,7 +138,7 @@ const InventoryFormScreen: React.FC = () => {
   // ── Auto-generate SKU ─────────────────────────────
   const handleAutoGenerateSKU = useCallback(() => {
     if (!form.category) {
-      Alert.alert('Select Category', 'Please select a category first to auto-generate SKU.');
+      Toast.show({ type: 'error', text1: 'Select Category', text2: 'Please select a category first to auto-generate SKU.' });
       return;
     }
     const existingSKUs = items.filter(i => i.itemId !== editingId).map(i => i.sku);
@@ -212,7 +212,7 @@ const InventoryFormScreen: React.FC = () => {
             },
           }),
         ).unwrap();
-        Alert.alert('Success', 'Item updated successfully.');
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Item updated successfully.' });
       } else {
         await dispatch(
           createInventoryItem({
@@ -240,11 +240,11 @@ const InventoryFormScreen: React.FC = () => {
             imageUrl: '',
           }),
         ).unwrap();
-        Alert.alert('Success', 'Item created successfully.');
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Item created successfully.' });
       }
       navigation.goBack();
     } catch {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Something went wrong. Please try again.' });
     } finally {
       dispatch(setIsSaving(false));
     }

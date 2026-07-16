@@ -8,7 +8,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -17,6 +16,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
@@ -107,7 +107,7 @@ const CustomerFormScreen: React.FC = () => {
 
     if (Object.keys(validationErrors).length > 0) {
       dispatch(setErrors(validationErrors));
-      Alert.alert('Validation Error', Object.values(validationErrors)[0]);
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: Object.values(validationErrors)[0] });
       return;
     }
 
@@ -146,13 +146,14 @@ const CustomerFormScreen: React.FC = () => {
 
       await dispatch(fetchCustomers());
 
-      Alert.alert(
-        isEditing ? 'Customer Updated' : 'Customer Created',
-        `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
-      );
+      Toast.show({
+          type: 'success',
+          text1: isEditing ? 'Customer Updated' : 'Customer Created',
+          text2: `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`,
+        });
+        navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to save customer. Please try again.');
+      Toast.show({ type: 'error', text1: 'Error', text2: e?.message || 'Failed to save customer. Please try again.' });
     } finally {
       dispatch(setIsSaving(false));
     }

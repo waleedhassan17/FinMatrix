@@ -8,7 +8,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -16,6 +15,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, borderRadius } from '../../../theme';
@@ -100,7 +100,7 @@ const AgencyFormScreen: React.FC = () => {
 
     if (Object.keys(validationErrors).length > 0) {
       dispatch(setErrors(validationErrors));
-      Alert.alert('Validation', Object.values(validationErrors)[0]);
+      Toast.show({ type: 'error', text1: 'Validation', text2: Object.values(validationErrors)[0] });
       return;
     }
 
@@ -130,14 +130,15 @@ const AgencyFormScreen: React.FC = () => {
 
       await dispatch(fetchAgencies());
 
-      Alert.alert(
-        isEditing ? 'Agency Updated' : 'Agency Created',
-        `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
-      );
+      Toast.show({
+          type: 'success',
+          text1: isEditing ? 'Agency Updated' : 'Agency Created',
+          text2: `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`,
+        });
+        navigation.goBack();
     } catch (err: any) {
       const msg = err?.message ?? 'Failed to save agency.';
-      Alert.alert('Error', msg);
+      Toast.show({ type: 'error', text1: 'Error', text2: msg });
     } finally {
       dispatch(setIsSaving(false));
     }

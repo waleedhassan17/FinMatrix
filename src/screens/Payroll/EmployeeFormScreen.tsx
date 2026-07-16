@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
@@ -44,7 +45,7 @@ const EmployeeFormScreen: React.FC = () => {
   }, [editingId]);
 
   const save = async () => {
-    if (!firstName.trim() || !lastName.trim()) { Alert.alert('Missing name', 'First and last name are required.'); return; }
+    if (!firstName.trim() || !lastName.trim()) { Toast.show({ type: 'error', text1: 'Missing name', text2: 'First and last name are required.' }); return; }
     const payload: any = {
       firstName, lastName, email: email || undefined, department: department || undefined, position: position || undefined,
       payType, salary, hourlyRate, payFrequency, deductionAmount: deduction,
@@ -54,7 +55,7 @@ const EmployeeFormScreen: React.FC = () => {
       if (editingId) await updateEmployeeAPI(editingId, payload);
       else await createEmployeeAPI(payload);
       navigation.goBack();
-    } catch (e: any) { Alert.alert('Save failed', e?.message ?? 'Could not save employee'); }
+    } catch (e: any) { Toast.show({ type: 'error', text1: 'Save failed', text2: e?.message ?? 'Could not save employee' }); }
     finally { setSaving(false); }
   };
 

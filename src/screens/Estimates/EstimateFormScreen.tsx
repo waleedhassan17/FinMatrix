@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
@@ -79,9 +80,9 @@ const EstimateFormScreen: React.FC = () => {
     setLines(prev => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
   const save = async () => {
-    if (!customerId) { Alert.alert('Missing customer', 'Please select a customer.'); return; }
+    if (!customerId) { Toast.show({ type: 'error', text1: 'Missing customer', text2: 'Please select a customer.' }); return; }
     const valid = lines.filter(l => l.description.trim());
-    if (valid.length === 0) { Alert.alert('No items', 'Add at least one line item.'); return; }
+    if (valid.length === 0) { Toast.show({ type: 'error', text1: 'No items', text2: 'Add at least one line item.' }); return; }
     const payload = {
       customerId, estimateDate, expiryDate: expiryDate || undefined,
       discountType, discountValue, status: 'sent',
@@ -94,7 +95,7 @@ const EstimateFormScreen: React.FC = () => {
       else await createEstimateAPI(payload);
       navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Save failed', e?.message ?? 'Could not save estimate');
+      Toast.show({ type: 'error', text1: 'Save failed', text2: e?.message ?? 'Could not save estimate' });
     } finally { setSaving(false); }
   };
 

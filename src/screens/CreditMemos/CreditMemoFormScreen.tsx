@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
@@ -60,9 +61,9 @@ const CreditMemoFormScreen: React.FC = () => {
     setLines(prev => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
   const save = async () => {
-    if (!customerId) { Alert.alert('Missing customer', 'Please select a customer.'); return; }
+    if (!customerId) { Toast.show({ type: 'error', text1: 'Missing customer', text2: 'Please select a customer.' }); return; }
     const valid = lines.filter(l => l.description.trim());
-    if (valid.length === 0) { Alert.alert('No items', 'Add at least one credited item.'); return; }
+    if (valid.length === 0) { Toast.show({ type: 'error', text1: 'No items', text2: 'Add at least one credited item.' }); return; }
     setSaving(true);
     try {
       await createCreditMemoAPI({
@@ -73,7 +74,7 @@ const CreditMemoFormScreen: React.FC = () => {
         })),
       });
       navigation.goBack();
-    } catch (e: any) { Alert.alert('Save failed', e?.message ?? 'Could not save credit memo'); }
+    } catch (e: any) { Toast.show({ type: 'error', text1: 'Save failed', text2: e?.message ?? 'Could not save credit memo' }); }
     finally { setSaving(false); }
   };
 

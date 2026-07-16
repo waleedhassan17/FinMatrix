@@ -11,7 +11,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
@@ -19,6 +18,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -164,7 +164,7 @@ const POFormScreen: React.FC = () => {
       const validationErrors = validate();
       if (Object.keys(validationErrors).length > 0) {
         dispatch(setErrors(validationErrors));
-        Alert.alert('Validation Error', Object.values(validationErrors)[0]);
+        Toast.show({ type: 'error', text1: 'Validation Error', text2: Object.values(validationErrors)[0] });
         return;
       }
 
@@ -177,13 +177,14 @@ const POFormScreen: React.FC = () => {
 
         const action = isEditing ? 'updated' : 'created';
         const status = saveStatus === 'sent' ? 'and sent to vendor' : 'as draft';
-        Alert.alert(
-          isEditing ? 'PO Updated' : 'PO Created',
-          `${form.poNumber} has been ${action} ${status}.`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }],
-        );
+        Toast.show({
+            type: 'success',
+            text1: isEditing ? 'PO Updated' : 'PO Created',
+            text2: `${form.poNumber} has been ${action} ${status}.`,
+          });
+          navigation.goBack();
       } catch {
-        Alert.alert('Error', 'Failed to save purchase order. Please try again.');
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save purchase order. Please try again.' });
       }
     },
     [form, isEditing, dispatch, navigation, validate],
