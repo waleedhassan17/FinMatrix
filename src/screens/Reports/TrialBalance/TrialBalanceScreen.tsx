@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,7 +20,7 @@ import {
   ErrorBlock,
   EmptyBlock,
   ACCENT,
-  reportContentStyle,
+  reportContentStyle, amountColWidth,
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -37,6 +37,16 @@ const TrialBalanceScreen: React.FC = () => {
   }, [dispatch, state.range.startDate, state.range.endDate]);
 
   const report = state.report;
+
+  // Ledger rule: complete amounts at full size — columns sized to the data,
+  // table pans horizontally on narrow screens instead of shrinking figures.
+  const valW = useMemo(() => {
+    if (!report) return 96;
+    const formatted = report.rows
+      .flatMap(r => [r.debit ? rs(r.debit) : '', r.credit ? rs(r.credit) : ''])
+      .concat([rs(report.totalDebits), rs(report.totalCredits)]);
+    return amountColWidth(formatted);
+  }, [report]);
 
   return (
     <ReportContainer>
@@ -79,27 +89,33 @@ const TrialBalanceScreen: React.FC = () => {
             </View>
 
             <SectionCard title="Accounts" icon="list">
-              <View style={styles.headRow}>
-                <Text style={[styles.colAcct, styles.headText]}>Account</Text>
-                <Text style={[styles.colVal, styles.headText]}>Debit</Text>
-                <Text style={[styles.colVal, styles.headText]}>Credit</Text>
-              </View>
               {report.rows.length === 0 && <EmptyBlock title="No account balances for this period." />}
-              {report.rows.map(row => (
-                <View key={row.accountCode} style={styles.bodyRow}>
-                  <View style={styles.colAcct}>
-                    <Text style={styles.acctName}>{row.accountName}</Text>
-                    <Text style={styles.acctCode}>{row.accountCode}</Text>
+              {report.rows.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tableScroll}>
+                  <View style={styles.table}>
+                    <View style={styles.headRow}>
+                      <Text style={[styles.colAcct, styles.headText]}>Account</Text>
+                      <Text style={[{ width: valW }, styles.colVal, styles.headText]}>Debit</Text>
+                      <Text style={[{ width: valW }, styles.colVal, styles.headText]}>Credit</Text>
+                    </View>
+                    {report.rows.map(row => (
+                      <View key={row.accountCode} style={styles.bodyRow}>
+                        <View style={styles.colAcct}>
+                          <Text style={styles.acctName}>{row.accountName}</Text>
+                          <Text style={styles.acctCode}>{row.accountCode}</Text>
+                        </View>
+                        <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{row.debit ? rs(row.debit) : '—'}</Text>
+                        <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{row.credit ? rs(row.credit) : '—'}</Text>
+                      </View>
+                    ))}
+                    <View style={styles.totalRow}>
+                      <Text style={[styles.colAcct, styles.totalText]}>Total</Text>
+                      <Text style={[{ width: valW }, styles.colVal, styles.totalText]}>{rs(report.totalDebits)}</Text>
+                      <Text style={[{ width: valW }, styles.colVal, styles.totalText]}>{rs(report.totalCredits)}</Text>
+                    </View>
                   </View>
-                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText]}>{row.debit ? rs(row.debit) : '—'}</Text>
-                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText]}>{row.credit ? rs(row.credit) : '—'}</Text>
-                </View>
-              ))}
-              <View style={styles.totalRow}>
-                <Text style={[styles.colAcct, styles.totalText]}>Total</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.totalText]}>{rs(report.totalDebits)}</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.totalText]}>{rs(report.totalCredits)}</Text>
-              </View>
+                </ScrollView>
+              )}
             </SectionCard>
           </>
         )}
@@ -130,8 +146,10 @@ const styles = StyleSheet.create({
   bodyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
   acctName: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
   acctCode: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  colAcct: { flex: 1.6 },
-  colVal: { flex: 1, textAlign: 'right' },
+  colAcct: { flex: 1, minWidth: 150 },
+  colVal: { textAlign: 'right', flexShrink: 0 },
+  tableScroll: { minWidth: '100%' },
+  table: { flex: 1, minWidth: '100%' },
   totalRow: {
     gap: 10,
     flexDirection: 'row',

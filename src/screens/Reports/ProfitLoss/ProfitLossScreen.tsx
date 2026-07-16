@@ -143,8 +143,8 @@ const Line: React.FC<{ label: string; current: number; prior?: number; show: boo
 }) => (
   <View style={styles.bodyRow}>
     <Text style={[styles.colMetric, styles.bodyText, strong && styles.bold]}>{label}</Text>
-    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText, strong && styles.bold]}>{rs(current)}</Text>
-    {show && <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText, strong && styles.bold]}>{rs(prior ?? 0)}</Text>}
+    <Text style={[styles.colVal, styles.bodyText, strong && styles.bold]}>{rs(current)}</Text>
+    {show && <Text style={[styles.colVal, styles.bodyText, strong && styles.bold]}>{rs(prior ?? 0)}</Text>}
   </View>
 );
 
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   },
   bodyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
   colMetric: { flex: 1.4 },
-  colVal: { flex: 1, textAlign: 'right' },
+  colVal: { flexShrink: 0, minWidth: 96, textAlign: 'right' },
   bold: { fontWeight: '700' },
   netWrap: { marginTop: 4 },
 });

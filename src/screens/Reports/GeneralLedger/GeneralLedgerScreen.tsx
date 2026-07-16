@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,7 +12,7 @@ import { formatCurrency } from '../../../utils/formatters';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import {
   ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, DateField, Badge,
-  LoadingBlock, ErrorBlock, EmptyBlock, ACCENT, reportContentStyle,
+  LoadingBlock, ErrorBlock, EmptyBlock, ACCENT, reportContentStyle, amountColWidth,
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -28,6 +28,18 @@ const GeneralLedgerScreen: React.FC = () => {
   }, [dispatch, state.range.startDate, state.range.endDate, state.account]);
 
   const { ledger, accounts } = state;
+
+  // Ledger rule: amounts are shown COMPLETE at full size. The Debit/Credit
+  // columns are sized to the longest amount in the data; on narrow screens
+  // the table pans horizontally instead of shrinking the figures.
+  const valW = useMemo(() => {
+    if (!ledger) return 96;
+    const formatted = ledger.entries
+      .slice(0, 300)
+      .flatMap(e => [e.debit ? rs(e.debit) : '', e.credit ? rs(e.credit) : ''])
+      .concat([rs(ledger.totals.debit), rs(ledger.totals.credit)]);
+    return amountColWidth(formatted);
+  }, [ledger]);
 
   return (
     <ReportContainer>
@@ -73,7 +85,7 @@ const GeneralLedgerScreen: React.FC = () => {
                       <Text style={styles.acctName}>{a.accountName}</Text>
                       <Text style={styles.acctCode}>{a.accountCode} · {a.entries} entries</Text>
                     </View>
-                    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.acctBal}>{rs(a.balance)}</Text>
+                    <Text style={styles.acctBal}>{rs(a.balance)}</Text>
                   </View>
                 ))}
               </SectionCard>
@@ -84,30 +96,36 @@ const GeneralLedgerScreen: React.FC = () => {
               subtitle={state.account ? `Account ${state.account}` : 'All accounts'}
               icon="list"
             >
-              <View style={styles.headRow}>
-                <Text style={[styles.colDate, styles.headText]}>Date</Text>
-                <Text style={[styles.colAcct, styles.headText]}>Account / Ref</Text>
-                <Text style={[styles.colVal, styles.headText]}>Debit</Text>
-                <Text style={[styles.colVal, styles.headText]}>Credit</Text>
-              </View>
               {ledger.entries.length === 0 && <EmptyBlock title="No ledger activity for this period." />}
-              {ledger.entries.slice(0, 300).map((e, i) => (
-                <View key={`${e.sourceId}-${e.accountCode}-${i}`} style={styles.bodyRow}>
-                  <Text style={[styles.colDate, styles.bodyText]}>{e.date}</Text>
-                  <View style={styles.colAcct}>
-                    <Text style={styles.bodyText}>{e.accountCode} {e.accountName.split(' ')[0]}</Text>
-                    <Text style={styles.refText}>{e.reference}</Text>
+              {ledger.entries.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tableScroll}>
+                  <View style={styles.table}>
+                    <View style={styles.headRow}>
+                      <Text style={[styles.colDate, styles.headText]}>Date</Text>
+                      <Text style={[styles.colAcct, styles.headText]}>Account / Ref</Text>
+                      <Text style={[{ width: valW }, styles.colVal, styles.headText]}>Debit</Text>
+                      <Text style={[{ width: valW }, styles.colVal, styles.headText]}>Credit</Text>
+                    </View>
+                    {ledger.entries.slice(0, 300).map((e, i) => (
+                      <View key={`${e.sourceId}-${e.accountCode}-${i}`} style={styles.bodyRow}>
+                        <Text style={[styles.colDate, styles.bodyText]}>{e.date}</Text>
+                        <View style={styles.colAcct}>
+                          <Text style={styles.bodyText}>{e.accountCode} {e.accountName.split(' ')[0]}</Text>
+                          <Text style={styles.refText}>{e.reference}</Text>
+                        </View>
+                        <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{e.debit ? rs(e.debit) : '—'}</Text>
+                        <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{e.credit ? rs(e.credit) : '—'}</Text>
+                      </View>
+                    ))}
+                    <View style={styles.totalRow}>
+                      <Text style={[styles.colDate, styles.totalText]}>Total</Text>
+                      <Text style={[styles.colAcct, styles.totalText]} />
+                      <Text style={[{ width: valW }, styles.colVal, styles.totalText]}>{rs(ledger.totals.debit)}</Text>
+                      <Text style={[{ width: valW }, styles.colVal, styles.totalText]}>{rs(ledger.totals.credit)}</Text>
+                    </View>
                   </View>
-                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText]}>{e.debit ? rs(e.debit) : '—'}</Text>
-                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.bodyText]}>{e.credit ? rs(e.credit) : '—'}</Text>
-                </View>
-              ))}
-              <View style={styles.totalRow}>
-                <Text style={[styles.colDate, styles.totalText]}>Total</Text>
-                <Text style={[styles.colAcct, styles.totalText]} />
-                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.totalText]}>{rs(ledger.totals.debit)}</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.colVal, styles.totalText]}>{rs(ledger.totals.credit)}</Text>
-              </View>
+                </ScrollView>
+              )}
             </SectionCard>
           </>
         )}
@@ -132,15 +150,17 @@ const styles = StyleSheet.create({
   acctRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   acctName: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
   acctCode: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  acctBal: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '700' },
+  acctBal: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '700', flexShrink: 0, marginLeft: 10 },
   headRow: { gap: 10, flexDirection: 'row', paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.border },
   headText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
   bodyRow: { gap: 10, flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   bodyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
   refText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  colDate: { width: 78 },
-  colAcct: { flex: 1.3 },
-  colVal: { flex: 1, textAlign: 'right' },
+  colDate: { width: 78, flexShrink: 0 },
+  tableScroll: { minWidth: '100%' },
+  table: { flex: 1, minWidth: '100%' },
+  colAcct: { flex: 1, minWidth: 132 },
+  colVal: { textAlign: 'right', flexShrink: 0 },
   totalRow: { gap: 10, flexDirection: 'row', paddingVertical: 10, marginTop: 2, borderTopWidth: 2, borderTopColor: THEME.colors.border },
   totalText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '800' },
 });

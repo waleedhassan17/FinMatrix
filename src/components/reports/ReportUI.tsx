@@ -131,6 +131,19 @@ export const HeaderAction: React.FC<{
   </TouchableOpacity>
 );
 
+/**
+ * Width for a financial-table amount column, sized to the LONGEST formatted
+ * amount it must display — the professional ledger rule: figures are always
+ * shown complete, at full size, never scaled down or clipped. Pair with a
+ * horizontal ScrollView around the table so narrow screens pan instead of
+ * squeezing the numbers. Heuristic: ~7.3px per character at the bodySm table
+ * type size, plus a small buffer; clamped so empty tables keep sane columns.
+ */
+export const amountColWidth = (formatted: Array<string | null | undefined>): number => {
+  const longest = formatted.reduce<number>((m, s) => Math.max(m, (s ?? '').length), 0);
+  return Math.min(190, Math.max(88, Math.round(longest * 7.3) + 8));
+};
+
 // ── Card surfaces ─────────────────────────────────────
 export const Card: React.FC<{ children: React.ReactNode; style?: StyleProp<ViewStyle>; padded?: boolean }> = ({
   children,
