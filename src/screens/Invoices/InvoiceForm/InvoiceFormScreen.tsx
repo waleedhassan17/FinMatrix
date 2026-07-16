@@ -56,6 +56,12 @@ import { DateField } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import LineItemRow from '../../../components/shared/LineItemRow';
+import {
+  AddButton,
+  FormSectionHeader,
+  PrimaryButton,
+  SecondaryButton,
+} from '../../../components/form/FormUI';
 import { formatCurrency } from '../../../utils/formatters';
 import type { DiscountType, InvoiceStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -327,10 +333,7 @@ const InvoiceFormScreen: React.FC = () => {
           contentContainerStyle={styles.scrollContent}
         >
           {/* ── Section: Customer & Dates ────────────── */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: P.accent }]} />
-            <Text style={styles.sectionTitle}>INVOICE DETAILS</Text>
-          </View>
+          <FormSectionHeader title="INVOICE DETAILS" dotColor={P.accent} />
           <View style={styles.sectionCard}>
             <View style={[styles.cardAccent, { backgroundColor: P.accent }]} />
             <View style={styles.cardBody}>
@@ -375,20 +378,11 @@ const InvoiceFormScreen: React.FC = () => {
           </View>
 
           {/* ── Section: Line Items ──────────────────── */}
-          <View style={styles.linesSectionHeader}>
-            <View style={styles.sectionLabelRow}>
-              <View style={[styles.sectionDot, { backgroundColor: '#6366F1' }]} />
-              <Text style={styles.sectionTitle}>LINE ITEMS</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.addLineBtn}
-              onPress={() => dispatch(addLine())}
-              activeOpacity={0.7}
-            >
-              <Feather name="plus" size={14} color="#FFFFFF" />
-              <Text style={styles.addLineBtnText}>Add Item</Text>
-            </TouchableOpacity>
-          </View>
+          <FormSectionHeader
+            title="LINE ITEMS"
+            dotColor="#6366F1"
+            right={<AddButton label="Add Item" onPress={() => dispatch(addLine())} />}
+          />
           {form.errors.lines && (
             <Text style={styles.lineError}>{form.errors.lines}</Text>
           )}
@@ -421,10 +415,7 @@ const InvoiceFormScreen: React.FC = () => {
           ))}
 
           {/* ── Section: Discount ────────────────────── */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: '#F59E0B' }]} />
-            <Text style={styles.sectionTitle}>DISCOUNT</Text>
-          </View>
+          <FormSectionHeader title="DISCOUNT" dotColor="#F59E0B" />
           <View style={styles.sectionCard}>
             <View style={[styles.cardAccent, { backgroundColor: '#F59E0B' }]} />
             <View style={styles.cardBody}>
@@ -457,10 +448,7 @@ const InvoiceFormScreen: React.FC = () => {
           </View>
 
           {/* ── Section: Notes ───────────────────────── */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: '#8B5CF6' }]} />
-            <Text style={styles.sectionTitle}>NOTES</Text>
-          </View>
+          <FormSectionHeader title="NOTES" dotColor="#8B5CF6" />
           <View style={styles.sectionCard}>
             <View style={[styles.cardAccent, { backgroundColor: '#8B5CF6' }]} />
             <View style={styles.cardBody}>
@@ -517,35 +505,20 @@ const InvoiceFormScreen: React.FC = () => {
           {/* ── Action Buttons ───────────────────────── */}
           <View style={styles.btnRow}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <TouchableOpacity
-                style={styles.secondaryBtn}
+              <SecondaryButton
+                title="Save Draft"
                 onPress={() => handleSave('draft')}
-                activeOpacity={0.7}
                 disabled={form.isSaving}
-              >
-                <Feather name="save" size={16} color={P.accent} />
-                <Text style={styles.secondaryBtnText}>Save Draft</Text>
-              </TouchableOpacity>
+                icon={<Feather name="save" size={16} color={colors.primary} />}
+              />
             </View>
             <View style={{ flex: 1.4 }}>
-              <TouchableOpacity
-                style={styles.primaryBtn}
+              <PrimaryButton
+                title={form.isSaving ? 'Saving…' : 'Save & Send'}
                 onPress={() => handleSave('sent')}
-                activeOpacity={0.7}
-                disabled={form.isSaving}
-              >
-                <LinearGradient
-                  colors={['#059669', '#047857']}
-                  style={styles.primaryBtnGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Feather name="send" size={16} color="#FFFFFF" />
-                  <Text style={styles.primaryBtnText}>
-                    {form.isSaving ? 'Saving…' : 'Save & Send'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                isLoading={form.isSaving}
+                icon={<Feather name="send" size={16} color="#FFFFFF" />}
+              />
             </View>
           </View>
         </ScrollView>
@@ -601,25 +574,6 @@ const styles = StyleSheet.create({
   },
 
   // ── Section labels ──────────────────────────────
-  sectionLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-    gap: spacing.xs + 2,
-  },
-  sectionDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: P.sectionLabel,
-    fontFamily: THEME.typography.fontFamily,
-    letterSpacing: 1,
-  },
 
   // ── Section card with accent stripe ─────────────
   sectionCard: {
@@ -641,28 +595,6 @@ const styles = StyleSheet.create({
   rowFields: { flexDirection: 'row' },
 
   // ── Line items header ──────────────────────────
-  linesSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  addLineBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.sm + 6,
-    paddingVertical: spacing.xs + 4,
-    backgroundColor: P.accent,
-    borderRadius: 20,
-  },
-  addLineBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: THEME.typography.fontFamily,
-  },
   lineError: {
     fontSize: 12,
     color: colors.danger,
@@ -733,41 +665,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: spacing.lg,
     marginBottom: spacing.md,
-  },
-  secondaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: 14,
-    borderRadius: borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: P.accent,
-    backgroundColor: P.accentLight,
-  },
-  secondaryBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: P.accent,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  primaryBtn: {
-    borderRadius: borderRadius.md,
-    overflow: 'hidden',
-    ...shadows.card,
-  },
-  primaryBtnGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: 14,
-  },
-  primaryBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: THEME.typography.fontFamily,
   },
 });
 
