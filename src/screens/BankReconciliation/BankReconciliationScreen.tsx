@@ -1,13 +1,19 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 
 import { THEME } from '../../utils/theme';
 import { formatCurrency } from '../../utils/formatters';
-import { getUnreconciledAPI, createReconciliationAPI } from '../../networks/accounting/reconciliationNetwork';
+import {
+  getUnreconciledAPI,
+  createReconciliationAPI,
+  markClearedAPI,
+} from '../../networks/accounting/reconciliationNetwork';
 import { unreconciledSerializer } from '../../serializers/reconciliationSerializer';
 import type { UnreconciledEntry } from '../../models/reconciliationModel';
 import CustomInput from '../../Custom-Components/CustomInput';
@@ -22,6 +28,9 @@ const rs = (n: number) => formatCurrency(n, 'Rs ');
 const today = () => new Date().toISOString().slice(0, 10);
 // Money tolerance mirrors the backend (0.0001) with a little slack for display rounding.
 const isBalanced = (n: number) => Math.abs(n) < 0.005;
+// Save-and-resume: statement header draft is per-device; the cleared TICKS
+// are persisted server-side on the GL rows (PATCH /reconciliations/mark).
+const draftKey = (accountId: string) => `@finmatrix/bankrec-draft/${accountId}`;
 
 const BankReconciliationScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -39,6 +48,24 @@ const BankReconciliationScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // ── Statement header draft (restore on mount, save on change) ──
+  useEffect(() => {
+    AsyncStorage.getItem(draftKey(accountId))
+      .then(raw => {
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (draft?.statementDate) setStatementDate(draft.statementDate);
+        if (draft?.statementBalance) setStatementBalance(String(draft.statementBalance));
+      })
+      .catch((): void => undefined);
+  }, [accountId]);
+  useEffect(() => {
+    AsyncStorage.setItem(
+      draftKey(accountId),
+      JSON.stringify({ statementDate, statementBalance }),
+    ).catch((): void => undefined);
+  }, [accountId, statementDate, statementBalance]);
+
   const loadEntries = async () => {
     setLoading(true);
     try {
@@ -48,28 +75,63 @@ const BankReconciliationScreen: React.FC = () => {
       setBeginningMismatch(data.beginningMismatch);
       setLastStatementDate(data.lastStatementDate);
       setEntries(data.entries);
-      setCleared(new Set());
+      // Save-and-resume: server-side ticks from a previous session.
+      setCleared(new Set(data.entries.filter(e => e.cleared).map(e => e.id)));
       setLoaded(true);
     } catch (e: any) {
-      Alert.alert('Failed to load', e?.message ?? 'Could not load entries');
+      Toast.show({ type: 'error', text1: 'Failed to load', text2: e?.message ?? 'Could not load entries' });
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Persist ticks (debounced batch) so exiting mid-reconciliation keeps them ──
+  const pendingMarks = useRef<Map<string, boolean>>(new Map());
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushMarks = useCallback(() => {
+    const marks = Array.from(pendingMarks.current, ([entryId, c]) => ({ entryId, cleared: c }));
+    if (marks.length === 0) return;
+    pendingMarks.current = new Map();
+    markClearedAPI(accountId, marks).catch(() => {
+      // Best-effort: ticks remain correct locally; a reload re-syncs.
+    });
+  }, [accountId]);
+  useEffect(() => () => {
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+    flushMarks(); // flush on unmount — leaving the screen must lose nothing
+  }, [flushMarks]);
+
   const toggle = (id: string) =>
     setCleared(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      const nowCleared = !next.has(id);
+      if (nowCleared) next.add(id); else next.delete(id);
+      pendingMarks.current.set(id, nowCleared);
+      if (flushTimer.current) clearTimeout(flushTimer.current);
+      flushTimer.current = setTimeout(flushMarks, 800);
       return next;
     });
 
-  const { clearedNet, clearedBalance, difference } = useMemo(() => {
+  // ── QuickBooks layout: payments/withdrawals vs deposits, with cleared totals ──
+  const { payments, deposits } = useMemo(() => ({
+    payments: entries.filter(e => e.amount < 0),
+    deposits: entries.filter(e => e.amount >= 0),
+  }), [entries]);
+  const sectionStats = useCallback((list: UnreconciledEntry[]) => {
+    const ticked = list.filter(e => cleared.has(e.id));
+    return {
+      count: ticked.length,
+      total: ticked.reduce((s, e) => s + e.amount, 0),
+    };
+  }, [cleared]);
+  const payStats = useMemo(() => sectionStats(payments), [sectionStats, payments]);
+  const depStats = useMemo(() => sectionStats(deposits), [sectionStats, deposits]);
+
+  const { clearedBalance, difference } = useMemo(() => {
     const net = entries.reduce((sum, e) => (cleared.has(e.id) ? sum + e.amount : sum), 0);
     const bal = beginningBalance + net;
     const stmt = parseFloat(statementBalance);
-    const diff = (isNaN(stmt) ? 0 : stmt) - bal;
-    return { clearedNet: net, clearedBalance: bal, difference: diff };
+    return { clearedBalance: bal, difference: (isNaN(stmt) ? 0 : stmt) - bal };
   }, [entries, cleared, beginningBalance, statementBalance]);
 
   const canFinish = loaded && statementBalance.trim() !== '' && !isNaN(parseFloat(statementBalance)) && isBalanced(difference);
@@ -78,20 +140,41 @@ const BankReconciliationScreen: React.FC = () => {
     if (!canFinish) return;
     setSaving(true);
     try {
+      if (flushTimer.current) clearTimeout(flushTimer.current);
+      flushMarks();
       await createReconciliationAPI({
         accountId,
         statementDate,
         statementEndingBalance: parseFloat(statementBalance).toFixed(2),
         clearedEntryIds: Array.from(cleared),
       });
-      Alert.alert('Reconciled', 'The account is reconciled and cleared entries are marked.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      await AsyncStorage.removeItem(draftKey(accountId)).catch((): void => undefined);
+      // Toast + direct navigation — Alert.alert button callbacks are dead on
+      // react-native-web (project rule: never gate navigation on them).
+      Toast.show({ type: 'success', text1: 'Reconciled', text2: 'Cleared entries are marked and locked.' });
+      navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Could not finish', e?.message ?? 'Reconciliation failed');
+      Toast.show({ type: 'error', text1: 'Could not finish', text2: e?.message ?? 'Reconciliation failed' });
     } finally {
       setSaving(false);
     }
+  };
+
+  const renderEntry = (e: UnreconciledEntry) => {
+    const on = cleared.has(e.id);
+    const isDeposit = e.amount >= 0;
+    return (
+      <TouchableOpacity key={e.id} style={styles.entryRow} activeOpacity={0.7} onPress={() => toggle(e.id)}>
+        <Feather name={on ? 'check-square' : 'square'} size={20} color={on ? ACCENT.teal : THEME.colors.textSecondary} />
+        <View style={styles.entryInfo}>
+          <Text style={styles.entryRef} numberOfLines={1}>{e.reference || e.sourceType}</Text>
+          <Text style={styles.entryMeta} numberOfLines={1}>{e.date}{e.memo ? ` · ${e.memo}` : ''}</Text>
+        </View>
+        <Text style={[styles.entryAmt, { color: isDeposit ? ACCENT.green : ACCENT.red }]}>
+          {isDeposit ? '+' : '−'}{rs(Math.abs(e.amount))}
+        </Text>
+      </TouchableOpacity>
+    );
   };
 
   return (
@@ -149,24 +232,23 @@ const BankReconciliationScreen: React.FC = () => {
           <Card><EmptyBlock icon="inbox" title="Nothing to reconcile" hint="No unreconciled entries on or before this date." /></Card>
         )}
 
-        {loaded && entries.length > 0 && (
-          <SectionCard title={`Entries (${cleared.size}/${entries.length} cleared)`} icon="list">
-            {entries.map(e => {
-              const on = cleared.has(e.id);
-              const isDeposit = e.amount >= 0;
-              return (
-                <TouchableOpacity key={e.id} style={styles.entryRow} activeOpacity={0.7} onPress={() => toggle(e.id)}>
-                  <Feather name={on ? 'check-square' : 'square'} size={20} color={on ? ACCENT.teal : THEME.colors.textSecondary} />
-                  <View style={styles.entryInfo}>
-                    <Text style={styles.entryRef} numberOfLines={1}>{e.reference || e.sourceType}</Text>
-                    <Text style={styles.entryMeta} numberOfLines={1}>{e.date}{e.memo ? ` · ${e.memo}` : ''}</Text>
-                  </View>
-                  <Text style={[styles.entryAmt, { color: isDeposit ? ACCENT.green : ACCENT.red }]}>
-                    {isDeposit ? '+' : '−'}{rs(Math.abs(e.amount))}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+        {loaded && payments.length > 0 && (
+          <SectionCard
+            title={`Payments & Withdrawals (${payStats.count}/${payments.length} cleared)`}
+            subtitle={`Cleared total ${rs(Math.abs(payStats.total))}`}
+            icon="arrow-up-right"
+          >
+            {payments.map(renderEntry)}
+          </SectionCard>
+        )}
+
+        {loaded && deposits.length > 0 && (
+          <SectionCard
+            title={`Deposits (${depStats.count}/${deposits.length} cleared)`}
+            subtitle={`Cleared total ${rs(depStats.total)}`}
+            icon="arrow-down-left"
+          >
+            {deposits.map(renderEntry)}
           </SectionCard>
         )}
 
@@ -176,7 +258,9 @@ const BankReconciliationScreen: React.FC = () => {
               <View style={styles.banner}>
                 <Feather name="alert-triangle" size={16} color={THEME.colors.warning} />
                 <Text style={styles.bannerText}>
-                  Out of balance by <Text style={{ fontWeight: '700' }}>{rs(difference)}</Text>. Tick the entries that appear on your statement until the difference is 0.
+                  Out of balance by <Text style={{ fontWeight: '700' }}>{rs(difference)}</Text>. Tick the entries that appear on
+                  your statement until the difference is 0. If the statement has an item your books lack (bank fee, interest),
+                  add it as a normal transaction first — reconciliation never posts entries.
                 </Text>
               </View>
             )}

@@ -22,6 +22,8 @@ export interface UnreconciledEntry {
   credit: number;
   // Signed amount for the account (debit-normal): + deposit, − payment.
   amount: number;
+  /** Save-and-resume: in-progress tick persisted on the GL row server-side. */
+  cleared: boolean;
 }
 
 export interface UnreconciledData {

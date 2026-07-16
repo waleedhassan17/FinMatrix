@@ -33,6 +33,7 @@ export const mapEntry = (raw: any): UnreconciledEntry => ({
   debit: num(raw.debit),
   credit: num(raw.credit),
   amount: num(raw.amount),
+  cleared: raw.cleared === true,
 });
 
 export const mapReconciliation = (raw: any): Reconciliation => ({

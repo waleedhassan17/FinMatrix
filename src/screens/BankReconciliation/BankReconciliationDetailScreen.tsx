@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -41,21 +42,22 @@ const BankReconciliationDetailScreen: React.FC = () => {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const undo = () => {
-    Alert.alert('Undo reconciliation', 'This un-marks all cleared entries so they can be reconciled again. Continue?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Undo', style: 'destructive', onPress: async () => {
-          setUndoing(true);
-          try {
-            await deleteReconciliationAPI(reconciliationId);
-            navigation.goBack();
-          } catch (e: any) {
-            Alert.alert('Failed', e?.message ?? 'Could not undo');
-          } finally { setUndoing(false); }
-        },
-      },
-    ]);
+  // Real Modal, not Alert.alert — button callbacks in Alert.alert are NO-OPs
+  // on react-native-web (project rule for all confirmations).
+  const [confirmVisible, setConfirmVisible] = useState(false);
+
+  const doUndo = async () => {
+    setConfirmVisible(false);
+    setUndoing(true);
+    try {
+      await deleteReconciliationAPI(reconciliationId);
+      Toast.show({ type: 'success', text1: 'Reconciliation undone', text2: 'Cleared entries can be reconciled again.' });
+      navigation.goBack();
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Could not undo', text2: e?.message ?? 'Undo failed' });
+    } finally {
+      setUndoing(false);
+    }
   };
 
   if (loading && !recon) return <ReportContainer><ReportHeader title="Reconciliation" onBack={() => navigation.goBack()} /><LoadingBlock label="Loading…" /></ReportContainer>;
@@ -121,9 +123,29 @@ const BankReconciliationDetailScreen: React.FC = () => {
 
         {!!recon.notes && <Card><Text style={styles.notes}>{recon.notes}</Text></Card>}
 
-        <CustomButton title="Undo Reconciliation" variant="danger" onPress={undo} isLoading={undoing} fullWidth />
+        <CustomButton title="Undo Reconciliation" variant="danger" onPress={() => setConfirmVisible(true)} isLoading={undoing} fullWidth />
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      <Modal visible={confirmVisible} transparent animationType="fade" onRequestClose={() => setConfirmVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Undo reconciliation</Text>
+            <Text style={styles.modalBody}>
+              This un-marks all cleared entries so they can be reconciled again. The undo is
+              recorded in the audit log. Continue?
+            </Text>
+            <View style={styles.modalRow}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalCancel]} onPress={() => setConfirmVisible(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalDanger]} onPress={doUndo}>
+                <Text style={styles.modalDangerText}>Undo</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ReportContainer>
   );
 };
@@ -147,6 +169,16 @@ const styles = StyleSheet.create({
   entryMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 1 },
   entryAmt: { ...THEME.typography.bodySm, fontWeight: '700' },
   notes: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(9,30,66,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  modalCard: { width: '100%', maxWidth: 420, backgroundColor: '#FFFFFF', borderRadius: THEME.radius.lg, padding: 20 },
+  modalTitle: { ...THEME.typography.bodyLg, fontWeight: '800', color: THEME.colors.textPrimary },
+  modalBody: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, lineHeight: 19, marginTop: 8 },
+  modalRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 18 },
+  modalBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: THEME.radius.md },
+  modalCancel: { backgroundColor: '#F4F5F7' },
+  modalCancelText: { ...THEME.typography.bodySm, fontWeight: '700', color: THEME.colors.textPrimary },
+  modalDanger: { backgroundColor: THEME.colors.danger },
+  modalDangerText: { ...THEME.typography.bodySm, fontWeight: '700', color: '#FFFFFF' },
 });
 
 export default BankReconciliationDetailScreen;
