@@ -243,6 +243,40 @@ const spacing = {
 } as const;
 
 // ───────────────────────────────────────────────
+// 5b. Form-control tokens (ux.md consistency pass)
+// ───────────────────────────────────────────────
+// THE single source for form-control metrics. Every form primitive
+// (CustomInput, CustomDropdown, DateField, FormUI.*) and every inline
+// line-editor field reads these — screens must not hardcode control
+// heights, radii, or the Add-pill spec.
+const form = {
+  /** Height of every single-line text input, dropdown trigger, date field. */
+  controlHeight: 48,
+  /** Corner radius of every form control (matches CustomInput/CustomDropdown). */
+  controlRadius: 10,
+  /** Height/spec of the green "Add" pill — identical everywhere it appears. */
+  addPill: {
+    background: '#059669',
+    radius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    fontSize: 13,
+    fontWeight: '700' as const,
+    iconSize: 15,
+  },
+  /** Section header: dot + 11px uppercase letter-spaced title (doc-form style). */
+  sectionTitle: {
+    fontFamily,
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: '#64748B',
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+  },
+  sectionDot: { size: 8, color: '#059669' },
+} as const;
+
+// ───────────────────────────────────────────────
 // 6. Public theme object
 // ───────────────────────────────────────────────
 export const THEME = {
@@ -251,6 +285,7 @@ export const THEME = {
   radius,
   shadows,
   spacing,
+  form,
 } as const;
 
 export type Theme = typeof THEME;
