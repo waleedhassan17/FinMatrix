@@ -13,10 +13,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
-  Alert,
   Platform,
   StatusBar,
 } from 'react-native';
+import { Alert } from '../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';

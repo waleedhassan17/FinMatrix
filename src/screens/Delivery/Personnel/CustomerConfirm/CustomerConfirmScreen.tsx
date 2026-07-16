@@ -7,11 +7,11 @@ import {
   Modal,
   TextInput,
   Animated,
-  Alert,
   ScrollView,
   Dimensions,
   StatusBar,
 } from 'react-native';
+import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME } from '../../../../utils/theme';

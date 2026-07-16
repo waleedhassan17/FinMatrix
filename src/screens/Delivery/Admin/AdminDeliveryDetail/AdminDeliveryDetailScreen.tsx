@@ -7,10 +7,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Linking,
   StatusBar,
 } from 'react-native';
+import { Alert } from '../../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
@@ -516,19 +516,22 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           style={[styles.bottomBtn, { backgroundColor: colors.secondary }]}
           onPress={() => dispatch(toggleReassignPanel())}
         >
-          <Text style={styles.bottomBtnText}>🔄{'\n'}Re-assign</Text>
+          <Feather name="refresh-cw" size={16} color="#FFFFFF" />
+          <Text style={styles.bottomBtnText}>Re-assign</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.bottomBtn, { backgroundColor: '#DE350B' }]}
           onPress={() => dispatch(toggleCancelConfirm())}
         >
-          <Text style={styles.bottomBtnText}>✕{'\n'}Cancel</Text>
+          <Feather name="x" size={16} color="#FFFFFF" />
+          <Text style={styles.bottomBtnText}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.bottomBtn, { backgroundColor: colors.success }]}
           onPress={handleContact}
         >
-          <Text style={styles.bottomBtnText}>📞{'\n'}Contact</Text>
+          <Feather name="phone" size={16} color="#FFFFFF" />
+          <Text style={styles.bottomBtnText}>Contact</Text>
         </TouchableOpacity>
       </View>
 
@@ -890,6 +893,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   bottomBtn: {
+    gap: 4,
     flex: 1,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.sm,

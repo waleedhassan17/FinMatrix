@@ -9,8 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
-  Alert,
 } from 'react-native';
+import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import * as ExpoClipboard from 'expo-clipboard';

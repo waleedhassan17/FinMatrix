@@ -13,11 +13,11 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -238,7 +238,7 @@ const InventoryTab: React.FC<{ agencyId: string; agencyName: string }> = ({ agen
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Add Item to {agencyName}</Text>
                 <TouchableOpacity onPress={() => { setShowAddModal(false); setAddForm(EMPTY_FORM); }}>
-                  <Text style={styles.modalClose}>✕</Text>
+                  <Feather name="x" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>

@@ -6,11 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
-  Alert,
   Modal,
   FlatList,
   StatusBar,
 } from 'react-native';
+import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Image,
   Modal,
   ScrollView,
@@ -11,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Alert } from '../../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -572,7 +572,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => setPhotoFullscreen(null)}
             activeOpacity={0.85}
           >
-            <Text style={styles.fullscreenCloseText}>✕</Text>
+            <Feather name="x" size={22} color="#FFFFFF" />
           </TouchableOpacity>
           {!!photoFullscreen && (
             <Image

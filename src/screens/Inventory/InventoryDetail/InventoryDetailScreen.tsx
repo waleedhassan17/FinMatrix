@@ -10,9 +10,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  Alert,
   StatusBar,
 } from 'react-native';
+import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';

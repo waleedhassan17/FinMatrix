@@ -6,10 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
-  Alert,
   StatusBar,
   RefreshControl,
 } from 'react-native';
+import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';

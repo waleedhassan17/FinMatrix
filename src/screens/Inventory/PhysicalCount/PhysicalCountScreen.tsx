@@ -10,9 +10,9 @@ import {
   ScrollView,
   FlatList,
   TextInput,
-  Alert,
   TouchableOpacity,
 } from 'react-native';
+import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';

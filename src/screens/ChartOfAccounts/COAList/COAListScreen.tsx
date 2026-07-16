@@ -12,11 +12,11 @@ import {
   TextInput,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   ActionSheetIOS,
   Platform,
   ScrollView,
 } from 'react-native';
+import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';

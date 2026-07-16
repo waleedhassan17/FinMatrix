@@ -11,10 +11,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
   StatusBar,
   Linking,
 } from 'react-native';
+import { Alert } from '../../../utils/alert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';

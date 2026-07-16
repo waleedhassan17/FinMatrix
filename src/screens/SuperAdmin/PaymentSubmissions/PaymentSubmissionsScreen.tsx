@@ -19,8 +19,8 @@ import {
   TextInput,
   StatusBar,
   RefreshControl,
-  Alert,
 } from 'react-native';
+import { Alert } from '../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';

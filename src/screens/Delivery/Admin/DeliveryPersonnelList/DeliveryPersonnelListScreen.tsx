@@ -8,8 +8,8 @@ import {
   TextInput,
   FlatList,
   RefreshControl,
-  Alert,
 } from 'react-native';
+import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
