@@ -11,6 +11,7 @@ import { coaListSerializer } from '../../serializers/coaSerializer';
 import { formatCurrency } from '../../utils/formatters';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
+import { AddButton } from '../../components/form/FormUI';
 import JournalLineRow from '../../components/shared/JournalLineRow';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
@@ -108,7 +109,7 @@ const GeneralJournalFormScreen: React.FC = () => {
               canDelete={lines.length > 2}
             />
           ))}
-          <CustomButton title="+ Add Line" variant="secondary" onPress={() => setLines(prev => [...prev, blankLine()])} />
+          <AddButton label="Add Line" onPress={() => setLines(prev => [...prev, blankLine()])} />
         </SectionCard>
 
         <Card>
