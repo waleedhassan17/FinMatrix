@@ -12,6 +12,7 @@ import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
+import { AddButton } from '../../components/form/FormUI';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
@@ -77,7 +78,7 @@ const VendorCreditFormScreen: React.FC = () => {
               )}
             </View>
           ))}
-          <CustomButton title="+ Add Line" variant="secondary" onPress={() => setLines(prev => [...prev, blankLine()])} />
+          <AddButton label="Add Line" onPress={() => setLines(prev => [...prev, blankLine()])} />
         </SectionCard>
 
         <Card>
