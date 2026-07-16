@@ -220,22 +220,19 @@ const SplashOverlay: React.FC<SplashOverlayProps> = ({ onFinish }) => {
   // RENDER
   // ═════════════════════════════════════
   return (
-    <Animated.View style={[$.root, { opacity: exitOpacity }]} pointerEvents="auto">
+    <Animated.View style={[$.root, { opacity: exitOpacity, pointerEvents: 'auto' }]}>
       <StatusBar barStyle="light-content" backgroundColor={B.navy} />
 
       {/* ── Decorative Geometry ── */}
-      <Animated.View pointerEvents="none" style={[$.decorRect, { opacity: decorOpacity }]} />
+      <Animated.View style={[$.decorRect, { opacity: decorOpacity, pointerEvents: 'none' }]} />
       <Animated.View
-        pointerEvents="none"
-        style={[$.decorCircle, { opacity: Animated.multiply(decorOpacity, new Animated.Value(1)) }]}
+        style={[$.decorCircle, { opacity: Animated.multiply(decorOpacity, new Animated.Value(1)) }, { pointerEvents: 'none' }]}
       />
       <Animated.View
-        pointerEvents="none"
-        style={[$.decorSquare, { opacity: Animated.multiply(decorOpacity, new Animated.Value(0.5)) }]}
+        style={[$.decorSquare, { opacity: Animated.multiply(decorOpacity, new Animated.Value(0.5)) }, { pointerEvents: 'none' }]}
       />
       <Animated.View
-        pointerEvents="none"
-        style={[$.decorDot, { opacity: Animated.multiply(decorOpacity, new Animated.Value(0.5)) }]}
+        style={[$.decorDot, { opacity: Animated.multiply(decorOpacity, new Animated.Value(0.5)) }, { pointerEvents: 'none' }]}
       />
 
       {/* ── Center Content ── */}

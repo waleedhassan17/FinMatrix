@@ -85,7 +85,8 @@ export const ReportHeader: React.FC<{
 }> = ({ title, subtitle, onBack, right }) => (
   <LinearGradient colors={HEADER_NAVY} style={S.header}>
     <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
-    <View style={S.headerSheen} pointerEvents="none" />
+    {/* pointerEvents lives in style — the prop is deprecated on react-native-web */}
+    <View style={[S.headerSheen, { pointerEvents: 'none' }]} />
     <View style={S.headerRow}>
       {onBack ? <BackButton onPress={onBack} /> : null}
       <View style={{ flex: 1 }}>

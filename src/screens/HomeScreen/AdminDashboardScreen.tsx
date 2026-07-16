@@ -221,7 +221,7 @@ const AdminDashboardScreen: React.FC = () => {
 
       {/* ── Header ───────────────────────────────────── */}
       <LinearGradient colors={C.navy} style={s.header}>
-        <View style={s.headerSheen} pointerEvents="none" />
+        <View style={[s.headerSheen, { pointerEvents: 'none' }]} />
 
         <View style={s.headerTopRow}>
           <View style={s.headerLeft}>

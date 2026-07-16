@@ -8,6 +8,7 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchCustomers, selectCustomers } from '../Customers/CustomerList/customerListSlice';
 import { selectInventoryItems, fetchInventoryItems } from '../Inventory/InventoryList/inventoryListSlice';
+import { selectFeatures } from '../Auth/authSlice';
 import { createCreditMemoAPI } from '../../networks/sales/creditMemoNetwork';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
@@ -35,7 +36,17 @@ const CreditMemoFormScreen: React.FC = () => {
   const [lines, setLines] = useState<LineDraft[]>([blankLine()]);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { dispatch(fetchCustomers()); dispatch(fetchInventoryItems()); }, [dispatch]);
+  const features = useAppSelector(selectFeatures);
+
+  useEffect(() => {
+    dispatch(fetchCustomers());
+    // Inventory is tier-gated (FinMatrix.md): small_business/large_org have it
+    // disabled, so the fetch would be a guaranteed 403 — skip it and the memo
+    // lines stay free-text (linking an item is optional anyway).
+    if (features?.inventory !== false) {
+      dispatch(fetchInventoryItems());
+    }
+  }, [dispatch, features?.inventory]);
 
   // Linking an inventory item restocks the returned quantity and reverses its
   // cost out of COGS on the backend. Auto-fills description + price.
