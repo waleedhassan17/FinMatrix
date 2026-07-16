@@ -44,6 +44,12 @@ import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorList
 import { inventoryItemsData } from '../../../models/inventoryModel';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
+import {
+  AddButton,
+  FormSectionHeader,
+  PrimaryButton,
+  SecondaryButton,
+} from '../../../components/form/FormUI';
 import { DateField } from '../../../components/reports/ReportUI';
 import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
@@ -213,10 +219,7 @@ const POFormScreen: React.FC = () => {
           contentContainerStyle={styles.scrollContent}
         >
           {/* ── PO Details ─────────────────────────── */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: P.accent }]} />
-            <Text style={styles.sectionTitle}>PO DETAILS</Text>
-          </View>
+          <FormSectionHeader title="PO DETAILS" dotColor={P.accent} />
           <View style={styles.sectionCard}>
             <View style={[styles.cardAccent, { backgroundColor: P.accent }]} />
             <View style={styles.cardBody}>
@@ -261,16 +264,11 @@ const POFormScreen: React.FC = () => {
           </View>
 
           {/* ── Line Items ─────────────────────────── */}
-          <View style={styles.linesSectionHeader}>
-            <View style={styles.sectionLabelRow}>
-              <View style={[styles.sectionDot, { backgroundColor: '#6554C0' }]} />
-              <Text style={styles.sectionTitle}>ITEMS</Text>
-            </View>
-            <TouchableOpacity style={styles.addLineBtn} onPress={() => dispatch(addLine())} activeOpacity={0.7}>
-              <Feather name="plus" size={14} color="#FFFFFF" />
-              <Text style={styles.addLineBtnText}>Add Item</Text>
-            </TouchableOpacity>
-          </View>
+          <FormSectionHeader
+            title="ITEMS"
+            dotColor="#6554C0"
+            right={<AddButton label="Add Item" onPress={() => dispatch(addLine())} />}
+          />
           {!!form.errors.lines && (
             <Text style={styles.lineError}>{form.errors.lines}</Text>
           )}
@@ -371,10 +369,7 @@ const POFormScreen: React.FC = () => {
           </LinearGradient>
 
           {/* ── Notes ──────────────────────────────── */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: '#8B5CF6' }]} />
-            <Text style={styles.sectionTitle}>NOTES</Text>
-          </View>
+          <FormSectionHeader title="NOTES" dotColor="#8B5CF6" />
           <View style={styles.sectionCard}>
             <View style={[styles.cardAccent, { backgroundColor: '#8B5CF6' }]} />
             <View style={styles.cardBody}>
@@ -391,35 +386,20 @@ const POFormScreen: React.FC = () => {
           {/* ── Actions ────────────────────────────── */}
           <View style={styles.btnRow}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <TouchableOpacity
-                style={styles.secondaryBtn}
+              <SecondaryButton
+                title="Save Draft"
                 onPress={() => handleSave('draft')}
-                activeOpacity={0.7}
                 disabled={form.isSaving}
-              >
-                <Feather name="save" size={16} color={P.accent} />
-                <Text style={[styles.secondaryBtnText, { color: P.accent }]}>Save Draft</Text>
-              </TouchableOpacity>
+                icon={<Feather name="save" size={16} color={colors.primary} />}
+              />
             </View>
             <View style={{ flex: 1.4 }}>
-              <TouchableOpacity
-                style={styles.primaryBtn}
+              <PrimaryButton
+                title={form.isSaving ? 'Saving…' : isEditing ? 'Update & Send' : 'Save & Send'}
                 onPress={() => handleSave('sent')}
-                activeOpacity={0.7}
-                disabled={form.isSaving}
-              >
-                <LinearGradient
-                  colors={['#0052CC', '#003D99']}
-                  style={styles.primaryBtnGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Feather name="send" size={16} color="#FFFFFF" />
-                  <Text style={styles.primaryBtnText}>
-                    {form.isSaving ? 'Saving…' : isEditing ? 'Update & Send' : 'Save & Send'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                isLoading={form.isSaving}
+                icon={<Feather name="send" size={16} color="#FFFFFF" />}
+              />
             </View>
           </View>
         </ScrollView>
@@ -446,9 +426,6 @@ const styles = StyleSheet.create({
 
   scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl },
 
-  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.sm, gap: spacing.xs + 2 },
-  sectionDot: { width: 8, height: 8, borderRadius: 4 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#64748B', fontFamily: THEME.typography.fontFamily, letterSpacing: 1 },
 
   sectionCard: {
     flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: borderRadius.md,
@@ -458,9 +435,6 @@ const styles = StyleSheet.create({
   cardBody: { flex: 1, padding: spacing.md },
   rowFields: { flexDirection: 'row' },
 
-  linesSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.sm },
-  addLineBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.sm + 6, paddingVertical: spacing.xs + 4, backgroundColor: '#6554C0', borderRadius: 20 },
-  addLineBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
   lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
 
   lineCard: {
@@ -476,16 +450,16 @@ const styles = StyleSheet.create({
   lineDeleteBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center' },
 
   descInput: {
-    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm,
-    fontSize: 13, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginTop: spacing.xs,
+    borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
+    ...THEME.typography.bodyMd, color: colors.textPrimary, marginTop: spacing.xs,
   },
   lineNumRow: { flexDirection: 'row', marginTop: spacing.sm },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
+  fieldLabel: { ...THEME.typography.caption, fontWeight: '500', color: colors.textSecondary, marginBottom: spacing.xs },
   numericInput: {
-    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm,
-    fontSize: 14, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
+    borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
+    ...THEME.typography.bodyMd, color: colors.textPrimary,
   },
   lineTotalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: spacing.sm },
   lineTotal: { fontSize: 13, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
@@ -501,15 +475,6 @@ const styles = StyleSheet.create({
   grandTotalValue: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 
   btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.md },
-  secondaryBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
-    paddingVertical: 14, borderRadius: borderRadius.md,
-    borderWidth: 1.5, borderColor: '#0052CC', backgroundColor: '#E6F0FF',
-  },
-  secondaryBtnText: { fontSize: 15, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
-  primaryBtn: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.card },
-  primaryBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: 14 },
-  primaryBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
 });
 
 export default POFormScreen;
