@@ -9,7 +9,7 @@ import { fetchSalesOrders, selectSalesOrderState, setSalesOrderStatusFilter, typ
 import { formatCurrency } from '../../utils/formatters';
 import type { SalesOrderStatus } from '../../models/salesOrderModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderIconButton, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -53,7 +53,7 @@ const SalesOrderListScreen: React.FC = () => {
         title="Sales Orders"
         subtitle="Fulfillment & invoicing"
         onBack={() => navigation.goBack()}
-        right={<HeaderIconButton icon="plus" onPress={() => navigation.navigate('SalesOrderForm', {})} />}
+        right={<HeaderAction label="New" onPress={() => navigation.navigate('SalesOrderForm', {})} />}
       />
 
       <TxnTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setSalesOrderStatusFilter(v))} />

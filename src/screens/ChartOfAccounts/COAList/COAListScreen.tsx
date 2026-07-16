@@ -42,6 +42,7 @@ import {
   KpiGrid,
   EmptyBlock,
   ACCENT,
+  HeaderAction,
 } from '../../../components/reports/ReportUI';
 
 // ── Constants ─────────────────────────────────────────
@@ -309,10 +310,7 @@ const COAListScreen: React.FC = () => {
         onBack={() => navigation.goBack()}
         backLabel="More"
         right={
-          <TouchableOpacity style={styles.addBtn} activeOpacity={0.8} onPress={() => navigation.navigate('COAForm')}>
-            <Feather name="plus" size={15} color="#FFFFFF" />
-            <Text style={styles.addBtnText}>Add</Text>
-          </TouchableOpacity>
+          <HeaderAction label="New" onPress={() => navigation.navigate('COAForm')} />
         }
       />
 
@@ -343,16 +341,6 @@ const COAListScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: THEME.radius.md,
-  },
-  addBtnText: { ...THEME.typography.labelMd, color: '#FFFFFF' },
 
   listContent: { padding: THEME.spacing.md, paddingTop: THEME.spacing.sm, gap: 2, paddingBottom: THEME.spacing.xxxl },
   listHeader: { gap: THEME.spacing.sm + 2, marginBottom: THEME.spacing.xs },

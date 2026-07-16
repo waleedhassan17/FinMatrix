@@ -17,7 +17,9 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { HEADER_NAVY,
+  HeaderAction,
+} from '../../../components/reports/ReportUI';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -207,12 +209,7 @@ const VendorListScreen: React.FC = () => {
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.searchToggle}>
             <Feather name="search" size={18} color="#FFFFFF" />
           </TouchableOpacity>
-          <CustomButton
-            title="+ Add"
-            onPress={() => navigation.navigate('VendorForm')}
-            variant="primary"
-            size="sm"
-          />
+          <HeaderAction label="New" onPress={() => navigation.navigate('VendorForm')} />
         </View>
       </LinearGradient>
 
@@ -321,13 +318,6 @@ const VendorListScreen: React.FC = () => {
       )}
 
       {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('VendorForm')}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -455,19 +445,6 @@ const styles = StyleSheet.create({
   emptyText: { ...THEME.typography.bodyLg, color: colors.textSecondary },
 
   // ── FAB ────────────────────────────────────────
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.large,
-  },
-  fabIcon: { ...THEME.typography.displayMd, color: colors.white, fontWeight: '400', marginTop: -2 },
 });
 
 export default VendorListScreen;

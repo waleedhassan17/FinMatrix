@@ -107,6 +107,30 @@ export const HeaderIconButton: React.FC<{ icon: keyof typeof Feather.glyphMap; o
   </TouchableOpacity>
 );
 
+/**
+ * THE header create action (ux polish pass): one professional labeled pill —
+ * brand-green, plus icon + label — replacing the mix of bare "+" icon
+ * buttons, ad-hoc "Add" pills, and "+ New"/"+ Add" buttons that previously
+ * varied screen by screen. Spec shared with the in-form AddButton
+ * (THEME.form.addPill) so every create affordance in the app is identical.
+ */
+export const HeaderAction: React.FC<{
+  label: string;
+  onPress: () => void;
+  icon?: keyof typeof Feather.glyphMap;
+  disabled?: boolean;
+}> = ({ label, onPress, icon = 'plus', disabled }) => (
+  <TouchableOpacity
+    style={[S.headerAction, disabled && { opacity: 0.5 }]}
+    activeOpacity={0.8}
+    onPress={onPress}
+    disabled={disabled}
+  >
+    <Feather name={icon} size={THEME.form.addPill.iconSize} color="#FFFFFF" />
+    <Text style={S.headerActionText}>{label}</Text>
+  </TouchableOpacity>
+);
+
 // ── Card surfaces ─────────────────────────────────────
 export const Card: React.FC<{ children: React.ReactNode; style?: StyleProp<ViewStyle>; padded?: boolean }> = ({
   children,
@@ -545,6 +569,21 @@ const S = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.18)',
+  },
+  headerAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: THEME.form.addPill.background,
+    paddingHorizontal: THEME.form.addPill.paddingHorizontal,
+    paddingVertical: THEME.form.addPill.paddingVertical,
+    borderRadius: THEME.form.addPill.radius,
+  },
+  headerActionText: {
+    fontFamily: THEME.typography.fontFamily,
+    fontSize: THEME.form.addPill.fontSize,
+    fontWeight: THEME.form.addPill.fontWeight,
+    color: '#FFFFFF',
   },
 
   // Card

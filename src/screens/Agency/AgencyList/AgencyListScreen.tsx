@@ -17,7 +17,9 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { HEADER_NAVY,
+  HeaderAction,
+} from '../../../components/reports/ReportUI';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -148,12 +150,7 @@ const AgencyListScreen: React.FC = () => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Warehouse Agencies</Text>
         </View>
-        <CustomButton
-          title="+ Add"
-          onPress={() => navigation.navigate('AgencyForm')}
-          variant="primary"
-          size="sm"
-        />
+        <HeaderAction label="New" onPress={() => navigation.navigate('AgencyForm')} />
       </LinearGradient>
 
       {/* Summary */}

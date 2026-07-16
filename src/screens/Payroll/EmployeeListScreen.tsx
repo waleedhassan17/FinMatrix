@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchEmployees, selectPayrollState } from './payrollSlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
-import { ReportContainer, ReportHeader, HeaderIconButton, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderIconButton, HeaderAction, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
@@ -26,7 +26,7 @@ const EmployeeListScreen: React.FC = () => {
         right={
           <>
             <HeaderIconButton icon="dollar-sign" onPress={() => navigation.navigate('PayrollRunList' as any)} />
-            <HeaderIconButton icon="plus" onPress={() => navigation.navigate('EmployeeForm' as any)} />
+            <HeaderAction label="New" onPress={() => navigation.navigate('EmployeeForm' as any)} />
           </>
         } />
       <ScrollView contentContainerStyle={styles.content}

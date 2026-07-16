@@ -39,7 +39,7 @@ import {
 } from './invoiceListSlice';
 import EmptyState from '../../../components/shared/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { HEADER_NAVY, HeaderAction } from '../../../components/reports/ReportUI';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { Invoice, InvoiceStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -232,12 +232,7 @@ const InvoiceListScreen: React.FC = () => {
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.searchToggle}>
             <Feather name="search" size={18} color="#FFFFFF" />
           </TouchableOpacity>
-          <CustomButton
-            title="+ New"
-            onPress={() => navigation.navigate('InvoiceForm')}
-            variant="primary"
-            size="sm"
-          />
+          <HeaderAction label="New" onPress={() => navigation.navigate('InvoiceForm')} />
         </View>
       </LinearGradient>
 
@@ -358,15 +353,6 @@ const InvoiceListScreen: React.FC = () => {
       )}
 
       {/* FAB — hidden on first-run (the empty state has its own CTA) */}
-      {!isFirstRun && (
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('InvoiceForm')}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
-      )}
       </View>
     </SafeAreaView>
   );
@@ -515,19 +501,6 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 
   // ── FAB ────────────────────────────────────────
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.xl + spacing.md,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.small,
-  },
-  fabIcon: { fontSize: 24, color: colors.white, fontWeight: '300', marginTop: -1 },
 });
 
 export default InvoiceListScreen;

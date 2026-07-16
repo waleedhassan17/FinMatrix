@@ -23,7 +23,7 @@ import type { InventoryStackParamList } from '../../../navigators/stacks/Invento
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
-import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { ReportHeader, HEADER_NAVY, HeaderAction } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchInventoryItems,
@@ -312,10 +312,7 @@ const InventoryListScreen: React.FC = () => {
                 <Feather name="grid" size={15} color={viewMode === 'grid' ? '#FFFFFF' : 'rgba(255,255,255,0.7)'} />
               </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.addBtn} activeOpacity={0.8} onPress={() => navigation.navigate('InventoryForm')}>
-              <Feather name="plus" size={15} color="#FFFFFF" />
-              <Text style={styles.addBtnText}>Add</Text>
-            </TouchableOpacity>
+            <HeaderAction label="New" onPress={() => navigation.navigate('InventoryForm')} />
           </>
         }
       />
@@ -526,19 +523,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: THEME.radius.md,
-  },
-  addBtnText: {
-    ...THEME.typography.labelMd,
-    color: '#FFFFFF',
-  },
 
   // ── View Toggle ───────────────────────────────────
   viewToggle: {

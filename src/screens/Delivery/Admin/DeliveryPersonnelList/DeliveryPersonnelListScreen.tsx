@@ -15,7 +15,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { getPlanLimitsAPI, type PlanLimits } from '../../../../networks/billing/billingNetwork';
 import { LinearGradient } from 'expo-linear-gradient';
-import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
+import { HEADER_NAVY,
+  HeaderAction,
+} from '../../../../components/reports/ReportUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
@@ -224,9 +226,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
           <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Delivery Team</Text>
-        <TouchableOpacity style={styles.addButton} onPress={guardedAdd}>
-          <Text style={styles.addButtonText}>+ Add</Text>
-        </TouchableOpacity>
+        <HeaderAction label="New" onPress={guardedAdd} />
       </LinearGradient>
 
       {/* Plan usage (phase2.md) */}
@@ -356,13 +356,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1, textAlign: 'center', fontSize: THEME.typography.h3.fontSize, fontWeight: '600',
     color: '#FFFFFF', fontFamily: THEME.typography.fontFamily,
-  },
-  addButton: {
-    backgroundColor: colors.primary, paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2, borderRadius: 8,
-  },
-  addButtonText: {
-    color: colors.white, fontSize: THEME.typography.bodyMd.fontSize, fontWeight: '600', fontFamily: THEME.typography.fontFamily,
   },
   usageBar: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

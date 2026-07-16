@@ -9,7 +9,7 @@ import { fetchCreditMemos, selectCreditMemoState, setCreditMemoStatusFilter, typ
 import { formatCurrency } from '../../utils/formatters';
 import type { CreditMemoStatus } from '../../models/creditMemoModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderIconButton, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -53,7 +53,7 @@ const CreditMemoListScreen: React.FC = () => {
         title="Credit Memos"
         subtitle="Customer credits & returns"
         onBack={() => navigation.goBack()}
-        right={<HeaderIconButton icon="plus" onPress={() => navigation.navigate('CreditMemoForm', {})} />}
+        right={<HeaderAction label="New" onPress={() => navigation.navigate('CreditMemoForm', {})} />}
       />
 
       <TxnTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setCreditMemoStatusFilter(v))} />

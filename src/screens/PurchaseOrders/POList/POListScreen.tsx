@@ -44,7 +44,7 @@ import {
 } from './poListSlice';
 import EmptyState from '../../../components/shared/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { HEADER_NAVY, HeaderAction } from '../../../components/reports/ReportUI';
 import { PO_STATUS_COLORS, PO_STATUS_LABELS } from '../../../models/purchaseOrderModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PurchaseOrder } from '../../../types';
@@ -212,12 +212,7 @@ const POListScreen: React.FC = () => {
             <TouchableOpacity style={styles.searchToggle} onPress={() => setSearchOpen(p => !p)}>
               <Feather name="search" size={18} color="#FFFFFF" />
             </TouchableOpacity>
-            <CustomButton
-              title="+ New"
-              onPress={() => navigation.navigate('POForm')}
-              variant="primary"
-              size="sm"
-            />
+            <HeaderAction label="New" onPress={() => navigation.navigate('POForm')} />
           </View>
         </View>
       </LinearGradient>
@@ -331,15 +326,6 @@ const POListScreen: React.FC = () => {
       )}
 
       {/* ── FAB — hidden on first-run ───────────── */}
-      {!isFirstRun && (
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('POForm')}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
-      )}
       </View>
     </SafeAreaView>
   );
@@ -465,19 +451,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyFull: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.large,
-  },
-  fabIcon: { fontSize: 28, color: colors.white, fontWeight: '300', marginTop: -2 },
 });
 
 export default POListScreen;

@@ -17,7 +17,9 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { HEADER_NAVY,
+  HeaderAction,
+} from '../../../components/reports/ReportUI';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -219,12 +221,7 @@ const CustomerListScreen: React.FC = () => {
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.searchToggle}>
             <Feather name="search" size={18} color="#FFFFFF" />
           </TouchableOpacity>
-          <CustomButton
-            title="+ Add"
-            onPress={() => navigation.navigate('CustomerForm')}
-            variant="primary"
-            size="sm"
-          />
+          <HeaderAction label="New" onPress={() => navigation.navigate('CustomerForm')} />
         </View>
       </LinearGradient>
 
@@ -333,13 +330,6 @@ const CustomerListScreen: React.FC = () => {
       )}
 
       {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('CustomerForm')}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -467,19 +457,6 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
 
   // ── FAB ────────────────────────────────────────
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.large,
-  },
-  fabIcon: { fontSize: 28, color: colors.white, fontWeight: '300', marginTop: -2 },
 });
 
 export default CustomerListScreen;
