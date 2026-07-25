@@ -152,6 +152,7 @@ export const dpBillPhotoCaptureSlice = createAppSlice({
   selectors: {
     selectBillPhotoCaptureState: state => state,
     selectBillPhotoUri: state => state.photoUri,
+    selectBillPhotoSource: state => state.source,
     selectBillPhotoSignedBy: state => state.signedBy,
     selectBillPhotoNote: state => state.note,
     selectBillPhotoPaidStatus: state => state.paidStatus,
@@ -172,6 +173,7 @@ export const {
 export const {
   selectBillPhotoCaptureState,
   selectBillPhotoUri,
+  selectBillPhotoSource,
   selectBillPhotoSignedBy,
   selectBillPhotoNote,
   selectBillPhotoPaidStatus,

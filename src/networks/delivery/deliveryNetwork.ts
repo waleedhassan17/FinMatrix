@@ -2,7 +2,7 @@
 // FinMatrix — Delivery Network (Production API)
 // ═══════════════════════════════════════════════════════
 
-import { api, extractErrorMessage } from '../network/apiHelpers';
+import { api, extractErrorMessage, postMultipart } from '../network/apiHelpers';
 
 // ─── Bad-network resilience ─────────────────────────
 // Retries a request when it failed at the NETWORK level (no HTTP response —
@@ -172,16 +172,10 @@ export const getMyDashboardAPI = async (): Promise<any> => {
 };
 
 export const uploadBillPhotoAPI = async (deliveryId: string, formData: FormData): Promise<any> => {
-  try {
-    const response = await withNetworkRetry(() =>
-      api.post(`/deliveries/${deliveryId}/bill-photo`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }),
-    );
-    return response.data;
-  } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
-  }
+  // fetch-based multipart (postMultipart) — axios with a manual multipart
+  // Content-Type drops the boundary and the server never receives the file.
+  // Safe to retry: the backend answers a replayed submission with a 409.
+  return withNetworkRetry(() => postMultipart(`/deliveries/${deliveryId}/bill-photo`, formData));
 };
 
 export const confirmCustomerReceiptAPI = async (id: string, data: any): Promise<any> => {

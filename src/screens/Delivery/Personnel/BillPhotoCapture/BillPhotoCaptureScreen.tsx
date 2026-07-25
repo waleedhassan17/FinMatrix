@@ -31,6 +31,7 @@ import {
   setPaidStatus,
   submitBillPhoto,
   selectBillPhotoUri,
+  selectBillPhotoSource,
   selectBillPhotoSignedBy,
   selectBillPhotoNote,
   selectBillPhotoPaidStatus,
@@ -50,6 +51,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
   const approvalRequests = useAppSelector(selectInventoryApprovalRequests);
   const user = useAppSelector(selectUser);
   const photoUri = useAppSelector(selectBillPhotoUri);
+  const photoSource = useAppSelector(selectBillPhotoSource);
   const signedBy = useAppSelector(selectBillPhotoSignedBy);
   const note = useAppSelector(selectBillPhotoNote);
   const paidStatus = useAppSelector(selectBillPhotoPaidStatus);
@@ -188,7 +190,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           personnelName,
           routeLabel,
           photoUri,
-          source: 'camera',
+          source: photoSource ?? 'camera',
           signedBy: signedBy.trim(),
           paidStatus,
           note: note.trim() || undefined,

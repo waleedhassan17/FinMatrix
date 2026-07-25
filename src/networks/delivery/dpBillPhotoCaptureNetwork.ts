@@ -2,37 +2,23 @@
 // FinMatrix — DP Bill Photo Capture Network (Production API)
 // ═══════════════════════════════════════════════════════
 
-import { Platform } from 'react-native';
-import { api, extractErrorMessage } from '../network/apiHelpers';
+import { postMultipart, appendImageToForm } from '../network/apiHelpers';
 
-export const uploadBillPhotoAPI = async (deliveryId: string, formData: FormData): Promise<any> => {
-  try {
-    const response = await api.post(`/deliveries/${deliveryId}/bill-photo`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
-  }
-};
+// Uploads go through postMultipart (fetch), NOT the axios `api` instance:
+// axios with a manually-set multipart Content-Type loses the boundary and the
+// photo never reaches the server (backend answers "photo file is required").
+
+export const uploadBillPhotoAPI = async (deliveryId: string, formData: FormData): Promise<any> =>
+  postMultipart(`/deliveries/${deliveryId}/bill-photo`, formData);
 
 export const submitBillPhotoAPI = async (payload: any): Promise<any> => {
   const deliveryId = payload.deliveryId ?? payload.id ?? '';
 
   const formData = new FormData();
 
-  // Append the photo file
+  // Append the photo file (web-safe: resolves blob:/data: URIs to a real Blob)
   if (payload.photoUri) {
-    const uri = payload.photoUri;
-    const filename = uri.split('/').pop() ?? 'bill_photo.jpg';
-    const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg';
-    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-
-    formData.append('photo', {
-      uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-      name: filename,
-      type: mimeType,
-    } as any);
+    await appendImageToForm(formData, 'photo', payload.photoUri);
   }
 
   // Append scalar fields

@@ -2,6 +2,7 @@
 // FinMatrix — API Infrastructure (Production)
 // ═══════════════════════════════════════════════════════
 
+import { Platform } from 'react-native';
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import {
   setTokens,
@@ -173,4 +174,77 @@ export const extractErrorMessage = (error: any): string => {
     if (!error.response) return 'Network error. Please check your connection.';
   }
   return error?.message || 'An unexpected error occurred.';
+};
+
+// ─── Multipart Upload (fetch, NOT axios) ────────────
+// React Native must set the `multipart/form-data; boundary=...` header itself.
+// Routing FormData through axios with a manually-set Content-Type drops the
+// boundary, so the server's multer parser never sees the file ("photo file is
+// required"). Same root cause + fix as billingNetwork.submitPaymentAPI — kept
+// here so every upload in the app shares one correct implementation.
+
+/**
+ * Append a picked image to a FormData under `field`.
+ * Handles the web platform, where the RN `{uri,name,type}` trick serializes
+ * to "[object Object]" — there the blob:/data: URI is resolved to a real Blob.
+ */
+export const appendImageToForm = async (
+  form: FormData,
+  field: string,
+  uri: string,
+  opts: { name?: string; type?: string } = {},
+): Promise<void> => {
+  const filename = opts.name ?? uri.split('/').pop()?.split('?')[0] ?? `photo_${Date.now()}.jpg`;
+  const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const mime =
+    opts.type ?? (ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg');
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(uri)).blob();
+    (form as any).append(field, blob, filename);
+  } else {
+    form.append(field, {
+      uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+      name: filename,
+      type: mime,
+    } as any);
+  }
+};
+
+/** POST a FormData with auth + company headers. Resolves to the parsed JSON body. */
+export const postMultipart = async (path: string, form: FormData): Promise<any> => {
+  const token = await getAccessToken();
+  const companyId = await getStoredCompanyId();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(companyId ? { 'x-company-id': companyId } : {}),
+        // deliberately NO Content-Type — RN adds the multipart boundary itself
+      },
+      body: form as any,
+    });
+  } catch {
+    throw new Error('Network error. Please check your connection.');
+  }
+  let json: any = null;
+  try {
+    json = await res.json();
+  } catch {
+    /* non-JSON body */
+  }
+  if (res.status === 401) emitSessionExpired();
+  if (!res.ok) {
+    const raw = json?.error?.message ?? json?.message;
+    const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+    const err: any = new Error(
+      typeof msg === 'string' && msg ? msg : `Upload failed (${res.status}). Please try again.`,
+    );
+    // Mark as an HTTP (not network) failure so retry helpers that check
+    // `!error.response` don't replay 4xx/5xx responses.
+    err.response = { status: res.status, data: json };
+    throw err;
+  }
+  return json;
 };
