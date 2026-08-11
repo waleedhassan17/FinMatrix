@@ -361,11 +361,7 @@ const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
     <View style={ms.container}>
       <StatusBar barStyle="light-content" backgroundColor={B.navy} />
 
-      {!isLast && (
-        <TouchableOpacity style={ms.skipBtn} onPress={skip} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={ms.skipBtnText}>Skip</Text>
-        </TouchableOpacity>
-      )}
+      {/* Top skip button removed — bottom "Skip for now" is the single skip affordance */}
 
       <FlatList
         ref={flatListRef}
