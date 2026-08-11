@@ -274,8 +274,8 @@ const AdminDashboardScreen: React.FC = () => {
               />
             )}
 
-            {/* ── Profit & loss hero ─────────────────── */}
-            <SectionHeader title="Profit & loss" caption="This month" />
+            {/* ── Profit & loss hero (hidden from first screen) ── */}
+            {/* <SectionHeader title="Profit & loss" caption="This month" />
             <NetCard
               net={net}
               netLabel={compactRs(net)}
@@ -283,7 +283,7 @@ const AdminDashboardScreen: React.FC = () => {
               incomeLabel={statById.revenue?.value ?? compactRs(income)}
               expense={expense}
               expenseLabel={statById.expenses?.value ?? compactRs(expense)}
-            />
+            /> */}
 
             {/* ── Receivables / Payables ─────────────── */}
             <View style={s.statRow}>
