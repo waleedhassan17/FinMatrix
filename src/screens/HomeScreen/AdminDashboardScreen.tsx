@@ -16,7 +16,6 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -48,6 +47,7 @@ import type {
 } from '../../models/dashboardModel';
 import { THEME } from '../../utils/theme';
 import { isFeatureVisible } from '../../utils/featureGates';
+import { ReportContainer } from '../../components/reports/ReportUI';
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
 
@@ -216,7 +216,7 @@ const AdminDashboardScreen: React.FC = () => {
     delivery.total > 0 ? Math.round((delivery.delivered / delivery.total) * 100) : 0;
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: C.navy[0] }]} edges={['top']}>
+    <ReportContainer>
       <StatusBar barStyle="light-content" backgroundColor={C.navy[0]} />
 
       {/* ── Header ───────────────────────────────────── */}
@@ -358,7 +358,7 @@ const AdminDashboardScreen: React.FC = () => {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 

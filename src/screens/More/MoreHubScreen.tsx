@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
@@ -13,7 +13,7 @@ import { selectCustomers } from '../Customers/CustomerList/customerListSlice';
 import { selectVendors } from '../Vendors/VendorList/vendorListSlice';
 import { selectUnassignedDeliveries } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
 import NotificationBadge from '../../components/shared/NotificationBadge';
-import { ReportHeader, HEADER_NAVY } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HEADER_NAVY } from '../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -174,8 +174,7 @@ const MoreHubScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+    <ReportContainer>
       <ReportHeader title="More" subtitle="Tools, modules & settings" />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} style={{ backgroundColor: colors.background }}>
         {sections.map(section => (
@@ -209,7 +208,7 @@ const MoreHubScreen: React.FC = () => {
           </View>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 

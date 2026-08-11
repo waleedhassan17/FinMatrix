@@ -13,9 +13,8 @@ import {
   RefreshControl,
   Dimensions,
   Modal,
-  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,7 +22,7 @@ import type { InventoryStackParamList } from '../../../navigators/stacks/Invento
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
-import { ReportHeader, HEADER_NAVY, HeaderAction } from '../../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HEADER_NAVY, HeaderAction } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchInventoryItems,
@@ -290,8 +289,7 @@ const InventoryListScreen: React.FC = () => {
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+    <ReportContainer>
       {/* ── Header ── */}
       <ReportHeader
         title="Inventory"
@@ -498,7 +496,7 @@ const InventoryListScreen: React.FC = () => {
         />
       )}
       </View>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
