@@ -84,8 +84,6 @@ export function installErrorMonitoring(): void {
     // Hermes exposes rejection tracking through the promise polyfill.
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { polyfillGlobal } = require('react-native/Libraries/Utilities/PolyfillFunctions');
-      void polyfillGlobal; // presence check only — tracking below is optional
       const tracking = require('promise/setimmediate/rejection-tracking');
       tracking.enable({
         allRejections: true,
