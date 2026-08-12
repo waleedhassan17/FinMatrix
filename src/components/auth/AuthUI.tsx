@@ -9,10 +9,10 @@
 // one banner style. Screens should not re-declare these — if something needs
 // to change, change it once here.
 //
-// Layout rule worth knowing: AuthScreen centres its content vertically by
-// default. The short gate screens (verify email, awaiting approval, reset
-// password) used to hug the top of the viewport with a large empty area
-// beneath them; `centered` is what balances them.
+// Layout rule worth knowing: the gradient header is always flush to the top
+// of the viewport. Screens balance by letting the header fill the upper third
+// and pushing trailing footer content to the bottom — never by centring the
+// whole stack, which leaves a dead gap above the header.
 
 import React from 'react';
 import {
@@ -44,15 +44,17 @@ type FeatherName = React.ComponentProps<typeof Feather>['name'];
 
 export interface AuthScreenProps {
   children: React.ReactNode;
-  /** Vertically centre the content (default). Set false for long forms. */
-  centered?: boolean;
   scrollRef?: React.RefObject<ScrollView | null>;
   contentStyle?: StyleProp<ViewStyle>;
 }
 
+// The gradient header is always flush to the top of the viewport — it is the
+// screen's anchor, and any gap above it reads as a rendering fault. Balance
+// comes from the header filling the upper third and trailing footer content
+// (AuthSecurityNote) being pushed to the bottom via marginTop:'auto', not
+// from centring the whole stack.
 export const AuthScreen: React.FC<AuthScreenProps> = ({
   children,
-  centered = true,
   scrollRef,
   contentStyle,
 }) => (
@@ -63,11 +65,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[
-          s.scroll,
-          centered && s.scrollCentered,
-          contentStyle,
-        ]}
+        contentContainerStyle={[s.scroll, contentStyle]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         bounces={false}>
@@ -404,8 +402,6 @@ const s = StyleSheet.create({
     maxWidth: AUTH_DS.maxContentWidth,
     alignSelf: 'center',
   },
-  // The balance fix: short screens sit centred instead of stranded at the top.
-  scrollCentered: { justifyContent: 'center' },
 
   // ── Header ──
   header: {
@@ -597,12 +593,16 @@ const s = StyleSheet.create({
   divider: { height: 1, backgroundColor: AUTH_DS.slate200, marginVertical: 6 },
 
   // ── Security note ──
+  // marginTop:'auto' settles it against the bottom of the viewport when the
+  // content is shorter than the screen, so the leftover space reads as
+  // deliberate footer spacing rather than a gap.
   secNote: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 22,
+    marginTop: 'auto',
+    paddingTop: 22,
   },
   secNoteText: {
     fontFamily: AUTH_DS.font,
