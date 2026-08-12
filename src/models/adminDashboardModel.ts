@@ -17,6 +17,21 @@ export interface SetupStatus {
   };
 }
 
+// Raw list items from `/invoices` and `/deliveries`, used only by the
+// fallback path that augments a summary-only dashboard response.
+export interface RawInvoiceListItem {
+  id: string;
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  issueDate?: string;
+  total?: string | number;
+  status?: string;
+}
+
+export interface RawDeliveryListItem {
+  status?: string;
+}
+
 export interface AdminDashboardData {
   totalRevenue: number;
   totalExpenses: number;

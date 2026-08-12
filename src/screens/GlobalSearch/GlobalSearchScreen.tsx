@@ -11,7 +11,8 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
   selectSearchQuery, selectSearchResults, selectIsSearching, selectRecentSearches,
-  setQuery, clearSearch, addRecentSearch, performSearch,
+  setQuery, clearSearch, addRecentSearch, removeRecentSearch, clearRecentSearches,
+  performSearch,
 } from './globalSearchSlice';
 import { selectFeatures, selectUser } from '../Auth/authSlice';
 import { isFeatureVisible } from '../../utils/featureGates';
@@ -69,6 +70,14 @@ const GlobalSearchScreen: React.FC = () => {
     dispatch(performSearch(term));
   }, [dispatch]);
 
+  const handleRemoveRecent = useCallback((term: string) => {
+    dispatch(removeRecentSearch(term));
+  }, [dispatch]);
+
+  const handleClearRecents = useCallback(() => {
+    dispatch(clearRecentSearches());
+  }, [dispatch]);
+
   /* group results by module */
   const sections = useMemo(() => {
     const groups: Record<string, SearchResult[]> = {};
@@ -118,13 +127,35 @@ const GlobalSearchScreen: React.FC = () => {
       {/* Recent Searches (when empty) */}
       {!hasQuery && !searching && (
         <View style={s.recentSection}>
-          <Text style={s.recentTitle}>Recent Searches</Text>
-          {recentSearches.map((term, idx) => (
-            <TouchableOpacity key={idx} style={s.recentRow} onPress={() => handleRecentTap(term)}>
-              <Feather name="clock" size={14} color={P.sub} />
-              <Text style={s.recentText}>{term}</Text>
-            </TouchableOpacity>
-          ))}
+          <View style={s.recentHeader}>
+            <Text style={s.recentTitle}>Recent Searches</Text>
+            {recentSearches.length > 0 && (
+              <TouchableOpacity
+                onPress={handleClearRecents}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={s.clearAllText}>Clear all</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {recentSearches.length === 0 ? (
+            <Text style={s.recentEmptyText}>No recent searches</Text>
+          ) : (
+            recentSearches.map(term => (
+              <View key={term} style={s.recentRow}>
+                <TouchableOpacity style={s.recentTap} onPress={() => handleRecentTap(term)}>
+                  <Feather name="clock" size={14} color={P.sub} />
+                  <Text style={s.recentText}>{term}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleRemoveRecent(term)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Feather name="x" size={14} color={P.sub} />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
         </View>
       )}
 
@@ -203,12 +234,22 @@ const s = StyleSheet.create({
   },
   loadingWrap: { paddingVertical: spacing.lg, alignItems: 'center' },
   recentSection: { padding: spacing.md },
+  recentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
   recentTitle: {
     ...THEME.typography.bodySm,
     fontWeight: '600',
     color: P.sub,
     letterSpacing: 0.5,
-    marginBottom: spacing.sm,
+  },
+  clearAllText: {
+    ...THEME.typography.bodySm,
+    fontWeight: '600',
+    color: P.brand,
   },
   recentRow: {
     flexDirection: 'row',
@@ -218,7 +259,18 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: P.divider,
   },
+  recentTap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   recentText: { ...THEME.typography.bodyMd, color: P.text },
+  recentEmptyText: {
+    ...THEME.typography.bodyMd,
+    color: P.sub,
+    paddingVertical: 10,
+  },
   list: { padding: spacing.md, paddingBottom: spacing.xl },
   sectionHeader: {
     flexDirection: 'row',

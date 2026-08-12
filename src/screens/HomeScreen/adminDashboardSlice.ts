@@ -16,6 +16,8 @@ import type {
 } from '../../models/dashboardModel';
 import type {
   AdminDashboardData,
+  RawDeliveryListItem,
+  RawInvoiceListItem,
   SetupStatus,
 } from '../../models/adminDashboardModel';
 import {
@@ -82,12 +84,12 @@ async function fetchDashboardData(): Promise<{
       getDeliveryStatsAPI(),
     ]);
 
-    const invoiceList: any[] =
+    const invoiceList: RawInvoiceListItem[] =
       invoicesRaw.status === 'fulfilled' && Array.isArray(invoicesRaw.value?.data)
         ? invoicesRaw.value.data
         : [];
 
-    const deliveryList: any[] =
+    const deliveryList: RawDeliveryListItem[] =
       deliveriesRaw.status === 'fulfilled' && Array.isArray(deliveriesRaw.value?.data)
         ? deliveriesRaw.value.data
         : [];
@@ -127,7 +129,7 @@ export const adminDashboardSlice = createAppSlice({
       rejected: (state, action) => {
         state.isRefreshing = false;
         state.status = 'failed';
-        state.error = (action.error as any)?.message ?? 'Failed to load dashboard';
+        state.error = action.error?.message ?? 'Failed to load dashboard';
       },
     }),
     loadDashboard: create.asyncThunk(async () => fetchDashboardData(), {
@@ -146,7 +148,7 @@ export const adminDashboardSlice = createAppSlice({
       },
       rejected: (state, action) => {
         state.status = 'failed';
-        state.error = (action.error as any)?.message ?? 'Failed to load dashboard';
+        state.error = action.error?.message ?? 'Failed to load dashboard';
       },
     }),
   }),

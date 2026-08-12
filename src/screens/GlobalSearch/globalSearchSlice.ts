@@ -34,6 +34,12 @@ export const globalSearchSlice = createAppSlice({
         ...state.recentSearches.filter(s => s !== action.payload),
       ].slice(0, 8);
     }),
+    removeRecentSearch: create.reducer((state, action: PayloadAction<string>) => {
+      state.recentSearches = state.recentSearches.filter(s => s !== action.payload);
+    }),
+    clearRecentSearches: create.reducer(state => {
+      state.recentSearches = [];
+    }),
     performSearch: create.asyncThunk(
       async (query: string) => searchAll(query),
       {
@@ -57,5 +63,12 @@ export const globalSearchSlice = createAppSlice({
   },
 });
 
-export const { setQuery, clearSearch, addRecentSearch, performSearch } = globalSearchSlice.actions;
+export const {
+  setQuery,
+  clearSearch,
+  addRecentSearch,
+  removeRecentSearch,
+  clearRecentSearches,
+  performSearch,
+} = globalSearchSlice.actions;
 export const { selectSearchQuery, selectSearchResults, selectIsSearching, selectRecentSearches } = globalSearchSlice.selectors;
