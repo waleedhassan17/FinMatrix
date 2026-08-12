@@ -2,8 +2,9 @@
 // FinMatrix — Auth Network (Production API)
 // ═══════════════════════════════════════════════════════
 
-import { api, setTokens, setStoredCompanyId, clearTokens, extractErrorMessage } from '../network/apiHelpers';
+import { api, setTokens, setStoredCompanyId, clearTokens, getAccessToken, extractErrorMessage } from '../network/apiHelpers';
 import { userResponseSerializer } from '../../serializers/authSerializer';
+import { normalizePkPhone } from '../../utils/phone';
 
 // ─── Types ────────────────────────────────────────────
 
@@ -159,7 +160,10 @@ export const authRegister = async ({
       email: registerInfo.email.trim(),
       password: registerInfo.password,
       displayName: registerInfo.fullName.trim(),
-      phone: registerInfo.phone,
+      // Canonical +92XXXXXXXXXX, or omitted entirely when blank — posting ''
+      // would fail the server's optional-phone check (@IsOptional only skips
+      // undefined/null).
+      phone: normalizePkPhone(registerInfo.phone),
       role: 'admin',
     });
     const { user: backendUser, tokens, companyId, companyStatus, companyType, features } = response.data.data;
@@ -190,15 +194,30 @@ export const authMe = async () => {
 // ─── Sign Out ─────────────────────────────────────────
 
 export const authSignOut = async () => {
+  // Capture the token BEFORE clearing: the request interceptor only attaches
+  // Authorization from storage, so clearing first would post an anonymous
+  // request and the server could never revoke the session. Passing it
+  // explicitly lets the local sign-out complete immediately while revocation
+  // still happens.
+  const accessToken = await getAccessToken();
+
+  // Local sign-out first, and it must not depend on the network: tokens are
+  // gone whether or not the request ever lands.
+  await clearTokens();
+
+  // Nothing to revoke (already signed out) — keeps repeat calls idempotent.
+  if (!accessToken) return;
+
   try {
-    // Short timeout: revocation is best-effort — offline users should not
-    // stare at a spinner for the client's default 30s before the local
-    // sign-out proceeds.
-    await api.post('/auth/signout', undefined, { timeout: 8000 });
+    // Short timeout: revocation is best-effort. Callers no longer await this,
+    // but a bounded request still avoids a socket lingering for the client's
+    // default 30s.
+    await api.post('/auth/signout', undefined, {
+      timeout: 8000,
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
   } catch {
-    // Ignore errors on signout
-  } finally {
-    await clearTokens();
+    // Ignore errors on signout — the session is already gone locally.
   }
 };
 

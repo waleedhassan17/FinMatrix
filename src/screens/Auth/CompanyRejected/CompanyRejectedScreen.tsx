@@ -1,27 +1,35 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Registration Rejected / Account Deactivated gate
+// ═══════════════════════════════════════════════════════
+// Sibling of PendingApprovalScreen and deliberately built from the same kit —
+// a user moving between these states should see one consistent screen family.
+
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Toast from 'react-native-toast-message';
-import { colors, spacing, typography, radius } from '../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { setUser, signOut } from '../authSlice';
+import { setUser, selectSelectedRole } from '../authSlice';
 import {
   authMe,
-  authSignOut,
   getCompanyAPI,
   submitCompanyAPI,
 } from '../../../networks/auth/authNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
+import { useSignOut } from '../../../hooks/useSignOut';
+import type { UserRole } from '../../../types';
+import {
+  AuthScreen,
+  AuthHeader,
+  AuthCard,
+  AuthMedallion,
+  AuthPrimaryButton,
+  AuthLinkButton,
+  InlineBanner,
+  AUTH_DS,
+  type AuthTone,
+} from '../../../components/auth/AuthUI';
 
 const CompanyRejectedScreen: React.FC = () => {
-  const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -29,10 +37,16 @@ const CompanyRejectedScreen: React.FC = () => {
   const mode: 'rejected' | 'inactive' = route.params?.mode ?? 'rejected';
   const isInactive = mode === 'inactive';
   const user = useAppSelector(s => s.auth.user);
+  const selectedRole = useAppSelector(selectSelectedRole);
+  const role: UserRole = selectedRole ?? 'admin';
   const companyId = user?.companyId ?? null;
+  const { confirmSignOut } = useSignOut();
 
   const [reason, setReason] = useState<string | null>(route.params?.reason ?? null);
   const [resubmitting, setResubmitting] = useState(false);
+  const [notice, setNotice] = useState<{ tone: AuthTone; message: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     // With a live session (not from the login gate) we can fetch the latest
@@ -55,131 +69,128 @@ const CompanyRejectedScreen: React.FC = () => {
   const handleResubmit = useCallback(async () => {
     if (!companyId) return;
     setResubmitting(true);
+    setNotice(null);
     try {
       await submitCompanyAPI(companyId);
       const { data } = await authMe();
       if (data.companyId) await setStoredCompanyId(data.companyId);
       dispatch(setUser(data.user));
-      Toast.show({ type: 'success', text1: 'Resubmitted for review.' });
+      setNotice({ tone: 'success', message: 'Resubmitted for review.' });
     } catch (e: any) {
-      Toast.show({ type: 'error', text1: e?.message ?? 'Could not resubmit' });
+      setNotice({ tone: 'error', message: e?.message ?? 'Could not resubmit' });
     } finally {
       setResubmitting(false);
     }
   }, [companyId, dispatch]);
 
-  const handleSignOut = useCallback(async () => {
-    if (fromLogin) { navigation.navigate('SignIn'); return; }
-    await authSignOut();
-    dispatch(signOut());
-  }, [dispatch, fromLogin, navigation]);
+  const handleSignOut = useCallback(() => {
+    if (fromLogin) {
+      navigation.navigate('SignIn', { role });
+      return;
+    }
+    confirmSignOut();
+  }, [fromLogin, navigation, role, confirmSignOut]);
 
   // Resubmit only makes sense for a rejected company with a live session.
   const canResubmit = !isInactive && !fromLogin && !!companyId;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.xxl }]}>
-      <View style={styles.iconWrap}>
-        <Text style={styles.icon}>{isInactive ? '🚫' : '⚠️'}</Text>
-      </View>
-      <Text style={styles.title}>
-        {isInactive ? 'Account deactivated' : 'Registration not approved'}
-      </Text>
-      <Text style={styles.subtitle}>
-        {isInactive
-          ? 'Your company account has been deactivated. Please contact the FinMatrix administrator to restore access.'
-          : "Unfortunately your company registration wasn't approved this time."}
-      </Text>
+    <AuthScreen>
+      <AuthHeader
+        title={isInactive ? 'Account deactivated' : 'Registration not approved'}
+        subtitle={
+          isInactive
+            ? 'Access is paused until an administrator restores it.'
+            : 'Review the note below, then resubmit when you are ready.'
+        }
+        pill={isInactive ? 'Deactivated' : 'Not Approved'}
+        compact
+      />
 
-      {reason ? (
-        <View style={styles.reasonCard}>
-          <Text style={styles.reasonLabel}>Reason</Text>
-          <Text style={styles.reasonText}>{reason}</Text>
-        </View>
-      ) : null}
+      <AuthCard>
+        <AuthMedallion
+          icon={isInactive ? 'slash' : 'alert-triangle'}
+          tone={isInactive ? 'error' : 'warning'}
+        />
 
-      {canResubmit ? (
-        <TouchableOpacity
-          style={[styles.button, resubmitting && styles.buttonDisabled]}
-          onPress={handleResubmit}
-          disabled={resubmitting}>
-          {resubmitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Resubmit for review</Text>
-          )}
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={styles.button} onPress={handleSignOut}>
-          <Text style={styles.buttonText}>{fromLogin ? 'Back to Sign In' : 'Sign out'}</Text>
-        </TouchableOpacity>
-      )}
+        {notice ? (
+          <InlineBanner
+            tone={notice.tone}
+            message={notice.message}
+            onDismiss={() => setNotice(null)}
+            style={styles.banner}
+          />
+        ) : null}
 
-      {canResubmit && (
-        <TouchableOpacity style={styles.linkButton} onPress={handleSignOut}>
-          <Text style={styles.linkMuted}>Sign out</Text>
-        </TouchableOpacity>
-      )}
-    </View>
+        <Text style={styles.body}>
+          {isInactive
+            ? 'Your company account has been deactivated. Please contact the FinMatrix administrator to restore access.'
+            : "Unfortunately your company registration wasn't approved this time."}
+        </Text>
+
+        {reason ? (
+          <View style={styles.reasonCard}>
+            <Text style={styles.reasonLabel}>Reason</Text>
+            <Text style={styles.reasonText}>{reason}</Text>
+          </View>
+        ) : null}
+
+        {canResubmit ? (
+          <>
+            <AuthPrimaryButton
+              label="Resubmit for review"
+              loading={resubmitting}
+              loadingLabel="Resubmitting…"
+              onPress={handleResubmit}
+              style={styles.cta}
+            />
+            <AuthLinkButton label="Sign out" onPress={handleSignOut} muted />
+          </>
+        ) : (
+          <AuthPrimaryButton
+            label={fromLogin ? 'Back to Sign In' : 'Sign out'}
+            onPress={handleSignOut}
+            style={styles.cta}
+          />
+        )}
+      </AuthCard>
+    </AuthScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  iconWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  icon: { fontSize: 44 },
-  title: { ...typography.h1, color: colors.textPrimary, marginBottom: spacing.sm, textAlign: 'center' },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
+  banner: { marginBottom: 16 },
+  body: {
+    fontFamily: AUTH_DS.font,
+    fontSize: 14,
     lineHeight: 22,
+    color: AUTH_DS.slate500,
+    textAlign: 'center',
   },
   reasonCard: {
-    alignSelf: 'stretch',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    backgroundColor: AUTH_DS.slate50,
+    borderRadius: AUTH_DS.radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.xl,
+    borderColor: AUTH_DS.slate200,
+    padding: 14,
+    marginTop: 18,
   },
   reasonLabel: {
-    ...typography.overline,
-    color: colors.textTertiary,
-    marginBottom: spacing.xs,
+    fontFamily: AUTH_DS.font,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
+    color: AUTH_DS.slate400,
+    marginBottom: 5,
   },
-  reasonText: { ...typography.body, color: colors.textPrimary },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-    alignSelf: 'stretch',
+  reasonText: {
+    fontFamily: AUTH_DS.font,
+    fontSize: 14,
+    lineHeight: 21,
+    color: AUTH_DS.navy700,
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { ...typography.button, color: '#fff' },
-  linkButton: { marginTop: spacing.lg, alignItems: 'center' },
-  linkMuted: { ...typography.label, color: colors.textSecondary },
+  cta: { marginTop: 20 },
 });
 
 export default CompanyRejectedScreen;

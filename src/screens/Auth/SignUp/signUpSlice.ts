@@ -18,7 +18,10 @@ export interface SignUpSliceState {
 const initialState: SignUpSliceState = {
   fullName: '',
   email: '',
-  phone: '+92 ',
+  // Empty, not '+92 ': the prefill was submitted verbatim when the user left
+  // the field alone and failed server validation. The input's placeholder
+  // carries the hint instead — every PK format is accepted anyway.
+  phone: '',
   password: '',
   confirmPassword: '',
   acceptedTerms: false,

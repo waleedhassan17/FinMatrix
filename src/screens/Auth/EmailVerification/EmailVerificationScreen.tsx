@@ -1,26 +1,40 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Email Verification gate
+// ═══════════════════════════════════════════════════════
+// Reached after signup (tokens are stored but the account is unverified) and
+// from the finmatrix://verify-email deep link, which carries a token and
+// auto-verifies on mount.
+//
+// Feedback renders as an inline banner inside the card rather than a floating
+// toast: <Toast/> is mounted without a toastConfig, so its default styling
+// sits outside this flow's design language and drifts away from the action
+// that produced it.
+
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, typography, radius } from '../../../theme';
-import type { RootStackParamList } from '../../../types';
+import type { RootStackParamList, UserRole } from '../../../types';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { setUser, signOut } from '../authSlice';
+import { setUser, selectSelectedRole } from '../authSlice';
 import {
   authResendVerification,
   authVerifyEmail,
   authMe,
-  authSignOut,
 } from '../../../networks/auth/authNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
-import Toast from 'react-native-toast-message';
+import { useSignOut } from '../../../hooks/useSignOut';
+import {
+  AuthScreen,
+  AuthHeader,
+  AuthCard,
+  AuthMedallion,
+  AuthPrimaryButton,
+  AuthLinkButton,
+  InlineBanner,
+  AUTH_DS,
+  type AuthTone,
+} from '../../../components/auth/AuthUI';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'EmailVerification'>;
 type RouteProps = RouteProp<RootStackParamList, 'EmailVerification'>;
@@ -31,10 +45,12 @@ const EmailVerificationScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProps>();
   const dispatch = useAppDispatch();
-  const insets = useSafeAreaInsets();
+  const { signOutNow } = useSignOut();
 
   const isAuthenticated = useAppSelector(s => s.auth.isAuthenticated);
   const user = useAppSelector(s => s.auth.user);
+  const selectedRole = useAppSelector(selectSelectedRole);
+  const role: UserRole = selectedRole ?? 'admin';
   const email = route.params?.email ?? user?.email ?? '';
   const token = route.params?.token;
 
@@ -43,6 +59,9 @@ const EmailVerificationScreen: React.FC = () => {
   const [isResending, setIsResending] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [notice, setNotice] = useState<{ tone: AuthTone; message: string } | null>(
+    null,
+  );
 
   // Pull the latest profile and update the store so the navigator advances.
   const refreshSession = useCallback(async () => {
@@ -66,13 +85,13 @@ const EmailVerificationScreen: React.FC = () => {
         await authVerifyEmail(token);
         if (!active) return;
         setVerified(true);
-        Toast.show({ type: 'success', text1: 'Email verified!' });
+        setNotice({ tone: 'success', message: 'Email verified!' });
         // Auto-advance: if a session exists (tokens stored at signup), pulling
         // the profile flips the navigator to the company-details step.
         await refreshSession();
       } catch (e: any) {
         if (!active) return;
-        Toast.show({ type: 'error', text1: e?.message ?? 'Verification failed' });
+        setNotice({ tone: 'error', message: e?.message ?? 'Verification failed' });
       } finally {
         if (active) setIsVerifying(false);
       }
@@ -95,9 +114,9 @@ const EmailVerificationScreen: React.FC = () => {
     try {
       await authResendVerification({ resendInfo: { email } });
       setCooldown(RESEND_COOLDOWN);
-      Toast.show({ type: 'success', text1: 'Verification email sent!' });
+      setNotice({ tone: 'success', message: 'Verification email sent!' });
     } catch (e: any) {
-      Toast.show({ type: 'error', text1: e?.message ?? 'Failed to resend' });
+      setNotice({ tone: 'error', message: e?.message ?? 'Failed to resend' });
     } finally {
       setIsResending(false);
     }
@@ -111,131 +130,113 @@ const EmailVerificationScreen: React.FC = () => {
     setIsChecking(false);
     if (!u) {
       // No usable session (e.g. fresh deep-link install) → sign in.
-      navigation.navigate('SignIn');
+      navigation.navigate('SignIn', { role });
       return;
     }
     if (!u.isEmailVerified) {
-      Toast.show({ type: 'info', text1: 'Not verified yet — check your email.' });
+      setNotice({ tone: 'info', message: 'Not verified yet — check your email.' });
     }
   };
 
-  const handleBackToSignIn = async () => {
-    // Signup stores tokens before the email is verified — revoke + clear them
-    // (best effort, never throws) or a cold start restores this half-session.
-    await authSignOut();
-    dispatch(signOut());
-    navigation.navigate('SignIn');
-  };
+  // Signup stores tokens before the email is verified, so returning to sign-in
+  // must clear that half-session or a cold start would restore it.
+  const handleBackToSignIn = () => signOutNow();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.xl }]}>
-      <View style={styles.iconWrap}>
-        <Text style={styles.icon}>{verified ? '✅' : '✉️'}</Text>
-      </View>
+    <AuthScreen>
+      <AuthHeader
+        title={verified ? 'Email verified' : 'Verify your email'}
+        subtitle={
+          verified
+            ? 'Your email has been verified. Continue to finish setting up your company.'
+            : 'Confirm your address to activate your FinMatrix account.'
+        }
+        pill="Verify Email"
+        compact
+      />
 
-      <Text style={styles.title}>
-        {verified ? 'Email verified' : 'Verify your email'}
-      </Text>
+      <AuthCard>
+        <AuthMedallion
+          icon={verified ? 'check-circle' : 'mail'}
+          tone={verified ? 'success' : 'brand'}
+        />
 
-      {isVerifying ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.lg }} />
-      ) : verified ? (
-        <Text style={styles.subtitle}>
-          Your email has been verified. Continue to finish setting up your company.
-        </Text>
-      ) : (
-        <Text style={styles.subtitle}>
-          We sent a verification link to{'\n'}
-          <Text style={styles.email}>{email || 'your email'}</Text>.{'\n'}
-          Open it on this device to continue.
-        </Text>
-      )}
+        {notice ? (
+          <InlineBanner
+            tone={notice.tone}
+            message={notice.message}
+            onDismiss={() => setNotice(null)}
+            style={styles.banner}
+          />
+        ) : null}
 
-      {/* Primary action */}
-      <TouchableOpacity
-        style={[styles.button, (isChecking || isVerifying) && styles.buttonDisabled]}
-        onPress={handleContinue}
-        disabled={isChecking || isVerifying}>
-        {isChecking ? (
-          <ActivityIndicator color="#fff" />
+        {isVerifying ? (
+          <ActivityIndicator color={AUTH_DS.green500} style={styles.spinner} />
+        ) : verified ? (
+          <Text style={styles.body}>
+            Your email has been verified. Continue to finish setting up your
+            company.
+          </Text>
         ) : (
-          <Text style={styles.buttonText}>
-            {verified
+          <Text style={styles.body}>
+            We sent a verification link to{'\n'}
+            <Text style={styles.email}>{email || 'your email'}</Text>.{'\n'}
+            Open it on this device to continue.
+          </Text>
+        )}
+
+        <AuthPrimaryButton
+          label={
+            verified
               ? isAuthenticated
                 ? 'Continue'
                 : 'Go to Sign In'
-              : "I've verified — continue"}
-          </Text>
+              : "I've verified — continue"
+          }
+          loading={isChecking}
+          loadingLabel="Checking…"
+          disabled={isVerifying}
+          onPress={handleContinue}
+          style={styles.cta}
+        />
+
+        {!verified && (
+          <AuthLinkButton
+            label={
+              isResending
+                ? 'Sending…'
+                : cooldown > 0
+                ? `Resend in ${cooldown}s`
+                : 'Resend verification email'
+            }
+            onPress={handleResend}
+            disabled={cooldown > 0 || isResending}
+            muted={cooldown > 0}
+          />
         )}
-      </TouchableOpacity>
 
-      {/* Resend */}
-      {!verified && (
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={handleResend}
-          disabled={cooldown > 0 || isResending}>
-          <Text style={[styles.linkText, cooldown > 0 && styles.linkDisabled]}>
-            {isResending
-              ? 'Sending…'
-              : cooldown > 0
-              ? `Resend in ${cooldown}s`
-              : 'Resend verification email'}
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      <TouchableOpacity style={styles.linkButton} onPress={handleBackToSignIn}>
-        <Text style={styles.linkMuted}>Back to Sign In</Text>
-      </TouchableOpacity>
-    </View>
+        <View style={styles.footerLink}>
+          <AuthLinkButton label="Back to Sign In" onPress={handleBackToSignIn} muted />
+        </View>
+      </AuthCard>
+    </AuthScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  iconWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  icon: { fontSize: 44 },
-  title: { ...typography.h1, color: colors.textPrimary, marginBottom: spacing.sm, textAlign: 'center' },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
+  banner: { marginBottom: 16 },
+  spinner: { marginVertical: 20 },
+  body: {
+    fontFamily: AUTH_DS.font,
+    fontSize: 14,
     lineHeight: 22,
+    color: AUTH_DS.slate500,
+    textAlign: 'center',
+    marginBottom: 4,
   },
-  email: { color: colors.textPrimary, fontWeight: '700' },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-    alignSelf: 'stretch',
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { ...typography.button, color: '#fff' },
-  linkButton: { marginTop: spacing.lg, alignItems: 'center' },
-  linkText: { ...typography.label, color: colors.primary },
-  linkDisabled: { color: colors.textTertiary },
-  linkMuted: { ...typography.label, color: colors.textSecondary },
+  email: { fontWeight: '700', color: AUTH_DS.navy800 },
+  cta: { marginTop: 18 },
+  footerLink: { marginTop: 2 },
 });
 
 export default EmailVerificationScreen;

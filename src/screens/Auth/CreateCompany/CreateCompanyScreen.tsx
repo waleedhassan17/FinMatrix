@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   LayoutAnimation,
 } from 'react-native';
-import { Alert } from '../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +20,7 @@ import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import { THEME } from '../../../utils/theme';
+import { isValidPkPhone, normalizePkPhone, PK_PHONE_MESSAGE } from '../../../utils/phone';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   createCompany,
@@ -208,6 +208,11 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
   const [inviteCode] = useState(generateInviteCode());
   const [isCreating, setIsCreating] = useState(false);
 
+  // Server-side failures render in the card's error banner, never a browser
+  // dialog. scrollRef brings the banner into view when it appears.
+  const [submitError, setSubmitError] = useState('');
+  const scrollRef = useRef<ScrollView>(null);
+
   const validateStep1 = (): boolean => {
     const errs: Record<string, string> = {};
     if (!companyName.trim()) errs.companyName = 'Company name is required';
@@ -215,7 +220,11 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!city.trim()) errs.city = 'City is required';
     if (!stateProv.trim()) errs.state = 'State/Province is required';
     if (!zipCode.trim()) errs.zipCode = 'ZIP code is required';
+    // Company phones are legitimately landlines (042 35761234) as well as
+    // mobiles, and any spacing/dashes are fine — normalizePkPhone canonicalises
+    // before we send.
     if (!phone.trim()) errs.phone = 'Phone is required';
+    else if (!isValidPkPhone(phone)) errs.phone = PK_PHONE_MESSAGE;
     if (!email.trim()) errs.email = 'Email is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -263,7 +272,8 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const addCustomAgency = () => {
     if (!customAgency.name.trim()) {
-      Alert.alert('Error', 'Agency name is required');
+      // In-form, consistent with every other validation message on this screen.
+      setErrors(prev => ({ ...prev, customAgencyName: 'Agency name is required' }));
       return;
     }
     const newAgency: WarehouseAgency = {
@@ -319,7 +329,8 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
           postalCode: zipCode.trim(),
           country,
         },
-        phone: phone.trim(),
+        // Canonical +92XXXXXXXXXX — the server stores this shape.
+        phone: normalizePkPhone(phone),
         email: email.trim(),
         taxId: taxId.trim(),
       });
@@ -375,7 +386,10 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
       navigation.navigate('SubscriptionSelect', { companyId, companyType });
     } catch (err: any) {
       setIsCreating(false);
-      Alert.alert('Error', err?.message ?? 'Unable to create company. Please try again.');
+      // In-form banner, not a browser dialog — and scrolled into view so it
+      // can't be missed on a long form.
+      setSubmitError(err?.message ?? 'Unable to create company. Please try again.');
+      requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     }
   }, [
     user,
@@ -402,6 +416,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
   // and create immediately — no warehouse/agency step during onboarding (that
   // feature lives under More → Agencies).
   const handleSubmit = () => {
+    setSubmitError('');
     if (validateStep1()) handleCreate();
   };
 
@@ -723,7 +738,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
           setPhone(t);
           if (errors.phone) setErrors(p => ({ ...p, phone: '' }));
         }}
-        placeholder="+92-300-1234567"
+        placeholder="0312 3456789 or 042 35761234"
         keyboardType="phone-pad"
         error={errors.phone}
       />
@@ -804,10 +819,17 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
           <CustomInput
             label="Agency Name *"
             value={customAgency.name}
-            onChangeText={(t: string) =>
-              setCustomAgency(p => ({ ...p, name: t }))
-            }
+            onChangeText={(t: string) => {
+              setCustomAgency(p => ({ ...p, name: t }));
+              if (errors.customAgencyName) {
+                setErrors(prev => {
+                  const { customAgencyName: _removed, ...rest } = prev;
+                  return rest;
+                });
+              }
+            }}
             placeholder="Agency name"
+            error={errors.customAgencyName}
           />
           <CustomDropdown
             label="Type"
@@ -968,6 +990,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         style={s.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={s.scroll}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -1014,6 +1037,20 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={s.cardZone}>
             <View style={s.mainCard}>
               {renderStep1()}
+
+              {/* Server-side failure (network down, duplicate name, rejected
+                  field) \u2014 shown here rather than in a browser dialog. */}
+              {submitError ? (
+                <View
+                  style={s.errorBanner}
+                  accessibilityLiveRegion="polite"
+                  accessibilityRole="alert">
+                  <View style={s.errorIconWrap}>
+                    <Text style={s.errorIconChar}>!</Text>
+                  </View>
+                  <Text style={s.errorBannerText}>{submitError}</Text>
+                </View>
+              ) : null}
 
               {/* Action buttons \u2014 single-step create */}
               <View style={s.actionBar}>

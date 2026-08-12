@@ -1,26 +1,37 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Forgot Password (3 steps in one screen)
+// ═══════════════════════════════════════════════════════
+//   request → email in, 6-digit code out
+//   otp     → verify the code, receive a single-use reset token
+//   reset   → set the new password, then back to sign-in
+//
+// The success path deliberately routes to SignIn WITH an explicit role and
+// via reset(): the user has no session here, so nothing in this flow may
+// touch a screen that reads a signed-in user's role, and Back must not
+// return to a form holding a spent reset token.
+
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { Text, StyleSheet, TextInput } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, spacing, typography, radius } from '../../../theme';
 import {
   authForgotPassword,
   authVerifyOtp,
   authResetPassword,
 } from '../../../networks/auth/authNetwork';
-import type { RootStackParamList } from '../../../types';
+import { useAppSelector } from '../../../hooks/useReduxHooks';
+import { selectSelectedRole } from '../authSlice';
+import {
+  AuthScreen,
+  AuthHeader,
+  AuthCard,
+  AuthMedallion,
+  AuthPrimaryButton,
+  AuthLinkButton,
+  InlineBanner,
+  OtpInput,
+  AUTH_DS,
+} from '../../../components/auth/AuthUI';
+import type { RootStackParamList, UserRole } from '../../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 
@@ -30,9 +41,9 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 const RESEND_COOLDOWN = 60;
 
-const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
+const STEP_INDEX: Record<Step, number> = { request: 1, otp: 2, reset: 3 };
 
+const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
   const [step, setStep] = useState<Step>('request');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -41,13 +52,29 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [cooldown, setCooldown] = useState(0);
+
+  // Keep the portal the user originally chose — landing them on the admin
+  // sign-in after resetting a delivery account would be wrong.
+  const selectedRole = useAppSelector(selectSelectedRole);
+  const role: UserRole = selectedRole ?? 'admin';
 
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown(c => c - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
+
+  const goToSignIn = () => {
+    // reset(), not navigate(): the reset token is spent, so Back must not
+    // return here. Falls back to navigate() if SignIn isn't in this stack.
+    try {
+      navigation.reset({ index: 0, routes: [{ name: 'SignIn', params: { role } }] });
+    } catch {
+      navigation.navigate('SignIn', { role });
+    }
+  };
 
   const handleRequest = async () => {
     if (!EMAIL_REGEX.test(email.trim())) {
@@ -60,11 +87,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
       await authForgotPassword({ forgotPasswordInfo: { email: email.trim() } });
       setStep('otp');
       setCooldown(RESEND_COOLDOWN);
-      Toast.show({
-        type: 'success',
-        text1: 'Check your email',
-        text2: 'If an account exists, a 6-digit code was sent.',
-      });
+      setNotice('If an account exists, a 6-digit code was sent.');
     } catch (e: any) {
       setError(e?.message ?? 'Something went wrong');
     } finally {
@@ -74,12 +97,13 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleResend = async () => {
     if (cooldown > 0) return;
+    setError('');
     try {
       await authForgotPassword({ forgotPasswordInfo: { email: email.trim() } });
       setCooldown(RESEND_COOLDOWN);
-      Toast.show({ type: 'success', text1: 'Code resent' });
+      setNotice('Code resent');
     } catch (e: any) {
-      Toast.show({ type: 'error', text1: e?.message ?? 'Failed to resend' });
+      setError(e?.message ?? 'Failed to resend');
     }
   };
 
@@ -90,6 +114,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     }
     setLoading(true);
     setError('');
+    setNotice('');
     try {
       const { resetToken: rt } = await authVerifyOtp(email.trim(), otp);
       setResetToken(rt);
@@ -103,9 +128,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleReset = async () => {
     if (!PASSWORD_REGEX.test(password)) {
-      setError(
-        'Password must be 8+ chars with upper, lower and a number',
-      );
+      setError('Password must be 8+ chars with upper, lower and a number');
       return;
     }
     if (password !== confirm) {
@@ -116,8 +139,9 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     setError('');
     try {
       await authResetPassword(email.trim(), resetToken, password);
-      Toast.show({ type: 'success', text1: 'Password updated. Please sign in.' });
-      navigation.navigate('SignIn');
+      setNotice('Password updated successfully. Please sign in.');
+      // Let the confirmation register before the screen changes.
+      setTimeout(goToSignIn, 900);
     } catch (e: any) {
       setError(e?.message ?? 'Could not reset password');
     } finally {
@@ -140,24 +164,49 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     },
   };
 
+  const handleBack = () => {
+    if (step === 'otp') {
+      setStep('request');
+      setError('');
+      setNotice('');
+      return;
+    }
+    if (step === 'reset') {
+      setStep('otp');
+      setError('');
+      setNotice('');
+      return;
+    }
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('RoleSelection');
+    }
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.container,
-          { paddingTop: insets.top + spacing.xl },
-        ]}
-        keyboardShouldPersistTaps="handled">
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Feather name="arrow-left" size={17} color={colors.textSecondary} style={{ marginRight: 2 }} /><Text style={styles.backText}>Back</Text></View>
-        </TouchableOpacity>
+    <AuthScreen>
+      <AuthHeader
+        title={titles[step].title}
+        subtitle={titles[step].subtitle}
+        pill="Reset Password"
+        onBack={handleBack}
+        compact
+        steps={{ current: STEP_INDEX[step], total: 3 }}
+      />
 
-        <Text style={styles.title}>{titles[step].title}</Text>
-        <Text style={styles.subtitle}>{titles[step].subtitle}</Text>
+      <AuthCard>
+        <AuthMedallion icon={step === 'reset' ? 'lock' : 'mail'} />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <InlineBanner tone="error" message={error} style={styles.banner} />
+        ) : notice ? (
+          <InlineBanner
+            tone={step === 'reset' ? 'success' : 'info'}
+            message={notice}
+            style={styles.banner}
+          />
+        ) : null}
 
         {step === 'request' && (
           <>
@@ -170,39 +219,49 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
                 if (error) setError('');
               }}
               placeholder="you@company.com"
-              placeholderTextColor={colors.textTertiary}
+              placeholderTextColor={AUTH_DS.slate400}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              onSubmitEditing={handleRequest}
+              returnKeyType="send"
             />
-            <PrimaryButton label="Send code" loading={loading} onPress={handleRequest} />
+            <AuthPrimaryButton
+              label="Send code"
+              loading={loading}
+              loadingLabel="Sending…"
+              onPress={handleRequest}
+              style={styles.cta}
+            />
           </>
         )}
 
         {step === 'otp' && (
           <>
             <Text style={styles.label}>6-digit code</Text>
-            <TextInput
-              style={[styles.input, styles.otpInput]}
+            <OtpInput
               value={otp}
-              onChangeText={t => {
-                setOtp(t.replace(/\D/g, '').slice(0, 6));
+              onChange={t => {
+                setOtp(t);
                 if (error) setError('');
               }}
-              placeholder="------"
-              placeholderTextColor={colors.textTertiary}
-              keyboardType="number-pad"
-              maxLength={6}
+              error={!!error}
+              autoFocus
+              style={styles.otp}
             />
-            <PrimaryButton label="Verify code" loading={loading} onPress={handleVerifyOtp} />
-            <TouchableOpacity
-              style={styles.linkButton}
+            <AuthPrimaryButton
+              label="Verify code"
+              loading={loading}
+              loadingLabel="Verifying…"
+              onPress={handleVerifyOtp}
+              style={styles.cta}
+            />
+            <AuthLinkButton
+              label={cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
               onPress={handleResend}
-              disabled={cooldown > 0}>
-              <Text style={[styles.link, cooldown > 0 && styles.linkDisabled]}>
-                {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
-              </Text>
-            </TouchableOpacity>
+              disabled={cooldown > 0}
+              muted={cooldown > 0}
+            />
           </>
         )}
 
@@ -217,7 +276,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
                 if (error) setError('');
               }}
               placeholder="New password"
-              placeholderTextColor={colors.textTertiary}
+              placeholderTextColor={AUTH_DS.slate400}
               secureTextEntry
               autoCapitalize="none"
             />
@@ -230,84 +289,63 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
                 if (error) setError('');
               }}
               placeholder="Confirm password"
-              placeholderTextColor={colors.textTertiary}
+              placeholderTextColor={AUTH_DS.slate400}
               secureTextEntry
               autoCapitalize="none"
+              onSubmitEditing={handleReset}
+              returnKeyType="done"
             />
-            <PrimaryButton label="Update password" loading={loading} onPress={handleReset} />
+            <Text style={styles.hint}>
+              At least 8 characters, with an uppercase letter, a lowercase
+              letter and a number.
+            </Text>
+            <AuthPrimaryButton
+              label="Update password"
+              loading={loading}
+              loadingLabel="Updating…"
+              onPress={handleReset}
+              style={styles.cta}
+            />
           </>
         )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+        <AuthLinkButton label="Back to Sign In" onPress={goToSignIn} muted />
+      </AuthCard>
+    </AuthScreen>
   );
 };
 
-const PrimaryButton: React.FC<{
-  label: string;
-  loading: boolean;
-  onPress: () => void;
-}> = ({ label, loading, onPress }) => (
-  <TouchableOpacity
-    style={[styles.button, loading && styles.buttonDisabled]}
-    onPress={onPress}
-    disabled={loading}>
-    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{label}</Text>}
-  </TouchableOpacity>
-);
-
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
-  container: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
-  back: { marginBottom: spacing.lg },
-  backText: { ...typography.label, color: colors.textSecondary },
-  title: { ...typography.h1, color: colors.textPrimary, marginBottom: spacing.sm },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg,
-    lineHeight: 22,
-  },
-  error: {
-    ...typography.bodySmall,
-    color: '#DE350B',
-    marginBottom: spacing.md,
-  },
+  banner: { marginBottom: 16 },
   label: {
-    ...typography.label,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-    marginTop: spacing.sm,
+    fontFamily: AUTH_DS.font,
+    fontSize: 13,
+    fontWeight: '700',
+    color: AUTH_DS.navy700,
+    marginBottom: 7,
+    marginTop: 4,
   },
   input: {
-    ...typography.body,
-    color: colors.textPrimary,
-    backgroundColor: colors.surface,
+    fontFamily: AUTH_DS.font,
+    fontSize: 15,
+    color: AUTH_DS.navy800,
+    backgroundColor: AUTH_DS.white,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.sm,
+    borderColor: AUTH_DS.slate200,
+    borderRadius: AUTH_DS.control.radius,
+    height: AUTH_DS.control.height,
+    paddingHorizontal: 14,
+    marginBottom: 12,
   },
-  otpInput: {
-    letterSpacing: 8,
-    textAlign: 'center',
-    fontSize: 22,
+  otp: { marginBottom: 6 },
+  hint: {
+    fontFamily: AUTH_DS.font,
+    fontSize: 12,
+    color: AUTH_DS.slate500,
+    lineHeight: 17,
+    marginBottom: 4,
   },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-    marginTop: spacing.md,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { ...typography.button, color: '#fff' },
-  linkButton: { marginTop: spacing.lg, alignItems: 'center' },
-  link: { ...typography.label, color: colors.primary },
-  linkDisabled: { color: colors.textTertiary },
+  cta: { marginTop: 10 },
 });
 
 export default ForgotPasswordScreen;

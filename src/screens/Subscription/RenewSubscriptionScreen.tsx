@@ -21,8 +21,7 @@ import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
-import { signOut } from '../Auth/authSlice';
-import { authSignOut } from '../../networks/auth/authNetwork';
+import { useSignOut } from '../../hooks/useSignOut';
 import { bootstrapSession } from '../../components/app-container/appContainerSlice';
 import {
   getBillingStatusAPI,
@@ -123,10 +122,9 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.navigate('SubscriptionPay', { plan, mode: mode === 'renew' ? 'renew' : 'change' });
   };
 
-  const doSignOut = async () => {
-    await authSignOut();
-    dispatch(signOut());
-  };
+  // Shared hook: confirm → clear local state → land on sign-in immediately
+  // (the network revoke is fire-and-forget). See hooks/useSignOut.ts.
+  const { confirmSignOut } = useSignOut();
 
   if (loading) {
     return (
@@ -274,7 +272,7 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
         </Text>
 
         {mode === 'renew' && (
-          <TouchableOpacity style={S.signOut} onPress={doSignOut}>
+          <TouchableOpacity style={S.signOut} onPress={confirmSignOut}>
             <Feather name="log-out" size={16} color={DS.text.sub} />
             <Text style={S.signOutText}>Sign out</Text>
           </TouchableOpacity>

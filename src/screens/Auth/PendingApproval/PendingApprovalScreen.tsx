@@ -1,159 +1,160 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Awaiting Approval gate
+// ═══════════════════════════════════════════════════════
+// Shown while a submitted company sits in super-admin review. Two entry
+// points: `fromLogin` (a blocked sign-in, so there is no session to poll) and
+// the live post-submission session.
+
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Toast from 'react-native-toast-message';
-import { colors, spacing, typography, radius } from '../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { setUser, signOut } from '../authSlice';
-import { authMe, authSignOut } from '../../../networks/auth/authNetwork';
+import { setUser, selectSelectedRole } from '../authSlice';
+import { authMe } from '../../../networks/auth/authNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
+import { useSignOut } from '../../../hooks/useSignOut';
+import type { UserRole } from '../../../types';
+import {
+  AuthScreen,
+  AuthHeader,
+  AuthCard,
+  AuthMedallion,
+  AuthPrimaryButton,
+  AuthLinkButton,
+  InlineBanner,
+  StatusPill,
+  AuthSecurityNote,
+  AUTH_DS,
+  type AuthTone,
+} from '../../../components/auth/AuthUI';
 
 const PendingApprovalScreen: React.FC = () => {
-  const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   // Reached from a blocked login (no session) vs. from a live signup session.
   const fromLogin = !!route.params?.fromLogin;
   const user = useAppSelector(s => s.auth.user);
+  const selectedRole = useAppSelector(selectSelectedRole);
+  const role: UserRole = selectedRole ?? 'admin';
+  const { confirmSignOut, signOutNow } = useSignOut();
+
   const [checking, setChecking] = useState(false);
+  const [notice, setNotice] = useState<{ tone: AuthTone; message: string } | null>(
+    null,
+  );
 
   // From login there is no session to poll — send the user back to sign in to
   // retry once approved.
   const backToSignIn = useCallback(() => {
-    navigation.navigate('SignIn');
-  }, [navigation]);
+    navigation.navigate('SignIn', { role });
+  }, [navigation, role]);
 
   const handleRefresh = useCallback(async () => {
-    if (fromLogin) { backToSignIn(); return; }
+    if (fromLogin) {
+      backToSignIn();
+      return;
+    }
     setChecking(true);
+    setNotice(null);
     try {
       const { data } = await authMe();
       const status = data.user.companyStatus;
       if (status === 'approved' || status === 'active') {
-        // Approved by the super-admin → clear the onboarding session and send
-        // the owner to the sign-in screen to log in fresh.
-        Toast.show({ type: 'success', text1: 'Approved! Please sign in to continue.' });
-        try { await authSignOut(); } catch { /* best effort */ }
-        dispatch(signOut());
-        // Same root navigator — SignIn becomes available once signed out.
-        setTimeout(() => { try { navigation.navigate('SignIn'); } catch { /* noop */ } }, 0);
+        // Approved by the super-admin → clear the onboarding session so the
+        // owner signs in fresh. signOutNow() flips the navigator to sign-in
+        // on this frame, so there is nothing to navigate to afterwards.
+        setNotice({
+          tone: 'success',
+          message: 'Approved! Please sign in to continue.',
+        });
+        signOutNow();
         return;
       }
       if (data.companyId) await setStoredCompanyId(data.companyId);
       dispatch(setUser(data.user));
       if (status === 'rejected') {
-        Toast.show({ type: 'info', text1: 'Your registration was reviewed.' });
+        setNotice({ tone: 'info', message: 'Your registration was reviewed.' });
       } else {
-        Toast.show({ type: 'info', text1: 'Still pending review — hang tight!' });
+        setNotice({ tone: 'info', message: 'Still pending review — hang tight!' });
       }
     } catch (e: any) {
-      Toast.show({ type: 'error', text1: e?.message ?? 'Could not refresh status' });
+      setNotice({
+        tone: 'error',
+        message: e?.message ?? 'Could not refresh status',
+      });
     } finally {
       setChecking(false);
     }
-  }, [dispatch, fromLogin, backToSignIn, navigation]);
+  }, [dispatch, fromLogin, backToSignIn, signOutNow]);
 
-  const handleSignOut = useCallback(async () => {
-    if (fromLogin) { backToSignIn(); return; }
-    await authSignOut();
-    dispatch(signOut());
-  }, [dispatch, fromLogin, backToSignIn]);
+  const handleSignOut = useCallback(() => {
+    if (fromLogin) {
+      backToSignIn();
+      return;
+    }
+    confirmSignOut();
+  }, [fromLogin, backToSignIn, confirmSignOut]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.xxl }]}>
-      <View style={styles.iconWrap}>
-        <Text style={styles.icon}>⏳</Text>
-      </View>
-      <Text style={styles.title}>Awaiting approval</Text>
-      <Text style={styles.subtitle}>
-        Thanks{user?.displayName ? `, ${user.displayName}` : ''}! Your company
-        registration has been submitted and is being reviewed by our team.
-        You'll get an email as soon as it's approved.
-      </Text>
+    <AuthScreen>
+      <AuthHeader
+        title="Awaiting approval"
+        subtitle="Your company registration is with our review team."
+        pill="Pending Review"
+        compact
+      />
 
-      <View style={styles.statusPill}>
-        <View style={styles.statusDot} />
-        <Text style={styles.statusText}>Pending review</Text>
-      </View>
+      <AuthCard>
+        <AuthMedallion icon="clock" tone="warning" />
 
-      <TouchableOpacity
-        style={[styles.button, checking && styles.buttonDisabled]}
-        onPress={handleRefresh}
-        disabled={checking}>
-        {checking ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>{fromLogin ? 'Back to Sign In' : 'Check status'}</Text>
-        )}
-      </TouchableOpacity>
+        {notice ? (
+          <InlineBanner
+            tone={notice.tone}
+            message={notice.message}
+            onDismiss={() => setNotice(null)}
+            style={styles.banner}
+          />
+        ) : null}
 
-      <TouchableOpacity style={styles.linkButton} onPress={handleSignOut}>
-        <Text style={styles.linkMuted}>{fromLogin ? 'Use a different account' : 'Sign out'}</Text>
-      </TouchableOpacity>
-    </View>
+        <Text style={styles.body}>
+          {`Thanks${user?.displayName ? `, ${user.displayName}` : ''}! Your company registration has been submitted and is being reviewed by our team. You'll get an email as soon as it's approved.`}
+        </Text>
+
+        <View style={styles.pillRow}>
+          <StatusPill label="Pending review" tone="warning" />
+        </View>
+
+        <AuthPrimaryButton
+          label={fromLogin ? 'Back to Sign In' : 'Check status'}
+          loading={checking}
+          loadingLabel="Checking…"
+          onPress={handleRefresh}
+          icon={fromLogin ? undefined : 'refresh-cw'}
+        />
+
+        <AuthLinkButton
+          label={fromLogin ? 'Use a different account' : 'Sign out'}
+          onPress={handleSignOut}
+          muted
+        />
+      </AuthCard>
+
+      <AuthSecurityNote label="Reviews are usually completed within one business day" />
+    </AuthScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  iconWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  icon: { fontSize: 44 },
-  title: { ...typography.h1, color: colors.textPrimary, marginBottom: spacing.sm, textAlign: 'center' },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
+  banner: { marginBottom: 16 },
+  body: {
+    fontFamily: AUTH_DS.font,
+    fontSize: 14,
     lineHeight: 22,
+    color: AUTH_DS.slate500,
+    textAlign: 'center',
   },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.full,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.xl,
-    gap: spacing.sm,
-  },
-  statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#F59E0B' },
-  statusText: { ...typography.label, color: colors.textSecondary },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-    alignSelf: 'stretch',
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { ...typography.button, color: '#fff' },
-  linkButton: { marginTop: spacing.lg, alignItems: 'center' },
-  linkMuted: { ...typography.label, color: colors.textSecondary },
+  pillRow: { marginTop: 18, marginBottom: 22 },
 });
 
 export default PendingApprovalScreen;

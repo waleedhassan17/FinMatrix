@@ -18,7 +18,7 @@ import CustomInput from '../../../Custom-Components/CustomInput';
 import { THEME } from '../../../utils/theme';
 import { ROUTES } from '../../../navigations-maps/Base';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { setUser } from '../authSlice';
+import { setUser, selectSelectedRole } from '../authSlice';
 import {
   setEmail,
   setUsername,
@@ -35,7 +35,7 @@ import {
   selectSignInError,
 } from './signInSlice';
 import { validateSignIn, validateDeliverySignIn } from '../../../models/authModel';
-import type { RootStackParamList } from '../../../types';
+import type { RootStackParamList, UserRole } from '../../../types';
 
 // ═══════════════════════════════════════════════════════
 // Design System — Unified Auth Palette
@@ -104,8 +104,14 @@ const DS = {
 type Props = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
 
 const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { role } = route.params;
   const dispatch = useAppDispatch();
+  // Never destructure route.params directly: screens that send the user back
+  // here (password reset, "Back to Sign In") pass no params, and RN v7 pushes
+  // a fresh route rather than reusing the one RoleSelection created. Fall back
+  // to the role the user picked on RoleSelection so a delivery user isn't
+  // silently downgraded to the admin portal.
+  const selectedRole = useAppSelector(selectSelectedRole);
+  const role: UserRole = route.params?.role ?? selectedRole ?? 'admin';
 
   const email = useAppSelector(selectSignInEmail);
   const username = useAppSelector(selectSignInUsername);

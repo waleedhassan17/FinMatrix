@@ -757,8 +757,14 @@ export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
   RoleSelection: undefined;
-  SignIn: { role: UserRole };
-  SignUp: { role: UserRole };
+  // `role` is optional because several screens legitimately return the user to
+  // sign-in without one (password reset, "Back to Sign In", sign-out). Under
+  // React Navigation v7 a navigate() to a non-focused route PUSHES a fresh
+  // route rather than reusing the existing one, so its params are exactly what
+  // the caller passed — declaring `role` required made those call sites lie and
+  // crashed the destructure in the screen.
+  SignIn: { role?: UserRole } | undefined;
+  SignUp: { role?: UserRole } | undefined;
   ForgotPassword: undefined;
   EmailVerification: { email?: string; token?: string } | undefined;
   CompanySetup: undefined;

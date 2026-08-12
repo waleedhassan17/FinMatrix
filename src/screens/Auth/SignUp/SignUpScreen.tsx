@@ -18,7 +18,7 @@ import CustomInput from '../../../Custom-Components/CustomInput';
 import { THEME } from '../../../utils/theme';
 import { ROUTES } from '../../../navigations-maps/Base';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { setPendingUser } from '../authSlice';
+import { setPendingUser, selectSelectedRole } from '../authSlice';
 import {
   setFullName,
   setSignUpEmail,
@@ -42,7 +42,7 @@ import {
   getPasswordStrength,
   strengthConfig,
 } from '../../../models/authModel';
-import type { RootStackParamList } from '../../../types';
+import type { RootStackParamList, UserRole } from '../../../types';
 
 // ═══════════════════════════════════════════════════════
 // Design System
@@ -88,8 +88,11 @@ const DS = {
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
 const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { role } = route.params;
   const dispatch = useAppDispatch();
+  // Same guard as SignInScreen — never assume route.params exists (see the
+  // note on RootStackParamList.SignIn).
+  const selectedRole = useAppSelector(selectSelectedRole);
+  const role: UserRole = route.params?.role ?? selectedRole ?? 'admin';
 
   const fullName = useAppSelector(selectSignUpFullName);
   const email = useAppSelector(selectSignUpEmail);
@@ -279,7 +282,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
                 label="Phone Number"
                 value={phone}
                 onChangeText={t => { dispatch(setPhone(t)); clear('phone'); }}
-                placeholder="Enter your phone number"
+                placeholder="0312 3456789"
                 keyboardType="phone-pad"
                 error={errors.phone}
               />

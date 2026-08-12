@@ -108,6 +108,17 @@ export const appContainerSlice = createAppSlice({
     ),
   }),
 
+  // Belt-and-braces for the stuck-spinner class of bug: signing out must never
+  // make the shell "not ready". store.ts already preserves this slice through
+  // the sign-out wipe; this guarantees the invariant even if that changes.
+  extraReducers: builder => {
+    builder.addCase(signOut, state => {
+      state.isAppReady = true;
+      state.status = 'idle';
+      state.error = '';
+    });
+  },
+
   selectors: {
     selectAppStatus: state => state.status,
     selectAppError: state => state.error,

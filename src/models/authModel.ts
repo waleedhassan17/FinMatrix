@@ -2,6 +2,12 @@
 // FinMatrix — Auth Validation Model
 // ═══════════════════════════════════════════════════════
 
+import {
+  isValidPkMobile,
+  normalizePkPhone,
+  PK_MOBILE_MESSAGE,
+} from '../utils/phone';
+
 export interface SignInData {
   email: string;
   password: string;
@@ -30,18 +36,19 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // ─── Password Strength ───────────────────────────────
 export type PasswordStrength = 'weak' | 'fair' | 'strong' | 'excellent';
 
+// 8 is the accepted floor (matches SignupDto/ResetPasswordDto), so anything
+// shorter reads as weak rather than "fair but rejected".
 export const getPasswordStrength = (password: string): PasswordStrength => {
-  if (password.length < 6) return 'weak';
+  if (password.length < 8) return 'weak';
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
   const mixedCase = hasUpper && hasLower;
 
-  if (password.length >= 8 && mixedCase && hasNumber && hasSpecial) return 'excellent';
-  if (password.length >= 8 && mixedCase) return 'strong';
-  if (password.length >= 6) return 'fair';
-  return 'weak';
+  if (password.length >= 12 && mixedCase && hasNumber && hasSpecial) return 'excellent';
+  if (password.length >= 8 && mixedCase && hasNumber) return 'strong';
+  return 'fair';
 };
 
 export const strengthConfig: Record<
@@ -106,16 +113,18 @@ export const validateSignUp = (data: SignUpData): ValidationErrors => {
     errors.email = 'Please enter a valid email address';
   }
 
-  // Phone
-  if (data.phone && !/^\+?[\d\s-]{7,15}$/.test(data.phone.replace(/\s/g, ''))) {
-    errors.phone = 'Please enter a valid phone number';
+  // Phone — optional, but when supplied it must be a real Pakistani mobile.
+  // Formatting is irrelevant: 03124890176, +923124890176, 0312-4890176 and
+  // +92 312 4890176 are all accepted and normalised before submission.
+  if (normalizePkPhone(data.phone) !== undefined && !isValidPkMobile(data.phone)) {
+    errors.phone = PK_MOBILE_MESSAGE;
   }
 
-  // Password
+  // Password — 8 is the server's floor (SignupDto/ResetPasswordDto agree).
   if (!data.password) {
     errors.password = 'Password is required';
-  } else if (data.password.length < 6) {
-    errors.password = 'Password must be at least 6 characters';
+  } else if (data.password.length < 8) {
+    errors.password = 'Password must be at least 8 characters';
   }
 
   // Confirm Password

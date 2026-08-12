@@ -214,9 +214,15 @@ const rootReducer = combineReducers({
 // signOut reducer still runs (it deliberately keeps hasSeenOnboarding so a
 // returning user doesn't see onboarding again). redux-persist then flushes
 // the reset whitelist slices back to AsyncStorage.
+// `appContainer` must SURVIVE the wipe alongside `auth`. It holds no user data
+// — only app-shell readiness — and AppContainer dispatches bootstrapSession()
+// once, on mount. Resetting the slice to its initialState (isAppReady: false)
+// while AppContainer stays mounted left the app on a permanent spinner that
+// only a manual reload could clear, on every sign-out AND on the 401
+// session-expired bridge.
 const appReducer: typeof rootReducer = (state, action) => {
   if (state && action.type === 'auth/signOut') {
-    state = { auth: state.auth } as typeof state;
+    state = { auth: state.auth, appContainer: state.appContainer } as typeof state;
   }
   return rootReducer(state, action);
 };
