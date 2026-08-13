@@ -84,6 +84,14 @@ interface DisplayPlan {
   disabled: boolean;
 }
 
+/** "12 months" reads as a count; "1 year" reads as a plan. */
+const formatDuration = (months?: number): string =>
+  months === 12
+    ? '1 year'
+    : months && months % 12 === 0
+    ? `${months / 12} years`
+    : `${months} months`;
+
 const TIER_LABELS: Record<string, string> = {
   small_business: 'Small Business',
   large_org: 'Large Organization',
@@ -224,7 +232,7 @@ const SubscriptionPlansScreen: React.FC = () => {
         p.description ?? `${TIER_LABELS[p.companyType ?? ''] ?? ''} plan`,
       isFree: false,
       priceLabel: p.monthlyLabel ?? `Rs ${Number(p.priceMonthly).toLocaleString()}`,
-      durationLabel: `/month · ${p.durationMonths} months`,
+      durationLabel: `/month · ${formatDuration(p.durationMonths)}`,
       totalLabel: p.totalLabel,
       companyType: p.companyType,
       features: p.features ?? [],
@@ -246,7 +254,7 @@ const SubscriptionPlansScreen: React.FC = () => {
           <Text style={S.headerTitle}>Subscription Plans</Text>
           <Text style={S.headerSub}>
             {WAREHOUSE_ONLY_BUILD
-              ? 'Six warehouse plans · 2 / 5 / 10 delivery personnel · PKR · defined in server config'
+              ? 'Six warehouse plans · 3 / 5 / 10 delivery personnel · PKR · defined in server config'
               : 'Six plans · two per business type · PKR · defined in server config'}
           </Text>
         </View>

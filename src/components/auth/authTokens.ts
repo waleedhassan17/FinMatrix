@@ -24,13 +24,12 @@ const fontFamily = Platform.select({ android: 'Roboto', default: 'System' })!;
 export const AUTH = {
   font: fontFamily,
 
-  // ── Header (dark) ──
+  // ── Header ──
+  // ONE flat dark navy across every auth screen. No gradient, no decorative
+  // bloom — a single colour is what makes the flow read as one product, and
+  // the header's job is to frame the title, not to be looked at.
   header: {
-    from: '#111D28',
-    mid: '#0D1721',
-    to: '#0A1018',
-    /** Soft radial bloom in the top-right corner. */
-    glow: 'rgba(16, 185, 129, 0.13)',
+    bg: '#111D28',
     title: '#FFFFFF',
     subtitle: 'rgba(255,255,255,0.60)',
     pillBg: 'rgba(255,255,255,0.10)',

@@ -190,16 +190,24 @@ const TIER_TITLES: Record<string, string> = {
   warehouse: 'Warehouse',
 };
 
+/** "12 months" reads as a count; "1 year" reads as a plan. */
+const formatDuration = (months: number): string =>
+  months === 12 ? '1 year' : months % 12 === 0 ? `${months / 12} years` : `${months} months`;
+
 const TierCard: React.FC<{
   plan: TierPlanCard;
   selected: boolean;
   onSelect: () => void;
 }> = ({ plan, selected, onSelect }) => {
-  const isSix = plan.durationMonths === 6;
+  // The longer period carries the savings badge. Comparing against a
+  // hardcoded month count would break again the next time the offered
+  // durations change, so key off the badge the server computed.
+  const isLonger = !!plan.monthlySavingsLabel;
+  const durationLabel = formatDuration(plan.durationMonths);
   return (
     <TouchableOpacity activeOpacity={0.85} onPress={onSelect} style={{ flex: 1 }}>
       <View style={[S.tierCard, selected && S.tierCardSelected]}>
-        {isSix && plan.monthlySavingsLabel ? (
+        {isLonger ? (
           <View style={S.saveBadge}>
             <Feather name="zap" size={10} color="#FFF" />
             <Text style={S.saveBadgeText}>Save {plan.monthlySavingsLabel}</Text>
@@ -207,13 +215,13 @@ const TierCard: React.FC<{
         ) : (
           <View style={S.saveBadgeSpacer} />
         )}
-        <Text style={S.tierDuration}>{plan.durationMonths} months</Text>
+        <Text style={S.tierDuration}>{durationLabel}</Text>
         <View style={S.tierPriceRow}>
           <Text style={S.tierPrice}>{plan.monthlyLabel}</Text>
           <Text style={S.tierPriceUnit}>/mo</Text>
         </View>
         <Text style={S.tierTotal}>
-          {plan.totalLabel} billed once{'\n'}for {plan.durationMonths} months
+          {plan.totalLabel} billed once{'\n'}for {durationLabel}
         </Text>
         <View style={[S.tierSelect, selected && S.tierSelectOn]}>
           <Feather name={selected ? 'check-circle' : 'circle'} size={15} color={selected ? '#FFF' : DS.text.muted} />
@@ -289,7 +297,7 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
       const list = data?.plans ?? [];
       setTierPlans(list);
       // Pre-select the 6-month plan (best value).
-      setSelectedTierKey(list.find(p => p.durationMonths === 6)?.key ?? list[0]?.key ?? null);
+      setSelectedTierKey(list.find(p => !!p.monthlySavingsLabel)?.key ?? list[0]?.key ?? null);
     } catch {
       // Empty state below
     } finally {

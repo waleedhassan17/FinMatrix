@@ -32,7 +32,6 @@ import {
   type TextInputProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { AUTH, type AuthTone } from './authTokens';
 
@@ -52,7 +51,7 @@ export const AuthLayout: React.FC<{
   contentStyle?: StyleProp<ViewStyle>;
 }> = ({ header, footer, children, scrollRef, contentStyle }) => (
   <View style={s.root}>
-    <StatusBar barStyle="light-content" backgroundColor={AUTH.header.to} />
+    <StatusBar barStyle="light-content" backgroundColor={AUTH.header.bg} />
     <KeyboardAvoidingView
       style={s.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -84,14 +83,7 @@ export const AuthHeader: React.FC<{
   /** Hide the wordmark on screens deep in a flow. */
   brand?: boolean;
 }> = ({ title, subtitle, pill, onBack, step, brand = true }) => (
-  <LinearGradient
-    colors={[AUTH.header.from, AUTH.header.mid, AUTH.header.to]}
-    start={{ x: 0.1, y: 0 }}
-    end={{ x: 0.9, y: 1 }}
-    style={s.header}>
-    {/* Soft bloom, top-right — the header's only ornament. */}
-    <View style={s.glow} />
-
+  <View style={s.header}>
     <SafeAreaView edges={['top']} style={s.headerInner}>
       {(onBack || pill) && (
         <View style={s.headerTop}>
@@ -142,7 +134,7 @@ export const AuthHeader: React.FC<{
         </View>
       ) : null}
     </SafeAreaView>
-  </LinearGradient>
+  </View>
 );
 
 // ───────────────────────────────────────────────
@@ -626,18 +618,10 @@ const s = StyleSheet.create({
 
   // ── Header ──
   header: {
+    backgroundColor: AUTH.header.bg,
     borderBottomLeftRadius: AUTH.header.radius,
     borderBottomRightRadius: AUTH.header.radius,
     overflow: 'hidden',
-  },
-  glow: {
-    position: 'absolute',
-    top: -110,
-    right: -70,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: AUTH.header.glow,
   },
   headerInner: {
     paddingHorizontal: AUTH.space.xl,
