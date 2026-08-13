@@ -32,6 +32,7 @@ import { selectUser, setUser } from '../Auth/authSlice';
 import { authMe, submitCompanyAPI } from '../../networks/auth/authNetwork';
 import {
   getBankDetailsAPI,
+  getCachedBankDetails,
   submitPaymentAPI,
   type BankDetails,
   type PlanKey,
@@ -66,8 +67,12 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
   const plan = (route.params?.plan ?? 'standard') as PlanKey;
   const mode = route.params?.mode ?? 'change';
 
-  const [loading, setLoading] = useState(true);
-  const [details, setDetails] = useState<BankDetails | null>(null);
+  // Seeded from the cache the plan picker warmed, so arriving here is
+  // instant. Only a cold entry (deep link, back-navigation after a restart)
+  // ever sees the spinner.
+  const cachedDetails = getCachedBankDetails(plan);
+  const [loading, setLoading] = useState(!cachedDetails);
+  const [details, setDetails] = useState<BankDetails | null>(cachedDetails);
   const [image, setImage] = useState<{ uri: string; mimeType?: string; fileName?: string } | null>(
     null,
   );
@@ -77,13 +82,18 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     (async () => {
       try {
-        setDetails(await getBankDetailsAPI(plan));
+        const fresh = await getBankDetailsAPI(plan);
+        setDetails(fresh);
       } catch (e: any) {
-        notify('Could not load bill', e?.message ?? 'Please try again.');
+        // A cached copy is already on screen; only shout if we have nothing.
+        if (!cachedDetails) {
+          notify('Could not load bill', e?.message ?? 'Please try again.');
+        }
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan]);
 
   const copy = async (label: string, value: string) => {
@@ -129,14 +139,29 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
           /* company may already be submitted — approval flow proceeds */
         }
       }
-      // Refresh the session so paymentStatus reflects "submitted".
+      // Refresh the session so the gate sees the submitted payment. The
+      // server reports `pending` once a receipt is awaiting verification, so
+      // in signup mode the navigator swaps straight to Awaiting approval and
+      // the interstitial "Bill submitted / Done" screen is skipped — it was
+      // one extra tap to reach the same place.
+      let routed = false;
       try {
         const me = await authMe();
-        if (user) dispatch(setUser({ ...user, companyStatus: me.data.user.companyStatus ?? user.companyStatus }));
+        const nextStatus = me.data.user.companyStatus ?? user?.companyStatus ?? null;
+        if (user) {
+          dispatch(setUser({ ...user, companyStatus: nextStatus }));
+          routed = mode === 'signup' && nextStatus === 'pending';
+        }
       } catch {
-        /* non-fatal */
+        /* non-fatal — fall back to the confirmation screen below */
       }
-      setSubmitted(true);
+      if (mode === 'signup' && !routed && user) {
+        // Server refresh failed; move the gate locally so the user is not
+        // stranded on the payment form after a successful submission.
+        dispatch(setUser({ ...user, companyStatus: 'pending_approval' }));
+        routed = true;
+      }
+      if (!routed) setSubmitted(true);
     } catch (e: any) {
       notify('Submission failed', e?.message ?? 'Please try again.');
     } finally {

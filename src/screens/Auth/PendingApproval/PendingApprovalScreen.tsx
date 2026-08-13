@@ -40,6 +40,10 @@ const PendingApprovalScreen: React.FC = () => {
   const { confirmSignOut, signOutNow } = useSignOut();
 
   const [checking, setChecking] = useState(false);
+  // Set once the review comes back approved. The user is NOT signed out
+  // automatically: they are told the outcome and choose when to continue,
+  // rather than having the screen yanked out from under them.
+  const [approved, setApproved] = useState(false);
   const [notice, setNotice] = useState<{ tone: AuthTone; message: string } | null>(
     null,
   );
@@ -59,10 +63,14 @@ const PendingApprovalScreen: React.FC = () => {
       const { data } = await authMe();
       const status = data.user.companyStatus;
       if (status === 'approved' || status === 'active') {
-        // Approved → clear the onboarding session so the owner signs in
-        // fresh. signOutNow() flips the navigator on this frame.
-        setNotice({ tone: 'success', message: 'Approved! Please sign in to continue.' });
-        signOutNow();
+        // Approved. Tell the user and hand them the button — signing them out
+        // on the spot replaced the answer they asked for with a login screen.
+        setApproved(true);
+        setNotice({
+          tone: 'success',
+          message:
+            'Your company has been approved. Sign in again to start using FinMatrix.',
+        });
         return;
       }
       if (data.companyId) await setStoredCompanyId(data.companyId);
@@ -71,8 +79,8 @@ const PendingApprovalScreen: React.FC = () => {
         tone: 'info',
         message:
           status === 'rejected'
-            ? 'Your registration was reviewed.'
-            : 'Still pending review — hang tight!',
+            ? 'Your registration was reviewed — see the details on the next screen.'
+            : 'Not approved yet. Your payment is with our team; we will email you as soon as it is verified.',
       });
     } catch (e: any) {
       setNotice({ tone: 'error', message: e?.message ?? 'Could not refresh status' });
@@ -101,12 +109,16 @@ const PendingApprovalScreen: React.FC = () => {
       }
       footer={
         <AuthFooterBar
-          primary={{
-            label: fromLogin ? 'Back to Sign In' : 'Check status',
-            onPress: handleRefresh,
-            loading: checking,
-            loadingLabel: 'Checking',
-          }}
+          primary={
+            approved
+              ? { label: 'Sign in to continue', onPress: signOutNow }
+              : {
+                  label: fromLogin ? 'Back to Sign In' : 'Check status',
+                  onPress: handleRefresh,
+                  loading: checking,
+                  loadingLabel: 'Checking',
+                }
+          }
           secondary={{
             label: fromLogin ? 'Use a different account' : 'Sign out',
             onPress: handleSignOut,
@@ -123,8 +135,14 @@ const PendingApprovalScreen: React.FC = () => {
       ) : null}
 
       <View style={styles.head}>
-        <AuthIconTile icon="clock" tone="warning" />
-        <StatusPill label="Pending review" tone="warning" />
+        <AuthIconTile
+          icon={approved ? 'check-circle' : 'clock'}
+          tone={approved ? 'success' : 'warning'}
+        />
+        <StatusPill
+          label={approved ? 'Approved' : 'Pending review'}
+          tone={approved ? 'success' : 'warning'}
+        />
       </View>
 
       <Text style={styles.body}>
@@ -140,9 +158,11 @@ const PendingApprovalScreen: React.FC = () => {
             done: true,
           },
           {
-            title: 'Administrator review',
-            detail: 'Usually within one business day',
-            done: false,
+            title: approved ? 'Approved' : 'Administrator review',
+            detail: approved
+              ? 'Sign in again to start using FinMatrix'
+              : 'Usually within one business day',
+            done: approved,
           },
         ]}
       />

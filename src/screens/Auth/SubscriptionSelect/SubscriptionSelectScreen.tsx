@@ -26,6 +26,7 @@ import { getPublicPlansAPI, selfSubscribeAPI } from '../../../networks/billing/s
 import { submitCompanyAPI } from '../../../networks/auth/authNetwork';
 import { getPlansForTypeAPI, type TierPlanCard } from '../../../networks/billing/billingNetwork';
 import { getStoredCompanyId } from '../../../utils/storageUtils';
+import { prefetchBankDetails } from '../../../networks/billing/billingNetwork';
 import {
   AuthHeader,
   AuthFooterBar,
@@ -279,6 +280,8 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
   // commitment length simultaneously; splitting them makes each a single
   // decision.
   const [tierStep, setTierStep] = useState<'tier' | 'period'>('tier');
+  // Read once on mount; the Continue tap must not await AsyncStorage.
+  const [resolvedCompanyId, setResolvedCompanyId] = useState<string | null>(null);
   const [selectedLimit, setSelectedLimit] = useState<number | null>(null);
 
   // Group the offered plans by delivery-personnel allowance, cheapest rung
@@ -328,6 +331,11 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
       const rung = personnelRungs.find(r => r.limit === selectedLimit);
       const best = rung?.plans.find(p => !!p.monthlySavingsLabel) ?? rung?.plans[0];
       setSelectedTierKey(best?.key ?? null);
+      // Warm the payment screen's bank details now. The user spends a few
+      // seconds on the period step, which covers the round-trip, so
+      // "Continue to payment" lands on a rendered screen instead of a
+      // spinner. Fire-and-forget: the payment screen still fetches on mount.
+      rung?.plans.forEach(p => prefetchBankDetails(p.key));
       setTierStep('period');
       return;
     }
@@ -339,8 +347,10 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert('Select a Plan', 'Please choose a subscription plan to continue.');
       return;
     }
-    const storedId = await getStoredCompanyId();
-    const companyId = storedId ?? route.params?.companyId ?? user?.companyId ?? '';
+    // resolvedCompanyId was read on mount, so the tap does not wait on
+    // AsyncStorage before navigating.
+    const companyId =
+      resolvedCompanyId ?? route.params?.companyId ?? user?.companyId ?? '';
     navigation.navigate('SubscriptionPay', {
       plan: selectedTierKey,
       mode: 'signup',
@@ -414,6 +424,8 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
   // Animated.Values were the source of this file's "cannot access refs during
   // render" lint errors, so they are gone rather than left orphaned.
   useEffect(() => {
+    // Resolve the stored company id once so the Continue tap is synchronous.
+    void getStoredCompanyId().then(setResolvedCompanyId).catch(() => {});
     if (companyType) loadTierPlans();
     else loadPlans();
     // eslint-disable-next-line react-hooks/exhaustive-deps

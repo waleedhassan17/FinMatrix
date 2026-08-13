@@ -81,10 +81,31 @@ export const getPlanLimitsAPI = async (): Promise<PlanLimits> => {
   }
 };
 
+/**
+ * Bank details are static per plan for the life of a session, so they are
+ * cached and prefetched. Without this the payment screen blocked its whole
+ * render on a round-trip, which read as a two-second stall on a tap that is
+ * instant everywhere else in the flow.
+ */
+const bankDetailsCache = new Map<string, BankDetails>();
+
+export const getCachedBankDetails = (plan: PlanKey): BankDetails | null =>
+  bankDetailsCache.get(plan) ?? null;
+
+/** Warm the cache while the user is still deciding. Never throws. */
+export const prefetchBankDetails = (plan: PlanKey | null | undefined): void => {
+  if (!plan || bankDetailsCache.has(plan)) return;
+  void getBankDetailsAPI(plan).catch(() => {
+    /* best effort — the screen still fetches on mount if this missed */
+  });
+};
+
 export const getBankDetailsAPI = async (plan: PlanKey): Promise<BankDetails> => {
   try {
     const res = await api.get('/billing/bank-details', { params: { plan } });
-    return unwrap(res);
+    const details = unwrap(res) as BankDetails;
+    bankDetailsCache.set(plan, details);
+    return details;
   } catch (e) {
     throw new Error(extractErrorMessage(e));
   }
