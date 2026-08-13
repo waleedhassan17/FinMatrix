@@ -44,32 +44,39 @@ interface TypeCard {
 // Feature summaries follow THE MODEL (FinMatrix_Tier_Feature_Guide) so the
 // user knows exactly what each type unlocks before choosing.
 const TYPE_CARDS: TypeCard[] = [
-  {
-    key: 'small_business',
-    title: 'Small Business',
-    tagline: 'Complete accounting, nothing you don’t need',
-    icon: 'briefcase',
-    gradient: ['#00875A', '#006644'],
-    bullets: [
-      'Invoices, bills, payments & estimates',
-      'Customers, vendors & chart of accounts',
-      'Tax tracking built in',
-      'P&L, Balance Sheet & aging reports',
-    ],
-  },
-  {
-    key: 'large_org',
-    title: 'Large Organization',
-    tagline: 'Accounting plus people, budgets & control',
-    icon: 'layers',
-    gradient: ['#0747A6', '#1E3A8A'],
-    bullets: [
-      'Everything in Small Business',
-      'Payroll, employees & payslips',
-      'Budgets vs actual & team roles',
-      'Audit log & period close (optional inventory)',
-    ],
-  },
+  // ══ WAREHOUSE-ONLY BUILD ═══════════════════════════════════════════════
+  // Small Business and Large Organization are commented out while the
+  // product ships warehouse-only. This screen is also bypassed entirely
+  // (CompanySetupScreen goes straight to CreateCompany) — the cards are kept
+  // here so restoring the three-tier model is just un-commenting them and
+  // flipping WAREHOUSE_ONLY_BUILD in utils/featureGates.ts.
+  //
+  // {
+  //   key: 'small_business',
+  //   title: 'Small Business',
+  //   tagline: 'Complete accounting, nothing you don’t need',
+  //   icon: 'briefcase',
+  //   gradient: ['#00875A', '#006644'],
+  //   bullets: [
+  //     'Invoices, bills, payments & estimates',
+  //     'Customers, vendors & chart of accounts',
+  //     'Tax tracking built in',
+  //     'P&L, Balance Sheet & aging reports',
+  //   ],
+  // },
+  // {
+  //   key: 'large_org',
+  //   title: 'Large Organization',
+  //   tagline: 'Accounting plus people, budgets & control',
+  //   icon: 'layers',
+  //   gradient: ['#0747A6', '#1E3A8A'],
+  //   bullets: [
+  //     'Everything in Small Business',
+  //     'Payroll, employees & payslips',
+  //     'Budgets vs actual & team roles',
+  //     'Audit log & period close (optional inventory)',
+  //   ],
+  // },
   {
     key: 'warehouse',
     title: 'Warehouse',
@@ -77,10 +84,10 @@ const TYPE_CARDS: TypeCard[] = [
     icon: 'package',
     gradient: ['#6554C0', '#5243AA'],
     bullets: [
-      'Everything in Large Organization',
+      'Complete accounting: invoices, bills, payments & estimates',
+      'Payroll, budgets, audit log & period close',
       'Full inventory with average costing',
-      'Purchase orders & 3-way match (GRNI)',
-      'Deliveries with a rider app & admin approval',
+      'Purchase orders, 3-way match (GRNI) & deliveries',
     ],
   },
 ];

@@ -26,6 +26,10 @@ import { getPublicPlansAPI, selfSubscribeAPI } from '../../../networks/billing/s
 import { submitCompanyAPI } from '../../../networks/auth/authNetwork';
 import { getPlansForTypeAPI, type TierPlanCard } from '../../../networks/billing/billingNetwork';
 import { getStoredCompanyId } from '../../../utils/storageUtils';
+import {
+  WAREHOUSE_ONLY_BUILD,
+  DEFAULT_COMPANY_TYPE,
+} from '../../../utils/featureGates';
 import { THEME } from '../../../utils/theme';
 
 // ── Design tokens ─────────────────────────────────────
@@ -234,7 +238,13 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
   // show ONLY that type's TWO plans (3-month and 6-month) from the server's
   // PLAN_CONFIG, then hand off to the bank-transfer payment screen. The
   // legacy plan list below remains for pre-tiering drafts (no companyType).
-  const companyType = route.params?.companyType ?? (user as any)?.companyType ?? null;
+  // WAREHOUSE-ONLY BUILD: fall back to warehouse rather than null, so a
+  // pre-tiering draft shows the two warehouse plans instead of the legacy
+  // Free/Standard/Pro list. Drop the last fallback to restore three tiers.
+  const companyType =
+    route.params?.companyType ??
+    (user as any)?.companyType ??
+    (WAREHOUSE_ONLY_BUILD ? DEFAULT_COMPANY_TYPE : null);
   const [tierPlans, setTierPlans] = useState<TierPlanCard[]>([]);
   const [selectedTierKey, setSelectedTierKey] = useState<string | null>(null);
 

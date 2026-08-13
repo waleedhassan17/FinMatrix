@@ -12,6 +12,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectActiveCompany } from '../companySlice';
 import { ROUTES } from '../../../navigations-maps/Base';
+import {
+  WAREHOUSE_ONLY_BUILD,
+  DEFAULT_COMPANY_TYPE,
+} from '../../../utils/featureGates';
 import type { RootStackParamList } from '../../../types';
 import {
   AuthScreen,
@@ -53,7 +57,19 @@ const CompanySetupScreen: React.FC<Props> = ({ navigation }) => {
       <AuthCard padded={false}>
         <TouchableOpacity
           style={s.option}
-          onPress={() => navigation.navigate(ROUTES.COMPANY_TYPE_SELECT as any)}
+          // ── WAREHOUSE-ONLY BUILD ──
+          // Skip the company-type picker: with a single type on offer it is a
+          // pointless tap. CompanyTypeSelectScreen stays in the repo (and in
+          // the route map, so deep links still resolve) — it is just no longer
+          // on the happy path. Restore by flipping WAREHOUSE_ONLY_BUILD and
+          // swapping this back to ROUTES.COMPANY_TYPE_SELECT.
+          onPress={() =>
+            WAREHOUSE_ONLY_BUILD
+              ? navigation.navigate(ROUTES.CREATE_COMPANY as any, {
+                  companyType: DEFAULT_COMPANY_TYPE,
+                })
+              : navigation.navigate(ROUTES.COMPANY_TYPE_SELECT as any)
+          }
           activeOpacity={0.75}
           accessibilityRole="button">
           <View style={s.iconOuter}>

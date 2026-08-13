@@ -36,6 +36,7 @@ import {
   setSessionExpiredHandler,
   setCompanyStatusStaleHandler,
 } from '../../utils/authEvents';
+import { WAREHOUSE_ONLY_BUILD } from '../../utils/featureGates';
 import { resetSignInForm } from '../../screens/Auth/SignIn/signInSlice';
 import { resetSignUpForm } from '../../screens/Auth/SignUp/signUpSlice';
 import { resetForgotPasswordForm } from '../../screens/Auth/ForgotPassword/forgotPasswordSlice';
@@ -137,6 +138,18 @@ export const AppContainer: React.FC = () => {
       companyStatus === 'approved' || companyStatus === 'active';
 
     if (emailVerified && isApproved) {
+      // ── WAREHOUSE-ONLY BUILD ──────────────────────────────────────────
+      // Every approved admin mounts the full AdminTabNavigator, which ships
+      // the complete warehouse route set. Existing small_business/large_org
+      // companies land here too and keep working — AdminTabNavigator is a
+      // superset of what their tier navigators offered.
+      //
+      // Restore the three-tier switch by flipping WAREHOUSE_ONLY_BUILD in
+      // utils/featureGates.ts and un-commenting the block below.
+      if (WAREHOUSE_ONLY_BUILD) {
+        return <AdminTabNavigator key="tier-admin" />;
+      }
+
       // ── Three-tier model (FinMatrix.md): small_business / large_org mount
       // their own navigators; warehouse and legacy (no companyType) keep the
       // full AdminTabNavigator. Server-side FeatureGuard 403s remain the real
