@@ -48,8 +48,8 @@ const PLAN_GRADIENTS: readonly [string, string][] = [
 // API rejects create/update/delete with PLANS_CONFIG_DEFINED, so the form
 // could never save. It was unreachable dead code and held the screen's
 // only lint error (setState called synchronously inside an effect).
+// This screen is therefore read-only: change pricing in the server config.
 
-// changed in server config, not from the app).
 /**
  * The plan shape GET /super-admin/plans actually returns. The slice's
  * SubscriptionPlan type predates tiering and omits these fields, which is why
@@ -61,7 +61,6 @@ interface ServerPlan {
   description?: string | null;
   priceMonthly: number | string;
   features?: string[] | null;
-  maxUsers: number;
   maxInvoices: number | null;
   companyType?: string | null;
   durationMonths?: number;
@@ -79,7 +78,6 @@ interface DisplayPlan {
   totalLabel?: string;
   companyType?: string | null;
   features: string[];
-  maxUsers: number;
   maxInvoices: number | null;
   /** Active delivery riders allowed. The only thing separating warehouse plans. */
   deliveryPersonnelLimit?: number;
@@ -99,7 +97,6 @@ const CANONICAL_PLANS: DisplayPlan[] = [
     isFree: true,
     priceLabel: 'Free',
     features: ['Full accounting', 'Invoices & bills', 'Reports'],
-    maxUsers: 3,
     maxInvoices: null,
     disabled: false,
   },
@@ -110,7 +107,6 @@ const CANONICAL_PLANS: DisplayPlan[] = [
     priceLabel: 'Rs 1,000',
     durationLabel: '/ 6 months',
     features: ['Everything in Free', 'Priority support', 'Higher limits'],
-    maxUsers: 10,
     maxInvoices: null,
     disabled: true,
   },
@@ -121,7 +117,6 @@ const CANONICAL_PLANS: DisplayPlan[] = [
     priceLabel: 'Rs 2,000',
     durationLabel: '/ 3 months',
     features: ['Everything in Standard', 'Advanced analytics', 'Dedicated support'],
-    maxUsers: 999,
     maxInvoices: null,
     disabled: true,
   },
@@ -151,22 +146,19 @@ const PlanCard: React.FC<{ plan: DisplayPlan; gradientIdx: number }> = ({ plan, 
       </LinearGradient>
 
       <View style={S.planBody}>
-        <View style={S.planMetaRow}>
-          <View style={S.planMeta}>
-            <Feather name="users" size={13} color={C.text.secondary} />
-            <Text style={S.planMetaText}>Up to {plan.maxUsers >= 999 ? 'Unlimited' : plan.maxUsers} users</Text>
-          </View>
-          {/* Warehouse plans are identical apart from this number, so it has
-              to be on the card — otherwise all six read the same. */}
-          {plan.deliveryPersonnelLimit ? (
+        {/* Delivery-personnel allowance is the ONLY thing separating the
+            plans, so it is the only limit shown. A seat count would imply a
+            difference that does not exist. */}
+        {plan.deliveryPersonnelLimit ? (
+          <View style={S.planMetaRow}>
             <View style={S.planMeta}>
               <Feather name="truck" size={13} color={C.text.secondary} />
               <Text style={S.planMetaText}>
-                {plan.deliveryPersonnelLimit} delivery personnel
+                Up to {plan.deliveryPersonnelLimit} delivery personnel
               </Text>
             </View>
-          ) : null}
-        </View>
+          </View>
+        ) : null}
 
         {plan.features.length > 0 && (
           <View style={S.featuresList}>
@@ -236,7 +228,6 @@ const SubscriptionPlansScreen: React.FC = () => {
       totalLabel: p.totalLabel,
       companyType: p.companyType,
       features: p.features ?? [],
-      maxUsers: p.maxUsers,
       deliveryPersonnelLimit: p.deliveryPersonnelLimit,
       maxInvoices: p.maxInvoices,
       disabled: false,
