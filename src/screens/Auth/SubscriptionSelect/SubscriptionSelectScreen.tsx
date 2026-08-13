@@ -29,6 +29,7 @@ import { getStoredCompanyId } from '../../../utils/storageUtils';
 import {
   AuthHeader,
   AuthFooterBar,
+  AuthOptionCard,
   AUTH,
 } from '../../../components/auth/AuthUI';
 import {
@@ -189,6 +190,20 @@ const PlanCard: React.FC<{
 };
 
 // ── Tier plan card (three-tier model: 3mo vs 6mo side by side) ──
+/**
+ * Plan identity is derived from the delivery-personnel allowance rather than
+ * parsed out of the server label, so renaming a plan server-side cannot
+ * break the UI.
+ */
+const RUNG_META: Record<number, { name: string; tagline: string }> = {
+  3: { name: 'Starter', tagline: 'For a small delivery team finding its feet' },
+  5: { name: 'Growth', tagline: 'For a growing operation running daily routes' },
+  10: { name: 'Scale', tagline: 'For a full fleet with high delivery volume' },
+};
+const rungName = (limit: number) => RUNG_META[limit]?.name ?? `Up to ${limit}`;
+const rungTagline = (limit: number) =>
+  RUNG_META[limit]?.tagline ?? `Up to ${limit} active delivery personnel`;
+
 const TIER_TITLES: Record<string, string> = {
   small_business: 'Small Business',
   large_org: 'Large Organization',
@@ -259,6 +274,12 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
     (user as any)?.companyType ??
     (WAREHOUSE_ONLY_BUILD ? DEFAULT_COMPANY_TYPE : null);
   const [tierPlans, setTierPlans] = useState<TierPlanCard[]>([]);
+  // Two steps: choose the rider tier, then the billing period for it.
+  // Presenting six priced cards at once asks the user to weigh team size and
+  // commitment length simultaneously; splitting them makes each a single
+  // decision.
+  const [tierStep, setTierStep] = useState<'tier' | 'period'>('tier');
+  const [selectedLimit, setSelectedLimit] = useState<number | null>(null);
 
   // Group the offered plans by delivery-personnel allowance, cheapest rung
   // first, so each rung shows its 3-month / 6-month pair together.
@@ -296,6 +317,21 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
     } finally {
       setLoadingPlans(false);
     }
+  };
+
+  /** Step 1 advances to the period picker; step 2 goes to payment. */
+  const handleTierPrimary = async () => {
+    if (tierStep === 'tier') {
+      if (!selectedLimit) return;
+      // Preselect the better-value period so the step is one tap for anyone
+      // who does not want to compare.
+      const rung = personnelRungs.find(r => r.limit === selectedLimit);
+      const best = rung?.plans.find(p => !!p.monthlySavingsLabel) ?? rung?.plans[0];
+      setSelectedTierKey(best?.key ?? null);
+      setTierStep('period');
+      return;
+    }
+    await handleContinueTier();
   };
 
   const handleContinueTier = async () => {
@@ -433,9 +469,15 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
     <View style={S.rootShell}>
       <AuthHeader
         pill="Choose a Plan"
-        title="Choose your plan"
+        title={tierStep === 'period' ? 'Choose a billing period' : 'Choose your plan'}
         subtitle={'Select the plan that best fits your business.\nYou can upgrade anytime.'}
-        onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+        onBack={
+          tierStep === 'period'
+            ? () => setTierStep('tier')
+            : navigation.canGoBack()
+            ? () => navigation.goBack()
+            : undefined
+        }
       />
 
       <ScrollView
@@ -456,40 +498,71 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
             ) : (
               <>
-                <Text style={S.tierHeading}>
-                  {TIER_TITLES[companyType] ?? 'Your'} plans — choose your delivery team size
-                </Text>
-                {/* Plans are grouped by delivery-personnel allowance: pick the
-                    rung that fits your team, then the billing period. A flat
-                    row of six cards differing only by price would make the
-                    actual decision invisible. */}
-                {personnelRungs.map(rung => (
-                  <View key={rung.limit} style={S.rungBlock}>
-                    <View style={S.rungHeader}>
-                      <Feather name="truck" size={14} color={DS.primary} />
-                      <Text style={S.rungTitle}>
-                        Up to {rung.limit} delivery personnel
+                {tierStep === 'tier' ? (
+                  <>
+                    <Text style={S.tierHeading}>
+                      How big is your delivery team?
+                    </Text>
+                    <Text style={S.tierSubheading}>
+                      Every plan includes the full accounting and warehouse
+                      feature set. Only the number of active delivery
+                      personnel changes.
+                    </Text>
+                    {personnelRungs.map(rung => {
+                      const cheapest = rung.plans.reduce((a, b) =>
+                        a.monthlyMinorUnits <= b.monthlyMinorUnits ? a : b,
+                      );
+                      return (
+                        <AuthOptionCard
+                          key={rung.limit}
+                          icon="truck"
+                          title={rungName(rung.limit)}
+                          tagline={rungTagline(rung.limit)}
+                          badge={`Up to ${rung.limit}`}
+                          features={[
+                            `Up to ${rung.limit} active delivery personnel`,
+                            `From ${cheapest.monthlyLabel}/month`,
+                            'Unlimited customers, vendors and team members',
+                          ]}
+                          selected={selectedLimit === rung.limit}
+                          onPress={() => {
+                            setSelectedLimit(rung.limit);
+                            setSelectedTierKey(null);
+                          }}
+                        />
+                      );
+                    })}
+                  </>
+                ) : (
+                  <>
+                    <Text style={S.tierHeading}>
+                      {rungName(selectedLimit ?? 0)} — choose a billing period
+                    </Text>
+                    <Text style={S.tierSubheading}>
+                      Up to {selectedLimit} active delivery personnel. Paying
+                      for the year costs less per month.
+                    </Text>
+                    <View style={S.tierRow}>
+                      {(personnelRungs.find(r => r.limit === selectedLimit)?.plans ?? []).map(
+                        p => (
+                          <TierCard
+                            key={p.key}
+                            plan={p}
+                            selected={selectedTierKey === p.key}
+                            onSelect={() => setSelectedTierKey(p.key)}
+                          />
+                        ),
+                      )}
+                    </View>
+                    <View style={S.tierNote}>
+                      <Feather name="info" size={13} color={DS.primary} />
+                      <Text style={S.tierNoteText}>
+                        Pay once by bank transfer and upload the receipt — your company activates as
+                        soon as an administrator verifies the payment.
                       </Text>
                     </View>
-                    <View style={S.tierRow}>
-                      {rung.plans.map(p => (
-                        <TierCard
-                          key={p.key}
-                          plan={p}
-                          selected={selectedTierKey === p.key}
-                          onSelect={() => setSelectedTierKey(p.key)}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                ))}
-                <View style={S.tierNote}>
-                  <Feather name="info" size={13} color={DS.primary} />
-                  <Text style={S.tierNoteText}>
-                    Pay once by bank transfer and upload the receipt — your company activates as
-                    soon as an administrator verifies the payment.
-                  </Text>
-                </View>
+                  </>
+                )}
               </>
             )
           ) : plans.length === 0 ? (
@@ -518,20 +591,28 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
       <AuthFooterBar
         primary={{
           label: companyType
-            ? selectedTierKey
+            ? tierStep === 'tier'
+              ? selectedLimit
+                ? 'Continue'
+                : 'Select a plan'
+              : selectedTierKey
               ? 'Continue to payment'
-              : 'Select a plan'
+              : 'Select a billing period'
             : selectedPlan && parseFloat(selectedPlan.priceMonthly) === 0
             ? 'Continue with Free Plan'
             : selectedPlan
             ? `Start ${selectedPlan.name} Plan`
             : 'Continue',
-          onPress: companyType ? handleContinueTier : handleContinue,
+          onPress: companyType ? handleTierPrimary : handleContinue,
           loading: submitting,
           loadingLabel: 'Setting up',
-          disabled: !!companyType && !selectedTierKey,
+          disabled: !!companyType && (tierStep === 'tier' ? !selectedLimit : !selectedTierKey),
         }}
-        secondary={{ label: 'Skip for now', onPress: handleSkip }}
+        secondary={
+          companyType && tierStep === 'period'
+            ? { label: 'Back to plans', onPress: () => setTierStep('tier') }
+            : { label: 'Skip for now', onPress: handleSkip }
+        }
       />
     </View>
   );
@@ -657,6 +738,14 @@ const S = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily, marginBottom: 2,
   },
   tierRow: { flexDirection: 'row', gap: 12 },
+  tierSubheading: {
+    fontFamily: THEME.typography.fontFamily,
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: DS.text.sub,
+    marginTop: -6,
+    marginBottom: 16,
+  },
   rungBlock: { marginBottom: 18 },
   rungHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 9 },
   rungTitle: {
