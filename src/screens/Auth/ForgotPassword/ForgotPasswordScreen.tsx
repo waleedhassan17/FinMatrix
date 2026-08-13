@@ -11,7 +11,7 @@
 // return to a form holding a spent reset token.
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet, TextInput } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   authForgotPassword,
@@ -22,17 +22,14 @@ import { useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectSelectedRole } from '../authSlice';
 import {
   AuthScreen,
-  AuthBrand,
-  AuthBackLink,
-  AuthHeading,
-  AuthField,
+  AuthHeader,
+  AuthCard,
+  AuthMedallion,
   AuthPrimaryButton,
-  AuthTextLink,
-  AuthFooter,
+  AuthLinkButton,
   InlineBanner,
-  StepBar,
   OtpInput,
-  AUTH,
+  AUTH_DS,
 } from '../../../components/auth/AuthUI';
 import type { RootStackParamList, UserRole } from '../../../types';
 
@@ -187,142 +184,168 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const clearError = () => {
-    if (error) setError('');
-  };
-
   return (
     <AuthScreen>
-      <AuthBrand />
-      <AuthBackLink onPress={handleBack} />
-
-      <StepBar current={STEP_INDEX[step]} total={3} />
-
-      <AuthHeading
-        eyebrow={`Step ${STEP_INDEX[step]} of 3`}
+      <AuthHeader
         title={titles[step].title}
         subtitle={titles[step].subtitle}
+        pill="Reset Password"
+        onBack={handleBack}
+        compact
+        steps={{ current: STEP_INDEX[step], total: 3 }}
       />
 
-      {error ? (
-        <InlineBanner tone="error" message={error} style={styles.banner} />
-      ) : notice ? (
-        <InlineBanner
-          tone={step === 'reset' ? 'success' : 'info'}
-          message={notice}
-          style={styles.banner}
-        />
-      ) : null}
+      <AuthCard>
+        <AuthMedallion icon={step === 'reset' ? 'lock' : 'mail'} />
 
-      {step === 'request' && (
-        <>
-          <AuthField
-            label="Email address"
-            value={email}
-            onChangeText={t => {
-              setEmail(t);
-              clearError();
-            }}
-            placeholder="you@company.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            onSubmitEditing={handleRequest}
-            returnKeyType="send"
+        {error ? (
+          <InlineBanner tone="error" message={error} style={styles.banner} />
+        ) : notice ? (
+          <InlineBanner
+            tone={step === 'reset' ? 'success' : 'info'}
+            message={notice}
+            style={styles.banner}
           />
-          <AuthPrimaryButton
-            label="Send code"
-            loading={loading}
-            loadingLabel="Sending"
-            onPress={handleRequest}
-          />
-        </>
-      )}
+        ) : null}
 
-      {step === 'otp' && (
-        <>
-          <Text style={styles.otpLabel}>6-digit code</Text>
-          <OtpInput
-            value={otp}
-            onChange={t => {
-              setOtp(t);
-              clearError();
-            }}
-            error={!!error}
-            autoFocus
-            style={styles.otp}
-          />
-          <AuthPrimaryButton
-            label="Verify code"
-            loading={loading}
-            loadingLabel="Verifying"
-            onPress={handleVerifyOtp}
-          />
-          <View style={styles.linkRow}>
-            <AuthTextLink
+        {step === 'request' && (
+          <>
+            <Text style={styles.label}>Email address</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={t => {
+                setEmail(t);
+                if (error) setError('');
+              }}
+              placeholder="you@company.com"
+              placeholderTextColor={AUTH_DS.slate400}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              onSubmitEditing={handleRequest}
+              returnKeyType="send"
+            />
+            <AuthPrimaryButton
+              label="Send code"
+              loading={loading}
+              loadingLabel="Sending…"
+              onPress={handleRequest}
+              style={styles.cta}
+            />
+          </>
+        )}
+
+        {step === 'otp' && (
+          <>
+            <Text style={styles.label}>6-digit code</Text>
+            <OtpInput
+              value={otp}
+              onChange={t => {
+                setOtp(t);
+                if (error) setError('');
+              }}
+              error={!!error}
+              autoFocus
+              style={styles.otp}
+            />
+            <AuthPrimaryButton
+              label="Verify code"
+              loading={loading}
+              loadingLabel="Verifying…"
+              onPress={handleVerifyOtp}
+              style={styles.cta}
+            />
+            <AuthLinkButton
               label={cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
               onPress={handleResend}
               disabled={cooldown > 0}
               muted={cooldown > 0}
             />
-          </View>
-        </>
-      )}
+          </>
+        )}
 
-      {step === 'reset' && (
-        <>
-          <AuthField
-            label="New password"
-            value={password}
-            onChangeText={t => {
-              setPassword(t);
-              clearError();
-            }}
-            placeholder="New password"
-            secure
-            autoCapitalize="none"
-            hint="At least 8 characters, with an uppercase letter, a lowercase letter and a number."
-          />
-          <AuthField
-            label="Confirm password"
-            value={confirm}
-            onChangeText={t => {
-              setConfirm(t);
-              clearError();
-            }}
-            placeholder="Confirm password"
-            secure
-            autoCapitalize="none"
-            onSubmitEditing={handleReset}
-            returnKeyType="done"
-          />
-          <AuthPrimaryButton
-            label="Update password"
-            loading={loading}
-            loadingLabel="Updating"
-            onPress={handleReset}
-          />
-        </>
-      )}
+        {step === 'reset' && (
+          <>
+            <Text style={styles.label}>New password</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={t => {
+                setPassword(t);
+                if (error) setError('');
+              }}
+              placeholder="New password"
+              placeholderTextColor={AUTH_DS.slate400}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            <Text style={styles.label}>Confirm password</Text>
+            <TextInput
+              style={styles.input}
+              value={confirm}
+              onChangeText={t => {
+                setConfirm(t);
+                if (error) setError('');
+              }}
+              placeholder="Confirm password"
+              placeholderTextColor={AUTH_DS.slate400}
+              secureTextEntry
+              autoCapitalize="none"
+              onSubmitEditing={handleReset}
+              returnKeyType="done"
+            />
+            <Text style={styles.hint}>
+              At least 8 characters, with an uppercase letter, a lowercase
+              letter and a number.
+            </Text>
+            <AuthPrimaryButton
+              label="Update password"
+              loading={loading}
+              loadingLabel="Updating…"
+              onPress={handleReset}
+              style={styles.cta}
+            />
+          </>
+        )}
 
-      <View style={styles.linkRow}>
-        <AuthTextLink label="Back to Sign In" onPress={goToSignIn} muted />
-      </View>
-
-      <AuthFooter />
+        <AuthLinkButton label="Back to Sign In" onPress={goToSignIn} muted />
+      </AuthCard>
     </AuthScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  banner: { marginBottom: AUTH.space.lg },
-  otpLabel: {
-    ...AUTH.type.label,
-    color: AUTH.ink[700],
-    marginBottom: AUTH.space.sm,
+  banner: { marginBottom: 16 },
+  label: {
+    fontFamily: AUTH_DS.font,
+    fontSize: 13,
+    fontWeight: '700',
+    color: AUTH_DS.navy700,
+    marginBottom: 7,
+    marginTop: 4,
   },
-  otp: { marginBottom: AUTH.space.xl },
-  linkRow: { alignItems: 'center', marginTop: AUTH.space.xs },
+  input: {
+    fontFamily: AUTH_DS.font,
+    fontSize: 15,
+    color: AUTH_DS.navy800,
+    backgroundColor: AUTH_DS.white,
+    borderWidth: 1,
+    borderColor: AUTH_DS.slate200,
+    borderRadius: AUTH_DS.control.radius,
+    height: AUTH_DS.control.height,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  otp: { marginBottom: 6 },
+  hint: {
+    fontFamily: AUTH_DS.font,
+    fontSize: 12,
+    color: AUTH_DS.slate500,
+    lineHeight: 17,
+    marginBottom: 4,
+  },
+  cta: { marginTop: 10 },
 });
 
 export default ForgotPasswordScreen;

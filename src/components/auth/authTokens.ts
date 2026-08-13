@@ -1,104 +1,137 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Auth design tokens
+// FinMatrix — Auth design tokens (AUTH_DS)
 // ═══════════════════════════════════════════════════════
-// The auth flow follows the visual conventions of enterprise financial
-// software (Stripe, Mercury, Xero, QuickBooks): a calm neutral canvas, one
-// accent colour used sparingly, hairline borders instead of heavy shadows,
-// left-aligned typography, and a strict 4px spacing grid.
+// THE single token set for the auth + onboarding flow.
 //
-// Deliberately absent, because they read as decoration rather than product:
-// gradient headers, floating blurred shapes, oversized circular icon badges,
-// glowing status pills, emoji iconography, and radii above 12px.
+// SignIn, SignUp, CompanySetup and CreateCompany each carried their own
+// near-identical `DS` literal (navy gradient header, green accent, slate
+// ramp), while EmailVerification, PendingApproval, CompanyRejected and
+// ForgotPassword used the older flat `colors/spacing/typography` exports —
+// which is exactly why half the flow looked unfinished next to the other half.
+// Those values are lifted here verbatim, so adopting this module is a token
+// swap with no visual change to the screens that already looked right.
 //
-// Rule of thumb when extending this file: if a value exists to draw attention
-// rather than to communicate state or hierarchy, it does not belong here.
+// Colours: FinMatrix navy (#0B1120 → #1E293B) with the green #059669 accent
+// the rest of the app uses. Metrics come from THEME (src/theme/theme.ts) so
+// auth controls match every other form in the product.
 
-import { Platform } from 'react-native';
+import { THEME } from '../../theme';
 
-const fontFamily = Platform.select({ android: 'Roboto', default: 'System' })!;
+export const AUTH_DS = {
+  // ── Navy (headers, primary surfaces) ──
+  navy900: '#0B1120',
+  navy800: '#0F172A',
+  navy700: '#1E293B',
 
-// ── Neutral ramp. Carries almost the entire interface. ──
-const ink = {
-  900: '#0F172A', // headings
-  700: '#334155', // body
-  600: '#475569', // secondary
-  500: '#64748B', // muted / helper
-  400: '#94A3B8', // placeholder, disabled
-};
+  // ── Brand green (CTAs, success, accents) ──
+  green500: '#059669',
+  green400: '#00875A',
+  green300: '#34D399',
+  green50: '#ECFDF5',
+  greenBorder: '#A7F3D0',
 
-const surface = {
-  page: '#FFFFFF',
-  subtle: '#F8FAFC', // section fills, wide-viewport page behind the panel
-  sunken: '#F1F5F9', // inputs on tinted surfaces, skeletons
-};
+  // ── Slate ramp (text, borders, backgrounds) ──
+  slate50: '#F8FAFC',
+  slate100: '#F1F5F9',
+  slate200: '#E2E8F0',
+  slate300: '#CBD5E1',
+  slate400: '#94A3B8',
+  slate500: '#64748B',
+  slate600: '#475569',
 
-const line = {
-  DEFAULT: '#E2E8F0', // hairline borders — the primary separator in this system
-  strong: '#CBD5E1', // hover / emphasis
-};
+  // ── Status tones ──
+  red50: '#FEF2F2',
+  red100: '#FEE2E2',
+  red500: '#DE350B',
+  red700: '#B91C1C',
+  red900: '#7F1D1D',
 
-// ── Accent. One colour, used for the primary action, focus, and active state.
-//    Never for decoration. ──
-const brand = {
-  DEFAULT: '#059669',
-  hover: '#047857',
-  subtle: '#ECFDF5',
-  border: '#A7F3D0',
-};
+  amber50: '#FFFAE6',
+  amber100: '#FEF3C7',
+  amber500: '#FF991F',
+  amber600: '#D97706',
+  amber800: '#92400E',
 
-export const AUTH = {
-  font: fontFamily,
-  ink,
-  surface,
-  line,
-  brand,
+  blue50: '#EFF6FF',
+  blue100: '#DBEAFE',
+  blue500: '#0065FF',
+  blue600: '#2563EB',
+  blue800: '#1E40AF',
 
-  // ── Status. Low-saturation tints with a hairline border — never a solid
-  //    block of colour, which shouts on a financial screen. ──
-  status: {
-    error: { fg: '#991B1B', bg: '#FEF2F2', border: '#FECACA', accent: '#DC2626' },
-    success: { fg: '#065F46', bg: '#ECFDF5', border: '#A7F3D0', accent: '#059669' },
-    info: { fg: '#1E40AF', bg: '#EFF6FF', border: '#BFDBFE', accent: '#2563EB' },
-    warning: { fg: '#92400E', bg: '#FFFBEB', border: '#FDE68A', accent: '#D97706' },
+  white: '#FFFFFF',
+
+  radius: { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 },
+
+  shadowSm: {
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  shadowMd: {
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  shadowLg: {
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
   },
 
-  // ── 4px grid. Every margin and pad in the auth flow comes from here. ──
-  space: { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 },
-
-  // ── Restrained radii. Controls 8, surfaces 12. ──
-  radius: { sm: 6, DEFAULT: 8, lg: 12, pill: 999 },
-
-  // ── Type scale. Deliberately few steps, tight tracking on display sizes. ──
-  type: {
-    display: { fontFamily, fontSize: 24, fontWeight: '600' as const, letterSpacing: -0.4 },
-    title: { fontFamily, fontSize: 18, fontWeight: '600' as const, letterSpacing: -0.2 },
-    body: { fontFamily, fontSize: 15, fontWeight: '400' as const },
-    bodyStrong: { fontFamily, fontSize: 15, fontWeight: '600' as const },
-    label: { fontFamily, fontSize: 13, fontWeight: '500' as const },
-    small: { fontFamily, fontSize: 13, fontWeight: '400' as const },
-    caption: { fontFamily, fontSize: 12, fontWeight: '400' as const },
+  /** Form-control metrics — the app-wide values, so auth matches every other form. */
+  control: {
+    height: THEME.form.controlHeight, // 48
+    radius: THEME.form.controlRadius, // 10
   },
 
-  // ── Controls. One height for every input and button in the flow. ──
-  control: { height: 44, radius: 8 },
+  /** Every primary/secondary CTA in the auth flow is this tall. */
+  buttonHeight: 52,
 
-  /** Auth content column. 400 is the conventional width for a sign-in form. */
-  maxWidth: 400,
+  font: THEME.typography.fontFamily,
 
-  /**
-   * The only shadow in the system, for the wide-viewport panel. Mobile uses a
-   * hairline border instead — a raised card on a phone reads as decoration.
-   */
-  panelShadow: {
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
-  },
+  /** Auth content never stretches past this on a wide web viewport. */
+  maxContentWidth: 520,
 } as const;
 
 export type AuthTone = 'error' | 'success' | 'info' | 'warning';
 
-/** Back-compat alias — some screens still import the old name. */
-export const AUTH_DS = AUTH;
+/** Banner/pill colour mapping, shared by InlineBanner and StatusPill. */
+export const AUTH_TONES: Record<
+  AuthTone,
+  { bg: string; border: string; fg: string; accent: string; icon: string }
+> = {
+  error: {
+    bg: AUTH_DS.red50,
+    border: AUTH_DS.red100,
+    fg: AUTH_DS.red900,
+    accent: AUTH_DS.red500,
+    icon: 'alert-circle',
+  },
+  success: {
+    bg: AUTH_DS.green50,
+    border: AUTH_DS.greenBorder,
+    fg: '#065F46',
+    accent: AUTH_DS.green500,
+    icon: 'check-circle',
+  },
+  info: {
+    bg: AUTH_DS.blue50,
+    border: AUTH_DS.blue100,
+    fg: AUTH_DS.blue800,
+    accent: AUTH_DS.blue600,
+    icon: 'info',
+  },
+  warning: {
+    bg: AUTH_DS.amber100,
+    border: '#FDE68A',
+    fg: AUTH_DS.amber800,
+    accent: AUTH_DS.amber600,
+    icon: 'clock',
+  },
+};

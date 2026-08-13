@@ -24,7 +24,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { AUTH } from './authTokens';
+import { AUTH_DS } from './authTokens';
 
 export interface OtpInputProps {
   /** Current digits (already stripped to `length`). */
@@ -126,39 +126,57 @@ const styles = StyleSheet.create({
   },
   box: {
     flex: 1,
-    height: 48,
-    maxWidth: 52,
-    borderRadius: AUTH.control.radius,
-    borderWidth: 1,
-    borderColor: AUTH.line.DEFAULT,
-    backgroundColor: AUTH.surface.page,
+    height: 56,
+    maxWidth: 56,
+    borderRadius: AUTH_DS.control.radius,
+    borderWidth: 1.5,
+    borderColor: AUTH_DS.slate200,
+    backgroundColor: AUTH_DS.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  boxFilled: { borderColor: AUTH.line.strong },
-  // Focus is a border weight/colour change - no glow, no shadow.
-  boxActive: { borderColor: AUTH.brand.DEFAULT, borderWidth: 1.5 },
-  boxError: { borderColor: AUTH.status.error.accent },
-  boxDisabled: { backgroundColor: AUTH.surface.sunken },
+  boxFilled: {
+    borderColor: AUTH_DS.slate300,
+    backgroundColor: AUTH_DS.slate50,
+  },
+  boxActive: {
+    borderColor: AUTH_DS.green500,
+    backgroundColor: AUTH_DS.white,
+    ...AUTH_DS.shadowSm,
+  },
+  boxError: {
+    borderColor: AUTH_DS.red500,
+    backgroundColor: AUTH_DS.red50,
+  },
+  boxDisabled: {
+    backgroundColor: AUTH_DS.slate100,
+    borderColor: AUTH_DS.slate200,
+  },
   digit: {
-    fontFamily: AUTH.font,
-    fontSize: 19,
-    fontWeight: '600',
-    color: AUTH.ink[900],
+    fontFamily: AUTH_DS.font,
+    fontSize: 22,
+    fontWeight: '700',
+    color: AUTH_DS.navy800,
   },
   caret: {
     position: 'absolute',
-    width: 1.5,
-    height: 20,
+    width: 2,
+    height: 24,
     borderRadius: 1,
-    backgroundColor: AUTH.brand.DEFAULT,
+    backgroundColor: AUTH_DS.green500,
   },
   hiddenInput: {
     position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     opacity: 0,
+    // Web needs a real caret target; keeping the text transparent rather than
+    // relying on opacity alone avoids a flash of the raw string on some
+    // browsers.
     color: 'transparent',
-    fontSize: 19,
+    fontSize: 22,
     textAlign: 'center',
   },
 });

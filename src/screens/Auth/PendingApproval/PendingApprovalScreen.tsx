@@ -16,14 +16,15 @@ import { useSignOut } from '../../../hooks/useSignOut';
 import type { UserRole } from '../../../types';
 import {
   AuthScreen,
-  AuthBrand,
-  AuthHeading,
+  AuthHeader,
+  AuthCard,
+  AuthMedallion,
   AuthPrimaryButton,
-  AuthTextLink,
-  AuthFooter,
+  AuthLinkButton,
   InlineBanner,
-  StatusNote,
-  AUTH,
+  StatusPill,
+  AuthSecurityNote,
+  AUTH_DS,
   type AuthTone,
 } from '../../../components/auth/AuthUI';
 
@@ -97,57 +98,63 @@ const PendingApprovalScreen: React.FC = () => {
 
   return (
     <AuthScreen>
-      <AuthBrand />
-
-      <AuthHeading
+      <AuthHeader
         title="Awaiting approval"
         subtitle="Your company registration is with our review team."
+        pill="Pending Review"
+        compact
       />
 
-      {notice ? (
-        <InlineBanner
-          tone={notice.tone}
-          message={notice.message}
-          onDismiss={() => setNotice(null)}
-          style={styles.banner}
+      <AuthCard>
+        <AuthMedallion icon="clock" tone="warning" />
+
+        {notice ? (
+          <InlineBanner
+            tone={notice.tone}
+            message={notice.message}
+            onDismiss={() => setNotice(null)}
+            style={styles.banner}
+          />
+        ) : null}
+
+        <Text style={styles.body}>
+          {`Thanks${user?.displayName ? `, ${user.displayName}` : ''}! Your company registration has been submitted and is being reviewed by our team. You'll get an email as soon as it's approved.`}
+        </Text>
+
+        <View style={styles.pillRow}>
+          <StatusPill label="Pending review" tone="warning" />
+        </View>
+
+        <AuthPrimaryButton
+          label={fromLogin ? 'Back to Sign In' : 'Check status'}
+          loading={checking}
+          loadingLabel="Checking…"
+          onPress={handleRefresh}
+          icon={fromLogin ? undefined : 'refresh-cw'}
         />
-      ) : null}
 
-      <StatusNote label="Status" value="Pending review" tone="warning" />
-
-      <Text style={styles.body}>
-        {`Thanks${user?.displayName ? `, ${user.displayName}` : ''}! Your company registration has been submitted and is being reviewed by our team. You'll get an email as soon as it's approved.`}
-      </Text>
-
-      <AuthPrimaryButton
-        label={fromLogin ? 'Back to Sign In' : 'Check status'}
-        loading={checking}
-        loadingLabel="Checking"
-        onPress={handleRefresh}
-      />
-
-      <View style={styles.linkRow}>
-        <AuthTextLink
+        <AuthLinkButton
           label={fromLogin ? 'Use a different account' : 'Sign out'}
           onPress={handleSignOut}
           muted
         />
-      </View>
+      </AuthCard>
 
-      <AuthFooter label="Reviews are usually completed within one business day" />
+      <AuthSecurityNote label="Reviews are usually completed within one business day" />
     </AuthScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  banner: { marginBottom: AUTH.space.lg },
+  banner: { marginBottom: 16 },
   body: {
-    ...AUTH.type.body,
-    color: AUTH.ink[500],
+    fontFamily: AUTH_DS.font,
+    fontSize: 14,
     lineHeight: 22,
-    marginBottom: AUTH.space.xl,
+    color: AUTH_DS.slate500,
+    textAlign: 'center',
   },
-  linkRow: { alignItems: 'center', marginTop: AUTH.space.xs },
+  pillRow: { marginTop: 18, marginBottom: 22 },
 });
 
 export default PendingApprovalScreen;
