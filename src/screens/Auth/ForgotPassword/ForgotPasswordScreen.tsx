@@ -72,11 +72,18 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
 
   const goToSignIn = () => {
     // reset(), not navigate(): the reset token is spent, so Back must not
-    // return here. Falls back to navigate() if SignIn isn't in this stack.
+    // return to this form. reset() throws if SignIn is not in the current
+    // navigator's route list (it is only registered while unauthenticated),
+    // so fall back to navigate() — and if even that fails, go back rather
+    // than let the error escape and take the screen down.
     try {
       navigation.reset({ index: 0, routes: [{ name: 'SignIn', params: { role } }] });
     } catch {
-      navigation.navigate('SignIn', { role });
+      try {
+        navigation.navigate('SignIn', { role });
+      } catch {
+        if (navigation.canGoBack()) navigation.goBack();
+      }
     }
   };
 
@@ -143,12 +150,15 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     setError('');
     try {
       await authResetPassword(email.trim(), resetToken, password);
-      setNotice('Password updated successfully. Please sign in.');
-      // Let the confirmation register before the screen changes.
-      setTimeout(goToSignIn, 900);
+      // Navigate straight away. The previous version showed a banner and
+      // deferred the navigation on a 900ms timer, which meant state updates
+      // and a navigation dispatch could land after the screen had gone —
+      // and left the user staring at a form that looked like it had hung.
+      setLoading(false);
+      goToSignIn();
+      return;
     } catch (e: any) {
       setError(e?.message ?? 'Could not reset password');
-    } finally {
       setLoading(false);
     }
   };

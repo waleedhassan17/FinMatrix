@@ -27,6 +27,11 @@ import { submitCompanyAPI } from '../../../networks/auth/authNetwork';
 import { getPlansForTypeAPI, type TierPlanCard } from '../../../networks/billing/billingNetwork';
 import { getStoredCompanyId } from '../../../utils/storageUtils';
 import {
+  AuthHeader,
+  AuthFooterBar,
+  AUTH,
+} from '../../../components/auth/AuthUI';
+import {
   WAREHOUSE_ONLY_BUILD,
   DEFAULT_COMPANY_TYPE,
 } from '../../../utils/featureGates';
@@ -278,18 +283,6 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const headerY = useRef(new Animated.Value(-20)).current;
-  const headerOpacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(headerOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(headerY, { toValue: 0, duration: 500, useNativeDriver: true }),
-    ]).start();
-
-    if (companyType) loadTierPlans();
-    else loadPlans();
-  }, []);
 
   const loadTierPlans = async () => {
     try {
@@ -381,6 +374,15 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
+  // The header entrance animation went with the old bespoke header. Its two
+  // Animated.Values were the source of this file's "cannot access refs during
+  // render" lint errors, so they are gone rather than left orphaned.
+  useEffect(() => {
+    if (companyType) loadTierPlans();
+    else loadPlans();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleContinue = async () => {
     if (!selectedId) {
       Alert.alert('Select a Plan', 'Please choose a subscription plan to continue.');
@@ -428,51 +430,18 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
   const selectedPlan = plans.find(p => p.id === selectedId);
 
   return (
-    <View style={S.root}>
-      <StatusBar barStyle="light-content" backgroundColor={DS.navy} />
+    <View style={S.rootShell}>
+      <AuthHeader
+        pill="Choose a Plan"
+        title="Choose your plan"
+        subtitle={'Select the plan that best fits your business.\nYou can upgrade anytime.'}
+        onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+      />
 
       <ScrollView
-        contentContainerStyle={[S.scroll, { paddingBottom: insets.bottom + 20 }]}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-      >
-        {/* Header */}
-        <LinearGradient
-          colors={[DS.navy, '#1E293B']}
-          style={S.header}
-        >
-          <View style={S.orbTR} />
-          <View style={S.orbBL} />
-
-          <SafeAreaView edges={['top']}>
-            <Animated.View
-              style={[S.headerContent, { opacity: headerOpacity, transform: [{ translateY: headerY }] }]}
-            >
-              <View style={S.logoRow}>
-                <Text style={S.brand}>
-                  <Text style={{ color: DS.green }}>Fin</Text>
-                  <Text style={{ color: DS.text.inv }}>Matrix</Text>
-                </Text>
-              </View>
-              <Text style={S.headerTitle}>Choose Your Plan</Text>
-              <Text style={S.headerSub}>
-                Select the plan that best fits your business.{'\n'}
-                You can upgrade anytime.
-              </Text>
-
-              {/* Value pills */}
-              <View style={S.pillRow}>
-                {['No credit card required', 'Cancel anytime', '99.9% uptime SLA'].map(t => (
-                  <View key={t} style={S.pill}>
-                    <Feather name="check" size={10} color={DS.green} />
-                    <Text style={S.pillText}>{t}</Text>
-                  </View>
-                ))}
-              </View>
-            </Animated.View>
-          </SafeAreaView>
-        </LinearGradient>
-
+        style={{ flex: 1 }}
+        contentContainerStyle={S.scroll}
+        showsVerticalScrollIndicator={false}>
         {/* Plans */}
         <View style={S.content}>
           {loadingPlans ? (
@@ -539,51 +508,39 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
             ))
           )}
 
-          {/* CTA */}
-          <View style={S.ctaSection}>
-            <TouchableOpacity
-              style={[S.cta, submitting && S.ctaDisabled]}
-              onPress={companyType ? handleContinueTier : handleContinue}
-              activeOpacity={0.85}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <View style={S.ctaRow}>
-                  <ActivityIndicator size="small" color="#FFF" />
-                  <Text style={S.ctaLabel}>Setting up…</Text>
-                </View>
-              ) : companyType ? (
-                <Text style={S.ctaLabel}>
-                  {selectedTierKey ? 'Continue to payment' : 'Select a plan'}
-                </Text>
-              ) : (
-                <Text style={S.ctaLabel}>
-                  {selectedPlan && parseFloat(selectedPlan.priceMonthly) === 0
-                    ? 'Continue with Free Plan'
-                    : selectedPlan
-                    ? `Start ${selectedPlan.name} Plan`
-                    : 'Continue'}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleSkip} style={S.skipBtn} activeOpacity={0.7}>
-              <Text style={S.skipText}>Skip for now</Text>
-            </TouchableOpacity>
-          </View>
-
           <Text style={S.legalText}>
             By continuing, you agree to our Terms of Service and Privacy Policy.
             Plans billed monthly or annually. Cancel anytime.
           </Text>
         </View>
       </ScrollView>
+
+      <AuthFooterBar
+        primary={{
+          label: companyType
+            ? selectedTierKey
+              ? 'Continue to payment'
+              : 'Select a plan'
+            : selectedPlan && parseFloat(selectedPlan.priceMonthly) === 0
+            ? 'Continue with Free Plan'
+            : selectedPlan
+            ? `Start ${selectedPlan.name} Plan`
+            : 'Continue',
+          onPress: companyType ? handleContinueTier : handleContinue,
+          loading: submitting,
+          loadingLabel: 'Setting up',
+          disabled: !!companyType && !selectedTierKey,
+        }}
+        secondary={{ label: 'Skip for now', onPress: handleSkip }}
+      />
     </View>
   );
 };
 
 // ─── Styles ──────────────────────────────────────────
 const S = StyleSheet.create({
+  // Shared auth shell: flat navy header, light canvas, sticky footer.
+  rootShell: { flex: 1, backgroundColor: AUTH.canvas },
   root: { flex: 1, backgroundColor: DS.bg },
   scroll: { flexGrow: 1 },
 

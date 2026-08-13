@@ -216,11 +216,11 @@ const EmailVerificationScreen: React.FC = () => {
 const styles = StyleSheet.create({
   tile: { marginBottom: AUTH.space.xl },
   spinner: { marginBottom: AUTH.space.lg },
+  // Label above value, both left-aligned. Pushing the address to the right
+  // edge squeezes long ones and forces the eye across the card to read the
+  // one thing that matters here.
   sentTo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: AUTH.space.lg,
+    gap: 2,
     backgroundColor: AUTH.surface,
     borderWidth: 1,
     borderColor: AUTH.line,
@@ -229,11 +229,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: AUTH.space.lg,
     marginBottom: AUTH.space.lg,
   },
-  sentToLabel: { fontFamily: AUTH.font, fontSize: 13, color: AUTH.ink[500] },
+  sentToLabel: { fontFamily: AUTH.font, fontSize: 12.5, color: AUTH.ink[500] },
   sentToValue: {
-    flexShrink: 1,
     fontFamily: AUTH.font,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: AUTH.ink[900],
   },
