@@ -11,7 +11,7 @@
 // return to a form holding a spent reset token.
 
 import React, { useState, useEffect } from 'react';
-import { Text, StyleSheet, TextInput } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   authForgotPassword,
@@ -21,15 +21,17 @@ import {
 import { useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectSelectedRole } from '../authSlice';
 import {
-  AuthScreen,
+  AuthLayout,
   AuthHeader,
-  AuthCard,
-  AuthMedallion,
-  AuthPrimaryButton,
-  AuthLinkButton,
-  InlineBanner,
+  AuthFooterBar,
+  AuthField,
+  AuthIconTile,
+  AuthNotice,
+  AuthHelpCard,
+  AuthChecklist,
+  PasswordStrength,
   OtpInput,
-  AUTH_DS,
+  AUTH,
 } from '../../../components/auth/AuthUI';
 import type { RootStackParamList, UserRole } from '../../../types';
 
@@ -42,6 +44,8 @@ const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 const RESEND_COOLDOWN = 60;
 
 const STEP_INDEX: Record<Step, number> = { request: 1, otp: 2, reset: 3 };
+
+const STRENGTH_LABELS = ['Empty', 'Weak', 'Good', 'Strong'] as const;
 
 const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
   const [step, setStep] = useState<Step>('request');
@@ -149,14 +153,40 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const titles: Record<Step, { title: string; subtitle: string }> = {
+  const handleBack = () => {
+    if (step === 'otp' || step === 'reset') {
+      setStep(step === 'reset' ? 'otp' : 'request');
+      setError('');
+      setNotice('');
+      return;
+    }
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('RoleSelection');
+  };
+
+  const clearError = () => {
+    if (error) setError('');
+  };
+
+  // ── Password rules, shown as a live checklist ──
+  const rules = [
+    { label: 'At least 8 characters', met: password.length >= 8 },
+    {
+      label: 'An uppercase and a lowercase letter',
+      met: /[a-z]/.test(password) && /[A-Z]/.test(password),
+    },
+    { label: 'At least one number', met: /\d/.test(password) },
+  ];
+  const score = rules.filter(r => r.met).length as 0 | 1 | 2 | 3;
+
+  const COPY: Record<Step, { title: string; subtitle: string }> = {
     request: {
       title: 'Reset password',
       subtitle: "Enter your email and we'll send you a 6-digit code.",
     },
     otp: {
       title: 'Enter code',
-      subtitle: `We sent a 6-digit code to ${email}.`,
+      subtitle: 'We sent a 6-digit code to your email address.',
     },
     reset: {
       title: 'New password',
@@ -164,188 +194,142 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     },
   };
 
-  const handleBack = () => {
-    if (step === 'otp') {
-      setStep('request');
-      setError('');
-      setNotice('');
-      return;
-    }
-    if (step === 'reset') {
-      setStep('otp');
-      setError('');
-      setNotice('');
-      return;
-    }
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('RoleSelection');
-    }
-  };
+  const primary =
+    step === 'request'
+      ? { label: 'Send code', onPress: handleRequest, loading, loadingLabel: 'Sending' }
+      : step === 'otp'
+      ? { label: 'Verify code', onPress: handleVerifyOtp, loading, loadingLabel: 'Verifying' }
+      : { label: 'Update password', onPress: handleReset, loading, loadingLabel: 'Updating' };
 
   return (
-    <AuthScreen>
-      <AuthHeader
-        title={titles[step].title}
-        subtitle={titles[step].subtitle}
-        pill="Reset Password"
-        onBack={handleBack}
-        compact
-        steps={{ current: STEP_INDEX[step], total: 3 }}
-      />
+    <AuthLayout
+      header={
+        <AuthHeader
+          pill="Reset Password"
+          title={COPY[step].title}
+          subtitle={COPY[step].subtitle}
+          onBack={step === 'request' ? handleBack : handleBack}
+          step={{ current: STEP_INDEX[step], total: 3 }}
+        />
+      }
+      footer={
+        <AuthFooterBar
+          primary={primary}
+          secondary={{ label: 'Back to Sign In', onPress: goToSignIn }}
+        />
+      }>
+      {error ? <AuthNotice tone="error" message={error} /> : null}
+      {!error && notice ? (
+        <AuthNotice
+          tone={step === 'reset' ? 'success' : 'info'}
+          message={notice}
+        />
+      ) : null}
 
-      <AuthCard>
-        <AuthMedallion icon={step === 'reset' ? 'lock' : 'mail'} />
-
-        {error ? (
-          <InlineBanner tone="error" message={error} style={styles.banner} />
-        ) : notice ? (
-          <InlineBanner
-            tone={step === 'reset' ? 'success' : 'info'}
-            message={notice}
-            style={styles.banner}
+      {step === 'request' && (
+        <>
+          <AuthIconTile icon="mail" style={styles.tile} />
+          <AuthField
+            label="Email address"
+            value={email}
+            onChangeText={t => {
+              setEmail(t);
+              clearError();
+            }}
+            placeholder="you@company.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            onSubmitEditing={handleRequest}
+            returnKeyType="send"
           />
-        ) : null}
+          <AuthHelpCard message="Codes expire after 10 minutes. Use the address tied to your FinMatrix workspace." />
+        </>
+      )}
 
-        {step === 'request' && (
-          <>
-            <Text style={styles.label}>Email address</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={t => {
-                setEmail(t);
-                if (error) setError('');
-              }}
-              placeholder="you@company.com"
-              placeholderTextColor={AUTH_DS.slate400}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              onSubmitEditing={handleRequest}
-              returnKeyType="send"
-            />
-            <AuthPrimaryButton
-              label="Send code"
-              loading={loading}
-              loadingLabel="Sending…"
-              onPress={handleRequest}
-              style={styles.cta}
-            />
-          </>
-        )}
-
-        {step === 'otp' && (
-          <>
-            <Text style={styles.label}>6-digit code</Text>
-            <OtpInput
-              value={otp}
-              onChange={t => {
-                setOtp(t);
-                if (error) setError('');
-              }}
-              error={!!error}
-              autoFocus
-              style={styles.otp}
-            />
-            <AuthPrimaryButton
-              label="Verify code"
-              loading={loading}
-              loadingLabel="Verifying…"
-              onPress={handleVerifyOtp}
-              style={styles.cta}
-            />
-            <AuthLinkButton
-              label={cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
-              onPress={handleResend}
-              disabled={cooldown > 0}
-              muted={cooldown > 0}
-            />
-          </>
-        )}
-
-        {step === 'reset' && (
-          <>
-            <Text style={styles.label}>New password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={t => {
-                setPassword(t);
-                if (error) setError('');
-              }}
-              placeholder="New password"
-              placeholderTextColor={AUTH_DS.slate400}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-            <Text style={styles.label}>Confirm password</Text>
-            <TextInput
-              style={styles.input}
-              value={confirm}
-              onChangeText={t => {
-                setConfirm(t);
-                if (error) setError('');
-              }}
-              placeholder="Confirm password"
-              placeholderTextColor={AUTH_DS.slate400}
-              secureTextEntry
-              autoCapitalize="none"
-              onSubmitEditing={handleReset}
-              returnKeyType="done"
-            />
-            <Text style={styles.hint}>
-              At least 8 characters, with an uppercase letter, a lowercase
-              letter and a number.
+      {step === 'otp' && (
+        <>
+          <Text style={styles.label}>6-digit code</Text>
+          <OtpInput
+            value={otp}
+            onChange={t => {
+              setOtp(t);
+              clearError();
+            }}
+            error={!!error}
+            autoFocus
+          />
+          <View style={styles.resendRow}>
+            <Text style={styles.resendHint}>Didn&apos;t get the code?</Text>
+            <Text
+              style={[styles.resendAction, cooldown > 0 && styles.resendDisabled]}
+              onPress={cooldown > 0 ? undefined : handleResend}
+              accessibilityRole="button">
+              {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
             </Text>
-            <AuthPrimaryButton
-              label="Update password"
-              loading={loading}
-              loadingLabel="Updating…"
-              onPress={handleReset}
-              style={styles.cta}
-            />
-          </>
-        )}
+          </View>
+        </>
+      )}
 
-        <AuthLinkButton label="Back to Sign In" onPress={goToSignIn} muted />
-      </AuthCard>
-    </AuthScreen>
+      {step === 'reset' && (
+        <>
+          <AuthField
+            label="New password"
+            value={password}
+            onChangeText={t => {
+              setPassword(t);
+              clearError();
+            }}
+            placeholder="Enter a new password"
+            secure
+            autoCapitalize="none"
+          />
+          <PasswordStrength score={score} label={STRENGTH_LABELS[score]} />
+          <AuthChecklist items={rules} />
+          <View style={styles.gap} />
+          <AuthField
+            label="Confirm password"
+            value={confirm}
+            onChangeText={t => {
+              setConfirm(t);
+              clearError();
+            }}
+            placeholder="Re-enter your password"
+            secure
+            autoCapitalize="none"
+            onSubmitEditing={handleReset}
+            returnKeyType="done"
+          />
+        </>
+      )}
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  banner: { marginBottom: 16 },
+  tile: { marginBottom: AUTH.space.xl },
   label: {
-    fontFamily: AUTH_DS.font,
+    fontFamily: AUTH.font,
+    fontSize: 13,
+    fontWeight: '600',
+    color: AUTH.ink[700],
+    marginBottom: AUTH.space.md,
+  },
+  resendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: AUTH.space.lg,
+  },
+  resendHint: { fontFamily: AUTH.font, fontSize: 13, color: AUTH.ink[500] },
+  resendAction: {
+    fontFamily: AUTH.font,
     fontSize: 13,
     fontWeight: '700',
-    color: AUTH_DS.navy700,
-    marginBottom: 7,
-    marginTop: 4,
+    color: AUTH.brand,
   },
-  input: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 15,
-    color: AUTH_DS.navy800,
-    backgroundColor: AUTH_DS.white,
-    borderWidth: 1,
-    borderColor: AUTH_DS.slate200,
-    borderRadius: AUTH_DS.control.radius,
-    height: AUTH_DS.control.height,
-    paddingHorizontal: 14,
-    marginBottom: 12,
-  },
-  otp: { marginBottom: 6 },
-  hint: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 12,
-    color: AUTH_DS.slate500,
-    lineHeight: 17,
-    marginBottom: 4,
-  },
-  cta: { marginTop: 10 },
+  resendDisabled: { color: AUTH.ink[400], fontWeight: '500' },
+  gap: { height: AUTH.space.xl },
 });
 
 export default ForgotPasswordScreen;

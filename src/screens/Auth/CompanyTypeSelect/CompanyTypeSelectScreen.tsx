@@ -1,34 +1,23 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Choose Your Business Type (three-tier model)
-// Small business / Large organization / Warehouse. The choice
-// sets companyType, which decides the feature set, the two
-// subscription plans offered, and which app the user sees.
+// FinMatrix — Choose your business type (onboarding step 2)
 // ═══════════════════════════════════════════════════════
+// WAREHOUSE-ONLY BUILD: this screen is currently bypassed — CompanySetup
+// goes straight to CreateCompany with companyType 'warehouse'. It stays in
+// the repo and in the route map so deep links still resolve, and so the
+// three-tier model can be restored by un-commenting the two cards below
+// plus flipping WAREHOUSE_ONLY_BUILD in utils/featureGates.ts.
 
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../types';
-import { THEME } from '../../../utils/theme';
+import {
+  AuthLayout,
+  AuthHeader,
+  AuthFooterBar,
+  AuthOptionCard,
+} from '../../../components/auth/AuthUI';
 
-const DS = {
-  navy: '#091E42',
-  primary: '#059669',
-  bg: '#F4F5F7',
-  surface: '#FFFFFF',
-  border: '#DFE1E6',
-  text: { h: '#172B4D', sub: '#5E6C84', muted: '#8993A4', inv: '#FFFFFF' },
-};
+type Props = NativeStackScreenProps<RootStackParamList, 'CompanyTypeSelect'>;
 
 type CompanyTypeKey = 'small_business' | 'large_org' | 'warehouse';
 
@@ -36,9 +25,9 @@ interface TypeCard {
   key: CompanyTypeKey;
   title: string;
   tagline: string;
-  icon: keyof typeof Feather.glyphMap;
-  gradient: [string, string];
-  bullets: string[];
+  icon: 'briefcase' | 'layers' | 'package';
+  badge?: string;
+  features: string[];
 }
 
 // Feature summaries follow THE MODEL (FinMatrix_Tier_Feature_Guide) so the
@@ -46,18 +35,15 @@ interface TypeCard {
 const TYPE_CARDS: TypeCard[] = [
   // ══ WAREHOUSE-ONLY BUILD ═══════════════════════════════════════════════
   // Small Business and Large Organization are commented out while the
-  // product ships warehouse-only. This screen is also bypassed entirely
-  // (CompanySetupScreen goes straight to CreateCompany) — the cards are kept
-  // here so restoring the three-tier model is just un-commenting them and
-  // flipping WAREHOUSE_ONLY_BUILD in utils/featureGates.ts.
+  // product ships warehouse-only.
   //
   // {
   //   key: 'small_business',
   //   title: 'Small Business',
   //   tagline: 'Complete accounting, nothing you don’t need',
   //   icon: 'briefcase',
-  //   gradient: ['#00875A', '#006644'],
-  //   bullets: [
+  //   badge: 'Popular',
+  //   features: [
   //     'Invoices, bills, payments & estimates',
   //     'Customers, vendors & chart of accounts',
   //     'Tax tracking built in',
@@ -69,12 +55,11 @@ const TYPE_CARDS: TypeCard[] = [
   //   title: 'Large Organization',
   //   tagline: 'Accounting plus people, budgets & control',
   //   icon: 'layers',
-  //   gradient: ['#0747A6', '#1E3A8A'],
-  //   bullets: [
+  //   features: [
   //     'Everything in Small Business',
   //     'Payroll, employees & payslips',
   //     'Budgets vs actual & team roles',
-  //     'Audit log & period close (optional inventory)',
+  //     'Audit log & period close',
   //   ],
   // },
   {
@@ -82,8 +67,7 @@ const TYPE_CARDS: TypeCard[] = [
     title: 'Warehouse',
     tagline: 'Full inventory & delivery operations',
     icon: 'package',
-    gradient: ['#6554C0', '#5243AA'],
-    bullets: [
+    features: [
       'Complete accounting: invoices, bills, payments & estimates',
       'Payroll, budgets, audit log & period close',
       'Full inventory with average costing',
@@ -92,11 +76,12 @@ const TYPE_CARDS: TypeCard[] = [
   },
 ];
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CompanyTypeSelect'>;
-
 const CompanyTypeSelectScreen: React.FC<Props> = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
-  const [selected, setSelected] = useState<CompanyTypeKey | null>(null);
+  const [selected, setSelected] = useState<CompanyTypeKey | null>(
+    // With a single type on offer there is nothing to decide — preselect it
+    // rather than making the user tap a lone radio to enable Continue.
+    TYPE_CARDS.length === 1 ? TYPE_CARDS[0].key : null,
+  );
 
   const handleContinue = () => {
     if (!selected) return;
@@ -104,142 +89,39 @@ const CompanyTypeSelectScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={S.root}>
-      <StatusBar barStyle="light-content" backgroundColor={DS.navy} />
-      <ScrollView
-        contentContainerStyle={[S.scroll, { paddingBottom: insets.bottom + 24 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <LinearGradient colors={[DS.navy, '#1E293B']} style={S.header}>
-          <SafeAreaView edges={['top']}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={S.back}>
-              <Feather name="arrow-left" size={20} color="#FFF" />
-            </TouchableOpacity>
-            <Text style={S.brand}>
-              <Text style={{ color: DS.primary }}>Fin</Text>
-              <Text style={{ color: '#FFF' }}>Matrix</Text>
-            </Text>
-            <Text style={S.headerTitle}>Choose your business type</Text>
-            <Text style={S.headerSub}>
-              This decides which tools your team sees. You’ll pick a plan for it next.
-            </Text>
-          </SafeAreaView>
-        </LinearGradient>
-
-        <View style={S.content}>
-          {TYPE_CARDS.map(card => {
-            const isSel = selected === card.key;
-            return (
-              <TouchableOpacity
-                key={card.key}
-                activeOpacity={0.85}
-                onPress={() => setSelected(card.key)}
-                style={[S.card, isSel && S.cardSelected]}
-              >
-                <LinearGradient
-                  colors={card.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={S.cardHead}
-                >
-                  <View style={S.cardHeadRow}>
-                    <View style={S.iconWrap}>
-                      <Feather name={card.icon} size={20} color="#FFF" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={S.cardTitle}>{card.title}</Text>
-                      <Text style={S.cardTagline}>{card.tagline}</Text>
-                    </View>
-                    <Feather
-                      name={isSel ? 'check-circle' : 'circle'}
-                      size={22}
-                      color={isSel ? '#FFF' : 'rgba(255,255,255,0.6)'}
-                    />
-                  </View>
-                </LinearGradient>
-                <View style={S.cardBody}>
-                  {card.bullets.map(b => (
-                    <View key={b} style={S.bulletRow}>
-                      <Feather name="check" size={13} color={DS.primary} />
-                      <Text style={S.bulletText}>{b}</Text>
-                    </View>
-                  ))}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-
-          <TouchableOpacity
-            style={[S.cta, !selected && S.ctaDisabled]}
-            onPress={handleContinue}
-            disabled={!selected}
-            activeOpacity={0.85}
-          >
-            <Text style={S.ctaLabel}>
-              {selected
-                ? `Continue as ${TYPE_CARDS.find(c => c.key === selected)?.title}`
-                : 'Select a type to continue'}
-            </Text>
-            <Feather name="arrow-right" size={18} color="#FFF" />
-          </TouchableOpacity>
-          <Text style={S.hint}>
-            Not sure? Start with Small Business — an administrator can change your type later
-            without losing any data.
-          </Text>
-        </View>
-      </ScrollView>
-    </View>
+    <AuthLayout
+      header={
+        <AuthHeader
+          pill="Workspace Setup"
+          title="Choose your business type"
+          subtitle="This decides which tools your team sees. You’ll pick a plan for it next."
+          onBack={() => navigation.goBack()}
+          step={{ current: 2, total: 5 }}
+        />
+      }
+      footer={
+        <AuthFooterBar
+          primary={{
+            label: selected ? 'Continue' : 'Select a type to continue',
+            onPress: handleContinue,
+            disabled: !selected,
+          }}
+        />
+      }>
+      {TYPE_CARDS.map(card => (
+        <AuthOptionCard
+          key={card.key}
+          icon={card.icon}
+          title={card.title}
+          tagline={card.tagline}
+          badge={card.badge}
+          features={card.features}
+          selected={selected === card.key}
+          onPress={() => setSelected(card.key)}
+        />
+      ))}
+    </AuthLayout>
   );
 };
-
-const S = StyleSheet.create({
-  root: { flex: 1, backgroundColor: DS.bg },
-  scroll: { flexGrow: 1 },
-  header: { paddingHorizontal: 24, paddingBottom: 28 },
-  back: {
-    width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)', marginTop: 8, marginBottom: 16,
-  },
-  brand: { fontSize: 20, fontWeight: '800', fontFamily: THEME.typography.fontFamily, marginBottom: 14 },
-  headerTitle: {
-    fontSize: 26, fontWeight: '800', color: '#FFF', letterSpacing: -0.5,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  headerSub: {
-    fontSize: 14, color: 'rgba(255,255,255,0.65)', lineHeight: 21, marginTop: 8,
-    fontFamily: THEME.typography.fontFamily,
-  },
-
-  content: { padding: 16, gap: 14 },
-  card: {
-    backgroundColor: DS.surface, borderRadius: 16, overflow: 'hidden',
-    borderWidth: 1.5, borderColor: DS.border,
-    shadowColor: '#0052CC', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
-  },
-  cardSelected: { borderColor: DS.primary, borderWidth: 2.5 },
-  cardHead: { padding: 16 },
-  cardHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconWrap: {
-    width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-  },
-  cardTitle: { fontSize: 18, fontWeight: '800', color: '#FFF', fontFamily: THEME.typography.fontFamily },
-  cardTagline: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  cardBody: { padding: 14, gap: 8 },
-  bulletRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  bulletText: { fontSize: 13, color: DS.text.h, fontFamily: THEME.typography.fontFamily, flex: 1 },
-
-  cta: {
-    height: 54, borderRadius: 16, backgroundColor: DS.primary,
-    flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 6,
-  },
-  ctaDisabled: { opacity: 0.5 },
-  ctaLabel: { fontSize: 16, fontWeight: '700', color: '#FFF', fontFamily: THEME.typography.fontFamily },
-  hint: {
-    fontSize: 11, color: DS.text.muted, textAlign: 'center', lineHeight: 17,
-    fontFamily: THEME.typography.fontFamily,
-  },
-});
 
 export default CompanyTypeSelectScreen;

@@ -1,137 +1,106 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Auth design tokens (AUTH_DS)
+// FinMatrix — Auth design tokens
 // ═══════════════════════════════════════════════════════
-// THE single token set for the auth + onboarding flow.
+// Implements the approved auth/onboarding design:
 //
-// SignIn, SignUp, CompanySetup and CreateCompany each carried their own
-// near-identical `DS` literal (navy gradient header, green accent, slate
-// ramp), while EmailVerification, PendingApproval, CompanyRejected and
-// ForgotPassword used the older flat `colors/spacing/typography` exports —
-// which is exactly why half the flow looked unfinished next to the other half.
-// Those values are lifted here verbatim, so adopting this module is a token
-// swap with no visual change to the screens that already looked right.
+//   ┌─────────────────────────────┐
+//   │ NAVY HEADER                 │  wordmark · status pill · back chip
+//   │  Title                      │  title + subtitle
+//   │  ▬▬ ▬▬ ──   Step 1 of 3     │  segmented progress + step label
+//   ╰─────────────────────────────╯  rounded bottom corners
+//   │ light body                  │  white cards on a soft grey canvas
+//   ├─────────────────────────────┤
+//   │  [ Primary action    → ]    │  sticky footer bar
+//   │      Secondary link         │
+//   └─────────────────────────────┘
 //
-// Colours: FinMatrix navy (#0B1120 → #1E293B) with the green #059669 accent
-// the rest of the app uses. Metrics come from THEME (src/theme/theme.ts) so
-// auth controls match every other form in the product.
+// The header is the anchor and always sits flush to the top. The footer is
+// pinned so the primary action is reachable without scrolling on long forms.
 
-import { THEME } from '../../theme';
+import { Platform } from 'react-native';
 
-export const AUTH_DS = {
-  // ── Navy (headers, primary surfaces) ──
-  navy900: '#0B1120',
-  navy800: '#0F172A',
-  navy700: '#1E293B',
+const fontFamily = Platform.select({ android: 'Roboto', default: 'System' })!;
 
-  // ── Brand green (CTAs, success, accents) ──
-  green500: '#059669',
-  green400: '#00875A',
-  green300: '#34D399',
-  green50: '#ECFDF5',
-  greenBorder: '#A7F3D0',
+export const AUTH = {
+  font: fontFamily,
 
-  // ── Slate ramp (text, borders, backgrounds) ──
-  slate50: '#F8FAFC',
-  slate100: '#F1F5F9',
-  slate200: '#E2E8F0',
-  slate300: '#CBD5E1',
-  slate400: '#94A3B8',
-  slate500: '#64748B',
-  slate600: '#475569',
+  // ── Header (dark) ──
+  header: {
+    from: '#111D28',
+    mid: '#0D1721',
+    to: '#0A1018',
+    /** Soft radial bloom in the top-right corner. */
+    glow: 'rgba(16, 185, 129, 0.13)',
+    title: '#FFFFFF',
+    subtitle: 'rgba(255,255,255,0.60)',
+    pillBg: 'rgba(255,255,255,0.10)',
+    pillText: 'rgba(255,255,255,0.88)',
+    chipBg: 'rgba(255,255,255,0.10)',
+    radius: 26,
+  },
 
-  // ── Status tones ──
-  red50: '#FEF2F2',
-  red100: '#FEE2E2',
-  red500: '#DE350B',
-  red700: '#B91C1C',
-  red900: '#7F1D1D',
+  // ── Body (light) ──
+  canvas: '#F4F6F8',
+  surface: '#FFFFFF',
+  sunken: '#F1F4F7',
 
-  amber50: '#FFFAE6',
-  amber100: '#FEF3C7',
-  amber500: '#FF991F',
-  amber600: '#D97706',
-  amber800: '#92400E',
+  ink: {
+    900: '#0F172A', // headings
+    700: '#334155', // body
+    500: '#64748B', // secondary
+    400: '#94A3B8', // placeholder / muted
+  },
 
-  blue50: '#EFF6FF',
-  blue100: '#DBEAFE',
-  blue500: '#0065FF',
-  blue600: '#2563EB',
-  blue800: '#1E40AF',
+  line: '#E5E9EF',
+  lineStrong: '#D3DAE3',
 
-  white: '#FFFFFF',
+  // ── Brand ──
+  brand: '#0E9F6E',
+  brandDark: '#0B8557',
+  brandDot: '#10B981',
+  mint: '#E7F7F0',
+  mintBorder: '#BCE6D2',
 
-  radius: { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 },
+  // ── Status tints ──
+  status: {
+    success: { fg: '#065F46', bg: '#E7F7F0', border: '#BCE6D2', accent: '#0E9F6E' },
+    info: { fg: '#0F5132', bg: '#E7F7F0', border: '#BCE6D2', accent: '#0E9F6E' },
+    warning: { fg: '#92400E', bg: '#FEF3C7', border: '#FDE68A', accent: '#F59E0B' },
+    error: { fg: '#991B1B', bg: '#FEF2F2', border: '#FECACA', accent: '#DC2626' },
+  },
 
-  shadowSm: {
-    shadowColor: '#0B1120',
-    shadowOffset: { width: 0, height: 2 },
+  /** 4px grid. */
+  space: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 },
+
+  radius: { sm: 8, md: 10, lg: 12, xl: 16, pill: 999 },
+
+  /** One height for inputs; the primary button is taller for thumb reach. */
+  control: { height: 52, radius: 12 },
+  button: { height: 54, radius: 12 },
+
+  /** Icon tile beside a section or heading. */
+  tile: { size: 48, radius: 14 },
+
+  maxWidth: 440,
+
+  cardShadow: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  shadowMd: {
-    shadowColor: '#0B1120',
-    shadowOffset: { width: 0, height: 4 },
+  /** The sticky footer lifts off the content it covers. */
+  footerShadow: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowRadius: 10,
+    elevation: 12,
   },
-  shadowLg: {
-    shadowColor: '#0B1120',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-
-  /** Form-control metrics — the app-wide values, so auth matches every other form. */
-  control: {
-    height: THEME.form.controlHeight, // 48
-    radius: THEME.form.controlRadius, // 10
-  },
-
-  /** Every primary/secondary CTA in the auth flow is this tall. */
-  buttonHeight: 52,
-
-  font: THEME.typography.fontFamily,
-
-  /** Auth content never stretches past this on a wide web viewport. */
-  maxContentWidth: 520,
 } as const;
 
-export type AuthTone = 'error' | 'success' | 'info' | 'warning';
+export type AuthTone = 'success' | 'info' | 'warning' | 'error';
 
-/** Banner/pill colour mapping, shared by InlineBanner and StatusPill. */
-export const AUTH_TONES: Record<
-  AuthTone,
-  { bg: string; border: string; fg: string; accent: string; icon: string }
-> = {
-  error: {
-    bg: AUTH_DS.red50,
-    border: AUTH_DS.red100,
-    fg: AUTH_DS.red900,
-    accent: AUTH_DS.red500,
-    icon: 'alert-circle',
-  },
-  success: {
-    bg: AUTH_DS.green50,
-    border: AUTH_DS.greenBorder,
-    fg: '#065F46',
-    accent: AUTH_DS.green500,
-    icon: 'check-circle',
-  },
-  info: {
-    bg: AUTH_DS.blue50,
-    border: AUTH_DS.blue100,
-    fg: AUTH_DS.blue800,
-    accent: AUTH_DS.blue600,
-    icon: 'info',
-  },
-  warning: {
-    bg: AUTH_DS.amber100,
-    border: '#FDE68A',
-    fg: AUTH_DS.amber800,
-    accent: AUTH_DS.amber600,
-    icon: 'clock',
-  },
-};
+/** Back-compat alias for screens still importing the old name. */
+export const AUTH_DS = AUTH;

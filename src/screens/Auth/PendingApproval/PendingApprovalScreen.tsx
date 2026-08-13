@@ -2,8 +2,11 @@
 // FinMatrix — Awaiting Approval gate
 // ═══════════════════════════════════════════════════════
 // Shown while a submitted company sits in super-admin review. Two entry
-// points: `fromLogin` (a blocked sign-in, so there is no session to poll) and
-// the live post-submission session.
+// points: `fromLogin` (a blocked sign-in, so there is no session to poll)
+// and the live post-submission session.
+//
+// The timeline exists because "awaiting approval" with no other information
+// reads as "stuck". Showing what has already completed makes the wait legible.
 
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -15,16 +18,14 @@ import { setStoredCompanyId } from '../../../utils/storageUtils';
 import { useSignOut } from '../../../hooks/useSignOut';
 import type { UserRole } from '../../../types';
 import {
-  AuthScreen,
+  AuthLayout,
   AuthHeader,
-  AuthCard,
-  AuthMedallion,
-  AuthPrimaryButton,
-  AuthLinkButton,
-  InlineBanner,
+  AuthFooterBar,
+  AuthIconTile,
+  AuthNotice,
+  AuthTimeline,
   StatusPill,
-  AuthSecurityNote,
-  AUTH_DS,
+  AUTH,
   type AuthTone,
 } from '../../../components/auth/AuthUI';
 
@@ -32,7 +33,6 @@ const PendingApprovalScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  // Reached from a blocked login (no session) vs. from a live signup session.
   const fromLogin = !!route.params?.fromLogin;
   const user = useAppSelector(s => s.auth.user);
   const selectedRole = useAppSelector(selectSelectedRole);
@@ -44,8 +44,6 @@ const PendingApprovalScreen: React.FC = () => {
     null,
   );
 
-  // From login there is no session to poll — send the user back to sign in to
-  // retry once approved.
   const backToSignIn = useCallback(() => {
     navigation.navigate('SignIn', { role });
   }, [navigation, role]);
@@ -61,28 +59,23 @@ const PendingApprovalScreen: React.FC = () => {
       const { data } = await authMe();
       const status = data.user.companyStatus;
       if (status === 'approved' || status === 'active') {
-        // Approved by the super-admin → clear the onboarding session so the
-        // owner signs in fresh. signOutNow() flips the navigator to sign-in
-        // on this frame, so there is nothing to navigate to afterwards.
-        setNotice({
-          tone: 'success',
-          message: 'Approved! Please sign in to continue.',
-        });
+        // Approved → clear the onboarding session so the owner signs in
+        // fresh. signOutNow() flips the navigator on this frame.
+        setNotice({ tone: 'success', message: 'Approved! Please sign in to continue.' });
         signOutNow();
         return;
       }
       if (data.companyId) await setStoredCompanyId(data.companyId);
       dispatch(setUser(data.user));
-      if (status === 'rejected') {
-        setNotice({ tone: 'info', message: 'Your registration was reviewed.' });
-      } else {
-        setNotice({ tone: 'info', message: 'Still pending review — hang tight!' });
-      }
-    } catch (e: any) {
       setNotice({
-        tone: 'error',
-        message: e?.message ?? 'Could not refresh status',
+        tone: 'info',
+        message:
+          status === 'rejected'
+            ? 'Your registration was reviewed.'
+            : 'Still pending review — hang tight!',
       });
+    } catch (e: any) {
+      setNotice({ tone: 'error', message: e?.message ?? 'Could not refresh status' });
     } finally {
       setChecking(false);
     }
@@ -97,64 +90,80 @@ const PendingApprovalScreen: React.FC = () => {
   }, [fromLogin, backToSignIn, confirmSignOut]);
 
   return (
-    <AuthScreen>
-      <AuthHeader
-        title="Awaiting approval"
-        subtitle="Your company registration is with our review team."
-        pill="Pending Review"
-        compact
+    <AuthLayout
+      header={
+        <AuthHeader
+          pill="Pending Review"
+          title="Awaiting approval"
+          subtitle="Your company registration is with our review team."
+          onBack={fromLogin ? backToSignIn : undefined}
+        />
+      }
+      footer={
+        <AuthFooterBar
+          primary={{
+            label: fromLogin ? 'Back to Sign In' : 'Check status',
+            onPress: handleRefresh,
+            loading: checking,
+            loadingLabel: 'Checking',
+          }}
+          secondary={{
+            label: fromLogin ? 'Use a different account' : 'Sign out',
+            onPress: handleSignOut,
+          }}
+          note="Reviews are usually completed within one business day"
+        />
+      }>
+      {notice ? (
+        <AuthNotice
+          tone={notice.tone}
+          message={notice.message}
+          onDismiss={() => setNotice(null)}
+        />
+      ) : null}
+
+      <View style={styles.head}>
+        <AuthIconTile icon="clock" tone="warning" />
+        <StatusPill label="Pending review" tone="warning" />
+      </View>
+
+      <Text style={styles.body}>
+        {`Thanks${user?.displayName ? `, ${user.displayName}` : ''}! Your company registration has been submitted and is being reviewed by our team. You'll get an email as soon as it's approved.`}
+      </Text>
+
+      <AuthTimeline
+        items={[
+          { title: 'Registration submitted', detail: 'Company details received', done: true },
+          {
+            title: 'Payment receipt received',
+            detail: 'Awaiting administrator verification',
+            done: true,
+          },
+          {
+            title: 'Administrator review',
+            detail: 'Usually within one business day',
+            done: false,
+          },
+        ]}
       />
-
-      <AuthCard>
-        <AuthMedallion icon="clock" tone="warning" />
-
-        {notice ? (
-          <InlineBanner
-            tone={notice.tone}
-            message={notice.message}
-            onDismiss={() => setNotice(null)}
-            style={styles.banner}
-          />
-        ) : null}
-
-        <Text style={styles.body}>
-          {`Thanks${user?.displayName ? `, ${user.displayName}` : ''}! Your company registration has been submitted and is being reviewed by our team. You'll get an email as soon as it's approved.`}
-        </Text>
-
-        <View style={styles.pillRow}>
-          <StatusPill label="Pending review" tone="warning" />
-        </View>
-
-        <AuthPrimaryButton
-          label={fromLogin ? 'Back to Sign In' : 'Check status'}
-          loading={checking}
-          loadingLabel="Checking…"
-          onPress={handleRefresh}
-          icon={fromLogin ? undefined : 'refresh-cw'}
-        />
-
-        <AuthLinkButton
-          label={fromLogin ? 'Use a different account' : 'Sign out'}
-          onPress={handleSignOut}
-          muted
-        />
-      </AuthCard>
-
-      <AuthSecurityNote label="Reviews are usually completed within one business day" />
-    </AuthScreen>
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  banner: { marginBottom: 16 },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AUTH.space.lg,
+    marginBottom: AUTH.space.xl,
+  },
   body: {
-    fontFamily: AUTH_DS.font,
+    fontFamily: AUTH.font,
     fontSize: 14,
     lineHeight: 22,
-    color: AUTH_DS.slate500,
-    textAlign: 'center',
+    color: AUTH.ink[500],
+    marginBottom: AUTH.space.xl,
   },
-  pillRow: { marginTop: 18, marginBottom: 22 },
 });
 
 export default PendingApprovalScreen;

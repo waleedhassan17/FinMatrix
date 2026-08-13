@@ -18,14 +18,13 @@ import { setStoredCompanyId } from '../../../utils/storageUtils';
 import { useSignOut } from '../../../hooks/useSignOut';
 import type { UserRole } from '../../../types';
 import {
-  AuthScreen,
+  AuthLayout,
   AuthHeader,
-  AuthCard,
-  AuthMedallion,
-  AuthPrimaryButton,
-  AuthLinkButton,
-  InlineBanner,
-  AUTH_DS,
+  AuthFooterBar,
+  AuthIconTile,
+  AuthNotice,
+  StatusPill,
+  AUTH,
   type AuthTone,
 } from '../../../components/auth/AuthUI';
 
@@ -49,8 +48,8 @@ const CompanyRejectedScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    // With a live session (not from the login gate) we can fetch the latest
-    // reason; from the login gate we only have what was passed in params.
+    // With a live session we can fetch the latest reason; from the login
+    // gate we only have what was passed in params.
     if (fromLogin || !companyId || isInactive) return;
     let active = true;
     (async () => {
@@ -91,106 +90,113 @@ const CompanyRejectedScreen: React.FC = () => {
     confirmSignOut();
   }, [fromLogin, navigation, role, confirmSignOut]);
 
-  // Resubmit only makes sense for a rejected company with a live session.
   const canResubmit = !isInactive && !fromLogin && !!companyId;
 
   return (
-    <AuthScreen>
-      <AuthHeader
-        title={isInactive ? 'Account deactivated' : 'Registration not approved'}
-        subtitle={
-          isInactive
-            ? 'Access is paused until an administrator restores it.'
-            : 'Review the note below, then resubmit when you are ready.'
-        }
-        pill={isInactive ? 'Deactivated' : 'Not Approved'}
-        compact
-      />
+    <AuthLayout
+      header={
+        <AuthHeader
+          pill={isInactive ? 'Deactivated' : 'Not Approved'}
+          title={isInactive ? 'Account deactivated' : 'Registration not approved'}
+          subtitle={
+            isInactive
+              ? 'Access is paused until an administrator restores it.'
+              : 'Review the note below, then resubmit when you are ready.'
+          }
+          onBack={fromLogin ? handleSignOut : undefined}
+        />
+      }
+      footer={
+        canResubmit ? (
+          <AuthFooterBar
+            primary={{
+              label: 'Resubmit for review',
+              onPress: handleResubmit,
+              loading: resubmitting,
+              loadingLabel: 'Resubmitting',
+            }}
+            secondary={{ label: 'Sign out', onPress: handleSignOut }}
+          />
+        ) : (
+          <AuthFooterBar
+            primary={{
+              label: fromLogin ? 'Back to Sign In' : 'Sign out',
+              onPress: handleSignOut,
+            }}
+          />
+        )
+      }>
+      {notice ? (
+        <AuthNotice
+          tone={notice.tone}
+          message={notice.message}
+          onDismiss={() => setNotice(null)}
+        />
+      ) : null}
 
-      <AuthCard>
-        <AuthMedallion
+      <View style={styles.head}>
+        <AuthIconTile
           icon={isInactive ? 'slash' : 'alert-triangle'}
           tone={isInactive ? 'error' : 'warning'}
         />
+        <StatusPill
+          label={isInactive ? 'Deactivated' : 'Not approved'}
+          tone="error"
+        />
+      </View>
 
-        {notice ? (
-          <InlineBanner
-            tone={notice.tone}
-            message={notice.message}
-            onDismiss={() => setNotice(null)}
-            style={styles.banner}
-          />
-        ) : null}
+      <Text style={styles.body}>
+        {isInactive
+          ? 'Your company account has been deactivated. Please contact the FinMatrix administrator to restore access.'
+          : "Unfortunately your company registration wasn't approved this time."}
+      </Text>
 
-        <Text style={styles.body}>
-          {isInactive
-            ? 'Your company account has been deactivated. Please contact the FinMatrix administrator to restore access.'
-            : "Unfortunately your company registration wasn't approved this time."}
-        </Text>
-
-        {reason ? (
-          <View style={styles.reasonCard}>
-            <Text style={styles.reasonLabel}>Reason</Text>
-            <Text style={styles.reasonText}>{reason}</Text>
-          </View>
-        ) : null}
-
-        {canResubmit ? (
-          <>
-            <AuthPrimaryButton
-              label="Resubmit for review"
-              loading={resubmitting}
-              loadingLabel="Resubmitting…"
-              onPress={handleResubmit}
-              style={styles.cta}
-            />
-            <AuthLinkButton label="Sign out" onPress={handleSignOut} muted />
-          </>
-        ) : (
-          <AuthPrimaryButton
-            label={fromLogin ? 'Back to Sign In' : 'Sign out'}
-            onPress={handleSignOut}
-            style={styles.cta}
-          />
-        )}
-      </AuthCard>
-    </AuthScreen>
+      {reason ? (
+        <View style={styles.reason}>
+          <Text style={styles.reasonLabel}>Reason</Text>
+          <Text style={styles.reasonText}>{reason}</Text>
+        </View>
+      ) : null}
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  banner: { marginBottom: 16 },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AUTH.space.lg,
+    marginBottom: AUTH.space.xl,
+  },
   body: {
-    fontFamily: AUTH_DS.font,
+    fontFamily: AUTH.font,
     fontSize: 14,
     lineHeight: 22,
-    color: AUTH_DS.slate500,
-    textAlign: 'center',
+    color: AUTH.ink[500],
+    marginBottom: AUTH.space.lg,
   },
-  reasonCard: {
-    backgroundColor: AUTH_DS.slate50,
-    borderRadius: AUTH_DS.radius.md,
+  reason: {
+    backgroundColor: AUTH.surface,
+    borderRadius: AUTH.radius.lg,
     borderWidth: 1,
-    borderColor: AUTH_DS.slate200,
-    padding: 14,
-    marginTop: 18,
+    borderColor: AUTH.line,
+    padding: AUTH.space.lg,
+    gap: AUTH.space.sm,
   },
   reasonLabel: {
-    fontFamily: AUTH_DS.font,
+    fontFamily: AUTH.font,
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
     textTransform: 'uppercase',
-    color: AUTH_DS.slate400,
-    marginBottom: 5,
+    color: AUTH.ink[400],
   },
   reasonText: {
-    fontFamily: AUTH_DS.font,
+    fontFamily: AUTH.font,
     fontSize: 14,
     lineHeight: 21,
-    color: AUTH_DS.navy700,
+    color: AUTH.ink[700],
   },
-  cta: { marginTop: 20 },
 });
 
 export default CompanyRejectedScreen;
