@@ -2,22 +2,15 @@
 // FinMatrix — Subscription Plans Screen (Super Admin)
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
-  Modal,
-  TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
-  Switch,
 } from 'react-native';
-import { Alert } from '../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,14 +23,8 @@ import {
 } from '../../../utils/featureGates';
 import {
   loadPlans,
-  createPlan,
-  updatePlan,
-  deletePlan,
-  loadSubscriptions,
   selectPlans,
-  selectSubscriptions,
   selectPlansStatus,
-  type SubscriptionPlan,
 } from '../superAdminSlice';
 
 const C = {
@@ -56,243 +43,33 @@ const PLAN_GRADIENTS: readonly [string, string][] = [
   ['#6554C0', '#5243AA'],
 ];
 
-const DEFAULT_FEATURES = [
-  'Invoicing',
-  'Bill Management',
-  'Inventory Tracking',
-  'Delivery Management',
-  'Financial Reports',
-  'Multi-user Access',
-  'Priority Support',
-  'Advanced Analytics',
-];
+// NOTE: the plan create/edit modal that used to live here was removed.
+// Plans are defined in the server config (billing/plan-config.ts); the
+// API rejects create/update/delete with PLANS_CONFIG_DEFINED, so the form
+// could never save. It was unreachable dead code and held the screen's
+// only lint error (setState called synchronously inside an effect).
 
-// ── Plan Form Modal ───────────────────────────────────
-interface PlanFormData {
+// changed in server config, not from the app).
+/**
+ * The plan shape GET /super-admin/plans actually returns. The slice's
+ * SubscriptionPlan type predates tiering and omits these fields, which is why
+ * this screen used to cast everything through `any`.
+ * Source: super-admin.service.ts → listPlans().
+ */
+interface ServerPlan {
   name: string;
-  description: string;
-  priceMonthly: string;
-  priceYearly: string;
-  maxUsers: string;
-  maxInvoices: string;
-  features: string[];
-  isActive: boolean;
+  description?: string | null;
+  priceMonthly: number | string;
+  features?: string[] | null;
+  maxUsers: number;
+  maxInvoices: number | null;
+  companyType?: string | null;
+  durationMonths?: number;
+  monthlyLabel?: string;
+  totalLabel?: string;
+  deliveryPersonnelLimit?: number;
 }
 
-const EMPTY_FORM: PlanFormData = {
-  name: '',
-  description: '',
-  priceMonthly: '',
-  priceYearly: '',
-  maxUsers: '5',
-  maxInvoices: '',
-  features: [],
-  isActive: true,
-};
-
-const PlanFormModal: React.FC<{
-  visible: boolean;
-  editPlan: SubscriptionPlan | null;
-  onClose: () => void;
-  onSave: (data: PlanFormData) => Promise<void>;
-}> = ({ visible, editPlan, onClose, onSave }) => {
-  const [form, setForm] = useState<PlanFormData>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (visible) {
-      if (editPlan) {
-        setForm({
-          name: editPlan.name,
-          description: editPlan.description ?? '',
-          priceMonthly: editPlan.priceMonthly,
-          priceYearly: editPlan.priceYearly,
-          maxUsers: String(editPlan.maxUsers),
-          maxInvoices: editPlan.maxInvoices ? String(editPlan.maxInvoices) : '',
-          features: editPlan.features ?? [],
-          isActive: editPlan.isActive,
-        });
-      } else {
-        setForm(EMPTY_FORM);
-      }
-      setSaving(false);
-    }
-  }, [visible, editPlan]);
-
-  const toggleFeature = (f: string) => {
-    setForm(prev => ({
-      ...prev,
-      features: prev.features.includes(f)
-        ? prev.features.filter(x => x !== f)
-        : [...prev.features, f],
-    }));
-  };
-
-  const handleSave = async () => {
-    if (!form.name.trim()) { Alert.alert('Required', 'Plan name is required'); return; }
-    if (!form.priceMonthly || isNaN(Number(form.priceMonthly))) {
-      Alert.alert('Invalid', 'Monthly price must be a valid number'); return;
-    }
-    if (!form.priceYearly || isNaN(Number(form.priceYearly))) {
-      Alert.alert('Invalid', 'Yearly price must be a valid number'); return;
-    }
-    setSaving(true);
-    try {
-      await onSave(form);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={S.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={S.formModal}>
-          <LinearGradient colors={['#0052CC', '#0747A6']} style={S.formModalHeader}>
-            <Text style={S.formModalTitle}>
-              {editPlan ? 'Edit Plan' : 'Create Plan'}
-            </Text>
-            <TouchableOpacity onPress={onClose} style={S.formModalClose}>
-              <Feather name="x" size={20} color="#FFF" />
-            </TouchableOpacity>
-          </LinearGradient>
-
-          <ScrollView style={S.formContent} showsVerticalScrollIndicator={false}>
-            <FormField
-              label="Plan Name *"
-              value={form.name}
-              onChangeText={v => setForm(p => ({ ...p, name: v }))}
-              placeholder="e.g. Starter, Professional, Enterprise"
-            />
-            <FormField
-              label="Description"
-              value={form.description}
-              onChangeText={v => setForm(p => ({ ...p, description: v }))}
-              placeholder="Brief description of the plan"
-              multiline
-            />
-            <View style={S.formRow}>
-              <View style={S.formHalf}>
-                <FormField
-                  label="Monthly Price (Rs) *"
-                  value={form.priceMonthly}
-                  onChangeText={v => setForm(p => ({ ...p, priceMonthly: v }))}
-                  placeholder="0"
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={S.formHalf}>
-                <FormField
-                  label="Yearly Price (Rs) *"
-                  value={form.priceYearly}
-                  onChangeText={v => setForm(p => ({ ...p, priceYearly: v }))}
-                  placeholder="0"
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-            <View style={S.formRow}>
-              <View style={S.formHalf}>
-                <FormField
-                  label="Max Users"
-                  value={form.maxUsers}
-                  onChangeText={v => setForm(p => ({ ...p, maxUsers: v }))}
-                  placeholder="5"
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={S.formHalf}>
-                <FormField
-                  label="Max Invoices/mo"
-                  value={form.maxInvoices}
-                  onChangeText={v => setForm(p => ({ ...p, maxInvoices: v }))}
-                  placeholder="Unlimited"
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-
-            <Text style={S.featuresLabel}>Included Features</Text>
-            <View style={S.featuresGrid}>
-              {DEFAULT_FEATURES.map(f => {
-                const active = form.features.includes(f);
-                return (
-                  <TouchableOpacity
-                    key={f}
-                    style={[S.featureChip, active && S.featureChipActive]}
-                    onPress={() => toggleFeature(f)}
-                  >
-                    <Feather
-                      name={active ? 'check-circle' : 'circle'}
-                      size={13}
-                      color={active ? C.primary : C.text.muted}
-                    />
-                    <Text style={[S.featureChipText, active && S.featureChipTextActive]}>
-                      {f}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={S.activeRow}>
-              <Text style={S.activeLabel}>Plan is Active</Text>
-              <Switch
-                value={form.isActive}
-                onValueChange={v => setForm(p => ({ ...p, isActive: v }))}
-                trackColor={{ true: C.primary, false: C.border }}
-                thumbColor="#FFF"
-              />
-            </View>
-          </ScrollView>
-
-          <View style={S.formFooter}>
-            <TouchableOpacity style={S.cancelBtn} onPress={onClose}>
-              <Text style={S.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={S.saveBtn} onPress={handleSave} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Text style={S.saveBtnText}>{editPlan ? 'Save Changes' : 'Create Plan'}</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-};
-
-const FormField: React.FC<{
-  label: string;
-  value: string;
-  onChangeText: (v: string) => void;
-  placeholder?: string;
-  multiline?: boolean;
-  keyboardType?: any;
-}> = ({ label, value, onChangeText, placeholder, multiline, keyboardType }) => (
-  <View style={S.formField}>
-    <Text style={S.formLabel}>{label}</Text>
-    <TextInput
-      style={[S.formInput, multiline && S.formInputMulti]}
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      placeholderTextColor={C.text.muted}
-      multiline={multiline}
-      keyboardType={keyboardType ?? 'default'}
-      numberOfLines={multiline ? 3 : 1}
-    />
-  </View>
-);
-
-// Three-tier model: the six plans come from the server's PLAN_CONFIG via
-// GET /super-admin/plans — this screen displays them read-only (pricing is
-// changed in server config, not from the app).
 interface DisplayPlan {
   name: string;
   description: string;
@@ -307,7 +84,6 @@ interface DisplayPlan {
   /** Active delivery riders allowed. The only thing separating warehouse plans. */
   deliveryPersonnelLimit?: number;
   disabled: boolean;
-  companyCount: number;
 }
 
 const TIER_LABELS: Record<string, string> = {
@@ -316,7 +92,7 @@ const TIER_LABELS: Record<string, string> = {
   warehouse: 'Warehouse',
 };
 
-const CANONICAL_PLANS: Omit<DisplayPlan, 'companyCount'>[] = [
+const CANONICAL_PLANS: DisplayPlan[] = [
   {
     name: 'Free',
     description: 'Everything you need to start running your books.',
@@ -403,16 +179,19 @@ const PlanCard: React.FC<{ plan: DisplayPlan; gradientIdx: number }> = ({ plan, 
           </View>
         )}
 
-        <View style={S.planCountRow}>
-          <Feather name="briefcase" size={13} color={C.text.muted} />
-          <Text style={S.planCountText}>
-            {plan.totalLabel
-              ? `${plan.totalLabel} billed once for the full period`
-              : plan.disabled
-                ? 'Not yet available'
-                : `${plan.companyCount} compan${plan.companyCount === 1 ? 'y' : 'ies'} on this plan`}
-          </Text>
-        </View>
+        {/* The old third branch printed "<n> companies on this plan" from a
+            companyCount nothing ever computed, so it could only ever render a
+            false "0 companies". Dropped rather than left lying. */}
+        {plan.totalLabel || plan.disabled ? (
+          <View style={S.planCountRow}>
+            <Feather name="briefcase" size={13} color={C.text.muted} />
+            <Text style={S.planCountText}>
+              {plan.totalLabel
+                ? `${plan.totalLabel} billed once for the full period`
+                : 'Not yet available'}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -429,7 +208,6 @@ const SubscriptionPlansScreen: React.FC = () => {
 
   useEffect(() => {
     dispatch(loadPlans());
-    dispatch(loadSubscriptions());
   }, [dispatch]);
 
   // The six tier plans from the server's PLAN_CONFIG (single source of
@@ -440,29 +218,28 @@ const SubscriptionPlansScreen: React.FC = () => {
     // large_org plans so the two existing companies on them keep renewing,
     // but they are no longer sold — so they are not shown here either.
     // Drop the second predicate to list every tier again.
-    const tierPlans = (plans ?? []).filter(
+    const tierPlans = (plans as ServerPlan[] | undefined ?? []).filter(
       p =>
-        (p as any).companyType &&
-        (!WAREHOUSE_ONLY_BUILD || (p as any).companyType === DEFAULT_COMPANY_TYPE),
+        p.companyType &&
+        (!WAREHOUSE_ONLY_BUILD || p.companyType === DEFAULT_COMPANY_TYPE),
     );
     if (tierPlans.length === 0) {
-      return CANONICAL_PLANS.map(p => ({ ...p, companyCount: 0 }));
+      return CANONICAL_PLANS;
     }
     return tierPlans.map(p => ({
       name: p.name,
       description:
-        p.description ?? `${TIER_LABELS[(p as any).companyType] ?? ''} plan`,
+        p.description ?? `${TIER_LABELS[p.companyType ?? ''] ?? ''} plan`,
       isFree: false,
-      priceLabel: (p as any).monthlyLabel ?? `Rs ${Number(p.priceMonthly).toLocaleString()}`,
-      durationLabel: `/month · ${(p as any).durationMonths} months`,
-      totalLabel: (p as any).totalLabel,
-      companyType: (p as any).companyType,
+      priceLabel: p.monthlyLabel ?? `Rs ${Number(p.priceMonthly).toLocaleString()}`,
+      durationLabel: `/month · ${p.durationMonths} months`,
+      totalLabel: p.totalLabel,
+      companyType: p.companyType,
       features: p.features ?? [],
       maxUsers: p.maxUsers,
-      deliveryPersonnelLimit: (p as any).deliveryPersonnelLimit,
+      deliveryPersonnelLimit: p.deliveryPersonnelLimit,
       maxInvoices: p.maxInvoices,
       disabled: false,
-      companyCount: 0,
     }));
   }, [plans]);
 
