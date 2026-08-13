@@ -9,16 +9,20 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Image,
   Platform,
-  StatusBar,
 } from 'react-native';
 import { Alert } from '../../utils/alert';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import {
+  AuthLayout,
+  AuthHeader,
+  AuthFooterBar,
+  AuthIconTile,
+  AuthTimeline,
+} from '../../components/auth/AuthUI';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -151,60 +155,84 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
   // ── Success / awaiting-verification state ──
   if (submitted) {
     return (
-      <View style={S.root}>
-        <StatusBar barStyle="light-content" backgroundColor={DS.navy} />
-        <SafeAreaView style={S.center}>
-          <View style={S.successIcon}>
-            <Feather name="clock" size={40} color={DS.primary} />
-          </View>
-          <Text style={S.successTitle}>Bill submitted successfully</Text>
-          <Text style={S.successSub}>
-            Your payment for the {details?.planLabel} plan was submitted. Please wait for admin
-            approval — your plan activates automatically once the payment is verified
-            {mode === 'renew'
-              ? ', then sign in again to restore full access.'
-              : mode === 'signup'
-                ? ' — you will be able to sign in with full access once approved.'
-                : '.'}
-          </Text>
-          <TouchableOpacity
-            style={S.doneBtn}
-            onPress={() => {
-              if (mode === 'signup') {
-                // Route the admin to the awaiting-approval screen; BaseNavigator
-                // keeps them there until the platform admin approves.
-                if (user) {
-                  dispatch(setUser({ ...user, companyId: route.params?.companyId ?? user.companyId, companyStatus: 'pending_approval' }));
-                }
-              } else if (mode === 'change') navigation.goBack();
-              else navigation.navigate('RenewSubscription' as never);
+      <AuthLayout
+        header={
+          <AuthHeader
+            pill="Payment Submitted"
+            title="Bill submitted successfully"
+            subtitle="We will activate your plan as soon as the payment is verified."
+          />
+        }
+        footer={
+          <AuthFooterBar
+            primary={{
+              label: 'Done',
+              onPress: () => {
+                if (mode === 'signup') {
+                  // Route the admin to the awaiting-approval screen;
+                  // BaseNavigator keeps them there until approval.
+                  if (user) {
+                    dispatch(
+                      setUser({
+                        ...user,
+                        companyId: route.params?.companyId ?? user.companyId,
+                        companyStatus: 'pending_approval',
+                      }),
+                    );
+                  }
+                } else if (mode === 'change') navigation.goBack();
+                else navigation.navigate('RenewSubscription' as never);
+              },
             }}
-            activeOpacity={0.85}
-          >
-            <Feather name="check" size={18} color="#FFF" />
-            <Text style={S.ctaLabel}>Done</Text>
-          </TouchableOpacity>
-        </SafeAreaView>
-      </View>
+            note="Reviews are usually completed within one business day"
+          />
+        }>
+        <AuthIconTile icon="clock" tone="warning" style={{ marginBottom: 20 }} />
+        <Text style={S.successSub}>
+          Your payment for the {details?.planLabel} plan was submitted. Please wait for admin
+          approval — your plan activates automatically once the payment is verified
+          {mode === 'renew'
+            ? ', then sign in again to restore full access.'
+            : mode === 'signup'
+              ? ' — you will be able to sign in with full access once approved.'
+              : '.'}
+        </Text>
+        <AuthTimeline
+          items={[
+            { title: 'Payment receipt uploaded', detail: details?.amountDueLabel ?? '', done: true },
+            { title: 'Administrator verification', detail: 'Usually within one business day', done: false },
+            { title: 'Plan activated', detail: 'Full access restored automatically', done: false },
+          ]}
+        />
+      </AuthLayout>
     );
   }
 
   const bank = details?.bankAccount;
 
   return (
-    <View style={S.root}>
-      <StatusBar barStyle="light-content" backgroundColor={DS.navy} />
-      <SafeAreaView edges={['top']} style={S.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={S.back}>
-          <Feather name="arrow-left" size={20} color="#FFF" />
-        </TouchableOpacity>
-        <Text style={S.headerTitle}>Complete your payment</Text>
-        <Text style={S.headerSub}>
-          {mode === 'renew' ? 'Renew' : 'Subscribe to'} the {details?.planLabel} plan
-        </Text>
-      </SafeAreaView>
-
-      <ScrollView contentContainerStyle={S.scroll} showsVerticalScrollIndicator={false}>
+    <AuthLayout
+      header={
+        <AuthHeader
+          pill="Complete Payment"
+          title="Complete your payment"
+          subtitle={`${mode === 'renew' ? 'Renew' : 'Subscribe to'} the ${details?.planLabel ?? ''} plan`}
+          onBack={() => navigation.goBack()}
+          step={mode === 'signup' ? { current: 4, total: 4 } : undefined}
+        />
+      }
+      footer={
+        <AuthFooterBar
+          primary={{
+            label: 'Submit for verification',
+            onPress: handleSubmit,
+            loading: submitting,
+            loadingLabel: 'Submitting',
+          }}
+          note="Activates once an administrator verifies the payment"
+        />
+      }>
+      <>
         {/* Bill */}
         <View style={S.card}>
           <Text style={S.cardLabel}>AMOUNT DUE</Text>
@@ -255,24 +283,12 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
         </View>
 
-        <TouchableOpacity
-          style={[S.cta, submitting && S.ctaDisabled]}
-          onPress={handleSubmit}
-          disabled={submitting}
-          activeOpacity={0.85}
-        >
-          {submitting ? (
-            <ActivityIndicator size="small" color="#FFF" />
-          ) : (
-            <Text style={S.ctaLabel}>Submit for verification</Text>
-          )}
-        </TouchableOpacity>
         <Text style={S.legal}>
           Your subscription activates once an administrator verifies the payment. Your data is
           never affected by this process.
         </Text>
-      </ScrollView>
-    </View>
+      </>
+    </AuthLayout>
   );
 };
 

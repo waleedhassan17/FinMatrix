@@ -50,7 +50,10 @@ export const AuthLayout: React.FC<{
   children: React.ReactNode;
   scrollRef?: React.RefObject<ScrollView | null>;
   contentStyle?: StyleProp<ViewStyle>;
-}> = ({ header, footer, children, scrollRef, contentStyle }) => (
+  /** Pull-to-refresh. Passed through so screens never nest a second
+   *  ScrollView inside this one. */
+  refreshControl?: React.ComponentProps<typeof ScrollView>['refreshControl'];
+}> = ({ header, footer, children, scrollRef, contentStyle, refreshControl }) => (
   <View style={s.root}>
     <StatusBar barStyle="light-content" backgroundColor={AUTH.header.bg} />
     <KeyboardAvoidingView
@@ -62,6 +65,7 @@ export const AuthLayout: React.FC<{
         style={s.flex}
         contentContainerStyle={[s.body, contentStyle]}
         showsVerticalScrollIndicator={false}
+        refreshControl={refreshControl}
         keyboardShouldPersistTaps="handled">
         <View style={s.column}>{children}</View>
       </ScrollView>

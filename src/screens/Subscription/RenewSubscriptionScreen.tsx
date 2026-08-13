@@ -9,15 +9,17 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import {
+  AuthLayout,
+  AuthHeader,
+  AuthFooterBar,
+} from '../../components/auth/AuthUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
@@ -135,44 +137,39 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
   }
 
   return (
-    <View style={S.root}>
-      <StatusBar barStyle="light-content" backgroundColor={DS.navy} />
-      <SafeAreaView edges={['top']} style={S.header}>
-        {mode === 'change' ? (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={S.back}>
-            <Feather name="arrow-left" size={20} color="#FFF" />
-          </TouchableOpacity>
-        ) : (
-          <View style={S.brandRow}>
-            <Text style={S.brand}>
-              <Text style={{ color: DS.primary }}>Fin</Text>
-              <Text style={{ color: '#FFF' }}>Matrix</Text>
-            </Text>
-          </View>
-        )}
-        <Text style={S.headerTitle}>
-          {mode === 'renew' ? 'Renew your subscription' : 'Choose a plan'}
-        </Text>
-        <Text style={S.headerSub}>
-          {mode === 'renew'
-            ? 'Your subscription has expired and your account is paused. Renew to restore full access.'
-            : 'Upgrade or change your plan at any time.'}
-        </Text>
-      </SafeAreaView>
-
-      <ScrollView
-        contentContainerStyle={S.scroll}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              load();
-            }}
-          />
-        }
-      >
+    <AuthLayout
+      header={
+        <AuthHeader
+          pill={mode === 'renew' ? 'Renew Subscription' : 'Change Plan'}
+          title={mode === 'renew' ? 'Renew your subscription' : 'Choose a plan'}
+          subtitle={
+            mode === 'renew'
+              ? 'Your subscription has expired and your account is paused. Renew to restore full access.'
+              : 'Upgrade or change your plan at any time.'
+          }
+          onBack={mode === 'change' ? () => navigation.goBack() : undefined}
+        />
+      }
+      footer={
+        mode === 'renew'
+          ? (
+            <AuthFooterBar
+              primary={{ label: 'Refresh status', onPress: load }}
+              secondary={{ label: 'Sign out', onPress: confirmSignOut }}
+            />
+          )
+          : undefined
+      }
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            setRefreshing(true);
+            load();
+          }}
+        />
+      }>
+      <>
         {mode === 'renew' && (
           <View style={S.reassure}>
             <Feather name="shield" size={18} color={DS.primary} />
@@ -267,18 +264,11 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
         )}
 
         <Text style={S.footnote}>
-          Prices are for your company's tier. All features of your tier stay available for the
-          whole subscription period, and your data is never deleted between renewals.
+          {"Prices are for your company's tier. All features of your tier stay available for the whole subscription period, and your data is never deleted between renewals."}
         </Text>
 
-        {mode === 'renew' && (
-          <TouchableOpacity style={S.signOut} onPress={confirmSignOut}>
-            <Feather name="log-out" size={16} color={DS.text.sub} />
-            <Text style={S.signOutText}>Sign out</Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
-    </View>
+      </>
+    </AuthLayout>
   );
 };
 
