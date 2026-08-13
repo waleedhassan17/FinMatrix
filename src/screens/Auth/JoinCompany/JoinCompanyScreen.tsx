@@ -124,7 +124,16 @@ const JoinCompanyScreen: React.FC<Props> = ({ navigation }) => {
 
     dispatch(addMember({ companyId: matchedCompany.companyId, member }));
     dispatch(setActiveCompany(matchedCompany.companyId));
-    dispatch(setUser({ ...user, companyId: matchedCompany.companyId }));
+    // Set the status alongside the id: a joiner still carrying the
+    // 'email_verified' they had before joining would otherwise be mistaken
+    // for the OWNER of a draft company and routed into plan selection.
+    dispatch(
+      setUser({
+        ...user,
+        companyId: matchedCompany.companyId,
+        companyStatus: 'active',
+      }),
+    );
 
     setIsLoading(false);
   }, [matchedCompany, user, dispatch]);

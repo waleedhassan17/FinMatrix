@@ -222,7 +222,15 @@ const rootReducer = combineReducers({
 // session-expired bridge.
 const appReducer: typeof rootReducer = (state, action) => {
   if (state && action.type === 'auth/signOut') {
-    state = { auth: state.auth, appContainer: state.appContainer } as typeof state;
+    // `createCompany` survives too: it holds the half-typed Company Details
+    // form, which belongs to the user who typed it rather than to the
+    // session. It is keyed by ownerUserId and discarded when a different
+    // account signs in, so nothing leaks between users.
+    state = {
+      auth: state.auth,
+      appContainer: state.appContainer,
+      createCompany: state.createCompany,
+    } as typeof state;
   }
   return rootReducer(state, action);
 };
@@ -230,7 +238,7 @@ const appReducer: typeof rootReducer = (state, action) => {
 const persistConfig = {
   key: 'finmatrix-root',
   storage: AsyncStorage,
-  whitelist: ['auth', 'company', 'inventoryApproval'],
+  whitelist: ['auth', 'company', 'inventoryApproval', 'createCompany'],
   stateReconciler: autoMergeLevel2 as any,
 };
 

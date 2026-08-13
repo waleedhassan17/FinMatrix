@@ -37,7 +37,8 @@ export interface BillingStatus {
   companyName: string;
   plan: PlanKey;
   planLabel: string;
-  accountStatus: 'pending' | 'active' | 'inactive' | 'rejected';
+  // 'draft' = company created but not yet submitted for approval.
+  accountStatus: 'draft' | 'pending' | 'active' | 'inactive' | 'rejected';
   subscriptionStatus: 'active' | 'expiring' | 'expired';
   paymentStatus: 'none' | 'submitted' | 'paid' | 'rejected';
   startDate: string | null;

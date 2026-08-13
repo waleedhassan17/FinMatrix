@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,13 @@ import {
   type CompanyMember,
 } from '../companySlice';
 import { setUser } from '../authSlice';
+import {
+  setDraftField,
+  clearCompanyDraft,
+  selectCompanyDraft,
+  selectDraftOwnerId,
+  type CompanyDraftField,
+} from './createCompanySlice';
 import {
   warehouseAgencies,
   type WarehouseAgency,
@@ -184,20 +191,47 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Step 1 fields
-  const [companyName, setCompanyName] = useState('');
-  const [industry, setIndustry] = useState('');
-  // Business structure (QuickBooks-style) — appears on invoices/reports.
-  const [legalStructure, setLegalStructure] = useState('');
-  const [street, setStreet] = useState('');
-  const [city, setCity] = useState('');
-  const [stateProv, setStateProv] = useState('');
-  const [zipCode, setZipCode] = useState('');
-  const [country, setCountry] = useState('Pakistan');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [website, setWebsite] = useState('');
-  const [taxId, setTaxId] = useState('');
+  // ── Step 1 fields live in a PERSISTED slice, not local state ──
+  // The company row does not exist until submit, so anything typed here is
+  // lost on a reload or a token expiry unless it is stored. See
+  // createCompanySlice: the draft is keyed by user and cleared once the
+  // company is created.
+  const draft = useAppSelector(selectCompanyDraft);
+  const draftOwnerId = useAppSelector(selectDraftOwnerId);
+  const userId = user?.uid ?? null;
+
+  // A draft belongs to whoever typed it. If a different account signs in on
+  // this device, drop it rather than showing them someone else's details.
+  useEffect(() => {
+    if (draftOwnerId && userId && draftOwnerId !== userId) {
+      dispatch(clearCompanyDraft());
+    }
+  }, [draftOwnerId, userId, dispatch]);
+
+  const setField = useCallback(
+    (field: CompanyDraftField, value: string) => {
+      dispatch(setDraftField({ field, value, userId }));
+    },
+    [dispatch, userId],
+  );
+
+  const {
+    companyName, industry, legalStructure, street, city, stateProv,
+    zipCode, country, phone, email, website, taxId,
+  } = draft;
+
+  const setCompanyName = (v: string) => setField('companyName', v);
+  const setIndustry = (v: string) => setField('industry', v);
+  const setLegalStructure = (v: string) => setField('legalStructure', v);
+  const setStreet = (v: string) => setField('street', v);
+  const setCity = (v: string) => setField('city', v);
+  const setStateProv = (v: string) => setField('stateProv', v);
+  const setZipCode = (v: string) => setField('zipCode', v);
+  const setCountry = (v: string) => setField('country', v);
+  const setPhone = (v: string) => setField('phone', v);
+  const setEmail = (v: string) => setField('email', v);
+  const setWebsite = (v: string) => setField('website', v);
+  const setTaxId = (v: string) => setField('taxId', v);
 
   // Step 2 fields
   const [selectedAgencyIds, setSelectedAgencyIds] = useState<string[]>([]);
@@ -389,6 +423,8 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         createdAt: now,
       };
 
+      // The company row now exists — the local draft has served its purpose.
+      dispatch(clearCompanyDraft());
       dispatch(createCompany(companyData));
       setIsCreating(false);
       navigation.navigate('SubscriptionSelect', { companyId, companyType });

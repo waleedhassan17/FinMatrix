@@ -41,22 +41,30 @@ const BaseNavigator: React.FC = () => {
   // Mid-session deactivation (server sets status → inactive) routes the user out.
   const isInactive = companyStatus === 'inactive' || companyStatus === 'suspended';
   // A created-but-not-submitted company resumes at plan selection + submit.
-  const isDraftCompany = hasCompany && companyStatus === 'email_verified';
+  //
+  // Two spellings are accepted on purpose. 'draft' is what a current server
+  // sends; 'email_verified' is the raw status an older one sent before the
+  // normalizer could express this state. Keeping both means a new app works
+  // against either server during rollout.
+  const isDraftCompany =
+    hasCompany && (companyStatus === 'draft' || companyStatus === 'email_verified');
 
-  // Same branch conditions as before the refactor — only the route lists
-  // moved into navigations-maps/Auth.ts.
+  // ORDER MATTERS. The draft check must come BEFORE isPending: a server that
+  // has not been updated yet reports a draft as 'pending', and a draft that
+  // reached this branch would land on "Awaiting approval" — a screen about
+  // work the user has not done, with no route back to plan selection.
   const routes: IRoute[] = !isAuthenticated
     ? [...(!hasSeenOnboarding ? [ONBOARDING_ROUTE] : []), ...UNAUTHENTICATED_ROUTES]
     : !emailVerified
       ? EMAIL_VERIFY_ROUTES
-      : isPending
-        ? PENDING_ROUTES
-        : isInactive
-          ? RENEW_ROUTES
-          : isRejected
-            ? REJECTED_ROUTES
-            : isDraftCompany
-              ? DRAFT_COMPANY_ROUTES
+      : isDraftCompany
+        ? DRAFT_COMPANY_ROUTES
+        : isPending
+          ? PENDING_ROUTES
+          : isInactive
+            ? RENEW_ROUTES
+            : isRejected
+              ? REJECTED_ROUTES
               : COMPANY_ONBOARDING_ROUTES;
 
   return (
