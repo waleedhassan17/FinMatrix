@@ -19,13 +19,14 @@ import { useSignOut } from '../../../hooks/useSignOut';
 import type { UserRole } from '../../../types';
 import {
   AuthScreen,
-  AuthHeader,
-  AuthCard,
-  AuthMedallion,
+  AuthBrand,
+  AuthHeading,
   AuthPrimaryButton,
-  AuthLinkButton,
+  AuthTextLink,
+  AuthFooter,
   InlineBanner,
-  AUTH_DS,
+  StatusNote,
+  AUTH,
   type AuthTone,
 } from '../../../components/auth/AuthUI';
 
@@ -96,101 +97,95 @@ const CompanyRejectedScreen: React.FC = () => {
 
   return (
     <AuthScreen>
-      <AuthHeader
+      <AuthBrand />
+
+      <AuthHeading
         title={isInactive ? 'Account deactivated' : 'Registration not approved'}
         subtitle={
           isInactive
             ? 'Access is paused until an administrator restores it.'
             : 'Review the note below, then resubmit when you are ready.'
         }
-        pill={isInactive ? 'Deactivated' : 'Not Approved'}
-        compact
       />
 
-      <AuthCard>
-        <AuthMedallion
-          icon={isInactive ? 'slash' : 'alert-triangle'}
-          tone={isInactive ? 'error' : 'warning'}
+      {notice ? (
+        <InlineBanner
+          tone={notice.tone}
+          message={notice.message}
+          onDismiss={() => setNotice(null)}
+          style={styles.banner}
         />
+      ) : null}
 
-        {notice ? (
-          <InlineBanner
-            tone={notice.tone}
-            message={notice.message}
-            onDismiss={() => setNotice(null)}
-            style={styles.banner}
-          />
-        ) : null}
+      <StatusNote
+        label="Status"
+        value={isInactive ? 'Deactivated' : 'Not approved'}
+        tone="error"
+      />
 
-        <Text style={styles.body}>
-          {isInactive
-            ? 'Your company account has been deactivated. Please contact the FinMatrix administrator to restore access.'
-            : "Unfortunately your company registration wasn't approved this time."}
-        </Text>
+      <Text style={styles.body}>
+        {isInactive
+          ? 'Your company account has been deactivated. Please contact the FinMatrix administrator to restore access.'
+          : "Unfortunately your company registration wasn't approved this time."}
+      </Text>
 
-        {reason ? (
-          <View style={styles.reasonCard}>
-            <Text style={styles.reasonLabel}>Reason</Text>
-            <Text style={styles.reasonText}>{reason}</Text>
-          </View>
-        ) : null}
+      {reason ? (
+        <View style={styles.reason}>
+          <Text style={styles.reasonLabel}>Reason</Text>
+          <Text style={styles.reasonText}>{reason}</Text>
+        </View>
+      ) : null}
 
-        {canResubmit ? (
-          <>
-            <AuthPrimaryButton
-              label="Resubmit for review"
-              loading={resubmitting}
-              loadingLabel="Resubmitting…"
-              onPress={handleResubmit}
-              style={styles.cta}
-            />
-            <AuthLinkButton label="Sign out" onPress={handleSignOut} muted />
-          </>
-        ) : (
+      {canResubmit ? (
+        <>
           <AuthPrimaryButton
-            label={fromLogin ? 'Back to Sign In' : 'Sign out'}
-            onPress={handleSignOut}
-            style={styles.cta}
+            label="Resubmit for review"
+            loading={resubmitting}
+            loadingLabel="Resubmitting"
+            onPress={handleResubmit}
           />
-        )}
-      </AuthCard>
+          <View style={styles.linkRow}>
+            <AuthTextLink label="Sign out" onPress={handleSignOut} muted />
+          </View>
+        </>
+      ) : (
+        <AuthPrimaryButton
+          label={fromLogin ? 'Back to Sign In' : 'Sign out'}
+          onPress={handleSignOut}
+        />
+      )}
+
+      <AuthFooter />
     </AuthScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  banner: { marginBottom: 16 },
+  banner: { marginBottom: AUTH.space.lg },
   body: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 14,
+    ...AUTH.type.body,
+    color: AUTH.ink[500],
     lineHeight: 22,
-    color: AUTH_DS.slate500,
-    textAlign: 'center',
+    marginBottom: AUTH.space.lg,
   },
-  reasonCard: {
-    backgroundColor: AUTH_DS.slate50,
-    borderRadius: AUTH_DS.radius.md,
+  reason: {
+    backgroundColor: AUTH.surface.subtle,
+    borderRadius: AUTH.radius.DEFAULT,
     borderWidth: 1,
-    borderColor: AUTH_DS.slate200,
-    padding: 14,
-    marginTop: 18,
+    borderColor: AUTH.line.DEFAULT,
+    padding: AUTH.space.lg,
+    marginBottom: AUTH.space.xl,
+    gap: AUTH.space.sm,
   },
   reasonLabel: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    ...AUTH.type.caption,
+    fontWeight: '600',
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: AUTH_DS.slate400,
-    marginBottom: 5,
+    color: AUTH.ink[500],
   },
-  reasonText: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 14,
-    lineHeight: 21,
-    color: AUTH_DS.navy700,
-  },
-  cta: { marginTop: 20 },
+  reasonText: { ...AUTH.type.body, color: AUTH.ink[700], lineHeight: 21 },
+  linkRow: { alignItems: 'center', marginTop: AUTH.space.xs },
 });
 
 export default CompanyRejectedScreen;

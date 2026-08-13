@@ -5,13 +5,13 @@
 // from the finmatrix://verify-email deep link, which carries a token and
 // auto-verifies on mount.
 //
-// Feedback renders as an inline banner inside the card rather than a floating
+// Feedback renders as an inline banner inside the flow rather than a floating
 // toast: <Toast/> is mounted without a toastConfig, so its default styling
 // sits outside this flow's design language and drifts away from the action
 // that produced it.
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList, UserRole } from '../../../types';
@@ -26,13 +26,14 @@ import { setStoredCompanyId } from '../../../utils/storageUtils';
 import { useSignOut } from '../../../hooks/useSignOut';
 import {
   AuthScreen,
-  AuthHeader,
-  AuthCard,
-  AuthMedallion,
+  AuthBrand,
+  AuthHeading,
+  AuthDetailRow,
   AuthPrimaryButton,
-  AuthLinkButton,
+  AuthTextLink,
+  AuthFooter,
   InlineBanner,
-  AUTH_DS,
+  AUTH,
   type AuthTone,
 } from '../../../components/auth/AuthUI';
 
@@ -144,64 +145,53 @@ const EmailVerificationScreen: React.FC = () => {
 
   return (
     <AuthScreen>
-      <AuthHeader
+      <AuthBrand />
+
+      <AuthHeading
         title={verified ? 'Email verified' : 'Verify your email'}
         subtitle={
           verified
             ? 'Your email has been verified. Continue to finish setting up your company.'
-            : 'Confirm your address to activate your FinMatrix account.'
+            : 'Open the verification link on this device to activate your account.'
         }
-        pill="Verify Email"
-        compact
       />
 
-      <AuthCard>
-        <AuthMedallion
-          icon={verified ? 'check-circle' : 'mail'}
-          tone={verified ? 'success' : 'brand'}
+      {notice ? (
+        <InlineBanner
+          tone={notice.tone}
+          message={notice.message}
+          onDismiss={() => setNotice(null)}
+          style={styles.banner}
         />
+      ) : null}
 
-        {notice ? (
-          <InlineBanner
-            tone={notice.tone}
-            message={notice.message}
-            onDismiss={() => setNotice(null)}
-            style={styles.banner}
-          />
-        ) : null}
+      {!verified && email ? (
+        <View style={styles.detail}>
+          <AuthDetailRow label="Sent to" value={email} />
+        </View>
+      ) : null}
 
-        {isVerifying ? (
-          <ActivityIndicator color={AUTH_DS.green500} style={styles.spinner} />
-        ) : verified ? (
-          <Text style={styles.body}>
-            Your email has been verified. Continue to finish setting up your
-            company.
-          </Text>
-        ) : (
-          <Text style={styles.body}>
-            We sent a verification link to{'\n'}
-            <Text style={styles.email}>{email || 'your email'}</Text>.{'\n'}
-            Open it on this device to continue.
-          </Text>
-        )}
+      {isVerifying ? (
+        <ActivityIndicator color={AUTH.brand.DEFAULT} style={styles.spinner} />
+      ) : null}
 
-        <AuthPrimaryButton
-          label={
-            verified
-              ? isAuthenticated
-                ? 'Continue'
-                : 'Go to Sign In'
-              : "I've verified — continue"
-          }
-          loading={isChecking}
-          loadingLabel="Checking…"
-          disabled={isVerifying}
-          onPress={handleContinue}
-          style={styles.cta}
-        />
+      <AuthPrimaryButton
+        label={
+          verified
+            ? isAuthenticated
+              ? 'Continue'
+              : 'Go to Sign In'
+            : "I've verified — continue"
+        }
+        loading={isChecking}
+        loadingLabel="Checking"
+        disabled={isVerifying}
+        onPress={handleContinue}
+      />
 
-        {!verified && (
-          <AuthLinkButton
+      {!verified && (
+        <View style={styles.linkRow}>
+          <AuthTextLink
             label={
               isResending
                 ? 'Sending…'
@@ -213,30 +203,23 @@ const EmailVerificationScreen: React.FC = () => {
             disabled={cooldown > 0 || isResending}
             muted={cooldown > 0}
           />
-        )}
-
-        <View style={styles.footerLink}>
-          <AuthLinkButton label="Back to Sign In" onPress={handleBackToSignIn} muted />
         </View>
-      </AuthCard>
+      )}
+
+      <View style={styles.linkRow}>
+        <AuthTextLink label="Back to Sign In" onPress={handleBackToSignIn} muted />
+      </View>
+
+      <AuthFooter />
     </AuthScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  banner: { marginBottom: 16 },
-  spinner: { marginVertical: 20 },
-  body: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 14,
-    lineHeight: 22,
-    color: AUTH_DS.slate500,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  email: { fontWeight: '700', color: AUTH_DS.navy800 },
-  cta: { marginTop: 18 },
-  footerLink: { marginTop: 2 },
+  banner: { marginBottom: AUTH.space.lg },
+  detail: { marginBottom: AUTH.space.xl },
+  spinner: { marginBottom: AUTH.space.lg },
+  linkRow: { alignItems: 'center', marginTop: AUTH.space.xs },
 });
 
 export default EmailVerificationScreen;

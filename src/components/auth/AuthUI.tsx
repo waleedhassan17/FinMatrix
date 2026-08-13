@@ -1,284 +1,208 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Auth UI kit
 // ═══════════════════════════════════════════════════════
-// Sibling of components/form/FormUI.tsx and components/reports/ReportUI.tsx,
-// following the same "one kit per domain" convention.
+// Every auth and onboarding screen composes from here, so the flow reads as
+// one product. See authTokens.ts for the design rationale.
 //
-// Every auth + onboarding screen composes from here so the flow reads as one
-// product: one gradient header treatment, one card, one button height/radius,
-// one banner style. Screens should not re-declare these — if something needs
-// to change, change it once here.
+// Composition of a typical screen:
 //
-// Layout rule worth knowing: the gradient header is always flush to the top
-// of the viewport. Screens balance by letting the header fill the upper third
-// and pushing trailing footer content to the bottom — never by centring the
-// whole stack, which leaves a dead gap above the header.
+//   <AuthScreen>
+//     <AuthBrand />                     small wordmark, top-left
+//     <AuthHeading title subtitle />    left-aligned type block
+//     ...fields / banners / buttons
+//     <AuthFooter />                    optional legal line
+//   </AuthScreen>
+//
+// The layout is a single left-aligned column capped at 400px and centred
+// horizontally — the convention for enterprise sign-in. Only the primary
+// button spans the full width.
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  TextInput,
+  Pressable,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
   type StyleProp,
   type ViewStyle,
+  type TextInputProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-import { AUTH_DS, AUTH_TONES, type AuthTone } from './authTokens';
+import { AUTH, type AuthTone } from './authTokens';
 
-export { AUTH_DS, AUTH_TONES, type AuthTone } from './authTokens';
+export { AUTH, AUTH_DS, type AuthTone } from './authTokens';
 export { OtpInput, type OtpInputProps } from './OtpInput';
 
 type FeatherName = React.ComponentProps<typeof Feather>['name'];
 
 // ───────────────────────────────────────────────
-// AuthScreen — the shell every auth screen sits in
+// AuthScreen — page shell
 // ───────────────────────────────────────────────
 
-export interface AuthScreenProps {
+export const AuthScreen: React.FC<{
   children: React.ReactNode;
   scrollRef?: React.RefObject<ScrollView | null>;
   contentStyle?: StyleProp<ViewStyle>;
-}
-
-// The gradient header is always flush to the top of the viewport — it is the
-// screen's anchor, and any gap above it reads as a rendering fault. Balance
-// comes from the header filling the upper third and trailing footer content
-// (AuthSecurityNote) being pushed to the bottom via marginTop:'auto', not
-// from centring the whole stack.
-export const AuthScreen: React.FC<AuthScreenProps> = ({
-  children,
-  scrollRef,
-  contentStyle,
-}) => (
+}> = ({ children, scrollRef, contentStyle }) => (
   <View style={s.root}>
-    <StatusBar barStyle="light-content" backgroundColor={AUTH_DS.navy900} />
-    <KeyboardAvoidingView
-      style={s.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={[s.scroll, contentStyle]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        bounces={false}>
-        {children}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <StatusBar barStyle="dark-content" backgroundColor={AUTH.surface.page} />
+    <SafeAreaView style={s.flex} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={s.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[s.scroll, contentStyle]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
+          <View style={s.column}>{children}</View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   </View>
 );
 
 // ───────────────────────────────────────────────
-// AuthHeader — the navy gradient block
+// Brand + navigation
 // ───────────────────────────────────────────────
 
-export interface AuthHeaderProps {
+/** The wordmark. Small and quiet — it identifies, it does not decorate. */
+export const AuthBrand: React.FC<{ style?: StyleProp<ViewStyle> }> = ({ style }) => (
+  <View style={[s.brand, style]}>
+    <Text style={s.brandFin}>Fin</Text>
+    <Text style={s.brandMatrix}>Matrix</Text>
+  </View>
+);
+
+export const AuthBackLink: React.FC<{ label?: string; onPress: () => void }> = ({
+  label = 'Back',
+  onPress,
+}) => (
+  <Pressable
+    onPress={onPress}
+    hitSlop={12}
+    accessibilityRole="button"
+    accessibilityLabel={label}
+    style={({ pressed }) => [s.backLink, pressed && s.pressed]}>
+    <Feather name="arrow-left" size={16} color={AUTH.ink[600]} />
+    <Text style={s.backLinkText}>{label}</Text>
+  </Pressable>
+);
+
+// ───────────────────────────────────────────────
+// AuthHeading — the type block
+// ───────────────────────────────────────────────
+
+export const AuthHeading: React.FC<{
   title: string;
   subtitle?: string;
-  /** Small status chip above the title, e.g. "Getting Started". */
-  pill?: string;
-  /** Renders the circular back chip when provided. */
-  onBack?: () => void;
-  /** Shorter header for the brief gate screens. */
-  compact?: boolean;
-  /** Optional progress dots, e.g. the 3 reset-password steps. */
-  steps?: { current: number; total: number };
-  /** Small labelled row under the subtitle, e.g. "Workspace Setup". */
-  tag?: { icon: FeatherName; label: string };
-}
-
-export const AuthHeader: React.FC<AuthHeaderProps> = ({
-  title,
-  subtitle,
-  pill,
-  onBack,
-  compact = false,
-  steps,
-  tag,
-}) => (
-  <LinearGradient
-    colors={[AUTH_DS.navy900, AUTH_DS.navy800, AUTH_DS.navy700]}
-    start={{ x: 0.2, y: 0 }}
-    end={{ x: 0.8, y: 1 }}
-    style={[s.header, compact && s.headerCompact]}>
-    <View style={[s.orb, s.orbTopRight]} />
-    <View style={[s.orb, s.orbBottomLeft]} />
-
-    <SafeAreaView edges={['top']} style={s.headerInner}>
-      {(onBack || pill) && (
-        <View style={s.navRow}>
-          {onBack ? (
-            <TouchableOpacity
-              onPress={onBack}
-              hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Go back">
-              <View style={s.backBtn}>
-                <Feather name="arrow-left" size={18} color={AUTH_DS.white} />
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <View />
-          )}
-
-          {pill ? (
-            <View style={s.pill}>
-              <View style={s.pillDot} />
-              <Text style={s.pillText}>{pill}</Text>
-            </View>
-          ) : null}
-        </View>
-      )}
-
-      <Text style={s.headerTitle}>{title}</Text>
-      {subtitle ? <Text style={s.headerSub}>{subtitle}</Text> : null}
-
-      {tag ? (
-        <View style={s.headerTag}>
-          <Feather name={tag.icon} size={15} color={AUTH_DS.green300} />
-          <Text style={s.headerTagText}>{tag.label}</Text>
-        </View>
-      ) : null}
-
-      {steps ? (
-        <View style={s.stepRow}>
-          {Array.from({ length: steps.total }, (_, i) => (
-            <View
-              key={i}
-              style={[s.stepDot, i < steps.current && s.stepDotActive]}
-            />
-          ))}
-          <Text style={s.stepText}>
-            Step {steps.current} of {steps.total}
-          </Text>
-        </View>
-      ) : null}
-    </SafeAreaView>
-  </LinearGradient>
+  /** Small muted line above the title, e.g. "Step 2 of 3". */
+  eyebrow?: string;
+}> = ({ title, subtitle, eyebrow }) => (
+  <View style={s.heading}>
+    {eyebrow ? <Text style={s.eyebrow}>{eyebrow}</Text> : null}
+    <Text style={s.title}>{title}</Text>
+    {subtitle ? <Text style={s.subtitle}>{subtitle}</Text> : null}
+  </View>
 );
 
-// ───────────────────────────────────────────────
-// AuthCard — the white panel overlapping the header
-// ───────────────────────────────────────────────
-
-export const AuthCard: React.FC<{
-  children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-  padded?: boolean;
-}> = ({ children, style, padded = true }) => (
-  <View style={s.cardZone}>
-    <View style={[s.card, padded && s.cardPadded, style]}>{children}</View>
+/** Slim segmented progress. Replaces the decorative dot row. */
+export const StepBar: React.FC<{ current: number; total: number }> = ({
+  current,
+  total,
+}) => (
+  <View style={s.stepBar} accessibilityLabel={`Step ${current} of ${total}`}>
+    {Array.from({ length: total }, (_, i) => (
+      <View key={i} style={[s.stepSeg, i < current && s.stepSegOn]} />
+    ))}
   </View>
 );
 
 // ───────────────────────────────────────────────
-// AuthMedallion — the circular status icon
+// AuthField — label + input + error
 // ───────────────────────────────────────────────
 
-export const AuthMedallion: React.FC<{
-  icon?: FeatherName;
-  emoji?: string;
-  tone?: AuthTone | 'brand';
-}> = ({ icon, emoji, tone = 'brand' }) => {
-  const palette =
-    tone === 'brand'
-      ? { bg: AUTH_DS.green50, border: AUTH_DS.greenBorder, fg: AUTH_DS.green500 }
-      : {
-          bg: AUTH_TONES[tone].bg,
-          border: AUTH_TONES[tone].border,
-          fg: AUTH_TONES[tone].accent,
-        };
+export interface AuthFieldProps extends TextInputProps {
+  label: string;
+  error?: string;
+  hint?: string;
+  /** Renders the show/hide affordance for password fields. */
+  secure?: boolean;
+}
 
-  return (
-    <View
-      style={[
-        s.medallion,
-        { backgroundColor: palette.bg, borderColor: palette.border },
-      ]}>
-      {emoji ? (
-        <Text style={s.medallionEmoji}>{emoji}</Text>
-      ) : icon ? (
-        <Feather name={icon} size={30} color={palette.fg} />
-      ) : null}
-    </View>
-  );
-};
-
-// ───────────────────────────────────────────────
-// InlineBanner — replaces floating toasts and browser dialogs
-// ───────────────────────────────────────────────
-
-export const InlineBanner: React.FC<{
-  tone: AuthTone;
-  message: string;
-  title?: string;
-  onDismiss?: () => void;
-  style?: StyleProp<ViewStyle>;
-}> = ({ tone, message, title, onDismiss, style }) => {
-  const t = AUTH_TONES[tone];
-  return (
-    <View
-      style={[
-        s.banner,
-        { backgroundColor: t.bg, borderColor: t.border },
-        style,
-      ]}
-      accessibilityLiveRegion="polite"
-      accessibilityRole="alert">
-      <Feather name={t.icon as FeatherName} size={18} color={t.accent} />
-      <View style={s.bannerBody}>
-        {title ? (
-          <Text style={[s.bannerTitle, { color: t.fg }]}>{title}</Text>
-        ) : null}
-        <Text style={[s.bannerText, { color: t.fg }]}>{message}</Text>
-      </View>
-      {onDismiss ? (
-        <TouchableOpacity
-          onPress={onDismiss}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityRole="button"
-          accessibilityLabel="Dismiss">
-          <Feather name="x" size={16} color={t.fg} />
-        </TouchableOpacity>
-      ) : null}
-    </View>
-  );
-};
-
-// ───────────────────────────────────────────────
-// StatusPill
-// ───────────────────────────────────────────────
-
-export const StatusPill: React.FC<{ label: string; tone?: AuthTone }> = ({
+export const AuthField: React.FC<AuthFieldProps> = ({
   label,
-  tone = 'warning',
+  error,
+  hint,
+  secure = false,
+  style,
+  ...rest
 }) => {
-  const t = AUTH_TONES[tone];
+  const [focused, setFocused] = useState(false);
+  const [reveal, setReveal] = useState(false);
+
   return (
-    <View style={[s.statusPill, { backgroundColor: t.bg, borderColor: t.border }]}>
-      <View style={[s.statusDot, { backgroundColor: t.accent }]} />
-      <Text style={[s.statusText, { color: t.fg }]}>{label}</Text>
+    <View style={s.field}>
+      <Text style={s.fieldLabel}>{label}</Text>
+      <View
+        style={[
+          s.inputWrap,
+          focused && s.inputWrapFocus,
+          !!error && s.inputWrapError,
+        ]}>
+        <TextInput
+          style={[s.input, style]}
+          placeholderTextColor={AUTH.ink[400]}
+          onFocus={e => {
+            setFocused(true);
+            rest.onFocus?.(e);
+          }}
+          onBlur={e => {
+            setFocused(false);
+            rest.onBlur?.(e);
+          }}
+          secureTextEntry={secure && !reveal}
+          accessibilityLabel={label}
+          {...rest}
+        />
+        {secure ? (
+          <Pressable
+            onPress={() => setReveal(v => !v)}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={reveal ? 'Hide password' : 'Show password'}>
+            <Feather
+              name={reveal ? 'eye-off' : 'eye'}
+              size={17}
+              color={AUTH.ink[400]}
+            />
+          </Pressable>
+        ) : null}
+      </View>
+      {error ? (
+        <Text style={s.fieldError}>{error}</Text>
+      ) : hint ? (
+        <Text style={s.fieldHint}>{hint}</Text>
+      ) : null}
     </View>
   );
 };
 
 // ───────────────────────────────────────────────
-// Buttons — one height, one radius, one type ramp
+// Buttons
 // ───────────────────────────────────────────────
 
 export interface AuthButtonProps {
   label: string;
   onPress: () => void;
   loading?: boolean;
-  /** Label shown beside the spinner, e.g. "Creating account…". */
   loadingLabel?: string;
   disabled?: boolean;
   icon?: FeatherName;
@@ -294,27 +218,32 @@ export const AuthPrimaryButton: React.FC<AuthButtonProps> = ({
   icon,
   style,
 }) => (
-  <TouchableOpacity
-    style={[s.btn, s.btnPrimary, (disabled || loading) && s.btnDisabled, style]}
+  <Pressable
     onPress={onPress}
     disabled={disabled || loading}
-    activeOpacity={0.85}
     accessibilityRole="button"
-    accessibilityState={{ disabled: disabled || loading, busy: loading }}>
+    accessibilityState={{ disabled: disabled || loading, busy: loading }}
+    style={({ pressed }) => [
+      s.btn,
+      s.btnPrimary,
+      pressed && s.btnPrimaryPressed,
+      (disabled || loading) && s.btnDisabled,
+      style,
+    ]}>
     {loading ? (
       <>
-        <ActivityIndicator size="small" color={AUTH_DS.white} />
+        <ActivityIndicator size="small" color="#FFFFFF" />
         {loadingLabel ? (
           <Text style={[s.btnLabel, s.btnLabelPrimary]}>{loadingLabel}</Text>
         ) : null}
       </>
     ) : (
       <>
-        {icon ? <Feather name={icon} size={17} color={AUTH_DS.white} /> : null}
+        {icon ? <Feather name={icon} size={16} color="#FFFFFF" /> : null}
         <Text style={[s.btnLabel, s.btnLabelPrimary]}>{label}</Text>
       </>
     )}
-  </TouchableOpacity>
+  </Pressable>
 );
 
 export const AuthSecondaryButton: React.FC<AuthButtonProps> = ({
@@ -326,287 +255,447 @@ export const AuthSecondaryButton: React.FC<AuthButtonProps> = ({
   icon,
   style,
 }) => (
-  <TouchableOpacity
-    style={[s.btn, s.btnSecondary, (disabled || loading) && s.btnDisabled, style]}
+  <Pressable
     onPress={onPress}
     disabled={disabled || loading}
-    activeOpacity={0.7}
     accessibilityRole="button"
-    accessibilityState={{ disabled: disabled || loading, busy: loading }}>
+    accessibilityState={{ disabled: disabled || loading, busy: loading }}
+    style={({ pressed }) => [
+      s.btn,
+      s.btnSecondary,
+      pressed && s.btnSecondaryPressed,
+      (disabled || loading) && s.btnDisabled,
+      style,
+    ]}>
     {loading ? (
       <>
-        <ActivityIndicator size="small" color={AUTH_DS.navy800} />
+        <ActivityIndicator size="small" color={AUTH.ink[900]} />
         {loadingLabel ? (
           <Text style={[s.btnLabel, s.btnLabelSecondary]}>{loadingLabel}</Text>
         ) : null}
       </>
     ) : (
       <>
-        {icon ? <Feather name={icon} size={17} color={AUTH_DS.navy800} /> : null}
+        {icon ? <Feather name={icon} size={16} color={AUTH.ink[900]} /> : null}
         <Text style={[s.btnLabel, s.btnLabelSecondary]}>{label}</Text>
       </>
     )}
-  </TouchableOpacity>
+  </Pressable>
 );
 
-export const AuthLinkButton: React.FC<{
+export const AuthTextLink: React.FC<{
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  /** Muted styling for the lower-priority link in a stack. */
   muted?: boolean;
+  align?: 'left' | 'center';
   style?: StyleProp<ViewStyle>;
-}> = ({ label, onPress, disabled = false, muted = false, style }) => (
-  <TouchableOpacity
-    style={[s.linkBtn, style]}
+}> = ({ label, onPress, disabled = false, muted = false, align = 'center', style }) => (
+  <Pressable
     onPress={onPress}
     disabled={disabled}
-    activeOpacity={0.6}
+    hitSlop={8}
     accessibilityRole="button"
-    accessibilityState={{ disabled }}>
+    accessibilityState={{ disabled }}
+    style={({ pressed }) => [
+      s.textLink,
+      align === 'center' && s.textLinkCenter,
+      pressed && s.pressed,
+      style,
+    ]}>
     <Text
       style={[
-        s.linkText,
-        muted && s.linkTextMuted,
-        disabled && s.linkTextDisabled,
+        s.textLinkLabel,
+        muted && s.textLinkMuted,
+        disabled && s.textLinkDisabled,
       ]}>
       {label}
     </Text>
-  </TouchableOpacity>
+  </Pressable>
 );
 
-/** Thin divider used between stacked actions. */
-export const AuthDivider: React.FC<{ style?: StyleProp<ViewStyle> }> = ({
-  style,
-}) => <View style={[s.divider, style]} />;
+// ───────────────────────────────────────────────
+// Feedback
+// ───────────────────────────────────────────────
 
-/** The reassurance line under onboarding cards. */
-export const AuthSecurityNote: React.FC<{ label?: string }> = ({
-  label = 'Your data is encrypted and secure',
+const TONE_ICON: Record<AuthTone, FeatherName> = {
+  error: 'alert-circle',
+  success: 'check-circle',
+  info: 'info',
+  warning: 'clock',
+};
+
+export const InlineBanner: React.FC<{
+  tone: AuthTone;
+  message: string;
+  title?: string;
+  onDismiss?: () => void;
+  style?: StyleProp<ViewStyle>;
+}> = ({ tone, message, title, onDismiss, style }) => {
+  const t = AUTH.status[tone];
+  return (
+    <View
+      style={[s.banner, { backgroundColor: t.bg, borderColor: t.border }, style]}
+      accessibilityLiveRegion="polite"
+      accessibilityRole="alert">
+      <Feather name={TONE_ICON[tone]} size={16} color={t.accent} style={s.bannerIcon} />
+      <View style={s.bannerBody}>
+        {title ? <Text style={[s.bannerTitle, { color: t.fg }]}>{title}</Text> : null}
+        <Text style={[s.bannerText, { color: t.fg }]}>{message}</Text>
+      </View>
+      {onDismiss ? (
+        <Pressable
+          onPress={onDismiss}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss">
+          <Feather name="x" size={15} color={t.fg} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+};
+
+/**
+ * A labelled state row for the gate screens (awaiting approval, rejected).
+ * Reads as a status field in a record, not as a badge.
+ */
+export const StatusNote: React.FC<{
+  label: string;
+  value: string;
+  tone?: AuthTone;
+}> = ({ label, value, tone = 'warning' }) => {
+  const t = AUTH.status[tone];
+  return (
+    <View style={s.statusNote}>
+      <Text style={s.statusLabel}>{label}</Text>
+      <View style={s.statusValueRow}>
+        <View style={[s.statusDot, { backgroundColor: t.accent }]} />
+        <Text style={[s.statusValue, { color: t.fg }]}>{value}</Text>
+      </View>
+    </View>
+  );
+};
+
+/** Key/value row used to echo details back to the user (e.g. the email). */
+export const AuthDetailRow: React.FC<{ label: string; value: string }> = ({
+  label,
+  value,
 }) => (
-  <View style={s.secNote}>
-    <Feather name="lock" size={12} color={AUTH_DS.slate400} />
-    <Text style={s.secNoteText}>{label}</Text>
+  <View style={s.detailRow}>
+    <Text style={s.detailLabel}>{label}</Text>
+    <Text style={s.detailValue} numberOfLines={1}>
+      {value}
+    </Text>
   </View>
+);
+
+export const AuthDivider: React.FC<{ label?: string }> = ({ label }) =>
+  label ? (
+    <View style={s.dividerRow}>
+      <View style={s.dividerLine} />
+      <Text style={s.dividerLabel}>{label}</Text>
+      <View style={s.dividerLine} />
+    </View>
+  ) : (
+    <View style={s.divider} />
+  );
+
+export const AuthFooter: React.FC<{ label?: string }> = ({
+  label = 'Your data is encrypted in transit and at rest',
+}) => (
+  <View style={s.footer}>
+    <Feather name="lock" size={12} color={AUTH.ink[400]} />
+    <Text style={s.footerText}>{label}</Text>
+  </View>
+);
+
+/**
+ * A selectable option row (company type, role). Bordered, not a floating
+ * card — selection is shown by border weight and colour, not elevation.
+ */
+export const AuthOptionCard: React.FC<{
+  title: string;
+  description?: string;
+  icon?: FeatherName;
+  selected?: boolean;
+  badge?: string;
+  onPress: () => void;
+}> = ({ title, description, icon, selected = false, badge, onPress }) => (
+  <Pressable
+    onPress={onPress}
+    accessibilityRole="button"
+    accessibilityState={{ selected }}
+    style={({ pressed }) => [
+      s.option,
+      selected && s.optionSelected,
+      pressed && s.optionPressed,
+    ]}>
+    {icon ? (
+      <View style={[s.optionIcon, selected && s.optionIconSelected]}>
+        <Feather
+          name={icon}
+          size={18}
+          color={selected ? AUTH.brand.DEFAULT : AUTH.ink[600]}
+        />
+      </View>
+    ) : null}
+    <View style={s.optionBody}>
+      <View style={s.optionTitleRow}>
+        <Text style={s.optionTitle}>{title}</Text>
+        {badge ? (
+          <View style={s.optionBadge}>
+            <Text style={s.optionBadgeText}>{badge}</Text>
+          </View>
+        ) : null}
+      </View>
+      {description ? <Text style={s.optionDesc}>{description}</Text> : null}
+    </View>
+    <Feather name="chevron-right" size={18} color={AUTH.ink[400]} />
+  </Pressable>
 );
 
 // ───────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AUTH_DS.slate50 },
+  root: { flex: 1, backgroundColor: AUTH.surface.page },
   flex: { flex: 1 },
   scroll: {
     flexGrow: 1,
-    paddingBottom: 40,
-    width: '100%',
-    maxWidth: AUTH_DS.maxContentWidth,
-    alignSelf: 'center',
+    paddingHorizontal: AUTH.space.xl,
+    paddingTop: AUTH.space.xxl,
+    paddingBottom: AUTH.space.xxl,
+  },
+  column: { width: '100%', maxWidth: AUTH.maxWidth, alignSelf: 'center', flex: 1 },
+
+  // ── Brand ──
+  brand: { flexDirection: 'row', alignItems: 'center', marginBottom: AUTH.space.xxl },
+  brandFin: {
+    ...AUTH.type.title,
+    fontSize: 17,
+    color: AUTH.brand.DEFAULT,
+    letterSpacing: -0.3,
+  },
+  brandMatrix: {
+    ...AUTH.type.title,
+    fontSize: 17,
+    color: AUTH.ink[900],
+    letterSpacing: -0.3,
   },
 
-  // ── Header ──
-  header: {
-    paddingBottom: 56,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: 'hidden',
-  },
-  headerCompact: { paddingBottom: 48 },
-  headerInner: { paddingHorizontal: 24, paddingTop: 8 },
-  orb: {
-    position: 'absolute',
-    borderRadius: AUTH_DS.radius.full,
-    backgroundColor: 'rgba(52, 211, 153, 0.07)',
-  },
-  orbTopRight: { width: 190, height: 190, top: -70, right: -60 },
-  orbBottomLeft: { width: 140, height: 140, bottom: -50, left: -40 },
-  navRow: {
+  backLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 22,
-    minHeight: 36,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: AUTH_DS.radius.md,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: AUTH_DS.radius.full,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-  },
-  pillDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: AUTH_DS.green300,
-  },
-  pillText: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: 'rgba(255,255,255,0.86)',
-  },
-  headerTitle: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 27,
-    fontWeight: '700',
-    color: AUTH_DS.white,
-    letterSpacing: -0.4,
-  },
-  headerSub: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.68)',
-    marginTop: 8,
-    lineHeight: 21,
-  },
-  headerTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: AUTH.space.sm,
     alignSelf: 'flex-start',
-    gap: 7,
-    marginTop: 18,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-    borderRadius: AUTH_DS.radius.full,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginBottom: AUTH.space.lg,
   },
-  headerTagText: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 13,
+  backLinkText: { ...AUTH.type.label, color: AUTH.ink[600] },
+  pressed: { opacity: 0.6 },
+
+  // ── Heading ──
+  heading: { marginBottom: AUTH.space.xl },
+  eyebrow: {
+    ...AUTH.type.caption,
     fontWeight: '600',
-    color: AUTH_DS.white,
+    color: AUTH.ink[500],
+    marginBottom: AUTH.space.sm,
   },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 20,
+  title: { ...AUTH.type.display, color: AUTH.ink[900] },
+  subtitle: {
+    ...AUTH.type.body,
+    color: AUTH.ink[500],
+    lineHeight: 22,
+    marginTop: AUTH.space.sm,
   },
-  stepDot: {
-    width: 22,
-    height: 4,
+
+  stepBar: { flexDirection: 'row', gap: 4, marginBottom: AUTH.space.xl },
+  stepSeg: {
+    flex: 1,
+    height: 3,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: AUTH.line.DEFAULT,
   },
-  stepDotActive: { backgroundColor: AUTH_DS.green300 },
-  stepText: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
-    marginLeft: 8,
-  },
+  stepSegOn: { backgroundColor: AUTH.brand.DEFAULT },
 
-  // ── Card ──
-  cardZone: { paddingHorizontal: 20, marginTop: -34 },
-  card: {
-    backgroundColor: AUTH_DS.white,
-    borderRadius: AUTH_DS.radius.xl,
-    ...AUTH_DS.shadowMd,
+  // ── Field ──
+  field: { marginBottom: AUTH.space.lg },
+  fieldLabel: {
+    ...AUTH.type.label,
+    color: AUTH.ink[700],
+    marginBottom: AUTH.space.sm,
   },
-  cardPadded: { padding: 22 },
-
-  // ── Medallion ──
-  medallion: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    borderWidth: 1,
-    alignSelf: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-  },
-  medallionEmoji: { fontSize: 34 },
-
-  // ── Banner ──
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    borderRadius: AUTH_DS.radius.md,
-    borderWidth: 1,
-    padding: 13,
-  },
-  bannerBody: { flex: 1, gap: 2 },
-  bannerTitle: { fontFamily: AUTH_DS.font, fontSize: 13, fontWeight: '700' },
-  bannerText: { fontFamily: AUTH_DS.font, fontSize: 13, lineHeight: 19 },
-
-  // ── Status pill ──
-  statusPill: {
+  inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'center',
-    gap: 7,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    borderRadius: AUTH_DS.radius.full,
+    gap: AUTH.space.md,
+    height: AUTH.control.height,
+    paddingHorizontal: AUTH.space.md,
+    borderRadius: AUTH.control.radius,
     borderWidth: 1,
+    borderColor: AUTH.line.DEFAULT,
+    backgroundColor: AUTH.surface.page,
   },
-  statusDot: { width: 7, height: 7, borderRadius: 3.5 },
-  statusText: { fontFamily: AUTH_DS.font, fontSize: 12, fontWeight: '700' },
+  // Focus is a colour + weight change, not a glow.
+  inputWrapFocus: { borderColor: AUTH.brand.DEFAULT, borderWidth: 1.5 },
+  inputWrapError: { borderColor: AUTH.status.error.accent },
+  input: {
+    flex: 1,
+    ...AUTH.type.body,
+    color: AUTH.ink[900],
+    padding: 0,
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' as never } : null),
+  },
+  fieldError: {
+    ...AUTH.type.caption,
+    color: AUTH.status.error.fg,
+    marginTop: AUTH.space.xs + 2,
+  },
+  fieldHint: {
+    ...AUTH.type.caption,
+    color: AUTH.ink[500],
+    marginTop: AUTH.space.xs + 2,
+  },
 
   // ── Buttons ──
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 9,
-    height: AUTH_DS.buttonHeight,
-    borderRadius: AUTH_DS.control.radius,
-    paddingHorizontal: 18,
+    gap: AUTH.space.sm,
+    height: AUTH.control.height,
+    borderRadius: AUTH.control.radius,
+    paddingHorizontal: AUTH.space.lg,
   },
-  btnPrimary: { backgroundColor: AUTH_DS.green500 },
+  btnPrimary: { backgroundColor: AUTH.brand.DEFAULT },
+  btnPrimaryPressed: { backgroundColor: AUTH.brand.hover },
   btnSecondary: {
-    backgroundColor: AUTH_DS.white,
+    backgroundColor: AUTH.surface.page,
     borderWidth: 1,
-    borderColor: AUTH_DS.slate200,
+    borderColor: AUTH.line.DEFAULT,
   },
-  btnDisabled: { opacity: 0.6 },
-  btnLabel: { fontFamily: AUTH_DS.font, fontSize: 15, fontWeight: '700' },
-  btnLabelPrimary: { color: AUTH_DS.white },
-  btnLabelSecondary: { color: AUTH_DS.navy800 },
+  btnSecondaryPressed: { backgroundColor: AUTH.surface.subtle },
+  btnDisabled: { opacity: 0.45 },
+  btnLabel: { ...AUTH.type.bodyStrong, fontSize: 15 },
+  btnLabelPrimary: { color: '#FFFFFF' },
+  btnLabelSecondary: { color: AUTH.ink[900] },
 
-  // ── Links ──
-  linkBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 13 },
-  linkText: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 14,
-    fontWeight: '700',
-    color: AUTH_DS.green500,
+  textLink: { paddingVertical: AUTH.space.md, alignSelf: 'flex-start' },
+  textLinkCenter: { alignSelf: 'center' },
+  textLinkLabel: { ...AUTH.type.label, color: AUTH.brand.DEFAULT },
+  textLinkMuted: { color: AUTH.ink[600] },
+  textLinkDisabled: { color: AUTH.ink[400] },
+
+  // ── Banner ──
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: AUTH.space.md,
+    borderRadius: AUTH.radius.DEFAULT,
+    borderWidth: 1,
+    paddingVertical: AUTH.space.md,
+    paddingHorizontal: AUTH.space.md,
   },
-  linkTextMuted: { color: AUTH_DS.slate500 },
-  linkTextDisabled: { color: AUTH_DS.slate400 },
+  bannerIcon: { marginTop: 1 },
+  bannerBody: { flex: 1, gap: 2 },
+  bannerTitle: { ...AUTH.type.label, fontWeight: '600' },
+  bannerText: { ...AUTH.type.small, lineHeight: 19 },
 
-  divider: { height: 1, backgroundColor: AUTH_DS.slate200, marginVertical: 6 },
+  // ── Status ──
+  statusNote: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: AUTH.line.DEFAULT,
+    paddingVertical: AUTH.space.lg,
+    marginBottom: AUTH.space.xl,
+    gap: AUTH.space.sm,
+  },
+  statusLabel: {
+    ...AUTH.type.caption,
+    color: AUTH.ink[500],
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    fontWeight: '600',
+  },
+  statusValueRow: { flexDirection: 'row', alignItems: 'center', gap: AUTH.space.sm },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusValue: { ...AUTH.type.bodyStrong },
 
-  // ── Security note ──
-  // marginTop:'auto' settles it against the bottom of the viewport when the
-  // content is shorter than the screen, so the leftover space reads as
-  // deliberate footer spacing rather than a gap.
-  secNote: {
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: AUTH.space.lg,
+    paddingVertical: AUTH.space.md,
+    borderBottomWidth: 1,
+    borderBottomColor: AUTH.line.DEFAULT,
+  },
+  detailLabel: { ...AUTH.type.small, color: AUTH.ink[500] },
+  detailValue: { ...AUTH.type.bodyStrong, color: AUTH.ink[900], flexShrink: 1 },
+
+  divider: {
+    height: 1,
+    backgroundColor: AUTH.line.DEFAULT,
+    marginVertical: AUTH.space.xl,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AUTH.space.md,
+    marginVertical: AUTH.space.xl,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: AUTH.line.DEFAULT },
+  dividerLabel: { ...AUTH.type.caption, color: AUTH.ink[500] },
+
+  footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: AUTH.space.sm,
     marginTop: 'auto',
-    paddingTop: 22,
+    paddingTop: AUTH.space.xxl,
   },
-  secNoteText: {
-    fontFamily: AUTH_DS.font,
-    fontSize: 12,
-    color: AUTH_DS.slate400,
+  footerText: { ...AUTH.type.caption, color: AUTH.ink[400] },
+
+  // ── Option row ──
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AUTH.space.lg,
+    borderWidth: 1,
+    borderColor: AUTH.line.DEFAULT,
+    borderRadius: AUTH.radius.lg,
+    padding: AUTH.space.lg,
+    marginBottom: AUTH.space.md,
+    backgroundColor: AUTH.surface.page,
   },
+  optionSelected: { borderColor: AUTH.brand.DEFAULT, borderWidth: 1.5 },
+  optionPressed: { backgroundColor: AUTH.surface.subtle },
+  optionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: AUTH.radius.DEFAULT,
+    backgroundColor: AUTH.surface.sunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionIconSelected: { backgroundColor: AUTH.brand.subtle },
+  optionBody: { flex: 1, gap: 2 },
+  optionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: AUTH.space.sm },
+  optionTitle: { ...AUTH.type.bodyStrong, color: AUTH.ink[900] },
+  optionBadge: {
+    backgroundColor: AUTH.surface.sunken,
+    borderRadius: AUTH.radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  optionBadgeText: {
+    ...AUTH.type.caption,
+    fontSize: 10,
+    fontWeight: '700',
+    color: AUTH.ink[600],
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  optionDesc: { ...AUTH.type.small, color: AUTH.ink[500], lineHeight: 19 },
 });
