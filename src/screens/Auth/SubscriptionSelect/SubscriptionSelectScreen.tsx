@@ -246,6 +246,23 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
     (user as any)?.companyType ??
     (WAREHOUSE_ONLY_BUILD ? DEFAULT_COMPANY_TYPE : null);
   const [tierPlans, setTierPlans] = useState<TierPlanCard[]>([]);
+
+  // Group the offered plans by delivery-personnel allowance, cheapest rung
+  // first, so each rung shows its 3-month / 6-month pair together.
+  const personnelRungs = React.useMemo(() => {
+    const byLimit = new Map<number, TierPlanCard[]>();
+    for (const p of tierPlans) {
+      const list = byLimit.get(p.deliveryPersonnelLimit) ?? [];
+      list.push(p);
+      byLimit.set(p.deliveryPersonnelLimit, list);
+    }
+    return [...byLimit.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([limit, plans]) => ({
+        limit,
+        plans: [...plans].sort((a, b) => a.durationMonths - b.durationMonths),
+      }));
+  }, [tierPlans]);
   const [selectedTierKey, setSelectedTierKey] = useState<string | null>(null);
 
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -463,18 +480,32 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
             ) : (
               <>
                 <Text style={S.tierHeading}>
-                  {TIER_TITLES[companyType] ?? 'Your'} plans — pick a billing period
+                  {TIER_TITLES[companyType] ?? 'Your'} plans — choose your delivery team size
                 </Text>
-                <View style={S.tierRow}>
-                  {tierPlans.map(p => (
-                    <TierCard
-                      key={p.key}
-                      plan={p}
-                      selected={selectedTierKey === p.key}
-                      onSelect={() => setSelectedTierKey(p.key)}
-                    />
-                  ))}
-                </View>
+                {/* Plans are grouped by delivery-personnel allowance: pick the
+                    rung that fits your team, then the billing period. A flat
+                    row of six cards differing only by price would make the
+                    actual decision invisible. */}
+                {personnelRungs.map(rung => (
+                  <View key={rung.limit} style={S.rungBlock}>
+                    <View style={S.rungHeader}>
+                      <Feather name="truck" size={14} color={DS.primary} />
+                      <Text style={S.rungTitle}>
+                        Up to {rung.limit} delivery personnel
+                      </Text>
+                    </View>
+                    <View style={S.tierRow}>
+                      {rung.plans.map(p => (
+                        <TierCard
+                          key={p.key}
+                          plan={p}
+                          selected={selectedTierKey === p.key}
+                          onSelect={() => setSelectedTierKey(p.key)}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ))}
                 <View style={S.tierNote}>
                   <Feather name="info" size={13} color={DS.primary} />
                   <Text style={S.tierNoteText}>
@@ -661,6 +692,15 @@ const S = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily, marginBottom: 2,
   },
   tierRow: { flexDirection: 'row', gap: 12 },
+  rungBlock: { marginBottom: 18 },
+  rungHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 9 },
+  rungTitle: {
+    fontFamily: THEME.typography.fontFamily,
+    fontSize: 13,
+    fontWeight: '700',
+    color: DS.text.h,
+    letterSpacing: 0.2,
+  },
   tierCard: {
     backgroundColor: DS.surface, borderRadius: 16, borderWidth: 1.5, borderColor: DS.border,
     padding: 14, alignItems: 'center',

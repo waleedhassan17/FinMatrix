@@ -25,6 +25,10 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
+  WAREHOUSE_ONLY_BUILD,
+  DEFAULT_COMPANY_TYPE,
+} from '../../../utils/featureGates';
+import {
   loadPlans,
   createPlan,
   updatePlan,
@@ -300,6 +304,8 @@ interface DisplayPlan {
   features: string[];
   maxUsers: number;
   maxInvoices: number | null;
+  /** Active delivery riders allowed. The only thing separating warehouse plans. */
+  deliveryPersonnelLimit?: number;
   disabled: boolean;
   companyCount: number;
 }
@@ -374,6 +380,16 @@ const PlanCard: React.FC<{ plan: DisplayPlan; gradientIdx: number }> = ({ plan, 
             <Feather name="users" size={13} color={C.text.secondary} />
             <Text style={S.planMetaText}>Up to {plan.maxUsers >= 999 ? 'Unlimited' : plan.maxUsers} users</Text>
           </View>
+          {/* Warehouse plans are identical apart from this number, so it has
+              to be on the card — otherwise all six read the same. */}
+          {plan.deliveryPersonnelLimit ? (
+            <View style={S.planMeta}>
+              <Feather name="truck" size={13} color={C.text.secondary} />
+              <Text style={S.planMetaText}>
+                {plan.deliveryPersonnelLimit} delivery personnel
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {plan.features.length > 0 && (
@@ -420,7 +436,15 @@ const SubscriptionPlansScreen: React.FC = () => {
   // truth); falls back to the legacy canonical cards only if the API gave
   // nothing (old server).
   const displayPlans: DisplayPlan[] = React.useMemo(() => {
-    const tierPlans = (plans ?? []).filter(p => (p as any).companyType);
+    // WAREHOUSE-ONLY BUILD: the server still defines small_business and
+    // large_org plans so the two existing companies on them keep renewing,
+    // but they are no longer sold — so they are not shown here either.
+    // Drop the second predicate to list every tier again.
+    const tierPlans = (plans ?? []).filter(
+      p =>
+        (p as any).companyType &&
+        (!WAREHOUSE_ONLY_BUILD || (p as any).companyType === DEFAULT_COMPANY_TYPE),
+    );
     if (tierPlans.length === 0) {
       return CANONICAL_PLANS.map(p => ({ ...p, companyCount: 0 }));
     }
@@ -435,6 +459,7 @@ const SubscriptionPlansScreen: React.FC = () => {
       companyType: (p as any).companyType,
       features: p.features ?? [],
       maxUsers: p.maxUsers,
+      deliveryPersonnelLimit: (p as any).deliveryPersonnelLimit,
       maxInvoices: p.maxInvoices,
       disabled: false,
       companyCount: 0,
@@ -451,7 +476,11 @@ const SubscriptionPlansScreen: React.FC = () => {
         </TouchableOpacity>
         <View style={S.headerCenter}>
           <Text style={S.headerTitle}>Subscription Plans</Text>
-          <Text style={S.headerSub}>Six plans · two per business type · PKR · defined in server config</Text>
+          <Text style={S.headerSub}>
+            {WAREHOUSE_ONLY_BUILD
+              ? 'Six warehouse plans · 2 / 5 / 10 delivery personnel · PKR · defined in server config'
+              : 'Six plans · two per business type · PKR · defined in server config'}
+          </Text>
         </View>
       </View>
 
