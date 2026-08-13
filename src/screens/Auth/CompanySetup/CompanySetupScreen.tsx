@@ -69,13 +69,15 @@ const CompanySetupScreen: React.FC<Props> = ({ navigation }) => {
           note="Your data is encrypted and secure"
         />
       }>
+      {/* Presentational only — "Get Started" below is the single action.
+          Two tap targets for one outcome makes the user wonder if they do
+          different things. */}
       <AuthOptionCard
         icon="briefcase"
         title="Create New Company"
         badge="New"
         tagline="Register your business, set up agencies, and invite your team members"
         selectable={false}
-        onPress={start}
       />
 
       <AuthChips items={['Agencies', 'Team', 'Inventory']} />

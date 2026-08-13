@@ -24,6 +24,7 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
+  Modal,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
@@ -327,6 +328,72 @@ export const AuthField: React.FC<AuthFieldProps> = ({
   );
 };
 
+
+/**
+ * Dropdown styled exactly like AuthField, so a form reads as one control set
+ * rather than a mix of input libraries. Opens a simple sheet of options.
+ */
+export const AuthSelect: React.FC<{
+  label?: string;
+  value: string;
+  options: { label: string; value: string }[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+  error?: string;
+  hint?: string;
+}> = ({ label, value, options, onChange, placeholder = 'Select…', error, hint }) => {
+  const [open, setOpen] = useState(false);
+  const current = options.find(o => o.value === value);
+
+  return (
+    <View style={s.field}>
+      {label ? <Text style={s.label}>{label}</Text> : null}
+      <Pressable
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={label ?? placeholder}
+        style={[s.inputWrap, !!error && s.inputWrapError]}>
+        <Text style={[s.selectValue, !current && s.selectPlaceholder]} numberOfLines={1}>
+          {current?.label ?? placeholder}
+        </Text>
+        <Feather name="chevron-down" size={18} color={AUTH.ink[400]} />
+      </Pressable>
+      {error ? (
+        <Text style={s.fieldError}>{error}</Text>
+      ) : hint ? (
+        <Text style={s.fieldHint}>{hint}</Text>
+      ) : null}
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={s.sheetBackdrop} onPress={() => setOpen(false)}>
+          <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
+            {label ? <Text style={s.sheetTitle}>{label}</Text> : null}
+            <ScrollView style={s.sheetList} keyboardShouldPersistTaps="handled">
+              {options.map(o => {
+                const on = o.value === value;
+                return (
+                  <Pressable
+                    key={o.value}
+                    onPress={() => {
+                      onChange(o.value);
+                      setOpen(false);
+                    }}
+                    style={({ pressed }) => [s.sheetRow, pressed && s.sheetRowPressed]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}>
+                    <Text style={[s.sheetRowText, on && s.sheetRowTextOn]}>{o.label}</Text>
+                    {on ? <Feather name="check" size={17} color={AUTH.brand} /> : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+};
+
 /** Tinted notice with an icon — replaces floating toasts and browser dialogs. */
 export const AuthNotice: React.FC<{
   tone?: AuthTone;
@@ -461,9 +528,14 @@ export const AuthOptionCard: React.FC<{
   badge?: string;
   features?: string[];
   selected?: boolean;
-  /** Renders the radio control. Omit for a plain tappable card. */
+  /** Renders the radio control. Omit for a plain card. */
   selectable?: boolean;
-  onPress: () => void;
+  /**
+   * Omit to render a non-interactive card. Use that when a separate primary
+   * button already performs the action — two tap targets for one outcome
+   * makes the user wonder whether they differ.
+   */
+  onPress?: () => void;
 }> = ({
   title,
   tagline,
@@ -473,16 +545,9 @@ export const AuthOptionCard: React.FC<{
   selected = false,
   selectable = true,
   onPress,
-}) => (
-  <Pressable
-    onPress={onPress}
-    accessibilityRole="button"
-    accessibilityState={{ selected }}
-    style={({ pressed }) => [
-      s.option,
-      selected && s.optionSelected,
-      pressed && s.optionPressed,
-    ]}>
+}) => {
+  const Body = (
+    <>
     <View style={s.optionHead}>
       {icon ? <AuthIconTile icon={icon} style={s.optionTile} /> : null}
       <View style={s.optionHeadText}>
@@ -503,18 +568,36 @@ export const AuthOptionCard: React.FC<{
       ) : null}
     </View>
 
-    {features?.length ? (
-      <View style={s.optionFeatures}>
-        {features.map(f => (
-          <View key={f} style={s.optionFeatureRow}>
-            <Feather name="check" size={13} color={AUTH.brand} />
-            <Text style={s.optionFeatureText}>{f}</Text>
-          </View>
-        ))}
-      </View>
-    ) : null}
-  </Pressable>
-);
+      {features?.length ? (
+        <View style={s.optionFeatures}>
+          {features.map(f => (
+            <View key={f} style={s.optionFeatureRow}>
+              <Feather name="check" size={13} color={AUTH.brand} />
+              <Text style={s.optionFeatureText}>{f}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={[s.option, selected && s.optionSelected]}>{Body}</View>;
+  }
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      style={({ pressed }) => [
+        s.option,
+        selected && s.optionSelected,
+        pressed && s.optionPressed,
+      ]}>
+      {Body}
+    </Pressable>
+  );
+};
 
 /** Segmented password-strength meter with a label/value row. */
 export const PasswordStrength: React.FC<{
@@ -831,6 +914,48 @@ const s = StyleSheet.create({
     fontWeight: '700',
     color: AUTH.ink[700],
   },
+  selectValue: {
+    flex: 1,
+    fontFamily: AUTH.font,
+    fontSize: 15,
+    color: AUTH.ink[900],
+    paddingVertical: AUTH.space.md,
+  },
+  selectPlaceholder: { color: AUTH.ink[400] },
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: AUTH.surface,
+    borderTopLeftRadius: AUTH.radius.xl,
+    borderTopRightRadius: AUTH.radius.xl,
+    paddingTop: AUTH.space.xl,
+    paddingBottom: AUTH.space.xxl,
+    maxHeight: '70%',
+  },
+  sheetTitle: {
+    fontFamily: AUTH.font,
+    fontSize: 15,
+    fontWeight: '700',
+    color: AUTH.ink[900],
+    paddingHorizontal: AUTH.space.xl,
+    paddingBottom: AUTH.space.md,
+  },
+  sheetList: { paddingHorizontal: AUTH.space.sm },
+  sheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: AUTH.space.lg,
+    paddingVertical: AUTH.space.lg,
+    paddingHorizontal: AUTH.space.lg,
+    borderRadius: AUTH.radius.md,
+  },
+  sheetRowPressed: { backgroundColor: AUTH.sunken },
+  sheetRowText: { fontFamily: AUTH.font, fontSize: 15, color: AUTH.ink[700] },
+  sheetRowTextOn: { color: AUTH.ink[900], fontWeight: '700' },
   fieldError: {
     fontFamily: AUTH.font,
     fontSize: 12,

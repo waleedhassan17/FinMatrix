@@ -17,8 +17,16 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { v4 as uuidv4 } from 'uuid';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import CustomInput from '../../../Custom-Components/CustomInput';
-import CustomDropdown from '../../../Custom-Components/CustomDropdown';
+import {
+  AuthLayout,
+  AuthHeader,
+  AuthFooterBar,
+  AuthField,
+  AuthSelect,
+  AuthSectionLabel,
+  AuthNotice,
+  AUTH,
+} from '../../../components/auth/AuthUI';
 import { THEME } from '../../../utils/theme';
 import { isValidPkPhone, normalizePkPhone, PK_PHONE_MESSAGE } from '../../../utils/phone';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
@@ -612,7 +620,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
   // ────────────────────────────────────────
   const renderStep1 = () => (
     <View style={s.stepBody}>
-      <CustomInput
+      <AuthField
         label="Company Name *"
         value={companyName}
         onChangeText={(t: string) => {
@@ -624,7 +632,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         error={errors.companyName}
       />
 
-      <CustomDropdown
+      <AuthSelect
         label="Industry"
         options={INDUSTRIES}
         value={industry}
@@ -632,7 +640,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         placeholder="Select industry"
       />
 
-      <CustomDropdown
+      <AuthSelect
         label="Business Structure"
         options={BUSINESS_STRUCTURES}
         value={legalStructure}
@@ -640,21 +648,9 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         placeholder="Select business structure"
       />
 
-      {/* Address section */}
-      <View style={s.sectionDivider}>
-        <View style={s.sectionDividerLine} />
-        <View style={s.sectionDividerPill}>
-          <Ionicons
-            name="location-outline"
-            size={13}
-            color={DS.slate500}
-          />
-          <Text style={s.sectionDividerText}>Address</Text>
-        </View>
-        <View style={s.sectionDividerLine} />
-      </View>
+      <AuthSectionLabel>Address</AuthSectionLabel>
 
-      <CustomInput
+      <AuthField
         label="Street *"
         value={street}
         onChangeText={(t: string) => {
@@ -667,7 +663,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <View style={s.row}>
         <View style={s.halfInput}>
-          <CustomInput
+          <AuthField
             label="City *"
             value={city}
             onChangeText={(t: string) => {
@@ -679,7 +675,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         </View>
         <View style={s.halfInput}>
-          <CustomInput
+          <AuthField
             label="State/Province *"
             value={stateProv}
             onChangeText={(t: string) => {
@@ -694,7 +690,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <View style={s.row}>
         <View style={s.halfInput}>
-          <CustomInput
+          <AuthField
             label="ZIP Code *"
             value={zipCode}
             onChangeText={(t: string) => {
@@ -708,7 +704,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         </View>
         <View style={s.halfInput}>
-          <CustomDropdown
+          <AuthSelect
             label="Country"
             options={COUNTRIES}
             value={country}
@@ -717,21 +713,9 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </View>
 
-      {/* Contact section */}
-      <View style={s.sectionDivider}>
-        <View style={s.sectionDividerLine} />
-        <View style={s.sectionDividerPill}>
-          <Ionicons
-            name="call-outline"
-            size={13}
-            color={DS.slate500}
-          />
-          <Text style={s.sectionDividerText}>Contact</Text>
-        </View>
-        <View style={s.sectionDividerLine} />
-      </View>
+      <AuthSectionLabel>Contact</AuthSectionLabel>
 
-      <CustomInput
+      <AuthField
         label="Phone *"
         value={phone}
         onChangeText={(t: string) => {
@@ -742,7 +726,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         keyboardType="phone-pad"
         error={errors.phone}
       />
-      <CustomInput
+      <AuthField
         label="Email *"
         value={email}
         onChangeText={(t: string) => {
@@ -816,7 +800,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
             />
             <Text style={s.customFormTitle}>New Custom Agency</Text>
           </View>
-          <CustomInput
+          <AuthField
             label="Agency Name *"
             value={customAgency.name}
             onChangeText={(t: string) => {
@@ -831,7 +815,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
             placeholder="Agency name"
             error={errors.customAgencyName}
           />
-          <CustomDropdown
+          <AuthSelect
             label="Type"
             options={[
               { label: 'Manufacturing', value: 'Manufacturing' },
@@ -843,7 +827,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
               setCustomAgency(p => ({ ...p, type: v }))
             }
           />
-          <CustomInput
+          <AuthField
             label="Description"
             value={customAgency.description}
             onChangeText={(t: string) =>
@@ -851,7 +835,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
             }
             placeholder="Brief description"
           />
-          <CustomInput
+          <AuthField
             label="Address"
             value={customAgency.address}
             onChangeText={(t: string) =>
@@ -859,13 +843,13 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
             }
             placeholder="Agency address"
           />
-          <CustomInput
+          <AuthField
             label="Contact Phone"
             value={customAgency.contact}
             onChangeText={(t: string) =>
               setCustomAgency(p => ({ ...p, contact: t }))
             }
-            placeholder="+92-XXX-XXXXXXX"
+            placeholder="0312 3456789"
             keyboardType="phone-pad"
           />
           <View style={s.buttonRow}>
@@ -984,128 +968,35 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
   // Main Render
   // ────────────────────────────────────────
   return (
-    <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={DS.navy900} />
-      <KeyboardAvoidingView
-        style={s.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={s.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}>
-          {/* ═══════════════════════════════
-              GRADIENT HEADER
-             ═══════════════════════════════ */}
-          <LinearGradient
-            colors={[DS.navy900, DS.navy800, DS.navy700]}
-            start={{ x: 0.2, y: 0 }}
-            end={{ x: 0.8, y: 1 }}
-            style={s.header}>
-            <View style={[s.orb, s.orbTopRight]} />
-            <View style={[s.orb, s.orbBottomLeft]} />
+    <AuthLayout
+      scrollRef={scrollRef}
+      header={
+        <AuthHeader
+          pill="Company Details"
+          title={stepCfg.title}
+          subtitle={stepCfg.subtitle}
+          onBack={handleBack}
+          step={{ current: 2, total: 4 }}
+        />
+      }
+      footer={
+        <AuthFooterBar
+          primary={{
+            label: 'Create Company',
+            onPress: handleSubmit,
+            loading: isCreating,
+            loadingLabel: 'Creating Company',
+          }}
+          secondary={{ label: 'Cancel', onPress: handleBack }}
+          note="Your data is encrypted and secure"
+        />
+      }>
+      {submitError ? (
+        <AuthNotice tone="error" message={submitError} />
+      ) : null}
 
-            <SafeAreaView edges={['top']} style={s.headerInner}>
-              {/* Nav row */}
-              <View style={s.navRow}>
-                <TouchableOpacity
-                  onPress={handleBack}
-                  hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-                  activeOpacity={0.7}>
-                  <View style={s.backBtn}>
-                    <Text style={s.backIcon}>{'\u2190'}</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <View style={s.rolePill}>
-                  <View style={s.rolePillDot} />
-                  <Text style={s.rolePillText}>New Company</Text>
-                </View>
-              </View>
-
-              {/* Title */}
-              <Text style={s.headerTitle}>{stepCfg.title}</Text>
-              <Text style={s.headerSub}>{stepCfg.subtitle}</Text>
-
-            </SafeAreaView>
-          </LinearGradient>
-
-          {/* ═══════════════════════════════
-              MAIN CARD
-             ═══════════════════════════════ */}
-          <View style={s.cardZone}>
-            <View style={s.mainCard}>
-              {renderStep1()}
-
-              {/* Server-side failure (network down, duplicate name, rejected
-                  field) \u2014 shown here rather than in a browser dialog. */}
-              {submitError ? (
-                <View
-                  style={s.errorBanner}
-                  accessibilityLiveRegion="polite"
-                  accessibilityRole="alert">
-                  <View style={s.errorIconWrap}>
-                    <Text style={s.errorIconChar}>!</Text>
-                  </View>
-                  <Text style={s.errorBannerText}>{submitError}</Text>
-                </View>
-              ) : null}
-
-              {/* Action buttons \u2014 single-step create */}
-              <View style={s.actionBar}>
-                <TouchableOpacity
-                  style={s.actionSecondary}
-                  onPress={handleBack}
-                  activeOpacity={0.7}>
-                  <Text style={s.actionSecondaryIcon}>{'\u2190'}</Text>
-                  <Text style={s.actionSecondaryLabel}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    s.actionPrimary,
-                    s.actionCreate,
-                    isCreating && { opacity: 0.6 },
-                  ]}
-                  onPress={handleSubmit}
-                  activeOpacity={0.8}
-                  disabled={isCreating}>
-                  {isCreating ? (
-                    <View style={s.actionPrimaryLoadingRow}>
-                      <ActivityIndicator
-                        size="small"
-                        color={DS.white}
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text style={s.actionPrimaryLabel}>Creating Company...</Text>
-                    </View>
-                  ) : (
-                    <>
-                      <Ionicons
-                        name="rocket-outline"
-                        size={16}
-                        color={DS.white}
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text style={s.actionPrimaryLabel}>Create Company</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Security footer */}
-            <View style={s.secFooter}>
-              <View style={s.secDot} />
-              <Text style={s.secText}>
-                Your data is encrypted and secure
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+      {renderStep1()}
+    </AuthLayout>
   );
 };
 
