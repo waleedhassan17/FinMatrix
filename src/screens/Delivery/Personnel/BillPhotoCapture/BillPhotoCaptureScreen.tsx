@@ -29,12 +29,14 @@ import {
   setSignedBy,
   setNote,
   setPaidStatus,
+  setReturnedQty,
   submitBillPhoto,
   selectBillPhotoUri,
   selectBillPhotoSource,
   selectBillPhotoSignedBy,
   selectBillPhotoNote,
   selectBillPhotoPaidStatus,
+  selectBillPhotoReturnedQtys,
   selectBillPhotoIsSubmitting,
 } from './dpBillPhotoCaptureSlice';
 import { THEME } from '../../../../utils/theme';
@@ -55,6 +57,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
   const signedBy = useAppSelector(selectBillPhotoSignedBy);
   const note = useAppSelector(selectBillPhotoNote);
   const paidStatus = useAppSelector(selectBillPhotoPaidStatus);
+  const returnedQtys = useAppSelector(selectBillPhotoReturnedQtys);
   const isSubmitting = useAppSelector(selectBillPhotoIsSubmitting);
 
   const delivery = useMemo(
@@ -70,6 +73,38 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
     () => approvalRequests.some(r => r.deliveryId === deliveryId),
     [approvalRequests, deliveryId],
   );
+
+  // Per-line delivered/returned split. The rider enters what came BACK; what
+  // was delivered is the remainder. Every line used to be hard-coded to
+  // "fully delivered, nothing returned", so a customer taking 8 of 10 could
+  // not be recorded at all and the admin queue's Returned column was always 0.
+  const lines = useMemo(() => {
+    return (delivery?.items ?? []).map(item => {
+      const dispatched = item.quantity ?? item.orderedQty ?? 0;
+      const raw = returnedQtys[item.itemId] ?? '';
+      const parsed = raw.trim() === '' ? 0 : Number(raw);
+      const valid = Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 0 && parsed <= dispatched;
+      const returned = valid ? parsed : 0;
+      return {
+        itemId: item.itemId,
+        itemName: item.itemName,
+        dispatched,
+        raw,
+        valid,
+        returnedQty: returned,
+        deliveredQty: dispatched - returned,
+      };
+    });
+  }, [delivery?.items, returnedQtys]);
+
+  const invalidLine = lines.find(l => !l.valid);
+  const totalReturned = lines.reduce((sum, l) => sum + l.returnedQty, 0);
+  const totalDispatched = lines.reduce((sum, l) => sum + l.dispatched, 0);
+  // Nothing accepted at all. The admin should REJECT this rather than approve
+  // it — rejection is the path that posts the full reversal and marks the
+  // delivery 'returned'. Approving a zero-delivery request invoices nothing
+  // but still resolves the delivery as 'delivered', which reads wrong.
+  const isFullReturn = totalDispatched > 0 && totalReturned === totalDispatched;
 
   useEffect(() => {
     dispatch(resetBillPhotoState());
@@ -177,6 +212,13 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert('Unassigned delivery', 'This delivery has no assigned personnel.');
       return;
     }
+    if (invalidLine) {
+      Alert.alert(
+        'Check returned quantity',
+        `${invalidLine.itemName}: enter a whole number between 0 and ${invalidLine.dispatched}.`,
+      );
+      return;
+    }
 
     const personnelName = dp?.displayName ?? user?.displayName ?? 'Delivery Personnel';
     const routeLabel = `${delivery.zone} · ${new Date(delivery.scheduledDate).toLocaleDateString()}`;
@@ -194,12 +236,17 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           signedBy: signedBy.trim(),
           paidStatus,
           note: note.trim() || undefined,
-          changes: delivery.items.map(item => ({
-            itemId: item.itemId,
-            itemName: item.itemName,
-            beforeQty: item.quantity,
-            deliveredQty: item.quantity,
-            returnedQty: 0,
+          // deliveredQty is the field with ledger effect: on approval the
+          // backend derives returned as (dispatched - delivered), invoices
+          // only the delivered part and restocks the rest. returnedQty is
+          // sent alongside so the admin queue shows the rider's own numbers,
+          // and the server rejects the pair if they exceed what was dispatched.
+          changes: lines.map(line => ({
+            itemId: line.itemId,
+            itemName: line.itemName,
+            beforeQty: line.dispatched,
+            deliveredQty: line.deliveredQty,
+            returnedQty: line.returnedQty,
           })),
         }),
       );
@@ -243,7 +290,8 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={successStyles.infoRow}>
               <Feather name="package" size={16} color={THEME.colors.textSecondary} />
               <Text style={successStyles.infoText}>
-                Shadow inventory has been updated · {itemsCount} item{itemsCount === 1 ? '' : 's'} deducted
+                {itemsCount} item{itemsCount === 1 ? '' : 's'} sent for review
+                {totalReturned > 0 ? ` · ${totalReturned} unit${totalReturned === 1 ? '' : 's'} returned` : ''}
               </Text>
             </View>
             <View style={successStyles.infoRow}>
@@ -449,10 +497,54 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
 
           <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Delivered quantities</Text>
+            <Text style={styles.fieldHint}>
+              Enter how many units the customer sent back. Leave blank if they took
+              everything.
+            </Text>
+            {lines.map(line => (
+              <View key={line.itemId} style={styles.qtyRow}>
+                <View style={styles.qtyInfo}>
+                  <Text style={styles.qtyName} numberOfLines={1}>{line.itemName}</Text>
+                  <Text style={styles.qtySub}>
+                    {line.dispatched} dispatched · delivering {line.deliveredQty}
+                  </Text>
+                </View>
+                <TextInput
+                  style={[styles.qtyInput, !line.valid && styles.qtyInputError]}
+                  value={line.raw}
+                  onChangeText={t =>
+                    dispatch(setReturnedQty({ itemId: line.itemId, qty: t.replace(/[^0-9]/g, '') }))
+                  }
+                  placeholder="0"
+                  placeholderTextColor={THEME.colors.textTertiary}
+                  keyboardType="number-pad"
+                  editable={!isSubmitting}
+                  maxLength={6}
+                />
+              </View>
+            ))}
+            {invalidLine && (
+              <Text style={styles.qtyError}>
+                {invalidLine.itemName}: enter 0–{invalidLine.dispatched}.
+              </Text>
+            )}
+            {isFullReturn && (
+              <View style={styles.warnBanner}>
+                <Feather name="alert-circle" size={16} color={THEME.colors.warning} />
+                <Text style={styles.warnBannerText}>
+                  Nothing was accepted. The admin should reject this so the whole
+                  delivery is returned to stock.
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Note for admin (optional)</Text>
             <TextInput
               style={[styles.input, styles.inputMultiline]}
-              placeholder="Anything the admin should know — short returns, partial delivery, etc."
+              placeholder="Anything the admin should know — damage, disputes, access problems."
               placeholderTextColor={THEME.colors.textTertiary}
               value={note}
               onChangeText={t => dispatch(setNote(t))}
@@ -473,10 +565,11 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           <TouchableOpacity
             style={[
               styles.submitBtn,
-              (!photoUri || !paidStatus || isSubmitting || alreadySubmitted) && styles.submitBtnDisabled,
+              (!photoUri || !paidStatus || isSubmitting || alreadySubmitted || !!invalidLine) &&
+                styles.submitBtnDisabled,
             ]}
             onPress={handleSubmit}
-            disabled={!photoUri || !paidStatus || isSubmitting || alreadySubmitted}
+            disabled={!photoUri || !paidStatus || isSubmitting || alreadySubmitted || !!invalidLine}
             activeOpacity={0.9}
           >
             {isSubmitting ? (
@@ -665,6 +758,51 @@ const styles = StyleSheet.create({
     ...THEME.typography.bodyMd,
   },
   inputMultiline: { minHeight: 84, textAlignVertical: 'top' },
+
+  fieldHint: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.textTertiary,
+    marginBottom: 10,
+  },
+  qtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.radius.lg,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  qtyInfo: { flex: 1 },
+  qtyName: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textPrimary,
+  },
+  qtySub: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.textTertiary,
+    marginTop: 2,
+  },
+  qtyInput: {
+    width: 72,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    textAlign: 'center',
+    color: THEME.colors.textPrimary,
+    ...THEME.typography.bodyMd,
+  },
+  qtyInputError: { borderColor: THEME.colors.danger },
+  qtyError: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.danger,
+    marginBottom: 6,
+  },
 
   warnBanner: {
     flexDirection: 'row',

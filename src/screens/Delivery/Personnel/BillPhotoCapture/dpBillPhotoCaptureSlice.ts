@@ -29,6 +29,12 @@ export interface DPBillPhotoCaptureSliceState {
   note: string;
   /** PAID / NOT PAID choice — required before submitting (phase1.md Stage 2). */
   paidStatus: DeliveryPaidStatus | null;
+  /**
+   * Units the customer refused, keyed by itemId. Kept as raw strings because
+   * they come straight off TextInputs; an absent or blank entry means nothing
+   * was returned on that line.
+   */
+  returnedQtys: Record<string, string>;
   isSubmitting: boolean;
   error: string;
   lastResult: SubmitBillPhotoResult | null;
@@ -40,6 +46,7 @@ const initialState: DPBillPhotoCaptureSliceState = {
   signedBy: '',
   note: '',
   paidStatus: null,
+  returnedQtys: {},
   isSubmitting: false,
   error: '',
   lastResult: null,
@@ -68,6 +75,11 @@ export const dpBillPhotoCaptureSlice = createAppSlice({
     setPaidStatus: create.reducer((state, action: { payload: DeliveryPaidStatus }) => {
       state.paidStatus = action.payload;
     }),
+    setReturnedQty: create.reducer(
+      (state, action: { payload: { itemId: string; qty: string } }) => {
+        state.returnedQtys[action.payload.itemId] = action.payload.qty;
+      },
+    ),
     resetBillPhotoState: create.reducer(() => initialState),
 
     submitBillPhoto: create.asyncThunk(
@@ -156,6 +168,7 @@ export const dpBillPhotoCaptureSlice = createAppSlice({
     selectBillPhotoSignedBy: state => state.signedBy,
     selectBillPhotoNote: state => state.note,
     selectBillPhotoPaidStatus: state => state.paidStatus,
+    selectBillPhotoReturnedQtys: state => state.returnedQtys,
     selectBillPhotoIsSubmitting: state => state.isSubmitting,
   },
 });
@@ -166,6 +179,7 @@ export const {
   setSignedBy,
   setNote,
   setPaidStatus,
+  setReturnedQty,
   resetBillPhotoState,
   submitBillPhoto,
 } = dpBillPhotoCaptureSlice.actions;
@@ -177,5 +191,6 @@ export const {
   selectBillPhotoSignedBy,
   selectBillPhotoNote,
   selectBillPhotoPaidStatus,
+  selectBillPhotoReturnedQtys,
   selectBillPhotoIsSubmitting,
 } = dpBillPhotoCaptureSlice.selectors;
