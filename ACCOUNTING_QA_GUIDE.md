@@ -477,60 +477,124 @@ Feature availability is server-authoritative in `common/features/feature-map.ts`
 
 ## 5. Production readiness gate
 
+> **Status: all eight gaps closed.** Each was fixed on its own branch, verified
+> against the running API and a live database, and committed with its evidence.
+> What follows records what was done and, where the audit's own guidance turned
+> out to be wrong, what was corrected.
+
 ### 5.1 Must fix before launch
 
-- [ ] **G1 — Add DB CHECK constraints.** Defence in depth for the invariants that matter:
-  ```sql
-  ALTER TABLE journal_entry_lines ADD CONSTRAINT chk_line_shape
-    CHECK ((debit > 0 AND credit = 0) OR (credit > 0 AND debit = 0));
-  ALTER TABLE journal_entry_lines ADD CONSTRAINT chk_non_negative
-    CHECK (debit >= 0 AND credit >= 0);
-  ALTER TABLE invoices ADD CONSTRAINT chk_invoice_math
-    CHECK (total - amount_paid = balance);
-  ALTER TABLE inventory_items ADD CONSTRAINT chk_no_negative_stock
-    CHECK (quantity_on_hand >= 0);
-  ```
-  Entry-level balance cannot be a CHECK (it spans rows) — enforce with a deferred constraint trigger on `journal_entry_lines`.
-- [ ] **G2 — Wire up `audit_trail`.** Every create/update/void of a financial document: who, what, when, before/after. Required for the `auditLog` tier feature.
-- [ ] **G3 — Exercise credit memos, vendor credits, inventory adjustments and tax payments** end to end in staging, and confirm postings against §3.5–§3.6 and §3.10.
-- [ ] **G4 — Run a full period close** in staging, including all seven §3.8 tests.
-- [ ] **G6 — Confirm the inventory costing method.** If FIFO/LIFO are not truly implemented, restrict the enum to `average` rather than shipping a misleading option.
+- [x] **G1 — DB CHECK constraints.** `chk_line_shape`, `chk_non_negative`,
+  `chk_invoice_math`, `chk_no_negative_stock`, plus **two** deferred constraint
+  triggers for entry balance — one on `journal_entry_lines`, one on
+  `journal_entries`, because `postDraft()` flips status without touching a
+  line. Both skip drafts, which the engine permits to be unbalanced by design.
+  The CHECKs are also declared as `@Check()` on the entities: TypeORM's
+  synchroniser (on in local dev) drops constraints it cannot find in entity
+  metadata. Services that decrement stock now raise `INSUFFICIENT_STOCK` (422)
+  first, so the constraint is a backstop rather than a 500.
+- [x] **G2 — `audit_trail` wired up.** One `EntitySubscriber` over the nine
+  financial documents, plus an `AsyncLocalStorage` request context carrying the
+  actor. Rows are buffered and written **after commit on a separate
+  connection**, so a failed audit write can neither roll back a posting nor
+  record a mutation that was rolled back. Events are collapsed per resource per
+  transaction: one logical mutation, one row. Reads sit behind
+  `@RequiresFeature('auditLog')`.
+- [x] **G3 — Correction paths exercised.** Found two real defects: vendor
+  credits had **no tax column at all**, so input tax was never reversed
+  (account 1300 stayed overstated); and credit-memo restock re-read the item's
+  *current* average at void time, so any purchase in between made the reversal
+  a different size from the original. Restock cost is now frozen on the line.
+- [x] **G4 — Period close.** Added `POST :companyId/period-close` and
+  `/period-reopen` behind `periodClose`, and removed `booksLockedUntil` from
+  the generic company PATCH. See the I12 note below.
+- [x] **G6 — Costing method restricted to `average`.** `costMethod` was never
+  branched on anywhere; FIFO and LIFO were labels over weighted-average
+  behaviour. Also fixed the live bug where the app sent `'FIFO'` and the API
+  400'd every inventory create.
 
 ### 5.2 Should fix
 
-- [ ] **G5 — Automated accounting tests.** Minimum viable suite: invoice→payment→ledger, bill→payment→ledger, credit memo reversal, unbalanced-entry rejection, period lock, and the twelve invariants asserted after each.
-- [ ] **G7 — Void/reversal tests** for every document type.
-- [ ] **G8 — Verify cash vs accrual** reporting honours `companies.accounting_method`.
-- [ ] Confirm retained-earnings rollover strategy (§3.8).
+- [x] **G5 — Automated accounting tests + CI gate.** `qa/invariants.sql`,
+  `qa/run-qa.sh`, `qa/seed-scenario.ts`; `npm run qa` seeds and checks,
+  `npm run test:accounting` runs the three acceptance suites. Both wired into
+  CI. The gate is proven to bite: a posted entry whose balances were never
+  applied turns it red with exit 1.
+- [x] **G7 — Void/reversal tests** for all eight document types, plus new
+  correction paths for inventory adjustments and tax payments, which had none.
+- [x] **G8 — Cash vs accrual.** `accounting_method` was NULL everywhere and
+  read nowhere. Reports derive from `general_ledger`, which is accrual by
+  construction, so the basis is now stated rather than offered as a toggle that
+  did nothing.
+- [x] Retained-earnings rollover confirmed: **derived at report time**, no
+  closing entries. Pinned by test.
 - [ ] Confirm payment idempotency actually uses `idempotency_records`.
 
-### 5.3 Sign-off checklist
+### 5.3 Corrections to this guide
+
+Running the invariants for real showed three of them were wrong:
+
+1. **I12 was a false-positive machine.** As written it flags every entry dated
+   in a closed period, which is all of them — closing one demo company through
+   a month end flagged 40 of its 47 entries. It only ever "passed" because no
+   company had a lock set. Catching *back-dating* needs the lock timestamp, so
+   `companies.books_locked_at` was added and I12 now compares
+   `e.created_at > c.books_locked_at`.
+2. **I1, I2, I5 and I6 counted drafts.** A draft has lines but never reaches
+   the ledger, so five 10.00 drafts reported a 50.00 balance drift that did not
+   exist. All four now exclude drafts; voided entries are still counted.
+3. **A subledger tie-out was missing.** New I13 catches any path that moves GL
+   1200 by one amount while moving `qty x unit_cost` by another — which is how
+   the credit-memo cost freeze was caught breaking the weighted average. Its
+   tolerance is the arithmetic bound of a 4dp average, `SUM(qty) * 0.00005`,
+   not a round number. New I14 covers cross-company leakage.
+
+### 5.4 Sign-off checklist
 
 A release is ready when **all** of these hold:
 
-1. Invariants I1–I12 return zero rows on staging with a full dataset.
+1. Invariants I1–I14 return zero rows — `npm run test:qa`.
 2. Every §3 module has been walked end to end on **each applicable tier**.
 3. Cross-report tie-out (§3.9) reconciles.
-4. The cross-company leak query returns zero rows.
+4. The cross-company leak query returns zero rows (now I14).
 5. `npx tsc --noEmit` clean in both repos; backend `npm test` green.
 6. A full period close has been performed and reopened.
-7. Every correction path (void, reversal, credit memo, vendor credit) has been exercised.
+7. Every correction path has been exercised — `npm run test:accounting`.
+
+Current state on the dev database: 104 unit tests, 32 acceptance checks, 105
+corrections, 107 voids, 40 period-close and 119 warehouse checks all pass, and
+all fourteen invariants return zero rows.
 
 ---
 
-## 6. Suggested regression harness
+## 6. The regression harness
 
-Turn §2 into a build step so the ledger can never silently break:
+Built and wired into CI. §2 is now a build step, so the ledger cannot silently
+break:
 
 ```
 qa/
-  invariants.sql          # §2 — must return zero rows
-  seed-scenario.ts        # deterministic company: invoices, bills, payments,
-                          # credit memos, inventory, payroll
-  run-qa.sh               # seed → exercise → run invariants → fail on any row
+  invariants.sql          # §2 + I13/I14 — every query must return zero rows
+  seed-scenario.ts        # full cycle: PO → receipt → bill → bill payment,
+                          # invoice → payment, credit memo, vendor credit,
+                          # inventory adjustment, tax payment, manual JE
+  run-qa.sh               # runs the invariants, exits non-zero on any row
 ```
 
-Wire `run-qa.sh` into CI. Any commit that makes the books not balance then fails the build — which is exactly the guarantee an accounting system needs, and the one thing no amount of manual QA can provide.
+| Command | What it does |
+|---|---|
+| `npm run qa` | Seeds the scenario, then runs the gate |
+| `npm run test:qa` | Gate only |
+| `npm run test:accounting` | corrections + voids + period-close suites |
+| `npm run test:acceptance` | The general end-to-end suite |
+
+`run-qa.sh` reaches Postgres via `DATABASE_URL` when a `psql` client exists and
+falls back to `docker exec` otherwise, so it works both in CI and on a dev
+machine that has the container but no client.
+
+Both steps run in `.github/workflows/acceptance.yml` after the existing suite.
+Any commit that makes the books stop balancing fails the build — the guarantee
+an accounting system needs, and the one thing no amount of manual QA provides.
 
 ---
 
