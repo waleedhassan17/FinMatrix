@@ -199,13 +199,11 @@ export const validateInventoryItem = (
     errors.sellingPrice = 'Enter a valid price';
   }
 
-  // Quantity
-  const qty = parseFloat(data.quantityOnHand);
-  if (!data.quantityOnHand.trim()) {
-    errors.quantityOnHand = 'Quantity is required';
-  } else if (isNaN(qty) || qty < 0) {
-    errors.quantityOnHand = 'Enter a valid quantity';
-  }
+  // Quantity is deliberately NOT validated here, because it is no longer
+  // entered here. It used to be a required field that the API silently
+  // discarded — the form demanded a number, reported success, and saved zero.
+  // Stock now only arrives through a path that posts a journal entry:
+  // a Purchase Order receipt, an Opening Stock entry, or a Stock Adjustment.
 
   return errors;
 };

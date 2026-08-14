@@ -198,7 +198,6 @@ const InventoryFormScreen: React.FC = () => {
               costMethod: form.costMethod as any,
               unitCost: numVal(form.unitCost),
               sellingPrice: numVal(form.sellingPrice),
-              quantityOnHand: numVal(form.quantityOnHand),
               reorderPoint: numVal(form.reorderPoint),
               reorderQuantity: numVal(form.reorderQuantity),
               minStock: numVal(form.minStock),
@@ -224,7 +223,6 @@ const InventoryFormScreen: React.FC = () => {
             costMethod: form.costMethod as any,
             unitCost: numVal(form.unitCost),
             sellingPrice: numVal(form.sellingPrice),
-            quantityOnHand: numVal(form.quantityOnHand),
             quantityOnOrder: 0,
             quantityCommitted: 0,
             reorderPoint: numVal(form.reorderPoint),
@@ -370,14 +368,25 @@ const InventoryFormScreen: React.FC = () => {
           {renderSectionHeader('stock', '📊  Stock')}
           {!collapsed.stock && (
             <View style={styles.sectionBody}>
-              <CustomInput
-                label="Quantity on Hand *"
-                value={form.quantityOnHand}
-                onChangeText={val => updateField('quantityOnHand', val)}
-                placeholder="0"
-                keyboardType="numeric"
-                error={errors.quantityOnHand}
-              />
+              {/*
+                Quantity is NOT editable here, and never was — the API has no
+                such field on create or update, so the old input was silently
+                discarded: you typed 100, got "created successfully", and the
+                item had 0. Stock only moves through paths that post a journal
+                entry: a Purchase Order receipt, an Opening Stock entry for
+                day-one stock, or a Stock Adjustment to correct a count.
+              */}
+              {isEdit ? (
+                <View style={styles.readOnlyRow}>
+                  <Text style={styles.readOnlyLabel}>Quantity on Hand</Text>
+                  <Text style={styles.readOnlyValue}>{form.quantityOnHand || '0'}</Text>
+                </View>
+              ) : null}
+              <Text style={styles.fieldHelp}>
+                {isEdit
+                  ? 'Use Stock Adjustment on the item to correct this quantity — it posts the matching journal entry.'
+                  : 'New items start at zero. Add stock with a Purchase Order, or record what you already own with Opening Stock.'}
+              </Text>
               <CustomInput
                 label="Reorder Point"
                 value={form.reorderPoint}
@@ -557,6 +566,26 @@ const InventoryFormScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
+
+  // Stock is shown, never typed — it only moves through a posting path.
+  readOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  readOnlyLabel: { color: colors.textSecondary, fontSize: 14 },
+  readOnlyValue: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
+  fieldHelp: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: spacing.sm,
+  },
   form: {
     padding: spacing.lg,
   },

@@ -14,6 +14,7 @@ import {
   createInventoryItemAPI,
   updateInventoryItemAPI,
   adjustStockAPI,
+  setOpeningStockAPI,
   toggleInventoryItemAPI,
 } from '../../../networks/inventory/inventoryNetwork';
 import {
@@ -141,6 +142,24 @@ export const inventoryListSlice = createAppSlice({
         },
       },
     ),
+    // Day-one stock. Separate from adjustStock on purpose: an adjustment is a
+    // correction and hits shrinkage 6400, whereas opening stock is a balance
+    // sheet event and hits Opening Balance Equity 3900, leaving the P&L alone.
+    setOpeningStock: create.asyncThunk(
+      async (arg: { itemId: string; quantity: number; notes?: string }) =>
+        setOpeningStockAPI(arg.itemId, {
+          quantity: String(arg.quantity),
+          notes: arg.notes,
+        }),
+      {
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const item = inventorySingleSerializer(action.payload?.item ?? action.payload);
+          if (!item) return;
+          const idx = state.items.findIndex(i => i.itemId === item.itemId);
+          if (idx !== -1) state.items[idx] = item;
+        },
+      },
+    ),
     // newQty is the absolute target quantity, not a delta — see adjustStockAPI.
     // The endpoint answers { item, adjustment, movement }, so fulfilled has to
     // unwrap the envelope; feeding the whole thing to the serializer is why a
@@ -206,6 +225,7 @@ export const {
   createInventoryItem,
   editInventoryItem,
   adjustStock,
+  setOpeningStock,
   toggleInventoryItem,
 } = inventoryListSlice.actions;
 

@@ -27,6 +27,7 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
   adjustStock,
+  setOpeningStock,
   toggleInventoryItem,
 } from '../InventoryList/inventoryListSlice';
 import {
@@ -90,6 +91,53 @@ const InventoryDetailScreen: React.FC = () => {
   const handleEdit = useCallback(() => {
     if (item) navigation.navigate('InventoryForm', { itemId: item.itemId });
   }, [item, navigation]);
+
+  // Opening stock: what was already on the shelf when the company started using
+  // FinMatrix. Offered only while the item has never held stock — after that a
+  // correction is an adjustment, and the server enforces the same rule.
+  const handleOpeningStock = useCallback(() => {
+    if (!item) return;
+    if (!Alert.prompt) {
+      Alert.alert(
+        'Opening Stock',
+        'Recording opening stock needs text entry, which this platform does not support in a dialog. Use a Purchase Order to bring the stock in instead.',
+      );
+      return;
+    }
+    Alert.prompt(
+          'Opening Stock',
+          `How many ${item.name} did you already own?\n\nThis records existing stock against Opening Balance Equity. It does not affect profit.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Record',
+              onPress: async (val?: string) => {
+                const qty = parseFloat(val ?? '');
+                if (isNaN(qty) || qty <= 0) return;
+                try {
+                  await dispatch(
+                    setOpeningStock({ itemId: item.itemId, quantity: qty, notes: 'Opening stock' }),
+                  ).unwrap();
+                  Toast.show({
+                    type: 'success',
+                    text1: 'Opening stock recorded',
+                    text2: `${item.name}: ${qty} on hand`,
+                  });
+                } catch (e: any) {
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Could not record opening stock',
+                    text2: e?.message || 'Please try again.',
+                  });
+                }
+              },
+            },
+          ],
+          'plain-text',
+          '',
+          'numeric',
+        );
+  }, [item, dispatch]);
 
   const handleAdjust = useCallback(() => {
     if (!item) return;
@@ -267,6 +315,12 @@ const InventoryDetailScreen: React.FC = () => {
 
         {/* ── Action Buttons ── */}
         <View style={styles.actionRow}>
+          {item.quantityOnHand === 0 ? (
+            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={handleOpeningStock}>
+              <Text style={styles.actionBtnIcon}>🏷️</Text>
+              <Text style={styles.actionBtnText}>Opening</Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={handleAdjust}>
             <Text style={styles.actionBtnIcon}>📊</Text>
             <Text style={styles.actionBtnText}>Adjust</Text>

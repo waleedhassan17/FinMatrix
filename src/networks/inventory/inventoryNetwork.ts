@@ -73,6 +73,23 @@ export const adjustStockAPI = async (
   }
 };
 
+// Records stock the company already owned before it started using FinMatrix.
+// Posts Dr Inventory 1200 / Cr Opening Balance Equity 3900 — no vendor, no
+// payable, and no P&L movement, which is why this exists instead of letting
+// people type an opening quantity onto the item form. One-time per item; the
+// server refuses a second call and points at Stock Adjustment.
+export const setOpeningStockAPI = async (
+  id: string,
+  data: { quantity: string; asOfDate?: string; notes?: string },
+): Promise<any> => {
+  try {
+    const response = await api.post(`/inventory/items/${id}/opening-stock`, data);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
 // CreatePhysicalCountDto wants `lines`, not `counts`, and CountLineDto.countedQty
 // is @IsNumberString. Both were wrong here — the field name 400'd as "lines must
 // be an array" and a numeric countedQty was rejected by the ValidationPipe. This
