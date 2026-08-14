@@ -274,7 +274,7 @@ const InventoryDetailScreen: React.FC = () => {
         {activeTab === 'stock' && (
           <View style={styles.infoCard}>
             {[
-              { label: 'Cost Method', value: item.costMethod },
+              { label: 'Cost Method', value: 'Weighted Average' },
               { label: 'Unit Cost', value: formatCurrency(item.unitCost) },
               { label: 'Selling Price', value: formatCurrency(item.sellingPrice) },
               { label: 'Markup', value: item.unitCost > 0 ? `${(((item.sellingPrice - item.unitCost) / item.unitCost) * 100).toFixed(1)}%` : '—' },

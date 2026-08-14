@@ -122,10 +122,17 @@ export const UOM_OPTIONS = [
   { label: 'Cartridge', value: 'Cartridge' },
 ];
 
+/**
+ * Weighted average is the only costing method the backend implements, and the
+ * only value its API accepts.
+ *
+ * These options used to send 'FIFO' / 'LIFO' / 'Weighted Average' — none of
+ * which match the API enum ('average'), so every item create and edit from
+ * this form was rejected with a 400. The form also defaulted to FIFO, so it
+ * failed on every submission.
+ */
 export const COST_METHOD_OPTIONS = [
-  { label: 'FIFO', value: 'FIFO' },
-  { label: 'LIFO', value: 'LIFO' },
-  { label: 'Weighted Average', value: 'Weighted Average' },
+  { label: 'Weighted Average', value: 'average' },
 ];
 
 export const LOCATION_OPTIONS = [

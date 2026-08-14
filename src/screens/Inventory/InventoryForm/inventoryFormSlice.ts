@@ -22,7 +22,9 @@ const initialFormData: InventoryFormData = {
   description: '',
   category: '',
   unitOfMeasure: 'Unit',
-  costMethod: 'FIFO',
+  // 'average' is the only value the API accepts; the old 'FIFO' default made
+  // every create/edit fail validation with a 400.
+  costMethod: 'average',
   unitCost: '',
   sellingPrice: '',
   quantityOnHand: '',
