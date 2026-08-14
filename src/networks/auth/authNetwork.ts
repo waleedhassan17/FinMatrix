@@ -338,7 +338,8 @@ export interface CreateCompanyData {
   website?: string;
   taxId?: string;
   fiscalYearStartMonth?: number;
-  accountingMethod?: string;
+  // accountingMethod removed: reports are accrual-basis only and the server
+  // now sets the field itself. Nothing here ever sent it.
   homeCurrency?: string;
   logo?: string;
 }
