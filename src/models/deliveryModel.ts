@@ -9,7 +9,11 @@
 
 // ─── Type Definitions ────────────────────────────────
 
-export type DeliveryRecordStatus = 'unassigned' | 'pending' | 'picked_up' | 'in_transit' | 'arrived' | 'delivered' | 'failed' | 'returned';
+// Mirrors the backend DeliveryStatus enum exactly. 'cancelled' was missing,
+// which is why the admin cancel action wrote 'failed' — a different terminal
+// state that the server distinguishes and that routes the delivery into the
+// wrong admin queues.
+export type DeliveryRecordStatus = 'unassigned' | 'pending' | 'picked_up' | 'in_transit' | 'arrived' | 'delivered' | 'failed' | 'returned' | 'cancelled';
 export type DeliveryPriority = 'high' | 'medium' | 'low';
 export type InventoryUpdateRequestStatus = 'pending' | 'approved' | 'rejected';
 export type ShadowInventoryStatus = 'pending' | 'synced' | 'rejected';
@@ -222,6 +226,7 @@ export const DELIVERY_STATUS_LABELS: Record<DeliveryRecordStatus, string> = {
   delivered: 'Delivered',
   failed: 'Failed',
   returned: 'Returned',
+  cancelled: 'Cancelled',
 };
 
 export const DELIVERY_STATUS_COLORS: Record<DeliveryRecordStatus, string> = {
@@ -233,6 +238,9 @@ export const DELIVERY_STATUS_COLORS: Record<DeliveryRecordStatus, string> = {
   delivered: '#00875A',
   failed: '#DE350B',
   returned: '#5E6C84',
+  // Matches theme.ts's existing cancelled entry (neutral, not an error red —
+  // a cancellation is a deliberate admin action, not a delivery failure).
+  cancelled: '#94A3B8',
 };
 
 export const DELIVERY_PRIORITY_LABELS: Record<DeliveryPriority, string> = {

@@ -26,6 +26,7 @@ import {
   assignDeliveriesAPI,
   createDeliveryAPI,
   getShadowInventoryAPI,
+  updateDeliveryStatusAPI,
 } from '../../../../networks/delivery/deliveryNetwork';
 import {
   deliveryListSerializer,
@@ -279,51 +280,85 @@ export const deliverySlice = createAppSlice({
       if (n) n.isRead = true;
     }),
 
-    reassignDelivery: create.reducer(
-      (state, action: PayloadAction<{ deliveryId: string; personnelId: string }>) => {
-        const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
-        if (!delivery) return;
-        const now = new Date().toISOString();
-        const person = state.deliveryPersonnel.find(p => p.userId === action.payload.personnelId);
-        delivery.assignedTo = action.payload.personnelId;
-        delivery.assignedAt = now;
-        delivery.status = 'pending';
-        delivery.updatedAt = now;
-        if (!delivery.statusHistory) delivery.statusHistory = [];
-        delivery.statusHistory.push({
-          status: 'pending',
-          timestamp: now,
-          note: `Reassigned to ${person?.displayName ?? action.payload.personnelId}`,
-          updatedBy: 'admin',
-        } as StatusHistoryEntry);
-        const loadMap = buildLoadMap(state.deliveries);
-        state.deliveryPersonnel = state.deliveryPersonnel.map(p => ({
-          ...p,
-          currentLoad: loadMap[p.userId] ?? 0,
-        }));
+    // Reassign and cancel were local-only reducers: they mutated state, the
+    // screen alerted "successfully", and nothing was ever sent to the server —
+    // the next fetchDeliveries() silently undid both. Cancel was the worse of
+    // the two, because the backend restocks and reverses Goods in Transit on
+    // cancel; never calling it left the dispatched units off the shelf and
+    // their value parked in 1250 indefinitely.
+    reassignDelivery: create.asyncThunk(
+      async (payload: { deliveryId: string; personnelId: string }) => {
+        // The assign endpoint handles reassignment of an already-assigned
+        // delivery (it sets personnelId unconditionally, does not re-commit
+        // stock) and notifies the new rider, which a bare PATCH does not.
+        await assignDeliveriesAPI({
+          deliveryIds: [payload.deliveryId],
+          personnelId: payload.personnelId,
+        });
+        return payload;
+      },
+      {
+        fulfilled: (state, action) => {
+          const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
+          if (!delivery) return;
+          const now = new Date().toISOString();
+          const person = state.deliveryPersonnel.find(
+            p => p.userId === action.payload.personnelId,
+          );
+          delivery.assignedTo = action.payload.personnelId;
+          delivery.assignedAt = now;
+          // The status is NOT forced to 'pending' here. The server only moves
+          // an unassigned/pending delivery, and rewinding one that is already
+          // in transit is exactly the transition its state machine rejects.
+          delivery.updatedAt = now;
+          if (!delivery.statusHistory) delivery.statusHistory = [];
+          delivery.statusHistory.push({
+            status: delivery.status,
+            timestamp: now,
+            note: `Reassigned to ${person?.displayName ?? action.payload.personnelId}`,
+            updatedBy: 'admin',
+          } as StatusHistoryEntry);
+          const loadMap = buildLoadMap(state.deliveries);
+          state.deliveryPersonnel = state.deliveryPersonnel.map(p => ({
+            ...p,
+            currentLoad: loadMap[p.userId] ?? 0,
+          }));
+        },
       },
     ),
 
-    cancelDelivery: create.reducer(
-      (state, action: PayloadAction<{ deliveryId: string; reason?: string }>) => {
-        const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
-        if (!delivery) return;
-        const now = new Date().toISOString();
-        delivery.status = 'failed';
-        delivery.notes = action.payload.reason ?? 'Cancelled by admin';
-        delivery.updatedAt = now;
-        if (!delivery.statusHistory) delivery.statusHistory = [];
-        delivery.statusHistory.push({
-          status: 'failed',
-          timestamp: now,
-          note: action.payload.reason ?? 'Cancelled by admin',
-          updatedBy: 'admin',
-        } as StatusHistoryEntry);
-        const loadMap = buildLoadMap(state.deliveries);
-        state.deliveryPersonnel = state.deliveryPersonnel.map(p => ({
-          ...p,
-          currentLoad: loadMap[p.userId] ?? 0,
-        }));
+    cancelDelivery: create.asyncThunk(
+      async (payload: { deliveryId: string; reason?: string }) => {
+        // 'cancelled', not 'failed' — they are distinct states in the backend
+        // enum, and the server records the reason as cancelReason, writes the
+        // status-history row, and fires the restock + ledger reversal.
+        await updateDeliveryStatusAPI(payload.deliveryId, {
+          status: 'cancelled',
+          notes: payload.reason ?? 'Cancelled by admin',
+        });
+        return payload;
+      },
+      {
+        fulfilled: (state, action) => {
+          const delivery = state.deliveries.find(d => d.id === action.payload.deliveryId);
+          if (!delivery) return;
+          const now = new Date().toISOString();
+          delivery.status = 'cancelled';
+          delivery.notes = action.payload.reason ?? 'Cancelled by admin';
+          delivery.updatedAt = now;
+          if (!delivery.statusHistory) delivery.statusHistory = [];
+          delivery.statusHistory.push({
+            status: 'cancelled',
+            timestamp: now,
+            note: action.payload.reason ?? 'Cancelled by admin',
+            updatedBy: 'admin',
+          } as StatusHistoryEntry);
+          const loadMap = buildLoadMap(state.deliveries);
+          state.deliveryPersonnel = state.deliveryPersonnel.map(p => ({
+            ...p,
+            currentLoad: loadMap[p.userId] ?? 0,
+          }));
+        },
       },
     ),
 
@@ -546,13 +581,14 @@ export const deliverySlice = createAppSlice({
     selectDeliverySummary: createSelector(
       [(state: DeliverySliceState) => state.deliveries],
       deliveries => {
-        let total = deliveries.length;
+        const total = deliveries.length;
         let pending = 0;
         let inTransit = 0;
         let delivered = 0;
         let failed = 0;
         let returned = 0;
         let unassigned = 0;
+        let cancelled = 0;
         for (const d of deliveries) {
           switch (d.status) {
             case 'pending': pending++; break;
@@ -561,9 +597,10 @@ export const deliverySlice = createAppSlice({
             case 'failed': failed++; break;
             case 'returned': returned++; break;
             case 'unassigned': unassigned++; break;
+            case 'cancelled': cancelled++; break;
           }
         }
-        return { total, pending, inTransit, delivered, failed, returned, unassigned };
+        return { total, pending, inTransit, delivered, failed, returned, unassigned, cancelled };
       },
     ),
   },
