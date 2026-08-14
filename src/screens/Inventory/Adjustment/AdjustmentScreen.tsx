@@ -59,7 +59,7 @@ const AdjustmentScreen: React.FC = () => {
   // ── Form state ──────────────────────────────────
   const [selectedItemId, setSelectedItemId] = useState(preselectedId ?? '');
   const [newQty, setNewQty] = useState('');
-  const [reason, setReason] = useState<string>('');
+  const [reason, setReason] = useState<AdjustmentReason | ''>('');
   const [reference, setReference] = useState(generateAdjustmentRef());
   const [date] = useState(new Date().toISOString());
   const [notes, setNotes] = useState('');
@@ -67,7 +67,11 @@ const AdjustmentScreen: React.FC = () => {
 
   const selectedItem = items.find(i => i.itemId === selectedItemId);
   const currentQty = selectedItem?.quantityOnHand ?? 0;
-  const parsedNewQty = parseInt(newQty, 10);
+  // parseFloat, not parseInt: quantity_on_hand is numeric(18,4), so truncating
+  // to an integer here would silently adjust to the wrong number.
+  const parsedNewQty = parseFloat(newQty);
+  // Display only. The API takes the absolute newQty and derives the variance
+  // itself — this figure is never sent.
   const adjustmentQty = isNaN(parsedNewQty) ? 0 : parsedNewQty - currentQty;
 
   // ── Validation ──────────────────────────────────
@@ -89,10 +93,17 @@ const AdjustmentScreen: React.FC = () => {
     }
     setIsSaving(true);
     try {
-      await dispatch(adjustStock({ itemId: selectedItemId, quantityChange: adjustmentQty })).unwrap();
+      const result = await dispatch(
+        adjustStock({
+          itemId: selectedItemId,
+          newQty: parsedNewQty,
+          reason: reason as AdjustmentReason,
+          notes: notes.trim() || undefined,
+        }),
+      ).unwrap();
 
       addAdjustment({
-        id: `adj-${Date.now()}`,
+        id: result?.adjustment?.id ?? `adj-${Date.now()}`,
         itemId: selectedItemId,
         itemName: selectedItem!.name,
         itemSku: selectedItem!.sku,
@@ -104,7 +115,10 @@ const AdjustmentScreen: React.FC = () => {
         notes,
         date,
         performedBy: 'Admin',
-        journalEntryId: `je-adj-${Date.now()}`,
+        // The real entry the backend posted. A zero-value variance posts none,
+        // so this is legitimately undefined sometimes — better than the
+        // `je-adj-${Date.now()}` placeholder, which was always fiction.
+        journalEntryId: result?.adjustment?.journalEntryId ?? undefined,
       });
 
       Alert.alert(
@@ -112,8 +126,8 @@ const AdjustmentScreen: React.FC = () => {
         `${selectedItem!.name}: ${currentQty} → ${parsedNewQty} (${adjustmentQty > 0 ? '+' : ''}${adjustmentQty})`,
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
-    } catch {
-      Alert.alert('Error', 'Failed to save adjustment.');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Failed to save adjustment.');
     } finally {
       setIsSaving(false);
     }
@@ -197,7 +211,9 @@ const AdjustmentScreen: React.FC = () => {
             label="Reason *"
             options={ADJUSTMENT_REASONS.map(r => ({ label: r.label, value: r.value }))}
             value={reason}
-            onChange={setReason}
+            // The dropdown is typed for plain strings, but every option value
+            // here comes from ADJUSTMENT_REASONS, so it is always a valid code.
+            onChange={v => setReason(v as AdjustmentReason)}
             placeholder="Select reason…"
           />
 

@@ -8,6 +8,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { InventoryItemData } from '../../../models/inventoryModel';
+import type { AdjustmentReason } from '../../../models/adjustmentModel';
 import {
   getInventoryItemsAPI,
   createInventoryItemAPI,
@@ -140,12 +141,25 @@ export const inventoryListSlice = createAppSlice({
         },
       },
     ),
+    // newQty is the absolute target quantity, not a delta — see adjustStockAPI.
+    // The endpoint answers { item, adjustment, movement }, so fulfilled has to
+    // unwrap the envelope; feeding the whole thing to the serializer is why a
+    // successful adjustment never updated the list.
     adjustStock: create.asyncThunk(
-      async ({ itemId, quantityChange }: { itemId: string; quantityChange: number }) =>
-        adjustStockAPI(itemId, quantityChange),
+      async ({
+        itemId,
+        newQty,
+        reason,
+        notes,
+      }: {
+        itemId: string;
+        newQty: number;
+        reason: AdjustmentReason;
+        notes?: string;
+      }) => adjustStockAPI(itemId, { itemId, newQty: String(newQty), reason, notes }),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
-          const item = inventorySingleSerializer(action.payload);
+          const item = inventorySingleSerializer(action.payload?.item ?? action.payload);
           if (!item) return;
           const idx = state.items.findIndex(i => i.itemId === item.itemId);
           if (idx !== -1) state.items[idx] = item;

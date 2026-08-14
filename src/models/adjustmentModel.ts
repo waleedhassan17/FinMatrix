@@ -6,15 +6,30 @@
 // Adjustment / Physical-Count screens until they are migrated to
 // dispatch fetch thunks.
 
+// The VALUE is the code AdjustQuantityDto accepts; the LABEL is what the user
+// reads. These were Title Case UI strings that the API had never accepted —
+// 'Return'/'Received' are rejected outright, and 'correction'/'obsolescence'
+// could not be expressed at all.
+//
+// 'reversal' is deliberately absent: the backend writes it itself from
+// reverseAdjustment() and uses it as the marker that stops a reversal being
+// reversed again, so it must never be selectable here.
 export type AdjustmentReason =
-  | 'Physical Count'
-  | 'Damage'
-  | 'Theft'
-  | 'Return'
-  | 'Received'
-  | 'Other';
+  | 'physical_count'
+  | 'damage'
+  | 'theft'
+  | 'correction'
+  | 'obsolescence'
+  | 'other';
 
-export const ADJUSTMENT_REASONS: { label: string; value: AdjustmentReason }[] = [];
+export const ADJUSTMENT_REASONS: { label: string; value: AdjustmentReason }[] = [
+  { label: 'Physical Count', value: 'physical_count' },
+  { label: 'Damage', value: 'damage' },
+  { label: 'Theft', value: 'theft' },
+  { label: 'Correction', value: 'correction' },
+  { label: 'Obsolescence', value: 'obsolescence' },
+  { label: 'Other', value: 'other' },
+];
 
 export interface AdjustmentRecord {
   id: string;

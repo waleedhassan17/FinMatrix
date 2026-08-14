@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { api, extractErrorMessage } from '../network/apiHelpers';
+import type { AdjustmentReason } from '../../models/adjustmentModel';
 
 export interface InventoryQueryParams {
   search?: string;
@@ -51,7 +52,19 @@ export const updateInventoryItemAPI = async (id: string, data: any): Promise<any
   }
 };
 
-export const adjustStockAPI = async (id: string, data: number | { newQuantity: number; reason: string; reference?: string; notes?: string }): Promise<any> => {
+// AdjustQuantityDto: newQty is the ABSOLUTE target quantity as a numeric
+// string (@IsNumberString), not a delta — the service derives the variance
+// itself. The old `number | { newQuantity ... }` union let callers post a bare
+// scalar that axios sent as raw JSON, and named the field `newQuantity`, which
+// the API has never accepted. Both arms 400'd; the union is what let them
+// type-check.
+//
+// referenceNum is intentionally not sent: the DTO validates it @IsUUID() while
+// the column is varchar(64), and adjust() never persists it anyway.
+export const adjustStockAPI = async (
+  id: string,
+  data: { itemId: string; newQty: string; reason: AdjustmentReason; notes?: string },
+): Promise<any> => {
   try {
     const response = await api.post(`/inventory/items/${id}/adjust`, data);
     return response.data;
@@ -60,7 +73,11 @@ export const adjustStockAPI = async (id: string, data: number | { newQuantity: n
   }
 };
 
-export const physicalCountAPI = async (data: { countDate: string; counts: Array<{ itemId: string; countedQty: number }>; notes?: string }): Promise<any> => {
+// CreatePhysicalCountDto wants `lines`, not `counts`, and CountLineDto.countedQty
+// is @IsNumberString. Both were wrong here — the field name 400'd as "lines must
+// be an array" and a numeric countedQty was rejected by the ValidationPipe. This
+// function had no caller until now, so nothing surfaced it.
+export const physicalCountAPI = async (data: { countDate: string; lines: Array<{ itemId: string; countedQty: string }>; notes?: string }): Promise<any> => {
   try {
     const response = await api.post('/inventory/physical-counts', data);
     return response.data;
