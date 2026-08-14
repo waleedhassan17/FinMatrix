@@ -13,6 +13,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
+import Toast from 'react-native-toast-message';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -100,10 +101,42 @@ const InventoryDetailScreen: React.FC = () => {
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Adjust',
-              onPress: (val?: string) => {
-                const change = parseInt(val ?? '', 10);
-                if (!isNaN(change)) {
-                  dispatch(adjustStock({ itemId: item.itemId, quantityChange: change }));
+              onPress: async (val?: string) => {
+                const change = parseFloat(val ?? '');
+                if (isNaN(change) || change === 0) return;
+                // The prompt collects a +/- change, but the API takes the
+                // absolute target and derives the variance itself.
+                const target = item.quantityOnHand + change;
+                if (target < 0) {
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Not enough stock',
+                    text2: `Only ${item.quantityOnHand} on hand — cannot reduce by ${Math.abs(change)}.`,
+                  });
+                  return;
+                }
+                try {
+                  await dispatch(
+                    adjustStock({
+                      itemId: item.itemId,
+                      newQty: target,
+                      // This quick action has no reason picker; a manual
+                      // tweak from the detail screen is a correction.
+                      reason: 'correction',
+                      notes: 'Quick adjustment from item detail',
+                    }),
+                  ).unwrap();
+                  Toast.show({
+                    type: 'success',
+                    text1: 'Stock adjusted',
+                    text2: `${item.name}: ${item.quantityOnHand} → ${target}`,
+                  });
+                } catch (e: any) {
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Adjustment failed',
+                    text2: e?.message || 'Please try again.',
+                  });
                 }
               },
             },

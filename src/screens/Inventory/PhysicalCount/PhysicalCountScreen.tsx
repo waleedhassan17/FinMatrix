@@ -23,16 +23,12 @@ import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
-  adjustStock,
   fetchInventoryItems,
 } from '../InventoryList/inventoryListSlice';
+import { physicalCountAPI } from '../../../networks/inventory/inventoryNetwork';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
-import {
-  addAdjustment,
-  generateAdjustmentRef,
-  type AdjustmentReason,
-} from '../../../models/adjustmentModel';
+import { addAdjustment, generateAdjustmentRef } from '../../../models/adjustmentModel';
 import { CATEGORY_OPTIONS, LOCATION_OPTIONS } from '../../../models/inventoryModel';
 import type { InventoryItemData } from '../../../models/inventoryModel';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
@@ -91,18 +87,24 @@ const PhysicalCountScreen: React.FC = () => {
   const totalCount = countLines.length;
   const progressPct = totalCount > 0 ? Math.round((countedCount / totalCount) * 100) : 0;
 
-  const varianceLines = useMemo(
+  // Every line the user actually entered a number for. The whole set is
+  // submitted — a physical count is a record of what was counted, including
+  // the lines that matched. The backend only raises an adjustment where the
+  // variance is non-zero.
+  const countedLines = useMemo(
     () =>
       countLines
-        .filter(l => {
-          const counted = parseInt(l.countQty, 10);
-          return !isNaN(counted) && counted !== l.systemQty;
-        })
-        .map(l => {
-          const counted = parseInt(l.countQty, 10);
-          return { ...l, counted, variance: counted - l.systemQty };
-        }),
+        .map(l => ({ ...l, counted: parseFloat(l.countQty) }))
+        .filter(l => !isNaN(l.counted)),
     [countLines],
+  );
+
+  const varianceLines = useMemo(
+    () =>
+      countedLines
+        .filter(l => l.counted !== l.systemQty)
+        .map(l => ({ ...l, variance: l.counted - l.systemQty })),
+    [countedLines],
   );
 
   // ── Step transitions ────────────────────────────
@@ -154,26 +156,41 @@ const PhysicalCountScreen: React.FC = () => {
           text: 'Adjust All',
           onPress: async () => {
             setIsSaving(true);
+            const countDate = new Date().toISOString().split('T')[0];
             try {
-              for (const line of varianceLines) {
-                await dispatch(
-                  adjustStock({ itemId: line.itemId, quantityChange: line.variance }),
-                ).unwrap();
+              // One atomic POST instead of a per-line loop of adjustments.
+              // The old loop was N round-trips with no rollback, so a failure
+              // partway left the count half-applied; and it sent a delta to an
+              // endpoint that wants an absolute quantity. The backend reconciles
+              // every line, raises an adjustment for each non-zero variance, and
+              // posts the GL entries in a single transaction.
+              const result = await physicalCountAPI({
+                countDate,
+                lines: countedLines.map(l => ({
+                  itemId: l.itemId,
+                  countedQty: String(l.counted),
+                })),
+                notes: `Physical count ${countDate}`,
+              });
 
+              // Mirror the adjustments the server actually created, keyed by
+              // item, so the local cache carries real ids instead of invented ones.
+              const savedLines: any[] = result?.data?.lines ?? result?.lines ?? [];
+              for (const line of varianceLines) {
+                const saved = savedLines.find(s => s?.itemId === line.itemId);
                 addAdjustment({
-                  id: `adj-${Date.now()}-${line.itemId}`,
+                  id: saved?.adjustmentId ?? `adj-${Date.now()}-${line.itemId}`,
                   itemId: line.itemId,
                   itemName: line.name,
                   itemSku: line.sku,
                   previousQty: line.systemQty,
                   newQty: line.counted,
                   adjustmentQty: line.variance,
-                  reason: 'Physical Count' as AdjustmentReason,
+                  reason: 'physical_count',
                   reference: generateAdjustmentRef(),
                   notes: 'Batch adjustment from physical count',
                   date: new Date().toISOString(),
                   performedBy: 'Admin',
-                  journalEntryId: `je-pc-${Date.now()}-${line.itemId}`,
                 });
               }
 
@@ -184,8 +201,8 @@ const PhysicalCountScreen: React.FC = () => {
                 `${varianceLines.length} item(s) adjusted successfully.`,
                 [{ text: 'OK', onPress: () => navigation.goBack() }],
               );
-            } catch {
-              Alert.alert('Error', 'Some adjustments failed. Please review.');
+            } catch (e: any) {
+              Alert.alert('Error', e?.message || 'The physical count could not be saved.');
             } finally {
               setIsSaving(false);
             }
