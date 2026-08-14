@@ -40,22 +40,31 @@ import { updateDeliveryAPI } from '../../../../networks/delivery/deliveryNetwork
 type Props = NativeStackScreenProps<MoreStackParamList, 'AdminDeliveryDetail'>;
 
 // ── Constants ────────────────────────────────────────────────────────────────
+// Every status the backend can return needs an entry here, or the header badge
+// renders "undefined <status>". picked_up, arrived and cancelled were all
+// reachable and all missing.
 const STATUS_COLORS: Record<string, string> = {
   unassigned: '#64748B',
   pending: '#FF8B00',
+  picked_up: '#0065FF',
   in_transit: '#2563EB',
+  arrived: '#6554C0',
   delivered: '#059669',
   failed: '#DE350B',
   returned: '#EA580C',
+  cancelled: '#94A3B8',
 };
 
 const STATUS_ICONS: Record<string, string> = {
   unassigned: '⚪',
   pending: '🟡',
+  picked_up: '🔷',
   in_transit: '🔵',
+  arrived: '🟣',
   delivered: '🟢',
   failed: '🔴',
   returned: '🟠',
+  cancelled: '⚫',
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -79,6 +88,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [manualLat, setManualLat] = useState('');
   const [manualLng, setManualLng] = useState('');
   const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const assignedPerson = allPersonnel.find(p => p.userId === delivery?.assignedTo);
 
   const personnelOptions = useMemo(
@@ -123,23 +133,55 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const statusColor = STATUS_COLORS[delivery.status] ?? '#64748B';
 
+  // The server's status machine treats these as terminal and rejects any
+  // transition out of them. The assign endpoint has no such guard, though —
+  // it would happily swap the rider on a completed delivery — so the gate
+  // has to be here.
+  const isTerminal = ['delivered', 'failed', 'returned', 'cancelled'].includes(delivery.status);
+
   // ── Handlers ────────────────────────────────────────────────────────────
-  const handleReassign = () => {
+  // Both handlers await the API and only report success once the server has
+  // confirmed. They used to dispatch a local-only reducer and alert
+  // "successfully" unconditionally, so the success message was never evidence
+  // of anything having been saved.
+  const handleReassign = async () => {
+    if (isSubmitting) return;
     if (!uiState.reassignPersonnelId) {
       Alert.alert('Select Personnel', 'Please select a delivery person to reassign to.');
       return;
     }
-    dispatch(reassignDelivery({ deliveryId: delivery.id, personnelId: uiState.reassignPersonnelId }));
-    dispatch(resetDetailUIState());
-    Alert.alert('Reassigned', 'Delivery has been reassigned successfully.');
+    setIsSubmitting(true);
+    try {
+      await dispatch(
+        reassignDelivery({ deliveryId: delivery.id, personnelId: uiState.reassignPersonnelId }),
+      ).unwrap();
+      await dispatch(fetchDeliveries());
+      dispatch(resetDetailUIState());
+      Alert.alert('Reassigned', 'Delivery has been reassigned.');
+    } catch (err: any) {
+      Alert.alert('Reassign failed', err?.message || 'Unable to reassign this delivery.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleCancelConfirmed = () => {
-    dispatch(cancelDelivery({ deliveryId: delivery.id, reason: 'Cancelled by admin' }));
-    dispatch(resetDetailUIState());
-    Alert.alert('Cancelled', 'Delivery has been marked as failed.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+  const handleCancelConfirmed = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await dispatch(
+        cancelDelivery({ deliveryId: delivery.id, reason: 'Cancelled by admin' }),
+      ).unwrap();
+      await dispatch(fetchDeliveries());
+      dispatch(resetDetailUIState());
+      Alert.alert('Cancelled', 'Delivery has been cancelled.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (err: any) {
+      Alert.alert('Cancel failed', err?.message || 'Unable to cancel this delivery.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleContact = () => {
@@ -456,10 +498,11 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 />
                 <View style={styles.panelButtons}>
                   <CustomButton
-                    title="Confirm Reassign"
+                    title={isSubmitting ? 'Reassigning…' : 'Confirm Reassign'}
                     onPress={handleReassign}
                     variant="primary"
                     fullWidth
+                    disabled={isSubmitting}
                   />
                   <TouchableOpacity
                     style={styles.linkBtn}
@@ -488,14 +531,16 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={[styles.actionPanel, styles.dangerPanel]}>
             <Text style={[styles.actionPanelTitle, { color: '#DE350B' }]}>Cancel Delivery?</Text>
             <Text style={styles.dangerNote}>
-              This marks the delivery as failed and cannot be undone from this screen.
+              This cancels the delivery and returns any dispatched stock. It cannot be undone
+              from this screen.
             </Text>
             <View style={styles.panelButtons}>
               <CustomButton
-                title="Yes, Cancel Delivery"
+                title={isSubmitting ? 'Cancelling…' : 'Yes, Cancel Delivery'}
                 onPress={handleCancelConfirmed}
                 variant="danger"
                 fullWidth
+                disabled={isSubmitting}
               />
               <TouchableOpacity
                 style={styles.linkBtn}
@@ -513,15 +558,17 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       {/* ── Fixed Bottom Action Bar ── */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
-          style={[styles.bottomBtn, { backgroundColor: colors.secondary }]}
+          style={[styles.bottomBtn, { backgroundColor: colors.secondary }, isTerminal && styles.bottomBtnDisabled]}
           onPress={() => dispatch(toggleReassignPanel())}
+          disabled={isTerminal}
         >
           <Feather name="refresh-cw" size={16} color="#FFFFFF" />
           <Text style={styles.bottomBtnText}>Re-assign</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.bottomBtn, { backgroundColor: '#DE350B' }]}
+          style={[styles.bottomBtn, { backgroundColor: '#DE350B' }, isTerminal && styles.bottomBtnDisabled]}
           onPress={() => dispatch(toggleCancelConfirm())}
+          disabled={isTerminal}
         >
           <Feather name="x" size={16} color="#FFFFFF" />
           <Text style={styles.bottomBtnText}>Cancel</Text>
@@ -899,6 +946,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  bottomBtnDisabled: {
+    opacity: 0.4,
   },
   bottomBtnText: {
     color: colors.white,

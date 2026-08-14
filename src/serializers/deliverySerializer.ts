@@ -256,6 +256,7 @@ export function deliveryListSerializer(payload: any): SerializedDeliveryList {
     delivered: deliveries.filter(d => d.status === 'delivered').length,
     failed: deliveries.filter(d => d.status === 'failed').length,
     returned: deliveries.filter(d => d.status === 'returned').length,
+    cancelled: deliveries.filter(d => d.status === 'cancelled').length,
   };
 
   return {
