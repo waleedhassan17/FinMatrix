@@ -4,7 +4,7 @@
 // Benchmarked against QuickBooks / Sage 50 dashboards
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -34,6 +34,7 @@ import {
   selectDashboardStatus,
   selectRawDashboardData,
   selectDashboardSetup,
+  selectRevenueTrend,
   refreshDashboard,
   loadDashboard,
 } from './adminDashboardSlice';
@@ -45,6 +46,7 @@ import type {
   DashboardAlert,
   DeliveryOverviewData,
 } from '../../models/dashboardModel';
+import type { TrendPoint } from '../../models/analyticsDashboardModel';
 import { THEME } from '../../utils/theme';
 import { isFeatureVisible } from '../../utils/featureGates';
 import { ReportContainer } from '../../components/reports/ReportUI';
@@ -64,17 +66,20 @@ const C = {
   ink3: '#8A93A4',
   brand: '#0B6E4F',
   pos: '#0E8A5F',
-  posSoft: '#D26A5C', // expense tone in the P&L split
   neg: '#C4362B',
   warn: '#B7791F',
   info: '#2A60C9',
   indigo: '#4F46E5',
   teal: '#0E7C86',
   slate: '#475467',
+  bar: '#C9D0DB', // quiet slate for past months in the revenue chart
   navy: ['#0E1726', '#16243B', '#1C2F4C'] as const,
 };
 
 const FONT = THEME.typography.fontFamily;
+
+// Plotting height of the revenue chart (bars only — labels sit below it).
+const BAR_AREA = 92;
 
 // ── Compact currency (mirrors slice formatter) ────────
 const compactRs = (n: number): string => {
@@ -98,11 +103,35 @@ const greeting = (): string => {
 const todayLabel = (): string =>
   new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
+// 'YYYY-MM-DD' → 'as of Aug 15'. Parsed field by field on purpose: `new
+// Date('2026-08-15')` is read as UTC midnight and slips a day behind in
+// western time zones.
+const asOfLabel = (iso?: string): string | undefined => {
+  if (!iso) return undefined;
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return undefined;
+  return `as of ${new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+};
+
+// Trend labels arrive as 'Aug 26'; the headline spells the month out.
+const MONTH_NAMES: Record<string, string> = {
+  jan: 'January', feb: 'February', mar: 'March', apr: 'April',
+  may: 'May', jun: 'June', jul: 'July', aug: 'August',
+  sep: 'September', oct: 'October', nov: 'November', dec: 'December',
+};
+const monthKey = (label: string): string => label.trim().slice(0, 3).toLowerCase();
+const fullMonth = (label: string): string => MONTH_NAMES[monthKey(label)] ?? label;
+const isCurrentMonth = (label: string): boolean =>
+  monthKey(label) === monthKey(new Date().toLocaleDateString('en-US', { month: 'short' }));
+
 // ── Skeleton pulse ────────────────────────────────────
 // Per-instance animated value (a module-level singleton would let one
 // unmounting skeleton stop the pulse for every other one).
 const usePulse = () => {
-  const v = useRef(new Animated.Value(0.5)).current;
+  // Lazy state initialiser rather than a ref: it allocates the value once
+  // (a ref re-runs `new Animated.Value()` on every render just to throw it
+  // away) and keeps render free of ref reads.
+  const [v] = useState(() => new Animated.Value(0.5));
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
@@ -141,20 +170,24 @@ const AdminDashboardScreen: React.FC = () => {
   const status = useAppSelector(selectDashboardStatus);
   const rawData = useAppSelector(selectRawDashboardData);
   const setup = useAppSelector(selectDashboardSetup);
+  const revenueTrend = useAppSelector(selectRevenueTrend);
 
   // Dismiss/finish the first-run checklist (FinMatrixGuide §5.7). Marks the
   // company setupCompleted; the checklist then hides but every flow it links to
   // stays reachable from its section.
+  // Read the id out first: closing over `company` itself would widen the
+  // dependency to the whole object and defeat the memo.
+  const companyId = company?.companyId;
   const dismissSetup = useCallback(async () => {
-    if (company?.companyId) {
+    if (companyId) {
       try {
-        await updateCompanyAPI(company.companyId, { setupCompleted: true });
+        await updateCompanyAPI(companyId, { setupCompleted: true });
       } catch {
         /* non-blocking — still refresh to reflect any server state */
       }
     }
     dispatch(refreshDashboard());
-  }, [company?.companyId, dispatch]);
+  }, [companyId, dispatch]);
 
   useEffect(() => {
     dispatch(loadDashboard());
@@ -207,11 +240,6 @@ const AdminDashboardScreen: React.FC = () => {
     [stats],
   );
 
-  // P&L figures
-  const income = rawData?.totalRevenue ?? 0;
-  const expense = rawData?.totalExpenses ?? 0;
-  const net = income - expense;
-
   const completedPct =
     delivery.total > 0 ? Math.round((delivery.delivered / delivery.total) * 100) : 0;
 
@@ -230,10 +258,6 @@ const AdminDashboardScreen: React.FC = () => {
               <Text style={s.companyName} numberOfLines={1}>{companyLabel}</Text>
             </View>
           </View>
-
-          <TouchableOpacity style={s.headerIconBtn} activeOpacity={0.7} onPress={() => navigation.navigate('GlobalSearch')}>
-            <Feather name="search" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
         </View>
 
         <View style={s.headerMetaRow}>
@@ -274,18 +298,8 @@ const AdminDashboardScreen: React.FC = () => {
               />
             )}
 
-            {/* ── Profit & loss hero (hidden from first screen) ── */}
-            {/* <SectionHeader title="Profit & loss" caption="This month" />
-            <NetCard
-              net={net}
-              netLabel={compactRs(net)}
-              income={income}
-              incomeLabel={statById.revenue?.value ?? compactRs(income)}
-              expense={expense}
-              expenseLabel={statById.expenses?.value ?? compactRs(expense)}
-            /> */}
-
             {/* ── Receivables / Payables ─────────────── */}
+            <SectionHeader title="Financials" caption={asOfLabel(rawData?.period?.endDate)} />
             <View style={s.statRow}>
               <StatCard
                 icon="arrow-down-left"
@@ -304,6 +318,15 @@ const AdminDashboardScreen: React.FC = () => {
                 onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'BillList' })}
               />
             </View>
+
+            {/* ── Revenue trend (live analytics series) ─ */}
+            <SectionHeader
+              title="Revenue"
+              caption={revenueTrend && revenueTrend.length > 0 ? `Last ${revenueTrend.length} months` : undefined}
+              action="View all"
+              onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('ReportsStack', { screen: 'AnalyticsDashboard' })}
+            />
+            <RevenueTrendCard points={revenueTrend} />
 
             {/* ── Deliveries (warehouse tier only) ───── */}
             {showDelivery && (
@@ -382,64 +405,130 @@ const SectionHeader: React.FC<{ title: string; caption?: string; action?: string
   </View>
 );
 
-// ── Profit & loss hero ────────────────────────────────
-const NetCard: React.FC<{
-  net: number;
-  netLabel: string;
-  income: number;
-  incomeLabel: string;
-  expense: number;
-  expenseLabel: string;
-}> = ({ net, netLabel, income, incomeLabel, expense, expenseLabel }) => {
-  const isLoss = net < 0;
-  const denom = income + expense;
-  const incomeFlex = denom > 0 ? income : 1;
-  const expenseFlex = denom > 0 ? expense : 0;
+// ── Revenue trend card ────────────────────────────────
+// Live monthly revenue from the analytics report. Bars are plain views
+// rather than a chart library so the card sits on exactly the same
+// surface, radius and ink scale as every other card on this screen.
+// Tapping a month promotes it into the headline figure.
+const RevenueTrendCard: React.FC<{ points: TrendPoint[] | null }> = ({ points }) => {
+  const [picked, setPicked] = useState<number | null>(null);
 
-  return (
-    <View style={s.netCard}>
-      <View style={s.netTopRow}>
-        <View style={s.netLabelWrap}>
-          <View style={[s.netDot, { backgroundColor: isLoss ? C.neg : C.pos }]} />
-          <Text style={s.netLabel}>{isLoss ? 'Net loss' : 'Net profit'}</Text>
-        </View>
-        <View style={s.netTag}>
-          <Feather name={isLoss ? 'trending-down' : 'trending-up'} size={12} color={isLoss ? C.neg : C.pos} />
-          <Text style={[s.netTagText, { color: isLoss ? C.neg : C.pos }]}>Income − expenses</Text>
+  const series = useMemo(() => points ?? [], [points]);
+  const lastIdx = series.length - 1;
+  // A picked month is dropped as soon as it falls outside a refreshed
+  // series, so the card always falls back to the newest month.
+  const idx = picked !== null && picked >= 0 && picked <= lastIdx ? picked : lastIdx;
+
+  const { max, total } = useMemo(
+    () =>
+      series.reduce(
+        (acc, p) => ({ max: Math.max(acc.max, p.value), total: acc.total + p.value }),
+        { max: 0, total: 0 },
+      ),
+    [series],
+  );
+
+  if (!points || points.length === 0) {
+    const unavailable = !points;
+    return (
+      <View style={s.revCard}>
+        <View style={s.revEmpty}>
+          <View style={[s.revEmptyIcon, { backgroundColor: (unavailable ? C.ink3 : C.brand) + '12' }]}>
+            <Feather name={unavailable ? 'cloud-off' : 'bar-chart-2'} size={19} color={unavailable ? C.ink3 : C.brand} />
+          </View>
+          <Text style={s.revEmptyTitle}>{unavailable ? 'Revenue history unavailable' : 'No revenue yet'}</Text>
+          <Text style={s.revEmptySub}>
+            {unavailable
+              ? 'We could not load the monthly series. Pull down to refresh.'
+              : 'Monthly revenue appears here once you start issuing invoices.'}
+          </Text>
         </View>
       </View>
+    );
+  }
 
-      <Text style={[s.netValue, { color: isLoss ? C.neg : C.ink }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-        {netLabel}
-      </Text>
+  const selected = series[idx];
+  const prev = idx > 0 ? series[idx - 1] : undefined;
+  const avg = total / series.length;
 
-      {/* income vs expense split */}
-      <View style={s.splitTrack}>
-        {denom > 0 ? (
-          <>
-            <View style={{ flex: incomeFlex, backgroundColor: C.pos }} />
-            {expenseFlex > 0 && <View style={{ flex: expenseFlex, backgroundColor: C.posSoft }} />}
-          </>
-        ) : (
-          <View style={{ flex: 1, backgroundColor: C.lineSoft }} />
+  // Month over month against the preceding bar. Suppressed when there is no
+  // prior month, or when it was zero (a percentage off zero is meaningless).
+  // A move that rounds to 0% reads as flat — neither a green win nor a loss.
+  const momPct = prev && prev.value > 0 ? ((selected.value - prev.value) / prev.value) * 100 : null;
+  const flat = momPct !== null && Math.abs(momPct) < 0.5;
+  const up = (momPct ?? 0) >= 0;
+  const momTone = flat ? C.ink2 : up ? C.pos : C.neg;
+  const momIcon = flat ? 'minus' : up ? 'trending-up' : 'trending-down';
+  const momText =
+    momPct === null ? '' : Math.abs(momPct) >= 1000 ? '999+%' : `${Math.abs(momPct).toFixed(0)}%`;
+
+  return (
+    <View style={s.revCard}>
+      <View style={s.revTopRow}>
+        <View style={s.revHeadBlock}>
+          <Text style={s.revValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+            {compactRs(selected.value)}
+          </Text>
+          <Text style={s.revCaption} numberOfLines={1}>
+            {fullMonth(selected.label)}
+            {isCurrentMonth(selected.label) && idx === lastIdx ? ' · month to date' : ''}
+          </Text>
+        </View>
+
+        {momPct !== null && (
+          <View
+            accessible
+            style={[s.revDelta, { backgroundColor: momTone + '12' }]}
+            accessibilityLabel={`${flat ? 'Flat at' : up ? 'Up' : 'Down'} ${momText} versus ${prev?.label}`}
+          >
+            <Feather name={momIcon} size={12} color={momTone} />
+            <Text style={[s.revDeltaText, { color: momTone }]}>
+              {flat ? '' : up ? '+' : '−'}{momText}
+            </Text>
+          </View>
         )}
       </View>
 
-      <View style={s.netLegendRow}>
-        <View style={s.netLegendItem}>
-          <View style={[s.legendDot, { backgroundColor: C.pos }]} />
-          <View>
-            <Text style={s.legendCaption}>Income</Text>
-            <Text style={s.legendValue}>{incomeLabel}</Text>
-          </View>
+      <View style={s.revChart}>
+        {series.map((p, i) => {
+          const on = i === idx;
+          // Every month keeps a visible stub so a zero month still reads as
+          // a month rather than a gap in the axis.
+          const h = max > 0 ? Math.max(3, Math.round((Math.max(p.value, 0) / max) * BAR_AREA)) : 3;
+          return (
+            <TouchableOpacity
+              key={`${p.label}-${i}`}
+              style={s.revCol}
+              activeOpacity={0.75}
+              onPress={() => setPicked(i)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`${p.label}: ${compactRs(p.value)}`}
+            >
+              <View style={[s.revBar, { height: h, backgroundColor: on ? C.brand : C.bar }]} />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      <View style={s.revBaseline} />
+
+      <View style={s.revLabelRow}>
+        {series.map((p, i) => (
+          <Text key={`${p.label}-label-${i}`} style={[s.revLabel, i === idx && s.revLabelOn]} numberOfLines={1}>
+            {p.label.split(' ')[0]}
+          </Text>
+        ))}
+      </View>
+
+      <View style={s.revFooter}>
+        <View style={s.revFootItem}>
+          <Text style={s.revFootCaption}>Average / month</Text>
+          <Text style={s.revFootValue}>{compactRs(avg)}</Text>
         </View>
-        <View style={s.netLegendDivider} />
-        <View style={s.netLegendItem}>
-          <View style={[s.legendDot, { backgroundColor: C.posSoft }]} />
-          <View>
-            <Text style={s.legendCaption}>Expenses</Text>
-            <Text style={s.legendValue}>{expenseLabel}</Text>
-          </View>
+        <View style={s.revFootDivider} />
+        <View style={s.revFootItem}>
+          <Text style={s.revFootCaption}>Total · {series.length} mo</Text>
+          <Text style={s.revFootValue}>{compactRs(total)}</Text>
         </View>
       </View>
     </View>
@@ -599,12 +688,6 @@ const Skel: React.FC<{ w: number | string; h: number; r?: number; style?: Record
 const DashboardSkeleton: React.FC = () => (
   <View>
     <View style={[s.sectionHeader, { marginBottom: 10 }]}><Skel w={130} h={15} r={5} /></View>
-    <View style={[s.netCard, { gap: 14 }]}>
-      <Skel w={110} h={13} r={4} />
-      <Skel w={'55%'} h={30} r={7} />
-      <Skel w={'100%'} h={9} r={5} />
-      <Skel w={'80%'} h={14} r={5} />
-    </View>
     <View style={s.statRow}>
       {[0, 1].map(i => (
         <View key={i} style={[s.statCard, { gap: 8 }]}>
@@ -613,6 +696,16 @@ const DashboardSkeleton: React.FC = () => (
           <Skel w={'55%'} h={10} r={4} />
         </View>
       ))}
+    </View>
+    <View style={[s.sectionHeader, { marginTop: 18, marginBottom: 10 }]}><Skel w={90} h={15} r={5} /></View>
+    <View style={[s.revCard, { gap: 10 }]}>
+      <Skel w={'45%'} h={26} r={7} />
+      <Skel w={'35%'} h={10} r={4} />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: BAR_AREA, marginTop: 8 }}>
+        {[34, 58, 44, 78, 54, BAR_AREA].map((h, i) => (
+          <View key={i} style={{ flex: 1 }}><Skel w={'100%'} h={h} r={4} /></View>
+        ))}
+      </View>
     </View>
     <View style={[s.sectionHeader, { marginTop: 18, marginBottom: 10 }]}><Skel w={100} h={15} r={5} /></View>
     <View style={[s.actionsGrid]}>
@@ -667,12 +760,6 @@ const s = StyleSheet.create({
   headerTextBlock: { flex: 1 },
   companyName: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.2, fontFamily: FONT },
   greetingText: { fontSize: 12, color: 'rgba(255,255,255,0.62)', marginBottom: 1, fontFamily: FONT },
-  headerIconBtn: {
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
-  },
   headerMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
   statusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -706,29 +793,39 @@ const s = StyleSheet.create({
   // Generic card
   card: { ...card, marginHorizontal: 16, padding: 16 },
 
-  // P&L hero
-  netCard: { ...card, marginHorizontal: 16, padding: 16 },
-  netTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  netLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  netDot: { width: 8, height: 8, borderRadius: 4 },
-  netLabel: { fontSize: 12, fontWeight: '700', color: C.ink2, fontFamily: FONT },
-  netTag: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  netTagText: { fontSize: 11, fontWeight: '600', fontFamily: FONT },
-  netValue: {
-    fontSize: 34, fontWeight: '800', fontFamily: FONT,
-    letterSpacing: -1, marginTop: 8, marginBottom: 14,
-    fontVariant: ['tabular-nums'],
+  // Revenue trend
+  revCard: { ...card, marginHorizontal: 16, padding: 16 },
+  revTopRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
+  revHeadBlock: { flex: 1 },
+  revValue: {
+    fontSize: 32, fontWeight: '800', color: C.ink, fontFamily: FONT,
+    letterSpacing: -0.9, lineHeight: 37, fontVariant: ['tabular-nums'],
   },
-  splitTrack: {
-    height: 9, flexDirection: 'row',
-    backgroundColor: C.lineSoft, borderRadius: 5, overflow: 'hidden', gap: 2,
+  revCaption: { fontSize: 11, color: C.ink3, fontFamily: FONT, marginTop: 3 },
+  revDelta: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, marginBottom: 2,
   },
-  netLegendRow: { flexDirection: 'row', alignItems: 'center', marginTop: 14 },
-  netLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  netLegendDivider: { width: 1, height: 26, backgroundColor: C.line, marginHorizontal: 12 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendCaption: { fontSize: 11, color: C.ink3, fontFamily: FONT },
-  legendValue: { fontSize: 14, fontWeight: '700', color: C.ink, fontFamily: FONT, fontVariant: ['tabular-nums'] },
+  revDeltaText: { fontSize: 12, fontWeight: '700', fontFamily: FONT, fontVariant: ['tabular-nums'] },
+  revChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: BAR_AREA, marginTop: 18 },
+  revCol: { flex: 1, height: BAR_AREA, justifyContent: 'flex-end' },
+  revBar: { width: '100%', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  revBaseline: { height: 1, backgroundColor: C.line },
+  revLabelRow: { flexDirection: 'row', gap: 10, marginTop: 7 },
+  revLabel: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '600', color: C.ink3, fontFamily: FONT },
+  revLabelOn: { color: C.ink, fontWeight: '700' },
+  revFooter: {
+    flexDirection: 'row', alignItems: 'center',
+    marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: C.lineSoft,
+  },
+  revFootItem: { flex: 1 },
+  revFootDivider: { width: 1, height: 26, backgroundColor: C.line, marginHorizontal: 12 },
+  revFootCaption: { fontSize: 11, color: C.ink3, fontFamily: FONT },
+  revFootValue: { fontSize: 14, fontWeight: '700', color: C.ink, fontFamily: FONT, marginTop: 2, fontVariant: ['tabular-nums'] },
+  revEmpty: { alignItems: 'center', paddingVertical: 16, gap: 5 },
+  revEmptyIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 3 },
+  revEmptyTitle: { fontSize: 13, fontWeight: '700', color: C.ink, fontFamily: FONT },
+  revEmptySub: { fontSize: 12, color: C.ink3, textAlign: 'center', lineHeight: 17, fontFamily: FONT },
 
   // AR / AP grid
   statRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 16 },

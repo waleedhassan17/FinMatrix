@@ -57,4 +57,14 @@ export interface AdminDashboardData {
   }[];
   alerts: { id: string; message: string; severity: 'red' | 'amber' | 'blue' }[];
   setup?: SetupStatus;
+  // Window the summary figures cover (month-to-date on the server), so the
+  // screen can label them "as of <date>" instead of implying a full month.
+  period?: { startDate: string; endDate: string };
+}
+
+/** Raw `/reports/dashboard` body before serializing. Every field is optional:
+ *  the endpoint may answer with a bare summary or wrap the same shape in
+ *  `data`, and older deployments omit the richer fields entirely. */
+export interface RawDashboardSummary extends Partial<AdminDashboardData> {
+  data?: Partial<AdminDashboardData>;
 }

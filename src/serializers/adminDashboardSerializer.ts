@@ -7,6 +7,9 @@
 
 import type {
   AdminDashboardData,
+  RawDashboardSummary,
+  RawDeliveryListItem,
+  RawInvoiceListItem,
   SetupStatus,
 } from '../models/adminDashboardModel';
 import type {
@@ -15,6 +18,7 @@ import type {
   DeliveryOverviewData,
   DashboardAlert,
 } from '../models/dashboardModel';
+import type { AnalyticsDashboardData, TrendPoint } from '../models/analyticsDashboardModel';
 
 // ── Currency: compact, sign-aware, finite-safe ────────
 const fmtCurrency = (n: number): string => {
@@ -35,15 +39,16 @@ const formatDate = (dateStr: string): string => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-export const dashboardSummarySerializer = (summaryRaw: any): any =>
-  summaryRaw?.data ?? summaryRaw;
+export const dashboardSummarySerializer = (
+  summaryRaw: RawDashboardSummary | null | undefined,
+): RawDashboardSummary | null | undefined => summaryRaw?.data ?? summaryRaw;
 
 /** Fallback path: build the dashboard payload from raw invoice/delivery lists
  *  when the summary endpoint lacks recentTransactions. */
 export const fallbackDashboardDataSerializer = (
-  summary: any,
-  invoiceList: any[],
-  deliveryList: any[],
+  summary: RawDashboardSummary | null | undefined,
+  invoiceList: RawInvoiceListItem[],
+  deliveryList: RawDeliveryListItem[],
 ): AdminDashboardData => {
   const deliveryBreakdown = {
     pending: 0, assigned: 0, in_transit: 0, delivered: 0, failed: 0, cancelled: 0,
@@ -53,12 +58,12 @@ export const fallbackDashboardDataSerializer = (
     if (st in deliveryBreakdown) deliveryBreakdown[st]++;
   }
 
-  const recentTransactions = invoiceList.slice(0, 8).map((inv: any) => ({
+  const recentTransactions = invoiceList.slice(0, 8).map(inv => ({
     id: inv.id,
     type: 'invoice' as const,
     description: inv.invoiceNumber ?? inv.id,
     date: inv.invoiceDate ?? inv.issueDate ?? '',
-    amount: parseFloat(inv.total ?? '0'),
+    amount: parseFloat(String(inv.total ?? '0')),
     status: inv.status ?? 'draft',
   }));
 
@@ -72,8 +77,25 @@ export const fallbackDashboardDataSerializer = (
     deliveryTotal: deliveryList.length,
     recentTransactions,
     alerts: [],
+    period: summary?.period,
   };
 };
+
+/** Monthly revenue for the dashboard chart, taken from the analytics report.
+ *  `null` means the call failed (card says "unavailable"); an empty array
+ *  means the company genuinely has no revenue history yet — the two states
+ *  read very differently to a user, so they stay distinct. */
+export function revenueTrendSerializer(
+  data: AnalyticsDashboardData | null,
+  months = 6,
+): TrendPoint[] | null {
+  const points = data?.revenueTrend;
+  if (!Array.isArray(points)) return null;
+  return points
+    .filter(p => !!p && typeof p.label === 'string' && Number.isFinite(p.value))
+    .map(p => ({ label: p.label, value: p.value }))
+    .slice(-months);
+}
 
 // ── Stat metadata (id stays in sync with KPI_META on screen) ──
 export function dashboardStatsSerializer(data: AdminDashboardData): DashboardStat[] {
@@ -136,5 +158,6 @@ export function dashboardAlertsSerializer(data: AdminDashboardData): DashboardAl
   }));
 }
 
-export const dashboardSetupSerializer = (summary: any): SetupStatus | null =>
-  (summary?.setup as SetupStatus) ?? null;
+export const dashboardSetupSerializer = (
+  summary: RawDashboardSummary | null | undefined,
+): SetupStatus | null => summary?.setup ?? null;

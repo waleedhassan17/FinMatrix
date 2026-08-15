@@ -8,6 +8,9 @@ import {
   getRecentInvoicesAPI,
   getDeliveryStatsAPI,
 } from '../../networks/dashboards/adminDashboardNetwork';
+import { getAnalyticsDashboardAPI } from '../../networks/dashboards/analyticsDashboardNetwork';
+import { analyticsDashboardSerializer } from '../../serializers/analyticsDashboardSerializer';
+import type { AnalyticsDashboardResponse, TrendPoint } from '../../models/analyticsDashboardModel';
 import type {
   DashboardStat,
   RecentTransaction,
@@ -28,6 +31,7 @@ import {
   deliveryOverviewSerializer,
   dashboardAlertsSerializer,
   dashboardSetupSerializer,
+  revenueTrendSerializer,
 } from '../../serializers/adminDashboardSerializer';
 
 // Payload shapes live in models/adminDashboardModel.ts; re-exported so
@@ -41,6 +45,8 @@ export interface AdminDashboardSliceState {
   delivery: DeliveryOverviewData;
   alerts: DashboardAlert[];
   setup: SetupStatus | null;
+  /** Monthly revenue for the trend chart; `null` = analytics call unavailable. */
+  revenueTrend: TrendPoint[] | null;
   isRefreshing: boolean;
   status: 'idle' | 'loading' | 'failed';
   error: string;
@@ -57,6 +63,7 @@ const initialState: AdminDashboardSliceState = {
   delivery: EMPTY_DELIVERY,
   alerts: [],
   setup: null,
+  revenueTrend: null,
   isRefreshing: false,
   status: 'idle',
   error: '',
@@ -69,7 +76,17 @@ async function fetchDashboardData(): Promise<{
   delivery: DeliveryOverviewData;
   alerts: DashboardAlert[];
   setup: SetupStatus | null;
+  revenueTrend: TrendPoint[] | null;
 }> {
+  // Revenue history lives in the analytics report, not the summary. It rides
+  // alongside the summary request and swallows its own failure — a missing
+  // trend must never take the whole dashboard down with it.
+  const trendPromise = getAnalyticsDashboardAPI()
+    .then((res: AnalyticsDashboardResponse): TrendPoint[] | null =>
+      revenueTrendSerializer(analyticsDashboardSerializer(res)),
+    )
+    .catch((): TrendPoint[] | null => null);
+
   const summaryRaw = await getAdminDashboardSummaryAPI();
   const summary = dashboardSummarySerializer(summaryRaw);
 
@@ -104,6 +121,7 @@ async function fetchDashboardData(): Promise<{
     delivery: deliveryOverviewSerializer(rawData),
     alerts: dashboardAlertsSerializer(rawData),
     setup: dashboardSetupSerializer(summary),
+    revenueTrend: await trendPromise,
   };
 }
 
@@ -123,6 +141,7 @@ export const adminDashboardSlice = createAppSlice({
         state.delivery = action.payload.delivery;
         state.alerts = action.payload.alerts;
         state.setup = action.payload.setup;
+        state.revenueTrend = action.payload.revenueTrend;
         state.isRefreshing = false;
         state.status = 'idle';
       },
@@ -144,6 +163,7 @@ export const adminDashboardSlice = createAppSlice({
         state.delivery = action.payload.delivery;
         state.alerts = action.payload.alerts;
         state.setup = action.payload.setup;
+        state.revenueTrend = action.payload.revenueTrend;
         state.status = 'idle';
       },
       rejected: (state, action) => {
@@ -162,6 +182,7 @@ export const adminDashboardSlice = createAppSlice({
     selectDashboardError: state => state.error,
     selectRawDashboardData: state => state.rawData,
     selectDashboardSetup: state => state.setup,
+    selectRevenueTrend: state => state.revenueTrend,
   },
 });
 
@@ -177,4 +198,5 @@ export const {
   selectDashboardError,
   selectRawDashboardData,
   selectDashboardSetup,
+  selectRevenueTrend,
 } = adminDashboardSlice.selectors;
