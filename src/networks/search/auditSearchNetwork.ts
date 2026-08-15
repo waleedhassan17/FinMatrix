@@ -4,24 +4,6 @@
 
 import { api, extractErrorMessage } from '../network/apiHelpers';
 
-export const getAuditEntriesAPI = async (params: any = {}): Promise<any> => {
-  try {
-    const response = await api.get('/audit', { params });
-    return response.data;
-  } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
-  }
-};
-
-export const getAuditByResourceAPI = async (type: string, id: string): Promise<any> => {
-  try {
-    const response = await api.get(`/audit/resource/${type}/${id}`);
-    return response.data;
-  } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
-  }
-};
-
 export interface AuditFilters {
   module?: string;
   resourceType?: string;
@@ -29,19 +11,41 @@ export interface AuditFilters {
   action?: string;
   page?: number;
   limit?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
-export const fetchAuditTrail = async (params: AuditFilters = {}): Promise<any> => {
+export const getAuditEntriesAPI = async (params: AuditFilters = {}): Promise<unknown> => {
+  try {
+    const response = await api.get('/audit', { params });
+    return response.data;
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const getAuditByResourceAPI = async (type: string, id: string): Promise<unknown> => {
+  try {
+    const response = await api.get(`/audit/resource/${type}/${id}`);
+    return response.data;
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+export const fetchAuditTrail = async (params: AuditFilters = {}): Promise<unknown> => {
   return getAuditEntriesAPI(params);
 };
 
-export const searchAll = async (query: string): Promise<any> => {
+/** `/search` → `{ query, results: { customers, vendors, invoices, bills,
+ *  inventory } }`. Errors surface: a failed search has to look different
+ *  from a search that genuinely found nothing. Buckets are tier-gated
+ *  server-side, so the response shape varies by company type — the
+ *  serializer, not this layer, is what makes it safe to render. */
+export const searchAll = async (query: string): Promise<unknown> => {
   try {
     const response = await api.get('/search', { params: { q: query } });
     return response.data;
-  } catch (e: any) {
-    // If search endpoint doesn't exist, return empty
-    return { success: true, data: [] };
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
   }
 };
