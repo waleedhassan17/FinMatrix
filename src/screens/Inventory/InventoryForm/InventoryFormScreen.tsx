@@ -77,6 +77,8 @@ const InventoryFormScreen: React.FC = () => {
   const editingId = route.params?.itemId;
   const existing = editingId ? items.find(i => i.itemId === editingId) : undefined;
   const isEdit = !!existing;
+  // Cost is locked exactly when the server would refuse the change: stock on hand.
+  const costLocked = isEdit && (existing?.quantityOnHand ?? 0) > 0;
 
   const [collapsed, setCollapsed] = useState<Record<SectionKey, boolean>>({
     basic: false,
@@ -334,21 +336,54 @@ const InventoryFormScreen: React.FC = () => {
           {renderSectionHeader('pricing', '💰  Pricing')}
           {!collapsed.pricing && (
             <View style={styles.sectionBody}>
-              <CustomDropdown
-                label="Cost Method"
-                options={COST_METHOD_OPTIONS}
-                value={form.costMethod}
-                onChange={val => updateField('costMethod', val)}
-                placeholder="Select cost method..."
-              />
-              <CustomInput
-                label="Unit Cost *"
-                value={form.unitCost}
-                onChangeText={val => updateField('unitCost', val)}
-                placeholder="0.00"
-                keyboardType="numeric"
-                error={errors.unitCost}
-              />
+              {/*
+                Cost method is weighted average and cannot be changed — the API
+                has no field for it on update, so the old dropdown was silently
+                discarded on every edit.
+              */}
+              {isEdit ? (
+                <View style={styles.readOnlyRow}>
+                  <Text style={styles.readOnlyLabel}>Cost Method</Text>
+                  <Text style={styles.readOnlyValue}>Weighted average</Text>
+                </View>
+              ) : (
+                <CustomDropdown
+                  label="Cost Method"
+                  options={COST_METHOD_OPTIONS}
+                  value={form.costMethod}
+                  onChange={val => updateField('costMethod', val)}
+                  placeholder="Select cost method..."
+                />
+              )}
+              {/*
+                Unit cost is the weighted average of what was actually paid — an
+                output of the receipt history, not an input. Editing it while
+                stock is on hand would move Inventory Valuation (qty x cost)
+                without moving GL 1200, and the next receipt would overwrite the
+                typed figure anyway. The server refuses it with UNIT_COST_LOCKED;
+                showing it read-only is how the user finds that out before saving.
+              */}
+              {costLocked ? (
+                <View style={styles.readOnlyRow}>
+                  <Text style={styles.readOnlyLabel}>Unit Cost</Text>
+                  <Text style={styles.readOnlyValue}>{form.unitCost || '0'}</Text>
+                </View>
+              ) : (
+                <CustomInput
+                  label="Unit Cost *"
+                  value={form.unitCost}
+                  onChangeText={val => updateField('unitCost', val)}
+                  placeholder="0.00"
+                  keyboardType="numeric"
+                  error={errors.unitCost}
+                />
+              )}
+              {costLocked ? (
+                <Text style={styles.fieldHelp}>
+                  Receive stock at the new price and the average re-computes itself. To fix a
+                  count rather than a price, use Stock Adjustment.
+                </Text>
+              ) : null}
               <CustomInput
                 label="Selling Price *"
                 value={form.sellingPrice}
