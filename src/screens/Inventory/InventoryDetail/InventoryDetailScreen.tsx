@@ -428,18 +428,14 @@ const InventoryDetailScreen: React.FC = () => {
 
         {activeTab === 'locations' && (
           <View style={styles.infoCard}>
+            {/* The app has no location concept — the API exposes no locations
+                endpoint — only a source agency. This row used to test
+                `locationId === 'loc-main'` against ids that never reach the
+                server, so every item was labelled "Warehouse". */}
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Location</Text>
-              <Text style={styles.infoValue}>
-                {item.locationId === 'loc-main' ? 'Main Office' : 'Warehouse'}
-              </Text>
+              <Text style={styles.infoLabel}>Source Agency</Text>
+              <Text style={styles.infoValue}>{agencyName || '—'}</Text>
             </View>
-            {agencyName && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Source Agency</Text>
-                <Text style={styles.infoValue}>{agencyName}</Text>
-              </View>
-            )}
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Qty at Location</Text>
               <Text style={styles.infoValue}>{item.quantityOnHand}</Text>
