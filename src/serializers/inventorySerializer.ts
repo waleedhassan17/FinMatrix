@@ -6,7 +6,12 @@
 // UI-ready data structure with inline field mapping.
 // Mirrors `glSerializer.ts` / `billSerializer.ts`.
 
-import type { InventoryItemData, InventoryApiEntity } from '../models/inventoryModel';
+import type {
+  CreateInventoryItemPayload,
+  InventoryFormData,
+  InventoryItemData,
+  UpdateInventoryItemPayload,
+} from '../models/inventoryModel';
 
 // ─── Stock-status counts (for tab badges) ────────────
 export type InventoryStockCounts = {
@@ -112,3 +117,57 @@ export function inventorySingleSerializer(
   if (!raw) return null;
   return mapInventoryItem(raw);
 }
+
+// ═══════════════════════════════════════════════════════
+// WRITE PATH — form → API payload
+// ═══════════════════════════════════════════════════════
+// The API's @IsOptional() only skips null/undefined, so an optional field sent
+// as '' is still validated and fails (@Length on category/unitOfMeasure/
+// barcodeData, @IsNumberString on the decimals, @IsUUID on sourceAgencyId).
+// Everything optional is therefore OMITTED rather than blanked — `undefined`
+// keys drop out of JSON.stringify.
+
+/** Trimmed text, or undefined so the key is left out entirely. */
+const text = (v: string): string | undefined => v.trim() || undefined;
+
+/** Decimals go over the wire as strings (@IsNumberString), matching what the
+ *  API's own acceptance tests send — not as numbers relying on the server's
+ *  implicit conversion. */
+const money = (v: string): string => String(parseFloat(v) || 0);
+
+export const formDataToInventoryCreatePayload = (
+  form: InventoryFormData,
+): CreateInventoryItemPayload => ({
+  // Required by the API and guaranteed non-empty by validateInventoryItem.
+  sku: form.sku.trim(),
+  name: form.name.trim(),
+  description: text(form.description),
+  category: text(form.category),
+  unitOfMeasure: text(form.unitOfMeasure),
+  costMethod: 'average',
+  unitCost: money(form.unitCost),
+  sellingPrice: money(form.sellingPrice),
+  reorderPoint: money(form.reorderPoint),
+  reorderQuantity: money(form.reorderQuantity),
+  minStock: money(form.minStock),
+  maxStock: money(form.maxStock),
+  isActive: form.isActive,
+  serialTracking: form.serialTracking,
+  lotTracking: form.lotTracking,
+  barcodeData: text(form.barcodeData),
+  // Only ever a real agency UUID — an empty string would fail @IsUUID.
+  sourceAgencyId: text(form.sourceAgencyId),
+});
+
+/** `costLocked` mirrors the read-only Unit Cost field: once stock is on hand
+ *  the API derives the cost from receipt history and rejects a change, so a
+ *  field the user cannot edit is not sent at all. */
+export const formDataToInventoryUpdatePayload = (
+  form: InventoryFormData,
+  opts: { costLocked?: boolean } = {},
+): UpdateInventoryItemPayload => {
+  const { costMethod, ...rest } = formDataToInventoryCreatePayload(form);
+  void costMethod; // update DTO has no costMethod field
+  if (opts.costLocked) delete rest.unitCost;
+  return rest;
+};

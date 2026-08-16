@@ -15,7 +15,6 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
@@ -49,8 +48,11 @@ import {
   CATEGORY_OPTIONS,
   UOM_OPTIONS,
   COST_METHOD_OPTIONS,
-  LOCATION_OPTIONS,
 } from '../../../models/inventoryModel';
+import {
+  formDataToInventoryCreatePayload,
+  formDataToInventoryUpdatePayload,
+} from '../../../serializers/inventorySerializer';
 import { selectAgencies, fetchAgencies } from '../../Agency/AgencyList/agencyListSlice';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 
@@ -127,7 +129,6 @@ const InventoryFormScreen: React.FC = () => {
         serialTracking: existing.serialTracking,
         lotTracking: existing.lotTracking,
         barcodeData: existing.barcodeData,
-        locationId: existing.locationId,
         sourceAgencyId: existing.sourceAgencyId ?? '',
         isActive: existing.isActive,
       }));
@@ -179,76 +180,36 @@ const InventoryFormScreen: React.FC = () => {
     const validationErrors = validateInventoryItem(form, existingSKUs, editingId);
     if (Object.keys(validationErrors).length > 0) {
       dispatch(setFormErrors(validationErrors));
+      // The sections collapse, so an inline-only error can sit off-screen and
+      // make Save look like it did nothing.
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: Object.values(validationErrors)[0] });
       return;
     }
 
     dispatch(setIsSaving(true));
-
-    const numVal = (s: string) => parseFloat(s) || 0;
 
     try {
       if (isEdit && editingId) {
         await dispatch(
           editInventoryItem({
             itemId: editingId,
-            data: {
-              name: form.name.trim(),
-              sku: form.sku.trim(),
-              description: form.description.trim(),
-              category: form.category,
-              unitOfMeasure: form.unitOfMeasure,
-              costMethod: form.costMethod as any,
-              unitCost: numVal(form.unitCost),
-              sellingPrice: numVal(form.sellingPrice),
-              reorderPoint: numVal(form.reorderPoint),
-              reorderQuantity: numVal(form.reorderQuantity),
-              minStock: numVal(form.minStock),
-              maxStock: numVal(form.maxStock),
-              serialTracking: form.serialTracking,
-              lotTracking: form.lotTracking,
-              barcodeData: form.barcodeData.trim(),
-              locationId: form.locationId,
-              sourceAgencyId: form.sourceAgencyId || undefined,
-              isActive: form.isActive,
-            },
+            data: formDataToInventoryUpdatePayload(form, { costLocked }),
           }),
         ).unwrap();
         Toast.show({ type: 'success', text1: 'Success', text2: 'Item updated successfully.' });
       } else {
-        await dispatch(
-          createInventoryItem({
-            name: form.name.trim(),
-            sku: form.sku.trim(),
-            description: form.description.trim(),
-            category: form.category,
-            unitOfMeasure: form.unitOfMeasure,
-            costMethod: form.costMethod as any,
-            unitCost: numVal(form.unitCost),
-            sellingPrice: numVal(form.sellingPrice),
-            quantityOnOrder: 0,
-            quantityCommitted: 0,
-            reorderPoint: numVal(form.reorderPoint),
-            reorderQuantity: numVal(form.reorderQuantity),
-            minStock: numVal(form.minStock),
-            maxStock: numVal(form.maxStock),
-            isActive: form.isActive,
-            serialTracking: form.serialTracking,
-            lotTracking: form.lotTracking,
-            barcodeData: form.barcodeData.trim(),
-            locationId: form.locationId,
-            sourceAgencyId: form.sourceAgencyId || undefined,
-            imageUrl: '',
-          }),
-        ).unwrap();
+        await dispatch(createInventoryItem(formDataToInventoryCreatePayload(form))).unwrap();
         Toast.show({ type: 'success', text1: 'Success', text2: 'Item created successfully.' });
       }
       navigation.goBack();
-    } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Something went wrong. Please try again.' });
+    } catch (e: any) {
+      // Surface what the API actually said — the network layer already turns
+      // its validation array into readable text.
+      Toast.show({ type: 'error', text1: 'Error', text2: e?.message || 'Failed to save item. Please try again.' });
     } finally {
       dispatch(setIsSaving(false));
     }
-  }, [form, existingSKUs, editingId, isEdit, dispatch, navigation]);
+  }, [form, existingSKUs, editingId, isEdit, costLocked, dispatch, navigation]);
 
   // ── Section renderer ──────────────────────────────
   const renderSectionHeader = (key: SectionKey, title: string) => (
@@ -293,6 +254,14 @@ const InventoryFormScreen: React.FC = () => {
                 placeholder="e.g. Wireless Keyboard"
                 error={errors.name}
               />
+              <CustomDropdown
+                label="Category *"
+                options={CATEGORY_OPTIONS}
+                value={form.category}
+                onChange={val => updateField('category', val)}
+                placeholder="Select category..."
+                error={errors.category}
+              />
               <View style={styles.skuRow}>
                 <View style={styles.skuInput}>
                   <CustomInput
@@ -313,14 +282,6 @@ const InventoryFormScreen: React.FC = () => {
                 onChangeText={val => updateField('description', val)}
                 placeholder="Brief description..."
                 multiline
-              />
-              <CustomDropdown
-                label="Category *"
-                options={CATEGORY_OPTIONS}
-                value={form.category}
-                onChange={val => updateField('category', val)}
-                placeholder="Select category..."
-                error={errors.category}
               />
               <CustomDropdown
                 label="Unit of Measure"
@@ -496,17 +457,10 @@ const InventoryFormScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ── Location Section ── */}
-          {renderSectionHeader('location', '📍  Location')}
+          {/* ── Warehouse & Status Section ── */}
+          {renderSectionHeader('location', '📍  Warehouse & Status')}
           {!collapsed.location && (
             <View style={styles.sectionBody}>
-              <CustomDropdown
-                label="Location"
-                options={LOCATION_OPTIONS}
-                value={form.locationId}
-                onChange={val => updateField('locationId', val)}
-                placeholder="Select location..."
-              />
               <CustomDropdown
                 label="Warehouse / Agency"
                 options={agencyOptions}
@@ -518,7 +472,7 @@ const InventoryFormScreen: React.FC = () => {
                 <View>
                   <Text style={styles.toggleLabel}>Active</Text>
                   <Text style={styles.toggleHint}>
-                    Inactive items won't appear in stock reports
+                    Inactive items won’t appear in stock reports
                   </Text>
                 </View>
                 <Switch

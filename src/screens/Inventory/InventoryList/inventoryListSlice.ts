@@ -7,7 +7,11 @@
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { InventoryItemData } from '../../../models/inventoryModel';
+import type {
+  CreateInventoryItemPayload,
+  InventoryItemData,
+  UpdateInventoryItemPayload,
+} from '../../../models/inventoryModel';
 import type { AdjustmentReason } from '../../../models/adjustmentModel';
 import {
   getInventoryItemsAPI,
@@ -122,7 +126,7 @@ export const inventoryListSlice = createAppSlice({
       },
     ),
     createInventoryItem: create.asyncThunk(
-      async (data: Omit<InventoryItemData, 'itemId' | 'lastUpdated'>) => createInventoryItemAPI(data),
+      async (data: CreateInventoryItemPayload) => createInventoryItemAPI(data),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
           const item = inventorySingleSerializer(action.payload);
@@ -131,7 +135,7 @@ export const inventoryListSlice = createAppSlice({
       },
     ),
     editInventoryItem: create.asyncThunk(
-      async ({ itemId, data }: { itemId: string; data: Partial<InventoryItemData> }) =>
+      async ({ itemId, data }: { itemId: string; data: UpdateInventoryItemPayload }) =>
         updateInventoryItemAPI(itemId, data),
       {
         fulfilled: (state, action: PayloadAction<any>) => {

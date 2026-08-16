@@ -43,6 +43,46 @@ export interface InventoryItemData {
 
 export type InventoryApiEntity = InventoryItemData;
 
+// ─── Write payloads (mirror the API DTOs) ────────────
+// Deliberately separate from InventoryItemData, which carries an index
+// signature that makes any `Omit<>` of it vacuous — that is how a fake
+// `locationId` and blank optional fields reached the API unchecked and 400'd
+// every create. These types have no index signature, so a stray field is a
+// compile error.
+//
+// Decimals are strings on purpose: the API validates them with
+// @IsNumberString. Optional fields must be OMITTED rather than sent empty —
+// its @IsOptional() only skips null/undefined, so '' is still validated and
+// fails @Length / @IsNumberString / @IsUUID.
+//
+// `locationId` is absent by design: the backend has an inventory_locations
+// table but no endpoint exposes it, so the app can never hold a real location
+// UUID (see LOCATION_OPTIONS below).
+export interface CreateInventoryItemPayload {
+  sku: string;
+  name: string;
+  description?: string;
+  category?: string;
+  unitOfMeasure?: string;
+  /** Weighted average is the only method the API accepts. */
+  costMethod?: 'average';
+  unitCost?: string;
+  sellingPrice?: string;
+  reorderPoint?: string;
+  reorderQuantity?: string;
+  minStock?: string;
+  maxStock?: string;
+  isActive?: boolean;
+  serialTracking?: boolean;
+  lotTracking?: boolean;
+  barcodeData?: string;
+  sourceAgencyId?: string;
+}
+
+/** UpdateInventoryItemDto has no `costMethod` field; everything else is
+ *  optional there too, including `sku`. */
+export type UpdateInventoryItemPayload = Partial<Omit<CreateInventoryItemPayload, 'costMethod'>>;
+
 // ─── Pagination envelope ─────────────────────────────
 export interface InventoryApiPagination {
   page: number;
@@ -89,8 +129,7 @@ export interface InventoryFormData {
   serialTracking: boolean;
   lotTracking: boolean;
   barcodeData: string;
-  // Location
-  locationId: string;
+  // Warehouse & status
   sourceAgencyId: string;
   isActive: boolean;
 }
@@ -135,6 +174,16 @@ export const COST_METHOD_OPTIONS = [
   { label: 'Weighted Average', value: 'average' },
 ];
 
+/**
+ * DISPLAY-ONLY client ids — never send these to the API.
+ *
+ * The backend has an `inventory_locations` table but no endpoint exposes it,
+ * so there is no way to obtain a real location UUID. The API validates
+ * `locationId` with @IsUUID, so posting 'loc-main' 400s the request; the item
+ * form used to default to exactly that and failed every create and edit.
+ *
+ * Kept only for the screens that still filter on these labels locally.
+ */
 export const LOCATION_OPTIONS = [
   { label: 'Main Office', value: 'loc-main' },
   { label: 'Warehouse', value: 'loc-warehouse' },

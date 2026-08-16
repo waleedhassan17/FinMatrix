@@ -3,6 +3,10 @@
 // ═══════════════════════════════════════════════════════
 
 import { api, extractErrorMessage } from '../network/apiHelpers';
+import type {
+  CreateInventoryItemPayload,
+  UpdateInventoryItemPayload,
+} from '../../models/inventoryModel';
 import type { AdjustmentReason } from '../../models/adjustmentModel';
 
 export interface InventoryQueryParams {
@@ -34,7 +38,9 @@ export const getInventoryItemByIdAPI = async (id: string): Promise<any> => {
   }
 };
 
-export const createInventoryItemAPI = async (data: any): Promise<any> => {
+export const createInventoryItemAPI = async (
+  data: CreateInventoryItemPayload,
+): Promise<any> => {
   try {
     const response = await api.post('/inventory/items', data);
     return response.data;
@@ -43,7 +49,10 @@ export const createInventoryItemAPI = async (data: any): Promise<any> => {
   }
 };
 
-export const updateInventoryItemAPI = async (id: string, data: any): Promise<any> => {
+export const updateInventoryItemAPI = async (
+  id: string,
+  data: UpdateInventoryItemPayload,
+): Promise<any> => {
   try {
     const response = await api.patch(`/inventory/items/${id}`, data);
     return response.data;

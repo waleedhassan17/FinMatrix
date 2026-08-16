@@ -35,7 +35,6 @@ const initialFormData: InventoryFormData = {
   serialTracking: false,
   lotTracking: false,
   barcodeData: '',
-  locationId: 'loc-main',
   sourceAgencyId: '',
   isActive: true,
 };
