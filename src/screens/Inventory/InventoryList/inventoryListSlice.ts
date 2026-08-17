@@ -13,6 +13,7 @@ import type {
   UpdateInventoryItemPayload,
 } from '../../../models/inventoryModel';
 import type { AdjustmentReason } from '../../../models/adjustmentModel';
+import type { InventoryQueryParams } from '../../../networks/inventory/inventoryNetwork';
 import {
   getInventoryItemsAPI,
   createInventoryItemAPI,
@@ -111,7 +112,10 @@ export const inventoryListSlice = createAppSlice({
 
     // ── Async thunks (route through network → serializer) ──
     fetchInventoryItems: create.asyncThunk(
-      async () => getInventoryItemsAPI(),
+      // `| void`, not `| undefined`: this project sets strictNullChecks:false,
+      // which flips RTK's arg-optionality inference to the required-arg
+      // overload and would break every existing zero-arg dispatch.
+      async (params: InventoryQueryParams | void) => getInventoryItemsAPI(params || {}),
       {
         pending: state => { state.isLoading = true; state.error = ''; },
         fulfilled: (state, action: PayloadAction<any>) => {

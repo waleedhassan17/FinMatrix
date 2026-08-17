@@ -16,15 +16,9 @@ import {
 import {
   purchaseOrderListSerializer,
 } from '../../../serializers/purchaseOrderSerializer';
+import { toApiPOStatus } from '../../../models/purchaseOrderModel';
 
 export type POStatusFilter = 'all' | PurchaseOrderStatus;
-
-const toApiPOStatus = (statusFilter: POStatusFilter): string | undefined => {
-  if (statusFilter === 'all') return undefined;
-  if (statusFilter === 'partially_received') return 'partial';
-  if (statusFilter === 'fully_received') return 'received';
-  return statusFilter;
-};
 
 export interface POListSliceState {
   items: PurchaseOrder[];

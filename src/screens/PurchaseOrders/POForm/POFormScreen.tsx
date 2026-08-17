@@ -41,7 +41,11 @@ import {
 } from './poFormSlice';
 import { selectItems as selectPOs, upsertPurchaseOrder, fetchPurchaseOrders } from '../POList/poListSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
-import { inventoryItemsData } from '../../../models/inventoryModel';
+import { previewWeightedAverage } from '../../../models/inventoryModel';
+import {
+  fetchInventoryItems,
+  selectInventoryItems,
+} from '../../Inventory/InventoryList/inventoryListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import {
@@ -76,6 +80,7 @@ const POFormScreen: React.FC = () => {
   const isEditing = !!editingId;
   const pos = useAppSelector(selectPOs);
   const vendors = useAppSelector(selectVendors);
+  const items = useAppSelector(selectInventoryItems);
   const form = useAppSelector(selectPOFormState);
   const hydratedRef = React.useRef(false);
 
@@ -86,22 +91,15 @@ const POFormScreen: React.FC = () => {
 
   const itemOptions = useMemo(
     () =>
-      inventoryItemsData
+      items
         .filter(i => i.isActive)
-        .map(i => ({ label: `${i.sku} — ${i.name}`, value: i.itemId })),
-    [],
+        .map(i => ({ label: `${i.sku} — ${i.name}`, value: i.itemId ?? i.id })),
+    [items],
   );
-
-  const generatePONumber = useCallback(() => {
-    const maxNum = pos.reduce((max, p) => {
-      const m = p.poNumber.match(/PO-(?:\d{4}-)?(\\d+)/);
-      return m ? Math.max(max, parseInt(m[1], 10)) : max;
-    }, 0);
-    return `PO-${new Date().getFullYear()}-${String(maxNum + 1).padStart(3, '0')}`;
-  }, [pos]);
 
   useEffect(() => {
     dispatch(fetchVendors());
+    dispatch(fetchInventoryItems());
 
     if (hydratedRef.current) return;
     hydratedRef.current = true;
@@ -109,7 +107,9 @@ const POFormScreen: React.FC = () => {
     if (isEditing && editingId) {
       dispatch(fetchPOForEdit(editingId));
     } else {
-      dispatch(setField({ key: 'poNumber', value: generatePONumber() }));
+      // No PO number is seeded: the server assigns it (PO-2026-0001) and
+      // ignores anything we send, so anything shown here before saving would
+      // be a guess that gets overwritten.
       const expected = new Date();
       expected.setDate(expected.getDate() + 14);
       dispatch(setField({ key: 'expectedDate', value: expected.toISOString().slice(0, 10) }));
@@ -118,6 +118,24 @@ const POFormScreen: React.FC = () => {
     return () => { dispatch(resetForm()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, editingId, dispatch]);
+
+  // The API's PATCH rebuilds every line from scratch and resets receivedQty to
+  // zero — on a PO that has receipts that would orphan stock and a posted
+  // journal entry. This screen is deep-linkable, so refuse here rather than
+  // rely on the Detail screen only offering Edit for drafts.
+  const editingStatus = useMemo(
+    () => (editingId ? pos.find(p => p.id === editingId)?.status : undefined),
+    [pos, editingId],
+  );
+  useEffect(() => {
+    if (!isEditing || !editingStatus || editingStatus === 'draft') return;
+    Toast.show({
+      type: 'error',
+      text1: 'Cannot edit this PO',
+      text2: 'Only draft purchase orders can be edited — this one has already been sent or received.',
+    });
+    navigation.goBack();
+  }, [isEditing, editingStatus, navigation]);
 
   const handleVendorChange = useCallback(
     (vendorId: string) => {
@@ -130,25 +148,46 @@ const POFormScreen: React.FC = () => {
 
   const handleItemChange = useCallback(
     (lineId: string, itemId: string) => {
-      const item = inventoryItemsData.find(i => i.itemId === itemId);
+      const item = items.find(i => (i.itemId ?? i.id) === itemId);
       if (!item) return;
       dispatch(
         setLineItem({
           id: lineId,
-          itemId: item.itemId,
+          itemId: item.itemId ?? item.id,
           itemName: item.name,
-          description: item.description,
+          // A purchase is priced at COST, not at the selling price.
+          description: item.description || item.name,
           unitPrice: String(item.unitCost),
         }),
       );
     },
-    [dispatch],
+    [items, dispatch],
   );
+
+  /** What each line does to its item's average cost if received at the price
+   *  typed. Walks lines in order with a running per-item tally, because the
+   *  server folds multiple lines for one item sequentially — otherwise two
+   *  lines for the same item would both project from the same stale figure. */
+  const costPreviews = useMemo(() => {
+    const running = new Map<string, { qty: number; cost: number }>();
+    const out = new Map<string, { onHand: number; before: number; after: number }>();
+    for (const line of form.lines) {
+      const item = items.find(i => (i.itemId ?? i.id) === line.itemId);
+      const qty = parseFloat(line.quantity);
+      const price = parseFloat(line.unitPrice);
+      if (!item || !(qty > 0) || !(price >= 0)) continue;
+      const key = item.itemId ?? item.id;
+      const state = running.get(key) ?? { qty: item.quantityOnHand, cost: item.unitCost };
+      const after = previewWeightedAverage(state.qty, state.cost, qty, price);
+      out.set(line.id, { onHand: state.qty, before: state.cost, after });
+      running.set(key, { qty: state.qty + qty, cost: after });
+    }
+    return out;
+  }, [form.lines, items]);
 
   const validate = useCallback((): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!form.vendorId) errs.vendorId = 'Select a vendor';
-    if (!form.poNumber.trim()) errs.poNumber = 'PO number is required';
     if (!form.orderDate) errs.orderDate = 'Order date is required';
     if (!form.expectedDate) errs.expectedDate = 'Expected date is required';
     if (form.lines.length === 0) errs.lines = 'At least one line item is required';
@@ -171,23 +210,38 @@ const POFormScreen: React.FC = () => {
       try {
         const result: any = await dispatch(savePurchaseOrder(saveStatus));
         if (result.error) throw new Error(result.error.message);
-        const saved = result.payload;
+        const { po: saved, sendFailed } = result.payload ?? {};
         if (saved) dispatch(upsertPurchaseOrder(saved));
         await dispatch(fetchPurchaseOrders());
 
-        const action = isEditing ? 'updated' : 'created';
-        const status = saveStatus === 'sent' ? 'and sent to vendor' : 'as draft';
-        Toast.show({
+        // The PO number comes back from the server — the form never had one.
+        const ref = saved?.poNumber ?? 'The purchase order';
+        if (sendFailed) {
+          // The PO exists; only the status change failed. Reporting an outright
+          // failure here would send the user off to create a duplicate.
+          Toast.show({
+            type: 'error',
+            text1: 'Saved as draft',
+            text2: `${ref} was created but could not be marked Sent. Open it and tap "Send to Vendor".`,
+          });
+        } else {
+          Toast.show({
             type: 'success',
             text1: isEditing ? 'PO Updated' : 'PO Created',
-            text2: `${form.poNumber} has been ${action} ${status}.`,
+            text2: `${ref} has been ${isEditing ? 'updated' : 'created'} ${saveStatus === 'sent' ? 'and sent to vendor' : 'as draft'}.`,
           });
-          navigation.goBack();
-      } catch {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save purchase order. Please try again.' });
+        }
+        if (saved?.id) navigation.replace('PODetail', { poId: saved.id });
+        else navigation.goBack();
+      } catch (e: any) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: e?.message || 'Failed to save purchase order. Please try again.',
+        });
       }
     },
-    [form, isEditing, dispatch, navigation, validate],
+    [isEditing, dispatch, navigation, validate],
   );
 
   // ═════════════════════════════════════════════════════
@@ -221,13 +275,14 @@ const POFormScreen: React.FC = () => {
                 error={form.errors.vendorId}
                 searchable
               />
+              {/* The server owns this number and ignores anything we send,
+                  so it is shown, never typed. */}
               <CustomInput
                 label="PO #"
                 value={form.poNumber}
-                onChangeText={v => dispatch(setField({ key: 'poNumber', value: v }))}
-                placeholder="PO-0000"
-                error={form.errors.poNumber}
-                disabled={isEditing}
+                onChangeText={() => {}}
+                placeholder="Assigned on save"
+                disabled
               />
               <View style={styles.rowFields}>
                 <View style={{ flex: 1, marginRight: spacing.sm }}>
@@ -323,6 +378,35 @@ const POFormScreen: React.FC = () => {
                     />
                   </View>
                 </View>
+
+                {/* What receiving at this price would do to the item's
+                    weighted-average cost. A projection — the cost only moves
+                    when the goods are actually received, with its journal
+                    entry. */}
+                {costPreviews.has(line.id) && (
+                  <View style={styles.costPreview}>
+                    <Text style={styles.costPreviewText}>
+                      On hand {costPreviews.get(line.id)!.onHand} · Avg cost{' '}
+                      {formatCurrency(costPreviews.get(line.id)!.before, 'Rs ')}
+                    </Text>
+                    <Text style={styles.costPreviewText}>
+                      If received at this price →{' '}
+                      <Text
+                        style={[
+                          styles.costPreviewAfter,
+                          {
+                            color:
+                              costPreviews.get(line.id)!.after > costPreviews.get(line.id)!.before
+                                ? colors.warning
+                                : colors.success,
+                          },
+                        ]}
+                      >
+                        {formatCurrency(costPreviews.get(line.id)!.after, 'Rs ')}
+                      </Text>
+                    </Text>
+                  </View>
+                )}
 
                 <View style={styles.lineTotalRow}>
                   <Feather name="arrow-right" size={12} color={colors.primary} />
@@ -441,6 +525,9 @@ const styles = StyleSheet.create({
     ...THEME.typography.bodyMd, color: colors.textPrimary,
   },
   lineTotalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: spacing.sm },
+  costPreview: { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: colors.border },
+  costPreviewText: { ...THEME.typography.caption, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  costPreviewAfter: { fontWeight: '700' },
   lineTotal: { fontSize: 13, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
 
   totalsCard: { borderRadius: borderRadius.md + 4, padding: spacing.md + 4, marginTop: spacing.lg, ...shadows.large },

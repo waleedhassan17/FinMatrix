@@ -375,6 +375,9 @@ export interface PurchaseOrder {
   taxAmount: number;
   total: number;
   notes: string;
+  /** Non-empty once converted to a bill — a PO can back at most one. */
+  billId: string;
+  billNumber: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

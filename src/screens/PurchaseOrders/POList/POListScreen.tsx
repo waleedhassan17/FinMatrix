@@ -45,7 +45,7 @@ import {
 import EmptyState from '../../../components/shared/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { HEADER_NAVY, HeaderAction } from '../../../components/reports/ReportUI';
-import { PO_STATUS_COLORS, PO_STATUS_LABELS } from '../../../models/purchaseOrderModel';
+import { PO_STATUS_COLORS, PO_STATUS_LABELS, formatPODate } from '../../../models/purchaseOrderModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PurchaseOrder } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -131,8 +131,8 @@ const POListScreen: React.FC = () => {
           </View>
 
           <View style={styles.cardDates}>
-            <Text style={styles.dateText}>Ordered: {formatDate(item.orderDate)}</Text>
-            <Text style={styles.dateText}>Expected: {formatDate(item.expectedDate)}</Text>
+            <Text style={styles.dateText}>Ordered: {formatPODate(item.orderDate)}</Text>
+            <Text style={styles.dateText}>Expected: {formatPODate(item.expectedDate)}</Text>
           </View>
 
           <View style={styles.cardBottom}>

@@ -8,17 +8,27 @@
 // Plus the existing form-validation helpers used by the form screen.
 
 import type { PurchaseOrder, PurchaseOrderLine, PurchaseOrderStatus } from '../types';
+import { formatDate } from '../utils/formatters';
 
 // ─── Raw API entity (backend shape) ──────────────────
+// These mirror what `/purchase-orders` ACTUALLY returns, verified against the
+// live API. Two things differ from the UI types and used to be mis-declared
+// here, which made every PO render as zero:
+//   • decimals arrive as STRINGS ('40.0000') — TypeORM numeric columns
+//   • lines use orderedQty / receivedQty / unitCost / lineTotal, and carry no
+//     itemName (resolve it from inventory) and no vendorName on the detail
 export interface PurchaseOrderApiLineEntity {
   id: string;
-  itemId: string;
-  itemName: string;
+  orderId: string;
+  itemId: string | null;
+  accountId: string | null;
   description: string;
-  quantity: number;
-  unitPrice: number;
-  amount: number;
-  receivedQuantity: number;
+  orderedQty: string;
+  receivedQty: string;
+  unitCost: string;
+  taxRate: string;
+  lineTotal: string;
+  lineOrder: number;
 }
 
 export interface PurchaseOrderApiEntity {
@@ -26,19 +36,41 @@ export interface PurchaseOrderApiEntity {
   companyId: string;
   poNumber: string;
   vendorId: string;
-  vendorName: string;
+  vendorName?: string;
   orderDate: string;
-  expectedDate: string;
-  status: PurchaseOrderStatus;
+  expectedDate: string | null;
+  status: ApiPOStatus;
   lines: PurchaseOrderApiLineEntity[];
-  subtotal: number;
-  taxAmount: number;
-  total: number;
-  notes: string;
-  createdBy: string;
+  subtotal: string;
+  taxAmount: string;
+  total: string;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Set by GET /purchase-orders/:id when this PO has been converted. */
+  billId?: string | null;
+  billNumber?: string | null;
 }
+
+// ─── Status vocabulary ───────────────────────────────
+// The API and the UI name two of these differently, and the column is
+// varchar(16) — sending 'partially_received' (18 chars) is a Postgres 22001,
+// i.e. a 500. Always translate at the boundary, never pass through.
+export type ApiPOStatus = 'draft' | 'sent' | 'partial' | 'received' | 'closed';
+
+export const toApiPOStatus = (status: PurchaseOrderStatus | 'all'): ApiPOStatus | undefined => {
+  if (status === 'all') return undefined;
+  if (status === 'partially_received') return 'partial';
+  if (status === 'fully_received') return 'received';
+  return status;
+};
+
+export const fromApiPOStatus = (raw: string | undefined | null): PurchaseOrderStatus => {
+  if (raw === 'partial') return 'partially_received';
+  if (raw === 'received') return 'fully_received';
+  if (raw === 'draft' || raw === 'sent' || raw === 'closed') return raw;
+  return 'draft';
+};
 
 // ─── Pagination envelope ─────────────────────────────
 export interface PurchaseOrderApiPagination {
@@ -59,6 +91,11 @@ export interface PurchaseOrderQueryParams {
 
 // ─── Re-export the canonical UI types for convenience ─
 export type { PurchaseOrder, PurchaseOrderLine };
+
+/** `expectedDate` is nullable on the API and lands here as '', which dayjs
+ *  renders as the literal string "Invalid Date". */
+export const formatPODate = (value: string | null | undefined): string =>
+  value ? formatDate(value) : '—';
 
 export const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
   draft: 'Draft',

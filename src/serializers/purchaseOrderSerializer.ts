@@ -11,6 +11,17 @@ import type {
   PurchaseOrderApiEntity,
   PurchaseOrderApiLineEntity,
 } from '../models/purchaseOrderModel';
+import { fromApiPOStatus } from '../models/purchaseOrderModel';
+
+// Every decimal on the wire is a TypeORM numeric, i.e. a STRING ('40.0000').
+// The old mappers tested `typeof raw.x === 'number'` and so resolved every
+// figure to 0 — which zeroed each PO's totals AND made `remaining` 0, which
+// disabled the receive input. Mirrors billSerializer.ts.
+const toNum = (v: any): number => {
+  if (typeof v === 'number') return v;
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+};
 
 // ─── Serialized output for the list slice ────────────
 export interface SerializedPOList {
@@ -26,12 +37,14 @@ export interface SerializedPOList {
 const mapPOLine = (raw: Partial<PurchaseOrderApiLineEntity>): PurchaseOrderLine => ({
   id: raw.id ?? '',
   itemId: raw.itemId ?? '',
-  itemName: raw.itemName ?? '',
+  // The API never returns an item name — screens resolve it from inventory
+  // and fall back to the line description, which is what the vendor sees.
+  itemName: '',
   description: raw.description ?? '',
-  quantity: typeof raw.quantity === 'number' ? raw.quantity : 0,
-  unitPrice: typeof raw.unitPrice === 'number' ? raw.unitPrice : 0,
-  amount: typeof raw.amount === 'number' ? raw.amount : 0,
-  receivedQuantity: typeof raw.receivedQuantity === 'number' ? raw.receivedQuantity : 0,
+  quantity: toNum(raw.orderedQty),
+  unitPrice: toNum(raw.unitCost),
+  amount: toNum(raw.lineTotal),
+  receivedQuantity: toNum(raw.receivedQty),
 });
 
 export const mapPO = (raw: Partial<PurchaseOrderApiEntity>): PurchaseOrder => ({
@@ -42,13 +55,15 @@ export const mapPO = (raw: Partial<PurchaseOrderApiEntity>): PurchaseOrder => ({
   vendorName: raw.vendorName ?? '',
   orderDate: raw.orderDate ?? '',
   expectedDate: raw.expectedDate ?? '',
-  status: (raw.status as PurchaseOrderStatus) ?? 'draft',
+  status: fromApiPOStatus(raw.status),
   lines: Array.isArray(raw.lines) ? raw.lines.map(mapPOLine) : [],
-  subtotal: typeof raw.subtotal === 'number' ? raw.subtotal : 0,
-  taxAmount: typeof raw.taxAmount === 'number' ? raw.taxAmount : 0,
-  total: typeof raw.total === 'number' ? raw.total : 0,
+  subtotal: toNum(raw.subtotal),
+  taxAmount: toNum(raw.taxAmount),
+  total: toNum(raw.total),
   notes: raw.notes ?? '',
-  createdBy: raw.createdBy ?? '',
+  billId: raw.billId ?? '',
+  billNumber: raw.billNumber ?? '',
+  createdBy: '',
   createdAt: raw.createdAt ?? '',
   updatedAt: raw.updatedAt ?? '',
 });

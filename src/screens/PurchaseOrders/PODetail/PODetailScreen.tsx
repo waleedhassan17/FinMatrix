@@ -8,7 +8,7 @@
 //   • Bill created — JE: DR Inventory, CR AP
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -28,7 +28,17 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
+import Toast from 'react-native-toast-message';
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
+import {
+  fetchInventoryItems,
+  editInventoryItem,
+  selectInventoryItems,
+} from '../../Inventory/InventoryList/inventoryListSlice';
+import { inventoryListSerializer } from '../../../serializers/inventorySerializer';
+import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
+import { convertPOToBillAPI } from '../../../networks/purchases/purchaseOrderNetwork';
+import { fetchBills } from '../../Bills/BillList/billListSlice';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -48,7 +58,7 @@ import {
   selectIsUpdatingStatus,
 } from './poDetailSlice';
 import { upsertPurchaseOrder } from '../POList/poListSlice';
-import { PO_STATUS_COLORS, PO_STATUS_LABELS } from '../../../models/purchaseOrderModel';
+import { PO_STATUS_COLORS, PO_STATUS_LABELS, formatPODate } from '../../../models/purchaseOrderModel';
 import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
@@ -73,13 +83,85 @@ const PODetailScreen: React.FC = () => {
   const receivingLines = useAppSelector(selectReceivingLines);
   const isReceiving = useAppSelector(selectIsReceiving);
   const isUpdatingStatus = useAppSelector(selectIsUpdatingStatus);
+  // The API returns neither an item name on PO lines nor a vendor name on the
+  // detail payload, so both are resolved here from their own lists.
+  const inventory = useAppSelector(selectInventoryItems);
+  const vendors = useAppSelector(selectVendors);
 
   const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
     dispatch(fetchPODetail(poId));
+    dispatch(fetchInventoryItems());
+    dispatch(fetchVendors());
     return () => { dispatch(clearDetail()); };
   }, [poId, dispatch]);
+
+  const itemNames = useMemo(
+    () => new Map(inventory.map(i => [i.itemId ?? i.id, i.name])),
+    [inventory],
+  );
+  const nameForLine = useCallback(
+    (line: { itemId: string; itemName: string; description: string }) =>
+      itemNames.get(line.itemId) || line.itemName || line.description || 'Item',
+    [itemNames],
+  );
+  const vendorName = useMemo(
+    () => po?.vendorName || vendors.find(v => v.id === po?.vendorId)?.name || '—',
+    [po?.vendorName, po?.vendorId, vendors],
+  );
+
+  /** After a receipt has moved an item's average cost, offer to carry the same
+   *  proportion onto its selling price. Cost is read back from the server
+   *  rather than recomputed locally: a concurrent receipt would make a local
+   *  figure wrong, and a bad selling price writes silently. */
+  const offerRepricing = useCallback(
+    async (before: Map<string, { cost: number; price: number; name: string }>) => {
+      if (before.size === 0) return;
+
+      const refreshed: any = await dispatch(fetchInventoryItems());
+      if (refreshed.error) return; // never guess at a price
+      const fresh = inventoryListSerializer(refreshed.payload).items;
+
+      const proposals = fresh
+        .map(item => {
+          const prev = before.get(item.itemId ?? item.id);
+          if (!prev || prev.cost <= 0 || prev.price <= 0) return null;
+          if (item.unitCost === prev.cost) return null;
+          const newPrice = Math.round(prev.price * (item.unitCost / prev.cost) * 100) / 100;
+          if (Math.abs(newPrice - prev.price) < 0.01) return null;
+          return { itemId: item.itemId ?? item.id, name: prev.name, oldCost: prev.cost, newCost: item.unitCost, oldPrice: prev.price, newPrice };
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== null);
+
+      if (proposals.length === 0) return;
+
+      const body = proposals.length === 1
+        ? `${proposals[0].name} cost ${formatCurrency(proposals[0].oldCost)} → ${formatCurrency(proposals[0].newCost)}.\n\nUpdate its selling price ${formatCurrency(proposals[0].oldPrice)} → ${formatCurrency(proposals[0].newPrice)} to keep the same margin?`
+        : `${proposals.slice(0, 6).map(p => `${p.name}: ${formatCurrency(p.oldPrice)} → ${formatCurrency(p.newPrice)}`).join('\n')}${proposals.length > 6 ? `\n+${proposals.length - 6} more` : ''}\n\nKeeping each item's current margin.`;
+
+      Alert.alert(proposals.length === 1 ? 'Cost changed' : 'Update selling prices?', body, [
+        { text: 'Skip', style: 'cancel' },
+        {
+          text: 'Update prices',
+          onPress: async () => {
+            const results = await Promise.allSettled(
+              proposals.map(p =>
+                dispatch(editInventoryItem({ itemId: p.itemId, data: { sellingPrice: String(p.newPrice) } })).unwrap(),
+              ),
+            );
+            const failed = results.filter(r => r.status === 'rejected').length;
+            Toast.show(
+              failed === 0
+                ? { type: 'success', text1: 'Prices updated', text2: `${proposals.length} selling price${proposals.length === 1 ? '' : 's'} updated.` }
+                : { type: 'error', text1: 'Some prices not updated', text2: `${failed} of ${proposals.length} failed. Try again from the item screen.` },
+            );
+          },
+        },
+      ]);
+    },
+    [dispatch],
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -104,8 +186,8 @@ const PODetailScreen: React.FC = () => {
   );
 
   const handleSend = useCallback(
-    () => po && transitionStatus('sent', `${po.poNumber} has been sent to ${po.vendorName}.`),
-    [po, transitionStatus],
+    () => po && transitionStatus('sent', `${po.poNumber} has been sent to ${vendorName}.`),
+    [po, vendorName, transitionStatus],
   );
 
   const handleClose = useCallback(() => {
@@ -125,38 +207,117 @@ const PODetailScreen: React.FC = () => {
   }, [po, transitionStatus]);
 
   // ── Receiving flow ──────────────────────────
+  // Receiving is the ONLY event that changes an item's cost: the server folds
+  // the PO price into the weighted average and posts DR Inventory / CR GRNI in
+  // the same transaction. Selling price is not part of that — it carries no
+  // ledger meaning — so we offer to re-price afterwards rather than moving a
+  // customer-facing number on the user's behalf.
   const handleSaveReceive = useCallback(async () => {
     if (!po) return;
-    const receipts = receivingLines
-      .filter(rl => rl.receivingQty > 0)
-      .map(rl => ({ lineId: rl.lineId, receivingQty: rl.receivingQty }));
-    if (receipts.length === 0) {
+    if (!receivingLines.some(rl => rl.receivingQty > 0)) {
       Alert.alert('Nothing to Receive', 'Enter received quantities for at least one line.');
       return;
     }
-    const result: any = await dispatch(receivePOItems({ id: po.id, receipts }));
+
+    // Snapshot BEFORE the receipt. Reading this after the await would see the
+    // already-updated cost and compare it against itself.
+    const receivedItemIds = new Set(
+      receivingLines
+        .filter(rl => rl.receivingQty > 0)
+        .map(rl => po.lines.find(l => l.id === rl.lineId)?.itemId)
+        .filter((id): id is string => !!id),
+    );
+    const before = new Map(
+      inventory
+        .filter(i => receivedItemIds.has(i.itemId ?? i.id))
+        .map(i => [i.itemId ?? i.id, { cost: i.unitCost, price: i.sellingPrice, name: i.name }]),
+    );
+
+    const result: any = await dispatch(receivePOItems({ id: po.id }));
     if (result.error) {
-      Alert.alert('Error', 'Failed to record received items.');
+      Alert.alert('Error', result.error?.message || 'Failed to record received items.');
       return;
     }
+
     const updated = purchaseOrderSingleSerializer(result.payload);
     if (updated) {
       dispatch(upsertPurchaseOrder(updated));
       const allReceived = updated.lines.every(l => l.receivedQuantity >= l.quantity);
-      Alert.alert(
-        'Items Received',
-        allReceived
-          ? 'All items have been fully received. You can now Convert to Bill.'
+      Toast.show({
+        type: 'success',
+        text1: 'Items Received',
+        text2: allReceived
+          ? 'All items fully received. You can now Convert to Bill.'
           : 'Received quantities have been recorded.',
-      );
+      });
     }
-  }, [po, receivingLines, dispatch]);
 
-  // Activity diagram step: "Tap Convert to Bill" → "Bill created — JE: DR Inventory, CR AP"
+    await offerRepricing(before);
+  }, [po, receivingLines, inventory, dispatch, offerRepricing]);
+
+  // Billing a received PO is DR GRNI / CR AP — it CLEARS the GRNI raised at
+  // receipt rather than debiting Inventory a second time. Only the server's
+  // create-bill endpoint posts that entry, and it bills receivedQty x unitCost
+  // carrying each line's tax, so the conversion happens in one call here
+  // instead of opening a blank bill form the user could submit repeatedly.
+  const [isConverting, setIsConverting] = React.useState(false);
+
   const handleConvertToBill = useCallback(() => {
-    if (!po) return;
-    navigation.navigate('BillForm', { fromPOId: po.id });
-  }, [po, navigation]);
+    if (!po || isConverting) return;
+
+    const billed = po.lines
+      .filter(l => l.receivedQuantity > 0)
+      .reduce((sum, l) => sum + l.receivedQuantity * l.unitPrice, 0);
+    const billDate = new Date().toISOString().slice(0, 10);
+    const due = new Date();
+    due.setDate(due.getDate() + 30);
+    const dueDate = due.toISOString().slice(0, 10);
+
+    Alert.alert(
+      'Convert to Bill',
+      `Bill ${vendorName} ${formatCurrency(billed, 'Rs ')} for what was received on ${po.poNumber}.\n\n` +
+        `Bill date ${formatDate(billDate)} · Due ${formatDate(dueDate)}\n\n` +
+        'This clears Goods Received Not Invoiced and raises Accounts Payable.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Create bill',
+          onPress: async () => {
+            setIsConverting(true);
+            try {
+              // billNumber is '' on purpose: the DTO requires the key, and the
+              // server assigns its own reference when it is empty.
+              const envelope = await convertPOToBillAPI(po.id, { billNumber: '', billDate, dueDate });
+              const billId = envelope?.data?.billId ?? envelope?.billId;
+              await dispatch(fetchPODetail(po.id));
+              await dispatch(fetchBills());
+              Toast.show({
+                type: 'success',
+                text1: 'Bill created',
+                text2: 'DR Goods Received Not Invoiced · CR Accounts Payable.',
+              });
+              if (billId) navigation.navigate('BillDetail', { billId });
+            } catch (e: any) {
+              Toast.show({
+                type: 'error',
+                text1: 'Could not create bill',
+                text2: e?.message || 'Please try again.',
+              });
+            } finally {
+              setIsConverting(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [po, isConverting, vendorName, dispatch, navigation]);
+
+  // Read the id out first: closing over `po` would widen the dependency to the
+  // whole object and make React Compiler skip the component.
+  const linkedBillId = po?.billId;
+  const handleViewBill = useCallback(() => {
+    if (linkedBillId) navigation.navigate('BillDetail', { billId: linkedBillId });
+  }, [linkedBillId, navigation]);
 
   // ── Loading / Error ─────────────────────────────
   if (isLoading && !po) {
@@ -185,7 +346,9 @@ const PODetailScreen: React.FC = () => {
   const statusCol = PO_STATUS_COLORS[po.status];
   const isFullyReceived = po.status === 'fully_received';
   const canReceive = po.status === 'sent' || po.status === 'partially_received';
-  const canConvertToBill = po.status === 'fully_received' || po.status === 'partially_received';
+  const isBilled = !!po.billId;
+  const canConvertToBill =
+    !isBilled && (po.status === 'fully_received' || po.status === 'partially_received');
 
   // ═════════════════════════════════════════════════════
   return (
@@ -240,18 +403,18 @@ const PODetailScreen: React.FC = () => {
             </View>
             <View style={styles.metaCol}>
               <Text style={styles.metaKey}>Order Date</Text>
-              <Text style={styles.metaVal}>{formatDate(po.orderDate)}</Text>
+              <Text style={styles.metaVal}>{formatPODate(po.orderDate)}</Text>
             </View>
             <View style={styles.metaCol}>
               <Text style={styles.metaKey}>Expected</Text>
-              <Text style={styles.metaVal}>{formatDate(po.expectedDate)}</Text>
+              <Text style={styles.metaVal}>{formatPODate(po.expectedDate)}</Text>
             </View>
           </View>
 
           <View style={styles.divider} />
 
           <Text style={styles.sectionLabel}>Vendor</Text>
-          <Text style={styles.vendorName}>{po.vendorName}</Text>
+          <Text style={styles.vendorName}>{vendorName}</Text>
 
           <View style={styles.divider} />
 
@@ -300,7 +463,7 @@ const PODetailScreen: React.FC = () => {
                   style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven]}
                 >
                   <View style={{ flex: 2 }}>
-                    <Text style={styles.tdText} numberOfLines={1}>{line.itemName}</Text>
+                    <Text style={styles.tdText} numberOfLines={1}>{nameForLine(line)}</Text>
                     {!!line.description && (
                       <Text style={styles.tdSub} numberOfLines={1}>{line.description}</Text>
                     )}
@@ -409,14 +572,16 @@ const PODetailScreen: React.FC = () => {
             {/* Sent / Partially received: Receive + Convert + Close */}
             {canReceive && (
               <>
-                {canConvertToBill && (
+                {(canConvertToBill || isBilled) && (
                   <View style={styles.actionSecondary}>
                     <CustomButton
-                      title="To Bill"
-                      onPress={handleConvertToBill}
+                      title={isBilled ? 'View Bill' : 'To Bill'}
+                      onPress={isBilled ? handleViewBill : handleConvertToBill}
                       variant="secondary"
                       size="sm"
                       fullWidth
+                      isLoading={isConverting}
+                      disabled={isConverting}
                     />
                   </View>
                 )}
@@ -442,7 +607,7 @@ const PODetailScreen: React.FC = () => {
               </>
             )}
 
-            {/* Fully received: Convert to Bill + Close */}
+            {/* Fully received: Convert to Bill — or open the bill it became */}
             {isFullyReceived && (
               <>
                 <View style={styles.actionSecondary}>
@@ -457,11 +622,13 @@ const PODetailScreen: React.FC = () => {
                 </View>
                 <View style={styles.actionPrimary}>
                   <CustomButton
-                    title="Convert to Bill"
-                    onPress={handleConvertToBill}
+                    title={isBilled ? `View ${po.billNumber || 'Bill'}` : 'Convert to Bill'}
+                    onPress={isBilled ? handleViewBill : handleConvertToBill}
                     variant="primary"
                     size="sm"
                     fullWidth
+                    isLoading={isConverting}
+                    disabled={isConverting}
                   />
                 </View>
               </>

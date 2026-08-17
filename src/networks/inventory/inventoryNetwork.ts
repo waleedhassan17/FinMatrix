@@ -21,7 +21,10 @@ export interface InventoryQueryParams {
 
 export const getInventoryItemsAPI = async (params: InventoryQueryParams = {}): Promise<any> => {
   try {
-    const queryParams = { page: 1, limit: 50, ...params };
+    // 50 silently truncated every item dropdown in the app (PO, invoice, credit
+  // memo, delivery) with no indication anything was missing, because the
+  // screens filter client-side. The API caps nothing.
+  const queryParams = { page: 1, limit: 500, ...params };
     const response = await api.get('/inventory/items', { params: queryParams });
     return response.data;
   } catch (e: any) {

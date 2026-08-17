@@ -11,9 +11,10 @@ import type { PurchaseOrder, PurchaseOrderStatus } from '../../../types';
 import {
   createPurchaseOrderAPI,
   updatePurchaseOrderAPI,
+  updatePOStatusAPI,
   getPurchaseOrderByIdAPI,
 } from '../../../networks/purchases/purchaseOrderNetwork';
-import { getStoredCompanyId } from '../../../utils/storageUtils';
+import type { PurchaseOrderWritePayload } from '../../../networks/purchases/purchaseOrderNetwork';
 import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 
 // ── Line item (form representation — string values for inputs) ──
@@ -88,37 +89,29 @@ function recalc(state: POFormSliceState) {
 }
 
 // Save payload builder.
-const buildSavePayload = (
-  state: POFormSliceState,
-  saveStatus: PurchaseOrderStatus,
-): Omit<PurchaseOrder, 'id' | 'createdAt' | 'updatedAt'> => ({
-  // Tenant is derived server-side from the auth token / x-company-id header;
-  // populated from the stored company id at dispatch time, ignored by the
-  // backend if it disagrees.
-  companyId: '',
-  poNumber: state.poNumber.trim(),
+// Only what CreatePurchaseOrderDto accepts. Everything the form used to send
+// besides this — companyId, poNumber, vendorName, status, the totals,
+// createdBy, and per-line id/itemName/amount — is computed or assigned
+// server-side and was silently whitelisted away, while the two fields the DTO
+// actually requires (orderedQty, unitCost) were never sent at all.
+//
+// Optional keys are OMITTED, not blanked: @IsOptional() skips only
+// null/undefined, so '' still gets validated and fails @IsDateString/@IsUUID.
+const buildSavePayload = (state: POFormSliceState): PurchaseOrderWritePayload => ({
   vendorId: state.vendorId,
-  vendorName: state.vendorName,
   orderDate: state.orderDate,
-  expectedDate: state.expectedDate,
-  status: saveStatus,
+  expectedDate: state.expectedDate || undefined,
+  notes: state.notes.trim() || undefined,
   lines: state.lines
     .filter(l => l.itemId && parseFloat(l.quantity) > 0)
     .map(l => ({
-      id: l.id,
-      itemId: l.itemId,
-      itemName: l.itemName,
-      description: l.description,
-      quantity: parseFloat(l.quantity) || 0,
-      unitPrice: parseFloat(l.unitPrice) || 0,
-      amount: l.amount,
-      receivedQuantity: 0,
+      // Becomes the bill line description on convert-to-bill, so it must
+      // never be empty.
+      description: l.description.trim() || l.itemName || 'Item',
+      orderedQty: String(parseFloat(l.quantity) || 0),
+      unitCost: String(parseFloat(l.unitPrice) || 0),
+      ...(l.itemId ? { itemId: l.itemId } : {}),
     })),
-  subtotal: state.subtotal,
-  taxAmount: state.taxAmount,
-  total: state.total,
-  notes: state.notes,
-  createdBy: 'user_001',
 });
 
 export const poFormSlice = createAppSlice({
@@ -219,24 +212,38 @@ export const poFormSlice = createAppSlice({
 
     // ── Async thunks ────────────────────────────────
 
-    /** Save (create or update) the purchase order. */
+    /** Save (create or update) the purchase order.
+     *
+     *  The API always creates a PO as 'draft' and has no status field on the
+     *  create DTO, so "Save & Send" is unavoidably two calls. The second one
+     *  is allowed to fail on its own: the PO exists either way, and reporting
+     *  a failure for a document that was created would be worse than telling
+     *  the user it is still a draft. */
     savePurchaseOrder: create.asyncThunk(
       async (saveStatus: PurchaseOrderStatus, thunkAPI) => {
-        const root = thunkAPI.getState() as { poForm: POFormSliceState };
-        const f = root.poForm;
-        const payload = buildSavePayload(f, saveStatus);
-        payload.companyId = (await getStoredCompanyId()) ?? '';
+        const f = (thunkAPI.getState() as { poForm: POFormSliceState }).poForm;
+        const payload = buildSavePayload(f);
         const envelope = f.isEditMode && f.editingId
           ? await updatePurchaseOrderAPI(f.editingId, payload)
           : await createPurchaseOrderAPI(payload);
-        return purchaseOrderSingleSerializer(envelope);
+        const po = purchaseOrderSingleSerializer(envelope);
+
+        if (po && saveStatus === 'sent' && po.status !== 'sent') {
+          try {
+            const sent = purchaseOrderSingleSerializer(await updatePOStatusAPI(po.id, 'sent'));
+            return { po: sent ?? po, sendFailed: false };
+          } catch {
+            return { po, sendFailed: true };
+          }
+        }
+        return { po, sendFailed: false };
       },
       {
         pending: state => { state.isSaving = true; state.saveError = ''; },
-        fulfilled: (state, action: PayloadAction<PurchaseOrder | null>) => {
+        fulfilled: (state, action: PayloadAction<{ po: PurchaseOrder | null; sendFailed: boolean }>) => {
           state.isSaving = false;
-          if (action.payload) {
-            state.editingId = action.payload.id;
+          if (action.payload.po) {
+            state.editingId = action.payload.po.id;
             state.isEditMode = true;
           }
         },

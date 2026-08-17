@@ -258,7 +258,27 @@ export const validateInventoryItem = (
 };
 
 // ─── Empty defaults for screens that reference data locally ──
-export const inventoryItemsData: InventoryItemData[] = [];
+/**
+ * Projects the weighted-average cost a receipt would produce, mirroring the
+ * server's fold in purchase-orders.service.ts exactly — including its guard
+ * against a negative on-hand contributing negative value:
+ *
+ *     newCost = (Q·A + q·P) / (Q + q)
+ *
+ * Display only. The cost itself moves when goods are RECEIVED, together with
+ * the DR Inventory / CR GRNI entry; nothing here writes it.
+ */
+export const previewWeightedAverage = (
+  onHand: number,
+  avgCost: number,
+  receivingQty: number,
+  unitPrice: number,
+): number => {
+  const newQty = onHand + receivingQty;
+  if (!(receivingQty > 0) || !(newQty > 0)) return avgCost;
+  const oldValue = onHand < 0 ? 0 : onHand * avgCost;
+  return (oldValue + receivingQty * unitPrice) / newQty;
+};
 
 export interface StockMovement {
   id: string;
