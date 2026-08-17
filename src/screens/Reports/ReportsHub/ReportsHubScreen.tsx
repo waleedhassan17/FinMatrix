@@ -11,7 +11,6 @@ import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsSt
 import {
   ReportContainer,
   ReportHeader,
-  HeaderIconButton,
   SectionCard,
   Badge,
   EmptyBlock,
@@ -52,15 +51,12 @@ const ReportsHubScreen: React.FC = () => {
 
   return (
     <ReportContainer>
+      {/* No header actions: the download and filter icons that used to sit here
+          had no onPress at all — they were decoration that looked like
+          function. A control that does nothing is worse than no control. */}
       <ReportHeader
         title="Reports"
         subtitle="Financial & operations reporting"
-        right={
-          <>
-            <HeaderIconButton icon="download" />
-            <HeaderIconButton icon="sliders" />
-          </>
-        }
       />
 
       <ScrollView
