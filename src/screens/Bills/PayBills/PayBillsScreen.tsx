@@ -190,8 +190,10 @@ const PayBillsScreen: React.FC = () => {
         `${formatCurrency(paymentAmount, 'Rs ')} payment to ${form.vendorName} has been recorded.`,
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
-    } catch {
-      Alert.alert('Error', 'Failed to record payment. Please try again.');
+    } catch (e: any) {
+      // The API says exactly what is wrong (e.g. PAYMENT_EXCEEDS_BALANCE with
+      // the amounts) — showing "try again" instead just hides it.
+      Alert.alert('Error', e?.message || 'Failed to record payment. Please try again.');
     }
   }, [form, paymentAmount, overpayment, totalAllocated, dispatch, navigation, validate, generatePaymentNumber]);
 

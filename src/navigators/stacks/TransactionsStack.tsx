@@ -24,7 +24,7 @@ export type TransactionsStackParamList = {
   VendorCreditDetail: { vendorCreditId: string };
   ReceivePayment: { customerId?: string; invoiceId?: string } | undefined;
   BillList: undefined;
-  BillForm: { billId?: string; fromPOId?: string; vendorId?: string } | undefined;
+  BillForm: { billId?: string; vendorId?: string } | undefined;
   BillDetail: { billId: string };
   PayBills: { vendorId?: string; billId?: string } | undefined;
   POList: undefined;

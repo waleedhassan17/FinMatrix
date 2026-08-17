@@ -10,11 +10,26 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { Bill, BillPayment, BillStatus, PaymentMethod } from '../../../types';
 import {
   getBillsAPI,
-  createBillPaymentAPI,
-  updateBillAPI,
+  payBillsAPI,
 } from '../../../networks/purchases/billNetwork';
-import { getStoredCompanyId } from '../../../utils/storageUtils';
 import { billListSerializer } from '../../../serializers/billSerializer';
+
+/** The API's enum is cash | check | bank_transfer | credit_card | other, so
+ *  the UI's `cheque` / `online` have to be translated (same mapping the
+ *  customer-side ReceivePayment uses). */
+function toBackendPaymentMethod(method: PaymentMethod): string {
+  switch (method) {
+    case 'cheque':
+      return 'check';
+    case 'online':
+      return 'other';
+    case 'cash':
+    case 'bank_transfer':
+      return method;
+    default:
+      return 'other';
+  }
+}
 
 export interface OutstandingBillRow {
   billId: string;
@@ -169,7 +184,7 @@ export const payBillsSlice = createAppSlice({
     }),
 
     fetchAllBillsForPayment: create.asyncThunk(
-      async () => getBillsAPI(),
+      async () => getBillsAPI({ limit: 200 }),
       {
         pending: state => { state.isLoadingBills = true; },
         fulfilled: (state, action) => {
@@ -199,39 +214,27 @@ export const payBillsSlice = createAppSlice({
       ): Promise<BillPayment> => {
         const root = thunkAPI.getState() as { payBills: PayBillsSliceState };
         const f = root.payBills;
-        const amountNumeric = parseFloat(f.amount) || 0;
 
-        const payment = await createBillPaymentAPI({
-          companyId: (await getStoredCompanyId()) ?? '',
-          paymentNumber: args.paymentNumber,
+        // PayBillsDto: vendorId, paymentDate, paymentMethod, bankAccountId,
+        // applications[]. The old body sent `date`, `method` and
+        // `allocations`, so three REQUIRED fields were simply absent and every
+        // payment 400'd. Amounts are @IsNumberString, hence the .toFixed(2).
+        const payment = await payBillsAPI({
           vendorId: f.vendorId,
-          vendorName: f.vendorName,
-          date: new Date(f.paymentDate).toISOString(),
-          method: f.method,
-          reference: f.reference,
-          amount: amountNumeric,
+          paymentDate: f.paymentDate,
+          paymentMethod: toBackendPaymentMethod(f.method),
           bankAccountId: f.bankAccountId,
-          allocations: args.allocations,
-          notes: f.notes,
-          createdBy: 'admin_001',
+          reference: f.reference || undefined,
+          applications: args.allocations.map(a => ({
+            billId: a.billId,
+            amount: (Math.round(a.amount * 100) / 100).toFixed(2),
+          })),
         });
 
-        // Patch each allocated bill's amountPaid + status.
-        for (const alloc of args.allocations) {
-          const bill = f.allBills.find(b => b.id === alloc.billId);
-          if (!bill) continue;
-          const newAmountPaid = Math.round((bill.amountPaid + alloc.amount) * 100) / 100;
-          const newStatus: BillStatus =
-            newAmountPaid >= bill.total
-              ? 'paid'
-              : newAmountPaid > 0
-                ? 'partial'
-                : bill.status;
-          await updateBillAPI(bill.id, {
-            amountPaid: newAmountPaid,
-            status: newStatus,
-          });
-        }
+        // The bills are NOT patched here. `pay()` is transactional: it locks
+        // each bill, writes amountPaid/balance/status, adjusts the vendor
+        // balance and posts DR AP / CR Bank. Re-applying the amounts from the
+        // client would double-count every payment.
 
         return payment;
       },

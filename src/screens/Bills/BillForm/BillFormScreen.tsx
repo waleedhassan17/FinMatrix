@@ -40,7 +40,6 @@ import {
   resetBillForm,
   saveBill,
   fetchBillForEdit,
-  fetchBillFromPO,
   type BillFormLine,
 } from './billFormSlice';
 import { selectBills, fetchBills, upsertBill } from '../BillList/billListSlice';
@@ -93,9 +92,7 @@ const BillFormScreen: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const editingId = route.params?.billId;
-  const fromPOId = route.params?.fromPOId;
   const isEditing = !!editingId;
-  const isFromPO = !!fromPOId;
   const bills = useAppSelector(selectBills);
   const vendors = useAppSelector(selectVendors);
   const accounts = useAppSelector(selectAccounts);
@@ -144,10 +141,6 @@ const BillFormScreen: React.FC = () => {
 
     if (isEditing && editingId) {
       dispatch(fetchBillForEdit(editingId));
-    } else if (isFromPO && fromPOId) {
-      dispatch(setBillField({ key: 'billNumber', value: generateBillNumber() }));
-      dispatch(setBillField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
-      dispatch(fetchBillFromPO(fromPOId));
     } else {
       dispatch(setBillField({ key: 'billNumber', value: generateBillNumber() }));
       dispatch(setBillField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
@@ -225,13 +218,10 @@ const BillFormScreen: React.FC = () => {
         if (saved) dispatch(upsertBill(saved));
         await dispatch(fetchBills());
 
-        const jeNarrative = isFromPO
-          ? 'JE posted: DR Inventory, CR AP. Inventory quantities updated.'
-          : 'JE posted: DR Expense, CR AP.';
         Toast.show({
             type: 'success',
             text1: isEditing ? 'Bill Updated' : 'Bill Created',
-            text2: `${form.billNumber} has been ${isEditing ? 'updated' : 'created'} as ${saveStatus}. ${jeNarrative}`,
+            text2: `${form.billNumber} has been ${isEditing ? 'updated' : 'created'} as ${saveStatus}.`,
           });
           navigation.goBack();
       } catch (e: any) {

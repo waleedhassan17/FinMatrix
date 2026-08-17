@@ -50,7 +50,20 @@ export const updateBillAPI = async (id: string, data: any): Promise<any> => {
   }
 };
 
-export const payBillsAPI = async (data: { bankAccountId: string; paymentDate: string; paymentMethod: string; reference?: string; payments: Array<{ billId: string; amount: number }> }): Promise<any> => {
+/** POST /bills/pay — PayBillsDto. Mirrors the API exactly: it is transactional
+ *  (locks each bill, writes amountPaid/balance/status, adjusts the vendor
+ *  balance, posts DR AP / CR Bank), so callers must NOT patch the bills
+ *  afterwards. Amounts are @IsNumberString. */
+export interface PayBillsPayload {
+  vendorId: string;
+  paymentDate: string;
+  paymentMethod: string;
+  bankAccountId: string;
+  reference?: string;
+  applications: Array<{ billId: string; amount: string }>;
+}
+
+export const payBillsAPI = async (data: PayBillsPayload): Promise<any> => {
   try {
     const response = await api.post('/bills/pay', data);
     return response.data;
@@ -66,10 +79,6 @@ export const deleteBillAPI = async (id: string): Promise<any> => {
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }
-};
-
-export const createBillPaymentAPI = async (data: any): Promise<any> => {
-  return payBillsAPI(data);
 };
 
 export const getBillPaymentsByBillAPI = async (billId: string): Promise<any> => {
