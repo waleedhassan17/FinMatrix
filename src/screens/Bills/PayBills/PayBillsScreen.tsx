@@ -87,12 +87,22 @@ const PayBillsScreen: React.FC = () => {
 
   // Cash/Bank asset accounts from the backend chart of accounts —
   // the payment source QuickBooks lets you pick when paying bills.
+  const payableAccounts = useMemo(
+    () => accounts.filter(a => a.isActive && a.type === 'asset' && ['Cash', 'Bank'].includes(String(a.subType))),
+    [accounts],
+  );
+
+  // Show what each account actually holds. Paying from an account without the
+  // funds is legitimate for a bank (an overdraft), but for Cash it means the
+  // books claim you handed over notes you did not have — and it is invisible
+  // until the balance is already negative.
   const bankAccountOptions = useMemo(
     () =>
-      accounts
-        .filter(a => a.isActive && a.type === 'asset' && ['Cash', 'Bank'].includes(String(a.subType)))
-        .map(a => ({ label: `${a.name} (${a.code})`, value: a.id })),
-    [accounts],
+      payableAccounts.map(a => ({
+        label: `${a.name} (${a.code}) · ${formatCurrency(a.balance, 'Rs ')}`,
+        value: a.id,
+      })),
+    [payableAccounts],
   );
 
   const generatePaymentNumber = useCallback(() => `BPAY-${String(Date.now()).slice(-6)}`, []);
@@ -144,6 +154,16 @@ const PayBillsScreen: React.FC = () => {
     () => Math.max(0, Math.round((paymentAmount - totalAllocated) * 100) / 100),
     [paymentAmount, totalAllocated],
   );
+
+  const overdraw = useMemo(() => {
+    const acct = payableAccounts.find(a => a.id === form.bankAccountId);
+    if (!acct || totalAllocated <= 0 || totalAllocated <= acct.balance) return null;
+    return {
+      name: acct.name,
+      balance: acct.balance,
+      shortfall: Math.round((totalAllocated - acct.balance) * 100) / 100,
+    };
+  }, [payableAccounts, form.bankAccountId, totalAllocated]);
 
   const validate = useCallback((): Record<string, string> => {
     const errs: Record<string, string> = {};
@@ -237,6 +257,13 @@ const PayBillsScreen: React.FC = () => {
                 placeholder="Select bank account…"
                 error={form.errors.bankAccountId}
               />
+              {/* A warning, not a block: a bank overdraft is a real thing. */}
+              {!!overdraw && (
+                <Text style={styles.overdrawNote}>
+                  This pays {formatCurrency(totalAllocated, 'Rs ')} from {overdraw.name}, which holds{' '}
+                  {formatCurrency(overdraw.balance, 'Rs ')}. It will go {formatCurrency(overdraw.shortfall, 'Rs ')} overdrawn.
+                </Text>
+              )}
               <View style={styles.rowFields}>
                 <View style={{ flex: 1, marginRight: spacing.sm }}>
                   <DateField
@@ -427,6 +454,12 @@ const styles = StyleSheet.create({
   cardAccent: { width: 4 },
   cardBody: { flex: 1, padding: spacing.md },
   rowFields: { flexDirection: 'row' },
+  overdrawNote: {
+    ...THEME.typography.caption,
+    color: colors.warning,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
+  },
   amountRow: { flexDirection: 'row', alignItems: 'flex-end' },
 
   payAllChip: {
