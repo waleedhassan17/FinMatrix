@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchVendors, selectVendors } from '../Vendors/VendorList/vendorListSlice';
+import { fetchInventoryItems, selectInventoryItems } from '../Inventory/InventoryList/inventoryListSlice';
 import { createVendorCreditAPI } from '../../networks/purchases/vendorCreditNetwork';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
@@ -18,14 +19,20 @@ import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
-interface LineDraft { description: string; amount: string; }
-const blankLine = (): LineDraft => ({ description: '', amount: '0' });
+// A line either returns STOCK to the supplier or credits money only.
+// Naming the item is what lets the credit post Dr A/P / Cr Inventory and take
+// the units off the shelf; without it the API can only credit an expense
+// account, because crediting Inventory with no quantity would move the control
+// account while stock stood still.
+interface LineDraft { itemId: string; quantity: string; description: string; amount: string; }
+const blankLine = (): LineDraft => ({ itemId: '', quantity: '', description: '', amount: '0' });
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
 const VendorCreditFormScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
   const vendors = useAppSelector(selectVendors);
+  const items = useAppSelector(selectInventoryItems);
 
   const [vendorId, setVendorId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -33,7 +40,42 @@ const VendorCreditFormScreen: React.FC = () => {
   const [lines, setLines] = useState<LineDraft[]>([blankLine()]);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { dispatch(fetchVendors()); }, [dispatch]);
+  useEffect(() => {
+    dispatch(fetchVendors());
+    dispatch(fetchInventoryItems());
+  }, [dispatch]);
+
+  const itemOptions = useMemo(
+    () => [
+      { label: 'No item — money only', value: '' },
+      ...items.filter(i => i.isActive).map(i => ({ label: `${i.sku} — ${i.name}`, value: i.itemId ?? i.id })),
+    ],
+    [items],
+  );
+
+  // Returning stock credits it at what the books carry it at, so the amount is
+  // derived from the item's cost rather than typed — a hand-entered figure
+  // would credit Inventory by one number while stock moved by another.
+  const selectItem = (i: number, itemId: string) => {
+    const item = items.find(x => (x.itemId ?? x.id) === itemId);
+    if (!item) { updateLine(i, { itemId: '', quantity: '' }); return; }
+    const qty = parseFloat(lines[i].quantity) || 1;
+    updateLine(i, {
+      itemId,
+      quantity: String(qty),
+      description: lines[i].description.trim() || item.name,
+      amount: String(Math.round(qty * item.unitCost * 100) / 100),
+    });
+  };
+
+  const setQty = (i: number, value: string) => {
+    const line = lines[i];
+    const item = items.find(x => (x.itemId ?? x.id) === line.itemId);
+    const qty = parseFloat(value) || 0;
+    updateLine(i, item
+      ? { quantity: value, amount: String(Math.round(qty * item.unitCost * 100) / 100) }
+      : { quantity: value });
+  };
 
   const total = useMemo(() => lines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0), [lines]);
   const updateLine = (i: number, patch: Partial<LineDraft>) =>
@@ -47,7 +89,11 @@ const VendorCreditFormScreen: React.FC = () => {
     try {
       await createVendorCreditAPI({
         vendorId, date, reason: reason || undefined,
-        lines: valid.map(l => ({ description: l.description, amount: l.amount })),
+        lines: valid.map(l => ({
+          description: l.description,
+          amount: l.amount,
+          ...(l.itemId ? { itemId: l.itemId, quantity: l.quantity || '1' } : {}),
+        })),
       });
       navigation.goBack();
     } catch (e: any) { Toast.show({ type: 'error', text1: 'Save failed', text2: e?.message ?? 'Could not save vendor credit' }); }
@@ -69,8 +115,28 @@ const VendorCreditFormScreen: React.FC = () => {
           {lines.map((l, i) => (
             <View key={i} style={styles.lineRow}>
               <View style={styles.lineMain}>
-                <CustomInput label={`Item ${i + 1}`} value={l.description} onChangeText={v => updateLine(i, { description: v })} placeholder="Description" />
-                <CustomInput label="Amount" value={l.amount} onChangeText={v => updateLine(i, { amount: v })} keyboardType="numeric" />
+                <CustomDropdown
+                  label={`Line ${i + 1} — returned item`}
+                  placeholder="Select item (or leave blank)"
+                  options={itemOptions}
+                  value={l.itemId}
+                  onChange={v => selectItem(i, v)}
+                  searchable
+                />
+                {!!l.itemId && (
+                  <CustomInput label="Quantity returned" value={l.quantity} onChangeText={v => setQty(i, v)} keyboardType="numeric" />
+                )}
+                <CustomInput label="Description" value={l.description} onChangeText={v => updateLine(i, { description: v })} placeholder="Description" />
+                <CustomInput
+                  label={l.itemId ? 'Amount (at cost)' : 'Amount'}
+                  value={l.amount}
+                  onChangeText={v => updateLine(i, { amount: v })}
+                  keyboardType="numeric"
+                  disabled={!!l.itemId}
+                />
+                {!!l.itemId && (
+                  <Text style={styles.costHint}>Credited at the cost your books carry, so stock and Inventory stay in step.</Text>
+                )}
               </View>
               {lines.length > 1 && (
                 <TouchableOpacity onPress={() => setLines(prev => prev.filter((_, idx) => idx !== i))} style={styles.del}>
@@ -99,6 +165,7 @@ const VendorCreditFormScreen: React.FC = () => {
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   lineRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
+  costHint: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginTop: -4, marginBottom: 8 },
   lineMain: { flex: 1 },
   del: { paddingTop: 28, paddingHorizontal: 4 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between' },
