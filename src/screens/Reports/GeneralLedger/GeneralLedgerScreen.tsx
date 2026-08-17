@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -17,6 +18,11 @@ import {
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
+
+// The posting date is the accounting date; the time comes from when the entry
+// was recorded, which is what an audit trail needs.
+const fmtLedgerDate = (d: string): string => (d ? dayjs(d).format('MMM D, YYYY') : '—');
+const fmtLedgerTime = (ts: string): string => (ts ? dayjs(ts).format('HH:mm:ss') : '');
 
 const GeneralLedgerScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
@@ -108,10 +114,19 @@ const GeneralLedgerScreen: React.FC = () => {
                     </View>
                     {ledger.entries.slice(0, 300).map((e, i) => (
                       <View key={`${e.sourceId}-${e.accountCode}-${i}`} style={styles.bodyRow}>
-                        <Text style={[styles.colDate, styles.bodyText]}>{e.date}</Text>
+                        <View style={styles.colDate}>
+                          <Text style={styles.bodyText}>{fmtLedgerDate(e.date)}</Text>
+                          <Text style={styles.refText}>{fmtLedgerTime(e.postedAt)}</Text>
+                        </View>
                         <View style={styles.colAcct}>
-                          <Text style={styles.bodyText}>{e.accountCode} {e.accountName.split(' ')[0]}</Text>
-                          <Text style={styles.refText}>{e.reference}</Text>
+                          {/* Full name, never the first word: "1200 Inventory" and
+                              "2050 Inventory Received Not Billed" are different accounts. */}
+                          <Text style={styles.bodyText} numberOfLines={1}>
+                            {e.accountCode} {e.accountName}
+                          </Text>
+                          <Text style={styles.refText} numberOfLines={1}>
+                            {e.reference}{e.memo ? ` · ${e.memo}` : ''}
+                          </Text>
                         </View>
                         <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{e.debit ? rs(e.debit) : '—'}</Text>
                         <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{e.credit ? rs(e.credit) : '—'}</Text>
@@ -156,10 +171,10 @@ const styles = StyleSheet.create({
   bodyRow: { gap: 10, flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   bodyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
   refText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  colDate: { width: 78, flexShrink: 0 },
+  colDate: { width: 96, flexShrink: 0 },
   tableScroll: { minWidth: '100%' },
   table: { flex: 1, minWidth: '100%' },
-  colAcct: { flex: 1, minWidth: 132 },
+  colAcct: { flex: 1, minWidth: 190 },
   colVal: { textAlign: 'right', flexShrink: 0 },
   totalRow: { gap: 10, flexDirection: 'row', paddingVertical: 10, marginTop: 2, borderTopWidth: 2, borderTopColor: THEME.colors.border },
   totalText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '800' },

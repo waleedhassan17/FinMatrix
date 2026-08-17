@@ -1,7 +1,10 @@
 import type { ApiEnvelope, ReportDateRange } from './reportModel';
 
 export interface LedgerEntry {
+  /** Posting date, 'YYYY-MM-DD'. A DATE in the ledger — it carries no time. */
   date: string;
+  /** When the entry was actually recorded — the audit-trail timestamp. */
+  postedAt: string;
   reference: string;
   accountCode: string;
   accountName: string;
