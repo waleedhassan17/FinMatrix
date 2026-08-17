@@ -53,15 +53,24 @@ export const vendorCreditSlice = createAppSlice({
     ),
     applyVendorCredit: create.asyncThunk(
       async (p: { id: string; billId: string; amount: string }) => applyVendorCreditAPI(p.id, p.billId, p.amount),
-      { fulfilled: (state, action) => { state.current = vendorCreditSingleSerializer(action.payload); } },
+      {
+        fulfilled: (state, action) => { state.current = vendorCreditSingleSerializer(action.payload); },
+        rejected: (state, action) => { state.error = action.error?.message ?? 'Failed to apply the vendor credit'; },
+      },
     ),
     voidVendorCredit: create.asyncThunk(
       async (id: string) => voidVendorCreditAPI(id),
-      { fulfilled: (state, action) => { state.current = vendorCreditSingleSerializer(action.payload); } },
+      {
+        fulfilled: (state, action) => { state.current = vendorCreditSingleSerializer(action.payload); },
+        rejected: (state, action) => { state.error = action.error?.message ?? 'Failed to void the vendor credit'; },
+      },
     ),
     removeVendorCredit: create.asyncThunk(
       async (id: string) => { await deleteVendorCreditAPI(id); return id; },
-      { fulfilled: (state, action: PayloadAction<string>) => { state.vendorCredits = state.vendorCredits.filter(c => c.id !== action.payload); } },
+      {
+        fulfilled: (state, action: PayloadAction<string>) => { state.vendorCredits = state.vendorCredits.filter(c => c.id !== action.payload); },
+        rejected: (state, action) => { state.error = action.error?.message ?? 'Failed to delete the vendor credit'; },
+      },
     ),
   }),
   selectors: { selectVendorCreditState: state => state },

@@ -138,7 +138,6 @@ const CreateDeliveryScreen: React.FC = () => {
         itemId: item.id,
         itemName: item.name,
         quantity: numericQty,
-        orderedQty: numericQty,
         unitPrice: item.sellingPrice ?? 0,
       }),
     );

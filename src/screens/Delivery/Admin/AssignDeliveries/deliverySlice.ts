@@ -116,6 +116,10 @@ export const deliverySlice = createAppSlice({
       }) => {
         const sanitizedItems = (payload.items || []).map(item => ({
           ...item,
+          // The DTO requires orderedQty and the ledger dispatches on it;
+          // `quantity` is the display copy. Derive both from the one the UI
+          // edits so a stepper change cannot be lost between them.
+          orderedQty: item.quantity,
           agencyId: (item.agencyId && item.agencyId.length === 36) ? item.agencyId : null,
           agencyName: item.agencyName || null,
         }));
@@ -125,30 +129,15 @@ export const deliverySlice = createAppSlice({
       {
         fulfilled: (state, action) => {
           const { apiResult, ...payload } = action.payload;
-          // Use backend-returned delivery if available, otherwise create locally
+          // Only trust the server's record. The old fallback fabricated a
+          // local delivery with a made-up id ('del_001') and reference
+          // ('DEL-1001') whenever the envelope shape differed — ids the server
+          // has never seen, which then 404 on every subsequent call and
+          // disappear on the next refetch. A create that returns nothing
+          // usable is a failure, not a delivery.
           const backendDelivery = apiResult?.data?.delivery ?? apiResult?.data;
           if (backendDelivery?.id) {
             state.deliveries.unshift(mapDelivery(backendDelivery));
-          } else {
-            const now = new Date().toISOString();
-            const nextNumber = state.deliveries.length + 1001;
-            const id = `del_${String(state.deliveries.length + 1).padStart(3, '0')}`;
-            state.deliveries.unshift({
-              id,
-              reference: `DEL-${nextNumber}`,
-              referenceNo: `DEL-${nextNumber}`,
-              customerId: payload.customerId,
-              customerName: payload.customerName,
-              zone: payload.zone,
-              scheduledDate: payload.scheduledDate,
-              priority: payload.priority,
-              status: 'unassigned',
-              notes: payload.notes,
-              items: payload.items,
-              statusHistory: [],
-              createdAt: now,
-              updatedAt: now,
-            });
           }
         },
       },

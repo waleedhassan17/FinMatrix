@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { colors, spacing } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
-import { selectUnassignedDeliveries, selectDeliveryPersonnel, assignSelectedDeliveries, autoAssignDeliveries } from '../AssignDeliveries/deliverySlice';
+import { selectUnassignedDeliveries, selectDeliveryPersonnel, assignSelectedDeliveries } from '../AssignDeliveries/deliverySlice';
 import { selectAssignWorkState, toggleDelivery, setPersonnel, resetAssignWork } from './assignWorkSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 
@@ -28,9 +28,40 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'AssignWork'>;
 
+const PRIORITY_RANK: Record<string, number> = { urgent: 4, high: 3, medium: 2, normal: 2, low: 1 };
+
+/** Chooses ONE rider and the deliveries in their zone, using the rule the old
+ *  local-only reducer used: highest priority first, rider with the lightest
+ *  current load. Assigning is a single server call per rider, so we commit one
+ *  rider's batch at a time rather than pretending to allocate everybody. */
+const pickAutoAssignment = (
+  deliveries: { id: string; zone?: string; priority?: string; status?: string }[],
+  personnel: { userId: string; displayName?: string; status?: string; zones?: string[]; currentLoad?: number }[],
+  onlyIds: string[],
+): { personnelId: string; personnelName: string; deliveryIds: string[] } | null => {
+  const pool = deliveries
+    .filter(d => d.status === 'unassigned' && (onlyIds.length === 0 || onlyIds.includes(d.id)))
+    .sort((a, b) => (PRIORITY_RANK[b.priority ?? ''] ?? 0) - (PRIORITY_RANK[a.priority ?? ''] ?? 0));
+  if (pool.length === 0) return null;
+
+  for (const delivery of pool) {
+    const rider = personnel
+      .filter(p => p.status === 'active' && !!delivery.zone && (p.zones ?? []).includes(delivery.zone))
+      .sort((a, b) => (a.currentLoad ?? 0) - (b.currentLoad ?? 0))[0];
+    if (!rider) continue;
+    return {
+      personnelId: rider.userId,
+      personnelName: rider.displayName ?? 'the rider',
+      deliveryIds: pool.filter(d => d.zone === delivery.zone).map(d => d.id),
+    };
+  }
+  return null;
+};
+
 const AssignWorkScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const deliveries = useAppSelector(selectUnassignedDeliveries);
+  const [busy, setBusy] = useState(false);
   const personnel = useAppSelector(selectDeliveryPersonnel).filter(p => p.status === 'active');
   const assignState = useAppSelector(selectAssignWorkState);
 
@@ -47,25 +78,41 @@ const AssignWorkScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    // Assigning dispatches stock (Dr Goods in Transit / Cr Inventory), so the
+    // result has to be awaited — the old code fired an "Assigned" alert
+    // without waiting, and a 4xx still read as success.
+    setBusy(true);
     dispatch(assignSelectedDeliveries({
       deliveryIds: assignState.selectedDeliveryIds,
       personnelId: assignState.selectedPersonnelId,
-    }));
-    dispatch({
-      type: 'delivery/assignDelivery',
-      payload: {
-        deliveryIds: assignState.selectedDeliveryIds,
-        personnelId: assignState.selectedPersonnelId,
-      },
-    });
-    dispatch(resetAssignWork());
-    Alert.alert('Assigned', 'Selected deliveries moved to pending and notifications dispatched.');
+    }))
+      .unwrap()
+      .then(() => {
+        dispatch(resetAssignWork());
+        Alert.alert('Assigned', 'Selected deliveries moved to pending and stock committed to the rider.');
+      })
+      .catch((e: any) => Alert.alert('Assign failed', e?.message ?? 'Could not assign the selected deliveries.'))
+      .finally(() => setBusy(false));
   };
 
+  // Auto-assign picks the rider here on the client, then goes through the very
+  // same server call as a manual assign. It used to only rewrite Redux and
+  // announce success, so the allocation vanished on the next refetch.
   const handleAutoAssign = () => {
-    dispatch(autoAssignDeliveries({ deliveryIds: assignState.selectedDeliveryIds.length ? assignState.selectedDeliveryIds : undefined }));
-    dispatch(resetAssignWork());
-    Alert.alert('Auto-assigned', 'Sorted by priority and allocated to lowest-load matching-zone personnel.');
+    const picked = pickAutoAssignment(deliveries, personnel, assignState.selectedDeliveryIds);
+    if (!picked) {
+      Alert.alert('Nothing to assign', 'No pending delivery matches an available rider in its zone.');
+      return;
+    }
+    setBusy(true);
+    dispatch(assignSelectedDeliveries({ deliveryIds: picked.deliveryIds, personnelId: picked.personnelId }))
+      .unwrap()
+      .then(() => {
+        dispatch(resetAssignWork());
+        Alert.alert('Auto-assigned', `${picked.deliveryIds.length} deliver${picked.deliveryIds.length === 1 ? 'y' : 'ies'} assigned to ${picked.personnelName}.`);
+      })
+      .catch((e: any) => Alert.alert('Auto-assign failed', e?.message ?? 'Could not assign.'))
+      .finally(() => setBusy(false));
   };
 
   return (

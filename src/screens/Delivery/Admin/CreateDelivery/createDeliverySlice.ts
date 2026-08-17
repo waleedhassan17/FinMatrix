@@ -7,8 +7,10 @@ interface DraftItem {
   agencyName: string;
   itemId: string;
   itemName: string;
+  /** Single source of truth. The wire carries it as `orderedQty`, which is
+   *  what the ledger dispatches on — carrying a second copy meant the stepper
+   *  updated one and the server read the other. */
   quantity: number;
-  orderedQty: number;
   unitPrice: number;
 }
 

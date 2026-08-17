@@ -53,19 +53,31 @@ export const creditMemoSlice = createAppSlice({
     ),
     applyCreditMemo: create.asyncThunk(
       async (p: { id: string; invoiceId: string; amount: string }) => applyCreditMemoAPI(p.id, p.invoiceId, p.amount),
-      { fulfilled: (state, action) => { state.current = creditMemoSingleSerializer(action.payload); } },
+      {
+        fulfilled: (state, action) => { state.current = creditMemoSingleSerializer(action.payload); },
+        rejected: (state, action) => { state.error = action.error?.message ?? 'Failed to apply the credit memo'; },
+      },
     ),
     refundCreditMemo: create.asyncThunk(
       async (id: string) => refundCreditMemoAPI(id),
-      { fulfilled: (state, action) => { state.current = creditMemoSingleSerializer(action.payload); } },
+      {
+        fulfilled: (state, action) => { state.current = creditMemoSingleSerializer(action.payload); },
+        rejected: (state, action) => { state.error = action.error?.message ?? 'Failed to refund the credit memo'; },
+      },
     ),
     voidCreditMemo: create.asyncThunk(
       async (id: string) => voidCreditMemoAPI(id),
-      { fulfilled: (state, action) => { state.current = creditMemoSingleSerializer(action.payload); } },
+      {
+        fulfilled: (state, action) => { state.current = creditMemoSingleSerializer(action.payload); },
+        rejected: (state, action) => { state.error = action.error?.message ?? 'Failed to void the credit memo'; },
+      },
     ),
     removeCreditMemo: create.asyncThunk(
       async (id: string) => { await deleteCreditMemoAPI(id); return id; },
-      { fulfilled: (state, action: PayloadAction<string>) => { state.creditMemos = state.creditMemos.filter(c => c.id !== action.payload); } },
+      {
+        fulfilled: (state, action: PayloadAction<string>) => { state.creditMemos = state.creditMemos.filter(c => c.id !== action.payload); },
+        rejected: (state, action) => { state.error = action.error?.message ?? 'Failed to delete the credit memo'; },
+      },
     ),
   }),
   selectors: { selectCreditMemoState: state => state },

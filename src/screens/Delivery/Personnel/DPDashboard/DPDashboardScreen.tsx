@@ -214,16 +214,21 @@ const DPDashboardScreen: React.FC = () => {
     return myDeliveries.filter(d => d.status === 'delivered' && new Date(d.updatedAt) >= weekStart).length;
   }, [myDeliveries]);
 
-  const handleStartDelivery = () => {
+  // The status change is a server call; announcing "in transit" without
+  // waiting meant a rejected transition still read as success and the rider
+  // carried on believing the office had been told.
+  const handleStartDelivery = async () => {
     if (!nextDelivery) return;
     if (nextDelivery.status === 'pending') {
-      dispatch(
-        startDelivery({
-          deliveryId: nextDelivery.id,
-          note: 'Started from dashboard',
-        }),
-      );
-      Alert.alert('Delivery Started', `${nextDelivery.referenceNo} is now in transit.`);
+      try {
+        await dispatch(
+          startDelivery({ deliveryId: nextDelivery.id, note: 'Started from dashboard' }),
+        ).unwrap();
+        Alert.alert('Delivery Started', `${nextDelivery.referenceNo} is now in transit.`);
+      } catch (e: any) {
+        Alert.alert('Could not start', e?.message ?? 'The delivery status was not updated. Please try again.');
+        return;
+      }
     }
     navigation.navigate('DPDeliveryDetail', { deliveryId: nextDelivery.id });
   };

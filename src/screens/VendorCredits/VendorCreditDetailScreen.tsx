@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import React, { useCallback, useState } from 'react';
 import {
   View,
@@ -67,6 +68,20 @@ const VendorCreditDetailScreen: React.FC = () => {
 
   const hasBalance = c.balance > 0.01 && c.status !== 'void';
 
+  // Voiding puts stock back and reverses the entry, so the result has to be
+  // inspected: dispatching blind made a rejection indistinguishable from
+  // success, and Delete navigated back either way.
+  const run = async (action: any, okMessage: string, leaveOnSuccess = false) => {
+    try {
+      await dispatch(action).unwrap();
+      Toast.show({ type: 'success', text1: okMessage });
+      if (leaveOnSuccess) navigation.goBack();
+      else dispatch(fetchVendorCredit(vendorCreditId));
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Action failed', text2: e?.message ?? 'Please try again.' });
+    }
+  };
+
   return (
     <ReportContainer>
       <ReportHeader title={c.vendorCreditNumber} subtitle={c.vendorName} onBack={() => navigation.goBack()} />
@@ -105,8 +120,8 @@ const VendorCreditDetailScreen: React.FC = () => {
 
         <View style={styles.actions}>
           {hasBalance && <CustomButton title="Apply to Bill" variant="primary" onPress={openApply} fullWidth />}
-          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Void" variant="secondary" onPress={() => dispatch(voidVendorCredit(vendorCreditId))} fullWidth />}
-          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Delete" variant="danger" onPress={() => { dispatch(removeVendorCredit(vendorCreditId)); navigation.goBack(); }} fullWidth />}
+          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Void" variant="secondary" onPress={() => run(voidVendorCredit(vendorCreditId), 'Vendor credit voided')} fullWidth />}
+          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Delete" variant="danger" onPress={() => run(removeVendorCredit(vendorCreditId), 'Vendor credit deleted', true)} fullWidth />}
         </View>
         <View style={{ height: 24 }} />
       </ScrollView>

@@ -161,17 +161,23 @@ const CustomerConfirmScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  const handleIssue = () => {
+  const handleIssue = async () => {
     if (!issueText.trim()) {
       Alert.alert('Required Field', 'Please describe the issue before submitting.');
       return;
     }
-    dispatch(reportIssue({ deliveryId, note: issueText.trim() }));
-    Alert.alert(
-      'Issue Reported',
-      'Your concern has been recorded. Our support team will review it shortly.',
-      [{ text: 'OK' }]
-    );
+    // This call used to be fired and forgotten, and it 400'd every time — the
+    // customer was told their concern was recorded when nothing was.
+    try {
+      await dispatch(reportIssue({ deliveryId, note: issueText.trim() })).unwrap();
+      Alert.alert(
+        'Issue Reported',
+        'Your concern has been recorded. Our support team will review it shortly.',
+        [{ text: 'OK' }],
+      );
+    } catch (e: any) {
+      Alert.alert('Could not report', e?.message ?? 'The issue was not submitted. Please try again.');
+    }
   };
 
   return (

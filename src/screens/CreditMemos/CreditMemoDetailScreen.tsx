@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import React, { useCallback, useState } from 'react';
 import {
   View,
@@ -67,6 +68,20 @@ const CreditMemoDetailScreen: React.FC = () => {
 
   const hasBalance = c.balance > 0.01 && c.status !== 'void' && c.status !== 'refunded';
 
+  // These post journal entries and move stock. Dispatching without inspecting
+  // the result meant a rejected void looked identical to a successful one, and
+  // Delete navigated back whether or not the row was gone.
+  const run = async (action: any, okMessage: string, leaveOnSuccess = false) => {
+    try {
+      await dispatch(action).unwrap();
+      Toast.show({ type: 'success', text1: okMessage });
+      if (leaveOnSuccess) navigation.goBack();
+      else dispatch(fetchCreditMemo(creditMemoId));
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Action failed', text2: e?.message ?? 'Please try again.' });
+    }
+  };
+
   return (
     <ReportContainer>
       <ReportHeader title={c.creditMemoNumber} subtitle={c.customerName} onBack={() => navigation.goBack()} />
@@ -108,9 +123,9 @@ const CreditMemoDetailScreen: React.FC = () => {
 
         <View style={styles.actions}>
           {hasBalance && <CustomButton title="Apply to Invoice" variant="primary" onPress={openApply} fullWidth />}
-          {hasBalance && <CustomButton title="Refund Remaining" variant="secondary" onPress={() => dispatch(refundCreditMemo(creditMemoId))} fullWidth />}
-          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Void" variant="secondary" onPress={() => dispatch(voidCreditMemo(creditMemoId))} fullWidth />}
-          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Delete" variant="danger" onPress={() => { dispatch(removeCreditMemo(creditMemoId)); navigation.goBack(); }} fullWidth />}
+          {hasBalance && <CustomButton title="Refund Remaining" variant="secondary" onPress={() => run(refundCreditMemo(creditMemoId), 'Refund recorded')} fullWidth />}
+          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Void" variant="secondary" onPress={() => run(voidCreditMemo(creditMemoId), 'Credit memo voided')} fullWidth />}
+          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Delete" variant="danger" onPress={() => run(removeCreditMemo(creditMemoId), 'Credit memo deleted', true)} fullWidth />}
         </View>
         <View style={{ height: 24 }} />
       </ScrollView>

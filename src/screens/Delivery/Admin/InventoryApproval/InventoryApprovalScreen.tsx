@@ -30,7 +30,7 @@ import {
   rejectRequestAsync,
   undoApprovalAsync,
 } from './inventoryApprovalSlice';
-import { applyDeliveryChanges } from '../../../../store/inventorySlice';
+import { fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryListSlice';
 import { clearShadowInventoryForRequest } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { InventoryUpdateRequest } from '../../../../models/deliveryModel';
 import CustomButton from '../../../../Custom-Components/CustomButton';
@@ -122,15 +122,11 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
         approveRequestAsync({ requestId: request.id, reviewedBy: 'Admin' }),
       ).unwrap();
 
-      dispatch(
-        applyDeliveryChanges({
-          changes: changes.map(c => ({
-            itemId: c.itemId,
-            deliveredQty: c.deliveredQty,
-            returnedQty: c.returnedQty,
-          })),
-        }),
-      );
+      // The server already moved the stock: approving posts COGS, relieves
+      // Goods in Transit and writes quantityOnHand inside one transaction.
+      // Deducting again in Redux showed the deduction twice until the next
+      // refetch. Re-read instead of re-applying.
+      dispatch(fetchInventoryItems());
       dispatch(
         clearShadowInventoryForRequest({
           personnelId: request.personnelId,

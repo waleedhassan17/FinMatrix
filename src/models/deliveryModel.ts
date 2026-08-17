@@ -23,8 +23,10 @@ export interface DeliveryItemLine {
   itemName: string;
   agencyId?: string;
   agencyName?: string;
-  orderedQty: number;
-  quantity?: number;
+  /** What the ledger dispatches on. Derived from `quantity` when a draft is
+   *  sent, so the two can never disagree. */
+  orderedQty?: number;
+  quantity: number;
   deliveredQty?: number;
   returnedQty?: number;
   unitPrice: number;

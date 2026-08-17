@@ -17,7 +17,11 @@ export const startDeliveryAPI = async (payload: any): Promise<any> => {
   try {
     const deliveryId = typeof payload === 'string' ? payload : payload.deliveryId;
     const note = typeof payload === 'object' ? payload.note : undefined;
-    const response = await api.patch(`/deliveries/${deliveryId}/status`, { status: 'in_transit', note });
+    // `notes`, not `note` — see dpDeliveryDetailNetwork.
+    const response = await api.patch(`/deliveries/${deliveryId}/status`, {
+      status: 'in_transit',
+      ...(note ? { notes: note } : {}),
+    });
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
