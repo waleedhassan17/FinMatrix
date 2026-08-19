@@ -97,7 +97,13 @@ export const dpBillPhotoCaptureSlice = createAppSlice({
         const result = dpBillPhotoCaptureSerializer(apiResponse);
 
         const requestId = result?.requestId ?? `req_${Date.now()}_${payload.deliveryId}`;
-        const photoUrl = result?.photoUrl ?? payload.photoUri;
+        // Keep the LOCAL file:// uri for display, not the server URL. The URL
+        // the server returns points at an authenticated API route, and RN's
+        // <Image> will not attach a bearer token to it — swapping it in here
+        // turned the rider's own just-captured photo into a black box. The
+        // upload has already succeeded at this point; the server copy is the
+        // record of truth, this uri is only what this device renders.
+        const photoUrl = payload.photoUri || result?.photoUrl;
         const capturedAt = result?.uploadedAt ?? now;
 
         // 1. Attach photo + signedBy on the canonical delivery record.

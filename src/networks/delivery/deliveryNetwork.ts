@@ -2,7 +2,16 @@
 // FinMatrix — Delivery Network (Production API)
 // ═══════════════════════════════════════════════════════
 
-import { api, extractErrorMessage, postMultipart } from '../network/apiHelpers';
+import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import {
+  api,
+  extractErrorMessage,
+  postMultipart,
+  API_BASE_URL,
+  getAccessToken,
+  getStoredCompanyId,
+} from '../network/apiHelpers';
 
 // ─── Bad-network resilience ─────────────────────────
 // Retries a request when it failed at the NETWORK level (no HTTP response —
@@ -344,3 +353,51 @@ export const undoInventoryApprovalAPI = async (requestId: string): Promise<any> 
   }
 };
 
+/**
+ * Fetch a delivery's proof-of-delivery photo as a LOCAL file:// URI.
+ *
+ * The stored billPhotoUrl is not a CDN link — the server composes it as a
+ * pointer back at its own auth-gated route. React Native's
+ * `<Image source={{ uri, headers }} />` does not reliably attach auth headers,
+ * so pointing an <Image> straight at that URL yields a 401 and a silent blank
+ * render (which read as a BLACK box, because the container behind it is
+ * black). Downloading natively with the token and handing <Image> a file://
+ * URI always renders. Mirrors downloadSubmissionScreenshot in billingNetwork.
+ *
+ * The URL is composed here from the request id rather than trusting the stored
+ * absolute URL, so a deployed APP_URL that drifts from the app's API base
+ * cannot strand every already-uploaded photo.
+ */
+export const downloadBillPhoto = async (requestId: string): Promise<string> => {
+  const token = await getAccessToken();
+  const companyId = await getStoredCompanyId();
+  const path = `/inventory-update-requests/${requestId}/bill-photo`;
+  const headers = {
+    Authorization: token ? `Bearer ${token}` : '',
+    ...(companyId ? { 'x-company-id': companyId } : {}),
+  };
+
+  if (Platform.OS === 'web') {
+    // expo-file-system has no web implementation.
+    const res = await fetch(`${API_BASE_URL}${path}`, { headers });
+    if (!res.ok) {
+      throw new Error(
+        res.status === 404
+          ? 'This delivery has no proof photo.'
+          : `Could not load the photo (${res.status}).`,
+      );
+    }
+    return URL.createObjectURL(await res.blob());
+  }
+
+  const dest = `${FileSystem.cacheDirectory}bill-photo-${requestId}-${Date.now()}.img`;
+  const result = await FileSystem.downloadAsync(`${API_BASE_URL}${path}`, dest, { headers });
+  if (result.status >= 400) {
+    throw new Error(
+      result.status === 404
+        ? 'This delivery has no proof photo.'
+        : `Could not load the photo (${result.status}).`,
+    );
+  }
+  return result.uri;
+};

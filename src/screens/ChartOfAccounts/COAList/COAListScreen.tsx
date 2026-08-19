@@ -35,6 +35,7 @@ import {
   selectActiveFilter,
 } from './coaListSlice';
 import type { COAFilter } from './coaListSlice';
+import { blockSystemDeactivation, isSystemAccount } from '../../../utils/systemAccounts';
 import type { Account, AccountType } from '../../../types';
 import {
   ReportContainer,
@@ -155,6 +156,7 @@ const COAListScreen: React.FC = () => {
           navigation.navigate('COAForm', { accountId: account.id });
           break;
         case 1:
+          if (blockSystemDeactivation(account)) break;
           dispatch(toggleAccount(account.id));
           break;
         case 2:
@@ -167,13 +169,21 @@ const COAListScreen: React.FC = () => {
 
   const showAccountActions = useCallback(
     (account: Account) => {
-      const options = ['Edit', account.isActive ? 'Deactivate' : 'Activate', 'View Detail', 'Cancel'];
+      // A system account keeps the slot (the indices below depend on it) but the
+      // label stops promising something the ledger will not allow.
+      const canDeactivate = !(account.isActive && isSystemAccount(account));
+      const options = [
+        'Edit',
+        account.isActive ? (canDeactivate ? 'Deactivate' : 'Deactivate (system account)') : 'Activate',
+        'View Detail',
+        'Cancel',
+      ];
       if (Platform.OS === 'ios') {
         ActionSheetIOS.showActionSheetWithOptions(
           {
             options,
             cancelButtonIndex: 3,
-            destructiveButtonIndex: account.isActive ? 1 : -1,
+            destructiveButtonIndex: account.isActive && canDeactivate ? 1 : -1,
             title: `${account.code} — ${account.name}`,
           },
           idx => handleActionChoice(idx, account),
@@ -182,9 +192,12 @@ const COAListScreen: React.FC = () => {
         Alert.alert(`${account.code} — ${account.name}`, undefined, [
           { text: 'Edit', onPress: () => navigation.navigate('COAForm', { accountId: account.id }) },
           {
-            text: account.isActive ? 'Deactivate' : 'Activate',
-            style: account.isActive ? 'destructive' : 'default',
-            onPress: () => dispatch(toggleAccount(account.id)),
+            text: options[1],
+            style: account.isActive && canDeactivate ? 'destructive' : 'default',
+            onPress: () => {
+              if (blockSystemDeactivation(account)) return;
+              dispatch(toggleAccount(account.id));
+            },
           },
           { text: 'View Detail', onPress: () => navigation.navigate('COADetail', { accountId: account.id }) },
           { text: 'Cancel', style: 'cancel' },

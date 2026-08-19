@@ -24,6 +24,7 @@ import { THEME } from '../../../utils/theme';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAccounts, toggleAccount } from '../COAList/coaListSlice';
+import { blockSystemDeactivation, isSystemAccount } from '../../../utils/systemAccounts';
 import {
   selectActiveTab,
   setActiveTab,
@@ -105,6 +106,7 @@ const COADetailScreen: React.FC = () => {
 
   const handleToggle = useCallback(() => {
     if (!account) return;
+    if (blockSystemDeactivation(account)) return;
     Alert.alert(
       account.isActive ? 'Deactivate Account' : 'Activate Account',
       `Are you sure you want to ${account.isActive ? 'deactivate' : 'activate'} "${account.name}"?`,
@@ -234,11 +236,17 @@ const COADetailScreen: React.FC = () => {
             <Text style={styles.actionBtnText}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionBtn, !account.isActive && styles.actionBtnActive]}
+            style={[
+              styles.actionBtn,
+              !account.isActive && styles.actionBtnActive,
+              account.isActive && isSystemAccount(account) && styles.actionBtnLocked,
+            ]}
             activeOpacity={0.7}
             onPress={handleToggle}
           >
-            <Text style={styles.actionBtnIcon}>{account.isActive ? '⛔' : '✅'}</Text>
+            <Text style={styles.actionBtnIcon}>
+              {account.isActive ? (isSystemAccount(account) ? '🔒' : '⛔') : '✅'}
+            </Text>
             <Text
               style={[
                 styles.actionBtnText,
@@ -417,6 +425,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  actionBtnLocked: { opacity: 0.55 },
   actionBtnActive: {
     borderColor: colors.success,
     backgroundColor: colors.success + '08',

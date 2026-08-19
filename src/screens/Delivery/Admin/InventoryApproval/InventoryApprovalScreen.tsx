@@ -34,6 +34,7 @@ import { fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryL
 import { clearShadowInventoryForRequest } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { InventoryUpdateRequest } from '../../../../models/deliveryModel';
 import CustomButton from '../../../../Custom-Components/CustomButton';
+import { downloadBillPhoto } from '../../../../networks/delivery/deliveryNetwork';
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'InventoryApproval'>;
 type ModalMode = 'approve' | 'reject' | 'undo' | null;
@@ -76,6 +77,39 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
     dispatch(fetchApprovalRequests());
   }, [dispatch]);
+
+  // The stored billPhotoUri is NOT a public CDN link — storage.service composes
+  // it as <API_URL>/api/v1/inventory-update-requests/<id>/bill-photo, a route
+  // behind JwtAuthGuard + CompanyGuard. RN's <Image source={{uri, headers}}>
+  // does not reliably attach auth headers, so the endpoint answered 401, RN
+  // could not decode the JSON, and the black container behind the image was
+  // all the admin ever saw. Download it natively with the token instead, the
+  // same way billingNetwork does for payment screenshots.
+  const [photoUris, setPhotoUris] = useState<Record<string, string>>({});
+  const [photoErrors, setPhotoErrors] = useState<Record<string, boolean>>({});
+
+  const resolvePhoto = React.useCallback(async (request: InventoryUpdateRequest) => {
+    const raw = request.proof?.billPhotoUri;
+    if (!raw) return;
+    // Already local (rider's own capture) or inline — nothing to fetch.
+    if (raw.startsWith('file://') || raw.startsWith('data:')) {
+      setPhotoUris(prev => ({ ...prev, [request.id]: raw }));
+      return;
+    }
+    setPhotoErrors(prev => ({ ...prev, [request.id]: false }));
+    try {
+      const uri = await downloadBillPhoto(request.id);
+      setPhotoUris(prev => ({ ...prev, [request.id]: uri }));
+    } catch {
+      setPhotoErrors(prev => ({ ...prev, [request.id]: true }));
+    }
+  }, []);
+
+  useEffect(() => {
+    requests.forEach(r => {
+      if (r.proof?.billPhotoUri && !photoUris[r.id] && !photoErrors[r.id]) resolvePhoto(r);
+    });
+  }, [requests, photoUris, photoErrors, resolvePhoto]);
 
   const [proofFor, setProofFor] = useState<InventoryUpdateRequest | null>(null);
   const [photoFullscreen, setPhotoFullscreen] = useState<string | null>(null);
@@ -145,16 +179,35 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   // RN <Modal> not presenting under the New Architecture).
   const promptApprove = (request: InventoryUpdateRequest) => {
     if (!isSyncedRequest(request.id)) { Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again."); return; }
-    const count = (request.changes ?? []).length;
+    // Plain language, in the order it matters: WHO, WHAT MOVED, WHAT THE MONEY
+    // DOES. The old copy led with a delivery reference, called a sale an "item
+    // update", used "COGS" unglossed, and understated the posting — approval
+    // also raises an invoice, records the payment and releases Goods in
+    // Transit, none of which "plus COGS" conveys.
     const amount = Number(request.saleAmount ?? '0');
-    const postingLine = request.prepaid
-      ? 'Posts COGS and relieves Goods in Transit (sale was pre-paid).'
+    const rs = (n: number) => `Rs ${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+    const delivered = (request.changes ?? []).reduce((n, c) => n + c.deliveredQty, 0);
+    const returned = (request.changes ?? []).reduce((n, c) => n + c.returnedQty, 0);
+
+    const moneyLine = request.prepaid
+      ? 'The customer already paid at dispatch, so no new sale is recorded.'
       : request.paidStatus === 'paid'
-        ? `Posts the sale (Rs ${amount.toLocaleString()}) as CASH received, plus COGS.`
-        : `Posts the sale (Rs ${amount.toLocaleString()}) on CREDIT (open invoice in A/R), plus COGS.`;
+        ? `The rider collected ${rs(amount)} in cash.`
+        : `${rs(amount)} will be invoiced on credit and sit in Accounts Receivable until the customer pays.`;
+
+    const postingLine = request.prepaid
+      ? 'Approving moves the stock cost out of Goods in Transit into Cost of Goods Sold.'
+      : request.paidStatus === 'paid'
+        ? 'Approving records the sale into Cash and moves the stock cost out of Goods in Transit into Cost of Goods Sold.'
+        : 'Approving raises the invoice and moves the stock cost out of Goods in Transit into Cost of Goods Sold.';
+
+    const stockLine = returned > 0
+      ? `${delivered} delivered · ${returned} returned to stock`
+      : `${delivered} delivered`;
+
     Alert.alert(
-      'Approve delivery',
-      `Apply ${count} item update${count === 1 ? '' : 's'} from ${request.deliveryReference || 'this delivery'}? ${postingLine}`,
+      `Approve delivery — ${request.customerName || 'this customer'}`,
+      `${stockLine}\n\n${moneyLine}\n\n${postingLine}\n\nThis posts to your books and can only be undone, not edited.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Approve', onPress: () => doApprove(request) },
@@ -216,23 +269,27 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // Native confirmation for reject (reliable on all platforms/architectures).
+  // Rejection needs a REASON, not a rubber stamp. This used to fire a plain
+  // alert and send the literal string 'Rejected by admin', so every rejected
+  // delivery carried the same meaningless audit note and the rider was told
+  // nothing about what to fix. The modal that collects a real reason already
+  // existed in this file — it was simply never opened.
   const promptReject = (request: InventoryUpdateRequest) => {
     if (!isSyncedRequest(request.id)) { Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again."); return; }
-    Alert.alert(
-      'Reject inventory changes',
-      `Reject the update from ${request.deliveryReference || 'this delivery'}? Shadow inventory will be reverted and the rider notified.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reject', style: 'destructive', onPress: () => doReject(request, 'Rejected by admin') },
-      ],
-    );
+    setRejectComment('');
+    setTargetRequest(request);
+    setModalMode('reject');
   };
 
   const confirmReject = async () => {
     if (!targetRequest) return;
-    if (!rejectComment.trim()) {
-      Alert.alert('Comment required', 'Please add rejection reason before submitting.');
+    // The server rejects a reason under 5 characters; catch it here so the
+    // admin is not bounced by a validation error after the fact.
+    if (rejectComment.trim().length < 5) {
+      Alert.alert(
+        'Reason required',
+        'Say why this delivery is being rejected — the rider sees this, and it becomes the audit note on the record.',
+      );
       return;
     }
     await doReject(targetRequest, rejectComment);
@@ -240,7 +297,10 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderChangeRows = (request: InventoryUpdateRequest) => {
     return (request.changes ?? []).map(change => {
-      const afterQty = Math.max(0, change.beforeQty - change.deliveredQty + change.returnedQty);
+      // beforeQty is WAREHOUSE stock, and the dispatched units already left it
+      // when the delivery was assigned (they sit in Goods in Transit). Only the
+      // returns come back; subtracting `delivered` here counted the outflow twice.
+      const afterQty = change.beforeQty + change.returnedQty;
       const isChanged = change.beforeQty !== afterQty || change.deliveredQty > 0 || change.returnedQty > 0;
 
       return (
@@ -367,18 +427,38 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
             {request.proof?.billPhotoUri ? (
               <View style={styles.billPhotoRow}>
                 <TouchableOpacity
-                  onPress={() => setPhotoFullscreen(request.proof.billPhotoUri ?? null)}
+                  onPress={() => {
+                    if (photoUris[request.id]) setPhotoFullscreen(photoUris[request.id]);
+                    else resolvePhoto(request);
+                  }}
                   activeOpacity={0.85}
                   style={styles.billPhotoThumbWrap}
                 >
-                  <Image
-                    source={{ uri: request.proof.billPhotoUri }}
-                    style={styles.billPhotoThumb}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.billPhotoBadge}>
-                    <Text style={styles.billPhotoBadgeText}>Tap to view</Text>
-                  </View>
+                  {photoUris[request.id] ? (
+                    <>
+                      <Image
+                        source={{ uri: photoUris[request.id] }}
+                        style={styles.billPhotoThumb}
+                        resizeMode="cover"
+                        onError={() => setPhotoErrors(prev => ({ ...prev, [request.id]: true }))}
+                      />
+                      <View style={styles.billPhotoBadge}>
+                        <Text style={styles.billPhotoBadgeText}>Tap to view</Text>
+                      </View>
+                    </>
+                  ) : (
+                    // Never a silent black box again: say which state we are in.
+                    <View style={styles.billPhotoPending}>
+                      <Feather
+                        name={photoErrors[request.id] ? 'alert-circle' : 'image'}
+                        size={18}
+                        color={photoErrors[request.id] ? colors.danger : colors.textSecondary}
+                      />
+                      <Text style={styles.billPhotoPendingText}>
+                        {photoErrors[request.id] ? 'Tap to retry' : 'Loading…'}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
                 <View style={styles.billPhotoMeta}>
                   <Text style={styles.billPhotoLabel}>Signed bill photo</Text>
@@ -472,9 +552,9 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.modalTitle}>Approve Inventory Changes</Text>
             <Text style={styles.modalSub}>Confirm these changes will update real inventory quantities.</Text>
             {(targetRequest?.changes ?? []).map(c => {
-              const afterQty = Math.max(0, c.beforeQty - c.deliveredQty + c.returnedQty);
+              const afterQty = c.beforeQty + c.returnedQty;
               return (
-                <Text key={c.itemId} style={styles.modalLine}>{c.itemName}: {c.beforeQty} - {c.deliveredQty} + {c.returnedQty} = {afterQty}</Text>
+                <Text key={c.itemId} style={styles.modalLine}>{c.itemName}: {c.beforeQty} + {c.returnedQty} returned = {afterQty}</Text>
               );
             })}
             <View style={styles.modalActionRow}>
@@ -488,8 +568,13 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
       <Modal visible={modalMode === 'reject' && !!targetRequest} transparent statusBarTranslucent animationType="fade" onRequestClose={closeModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Reject Inventory Changes</Text>
-            <Text style={styles.modalSub}>A rejection comment is required.</Text>
+            <Text style={styles.modalTitle}>
+              Reject delivery — {targetRequest?.customerName || 'this customer'}
+            </Text>
+            <Text style={styles.modalSub}>
+              Nothing posts to your books. The stock stays in Goods in Transit until the
+              rider resubmits or brings it back. Your reason goes to the rider.
+            </Text>
             <TextInput
               value={rejectComment}
               onChangeText={setRejectComment}
@@ -516,15 +601,32 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.modalLine}>Verified at: {proofFor ? new Date(proofFor.proof.verifiedAt).toLocaleString() : '-'}</Text>
             {proofFor?.proof?.billPhotoUri ? (
               <TouchableOpacity
-                onPress={() => proofFor?.proof?.billPhotoUri && setPhotoFullscreen(proofFor.proof.billPhotoUri)}
+                onPress={() => {
+                  if (proofFor && photoUris[proofFor.id]) setPhotoFullscreen(photoUris[proofFor.id]);
+                  else if (proofFor) resolvePhoto(proofFor);
+                }}
                 activeOpacity={0.85}
                 style={styles.proofPhotoTouchable}
               >
-                <Image
-                  source={{ uri: proofFor.proof.billPhotoUri }}
-                  style={styles.proofPhoto}
-                  resizeMode="cover"
-                />
+                {photoUris[proofFor.id] ? (
+                  <Image
+                    source={{ uri: photoUris[proofFor.id] }}
+                    style={styles.proofPhoto}
+                    resizeMode="cover"
+                    onError={() => setPhotoErrors(prev => ({ ...prev, [proofFor.id]: true }))}
+                  />
+                ) : (
+                  <View style={[styles.proofPhoto, styles.billPhotoPending]}>
+                    <Feather
+                      name={photoErrors[proofFor.id] ? 'alert-circle' : 'image'}
+                      size={20}
+                      color={photoErrors[proofFor.id] ? colors.danger : colors.textSecondary}
+                    />
+                    <Text style={styles.billPhotoPendingText}>
+                      {photoErrors[proofFor.id] ? 'Photo unavailable — tap to retry' : 'Loading photo…'}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             ) : (
               !!proofFor?.proof?.signatureBase64 && (
@@ -546,7 +648,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.modalLine}>Delivery: {targetRequest?.deliveryReference}</Text>
             <Text style={styles.modalLine}>Personnel: {targetRequest?.personnelName}</Text>
             {targetRequest?.changes.map(c => {
-              const appliedQty = c.beforeQty - c.deliveredQty + c.returnedQty;
+              const appliedQty = c.beforeQty + c.returnedQty;
               return (
                 <Text key={c.itemId} style={styles.modalLine}>
                   {c.itemName}: {appliedQty} → {c.beforeQty} (restored)
@@ -700,6 +802,18 @@ const styles = StyleSheet.create({
   },
   billPhotoThumbWrap: { width: 72, height: 96, borderRadius: borderRadius.sm, overflow: 'hidden', backgroundColor: '#000' },
   billPhotoThumb: { width: '100%', height: '100%' },
+  billPhotoPending: {
+    width: '100%', height: '100%',
+    alignItems: 'center', justifyContent: 'center',
+    gap: 4, padding: 6,
+    backgroundColor: colors.surfaceAlt ?? '#F1F3F5',
+  },
+  billPhotoPendingText: {
+    ...THEME.typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontSize: 10,
+  },
   billPhotoBadge: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 2, backgroundColor: 'rgba(0,0,0,0.55)' },
   billPhotoBadgeText: { ...THEME.typography.caption, color: '#fff', textAlign: 'center', fontSize: 10 },
   billPhotoMeta: { flex: 1 },
