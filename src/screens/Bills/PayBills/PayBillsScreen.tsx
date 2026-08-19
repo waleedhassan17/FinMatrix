@@ -34,6 +34,8 @@ import {
   payAllBills,
   setBillAllocation,
   toggleAllBills,
+  toggleBillCredit,
+  fetchVendorCreditsForPayment,
   preselectBill,
   setPayBillErrors,
   resetPayBills,
@@ -145,6 +147,13 @@ const PayBillsScreen: React.FC = () => {
   );
 
   const paymentAmount = parseFloat(form.amount) || 0;
+  useEffect(() => {
+    if (form.vendorId) dispatch(fetchVendorCreditsForPayment(form.vendorId));
+  }, [form.vendorId, dispatch]);
+
+  const creditTotal = form.availableCredits.reduce((sum, c) => sum + c.balance, 0);
+  const creditUsed = form.outstandingRows.reduce((sum, r) => sum + r.creditApplied, 0);
+  const creditLeft = Math.round((creditTotal - creditUsed) * 100) / 100;
   const checkedCount = form.outstandingRows.filter(r => r.checked).length;
   const allChecked = form.outstandingRows.length > 0 && checkedCount === form.outstandingRows.length;
   const payFromAccount = useMemo(
@@ -169,7 +178,12 @@ const PayBillsScreen: React.FC = () => {
     if (!form.paymentDate) errs.paymentDate = 'Payment date is required';
     // The total IS the sum of the rows, so there is no separate amount to
     // validate and no way to overpay.
-    if (totalAllocated <= 0) errs.allocations = 'Enter an amount against at least one bill';
+    const creditOnly = form.outstandingRows.some(r => r.creditApplied > 0);
+    if (totalAllocated <= 0 && !creditOnly) {
+      errs.allocations = 'Enter an amount against at least one bill';
+    }
+    // A credit-only settlement moves no cash, so no account is needed.
+    if (totalAllocated <= 0 && creditOnly) delete errs.bankAccountId;
     return errs;
   }, [form, totalAllocated]);
 
@@ -182,7 +196,7 @@ const PayBillsScreen: React.FC = () => {
     }
 
     const allocations = form.outstandingRows
-      .filter(r => r.allocated > 0)
+      .filter(r => r.allocated > 0 || r.creditApplied > 0)
       .map(r => ({ billId: r.billId, billNumber: r.billNumber, amount: r.allocated }));
 
     try {
@@ -194,6 +208,7 @@ const PayBillsScreen: React.FC = () => {
       // Back cannot return to a filled-in form and post the payment twice.
       navigation.replace('PaymentSuccess', {
         amount: totalAllocated,
+        creditApplied: creditUsed,
         vendorName: form.vendorName,
         accountName: payFromAccount?.name ?? '',
         paymentDate: form.paymentDate,
@@ -204,8 +219,8 @@ const PayBillsScreen: React.FC = () => {
           const row = form.outstandingRows.find(r => r.billId === a.billId);
           return {
             billNumber: a.billNumber,
-            applied: a.amount,
-            remaining: Math.round(((row?.balance ?? 0) - a.amount) * 100) / 100,
+            applied: a.amount + (row?.creditApplied ?? 0),
+            remaining: Math.round(((row?.balance ?? 0) - a.amount - (row?.creditApplied ?? 0)) * 100) / 100,
           };
         }),
       });
@@ -319,6 +334,22 @@ const PayBillsScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>OUTSTANDING BILLS</Text>
           </View>
 
+          {creditTotal > 0 && (
+            <View style={styles.creditBanner}>
+              <Feather name="gift" size={16} color="#0E8A5F" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.creditBannerTitle}>
+                  {formatCurrency(creditLeft, 'Rs ')} vendor credit available
+                </Text>
+                <Text style={styles.creditBannerHint}>
+                  {creditUsed > 0
+                    ? `${formatCurrency(creditUsed, 'Rs ')} applied — that much less cash leaves your account.`
+                    : 'Tap "Use credit" on a bill to settle it without paying cash.'}
+                </Text>
+              </View>
+            </View>
+          )}
+
           {form.isLoadingBills ? (
             <LoadingBlock label="Loading outstanding bills…" />
           ) : form.outstandingRows.length === 0 ? (
@@ -385,7 +416,28 @@ const PayBillsScreen: React.FC = () => {
                       <Text style={styles.tdSub}>Due {formatDate(row.dueDate)}</Text>
                     </View>
                     <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatCurrency(row.total, 'Rs ')}</Text>
-                    <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatCurrency(row.balance, 'Rs ')}</Text>
+                    <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                      <Text style={styles.tdText}>{formatCurrency(row.balance, 'Rs ')}</Text>
+                      {(creditTotal > 0 || row.creditApplied > 0) && (
+                        <TouchableOpacity
+                          onPress={() => dispatch(toggleBillCredit(row.billId))}
+                          disabled={row.creditApplied === 0 && creditLeft <= 0}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Text
+                            style={[
+                              styles.creditChip,
+                              row.creditApplied > 0 && styles.creditChipOn,
+                              row.creditApplied === 0 && creditLeft <= 0 && styles.creditChipOff,
+                            ]}
+                          >
+                            {row.creditApplied > 0
+                              ? `− ${formatCurrency(row.creditApplied, 'Rs ')} credit`
+                              : 'Use credit'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                     {/* Editable per bill — this is what lets you settle a newer
                         bill in full while paying an older one in part. Clamped
                         to the balance in the reducer. */}
@@ -426,6 +478,9 @@ const PayBillsScreen: React.FC = () => {
               </View>
               <View style={styles.summaryDivider} />
               <SummaryRow label="Bills selected" value={String(checkedCount)} />
+              {creditUsed > 0 && (
+                <SummaryRow label="Vendor credit applied" value={`− ${formatCurrency(creditUsed, 'Rs ')}`} valueColor="#34D399" />
+              )}
               <SummaryRow label="Total payment" value={formatCurrency(totalAllocated, 'Rs ')} />
               {!!payFromAccount && (
                 <SummaryRow
@@ -559,6 +614,16 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 13, color: 'rgba(241,245,249,0.6)', fontFamily: THEME.typography.fontFamily },
   summaryValue: { fontSize: 14, fontWeight: '700', color: '#F1F5F9', fontFamily: THEME.typography.fontFamily },
 
+  creditBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0',
+    borderRadius: borderRadius.sm, padding: spacing.sm, marginBottom: spacing.sm,
+  },
+  creditBannerTitle: { ...THEME.typography.bodySm, fontWeight: '700', color: '#065F46' },
+  creditBannerHint: { ...THEME.typography.caption, color: '#047857', marginTop: 1 },
+  creditChip: { ...THEME.typography.caption, color: '#0E8A5F', fontWeight: '700', marginTop: 2 },
+  creditChipOn: { color: '#065F46' },
+  creditChipOff: { opacity: 0.35 },
   emptyCta: { marginTop: 12 },
   fieldHint: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: -spacing.xs, marginBottom: spacing.sm },
   totalReadout: { paddingVertical: 4 },

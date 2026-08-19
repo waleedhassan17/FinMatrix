@@ -29,6 +29,8 @@ export type TransactionsStackParamList = {
   PayBills: { vendorId?: string; billId?: string } | undefined;
   PaymentSuccess: {
     amount: number;
+    /** Settled by vendor credit rather than cash — no money moved for this part. */
+    creditApplied?: number;
     vendorName: string;
     accountName: string;
     paymentDate: string;

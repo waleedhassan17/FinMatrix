@@ -37,7 +37,7 @@ const METHOD_LABEL: Record<string, string> = {
 const PaymentSuccessScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const { params } = useRoute<ScreenRoute>();
-  const { amount, vendorName, accountName, paymentDate, reference, method, billId, lines } = params;
+  const { amount, creditApplied = 0, vendorName, accountName, paymentDate, reference, method, billId, lines } = params;
 
   const settled = lines.filter(l => l.remaining <= 0.005).length;
 
@@ -48,8 +48,13 @@ const PaymentSuccessScreen: React.FC = () => {
           <View style={styles.tick}>
             <Feather name="check" size={30} color="#FFFFFF" />
           </View>
-          <Text style={styles.amount}>{formatCurrency(amount, 'Rs ')}</Text>
-          <Text style={styles.heroSub}>paid to {vendorName}</Text>
+          <Text style={styles.amount}>{formatCurrency(amount + creditApplied, 'Rs ')}</Text>
+          <Text style={styles.heroSub}>settled with {vendorName}</Text>
+          {creditApplied > 0 && (
+            <Text style={styles.creditSplit}>
+              {formatCurrency(amount, 'Rs ')} cash · {formatCurrency(creditApplied, 'Rs ')} vendor credit
+            </Text>
+          )}
         </View>
 
         {/* The journal entry in plain words — the user should never have to
@@ -61,7 +66,9 @@ const PaymentSuccessScreen: React.FC = () => {
           <Row label="Reference" value={reference || '—'} />
           <View style={styles.divider} />
           <Text style={styles.postedNote}>
-            Posted to your books as a debit to Accounts Payable and a credit to {accountName || 'the payment account'}.
+            {amount > 0
+              ? `Posted as a debit to Accounts Payable and a credit to ${accountName || 'the payment account'}.`
+              : 'Settled entirely from vendor credit — no cash left your accounts, and no new journal entry was needed.'}
           </Text>
         </View>
 
@@ -139,6 +146,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   amount: { ...THEME.typography.h1, color: colors.textPrimary, fontWeight: '800' },
+  creditSplit: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 4 },
   heroSub: { ...THEME.typography.bodyMd, color: colors.textSecondary, marginTop: 2 },
 
   card: {
