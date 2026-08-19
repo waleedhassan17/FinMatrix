@@ -22,10 +22,6 @@ import {
 
 export type BillStatusFilter = 'all' | BillStatus;
 
-const toApiBillStatus = (statusFilter: BillStatusFilter): string | undefined => {
-  if (statusFilter === 'all') return undefined;
-  return statusFilter;
-};
 
 export interface BillListSliceState {
   bills: Bill[];
@@ -80,11 +76,15 @@ export const billListSlice = createAppSlice({
     fetchBills: create.asyncThunk(
       async (_arg, thunkAPI) => {
         const root = thunkAPI.getState() as { billList: BillListSliceState };
-        const { searchQuery, statusFilter } = root.billList;
-        const apiStatus = toApiBillStatus(statusFilter);
+        const { searchQuery } = root.billList;
+        // The status tab is applied client-side ONLY. Filtering server-side
+        // too meant `bills` held just that tab, so the Outstanding tile read
+        // Rs 0 on the Paid tab and every other tab's count collapsed to 0.
+        // The limit is explicit because the API defaults to 50 and silently
+        // drops the rest.
         return getBillsAPI({
           ...(searchQuery ? { search: searchQuery } : {}),
-          ...(apiStatus ? { status: apiStatus } : {}),
+          limit: 200,
         });
       },
       {

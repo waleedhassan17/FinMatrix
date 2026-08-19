@@ -26,6 +26,7 @@ import BillListScreen from '../screens/Bills/BillList/BillListScreen';
 import BillFormScreen from '../screens/Bills/BillForm/BillFormScreen';
 import BillDetailScreen from '../screens/Bills/BillDetail/BillDetailScreen';
 import PayBillsScreen from '../screens/Bills/PayBills/PayBillsScreen';
+import PaymentSuccessScreen from '../screens/Bills/PayBills/PaymentSuccessScreen';
 import POListScreen from '../screens/PurchaseOrders/POList/POListScreen';
 import POFormScreen from '../screens/PurchaseOrders/POForm/POFormScreen';
 import PODetailScreen from '../screens/PurchaseOrders/PODetail/PODetailScreen';
@@ -55,6 +56,7 @@ export const TransactionsRouteNames = {
   BillForm: 'BillForm',
   BillDetail: 'BillDetail',
   PayBills: 'PayBills',
+  PaymentSuccess: 'PaymentSuccess',
   POList: 'POList',
   POForm: 'POForm',
   PODetail: 'PODetail',
@@ -87,6 +89,7 @@ export const TRANSACTIONS_ROUTES: IRoute[] = [
   { title: TransactionsRouteNames.BillForm, component: BillFormScreen },
   { title: TransactionsRouteNames.BillDetail, component: BillDetailScreen },
   { title: TransactionsRouteNames.PayBills, component: PayBillsScreen },
+  { title: TransactionsRouteNames.PaymentSuccess, component: PaymentSuccessScreen },
   { title: TransactionsRouteNames.POList, component: POListScreen },
   { title: TransactionsRouteNames.POForm, component: POFormScreen },
   { title: TransactionsRouteNames.PODetail, component: PODetailScreen },

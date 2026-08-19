@@ -27,6 +27,7 @@ export interface ReportHubItem {
     | 'TrialBalance'
     | 'GeneralLedger'
     | 'ARAging'
+    | 'APAging'
     | 'InventoryValuation'
     | 'AnalyticsDashboard'
     | 'BudgetList'

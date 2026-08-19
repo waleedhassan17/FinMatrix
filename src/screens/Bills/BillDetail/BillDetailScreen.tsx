@@ -6,7 +6,7 @@
 // Actions: Edit, Pay, Void.
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useMemo, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,11 +17,12 @@ import {
   RefreshControl,
   StatusBar,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Alert } from '../../../utils/alert';
 import { useCompanyInfo } from '../../../utils/companyInfo';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
@@ -37,7 +38,7 @@ import {
   selectBillDetailError,
   updateBillStatus,
 } from './billDetailSlice';
-import { fetchBills, upsertBill } from '../BillList/billListSlice';
+import { fetchBills, upsertBill, removeBill } from '../BillList/billListSlice';
 import { BILL_STATUS_COLORS, BILL_STATUS_LABELS } from '../../../models/billModel';
 import { billSingleSerializer } from '../../../serializers/billSerializer';
 import CustomButton from '../../../Custom-Components/CustomButton';
@@ -71,11 +72,25 @@ const BillDetailScreen: React.FC = () => {
   const error = useAppSelector(selectBillDetailError);
 
   const [refreshing, setRefreshing] = React.useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const paymentsY = useRef(0);
+  // "View Payments" used to be onPress={() => {}} — a button that did nothing.
+  const scrollToPayments = useCallback(
+    () => scrollRef.current?.scrollTo({ y: Math.max(0, paymentsY.current - 12), animated: true }),
+    [],
+  );
 
-  useEffect(() => {
-    dispatch(fetchBillDetail(billId));
-    return () => { dispatch(resetBillDetail()); };
-  }, [billId, dispatch]);
+  // Refetch on focus, not just on mount. This screen stays mounted while Pay
+  // Bills is pushed over it, so returning from a payment used to show the
+  // pre-payment bill — which is why a fully paid bill kept offering Pay Bill,
+  // Edit and Void, and why Amount Paid looked unchanged.
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(fetchBillDetail(billId));
+    }, [billId, dispatch]),
+  );
+
+  useEffect(() => () => { dispatch(resetBillDetail()); }, [dispatch]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -88,50 +103,45 @@ const BillDetailScreen: React.FC = () => {
     [bill],
   );
 
-  // ── Status transition helper ────────────────
-  const transitionStatus = useCallback(
-    async (status: BillStatus) => {
-      if (!bill) return false;
-      const result: any = await dispatch(updateBillStatus({ id: bill.id, status }));
-      if (result.error) {
-        Alert.alert('Error', `Failed to update bill status.`);
-        return false;
-      }
-      // Keep list slice in sync without refetching everything.
-      const updated = billSingleSerializer(result.payload);
-      if (updated) dispatch(upsertBill(updated));
-      else await dispatch(fetchBills());
-      return true;
-    },
-    [bill, dispatch],
-  );
+  // Money left to pay, not merely a status string. A hair of tolerance so a
+  // rounding remainder never leaves a bill looking payable.
+  const isSettled = !!bill && balance <= 0.005 && bill.status !== 'void';
+  const canPay = !!bill && balance > 0.005 && bill.status !== 'draft' && bill.status !== 'void';
+  // The API refuses to edit anything but a draft (CANNOT_EDIT_POSTED), so
+  // offering Edit on a posted bill was offering a guaranteed failure.
+  const canEdit = !!bill && bill.status === 'draft';
+  // DELETE reverses the bill; the server blocks it once payments exist.
+  const canDelete = !!bill && bill.amountPaid <= 0.005 && bill.status !== 'void';
 
-  // ── Void action ─────────────────────────
-  const handleVoid = useCallback(async () => {
+  // ── Delete action ───────────────────────
+  // What used to be "Void" sent `status: 'draft'`, but UpdateBillDto has no
+  // status field and the API whitelists it away — so it 400'd with
+  // CANNOT_EDIT_POSTED and reported "Voided" anyway. DELETE is the real
+  // reversal: it posts a reversing journal entry and the server already
+  // refuses when the bill has payments (BILL_HAS_PAYMENTS).
+  const handleDelete = useCallback(async () => {
     if (!bill) return;
     Alert.alert(
-      'Void Bill',
-      `Are you sure you want to void ${bill.billNumber}? This cannot be undone.`,
+      'Delete Bill',
+      `Delete ${bill.billNumber}? A reversing journal entry is posted, so the ledger stays auditable.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Void',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const ok = await transitionStatus('draft' as BillStatus);
-            if (ok) Alert.alert('Voided', `${bill.billNumber} has been voided.`);
+            try {
+              await dispatch(removeBill(bill.id)).unwrap();
+              Toast.show({ type: 'success', text1: 'Bill deleted', text2: `${bill.billNumber} was reversed and removed.` });
+              navigation.goBack();
+            } catch (e: any) {
+              Alert.alert('Could not delete', e?.message ?? 'Please try again.');
+            }
           },
         },
       ],
     );
-  }, [bill, transitionStatus]);
-
-  // ── Open action (mark as open) ──────────────
-  const handleOpen = useCallback(async () => {
-    if (!bill) return;
-    const ok = await transitionStatus('open' as BillStatus);
-    if (ok) Alert.alert('Opened', `${bill.billNumber} has been marked as Open.`);
-  }, [bill, transitionStatus]);
+  }, [bill, dispatch, navigation]);
 
   // ── Loading / Error ─────────────────────────────
   if (isLoading && !bill) {
@@ -181,6 +191,7 @@ const BillDetailScreen: React.FC = () => {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -285,6 +296,7 @@ const BillDetailScreen: React.FC = () => {
         </View>
 
         {/* ── Payment History ─────────────────────── */}
+        <View onLayout={e => { paymentsY.current = e.nativeEvent.layout.y; }} />
         <Text style={styles.outerSectionTitle}>Payment History</Text>
         {payments.length === 0 ? (
           <View style={styles.emptyPayments}>
@@ -316,74 +328,52 @@ const BillDetailScreen: React.FC = () => {
         <View style={{ height: spacing.xl * 3 }} />
       </ScrollView>
 
-      {/* ── Action Bar (matches Estimates/SO) ────────── */}
+      {/* ── Action Bar ──────────────────────────────
+          Gated on the BALANCE, not just the status: a bill with nothing left
+          to pay must not keep offering Pay Bill / Edit / Delete. */}
       <View style={styles.actionBar}>
-        {bill.status === 'draft' && (
-          <>
-            <View style={styles.actionSecondary}>
-              <CustomButton
-                title="Edit"
-                onPress={() => navigation.navigate('BillForm', { billId: bill.id })}
-                variant="secondary"
-                size="sm"
-                fullWidth
-              />
-            </View>
-            <View style={styles.actionPrimary}>
-              <CustomButton
-                title="Mark Open"
-                onPress={handleOpen}
-                variant="primary"
-                size="sm"
-                fullWidth
-              />
-            </View>
-          </>
+        {canEdit && (
+          <View style={styles.actionSecondary}>
+            <CustomButton
+              title="Edit"
+              onPress={() => navigation.navigate('BillForm', { billId: bill.id })}
+              variant="secondary"
+              size="sm"
+              fullWidth
+            />
+          </View>
         )}
 
-        {(bill.status === 'open' || bill.status === 'overdue' || bill.status === 'partial') && (
-          <>
-            <View style={styles.actionSecondary}>
-              <CustomButton
-                title="Edit"
-                onPress={() => navigation.navigate('BillForm', { billId: bill.id })}
-                variant="secondary"
-                size="sm"
-                fullWidth
-              />
-            </View>
-            <View style={styles.actionSecondary}>
-              <CustomButton
-                title="Void"
-                onPress={handleVoid}
-                variant="secondary"
-                size="sm"
-                fullWidth
-              />
-            </View>
-            <View style={styles.actionPrimary}>
-              <CustomButton
-                title="Pay Bill"
-                onPress={() =>
-                  navigation.navigate('PayBills', {
-                    vendorId: bill.vendorId,
-                    billId: bill.id,
-                  })
-                }
-                variant="primary"
-                size="sm"
-                fullWidth
-              />
-            </View>
-          </>
+        {canDelete && (
+          <View style={styles.actionSecondary}>
+            <CustomButton title="Delete" onPress={handleDelete} variant="secondary" size="sm" fullWidth />
+          </View>
         )}
 
-        {bill.status === 'paid' && (
+        {canPay && (
           <View style={styles.actionPrimary}>
             <CustomButton
-              title="View Payments"
-              onPress={() => {}}
+              title="Pay Bill"
+              onPress={() => navigation.navigate('PayBills', { vendorId: bill.vendorId, billId: bill.id })}
               variant="primary"
+              size="sm"
+              fullWidth
+            />
+          </View>
+        )}
+
+        {isSettled && (
+          <View style={styles.actionPrimary}>
+            <CustomButton title="View Payments" onPress={scrollToPayments} variant="primary" size="sm" fullWidth />
+          </View>
+        )}
+
+        {bill.status === 'void' && (
+          <View style={styles.actionPrimary}>
+            <CustomButton
+              title="Back to Bills"
+              onPress={() => navigation.navigate('BillList')}
+              variant="secondary"
               size="sm"
               fullWidth
             />

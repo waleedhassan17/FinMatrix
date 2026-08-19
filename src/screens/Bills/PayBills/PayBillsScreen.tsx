@@ -10,6 +10,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
@@ -31,7 +32,8 @@ import {
   setPayBillVendor,
   toggleBillCheck,
   payAllBills,
-  distributePayBillAmount,
+  setBillAllocation,
+  toggleAllBills,
   preselectBill,
   setPayBillErrors,
   resetPayBills,
@@ -42,9 +44,10 @@ import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorList
 import { fetchBills } from '../BillList/billListSlice';
 import { fetchAccounts, selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
+import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import { PrimaryButton, SecondaryButton } from '../../../components/form/FormUI';
-import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { DateField, ReportHeader, HEADER_NAVY, LoadingBlock } from '../../../components/reports/ReportUI';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -136,23 +139,17 @@ const PayBillsScreen: React.FC = () => {
     [vendors, dispatch],
   );
 
-  const handleAmountChange = useCallback(
-    (v: string) => {
-      dispatch(setPayBillField({ key: 'amount', value: v.replace(/[^0-9.]/g, '') }));
-      setTimeout(() => dispatch(distributePayBillAmount()), 0);
-    },
-    [dispatch],
-  );
-
   const totalAllocated = useMemo(
     () => form.outstandingRows.reduce((s, r) => s + r.allocated, 0),
     [form.outstandingRows],
   );
 
   const paymentAmount = parseFloat(form.amount) || 0;
-  const overpayment = useMemo(
-    () => Math.max(0, Math.round((paymentAmount - totalAllocated) * 100) / 100),
-    [paymentAmount, totalAllocated],
+  const checkedCount = form.outstandingRows.filter(r => r.checked).length;
+  const allChecked = form.outstandingRows.length > 0 && checkedCount === form.outstandingRows.length;
+  const payFromAccount = useMemo(
+    () => payableAccounts.find(a => a.id === form.bankAccountId),
+    [payableAccounts, form.bankAccountId],
   );
 
   const overdraw = useMemo(() => {
@@ -170,10 +167,11 @@ const PayBillsScreen: React.FC = () => {
     if (!form.vendorId) errs.vendorId = 'Select a vendor';
     if (!form.bankAccountId) errs.bankAccountId = 'Select a bank account';
     if (!form.paymentDate) errs.paymentDate = 'Payment date is required';
-    if (!form.amount || paymentAmount <= 0) errs.amount = 'Enter a positive amount';
-    if (totalAllocated <= 0) errs.allocations = 'Allocate payment to at least one bill';
+    // The total IS the sum of the rows, so there is no separate amount to
+    // validate and no way to overpay.
+    if (totalAllocated <= 0) errs.allocations = 'Enter an amount against at least one bill';
     return errs;
-  }, [form, paymentAmount, totalAllocated]);
+  }, [form, totalAllocated]);
 
   const handleSave = useCallback(async () => {
     const validationErrors = validate();
@@ -183,39 +181,40 @@ const PayBillsScreen: React.FC = () => {
       return;
     }
 
-    if (overpayment > 0) {
-      const proceed = await new Promise<boolean>(resolve => {
-        Alert.alert(
-          'Overpayment Detected',
-          `${formatCurrency(overpayment, 'Rs ')} exceeds the allocated amount. Continue?`,
-          [
-            { text: 'Cancel', onPress: () => resolve(false), style: 'cancel' },
-            { text: 'Continue', onPress: () => resolve(true) },
-          ],
-        );
-      });
-      if (!proceed) return;
-    }
-
     const allocations = form.outstandingRows
       .filter(r => r.allocated > 0)
       .map(r => ({ billId: r.billId, billNumber: r.billNumber, amount: r.allocated }));
 
     try {
-      await dispatch(savePayment({ paymentNumber: form.reference || generatePaymentNumber(), allocations })).unwrap();
+      const reference = form.reference || generatePaymentNumber();
+      await dispatch(savePayment({ paymentNumber: reference, allocations })).unwrap();
       await dispatch(fetchBills());
 
-      Alert.alert(
-        'Payment Recorded',
-        `${formatCurrency(paymentAmount, 'Rs ')} payment to ${form.vendorName} has been recorded.`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
-      );
+      // `replace`, not `navigate`: the receipt takes this screen's place so
+      // Back cannot return to a filled-in form and post the payment twice.
+      navigation.replace('PaymentSuccess', {
+        amount: totalAllocated,
+        vendorName: form.vendorName,
+        accountName: payFromAccount?.name ?? '',
+        paymentDate: form.paymentDate,
+        reference,
+        method: form.method,
+        billId: preBillId,
+        lines: allocations.map(a => {
+          const row = form.outstandingRows.find(r => r.billId === a.billId);
+          return {
+            billNumber: a.billNumber,
+            applied: a.amount,
+            remaining: Math.round(((row?.balance ?? 0) - a.amount) * 100) / 100,
+          };
+        }),
+      });
     } catch (e: any) {
       // The API says exactly what is wrong (e.g. PAYMENT_EXCEEDS_BALANCE with
       // the amounts) — showing "try again" instead just hides it.
       Alert.alert('Error', e?.message || 'Failed to record payment. Please try again.');
     }
-  }, [form, paymentAmount, overpayment, totalAllocated, dispatch, navigation, validate, generatePaymentNumber]);
+  }, [form, totalAllocated, payFromAccount, preBillId, dispatch, navigation, validate, generatePaymentNumber]);
 
   // ═════════════════════════════════════════════════════
   return (
@@ -250,13 +249,17 @@ const PayBillsScreen: React.FC = () => {
                 searchable
               />
               <CustomDropdown
-                label="Bank Account *"
+                label="Pay from account *"
                 options={bankAccountOptions}
                 value={form.bankAccountId}
                 onChange={v => dispatch(setPayBillField({ key: 'bankAccountId', value: v }))}
-                placeholder="Select bank account…"
+                placeholder="Select the account…"
                 error={form.errors.bankAccountId}
               />
+              <Text style={styles.fieldHint}>
+                The account the money leaves — choose Cash for a cash payment. The
+                method above is just how you paid.
+              </Text>
               {/* A warning, not a block: a bank overdraft is a real thing. */}
               {!!overdraw && (
                 <Text style={styles.overdrawNote}>
@@ -289,17 +292,16 @@ const PayBillsScreen: React.FC = () => {
               />
               <View style={styles.amountRow}>
                 <View style={{ flex: 1, marginRight: spacing.sm }}>
-                  <CustomInput
-                    label="Amount (Rs) *"
-                    value={form.amount}
-                    onChangeText={handleAmountChange}
-                    placeholder="0"
-                    keyboardType="decimal-pad"
-                    error={form.errors.amount}
-                  />
+                  <View style={styles.totalReadout}>
+                    <Text style={styles.totalReadoutLabel}>Total payment</Text>
+                    <Text style={styles.totalReadoutValue}>{formatCurrency(totalAllocated, 'Rs ')}</Text>
+                    <Text style={styles.totalReadoutHint}>
+                      Sum of the amounts you enter against each bill below.
+                    </Text>
+                  </View>
                 </View>
                 <TouchableOpacity
-                  style={styles.payAllChip}
+                  style={[styles.payAllChip, form.outstandingRows.length === 0 && styles.payAllChipDisabled]}
                   onPress={() => dispatch(payAllBills())}
                   activeOpacity={0.7}
                   disabled={form.outstandingRows.length === 0}
@@ -317,7 +319,9 @@ const PayBillsScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>OUTSTANDING BILLS</Text>
           </View>
 
-          {form.outstandingRows.length === 0 ? (
+          {form.isLoadingBills ? (
+            <LoadingBlock label="Loading outstanding bills…" />
+          ) : form.outstandingRows.length === 0 ? (
             <View style={styles.emptyCard}>
               <View style={styles.emptyIconBg}>
                 <Feather name="file-text" size={20} color="#6554C0" />
@@ -326,8 +330,20 @@ const PayBillsScreen: React.FC = () => {
                 {form.vendorId ? 'No outstanding bills' : 'Select a vendor'}
               </Text>
               <Text style={styles.emptyText}>
-                {form.vendorId ? 'This vendor has no outstanding bills.' : 'Pick a vendor above to see their outstanding bills.'}
+                {form.vendorId
+                  ? 'Everything from this vendor is settled. Nothing to pay.'
+                  : 'Pick a vendor above to see their outstanding bills.'}
               </Text>
+              {!!form.vendorId && (
+                <View style={styles.emptyCta}>
+                  <CustomButton
+                    title="Create a bill"
+                    onPress={() => navigation.navigate('BillForm', { vendorId: form.vendorId })}
+                    variant="secondary"
+                    size="sm"
+                  />
+                </View>
+              )}
             </View>
           ) : (
             <>
@@ -336,34 +352,62 @@ const PayBillsScreen: React.FC = () => {
               )}
               <View style={styles.tableWrap}>
                 <View style={styles.tableHeader}>
-                  <View style={{ width: 32 }} />
-                  <Text style={[styles.thText, { flex: 1.2 }]}>Bill</Text>
-                  <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Due Date</Text>
+                  <TouchableOpacity
+                    style={styles.checkboxWrap}
+                    onPress={() => dispatch(toggleAllBills())}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <View style={[styles.checkbox, allChecked && styles.checkboxChecked]}>
+                      {allChecked && <Feather name="check" size={13} color="#FFFFFF" />}
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={[styles.thText, { flex: 1.3 }]}>Bill</Text>
+                  <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Bill Amt</Text>
                   <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Balance</Text>
-                  <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Allocated</Text>
+                  <Text style={[styles.thText, styles.thRight, { width: 96 }]}>Amt To Pay</Text>
                 </View>
                 {form.outstandingRows.map((row, idx) => (
-                  <TouchableOpacity
+                  <View
                     key={row.billId}
                     style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven, row.checked && styles.tableRowChecked]}
-                    activeOpacity={0.6}
-                    onPress={() => dispatch(toggleBillCheck(row.billId))}
                   >
-                    <View style={styles.checkboxWrap}>
+                    <TouchableOpacity
+                      style={styles.checkboxWrap}
+                      onPress={() => dispatch(toggleBillCheck(row.billId))}
+                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                    >
                       <View style={[styles.checkbox, row.checked && styles.checkboxChecked]}>
                         {row.checked && <Feather name="check" size={13} color="#FFFFFF" />}
                       </View>
+                    </TouchableOpacity>
+                    <View style={{ flex: 1.3 }}>
+                      <Text style={[styles.tdText, { fontWeight: '600' }]} numberOfLines={1}>{row.billNumber}</Text>
+                      <Text style={styles.tdSub}>Due {formatDate(row.dueDate)}</Text>
                     </View>
-                    <Text style={[styles.tdText, { flex: 1.2, fontWeight: '600' }]}>{row.billNumber}</Text>
-                    <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatDate(row.dueDate)}</Text>
+                    <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatCurrency(row.total, 'Rs ')}</Text>
                     <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatCurrency(row.balance, 'Rs ')}</Text>
-                    <Text
-                      style={[styles.tdText, styles.tdRight, { flex: 1, fontWeight: '700' }, row.allocated > 0 && { color: colors.success }]}
-                    >
-                      {row.allocated > 0 ? formatCurrency(row.allocated, 'Rs ') : '—'}
-                    </Text>
-                  </TouchableOpacity>
+                    {/* Editable per bill — this is what lets you settle a newer
+                        bill in full while paying an older one in part. Clamped
+                        to the balance in the reducer. */}
+                    <TextInput
+                      style={[styles.allocInput, row.allocated > 0 && styles.allocInputActive]}
+                      value={row.allocated > 0 ? String(row.allocated) : ''}
+                      onChangeText={(v: string) =>
+                        dispatch(setBillAllocation({ billId: row.billId, value: v.replace(/[^0-9.]/g, '') }))
+                      }
+                      placeholder="0"
+                      placeholderTextColor={colors.textLight}
+                      keyboardType="decimal-pad"
+                      editable={!form.isSaving}
+                    />
+                  </View>
                 ))}
+                <View style={styles.tableTotalRow}>
+                  <Text style={styles.tableTotalLabel}>
+                    {checkedCount} of {form.outstandingRows.length} bill{form.outstandingRows.length === 1 ? '' : 's'}
+                  </Text>
+                  <Text style={styles.tableTotalValue}>{formatCurrency(totalAllocated, 'Rs ')}</Text>
+                </View>
               </View>
             </>
           )}
@@ -381,10 +425,14 @@ const PayBillsScreen: React.FC = () => {
                 <Text style={styles.summaryHeaderText}>Payment Summary</Text>
               </View>
               <View style={styles.summaryDivider} />
-              <SummaryRow label="Payment Amount" value={formatCurrency(paymentAmount, 'Rs ')} />
-              <SummaryRow label="Total Allocated" value={formatCurrency(totalAllocated, 'Rs ')} />
-              {overpayment > 0 && (
-                <SummaryRow label="Overpayment (Credit)" value={formatCurrency(overpayment, 'Rs ')} valueColor="#FBBF24" />
+              <SummaryRow label="Bills selected" value={String(checkedCount)} />
+              <SummaryRow label="Total payment" value={formatCurrency(totalAllocated, 'Rs ')} />
+              {!!payFromAccount && (
+                <SummaryRow
+                  label={`${payFromAccount.name} after payment`}
+                  value={formatCurrency(payFromAccount.balance - totalAllocated, 'Rs ')}
+                  valueColor={payFromAccount.balance - totalAllocated < 0 ? '#FBBF24' : undefined}
+                />
               )}
             </LinearGradient>
           )}
@@ -511,6 +559,39 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 13, color: 'rgba(241,245,249,0.6)', fontFamily: THEME.typography.fontFamily },
   summaryValue: { fontSize: 14, fontWeight: '700', color: '#F1F5F9', fontFamily: THEME.typography.fontFamily },
 
+  emptyCta: { marginTop: 12 },
+  fieldHint: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: -spacing.xs, marginBottom: spacing.sm },
+  totalReadout: { paddingVertical: 4 },
+  totalReadoutLabel: { ...THEME.typography.caption, color: colors.textSecondary },
+  totalReadoutValue: { ...THEME.typography.h3, color: colors.textPrimary, fontWeight: '700', marginTop: 2 },
+  totalReadoutHint: { ...THEME.typography.caption, color: colors.textLight, marginTop: 2 },
+  payAllChipDisabled: { opacity: 0.4 },
+  tdSub: { ...THEME.typography.caption, color: colors.textLight, marginTop: 1 },
+  allocInput: {
+    width: 96,
+    height: 38,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: 8,
+    textAlign: 'right',
+    ...THEME.typography.bodySm,
+    color: colors.textPrimary,
+    backgroundColor: '#FFFFFF',
+  },
+  allocInputActive: { borderColor: colors.success, backgroundColor: '#F0FDF4' },
+  tableTotalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: '#F8FAFC',
+  },
+  tableTotalLabel: { ...THEME.typography.caption, color: colors.textSecondary },
+  tableTotalValue: { ...THEME.typography.bodyMd, fontWeight: '700', color: colors.textPrimary },
   btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.md },
 });
 

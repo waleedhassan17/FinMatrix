@@ -20,7 +20,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
@@ -62,7 +62,9 @@ const BillListScreen: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => { dispatch(fetchBills()); }, [dispatch]);
+  // Refetch on focus so a payment or edit made elsewhere is reflected without
+  // a manual pull — matches InvoiceListScreen.
+  useFocusEffect(useCallback(() => { dispatch(fetchBills()); }, [dispatch]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -16,6 +16,7 @@ export type ReportsStackParamList = {
   BudgetForm: undefined;
   BudgetDetail: { budgetId: string };
   ARAging: undefined;
+  APAging: undefined;
   InventoryValuation: undefined;
   AnalyticsDashboard: undefined;
   DeliveryDailyReport: undefined;

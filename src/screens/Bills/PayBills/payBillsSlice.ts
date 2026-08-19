@@ -75,21 +75,17 @@ const initialState: PayBillsSliceState = {
   isLoadingBills: false,
 };
 
-function autoDistribute(state: PayBillsSliceState) {
-  let remaining = parseFloat(state.amount) || 0;
-  const checkedIds = new Set(
-    state.outstandingRows.filter(r => r.checked).map(r => r.billId),
-  );
+/** The payment total is derived from the rows, never typed. */
+function syncTotal(state: PayBillsSliceState) {
+  const total = state.outstandingRows.reduce((sum, r) => sum + (r.checked ? r.allocated : 0), 0);
+  state.amount = total > 0 ? String(Math.round(total * 100) / 100) : '';
+}
 
-  state.outstandingRows.forEach(row => {
-    if (checkedIds.has(row.billId) && remaining > 0) {
-      const alloc = Math.min(row.balance, remaining);
-      row.allocated = Math.round(alloc * 100) / 100;
-      remaining = Math.round((remaining - alloc) * 100) / 100;
-    } else {
-      row.allocated = 0;
-    }
-  });
+/** Clamp to the bill's balance — you can never pay a supplier more than the
+ *  bill owes them from this screen. */
+function clampToBalance(row: OutstandingBillRow, value: number): number {
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return Math.round(Math.min(value, row.balance) * 100) / 100;
 }
 
 function buildRows(bills: Bill[], vendorId: string): OutstandingBillRow[] {
@@ -143,20 +139,39 @@ export const payBillsSlice = createAppSlice({
     toggleBillCheck: create.reducer(
       (state, action: PayloadAction<string>) => {
         const row = state.outstandingRows.find(r => r.billId === action.payload);
-        if (row) row.checked = !row.checked;
-        autoDistribute(state);
+        if (row) {
+          row.checked = !row.checked;
+          // Checking a bill offers to settle it in full; unchecking clears it.
+          row.allocated = row.checked ? row.balance : 0;
+        }
+        syncTotal(state);
       },
     ),
 
-    payAllBills: create.reducer(state => {
-      const totalOutstanding = state.outstandingRows.reduce((s, r) => s + r.balance, 0);
-      state.amount = String(Math.round(totalOutstanding * 100) / 100);
-      state.outstandingRows.forEach(r => { r.checked = true; });
-      autoDistribute(state);
+    /** The per-bill "Amt To Pay" cell — the whole point of the redesign. */
+    setBillAllocation: create.reducer(
+      (state, action: PayloadAction<{ billId: string; value: string }>) => {
+        const row = state.outstandingRows.find(r => r.billId === action.payload.billId);
+        if (!row) return;
+        const parsed = parseFloat(action.payload.value);
+        row.allocated = clampToBalance(row, parsed);
+        row.checked = row.allocated > 0;
+        syncTotal(state);
+      },
+    ),
+
+    toggleAllBills: create.reducer(state => {
+      const allChecked = state.outstandingRows.every(r => r.checked);
+      state.outstandingRows.forEach(r => {
+        r.checked = !allChecked;
+        r.allocated = allChecked ? 0 : r.balance;
+      });
+      syncTotal(state);
     }),
 
-    distributePayBillAmount: create.reducer(state => {
-      autoDistribute(state);
+    payAllBills: create.reducer(state => {
+      state.outstandingRows.forEach(r => { r.checked = true; r.allocated = r.balance; });
+      syncTotal(state);
     }),
 
     preselectBill: create.reducer(
@@ -164,10 +179,8 @@ export const payBillsSlice = createAppSlice({
         const row = state.outstandingRows.find(r => r.billId === action.payload);
         if (row) {
           row.checked = true;
-          if (!state.amount || parseFloat(state.amount) === 0) {
-            state.amount = String(row.balance);
-          }
-          autoDistribute(state);
+          row.allocated = row.balance;
+          syncTotal(state);
         }
       },
     ),
@@ -259,7 +272,8 @@ export const {
   setPayBillVendor,
   toggleBillCheck,
   payAllBills,
-  distributePayBillAmount,
+  setBillAllocation,
+  toggleAllBills,
   preselectBill,
   setPayBillErrors,
   setPayBillIsSaving,

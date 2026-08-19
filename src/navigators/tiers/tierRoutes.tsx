@@ -48,6 +48,7 @@ import TrialBalanceScreen from '../../screens/Reports/TrialBalance/TrialBalanceS
 import CashFlowScreen from '../../screens/Reports/CashFlow/CashFlowScreen';
 import GeneralLedgerScreen from '../../screens/Reports/GeneralLedger/GeneralLedgerScreen';
 import ARAgingScreen from '../../screens/Reports/ARAging/ARAgingScreen';
+import APAgingScreen from '../../screens/Reports/APAging/APAgingScreen';
 import AnalyticsDashboardScreen from '../../screens/Reports/AnalyticsDashboard/AnalyticsDashboardScreen';
 
 import MoreHubScreen from '../../screens/More/MoreHubScreen';
@@ -127,6 +128,7 @@ export const SB_REPORTS_ROUTES: TierRoute[] = [
   { name: 'CashFlow', component: CashFlowScreen },
   { name: 'GeneralLedger', component: GeneralLedgerScreen },
   { name: 'ARAging', component: ARAgingScreen },
+  { name: 'APAging', component: APAgingScreen },
   { name: 'AnalyticsDashboard', component: AnalyticsDashboardScreen },
 ];
 

@@ -112,13 +112,23 @@ export function billSingleSerializer(payload: any): Bill | null {
   return mapBill(raw);
 }
 
+// The API names these paymentDate / totalAmount / paymentMethod / reference;
+// the UI type and the detail screen read date / amount / method /
+// paymentNumber. Spreading the raw row left every field undefined, so each
+// payment rendered a blank reference, `dayjs(undefined)` (today's date) and
+// `Rs NaN`. Map them.
 export function billPaymentsSerializer(payload: any): BillPayment[] {
   const raw = payload?.data?.payments;
   if (!Array.isArray(raw)) return [];
   return raw.map(p => ({
     ...p,
+    paymentNumber: p.paymentNumber ?? p.reference ?? '',
+    date: p.date ?? p.paymentDate ?? '',
+    method: p.method ?? p.paymentMethod ?? '',
+    amount: toNum(p.amount ?? p.totalAmount),
+    reference: p.reference ?? '',
     allocations: Array.isArray(p.allocations)
-      ? p.allocations.map((a: any) => ({ ...a }))
+      ? p.allocations.map((a: any) => ({ ...a, amount: toNum(a.amount) }))
       : [],
   }));
 }

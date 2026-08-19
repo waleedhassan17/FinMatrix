@@ -27,6 +27,14 @@ const initialCategories: ReportHubCategory[] = [
     ],
   },
   {
+    key: 'ap',
+    title: 'Accounts Payable',
+    icon: 'AP',
+    items: [
+      { key: 'ap-aging', title: 'Aging', icon: 'AG', target: 'APAging' },
+    ],
+  },
+  {
     key: 'inventory',
     title: 'Inventory',
     icon: 'INV',

@@ -27,6 +27,17 @@ export type TransactionsStackParamList = {
   BillForm: { billId?: string; vendorId?: string } | undefined;
   BillDetail: { billId: string };
   PayBills: { vendorId?: string; billId?: string } | undefined;
+  PaymentSuccess: {
+    amount: number;
+    vendorName: string;
+    accountName: string;
+    paymentDate: string;
+    reference: string;
+    method: string;
+    /** Where the user came from, so "View bill" returns there. */
+    billId?: string;
+    lines: { billNumber: string; applied: number; remaining: number }[];
+  };
   POList: undefined;
   POForm: { poId?: string } | undefined;
   PODetail: { poId: string };
