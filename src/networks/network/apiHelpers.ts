@@ -18,7 +18,19 @@ import {
 } from '../../utils/authEvents';
 
 // ★ BACKEND BASE URL ★
-export const API_BASE_URL = 'https://finmatrix-api-prod-665c6b5cb6a1.herokuapp.com/api/v1';
+// Production by default, so a normal build is unchanged. Override to run
+// against a backend you are still working on — otherwise every request goes
+// to Heroku and a server-side change cannot be tested before it ships:
+//
+//   EXPO_PUBLIC_API_URL=http://localhost:3000/api/v1 npm run web
+//
+// On a physical device use the machine's LAN address, not localhost, since
+// localhost there resolves to the phone itself.
+// Expo inlines EXPO_PUBLIC_* at build time, so this must stay a static read
+// of process.env rather than a computed key.
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL?.trim() ||
+  'https://finmatrix-api-prod-665c6b5cb6a1.herokuapp.com/api/v1';
 
 // Token/company storage lives in utils/storageUtils.ts (Consultant_Mobile
 // convention); re-exported here so the domain network files keep importing
