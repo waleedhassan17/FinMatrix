@@ -38,6 +38,7 @@ import BillFormScreen from '../../screens/Bills/BillForm/BillFormScreen';
 import BillDetailScreen from '../../screens/Bills/BillDetail/BillDetailScreen';
 import PayBillsScreen from '../../screens/Bills/PayBills/PayBillsScreen';
 import GeneralJournalListScreen from '../../screens/GeneralJournal/GeneralJournalListScreen';
+import OpeningBalanceScreen from '../../screens/GeneralJournal/OpeningBalance/OpeningBalanceScreen';
 import GeneralJournalFormScreen from '../../screens/GeneralJournal/GeneralJournalFormScreen';
 import GeneralJournalDetailScreen from '../../screens/GeneralJournal/GeneralJournalDetailScreen';
 
@@ -99,6 +100,7 @@ export const SB_DASHBOARD_ROUTES: TierRoute[] = [
   // stacking on another tab's history. Mirrors navigations-maps/Dashboard.
   // InventoryForm is deliberately absent: inventory is warehouse-only, and
   // the checklist row is feature-gated off on these tiers.
+  { name: 'OpeningBalance', component: OpeningBalanceScreen },
   { name: 'JournalEntryForm', component: GeneralJournalFormScreen },
   { name: 'COAList', component: COAListScreen },
   { name: 'COAForm', component: COAFormScreen },

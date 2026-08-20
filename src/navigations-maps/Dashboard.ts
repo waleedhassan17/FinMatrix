@@ -39,6 +39,7 @@ import VendorFormScreen from '../screens/Vendors/VendorForm/VendorFormScreen';
 import TaxSettingsScreen from '../screens/Tax/TaxSettings/TaxSettingsScreen';
 import InventoryFormScreen from '../screens/Inventory/InventoryForm/InventoryFormScreen';
 import GeneralJournalFormScreen from '../screens/GeneralJournal/GeneralJournalFormScreen';
+import OpeningBalanceScreen from '../screens/GeneralJournal/OpeningBalance/OpeningBalanceScreen';
 
 export const DashboardRouteNames = {
   AdminDashboard: 'AdminDashboard',
@@ -53,6 +54,7 @@ export const DashboardRouteNames = {
   InventoryApproval: 'InventoryApproval',
   GlobalSearch: 'GlobalSearch',
   // setup checklist
+  OpeningBalance: 'OpeningBalance',
   JournalEntryForm: 'JournalEntryForm',
   COAList: 'COAList',
   COAForm: 'COAForm',
@@ -78,6 +80,7 @@ export const DASHBOARD_ROUTES: IRoute[] = [
   { title: DashboardRouteNames.InventoryApproval, component: InventoryApprovalScreen },
   { title: DashboardRouteNames.GlobalSearch, component: GlobalSearchScreen },
   // setup checklist — see the import block above for why these are duplicated
+  { title: DashboardRouteNames.OpeningBalance, component: OpeningBalanceScreen },
   { title: DashboardRouteNames.JournalEntryForm, component: GeneralJournalFormScreen },
   { title: DashboardRouteNames.COAList, component: COAListScreen },
   { title: DashboardRouteNames.COAForm, component: COAFormScreen },

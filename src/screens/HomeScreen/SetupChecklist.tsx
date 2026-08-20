@@ -38,9 +38,9 @@ export const SETUP_STEPS: SetupStep[] = [
   {
     key: 'openingBalance',
     label: 'Add Opening Balances',
-    hint: 'Enter your starting balances as an opening journal entry',
+    hint: 'Tell us what your business already has — we guide you',
     icon: 'edit-3',
-    screen: 'JournalEntryForm',
+    screen: 'OpeningBalance',
   },
   {
     key: 'chartOfAccounts',

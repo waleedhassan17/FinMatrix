@@ -19,6 +19,7 @@ export type DashboardStackParamList = {
   InventoryApproval: undefined;
   // First-run setup checklist — mounted here so each step's back arrow
   // returns to the dashboard it was launched from. See navigations-maps/Dashboard.
+  OpeningBalance: undefined;
   JournalEntryForm: undefined;
   COAList: undefined;
   COAForm: { accountId?: string } | undefined;
