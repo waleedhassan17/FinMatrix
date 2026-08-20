@@ -74,6 +74,9 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
     [approvalRequests, deliveryId],
   );
 
+  // Paid before dispatch: the rider collects a signature, never money.
+  const isPrepaid = Boolean(delivery?.prepaid);
+
   // Per-line delivered/returned split. The rider enters what came BACK; what
   // was delivered is the remainder. Every line used to be hard-coded to
   // "fully delivered, nothing returned", so a customer taking 8 of 10 could
@@ -201,7 +204,9 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert('Customer name required', 'Enter the name printed on the signed bill.');
       return;
     }
-    if (!paidStatus) {
+    // Pre-paid deliveries never ask the question, so there is nothing to
+    // require. They submit 'paid', matching what Stage 1 already recorded.
+    if (!isPrepaid && !paidStatus) {
       Alert.alert(
         'Payment status required',
         'Select whether the customer PAID (cash collected) or NOT PAID (on credit) before submitting.',
@@ -234,7 +239,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           photoUri,
           source: photoSource ?? 'camera',
           signedBy: signedBy.trim(),
-          paidStatus,
+          paidStatus: isPrepaid ? 'paid' : paidStatus,
           note: note.trim() || undefined,
           // deliveredQty is the field with ledger effect: on approval the
           // backend derives returned as (dispatched - delivered), invoices
@@ -430,6 +435,28 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
             />
           </View>
 
+          {/* Pre-paid orders are already settled, so asking the rider to
+              choose PAID / NOT PAID invites them to demand money at the door —
+              and the answer is ignored anyway: approval branches on `prepaid`
+              before it ever reads this. Tell them instead of asking. */}
+          {isPrepaid ? (
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Payment</Text>
+              <View style={paidStyles.prepaidPanel}>
+                <View style={paidStyles.prepaidIcon}>
+                  <Feather name="check-circle" size={20} color={THEME.colors.success} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={paidStyles.prepaidTitle}>Already paid</Text>
+                  <Text style={paidStyles.prepaidBody}>
+                    This is a pre-paid order — the customer paid before dispatch.
+                    Do not collect any cash. Just get the bill signed and
+                    photographed as usual.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : (
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Payment collected?</Text>
             <View style={paidStyles.row}>
@@ -495,6 +522,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
               admin approves: PAID records the cash, NOT PAID leaves an open invoice.
             </Text>
           </View>
+          )}
 
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Delivered quantities</Text>
@@ -912,6 +940,35 @@ const paidStyles = StyleSheet.create({
     color: THEME.colors.textTertiary,
     marginTop: 8,
     lineHeight: 16,
+  },
+  prepaidPanel: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: `${THEME.colors.success}0F`,
+    borderWidth: 1.5,
+    borderColor: `${THEME.colors.success}55`,
+    borderRadius: THEME.radius.lg,
+    padding: 14,
+  },
+  prepaidIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.colors.surface,
+  },
+  prepaidTitle: {
+    ...THEME.typography.labelLg,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    color: THEME.colors.success,
+  },
+  prepaidBody: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: 3,
+    lineHeight: 17,
   },
 });
 

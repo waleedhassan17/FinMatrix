@@ -82,6 +82,15 @@ export interface DeliveryRecord {
   billPhotoStorageKey?: string;
   billPhotoCapturedAt?: string;
   billSignedBy?: string;
+  /**
+   * Sale was collected before dispatch. The rider must NOT ask for money on
+   * these, so the bill step hides its PAID / NOT PAID choice — see
+   * BillPhotoCaptureScreen. The backend has always sent this; it simply was
+   * not mapped, which is why that choice used to appear on pre-paid jobs.
+   */
+  prepaid?: boolean;
+  /** Rider's cash-collected flag. Forced to 'paid' at dispatch when prepaid. */
+  paidStatus?: 'paid' | 'unpaid';
   [key: string]: any;
 }
 

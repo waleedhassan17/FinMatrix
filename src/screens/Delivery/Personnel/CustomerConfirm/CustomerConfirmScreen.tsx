@@ -288,8 +288,27 @@ const CustomerConfirmScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </Animated.View>
 
+        {/* Pre-paid notice — sits directly above the signature card because
+            this is the moment the rider faces the customer with the bill, and
+            the one moment they might otherwise ask for money on an order that
+            is already settled. */}
+        {delivery.prepaid ? (
+          // Deliberately not animated like the cards around it: this is the
+          // one instruction that must not arrive late, and a plain View keeps
+          // it out of the file's read-refs-during-render animation pattern.
+          <View style={styles.prepaidBanner}>
+            <Feather name="check-circle" size={18} color={THEME.colors.success} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.prepaidBannerTitle}>Pre-paid order</Text>
+              <Text style={styles.prepaidBannerBody}>
+                Already settled — do not collect cash.
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
         {/* Signature Card */}
-        <Animated.View style={[styles.card, { 
+        <Animated.View style={[styles.card, {
           opacity: contentOpacity,
           transform: [{ translateY: contentTranslate }]
         }]}>
@@ -549,6 +568,28 @@ const styles = StyleSheet.create({
     ...THEME.shadows.md,
     borderWidth: 1,
     borderColor: THEME.colors.neutral100,
+  },
+  prepaidBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: `${THEME.colors.success}12`,
+    borderWidth: 1,
+    borderColor: `${THEME.colors.success}55`,
+    borderRadius: THEME.radius.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  prepaidBannerTitle: {
+    ...THEME.typography.labelLg,
+    fontWeight: '800',
+    color: THEME.colors.success,
+  },
+  prepaidBannerBody: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: 1,
   },
   cardHeader: {
     flexDirection: 'row',

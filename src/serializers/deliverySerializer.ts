@@ -76,6 +76,10 @@ const mapStatusHistory = (
   updatedBy: raw.updatedBy,
 });
 
+/** Faithful pass-through; anything unrecognised (incl. null) stays undefined. */
+const mapPaidStatus = (v: unknown): 'paid' | 'unpaid' | undefined =>
+  v === 'paid' || v === 'unpaid' ? v : undefined;
+
 export const mapDelivery = (
   raw: Partial<DeliveryApiEntity> & Record<string, any>,
 ): DeliveryRecord => ({
@@ -112,7 +116,13 @@ export const mapDelivery = (
   arrivedAt: raw.arrivedAt ?? raw.arrived_at,
   deliveredAt: raw.deliveredAt ?? raw.delivered_at,
   issueNote: raw.issueNote ?? raw.issue_note,
+  // The backend has always returned these (myDeliveries hands back whole
+  // entities), but they were never mapped — so the rider's screens could not
+  // tell a pre-paid job from a cash one and always asked for payment.
+  prepaid: Boolean(raw.prepaid ?? raw.pre_paid),
+  paidStatus: mapPaidStatus(raw.paidStatus ?? raw.paid_status),
 });
+
 
 export const mapDeliveryPerson = (
   raw: Partial<DeliveryPersonApiEntity> & Record<string, any>,
