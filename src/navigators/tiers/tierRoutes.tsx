@@ -94,6 +94,18 @@ export interface TierRoute {
 export const SB_DASHBOARD_ROUTES: TierRoute[] = [
   { name: 'AdminDashboard', component: AdminDashboardScreen },
   { name: 'GlobalSearch', component: GlobalSearchScreen },
+  // First-run setup checklist destinations, mounted here as well as in their
+  // own stacks so each step's back arrow returns to the dashboard rather than
+  // stacking on another tab's history. Mirrors navigations-maps/Dashboard.
+  // InventoryForm is deliberately absent: inventory is warehouse-only, and
+  // the checklist row is feature-gated off on these tiers.
+  { name: 'JournalEntryForm', component: GeneralJournalFormScreen },
+  { name: 'COAList', component: COAListScreen },
+  { name: 'COAForm', component: COAFormScreen },
+  { name: 'COADetail', component: COADetailScreen },
+  { name: 'CustomerForm', component: CustomerFormScreen },
+  { name: 'VendorForm', component: VendorFormScreen },
+  { name: 'TaxSettings', component: TaxSettingsScreen },
 ];
 
 export const SB_TRANSACTIONS_ROUTES: TierRoute[] = [

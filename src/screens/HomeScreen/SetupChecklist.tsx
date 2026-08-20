@@ -18,8 +18,19 @@ export interface SetupStep {
   label: string;
   hint: string;
   icon: keyof typeof Feather.glyphMap;
-  route: string;
+  /**
+   * Screen name within DashboardStack.
+   *
+   * These screens live primarily in the Transactions / More / Inventory tab
+   * stacks, but the checklist is an onboarding flow launched from the
+   * dashboard, so each is ALSO registered in DashboardStack and pushed there.
+   * That keeps the flow self-contained: the back arrow returns to the
+   * dashboard instead of surfacing inside another tab's history.
+   */
+  screen: string;
   optional?: boolean;
+  /** Tier gate, checked with isFeatureVisible before the row renders. */
+  feature?: string;
 }
 
 // Accounting order — each item routes to the EXISTING screen/flow.
@@ -29,50 +40,55 @@ export const SETUP_STEPS: SetupStep[] = [
     label: 'Add Opening Balances',
     hint: 'Enter your starting balances as an opening journal entry',
     icon: 'edit-3',
-    route: 'JournalEntryForm',
+    screen: 'JournalEntryForm',
   },
   {
     key: 'chartOfAccounts',
     label: 'Review Chart of Accounts',
     hint: 'Check the seeded accounts and add any you need',
     icon: 'book-open',
-    route: 'COAList',
+    screen: 'COAList',
   },
   {
     key: 'inventory',
     label: 'Add Inventory items',
     hint: 'Optional — skip if you are a service business',
     icon: 'package',
-    route: 'InventoryForm',
+    // Warehouse-only: a service business has no stock to add, and the
+    // small-business / large-org tiers ship no inventory screens at all.
+    screen: 'InventoryForm',
     optional: true,
+    feature: 'inventory',
   },
   {
     key: 'customers',
     label: 'Add Customers',
     hint: 'So you can raise invoices',
     icon: 'users',
-    route: 'CustomerForm',
+    screen: 'CustomerForm',
   },
   {
     key: 'vendors',
     label: 'Add Vendors',
     hint: 'So you can record bills',
     icon: 'truck',
-    route: 'VendorForm',
+    screen: 'VendorForm',
   },
   {
     key: 'taxRates',
     label: 'Set Tax rates',
     hint: 'Configure the sales tax you charge',
     icon: 'percent',
-    route: 'TaxSettings',
+    screen: 'TaxSettings',
   },
 ];
 
 interface Props {
   setup: SetupStatus;
-  onNavigate: (route: string) => void;
+  onNavigate: (step: SetupStep) => void;
   onDismiss: () => void;
+  /** Defaults to every step; the dashboard passes a tier-filtered list. */
+  steps?: SetupStep[];
 }
 
 const C = {
@@ -86,9 +102,16 @@ const C = {
   done: '#0E8A5F',
 };
 
-const SetupChecklist: React.FC<Props> = ({ setup, onNavigate, onDismiss }) => {
-  const doneCount = SETUP_STEPS.filter(s => setup.steps[s.key]).length;
-  const total = SETUP_STEPS.length;
+const SetupChecklist: React.FC<Props> = ({
+  setup,
+  onNavigate,
+  onDismiss,
+  steps = SETUP_STEPS,
+}) => {
+  // Progress counts only the steps actually shown, so a tier without
+  // inventory does not sit permanently at "5 of 6 done".
+  const doneCount = steps.filter(s => setup.steps[s.key]).length;
+  const total = steps.length;
 
   return (
     <View style={st.card}>
@@ -108,17 +131,22 @@ const SetupChecklist: React.FC<Props> = ({ setup, onNavigate, onDismiss }) => {
       </View>
 
       <View style={st.track}>
-        <View style={[st.trackFill, { width: `${(doneCount / total) * 100}%` }]} />
+        <View
+          style={[
+            st.trackFill,
+            { width: `${total === 0 ? 0 : (doneCount / total) * 100}%` },
+          ]}
+        />
       </View>
 
-      {SETUP_STEPS.map(step => {
+      {steps.map(step => {
         const done = setup.steps[step.key];
         return (
           <TouchableOpacity
             key={step.key}
             style={st.row}
             activeOpacity={0.7}
-            onPress={() => onNavigate(step.route)}
+            onPress={() => onNavigate(step)}
           >
             <View style={[st.check, done && st.checkDone]}>
               {done ? (

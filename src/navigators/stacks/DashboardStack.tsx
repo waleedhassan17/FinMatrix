@@ -17,6 +17,16 @@ export type DashboardStackParamList = {
   DeliveryMonitor: undefined;
   AdminDeliveryDetail: { deliveryId: string };
   InventoryApproval: undefined;
+  // First-run setup checklist — mounted here so each step's back arrow
+  // returns to the dashboard it was launched from. See navigations-maps/Dashboard.
+  JournalEntryForm: undefined;
+  COAList: undefined;
+  COAForm: { accountId?: string } | undefined;
+  COADetail: { accountId: string };
+  InventoryForm: { itemId?: string } | undefined;
+  CustomerForm: { customerId?: string } | undefined;
+  VendorForm: { vendorId?: string } | undefined;
+  TaxSettings: undefined;
 };
 
 const Stack = createNativeStackNavigator();

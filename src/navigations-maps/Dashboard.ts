@@ -17,6 +17,29 @@ import AdminDeliveryDetailScreen from '../screens/Delivery/Admin/AdminDeliveryDe
 import InventoryApprovalScreen from '../screens/Delivery/Admin/InventoryApproval/InventoryApprovalScreen';
 import GlobalSearchScreen from '../screens/GlobalSearch/GlobalSearchScreen';
 
+// ── First-run setup checklist destinations (FinMatrixGuide §5.7) ──
+// These screens are ALSO registered in their own feature stacks; they are
+// duplicated here on purpose, the same way GlobalSearch already is.
+//
+// The checklist is a self-contained onboarding flow launched from the
+// dashboard, so each step has to push onto DashboardStack. Jumping into the
+// sibling tab stack instead (navigate('MoreStack', { screen: 'CustomerForm' }))
+// stacked the form on top of that tab's EXISTING history, so the back arrow
+// returned to whatever the user had previously opened there — Chart of
+// Accounts, typically — rather than to the dashboard they started from.
+//
+// Every screen below either only calls goBack() or navigates within the
+// COAList/COAForm/COADetail trio, which is why the set is closed and safe to
+// mount in a second stack.
+import COAListScreen from '../screens/ChartOfAccounts/COAList/COAListScreen';
+import COAFormScreen from '../screens/ChartOfAccounts/COAForm/COAFormScreen';
+import COADetailScreen from '../screens/ChartOfAccounts/COADetail/COADetailScreen';
+import CustomerFormScreen from '../screens/Customers/CustomerForm/CustomerFormScreen';
+import VendorFormScreen from '../screens/Vendors/VendorForm/VendorFormScreen';
+import TaxSettingsScreen from '../screens/Tax/TaxSettings/TaxSettingsScreen';
+import InventoryFormScreen from '../screens/Inventory/InventoryForm/InventoryFormScreen';
+import GeneralJournalFormScreen from '../screens/GeneralJournal/GeneralJournalFormScreen';
+
 export const DashboardRouteNames = {
   AdminDashboard: 'AdminDashboard',
   DeliveryPersonnelList: 'DeliveryPersonnelList',
@@ -29,6 +52,15 @@ export const DashboardRouteNames = {
   AdminDeliveryDetail: 'AdminDeliveryDetail',
   InventoryApproval: 'InventoryApproval',
   GlobalSearch: 'GlobalSearch',
+  // setup checklist
+  JournalEntryForm: 'JournalEntryForm',
+  COAList: 'COAList',
+  COAForm: 'COAForm',
+  COADetail: 'COADetail',
+  InventoryForm: 'InventoryForm',
+  CustomerForm: 'CustomerForm',
+  VendorForm: 'VendorForm',
+  TaxSettings: 'TaxSettings',
 } as const;
 
 export type DashboardRouteName = typeof DashboardRouteNames[keyof typeof DashboardRouteNames];
@@ -45,4 +77,13 @@ export const DASHBOARD_ROUTES: IRoute[] = [
   { title: DashboardRouteNames.AdminDeliveryDetail, component: AdminDeliveryDetailScreen },
   { title: DashboardRouteNames.InventoryApproval, component: InventoryApprovalScreen },
   { title: DashboardRouteNames.GlobalSearch, component: GlobalSearchScreen },
+  // setup checklist — see the import block above for why these are duplicated
+  { title: DashboardRouteNames.JournalEntryForm, component: GeneralJournalFormScreen },
+  { title: DashboardRouteNames.COAList, component: COAListScreen },
+  { title: DashboardRouteNames.COAForm, component: COAFormScreen },
+  { title: DashboardRouteNames.COADetail, component: COADetailScreen },
+  { title: DashboardRouteNames.InventoryForm, component: InventoryFormScreen },
+  { title: DashboardRouteNames.CustomerForm, component: CustomerFormScreen },
+  { title: DashboardRouteNames.VendorForm, component: VendorFormScreen },
+  { title: DashboardRouteNames.TaxSettings, component: TaxSettingsScreen },
 ];

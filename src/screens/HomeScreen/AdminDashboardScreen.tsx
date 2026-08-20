@@ -38,7 +38,7 @@ import {
   refreshDashboard,
   loadDashboard,
 } from './adminDashboardSlice';
-import SetupChecklist from './SetupChecklist';
+import SetupChecklist, { SETUP_STEPS, type SetupStep } from './SetupChecklist';
 import type { DashboardStackParamList } from '../../navigators/stacks/DashboardStack';
 import type {
   DashboardStat,
@@ -189,6 +189,26 @@ const AdminDashboardScreen: React.FC = () => {
     dispatch(refreshDashboard());
   }, [companyId, dispatch]);
 
+  // Only offer steps whose screen this tier actually registers — the
+  // small-business and large-org navigators ship no InventoryStack.
+  const setupSteps = useMemo(
+    () => SETUP_STEPS.filter(s => isFeatureVisible(s.feature, features, user?.companyType)),
+    [features, user?.companyType],
+  );
+
+  // Push within DashboardStack, where every checklist destination is also
+  // registered. Two bugs came from not doing this: dispatching the bare screen
+  // name when it lived only in a sibling tab stack was silently dropped
+  // ("not handled by any navigator"), and routing into that sibling stack
+  // instead landed the form on top of the other tab's history, so back went to
+  // Chart of Accounts rather than the dashboard.
+  const goToSetupStep = useCallback(
+    (step: SetupStep) => {
+      navigation.navigate(step.screen as keyof DashboardStackParamList);
+    },
+    [navigation],
+  );
+
   useEffect(() => {
     dispatch(loadDashboard());
   }, [dispatch]);
@@ -290,10 +310,11 @@ const AdminDashboardScreen: React.FC = () => {
             )}
 
             {/* ── Guided first-run setup checklist (§5.7) ─ */}
-            {setup && !setup.completed && (
+            {setup && !setup.completed && setupSteps.length > 0 && (
               <SetupChecklist
                 setup={setup}
-                onNavigate={route => navigation.navigate(route as never)}
+                steps={setupSteps}
+                onNavigate={goToSetupStep}
                 onDismiss={dismissSetup}
               />
             )}
