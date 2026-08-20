@@ -27,8 +27,12 @@ export const STEPS = {
     helper:
       'Cash in the drawer, money in the bank, stock sitting on your shelves.',
     addLabel: 'Add something you own',
-    amountPlaceholder: 'How much do you have?',
+    // Field labels carry the guidance; the inputs themselves stay short so
+    // nothing clips on a narrow phone.
+    accountLabel: 'What it is',
     accountPlaceholder: 'Pick what it is…',
+    amountLabel: 'How much you have',
+    amountPlaceholder: '0',
     empty: 'Start with your cash and bank balance.',
   },
   owe: {
@@ -38,8 +42,10 @@ export const STEPS = {
     helper:
       'A bank loan is money you owe. Money you put in yourself is called Capital — it still counts, because the business "owes" it back to you.',
     addLabel: 'Add a loan or your own money',
-    amountPlaceholder: 'How much?',
+    accountLabel: 'Where it came from',
     accountPlaceholder: 'Pick one…',
+    amountLabel: 'How much',
+    amountPlaceholder: '0',
     empty: 'Most people just add Capital here — the money they started with.',
   },
   check: {
@@ -56,16 +62,21 @@ export const BALANCE = {
   balancedBody: "Everything adds up. You're ready to save.",
   emptyTitle: 'Nothing added yet.',
   emptyBody: 'Add at least one thing you own to get started.',
-  offTitle: "You're almost there!",
-  /** diff > 0 — the "own" side is heavier. */
-  offOwnHeavier: (amount: string) =>
-    `You own ${amount} more than you've accounted for. That extra is usually money you put in yourself, so add it as Capital.`,
-  /** diff < 0 — the "owe + invested" side is heavier. */
-  offOweHeavier: (amount: string) =>
-    `You've entered ${amount} more on this side than you own. Double-check the amounts under "What you own".`,
-  differenceLabel: 'Difference',
-  autoFix: 'Add the difference as Capital',
-  autoFixHint: 'We\'ll put it in "Opening Balance Equity" — the standard place for it.',
+
+  // QuickBooks never asks the user to balance an opening entry by hand — it
+  // posts whatever is left over to Opening Balance Equity and tells you it did.
+  // We do the same, and show the line before it is written.
+  autoTitle: "We'll balance this for you.",
+  autoOwnHeavier: (amount: string) =>
+    `You own ${amount} more than you've accounted for, so that much must have come from you. We'll record it as your Capital.`,
+  autoOweHeavier: (amount: string) =>
+    `There's ${amount} more here than you own. We'll park the difference so your books still balance — check your amounts if that looks wrong.`,
+  autoLineLabel: 'Added automatically',
+
+  /** Shown only when the chart has no equity account to plug into. */
+  noEquityTitle: 'Both sides need to match',
+  noEquityBody:
+    'Add an equity account (like Owner Equity) in Chart of Accounts, and we can balance this for you automatically.',
 };
 
 export const EXAMPLE = {
@@ -102,6 +113,10 @@ export const HELP = {
       a: 'Use your best estimate and save. You can post a correcting entry any time once you have the real figures.',
     },
     {
+      q: 'What is "Opening Balance Equity"?',
+      a: 'A holding account. When the two sides do not match on their own, the leftover goes here so your books still balance — this is exactly what QuickBooks does. Once your accountant reviews your first period, they usually move it into Owner Equity or Retained Earnings.',
+    },
+    {
       q: 'What date should I use?',
       a: 'The day you want your books to start — usually the first day of your financial year, or the day you started using FinMatrix.',
     },
@@ -119,10 +134,6 @@ export const ERRORS = {
   needTwoLines: {
     title: 'Almost there',
     body: 'Add at least one thing you own and one source of the money.',
-  },
-  notBalanced: {
-    title: 'Both sides need to match',
-    body: 'Use "Add the difference as Capital" and we will even it up for you.',
   },
   missingAmount: 'Enter an amount',
   missingAccount: 'Pick what this is',

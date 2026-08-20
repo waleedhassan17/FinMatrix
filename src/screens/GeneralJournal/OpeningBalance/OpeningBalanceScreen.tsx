@@ -165,6 +165,22 @@ const OpeningBalanceScreen: React.FC = () => {
   const anyEntered = totals.own > 0 || totals.owe > 0;
   const balanced = anyEntered && Math.abs(totals.diff) < 0.01;
 
+  /**
+   * The account that absorbs whatever the two sides do not settle between
+   * them. QuickBooks calls this Opening Balance Equity and plugs it silently;
+   * we plug it too, but show the line first.
+   */
+  const plugAccount = useMemo(
+    () =>
+      accounts.find(a => a.code === OPENING_EQUITY) ??
+      accounts.find(a => a.type === 'equity'),
+    [accounts],
+  );
+
+  /** Signed amount that will be posted to the plug account, if any. */
+  const plug = anyEntered && !balanced ? totals.diff : 0;
+  const canSave = anyEntered && (balanced || !!plugAccount);
+
   const patch = (side: Side, id: string, next: Partial<Row>) => {
     const set = side === 'own' ? setOwn : setOwe;
     set(prev => prev.map(r => (r.id === id ? { ...r, ...next } : r)));
@@ -201,43 +217,6 @@ const OpeningBalanceScreen: React.FC = () => {
     else addRow(side, account.value);
   };
 
-  /** Drop the difference into Opening Balance Equity so the entry balances. */
-  const autoBalance = () => {
-    const equity =
-      accounts.find(a => a.code === OPENING_EQUITY) ??
-      accounts.find(a => a.type === 'equity');
-    if (!equity) {
-      Toast.show({
-        type: 'error',
-        text1: 'No equity account found',
-        text2: 'Add one in Chart of Accounts, then try again.',
-      });
-      return;
-    }
-    const gap = Math.abs(totals.diff);
-    if (totals.diff > 0) {
-      // Own side heavier → the money came from somewhere: record it as capital.
-      const existing = owe.find(r => r.accountId === equity.value);
-      if (existing) {
-        patch('owe', existing.id, { amount: String(num(existing.amount) + gap) });
-      } else {
-        const empty = owe.find(r => !r.accountId && !r.amount);
-        if (empty) patch('owe', empty.id, { accountId: equity.value, amount: String(gap) });
-        else setOwe(prev => [...prev, { ...blank(), accountId: equity.value, amount: String(gap) }]);
-      }
-    } else {
-      // Owe side heavier → the balancing figure is an asset the user holds.
-      const existing = own.find(r => r.accountId === equity.value);
-      if (existing) {
-        patch('own', existing.id, { amount: String(num(existing.amount) + gap) });
-      } else {
-        const empty = own.find(r => !r.accountId && !r.amount);
-        if (empty) patch('own', empty.id, { accountId: equity.value, amount: String(gap) });
-        else setOwn(prev => [...prev, { ...blank(), accountId: equity.value, amount: String(gap) }]);
-      }
-    }
-  };
-
   const fillExample = () => {
     const pick = (code: string) => accounts.find(a => a.code === code)?.value ?? '';
     const cash = pick('1000');
@@ -270,12 +249,12 @@ const OpeningBalanceScreen: React.FC = () => {
     const ownRows = usable(own);
     const oweRows = usable(owe);
 
-    if (ownRows.length === 0 || oweRows.length === 0) {
+    if (ownRows.length === 0 && oweRows.length === 0) {
       Toast.show({ type: 'error', text1: ERRORS.needTwoLines.title, text2: ERRORS.needTwoLines.body });
       return;
     }
-    if (!balanced) {
-      Toast.show({ type: 'error', text1: ERRORS.notBalanced.title, text2: ERRORS.notBalanced.body });
+    if (!balanced && !plugAccount) {
+      Toast.show({ type: 'error', text1: BALANCE.noEquityTitle, text2: BALANCE.noEquityBody });
       return;
     }
 
@@ -284,11 +263,28 @@ const OpeningBalanceScreen: React.FC = () => {
     const lines = [
       ...ownRows.map(r => ({ accountId: r.accountId, debit: String(num(r.amount)), credit: '0' })),
       ...oweRows.map(r => ({ accountId: r.accountId, debit: '0', credit: String(num(r.amount)) })),
-    ].map((l, i) => ({ ...l, description: 'Opening balance', lineOrder: i }));
+    ];
+
+    // Plug the remainder into Opening Balance Equity so the entry balances
+    // without the user having to work out what is missing.
+    if (!balanced && plugAccount) {
+      const gap = Math.abs(totals.diff).toFixed(2);
+      lines.push(
+        totals.diff > 0
+          ? { accountId: plugAccount.value, debit: '0', credit: gap }
+          : { accountId: plugAccount.value, debit: gap, credit: '0' },
+      );
+    }
+
+    const payload = lines.map((l, i) => ({
+      ...l,
+      description: 'Opening balance',
+      lineOrder: i,
+    }));
 
     setSaving(true);
     const r: any = await dispatch(
-      saveJournalEntry({ date, memo: 'Opening balances', status: 'posted', lines }),
+      saveJournalEntry({ date, memo: 'Opening balances', status: 'posted', lines: payload }),
     );
     setSaving(false);
 
@@ -346,19 +342,22 @@ const OpeningBalanceScreen: React.FC = () => {
           const missingAccount = submitted && !r.accountId && num(r.amount) > 0;
           const missingAmount = submitted && !!r.accountId && num(r.amount) <= 0;
           return (
-            <View key={r.id} style={s.row}>
-              <View style={{ flex: 1 }}>
-                <CustomDropdown
-                  label=""
-                  options={opts}
-                  value={r.accountId}
-                  onChange={v => patch(side, r.id, { accountId: v })}
-                  placeholder={copy.accountPlaceholder}
-                  error={missingAccount ? ERRORS.missingAccount : undefined}
-                  searchable
-                />
-              </View>
-              <View style={s.amountWrap}>
+            // Two lines, not three columns. At 430px a dropdown, an amount and
+            // a delete button side by side leaves the amount ~116px, which
+            // clips its own placeholder and collides with the ✕.
+            <View key={r.id} style={s.rowCard}>
+              <CustomDropdown
+                label={copy.accountLabel}
+                options={opts}
+                value={r.accountId}
+                onChange={v => patch(side, r.id, { accountId: v })}
+                placeholder={copy.accountPlaceholder}
+                error={missingAccount ? ERRORS.missingAccount : undefined}
+                searchable
+              />
+
+              <View style={s.rowBottom}>
+                <Text style={s.amountLabel}>{copy.amountLabel}</Text>
                 <AmountInput
                   value={r.amount}
                   onChange={v => patch(side, r.id, { amount: v })}
@@ -366,14 +365,19 @@ const OpeningBalanceScreen: React.FC = () => {
                   error={missingAmount}
                   tint={tint}
                 />
+                {missingAmount ? <Text style={s.fieldError}>{ERRORS.missingAmount}</Text> : null}
               </View>
+
+              {/* Pinned to the corner rather than placed in a flex row: the
+                  dropdown's own label makes its control's vertical offset a
+                  moving target, and hand-tuned margins drift when type scales. */}
               <TouchableOpacity
                 style={s.remove}
                 onPress={() => removeRow(side, r.id)}
                 accessibilityLabel={ACTIONS.remove}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Feather name="x" size={15} color={THEME.colors.textTertiary} />
+                <Feather name="x" size={14} color={THEME.colors.textTertiary} />
               </TouchableOpacity>
             </View>
           );
@@ -393,14 +397,16 @@ const OpeningBalanceScreen: React.FC = () => {
     ? { tone: THEME.colors.textSecondary, title: BALANCE.emptyTitle, body: BALANCE.emptyBody }
     : balanced
       ? { tone: THEME.colors.success, title: BALANCE.balancedTitle, body: BALANCE.balancedBody }
-      : {
-          tone: THEME.colors.warning,
-          title: BALANCE.offTitle,
-          body:
-            totals.diff > 0
-              ? BALANCE.offOwnHeavier(rs(Math.abs(totals.diff)))
-              : BALANCE.offOweHeavier(rs(Math.abs(totals.diff))),
-        };
+      : plugAccount
+        ? {
+            tone: THEME.colors.info,
+            title: BALANCE.autoTitle,
+            body:
+              totals.diff > 0
+                ? BALANCE.autoOwnHeavier(rs(Math.abs(totals.diff)))
+                : BALANCE.autoOweHeavier(rs(Math.abs(totals.diff))),
+          }
+        : { tone: THEME.colors.warning, title: BALANCE.noEquityTitle, body: BALANCE.noEquityBody };
 
   return (
     <ReportContainer>
@@ -460,20 +466,21 @@ const OpeningBalanceScreen: React.FC = () => {
             <Text style={[s.statusTitle, { color: status.tone }]}>{status.title}</Text>
             <Text style={s.statusBody}>{status.body}</Text>
 
-            {anyEntered && !balanced ? (
-              <>
-                <View style={s.diffRow}>
-                  <Text style={s.diffLabel}>{BALANCE.differenceLabel}</Text>
-                  <Text style={[s.diffValue, { color: status.tone }]}>
-                    {rs(Math.abs(totals.diff))}
-                  </Text>
+            {plug !== 0 && plugAccount ? (
+              // Preview of the line we are about to write, so nothing about
+              // the saved entry is a surprise.
+              <View style={s.plug}>
+                <View style={s.plugHead}>
+                  <Feather name="plus-circle" size={13} color={THEME.colors.info} />
+                  <Text style={s.plugTag}>{BALANCE.autoLineLabel}</Text>
                 </View>
-                <TouchableOpacity style={s.fixBtn} onPress={autoBalance} activeOpacity={0.8}>
-                  <Feather name="zap" size={14} color={THEME.colors.textInverse} />
-                  <Text style={s.fixBtnText}>{BALANCE.autoFix}</Text>
-                </TouchableOpacity>
-                <Text style={s.fixHint}>{BALANCE.autoFixHint}</Text>
-              </>
+                <View style={s.plugRow}>
+                  <Text style={s.plugAccount} numberOfLines={1}>
+                    {plugAccount.label}
+                  </Text>
+                  <Text style={s.plugAmount}>{rs(Math.abs(plug))}</Text>
+                </View>
+              </View>
             ) : null}
           </View>
         </Card>
@@ -521,7 +528,7 @@ const OpeningBalanceScreen: React.FC = () => {
           title={saving ? ACTIONS.saving : ACTIONS.save}
           onPress={save}
           isLoading={saving}
-          disabled={!balanced || saving}
+          disabled={!canSave || saving}
           fullWidth
         />
         <TouchableOpacity style={s.clear} onPress={clearAll} activeOpacity={0.7}>
@@ -604,27 +611,64 @@ const s = StyleSheet.create({
   },
   chipText: { ...THEME.typography.caption, color: THEME.colors.textPrimary, fontWeight: '600' },
 
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
-  amountWrap: { width: 116 },
+  rowCard: {
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
+    borderRadius: 12,
+    backgroundColor: THEME.colors.backgroundAlt,
+    padding: 12,
+    paddingTop: 10,
+    marginBottom: 10,
+  },
+  remove: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.colors.background,
+    zIndex: 2,
+  },
+  // Label above the control, mirroring CustomDropdown, so the two fields in a
+  // row card share one visual rhythm instead of a label-left/field-right split.
+  rowBottom: { marginTop: -4 },
+  amountLabel: {
+    ...THEME.typography.bodyMd,
+    fontWeight: '500',
+    color: THEME.colors.textPrimary,
+    marginBottom: 8,
+  },
   amount: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     borderWidth: 1,
     borderColor: THEME.colors.border,
     borderRadius: 10,
-    paddingHorizontal: 9,
-    height: 44,
+    backgroundColor: THEME.colors.surface,
+    paddingHorizontal: 12,
+    height: 46,
   },
-  currency: { ...THEME.typography.caption, color: THEME.colors.textTertiary, fontWeight: '700' },
+  currency: { ...THEME.typography.bodyMd, color: THEME.colors.textTertiary, fontWeight: '700' },
   amountInput: {
     flex: 1,
-    ...THEME.typography.bodyMd,
+    // Without this the field renders EMPTY on web. react-native-web turns
+    // TextInput into an <input>, whose intrinsic width (~177px) becomes its
+    // flex min-width: auto floor — so it overflows the container and the
+    // right-aligned text is pushed outside the visible box. Totals were
+    // correct all along; only the display was clipped.
+    minWidth: 0,
+    ...THEME.typography.bodyLg,
+    fontWeight: '700',
     color: THEME.colors.textPrimary,
     textAlign: 'right',
     padding: 0,
   },
-  remove: { width: 26, height: 44, alignItems: 'center', justifyContent: 'center' },
+  fieldError: { ...THEME.typography.caption, color: THEME.colors.danger, marginTop: 5 },
 
   empty: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginBottom: 6 },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 6 },
@@ -657,17 +701,24 @@ const s = StyleSheet.create({
   },
   diffLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, fontWeight: '600' },
   diffValue: { ...THEME.typography.bodyLg, fontWeight: '800' },
-  fixBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    backgroundColor: THEME.colors.primary,
-    borderRadius: 10,
-    paddingVertical: 11,
-    marginTop: 6,
+  plug: {
+    marginTop: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.borderLight,
+    gap: 6,
   },
-  fixBtnText: { ...THEME.typography.bodySm, color: THEME.colors.textInverse, fontWeight: '700' },
+  plugHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  plugTag: {
+    ...THEME.typography.caption,
+    color: THEME.colors.info,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  plugRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  plugAccount: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, flex: 1, minWidth: 0 },
+  plugAmount: { ...THEME.typography.bodyMd, fontWeight: '800', color: THEME.colors.info },
   fixHint: { ...THEME.typography.caption, color: THEME.colors.textTertiary, textAlign: 'center' },
 
   exRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
