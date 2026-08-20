@@ -284,7 +284,15 @@ const OpeningBalanceScreen: React.FC = () => {
 
     setSaving(true);
     const r: any = await dispatch(
-      saveJournalEntry({ date, memo: 'Opening balances', status: 'posted', lines: payload }),
+      saveJournalEntry({
+        date,
+        memo: 'Opening balances',
+        status: 'posted',
+        lines: payload,
+        // Stamps the GL rows source_type='opening_balance', which is what the
+        // dashboard's setup checklist looks for to tick this step off.
+        isOpeningBalance: true,
+      }),
     );
     setSaving(false);
 

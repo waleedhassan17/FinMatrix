@@ -4,7 +4,7 @@
 // Benchmarked against QuickBooks / Sage 50 dashboards
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAppSelector, useAppDispatch } from '../../hooks/useReduxHooks';
@@ -212,6 +212,26 @@ const AdminDashboardScreen: React.FC = () => {
   useEffect(() => {
     dispatch(loadDashboard());
   }, [dispatch]);
+
+  // Refetch whenever the dashboard regains focus.
+  //
+  // DashboardStack keeps this screen mounted, so the mount effect above fires
+  // exactly once per session. Anything completed from the setup checklist —
+  // opening balances, a customer, a vendor, a tax rate — used to leave the
+  // card showing stale progress until a manual pull-to-refresh or an app
+  // reload, because goBack() re-reveals the mounted screen without remounting
+  // it. refreshDashboard rather than loadDashboard so returning does not flash
+  // the skeleton over content that is already on screen.
+  const firstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      dispatch(refreshDashboard());
+    }, [dispatch]),
+  );
 
   useEffect(() => {
     if (!company && user?.companyId) {
