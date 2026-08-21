@@ -46,52 +46,12 @@ import type {
   DashboardAlert,
   DeliveryOverviewData,
 } from '../../models/dashboardModel';
-import type { TrendPoint } from '../../models/analyticsDashboardModel';
-import { THEME } from '../../utils/theme';
 import { isFeatureVisible } from '../../utils/featureGates';
 import { ReportContainer } from '../../components/reports/ReportUI';
+import { C, FONT, card } from './dashboardTheme';
+import RevenueTrendCard, { BAR_AREA, WINDOW_MONTHS } from './RevenueTrendCard';
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
-
-// ── Accounting palette ────────────────────────────────
-// Quiet surfaces, dark ink figures, one disciplined brand
-// green. Color appears only as small semantic signals.
-const C = {
-  canvas: '#F5F6F8',
-  surface: '#FFFFFF',
-  line: '#E8EAEF',
-  lineSoft: '#EEF0F4',
-  ink: '#0F172A',
-  ink2: '#475467',
-  ink3: '#8A93A4',
-  brand: '#0B6E4F',
-  pos: '#0E8A5F',
-  neg: '#C4362B',
-  warn: '#B7791F',
-  info: '#2A60C9',
-  indigo: '#4F46E5',
-  teal: '#0E7C86',
-  slate: '#475467',
-  bar: '#C9D0DB', // quiet slate for past months in the revenue chart
-  navy: ['#0E1726', '#16243B', '#1C2F4C'] as const,
-};
-
-const FONT = THEME.typography.fontFamily;
-
-// Plotting height of the revenue chart (bars only — labels sit below it).
-const BAR_AREA = 92;
-
-// ── Compact currency (mirrors slice formatter) ────────
-const compactRs = (n: number): string => {
-  if (!Number.isFinite(n)) return 'Rs 0';
-  const sign = n < 0 ? '−' : '';
-  const a = Math.abs(n);
-  if (a >= 1_000_000_000) return `${sign}Rs ${(a / 1e9).toFixed(1)}B`;
-  if (a >= 1_000_000) return `${sign}Rs ${(a / 1e6).toFixed(1)}M`;
-  if (a >= 10_000) return `${sign}Rs ${Math.round(a / 1e3)}K`;
-  if (a >= 1_000) return `${sign}Rs ${(a / 1e3).toFixed(1)}K`;
-  return `${sign}Rs ${Math.round(a).toLocaleString()}`;
-};
 
 const greeting = (): string => {
   const h = new Date().getHours();
@@ -112,17 +72,6 @@ const asOfLabel = (iso?: string): string | undefined => {
   if (!y || !m || !d) return undefined;
   return `as of ${new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 };
-
-// Trend labels arrive as 'Aug 26'; the headline spells the month out.
-const MONTH_NAMES: Record<string, string> = {
-  jan: 'January', feb: 'February', mar: 'March', apr: 'April',
-  may: 'May', jun: 'June', jul: 'July', aug: 'August',
-  sep: 'September', oct: 'October', nov: 'November', dec: 'December',
-};
-const monthKey = (label: string): string => label.trim().slice(0, 3).toLowerCase();
-const fullMonth = (label: string): string => MONTH_NAMES[monthKey(label)] ?? label;
-const isCurrentMonth = (label: string): boolean =>
-  monthKey(label) === monthKey(new Date().toLocaleDateString('en-US', { month: 'short' }));
 
 // ── Skeleton pulse ────────────────────────────────────
 // Per-instance animated value (a module-level singleton would let one
@@ -360,10 +309,13 @@ const AdminDashboardScreen: React.FC = () => {
               />
             </View>
 
-            {/* ── Revenue trend (live analytics series) ─ */}
+            {/* ── Revenue trend (live analytics series) ─
+                The window is fixed, so the caption states it. It used to count
+                the points the API returned, which read "Last 1 months" for a
+                company in its first month. */}
             <SectionHeader
               title="Revenue"
-              caption={revenueTrend && revenueTrend.length > 0 ? `Last ${revenueTrend.length} months` : undefined}
+              caption={revenueTrend && revenueTrend.length > 0 ? `Last ${WINDOW_MONTHS} months` : undefined}
               action="View all"
               onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('ReportsStack', { screen: 'AnalyticsDashboard' })}
             />
@@ -445,136 +397,6 @@ const SectionHeader: React.FC<{ title: string; caption?: string; action?: string
     )}
   </View>
 );
-
-// ── Revenue trend card ────────────────────────────────
-// Live monthly revenue from the analytics report. Bars are plain views
-// rather than a chart library so the card sits on exactly the same
-// surface, radius and ink scale as every other card on this screen.
-// Tapping a month promotes it into the headline figure.
-const RevenueTrendCard: React.FC<{ points: TrendPoint[] | null }> = ({ points }) => {
-  const [picked, setPicked] = useState<number | null>(null);
-
-  const series = useMemo(() => points ?? [], [points]);
-  const lastIdx = series.length - 1;
-  // A picked month is dropped as soon as it falls outside a refreshed
-  // series, so the card always falls back to the newest month.
-  const idx = picked !== null && picked >= 0 && picked <= lastIdx ? picked : lastIdx;
-
-  const { max, total } = useMemo(
-    () =>
-      series.reduce(
-        (acc, p) => ({ max: Math.max(acc.max, p.value), total: acc.total + p.value }),
-        { max: 0, total: 0 },
-      ),
-    [series],
-  );
-
-  if (!points || points.length === 0) {
-    const unavailable = !points;
-    return (
-      <View style={s.revCard}>
-        <View style={s.revEmpty}>
-          <View style={[s.revEmptyIcon, { backgroundColor: (unavailable ? C.ink3 : C.brand) + '12' }]}>
-            <Feather name={unavailable ? 'cloud-off' : 'bar-chart-2'} size={19} color={unavailable ? C.ink3 : C.brand} />
-          </View>
-          <Text style={s.revEmptyTitle}>{unavailable ? 'Revenue history unavailable' : 'No revenue yet'}</Text>
-          <Text style={s.revEmptySub}>
-            {unavailable
-              ? 'We could not load the monthly series. Pull down to refresh.'
-              : 'Monthly revenue appears here once you start issuing invoices.'}
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  const selected = series[idx];
-  const prev = idx > 0 ? series[idx - 1] : undefined;
-  const avg = total / series.length;
-
-  // Month over month against the preceding bar. Suppressed when there is no
-  // prior month, or when it was zero (a percentage off zero is meaningless).
-  // A move that rounds to 0% reads as flat — neither a green win nor a loss.
-  const momPct = prev && prev.value > 0 ? ((selected.value - prev.value) / prev.value) * 100 : null;
-  const flat = momPct !== null && Math.abs(momPct) < 0.5;
-  const up = (momPct ?? 0) >= 0;
-  const momTone = flat ? C.ink2 : up ? C.pos : C.neg;
-  const momIcon = flat ? 'minus' : up ? 'trending-up' : 'trending-down';
-  const momText =
-    momPct === null ? '' : Math.abs(momPct) >= 1000 ? '999+%' : `${Math.abs(momPct).toFixed(0)}%`;
-
-  return (
-    <View style={s.revCard}>
-      <View style={s.revTopRow}>
-        <View style={s.revHeadBlock}>
-          <Text style={s.revValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-            {compactRs(selected.value)}
-          </Text>
-          <Text style={s.revCaption} numberOfLines={1}>
-            {fullMonth(selected.label)}
-            {isCurrentMonth(selected.label) && idx === lastIdx ? ' · month to date' : ''}
-          </Text>
-        </View>
-
-        {momPct !== null && (
-          <View
-            accessible
-            style={[s.revDelta, { backgroundColor: momTone + '12' }]}
-            accessibilityLabel={`${flat ? 'Flat at' : up ? 'Up' : 'Down'} ${momText} versus ${prev?.label}`}
-          >
-            <Feather name={momIcon} size={12} color={momTone} />
-            <Text style={[s.revDeltaText, { color: momTone }]}>
-              {flat ? '' : up ? '+' : '−'}{momText}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View style={s.revChart}>
-        {series.map((p, i) => {
-          const on = i === idx;
-          // Every month keeps a visible stub so a zero month still reads as
-          // a month rather than a gap in the axis.
-          const h = max > 0 ? Math.max(3, Math.round((Math.max(p.value, 0) / max) * BAR_AREA)) : 3;
-          return (
-            <TouchableOpacity
-              key={`${p.label}-${i}`}
-              style={s.revCol}
-              activeOpacity={0.75}
-              onPress={() => setPicked(i)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              accessibilityLabel={`${p.label}: ${compactRs(p.value)}`}
-            >
-              <View style={[s.revBar, { height: h, backgroundColor: on ? C.brand : C.bar }]} />
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      <View style={s.revBaseline} />
-
-      <View style={s.revLabelRow}>
-        {series.map((p, i) => (
-          <Text key={`${p.label}-label-${i}`} style={[s.revLabel, i === idx && s.revLabelOn]} numberOfLines={1}>
-            {p.label.split(' ')[0]}
-          </Text>
-        ))}
-      </View>
-
-      <View style={s.revFooter}>
-        <View style={s.revFootItem}>
-          <Text style={s.revFootCaption}>Average / month</Text>
-          <Text style={s.revFootValue}>{compactRs(avg)}</Text>
-        </View>
-        <View style={s.revFootDivider} />
-        <View style={s.revFootItem}>
-          <Text style={s.revFootCaption}>Total · {series.length} mo</Text>
-          <Text style={s.revFootValue}>{compactRs(total)}</Text>
-        </View>
-      </View>
-    </View>
-  );
-};
 
 // ── AR / AP stat card ─────────────────────────────────
 const StatCard: React.FC<{
@@ -739,11 +561,13 @@ const DashboardSkeleton: React.FC = () => (
       ))}
     </View>
     <View style={[s.sectionHeader, { marginTop: 18, marginBottom: 10 }]}><Skel w={90} h={15} r={5} /></View>
-    <View style={[s.revCard, { gap: 10 }]}>
+    {/* Same surface as the real card, and the same number of bars — the
+        placeholder should not settle into a chart of a different width. */}
+    <View style={[s.card, { gap: 10 }]}>
       <Skel w={'45%'} h={26} r={7} />
       <Skel w={'35%'} h={10} r={4} />
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: BAR_AREA, marginTop: 8 }}>
-        {[34, 58, 44, 78, 54, BAR_AREA].map((h, i) => (
+        {[34, 58, 44, 78, BAR_AREA].slice(0, WINDOW_MONTHS).map((h, i) => (
           <View key={i} style={{ flex: 1 }}><Skel w={'100%'} h={h} r={4} /></View>
         ))}
       </View>
@@ -763,18 +587,6 @@ const DashboardSkeleton: React.FC = () => (
 // ═════════════════════════════════════════════════════
 // STYLES
 // ═════════════════════════════════════════════════════
-const card = {
-  backgroundColor: C.surface,
-  borderRadius: 16,
-  borderWidth: 1,
-  borderColor: C.line,
-  shadowColor: '#0F172A',
-  shadowOpacity: 0.04,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 1,
-} as const;
-
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.canvas },
 
@@ -833,40 +645,6 @@ const s = StyleSheet.create({
 
   // Generic card
   card: { ...card, marginHorizontal: 16, padding: 16 },
-
-  // Revenue trend
-  revCard: { ...card, marginHorizontal: 16, padding: 16 },
-  revTopRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
-  revHeadBlock: { flex: 1 },
-  revValue: {
-    fontSize: 32, fontWeight: '800', color: C.ink, fontFamily: FONT,
-    letterSpacing: -0.9, lineHeight: 37, fontVariant: ['tabular-nums'],
-  },
-  revCaption: { fontSize: 11, color: C.ink3, fontFamily: FONT, marginTop: 3 },
-  revDelta: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, marginBottom: 2,
-  },
-  revDeltaText: { fontSize: 12, fontWeight: '700', fontFamily: FONT, fontVariant: ['tabular-nums'] },
-  revChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: BAR_AREA, marginTop: 18 },
-  revCol: { flex: 1, height: BAR_AREA, justifyContent: 'flex-end' },
-  revBar: { width: '100%', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  revBaseline: { height: 1, backgroundColor: C.line },
-  revLabelRow: { flexDirection: 'row', gap: 10, marginTop: 7 },
-  revLabel: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '600', color: C.ink3, fontFamily: FONT },
-  revLabelOn: { color: C.ink, fontWeight: '700' },
-  revFooter: {
-    flexDirection: 'row', alignItems: 'center',
-    marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: C.lineSoft,
-  },
-  revFootItem: { flex: 1 },
-  revFootDivider: { width: 1, height: 26, backgroundColor: C.line, marginHorizontal: 12 },
-  revFootCaption: { fontSize: 11, color: C.ink3, fontFamily: FONT },
-  revFootValue: { fontSize: 14, fontWeight: '700', color: C.ink, fontFamily: FONT, marginTop: 2, fontVariant: ['tabular-nums'] },
-  revEmpty: { alignItems: 'center', paddingVertical: 16, gap: 5 },
-  revEmptyIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 3 },
-  revEmptyTitle: { fontSize: 13, fontWeight: '700', color: C.ink, fontFamily: FONT },
-  revEmptySub: { fontSize: 12, color: C.ink3, textAlign: 'center', lineHeight: 17, fontFamily: FONT },
 
   // AR / AP grid
   statRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 16 },
