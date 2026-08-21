@@ -39,6 +39,16 @@ import { downloadBillPhoto } from '../../../../networks/delivery/deliveryNetwork
 type Props = NativeStackScreenProps<MoreStackParamList, 'InventoryApproval'>;
 type ModalMode = 'approve' | 'reject' | 'undo' | null;
 
+/**
+ * "{reference} · {name}" with the separator dropped when a side is missing.
+ * Older requests carry neither, and the raw template rendered them as a lone
+ * "·" — a row that looked like a rendering fault.
+ */
+const summaryLabel = (reference?: string | null, personnel?: string | null): string => {
+  const parts = [reference, personnel].map(v => (v ?? '').trim()).filter(Boolean);
+  return parts.length ? parts.join(' · ') : 'Unnamed request';
+};
+
 const FILTERS: Array<{ key: 'pending' | 'approved' | 'rejected' | 'all'; label: string }> = [
   { key: 'pending', label: 'Pending' },
   { key: 'approved', label: 'Approved' },
@@ -105,11 +115,28 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, []);
 
+  /**
+   * Ids the auto-loader has already tried. A ref, not state, deliberately:
+   * recording an attempt must not itself re-run the effect.
+   *
+   * This loop used to blow the render stack with "Maximum update depth
+   * exceeded". The effect depended on photoErrors, and resolvePhoto's first
+   * line sets photoErrors to a NEW object — so the effect re-ran on its own
+   * write, and the `!photoErrors[r.id]` guard could never stop it because the
+   * value it had just written was `false`, which passes that test.
+   */
+  const attemptedPhotos = React.useRef<Set<string>>(new Set());
+
   useEffect(() => {
     requests.forEach(r => {
-      if (r.proof?.billPhotoUri && !photoUris[r.id] && !photoErrors[r.id]) resolvePhoto(r);
+      if (!r.proof?.billPhotoUri) return;
+      if (attemptedPhotos.current.has(r.id)) return;
+      attemptedPhotos.current.add(r.id);
+      resolvePhoto(r);
     });
-  }, [requests, photoUris, photoErrors, resolvePhoto]);
+    // Intentionally NOT depending on photoUris/photoErrors: this effect writes
+    // both, and the ref above is what decides whether work is still needed.
+  }, [requests, resolvePhoto]);
 
   const [proofFor, setProofFor] = useState<InventoryUpdateRequest | null>(null);
   const [photoFullscreen, setPhotoFullscreen] = useState<string | null>(null);
@@ -507,16 +534,31 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
         {visibleRequests.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No requests found</Text>
-            <Text style={styles.emptySub}>Try another status filter.</Text>
+            <Text style={styles.emptyTitle}>
+              {activeFilter === 'pending'
+                ? 'Nothing waiting for review'
+                : activeFilter === 'all'
+                  ? 'No requests yet'
+                  : `No ${activeFilter} requests`}
+            </Text>
+            <Text style={styles.emptySub}>
+              {activeFilter === 'pending'
+                ? 'Riders\u2019 delivery updates appear here for approval.'
+                : 'Switch the filter above to see other requests.'}
+            </Text>
           </View>
         )}
 
+        {/* Summaries describe the whole queue, so they belong to the
+            unfiltered view. Rendering them while a filter was active is
+            what put "No requests found" directly above a full list. */}
+        {activeFilter === 'all' && (
+        <>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>Approved</Text>
           {approvedRequests.map(r => (
             <View key={r.id} style={styles.summaryRow}>
-              <Text style={styles.summaryMain}>{r.deliveryReference} · {r.personnelName}</Text>
+              <Text style={styles.summaryMain}>{summaryLabel(r.deliveryReference, r.personnelName)}</Text>
               <Text style={styles.summaryMeta}>Shadow synced · {r.reviewedAt ? new Date(r.reviewedAt).toLocaleString() : '-'}</Text>
             </View>
           ))}
@@ -527,7 +569,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.summaryTitle}>Rejected</Text>
           {rejectedRequests.map(r => (
             <View key={r.id} style={styles.summaryRow}>
-              <Text style={styles.summaryMain}>{r.deliveryReference} · {r.personnelName}</Text>
+              <Text style={styles.summaryMain}>{summaryLabel(r.deliveryReference, r.personnelName)}</Text>
               <Text style={styles.summaryMeta}>Reason: {r.reviewerComment ?? 'No notes provided'}</Text>
             </View>
           ))}
@@ -538,12 +580,19 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.summaryTitle}>Audit Trail</Text>
           {auditTrail.map(a => (
             <View key={a.id} style={styles.summaryRow}>
-              <Text style={styles.summaryMain}>{a.action.toUpperCase()} · {a.requestId}</Text>
+              {/* Resolve the request to its delivery reference. Printing
+                  requestId put a raw UUID in the audit list. */}
+              <Text style={styles.summaryMain}>
+                {a.action.toUpperCase()} ·{' '}
+                {requests.find(r => r.id === a.requestId)?.deliveryReference ?? 'request'}
+              </Text>
               <Text style={styles.summaryMeta}>{a.details}</Text>
             </View>
           ))}
           {auditTrail.length === 0 && <Text style={styles.summaryEmpty}>No audit entries yet.</Text>}
         </View>
+        </>
+        )}
       </ScrollView>
 
       <Modal visible={modalMode === 'approve' && !!targetRequest} transparent statusBarTranslucent animationType="fade" onRequestClose={closeModal}>

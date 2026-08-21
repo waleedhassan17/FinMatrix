@@ -50,6 +50,22 @@ const PRIORITY_COLORS: Record<string, string> = {
   low: '#0F766E',
 };
 
+// One colour per status, matching AdminDeliveryDetail so a delivery reads the
+// same wherever it appears.
+const STATUS_COLORS: Record<string, string> = {
+  unassigned: '#64748B',
+  pending: '#FF8B00',
+  picked_up: '#0065FF',
+  in_transit: '#2563EB',
+  arrived: '#6554C0',
+  delivered: '#059669',
+  failed: '#DE350B',
+  returned: '#EA580C',
+  cancelled: '#94A3B8',
+};
+
+const statusLabel = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
 const AssignDeliveriesScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
@@ -103,6 +119,19 @@ const AssignDeliveriesScreen: React.FC = () => {
   const approvalsList = useMemo(
     () => deliveries.filter(d => d.status === 'failed' || d.status === 'returned'),
     [deliveries],
+  );
+
+  /**
+   * Personnel id → display name. The Monitor list printed `assignedTo`
+   * straight out, which is the rider's user id, so every row carried a raw
+   * UUID where a name belongs.
+   */
+  const riderName = useCallback(
+    (personnelId?: string | null) => {
+      if (!personnelId) return 'Unassigned';
+      return personnel.find(p => p.userId === personnelId)?.displayName ?? 'Assigned';
+    },
+    [personnel],
   );
 
   const handleOpenAssignModal = () => {
@@ -260,7 +289,7 @@ const AssignDeliveriesScreen: React.FC = () => {
               style={styles.navButton}
               onPress={() => navigation.navigate('CreateDelivery')}
             >
-              <Text style={styles.navButtonText}>Open Full Create Delivery Form</Text>
+              <Text style={styles.navButtonText}>New Delivery</Text>
             </TouchableOpacity>
 
             <View style={styles.section}>
@@ -286,7 +315,19 @@ const AssignDeliveriesScreen: React.FC = () => {
                   </TouchableOpacity>
                 );
               })}
-              {!filteredUnassigned.length && <Text style={styles.emptyText}>No unassigned deliveries for selected date.</Text>}
+              {!filteredUnassigned.length && (
+                // A bare line of grey text read like an error. Say what the
+                // state means and what to do next.
+                <View style={styles.inlineEmpty}>
+                  <View style={styles.inlineEmptyIcon}>
+                    <Feather name="check-circle" size={18} color={colors.success} />
+                  </View>
+                  <Text style={styles.inlineEmptyTitle}>Everything is assigned</Text>
+                  <Text style={styles.inlineEmptyHint}>
+                    Nothing is waiting for a rider on this date. Create a delivery to add one.
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.actionRow}>
@@ -313,7 +354,7 @@ const AssignDeliveriesScreen: React.FC = () => {
             </View>
 
             <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('AssignWork')}>
-              <Text style={styles.navButtonText}>Open Three-Panel Assign Work</Text>
+              <Text style={styles.navButtonText}>Plan by Rider</Text>
             </TouchableOpacity>
           </>
         )}
@@ -327,7 +368,7 @@ const AssignDeliveriesScreen: React.FC = () => {
               style={styles.navButton}
               onPress={() => navigation.navigate('DeliveryMonitor')}
             >
-              <Text style={styles.navButtonText}>Open Full Delivery Monitor →</Text>
+              <Text style={styles.navButtonText}>Open Delivery Monitor</Text>
             </TouchableOpacity>
             {pendingList.slice(0, 5).map(d => (
               <TouchableOpacity
@@ -335,8 +376,24 @@ const AssignDeliveriesScreen: React.FC = () => {
                 style={styles.simpleRow}
                 onPress={() => navigation.navigate('AdminDeliveryDetail', { deliveryId: d.id })}
               >
-                <Text style={styles.simpleTitle}>{d.referenceNo} • {d.status.replace('_', ' ')}</Text>
-                <Text style={styles.simpleSub}>{d.customerName} • {d.assignedTo ?? 'Unassigned'}</Text>
+                <View style={styles.simpleRowTop}>
+                  <Text style={styles.simpleTitle} numberOfLines={1}>{d.referenceNo}</Text>
+                  <View
+                    style={[
+                      styles.statusPill,
+                      { backgroundColor: (STATUS_COLORS[d.status] ?? '#64748B') + '18' },
+                    ]}
+                  >
+                    <Text style={[styles.statusPillText, { color: STATUS_COLORS[d.status] ?? '#64748B' }]}>
+                      {statusLabel(d.status)}
+                    </Text>
+                  </View>
+                </View>
+                {/* riderName, not assignedTo — that field is the personnel's
+                    user id, and printing it put a raw UUID on screen. */}
+                <Text style={styles.simpleSub} numberOfLines={1}>
+                  {d.customerName || 'Unnamed customer'} · {riderName(d.assignedTo)}
+                </Text>
               </TouchableOpacity>
             ))}
             {pendingList.length === 0 && (
@@ -365,8 +422,23 @@ const AssignDeliveriesScreen: React.FC = () => {
                 style={styles.simpleRow}
                 onPress={() => navigation.navigate('AdminDeliveryDetail', { deliveryId: d.id })}
               >
-                <Text style={styles.simpleTitle}>{d.referenceNo} • {d.status.replace('_', ' ')}</Text>
-                <Text style={styles.simpleSub}>{d.notes || 'No reason added'}</Text>
+                <View style={styles.simpleRowTop}>
+                  <Text style={styles.simpleTitle} numberOfLines={1}>{d.referenceNo}</Text>
+                  <View
+                    style={[
+                      styles.statusPill,
+                      { backgroundColor: (STATUS_COLORS[d.status] ?? '#64748B') + '18' },
+                    ]}
+                  >
+                    <Text style={[styles.statusPillText, { color: STATUS_COLORS[d.status] ?? '#64748B' }]}>
+                      {statusLabel(d.status)}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.simpleSub} numberOfLines={2}>
+                  {d.customerName || 'Unnamed customer'}
+                  {d.notes ? ` · ${d.notes}` : ''}
+                </Text>
               </TouchableOpacity>
             ))}
             {approvalsList.length === 0 && (
@@ -593,6 +665,30 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: THEME.typography.fontFamily,
   },
+  inlineEmpty: { alignItems: 'center', paddingVertical: spacing.lg, gap: 5 },
+  inlineEmptyIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.success + '14',
+    marginBottom: 2,
+  },
+  inlineEmptyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  inlineEmptyHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 17,
+    paddingHorizontal: spacing.md,
+    fontFamily: THEME.typography.fontFamily,
+  },
   personnelRow: { paddingVertical: spacing.xs, gap: spacing.sm },
   personCard: {
     width: 210,
@@ -655,19 +751,39 @@ const styles = StyleSheet.create({
     color: '#DE350B',
   },
   simpleRow: {
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight ?? colors.border,
+    gap: 3,
+  },
+  // Reference on the left, status pill hard right — the two things you scan
+  // a monitor list for, on one line instead of run together with a bullet.
+  simpleRowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
   simpleTitle: {
     color: colors.textPrimary,
-    fontWeight: '600',
+    fontWeight: '700',
+    flex: 1,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  statusPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 11,
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
     fontFamily: THEME.typography.fontFamily,
   },
   simpleSub: {
     color: colors.textSecondary,
     fontSize: 12,
-    marginTop: 2,
     fontFamily: THEME.typography.fontFamily,
   },
 
