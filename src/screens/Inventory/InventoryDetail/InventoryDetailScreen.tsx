@@ -9,6 +9,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
   Platform,
   StatusBar,
 } from 'react-native';
@@ -17,7 +18,7 @@ import Toast from 'react-native-toast-message';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { HEADER_NAVY } from '../../../components/reports/ReportUI';
@@ -26,17 +27,21 @@ import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
-  adjustStock,
   setOpeningStock,
   toggleInventoryItem,
 } from '../InventoryList/inventoryListSlice';
+import { selectUser } from '../../Auth/authSlice';
 import {
   selectInventoryDetailTab,
+  selectInventoryDetailMovements,
+  selectInventoryDetailStatus,
+  selectInventoryDetailError,
   setActiveTab,
   resetInventoryDetail,
+  fetchItemMovements,
 } from './inventoryDetailSlice';
 import type { InventoryDetailTab } from './inventoryDetailSlice';
-import { getStockMovements, type StockMovement } from '../../../models/inventoryModel';
+import { movementLabel } from '../../../models/inventoryModel';
 import { warehouseAgencies } from '../../../models/agencyModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
@@ -51,13 +56,17 @@ const getStockStatusLabel = (qty: number, reorder: number) => {
   return { label: 'In Stock', color: colors.success };
 };
 
+// Keyed to the movement types the API actually emits. This used to switch on
+// 'Purchase' / 'Sale' / 'Adjustment', none of which the backend has ever sent,
+// so every badge fell through to grey.
 const getMovementColor = (type: string) => {
   switch (type) {
-    case 'Purchase': return colors.success;
-    case 'Return': return colors.success;
-    case 'Sale': return colors.danger;
-    case 'Adjustment': return colors.warning;
-    case 'Transfer': return colors.secondary;
+    case 'receipt': return colors.success;
+    case 'return': return colors.success;
+    case 'sale': return colors.danger;
+    case 'delivery': return colors.danger;
+    case 'adjustment': return colors.warning;
+    case 'transfer': return colors.secondary;
     default: return colors.textSecondary;
   }
 };
@@ -73,15 +82,31 @@ const InventoryDetailScreen: React.FC = () => {
   const items = useAppSelector(selectInventoryItems);
   const item = items.find(i => i.itemId === route.params.itemId);
   const activeTab = useAppSelector(selectInventoryDetailTab);
+  const movements = useAppSelector(selectInventoryDetailMovements);
+  const movementsStatus = useAppSelector(selectInventoryDetailStatus);
+  const movementsError = useAppSelector(selectInventoryDetailError);
+  const user = useAppSelector(selectUser);
+
+  // Creating a purchase order is admin-only on the server, while reading
+  // inventory is admin+staff — so a staff user would reach the PO form and
+  // only discover the 403 on save.
+  const canCreatePO = user?.role === 'admin';
+
+  const itemId = route.params.itemId;
 
   useEffect(() => {
     return () => { dispatch(resetInventoryDetail()); };
   }, [dispatch]);
 
-  const movements = useMemo(
-    () => (item ? getStockMovements(item.itemId) : []),
-    [item],
-  );
+  const loadMovements = useCallback(() => {
+    if (itemId) dispatch(fetchItemMovements(itemId));
+  }, [dispatch, itemId]);
+
+  // On focus, not on mount. The movement list lives in one shared slice, so
+  // opening a second item overwrites it and unmounting that item clears it —
+  // coming back to this one would otherwise show an empty table. Refetching
+  // on focus also picks up an adjustment or count just posted from here.
+  useFocusEffect(loadMovements);
 
   const agencyName = useMemo(() => {
     if (!item?.sourceAgencyId) return null;
@@ -139,72 +164,46 @@ const InventoryDetailScreen: React.FC = () => {
         );
   }, [item, dispatch]);
 
+  // The full Adjustment screen, not an inline prompt. The old quick action
+  // hardcoded reason:'correction' so damage, theft and obsolescence were all
+  // filed as corrections — and it ran on Alert.prompt, which is iOS-only, so
+  // on Android it offered the Edit screen instead, which cannot move stock.
   const handleAdjust = useCallback(() => {
+    if (item) navigation.navigate('Adjustment', { itemId: item.itemId });
+  }, [item, navigation]);
+
+  // POForm lives in the Transactions stack, so this crosses tabs — same idiom
+  // as VendorDetailScreen's "Create Bill".
+  const handleCreatePO = useCallback(() => {
     if (!item) return;
-    Alert.prompt
-      ? Alert.prompt(
-          'Adjust Stock',
-          `Current: ${item.quantityOnHand}. Enter quantity change (+/−):`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Adjust',
-              onPress: async (val?: string) => {
-                const change = parseFloat(val ?? '');
-                if (isNaN(change) || change === 0) return;
-                // The prompt collects a +/- change, but the API takes the
-                // absolute target and derives the variance itself.
-                const target = item.quantityOnHand + change;
-                if (target < 0) {
-                  Toast.show({
-                    type: 'error',
-                    text1: 'Not enough stock',
-                    text2: `Only ${item.quantityOnHand} on hand — cannot reduce by ${Math.abs(change)}.`,
-                  });
-                  return;
-                }
-                try {
-                  await dispatch(
-                    adjustStock({
-                      itemId: item.itemId,
-                      newQty: target,
-                      // This quick action has no reason picker; a manual
-                      // tweak from the detail screen is a correction.
-                      reason: 'correction',
-                      notes: 'Quick adjustment from item detail',
-                    }),
-                  ).unwrap();
-                  Toast.show({
-                    type: 'success',
-                    text1: 'Stock adjusted',
-                    text2: `${item.name}: ${item.quantityOnHand} → ${target}`,
-                  });
-                } catch (e: any) {
-                  Toast.show({
-                    type: 'error',
-                    text1: 'Adjustment failed',
-                    text2: e?.message || 'Please try again.',
-                  });
-                }
-              },
-            },
-          ],
-          'plain-text',
-          '',
-          'numeric',
-        )
-      : Alert.alert(
-          'Adjust Stock',
-          `Current quantity: ${item.quantityOnHand}. Use the Edit screen to adjust stock.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Edit', onPress: handleEdit },
-          ],
-        );
-  }, [item, dispatch, handleEdit]);
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
+      .navigate('TransactionsStack', {
+        screen: 'POForm',
+        params: { prefillItemId: item.itemId },
+      });
+  }, [item, navigation]);
 
   const handleToggle = useCallback(() => {
     if (!item) return;
+
+    // Deactivating an item that still holds stock strands its value in the GL
+    // Inventory account with nothing on screen to explain it — the item drops
+    // out of every active-items list while 1200 keeps carrying it. The server
+    // does not enforce this, so this guard is the only one.
+    if (item.isActive && item.quantityOnHand !== 0) {
+      Alert.alert(
+        'Stock still on hand',
+        `This item still holds ${item.quantityOnHand} units (${formatCurrency(
+          item.quantityOnHand * item.unitCost,
+        )}). Clear the stock with an adjustment before deactivating.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Adjust Stock', onPress: handleAdjust },
+        ],
+      );
+      return;
+    }
+
     Alert.alert(
       item.isActive ? 'Deactivate Item' : 'Activate Item',
       `Are you sure you want to ${item.isActive ? 'deactivate' : 'activate'} "${item.name}"?`,
@@ -213,11 +212,26 @@ const InventoryDetailScreen: React.FC = () => {
         {
           text: item.isActive ? 'Deactivate' : 'Activate',
           style: item.isActive ? 'destructive' : 'default',
-          onPress: () => dispatch(toggleInventoryItem(item.itemId)),
+          onPress: async () => {
+            try {
+              await dispatch(toggleInventoryItem(item.itemId)).unwrap();
+              Toast.show({
+                type: 'success',
+                text1: item.isActive ? 'Item deactivated' : 'Item activated',
+                text2: item.name,
+              });
+            } catch (e: any) {
+              Toast.show({
+                type: 'error',
+                text1: item.isActive ? 'Could not deactivate' : 'Could not activate',
+                text2: e?.message || 'Please try again.',
+              });
+            }
+          },
         },
       ],
     );
-  }, [item, dispatch]);
+  }, [item, dispatch, handleAdjust]);
 
   if (!item) {
     return (
@@ -234,13 +248,11 @@ const InventoryDetailScreen: React.FC = () => {
   }
 
   const status = getStockStatusLabel(item.quantityOnHand, item.reorderPoint);
-  const available = item.quantityOnHand - item.quantityCommitted;
 
   // ── Tabs ──────────────────────────────────────────
   const TABS: { key: InventoryDetailTab; label: string }[] = [
     { key: 'stock', label: 'Stock Info' },
     { key: 'transactions', label: 'Transactions' },
-    { key: 'locations', label: 'Locations' },
   ];
 
   // ═════════════════════════════════════════════════════
@@ -287,7 +299,12 @@ const InventoryDetailScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* ── Metrics Row ── */}
+        {/* ── Metrics Row ──
+            On Order and Committed used to sit here. Both read real columns
+            that the backend only ever writes '0' to — nothing increments
+            quantity_on_order on a PO, and quantity_committed is unused
+            entirely — so they were permanent zeros, and "Available"
+            (onHand − committed) was On Hand under another name. */}
         <View style={styles.metricsRow}>
           <View style={styles.metricCard}>
             <Text style={styles.metricValue}>{item.quantityOnHand}</Text>
@@ -295,21 +312,15 @@ const InventoryDetailScreen: React.FC = () => {
           </View>
           <View style={styles.metricCard}>
             <Text style={[styles.metricValue, { color: colors.secondary }]}>
-              {item.quantityOnOrder}
+              {formatCurrency(item.quantityOnHand * item.unitCost)}
             </Text>
-            <Text style={styles.metricLabel}>On Order</Text>
+            <Text style={styles.metricLabel}>Total Value</Text>
           </View>
           <View style={styles.metricCard}>
             <Text style={[styles.metricValue, { color: colors.warning }]}>
-              {item.quantityCommitted}
+              {item.reorderPoint}
             </Text>
-            <Text style={styles.metricLabel}>Committed</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={[styles.metricValue, { color: available >= 0 ? colors.success : colors.danger }]}>
-              {available}
-            </Text>
-            <Text style={styles.metricLabel}>Available</Text>
+            <Text style={styles.metricLabel}>Reorder Point</Text>
           </View>
         </View>
 
@@ -325,14 +336,12 @@ const InventoryDetailScreen: React.FC = () => {
             <Text style={styles.actionBtnIcon}>📊</Text>
             <Text style={styles.actionBtnText}>Adjust</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => Alert.alert('Transfer', 'Stock transfer functionality coming soon.')}>
-            <Text style={styles.actionBtnIcon}>🔄</Text>
-            <Text style={styles.actionBtnText}>Transfer</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => Alert.alert('Create PO', 'Purchase order creation coming soon.')}>
-            <Text style={styles.actionBtnIcon}>📝</Text>
-            <Text style={styles.actionBtnText}>Create PO</Text>
-          </TouchableOpacity>
+          {canCreatePO && (
+            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={handleCreatePO}>
+              <Text style={styles.actionBtnIcon}>📝</Text>
+              <Text style={styles.actionBtnText}>Create PO</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={handleEdit}>
             <Text style={styles.actionBtnIcon}>✏️</Text>
             <Text style={styles.actionBtnText}>Edit</Text>
@@ -370,9 +379,11 @@ const InventoryDetailScreen: React.FC = () => {
               { label: 'Reorder Quantity', value: item.reorderQuantity.toString() },
               { label: 'Min Stock', value: item.minStock.toString() },
               { label: 'Max Stock', value: item.maxStock.toString() },
-              { label: 'Serial Tracking', value: item.serialTracking ? 'Yes' : 'No' },
-              { label: 'Lot Tracking', value: item.lotTracking ? 'Yes' : 'No' },
               { label: 'Barcode', value: item.barcodeData || '—' },
+              // Was its own Locations tab. The app has no location concept —
+              // no endpoint exposes inventory_locations — so a source agency
+              // is all there is, and it is one row, not a tab.
+              { label: 'Source Agency', value: agencyName || '—' },
               { label: 'Unit of Measure', value: item.unitOfMeasure },
               { label: 'Status', value: item.isActive ? 'Active' : 'Inactive' },
               { label: 'Last Updated', value: formatDate(item.lastUpdated) },
@@ -391,55 +402,61 @@ const InventoryDetailScreen: React.FC = () => {
               <Text style={[styles.txnHeaderText, { flex: 1 }]}>Date</Text>
               <Text style={[styles.txnHeaderText, { width: 70 }]}>Type</Text>
               <Text style={[styles.txnHeaderText, { width: 55, textAlign: 'right' }]}>Qty</Text>
-              <Text style={[styles.txnHeaderText, { flex: 1.5 }]}>Reference</Text>
+              <Text style={[styles.txnHeaderText, { width: 55, textAlign: 'right' }]}>Bal</Text>
+              <Text style={[styles.txnHeaderText, { flex: 1.2, textAlign: 'right' }]}>Reference</Text>
             </View>
-            {movements.length === 0 ? (
+
+            {movementsStatus === 'loading' && (
+              <View style={styles.emptyTab}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            )}
+
+            {movementsStatus === 'failed' && (
+              <View style={styles.emptyTab}>
+                <Text style={styles.emptyTabText}>
+                  {movementsError || 'Could not load stock movements'}
+                </Text>
+                <TouchableOpacity onPress={loadMovements} activeOpacity={0.7} style={styles.retryBtn}>
+                  <Text style={styles.retryBtnText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Only a successful fetch that came back with nothing is an empty
+                item. This used to render unconditionally, because the model
+                helper behind it returned a hardcoded []. */}
+            {movementsStatus === 'succeeded' && movements.length === 0 && (
               <View style={styles.emptyTab}>
                 <Text style={styles.emptyTabText}>No stock movements recorded</Text>
               </View>
-            ) : (
-              movements.map((mv, idx) => (
-                <View
-                  key={mv.id}
-                  style={[styles.txnRow, idx % 2 === 0 && styles.txnRowAlt]}
-                >
-                  <Text style={[styles.txnDate, { flex: 1 }]}>{formatDate(mv.date)}</Text>
-                  <View style={[styles.mvTypeBadge, { backgroundColor: getMovementColor(mv.type) + '15' }]}>
-                    <Text style={[styles.mvTypeText, { color: getMovementColor(mv.type) }]}>
-                      {mv.type}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.mvQty,
-                      { color: mv.quantity >= 0 ? colors.success : colors.danger },
-                    ]}
-                  >
-                    {mv.quantity > 0 ? '+' : ''}{mv.quantity}
-                  </Text>
-                  <Text style={[styles.txnRef, { flex: 1.5 }]} numberOfLines={1}>
-                    {mv.reference}
+            )}
+
+            {movements.map((mv, idx) => (
+              <View
+                key={mv.id}
+                style={[styles.txnRow, idx % 2 === 0 && styles.txnRowAlt]}
+              >
+                <Text style={[styles.txnDate, { flex: 1 }]}>{formatDate(mv.date)}</Text>
+                <View style={[styles.mvTypeBadge, { backgroundColor: getMovementColor(mv.type) + '15' }]}>
+                  <Text style={[styles.mvTypeText, { color: getMovementColor(mv.type) }]}>
+                    {movementLabel(mv)}
                   </Text>
                 </View>
-              ))
-            )}
-          </View>
-        )}
-
-        {activeTab === 'locations' && (
-          <View style={styles.infoCard}>
-            {/* The app has no location concept — the API exposes no locations
-                endpoint — only a source agency. This row used to test
-                `locationId === 'loc-main'` against ids that never reach the
-                server, so every item was labelled "Warehouse". */}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Source Agency</Text>
-              <Text style={styles.infoValue}>{agencyName || '—'}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Qty at Location</Text>
-              <Text style={styles.infoValue}>{item.quantityOnHand}</Text>
-            </View>
+                <Text
+                  style={[
+                    styles.mvQty,
+                    { color: mv.quantityChange >= 0 ? colors.success : colors.danger },
+                  ]}
+                >
+                  {mv.quantityChange > 0 ? '+' : ''}{mv.quantityChange}
+                </Text>
+                <Text style={styles.mvBalance}>{mv.balanceAfter}</Text>
+                <Text style={[styles.txnRef, { flex: 1.2, textAlign: 'right' }]} numberOfLines={1}>
+                  {mv.reference || mv.description || '—'}
+                </Text>
+              </View>
+            ))}
           </View>
         )}
 
@@ -683,6 +700,15 @@ const styles = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily,
     marginRight: spacing.sm,
   },
+  mvBalance: {
+    width: 55,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'right',
+    color: colors.textSecondary,
+    fontFamily: THEME.typography.fontFamily,
+    marginRight: spacing.sm,
+  },
   emptyTab: {
     padding: spacing.xl,
     alignItems: 'center',
@@ -690,6 +716,21 @@ const styles = StyleSheet.create({
   emptyTabText: {
     fontSize: 14,
     color: colors.textLight,
+    fontFamily: THEME.typography.fontFamily,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.secondary + '40',
+  },
+  retryBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.secondary,
     fontFamily: THEME.typography.fontFamily,
   },
 

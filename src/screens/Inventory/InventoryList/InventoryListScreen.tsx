@@ -153,7 +153,9 @@ const InventoryListScreen: React.FC = () => {
         i =>
           i.name.toLowerCase().includes(q) ||
           i.sku.toLowerCase().includes(q) ||
-          i.barcodeData.includes(q),
+          // q is already lowercased; the barcode was not, so a barcode with
+          // any letter in it only matched when typed in the exact case stored.
+          i.barcodeData.toLowerCase().includes(q),
       );
     }
 

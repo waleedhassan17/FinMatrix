@@ -102,28 +102,6 @@ export const setOpeningStockAPI = async (
   }
 };
 
-// CreatePhysicalCountDto wants `lines`, not `counts`, and CountLineDto.countedQty
-// is @IsNumberString. Both were wrong here — the field name 400'd as "lines must
-// be an array" and a numeric countedQty was rejected by the ValidationPipe. This
-// function had no caller until now, so nothing surfaced it.
-export const physicalCountAPI = async (data: { countDate: string; lines: Array<{ itemId: string; countedQty: string }>; notes?: string }): Promise<any> => {
-  try {
-    const response = await api.post('/inventory/physical-counts', data);
-    return response.data;
-  } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
-  }
-};
-
-export const stockTransferAPI = async (data: { fromLocationId: string; toLocationId: string; transferDate: string; items: Array<{ itemId: string; quantity: number }>; reference?: string }): Promise<any> => {
-  try {
-    const response = await api.post('/inventory/transfers', data);
-    return response.data;
-  } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
-  }
-};
-
 export const getStockMovementsAPI = async (id: string, params: any = {}): Promise<any> => {
   try {
     const response = await api.get(`/inventory/items/${id}/movements`, { params });
@@ -133,9 +111,15 @@ export const getStockMovementsAPI = async (id: string, params: any = {}): Promis
   }
 };
 
+// The dedicated /toggle route flips isActive server-side and takes no body.
+// This used to PATCH the plain item route with a hardcoded `{ isActive: true }`,
+// so Deactivate reactivated an already-active item and the UI never changed —
+// deactivation has never worked. Admin-only on the server (the rest of
+// inventory is admin+staff), so a staff user gets a 403 that the caller
+// surfaces.
 export const toggleInventoryItemAPI = async (id: string): Promise<any> => {
   try {
-    const response = await api.patch(`/inventory/items/${id}`, { isActive: true });
+    const response = await api.patch(`/inventory/items/${id}/toggle`);
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));

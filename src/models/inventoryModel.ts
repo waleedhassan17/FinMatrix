@@ -28,8 +28,6 @@ export interface InventoryItemData {
   minStock: number;
   maxStock: number;
   isActive: boolean;
-  serialTracking: boolean;
-  lotTracking: boolean;
   barcodeData: string;
   locationId: string;
   sourceAgencyId?: string;
@@ -57,7 +55,8 @@ export type InventoryApiEntity = InventoryItemData;
 //
 // `locationId` is absent by design: the backend has an inventory_locations
 // table but no endpoint exposes it, so the app can never hold a real location
-// UUID (see LOCATION_OPTIONS below).
+// UUID. Every screen that offered a location has been removed for the same
+// reason.
 export interface CreateInventoryItemPayload {
   sku: string;
   name: string;
@@ -73,8 +72,10 @@ export interface CreateInventoryItemPayload {
   minStock?: string;
   maxStock?: string;
   isActive?: boolean;
-  serialTracking?: boolean;
-  lotTracking?: boolean;
+  // serialTracking / lotTracking are deliberately absent. The columns exist
+  // and the DTO accepts them, but nothing in the product ever reads them back
+  // to enforce serial or lot capture, so the toggles only persisted a promise
+  // the app does not keep.
   barcodeData?: string;
   sourceAgencyId?: string;
 }
@@ -126,8 +127,6 @@ export interface InventoryFormData {
   minStock: string;
   maxStock: string;
   // Tracking
-  serialTracking: boolean;
-  lotTracking: boolean;
   barcodeData: string;
   // Warehouse & status
   sourceAgencyId: string;
@@ -172,21 +171,6 @@ export const UOM_OPTIONS = [
  */
 export const COST_METHOD_OPTIONS = [
   { label: 'Weighted Average', value: 'average' },
-];
-
-/**
- * DISPLAY-ONLY client ids — never send these to the API.
- *
- * The backend has an `inventory_locations` table but no endpoint exposes it,
- * so there is no way to obtain a real location UUID. The API validates
- * `locationId` with @IsUUID, so posting 'loc-main' 400s the request; the item
- * form used to default to exactly that and failed every create and edit.
- *
- * Kept only for the screens that still filter on these labels locally.
- */
-export const LOCATION_OPTIONS = [
-  { label: 'Main Office', value: 'loc-main' },
-  { label: 'Warehouse', value: 'loc-warehouse' },
 ];
 
 export const generateNextSKU = (existingSKUs: string[], category: string): string => {
@@ -280,13 +264,55 @@ export const previewWeightedAverage = (
   return (oldValue + receivingQty * unitPrice) / newQty;
 };
 
+// ─── Stock movements (the inventory audit trail) ─────
+/**
+ * The six types the API actually emits. There is no 'opening' and no
+ * 'reversal': opening stock is an 'adjustment' with sourceType
+ * 'opening_stock', and a voided adjustment is an 'adjustment' with sourceType
+ * 'inventory_adjustment_void'. `sourceType` is the only thing that tells them
+ * apart, which is why movementLabel() below reads it rather than `type`.
+ */
+export type StockMovementType =
+  | 'adjustment'
+  | 'delivery'
+  | 'receipt'
+  | 'transfer'
+  | 'sale'
+  | 'return';
+
+/**
+ * Mirrors the InventoryMovement entity, which GET items/:id/movements returns
+ * unmapped. `date` is a date-only column ('YYYY-MM-DD'), so `createdAt` is the
+ * only within-day ordering the rows carry.
+ */
 export interface StockMovement {
   id: string;
   date: string;
-  type: string;
+  type: StockMovementType;
   reference: string;
-  quantity: number;
-  balance: number;
+  description: string;
+  /** Signed: negative is stock leaving. */
+  quantityChange: number;
+  /** Running balance snapshotted by the server at insert time. */
+  balanceAfter: number;
+  sourceType: string;
+  sourceId: string;
+  createdAt: string;
 }
 
-export const getStockMovements = (_itemId: string): StockMovement[] => [];
+/**
+ * What to call a movement on screen. `type` alone is too coarse — opening
+ * stock, a physical count and a voided adjustment are all 'adjustment' — so
+ * the more specific `sourceType` wins where it says something the type does
+ * not.
+ */
+export const movementLabel = (mv: Pick<StockMovement, 'type' | 'sourceType'>): string => {
+  switch (mv.sourceType) {
+    case 'opening_stock': return 'Opening';
+    case 'inventory_adjustment_void': return 'Reversal';
+    case 'physical_count': return 'Count';
+    case 'purchase_order': return 'Receipt';
+    default:
+      return mv.type ? mv.type.charAt(0).toUpperCase() + mv.type.slice(1) : '—';
+  }
+};

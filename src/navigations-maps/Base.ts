@@ -54,8 +54,6 @@ export const ROUTES = {
   INVENTORY_FORM: 'InventoryForm',
   INVENTORY_DETAIL: 'InventoryDetail',
   ADJUSTMENT: 'Adjustment',
-  PHYSICAL_COUNT: 'PhysicalCount',
-  STOCK_TRANSFER: 'StockTransfer',
   AGENCY_LIST: 'AgencyList',
   AGENCY_DETAIL: 'AgencyDetail',
   AGENCY_FORM: 'AgencyForm',

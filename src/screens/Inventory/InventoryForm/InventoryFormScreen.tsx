@@ -126,8 +126,6 @@ const InventoryFormScreen: React.FC = () => {
         reorderQuantity: existing.reorderQuantity.toString(),
         minStock: existing.minStock.toString(),
         maxStock: existing.maxStock.toString(),
-        serialTracking: existing.serialTracking,
-        lotTracking: existing.lotTracking,
         barcodeData: existing.barcodeData,
         sourceAgencyId: existing.sourceAgencyId ?? '',
         isActive: existing.isActive,
@@ -420,34 +418,15 @@ const InventoryFormScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ── Tracking Section ── */}
+          {/* ── Tracking Section ──
+              Serial Tracking and Lot Tracking toggles used to sit above the
+              barcode. Nothing in the product ever read the flags back — there
+              is no serial or lot capture at receipt or delivery — so they only
+              persisted a promise the app does not keep. The columns are
+              untouched; this is a UI removal. */}
           {renderSectionHeader('tracking', '🏷️  Tracking')}
           {!collapsed.tracking && (
             <View style={styles.sectionBody}>
-              <View style={styles.toggleRow}>
-                <View>
-                  <Text style={styles.toggleLabel}>Serial Tracking</Text>
-                  <Text style={styles.toggleHint}>Track individual serial numbers</Text>
-                </View>
-                <Switch
-                  value={form.serialTracking}
-                  onValueChange={val => updateField('serialTracking', val)}
-                  trackColor={{ false: colors.border, true: colors.success + '60' }}
-                  thumbColor={form.serialTracking ? colors.success : '#ccc'}
-                />
-              </View>
-              <View style={styles.toggleRow}>
-                <View>
-                  <Text style={styles.toggleLabel}>Lot Tracking</Text>
-                  <Text style={styles.toggleHint}>Track items by batch/lot number</Text>
-                </View>
-                <Switch
-                  value={form.lotTracking}
-                  onValueChange={val => updateField('lotTracking', val)}
-                  trackColor={{ false: colors.border, true: colors.success + '60' }}
-                  thumbColor={form.lotTracking ? colors.success : '#ccc'}
-                />
-              </View>
               <CustomInput
                 label="Barcode"
                 value={form.barcodeData}

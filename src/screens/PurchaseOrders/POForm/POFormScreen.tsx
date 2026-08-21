@@ -78,11 +78,14 @@ const POFormScreen: React.FC = () => {
 
   const editingId = route.params?.poId;
   const isEditing = !!editingId;
+  // Set when arriving from an inventory item's "Create PO" action.
+  const prefillItemId = route.params?.prefillItemId;
   const pos = useAppSelector(selectPOs);
   const vendors = useAppSelector(selectVendors);
   const items = useAppSelector(selectInventoryItems);
   const form = useAppSelector(selectPOFormState);
   const hydratedRef = React.useRef(false);
+  const prefilledRef = React.useRef(false);
 
   const vendorOptions = useMemo(
     () => vendors.filter(v => v.isActive).map(v => ({ label: v.name, value: v.id })),
@@ -118,6 +121,40 @@ const POFormScreen: React.FC = () => {
     return () => { dispatch(resetForm()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, editingId, dispatch]);
+
+  // Seed the first line from the item the user pressed "Create PO" on. This
+  // has to wait for fetchInventoryItems() above to land — the item's name and
+  // cost come from the list, which is usually empty on first render.
+  //
+  // The vendor is deliberately left blank: an inventory item carries a source
+  // agency, not a vendor, and the API requires a real vendorId, so there is
+  // nothing here to guess from.
+  useEffect(() => {
+    if (!prefillItemId || isEditing || prefilledRef.current) return;
+    const item = items.find(i => (i.itemId ?? i.id) === prefillItemId);
+    if (!item) return;
+    const firstLine = form.lines[0];
+    if (!firstLine) return;
+    prefilledRef.current = true;
+
+    dispatch(
+      setLineItem({
+        id: firstLine.id,
+        itemId: item.itemId ?? item.id,
+        itemName: item.name,
+        description: item.description || item.name,
+        unitPrice: String(item.unitCost),
+      }),
+    );
+    dispatch(
+      updateLine({
+        id: firstLine.id,
+        field: 'quantity',
+        value: String(Math.max(item.reorderQuantity, 1)),
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillItemId, isEditing, items, dispatch]);
 
   // The API's PATCH rebuilds every line from scratch and resets receivedQty to
   // zero — on a PO that has receipts that would orphan stock and a posted

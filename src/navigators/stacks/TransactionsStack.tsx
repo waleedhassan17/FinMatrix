@@ -41,7 +41,9 @@ export type TransactionsStackParamList = {
     lines: { billNumber: string; applied: number; remaining: number }[];
   };
   POList: undefined;
-  POForm: { poId?: string } | undefined;
+  // prefillItemId seeds the first line from an inventory item, so "Create PO"
+  // on an item detail lands on a form that already knows what to reorder.
+  POForm: { poId?: string; prefillItemId?: string } | undefined;
   PODetail: { poId: string };
   JournalEntryList: undefined;
   JournalEntryForm: { entryId?: string } | undefined;

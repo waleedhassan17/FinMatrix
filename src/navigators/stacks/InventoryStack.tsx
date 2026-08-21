@@ -10,8 +10,6 @@ export type InventoryStackParamList = {
   InventoryForm: { itemId?: string } | undefined;
   InventoryDetail: { itemId: string };
   Adjustment: { itemId?: string } | undefined;
-  PhysicalCount: undefined;
-  StockTransfer: undefined;
 };
 
 const Stack = createNativeStackNavigator();

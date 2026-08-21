@@ -32,8 +32,6 @@ const initialFormData: InventoryFormData = {
   reorderQuantity: '',
   minStock: '',
   maxStock: '',
-  serialTracking: false,
-  lotTracking: false,
   barcodeData: '',
   sourceAgencyId: '',
   isActive: true,

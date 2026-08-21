@@ -10,6 +10,8 @@ import type {
   CreateInventoryItemPayload,
   InventoryFormData,
   InventoryItemData,
+  StockMovement,
+  StockMovementType,
   UpdateInventoryItemPayload,
 } from '../models/inventoryModel';
 
@@ -61,8 +63,6 @@ export const mapInventoryItem = (
   minStock: toNum(raw.minStock),
   maxStock: toNum(raw.maxStock),
   isActive: raw.isActive ?? true,
-  serialTracking: raw.serialTracking ?? false,
-  lotTracking: raw.lotTracking ?? false,
   barcodeData: raw.barcodeData ?? '',
   locationId: raw.locationId ?? '',
   sourceAgencyId: raw.sourceAgencyId,
@@ -110,6 +110,47 @@ export function inventoryListSerializer(payload: any): SerializedInventoryList {
   };
 }
 
+// ─── Stock movements ─────────────────────────────────
+export const mapStockMovement = (raw: any): StockMovement => ({
+  id: raw.id ?? '',
+  date: raw.date ?? '',
+  type: (raw.type ?? 'adjustment') as StockMovementType,
+  reference: raw.reference ?? '',
+  description: raw.description ?? '',
+  quantityChange: toNum(raw.quantityChange),
+  balanceAfter: toNum(raw.balanceAfter),
+  sourceType: raw.sourceType ?? '',
+  sourceId: raw.sourceId ?? '',
+  createdAt: raw.createdAt ?? '',
+});
+
+/**
+ * GET items/:id/movements returns `{ data, total, page, limit }`, but the
+ * global response envelope lifts `data` and drops its siblings — so no
+ * pagination metadata ever reaches the client and the payload is just an
+ * array.
+ *
+ * The server orders by `date` alone, a date-only column with no tiebreaker,
+ * so movements made on the same day come back in arbitrary order and the
+ * running balance reads as noise. Sorting on (date, createdAt) here restores
+ * a sane order without waiting on a backend release.
+ */
+export function stockMovementsSerializer(payload: any): StockMovement[] {
+  const data = payload?.data;
+  const raw: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : [];
+  return raw
+    .map(mapStockMovement)
+    .sort((a, b) =>
+      a.date === b.date
+        ? b.createdAt.localeCompare(a.createdAt)
+        : b.date.localeCompare(a.date),
+    );
+}
+
 export function inventorySingleSerializer(
   payload: any,
 ): InventoryItemData | null {
@@ -152,8 +193,6 @@ export const formDataToInventoryCreatePayload = (
   minStock: money(form.minStock),
   maxStock: money(form.maxStock),
   isActive: form.isActive,
-  serialTracking: form.serialTracking,
-  lotTracking: form.lotTracking,
   barcodeData: text(form.barcodeData),
   // Only ever a real agency UUID — an empty string would fail @IsUUID.
   sourceAgencyId: text(form.sourceAgencyId),
