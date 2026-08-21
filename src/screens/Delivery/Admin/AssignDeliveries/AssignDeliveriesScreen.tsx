@@ -11,6 +11,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -34,6 +35,7 @@ import {
   selectDeliveries,
   selectDeliveryPersonnel,
   assignSelectedDeliveries,
+  deleteDelivery,
   fetchDeliveries,
   fetchDeliveryPersonnel,
 } from './deliverySlice';
@@ -109,6 +111,54 @@ const AssignDeliveriesScreen: React.FC = () => {
       return;
     }
     setShowPersonnelModal(true);
+  };
+
+  /**
+   * Discard the selected unassigned deliveries.
+   *
+   * This list is the only place unassigned deliveries appear — tapping a row
+   * here toggles its checkbox rather than opening the detail screen, so the
+   * detail screen's Delete action is unreachable for exactly the deliveries
+   * that need it. The action belongs next to Assign, on the same selection.
+   *
+   * Nothing has been posted for an unassigned delivery, so this changes no
+   * stock and no reports; the server re-checks and refuses anything that has
+   * been dispatched.
+   */
+  const handleDeleteSelected = () => {
+    if (!selectedDeliveryIds.length) return;
+    const n = selectedDeliveryIds.length;
+    Alert.alert(
+      n === 1 ? 'Delete this delivery?' : `Delete ${n} deliveries?`,
+      'They were never dispatched, so nothing has been posted for them. Your inventory and reports are unaffected.',
+      [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const ids = [...selectedDeliveryIds];
+            const failures: string[] = [];
+            for (const id of ids) {
+              try {
+                await dispatch(deleteDelivery(id)).unwrap();
+              } catch (err: any) {
+                failures.push(err?.message || 'Unable to delete.');
+              }
+            }
+            dispatch(clearSelectedDeliveries());
+            await dispatch(fetchDeliveries());
+            if (failures.length) {
+              // Report honestly rather than claiming a clean sweep.
+              Alert.alert(
+                'Some could not be deleted',
+                `${ids.length - failures.length} of ${ids.length} removed. ${failures[0]}`,
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handlePickPersonnel = async (personnelId: string, personnelName: string) => {
@@ -241,6 +291,20 @@ const AssignDeliveriesScreen: React.FC = () => {
                 fullWidth
                 disabled={!selectedDeliveryIds.length}
               />
+              {/* Only shown with a selection: an empty destructive button on a
+                  screen whose main job is assigning would be noise. */}
+              {selectedDeliveryIds.length > 0 && (
+                <TouchableOpacity
+                  style={styles.deleteSelectedBtn}
+                  onPress={handleDeleteSelected}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="trash-2" size={15} color="#DE350B" />
+                  <Text style={styles.deleteSelectedText}>
+                    Delete Selected ({selectedDeliveryIds.length})
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('AssignWork')}>
@@ -567,6 +631,23 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  deleteSelectedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: '#DE350B55',
+    backgroundColor: '#DE350B0D',
+  },
+  deleteSelectedText: {
+    ...THEME.typography.bodySm,
+    fontWeight: '700',
+    color: '#DE350B',
   },
   simpleRow: {
     paddingVertical: spacing.sm,
