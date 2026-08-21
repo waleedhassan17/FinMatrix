@@ -109,13 +109,24 @@ const PaymentSuccessScreen: React.FC = () => {
         </View>
         <View style={styles.actionPrimary}>
           {/* Back to where the task started: the bill if they came from one,
-              otherwise the bills list. Never a dead end. */}
+              otherwise the bills list. Never a dead end.
+
+              popTo, not replace. The user almost always arrives here from that
+              bill's own detail screen, so replace() built a SECOND BillDetail
+              on top of the first — Back then landed on a stale copy of the
+              same bill instead of the purchase order behind it. popTo unwinds
+              to the one already in the stack (refreshing its params), and adds
+              it if they paid from somewhere else.
+
+              This still cannot return to a filled-in Pay Bills form and post
+              the payment twice: PayBills was replaced by this screen, so it is
+              no longer in the stack to pop back to. */}
           <CustomButton
             title={billId ? 'View bill' : 'Done'}
             onPress={() =>
               billId
-                ? navigation.replace('BillDetail', { billId })
-                : navigation.replace('BillList')
+                ? navigation.popTo('BillDetail', { billId })
+                : navigation.popTo('BillList')
             }
             variant="primary"
             size="sm"

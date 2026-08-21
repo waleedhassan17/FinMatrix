@@ -296,7 +296,13 @@ const PODetailScreen: React.FC = () => {
                 text1: 'Bill created',
                 text2: 'DR Goods Received Not Invoiced · CR Accounts Payable.',
               });
-              if (billId) navigation.navigate('BillDetail', { billId });
+              // push, not navigate, to say what this is: a drill-down that
+              // must leave the PO underneath it. (In React Navigation 7
+              // navigate() would push here too — it only differs when the
+              // target is already the focused screen, where it merges params
+              // instead. push states the intent and cannot be surprised by
+              // that case.)
+              if (billId) navigation.push('BillDetail', { billId });
             } catch (e: any) {
               Toast.show({
                 type: 'error',
@@ -316,7 +322,7 @@ const PODetailScreen: React.FC = () => {
   // whole object and make React Compiler skip the component.
   const linkedBillId = po?.billId;
   const handleViewBill = useCallback(() => {
-    if (linkedBillId) navigation.navigate('BillDetail', { billId: linkedBillId });
+    if (linkedBillId) navigation.push('BillDetail', { billId: linkedBillId });
   }, [linkedBillId, navigation]);
 
   // ── Loading / Error ─────────────────────────────
@@ -549,7 +555,7 @@ const PODetailScreen: React.FC = () => {
                 <View style={styles.actionSecondary}>
                   <CustomButton
                     title="Edit"
-                    onPress={() => navigation.navigate('POForm', { poId: po.id })}
+                    onPress={() => navigation.push('POForm', { poId: po.id })}
                     variant="secondary"
                     size="sm"
                     fullWidth
@@ -634,12 +640,23 @@ const PODetailScreen: React.FC = () => {
               </>
             )}
 
-            {/* Closed: read-only */}
+            {/* Closed: read-only.
+
+                This used to be "View Bills" onto the whole BillList, which was
+                wrong twice over. A closed PO has exactly one bill and that is
+                what the user wants — the global list makes them hunt for it.
+                And navigate('BillList') PUSHES a second BillList even when one
+                is already in the stack (React Navigation 7 only merges params
+                when the target is the focused screen), so the trail filled up
+                with repeated list screens and Back stopped landing where the
+                user expected. popTo returns to the existing one. */}
             {po.status === 'closed' && (
               <View style={styles.actionPrimary}>
                 <CustomButton
-                  title="View Bills"
-                  onPress={() => navigation.navigate('BillList')}
+                  title={linkedBillId ? 'View Bill' : 'View Bills'}
+                  onPress={
+                    linkedBillId ? handleViewBill : () => navigation.popTo('BillList')
+                  }
                   variant="primary"
                   size="sm"
                   fullWidth

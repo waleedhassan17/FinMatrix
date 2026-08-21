@@ -124,7 +124,7 @@ const BillListScreen: React.FC = () => {
       <TouchableOpacity
         style={[styles.card, { borderLeftWidth: 4, borderLeftColor: statusColor }]}
         activeOpacity={0.6}
-        onPress={() => navigation.navigate('BillDetail', { billId: item.id })}
+        onPress={() => navigation.push('BillDetail', { billId: item.id })}
       >
         <View style={styles.cardTop}>
           <View style={{ flex: 1 }}>
@@ -205,7 +205,7 @@ const BillListScreen: React.FC = () => {
             <TouchableOpacity style={styles.searchToggle} onPress={() => setSearchOpen(p => !p)}>
               <Feather name="search" size={18} color="#FFFFFF" />
             </TouchableOpacity>
-            <HeaderAction label="New" onPress={() => navigation.navigate('BillForm')} />
+            <HeaderAction label="New" onPress={() => navigation.push('BillForm')} />
           </View>
         </View>
       </LinearGradient>
@@ -283,7 +283,7 @@ const BillListScreen: React.FC = () => {
             title="No bills yet"
             message="Record your first vendor bill to track expenses and payments."
             actionLabel="Create Bill"
-            onAction={() => navigation.navigate('BillForm')}
+            onAction={() => navigation.push('BillForm')}
           />
         </View>
       ) : (

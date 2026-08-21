@@ -369,7 +369,7 @@ const PayBillsScreen: React.FC = () => {
                 <View style={styles.emptyCta}>
                   <CustomButton
                     title="Create a bill"
-                    onPress={() => navigation.navigate('BillForm', { vendorId: form.vendorId })}
+                    onPress={() => navigation.push('BillForm', { vendorId: form.vendorId })}
                     variant="secondary"
                     size="sm"
                   />

@@ -336,7 +336,7 @@ const BillDetailScreen: React.FC = () => {
           <View style={styles.actionSecondary}>
             <CustomButton
               title="Edit"
-              onPress={() => navigation.navigate('BillForm', { billId: bill.id })}
+              onPress={() => navigation.push('BillForm', { billId: bill.id })}
               variant="secondary"
               size="sm"
               fullWidth
@@ -354,7 +354,7 @@ const BillDetailScreen: React.FC = () => {
           <View style={styles.actionPrimary}>
             <CustomButton
               title="Pay Bill"
-              onPress={() => navigation.navigate('PayBills', { vendorId: bill.vendorId, billId: bill.id })}
+              onPress={() => navigation.push('PayBills', { vendorId: bill.vendorId, billId: bill.id })}
               variant="primary"
               size="sm"
               fullWidth
@@ -370,9 +370,14 @@ const BillDetailScreen: React.FC = () => {
 
         {bill.status === 'void' && (
           <View style={styles.actionPrimary}>
+            {/* popTo, not navigate: this is a BACK action. navigate() pushes a
+                second BillList on top even when one is already in the stack,
+                which left Back pointing at the voided bill the user had just
+                walked away from. popTo unwinds to the existing list, and adds
+                it if they never came through one. */}
             <CustomButton
               title="Back to Bills"
-              onPress={() => navigation.navigate('BillList')}
+              onPress={() => navigation.popTo('BillList')}
               variant="secondary"
               size="sm"
               fullWidth

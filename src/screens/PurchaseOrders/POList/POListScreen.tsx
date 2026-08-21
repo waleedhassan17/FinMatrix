@@ -116,7 +116,7 @@ const POListScreen: React.FC = () => {
         <TouchableOpacity
           style={[styles.card, { borderLeftWidth: 4, borderLeftColor: statusColor }]}
           activeOpacity={0.6}
-          onPress={() => navigation.navigate('PODetail', { poId: item.id })}
+          onPress={() => navigation.push('PODetail', { poId: item.id })}
         >
           <View style={styles.cardTop}>
             <View style={{ flex: 1 }}>
@@ -212,7 +212,7 @@ const POListScreen: React.FC = () => {
             <TouchableOpacity style={styles.searchToggle} onPress={() => setSearchOpen(p => !p)}>
               <Feather name="search" size={18} color="#FFFFFF" />
             </TouchableOpacity>
-            <HeaderAction label="New" onPress={() => navigation.navigate('POForm')} />
+            <HeaderAction label="New" onPress={() => navigation.push('POForm')} />
           </View>
         </View>
       </LinearGradient>
@@ -299,7 +299,7 @@ const POListScreen: React.FC = () => {
             title="No purchase orders yet"
             message="Create your first purchase order to track what you've ordered from vendors."
             actionLabel="Create PO"
-            onAction={() => navigation.navigate('POForm')}
+            onAction={() => navigation.push('POForm')}
           />
         </View>
       ) : (
