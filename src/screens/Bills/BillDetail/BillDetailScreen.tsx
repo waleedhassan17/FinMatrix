@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  Linking,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Alert } from '../../../utils/alert';
@@ -44,6 +45,10 @@ import { billSingleSerializer } from '../../../serializers/billSerializer';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { BillStatus, BillPayment } from '../../../types';
+import {
+  downloadBillPaymentProof,
+  proofIdFromUrl,
+} from '../../../networks/purchases/billNetwork';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -68,6 +73,26 @@ const BillDetailScreen: React.FC = () => {
   const billId = route.params.billId;
   const bill = useAppSelector(selectBillDetail);
   const payments = useAppSelector(selectBillPayments);
+  const [openingProofId, setOpeningProofId] = React.useState<string | null>(null);
+
+  /**
+   * Download with the token, then hand the OS a local file.
+   *
+   * The stored URL is an auth-gated API route, not a CDN link — opening it
+   * directly would 401. Images and PDFs both go through the same path; the
+   * platform viewer decides what to do with the bytes.
+   */
+  const openProof = React.useCallback(async (proofId: string) => {
+    setOpeningProofId(proofId);
+    try {
+      const uri = await downloadBillPaymentProof(proofId);
+      await Linking.openURL(uri);
+    } catch (e: any) {
+      Alert.alert('Could not open the proof', e?.message ?? 'Please try again.');
+    } finally {
+      setOpeningProofId(null);
+    }
+  }, []);
   const isLoading = useAppSelector(selectBillDetailLoading);
   const error = useAppSelector(selectBillDetailError);
 
@@ -321,6 +346,23 @@ const BillDetailScreen: React.FC = () => {
               {!!pmt.reference && (
                 <Text style={styles.paymentRef}>Ref: {pmt.reference}</Text>
               )}
+              {/* Only payments recorded since proof became mandatory carry one;
+                  older rows simply show nothing here. */}
+              {!!proofIdFromUrl(pmt.proofUrl) && (
+                <TouchableOpacity
+                  style={styles.proofLink}
+                  activeOpacity={0.7}
+                  onPress={() => openProof(proofIdFromUrl(pmt.proofUrl) as string)}
+                  disabled={openingProofId === proofIdFromUrl(pmt.proofUrl)}
+                >
+                  {openingProofId === proofIdFromUrl(pmt.proofUrl) ? (
+                    <ActivityIndicator size="small" color={colors.secondary} />
+                  ) : (
+                    <Feather name="paperclip" size={13} color={colors.secondary} />
+                  )}
+                  <Text style={styles.proofLinkText}>View payment proof</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ))
         )}
@@ -416,6 +458,15 @@ const TotalsRow: React.FC<{
 // STYLES
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
+  proofLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: spacing.xs + 2,
+  },
+  proofLinkText: {
+    fontSize: 12, fontWeight: '600', color: colors.secondary,
+    fontFamily: THEME.typography.fontFamily,
+  },
+
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   errorText: { fontSize: 15, color: colors.danger, fontFamily: THEME.typography.fontFamily },

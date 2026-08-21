@@ -14,6 +14,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -22,6 +24,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 
 import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
@@ -41,6 +45,9 @@ import {
   resetPayBills,
   fetchAllBillsForPayment,
   savePayment,
+  clearPaymentProof,
+  uploadPaymentProof,
+  selectPayBillProof,
 } from './payBillsSlice';
 import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
 import { fetchBills } from '../BillList/billListSlice';
@@ -82,6 +89,7 @@ const PayBillsScreen: React.FC = () => {
   const preBillId = route.params?.billId;
 
   const form = useAppSelector(selectPayBillsState);
+  const proof = useAppSelector(selectPayBillProof);
   const vendors = useAppSelector(selectVendors);
   const accounts = useAppSelector(selectAccounts);
 
@@ -161,6 +169,10 @@ const PayBillsScreen: React.FC = () => {
     [payableAccounts, form.bankAccountId],
   );
 
+  // Cash is leaving the account, so evidence is required. A credit-only
+  // settlement moves none and posts nothing.
+  const needsProof = totalAllocated > 0;
+
   const overdraw = useMemo(() => {
     const acct = payableAccounts.find(a => a.id === form.bankAccountId);
     if (!acct || totalAllocated <= 0 || totalAllocated <= acct.balance) return null;
@@ -186,6 +198,67 @@ const PayBillsScreen: React.FC = () => {
     if (totalAllocated <= 0 && creditOnly) delete errs.bankAccountId;
     return errs;
   }, [form, totalAllocated]);
+
+  // ── Payment proof ───────────────────────────────
+  // Uploaded the moment it is picked, so by the time Record Payment is
+  // pressable the file is already durable on the server. The button below
+  // stays disabled until `proof.id` exists — not merely until a file is
+  // chosen — so a payment can never be recorded against a failed upload.
+  const startUpload = useCallback(
+    (file: { uri: string; name: string; mimeType: string }) => {
+      dispatch(uploadPaymentProof(file));
+    },
+    [dispatch],
+  );
+
+  const pickImage = useCallback(
+    async (fromCamera: boolean) => {
+      const perm = fromCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          fromCamera ? 'Camera access needed' : 'Photo access needed',
+          'Allow access so the receipt can be attached to this payment.',
+        );
+        return;
+      }
+      const res = fromCamera
+        ? await ImagePicker.launchCameraAsync({ quality: 0.7 })
+        : await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+      if (res.canceled || !res.assets?.length) return;
+      const a = res.assets[0];
+      startUpload({
+        uri: a.uri,
+        name: a.fileName ?? `receipt-${Date.now()}.jpg`,
+        mimeType: a.mimeType ?? 'image/jpeg',
+      });
+    },
+    [startUpload],
+  );
+
+  const pickDocument = useCallback(async () => {
+    const res = await DocumentPicker.getDocumentAsync({
+      type: ['application/pdf', 'image/*'],
+      copyToCacheDirectory: true,
+    });
+    if (res.canceled || !res.assets?.length) return;
+    const a = res.assets[0];
+    startUpload({
+      uri: a.uri,
+      name: a.name ?? `proof-${Date.now()}`,
+      mimeType: a.mimeType ?? 'application/pdf',
+    });
+  }, [startUpload]);
+
+  const chooseProof = useCallback(() => {
+    Alert.alert('Attach payment proof', 'Where is the receipt?', [
+      { text: 'Take a photo', onPress: () => pickImage(true) },
+      { text: 'Choose a photo', onPress: () => pickImage(false) },
+      { text: 'Choose a PDF', onPress: pickDocument },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [pickImage, pickDocument]);
 
   const handleSave = useCallback(async () => {
     const validationErrors = validate();
@@ -510,20 +583,101 @@ const PayBillsScreen: React.FC = () => {
             </View>
           </View>
 
+          {/* ── Payment proof ────────────────────────── */}
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: '#0EA5E9' }]} />
+            <Text style={styles.sectionTitle}>PAYMENT PROOF</Text>
+          </View>
+          <View style={styles.sectionCard}>
+            <View style={[styles.cardAccent, { backgroundColor: '#0EA5E9' }]} />
+            <View style={styles.cardBody}>
+              <Text style={styles.proofHelp}>
+                Attach a receipt, bank confirmation, or a photo of the cash voucher.
+              </Text>
+
+              {!proof.localUri ? (
+                <TouchableOpacity style={styles.proofPick} onPress={chooseProof} activeOpacity={0.75}>
+                  <Feather name="paperclip" size={16} color={colors.primary} />
+                  <Text style={styles.proofPickText}>Attach proof</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.proofRow}>
+                  {proof.mimeType.startsWith('image/') ? (
+                    <Image source={{ uri: proof.localUri }} style={styles.proofThumb} />
+                  ) : (
+                    <View style={[styles.proofThumb, styles.proofThumbDoc]}>
+                      <Feather name="file-text" size={20} color={colors.textSecondary} />
+                    </View>
+                  )}
+
+                  <View style={styles.proofMeta}>
+                    <Text style={styles.proofName} numberOfLines={1}>{proof.name}</Text>
+                    {proof.isUploading ? (
+                      <View style={styles.proofStatusRow}>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={styles.proofStatus}>Uploading…</Text>
+                      </View>
+                    ) : proof.error ? (
+                      <TouchableOpacity
+                        onPress={() =>
+                          startUpload({
+                            uri: proof.localUri,
+                            name: proof.name,
+                            mimeType: proof.mimeType,
+                          })
+                        }
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.proofRetry}>{proof.error} Tap to retry.</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.proofStatusRow}>
+                        <Feather name="check-circle" size={12} color={colors.success} />
+                        <Text style={[styles.proofStatus, { color: colors.success }]}>Attached</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => dispatch(clearPaymentProof())}
+                    disabled={proof.isUploading}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="x" size={18} color={colors.textLight} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+
           {/* ── Actions ──────────────────────────────── */}
           <View style={styles.btnRow}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
               <SecondaryButton title="Cancel" onPress={() => navigation.goBack()} disabled={form.isSaving} />
             </View>
             <View style={{ flex: 1.4 }}>
+              {/* Gated on proof.id, not on a file being chosen: the upload must
+                  have come back before money can move.
+
+                  Only when cash actually moves, though. A settlement funded
+                  entirely from vendor credit posts no payment — savePayment
+                  returns before calling the API — so there is nothing to
+                  evidence and demanding a receipt would just block it. */}
               <PrimaryButton
                 title={form.isSaving ? 'Recording…' : 'Record Payment'}
                 onPress={handleSave}
                 isLoading={form.isSaving}
+                disabled={form.isSaving || (needsProof && !proof.id)}
                 icon={<Feather name="check-circle" size={16} color="#FFFFFF" />}
               />
             </View>
           </View>
+          {needsProof && !proof.id && (
+            <Text style={styles.proofGate}>
+              Attach a payment proof to record this payment.
+            </Text>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -540,6 +694,45 @@ const SummaryRow: React.FC<{ label: string; value: string; valueColor?: string }
 
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
+  // ── Payment proof ─────────────────────────────────
+  proofHelp: {
+    fontSize: 12, color: colors.textSecondary,
+    fontFamily: THEME.typography.fontFamily, lineHeight: 17, marginBottom: spacing.sm,
+  },
+  proofPick: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
+    paddingVertical: spacing.sm + 4, borderRadius: borderRadius.sm,
+    borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primary + '55',
+    backgroundColor: colors.primary + '08',
+  },
+  proofPickText: {
+    fontSize: 13, fontWeight: '600', color: colors.primary,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  proofRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  proofThumb: {
+    width: 44, height: 44, borderRadius: borderRadius.sm,
+    backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border,
+  },
+  proofThumbDoc: { alignItems: 'center', justifyContent: 'center' },
+  proofMeta: { flex: 1 },
+  proofName: {
+    fontSize: 13, fontWeight: '600', color: colors.textPrimary,
+    fontFamily: THEME.typography.fontFamily,
+  },
+  proofStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  proofStatus: {
+    fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily,
+  },
+  proofRetry: {
+    fontSize: 11, color: colors.danger, fontFamily: THEME.typography.fontFamily,
+    marginTop: 2, lineHeight: 15,
+  },
+  proofGate: {
+    fontSize: 11, color: colors.textLight, textAlign: 'center',
+    fontFamily: THEME.typography.fontFamily, marginTop: spacing.xs,
+  },
+
   container: { flex: 1, backgroundColor: '#F1F5F9' },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
 

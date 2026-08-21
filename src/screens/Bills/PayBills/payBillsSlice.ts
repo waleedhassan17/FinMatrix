@@ -11,6 +11,7 @@ import type { Bill, BillPayment, BillStatus, PaymentMethod } from '../../../type
 import {
   getBillsAPI,
   payBillsAPI,
+  uploadBillPaymentProofAPI,
 } from '../../../networks/purchases/billNetwork';
 import { billListSerializer } from '../../../serializers/billSerializer';
 import { applyVendorCreditAPI, getVendorCreditsAPI } from '../../../networks/purchases/vendorCreditNetwork';
@@ -71,6 +72,14 @@ export interface PayBillsSliceState {
   errors: Record<string, string>;
   isSaving: boolean;
   isLoadingBills: boolean;
+  /** Payment proof. `proofId` is what the API needs; the rest drives the UI. */
+  proofId: string;
+  proofName: string;
+  proofMimeType: string;
+  /** Local uri of the picked file, for the thumbnail before/after upload. */
+  proofLocalUri: string;
+  isUploadingProof: boolean;
+  proofError: string;
 }
 
 const initialState: PayBillsSliceState = {
@@ -88,6 +97,12 @@ const initialState: PayBillsSliceState = {
   errors: {},
   isSaving: false,
   isLoadingBills: false,
+  proofId: '',
+  proofName: '',
+  proofMimeType: '',
+  proofLocalUri: '',
+  isUploadingProof: false,
+  proofError: '',
 };
 
 /** The payment total is derived from the rows, never typed. */
@@ -235,6 +250,47 @@ export const payBillsSlice = createAppSlice({
       syncTotal(state);
     }),
 
+    clearPaymentProof: create.reducer(state => {
+      state.proofId = '';
+      state.proofName = '';
+      state.proofMimeType = '';
+      state.proofLocalUri = '';
+      state.proofError = '';
+    }),
+
+    /**
+     * Upload the proof and hold its id.
+     *
+     * Separate from savePayment on purpose: the file has to be durable before
+     * any money moves, and the Pay button stays disabled until this resolves —
+     * so a payment can never be recorded against an upload that failed.
+     */
+    uploadPaymentProof: create.asyncThunk(
+      async (file: { uri: string; name: string; mimeType: string }) =>
+        uploadBillPaymentProofAPI(file),
+      {
+        pending: (state, action) => {
+          state.isUploadingProof = true;
+          state.proofError = '';
+          state.proofId = '';
+          state.proofLocalUri = action.meta.arg.uri;
+          state.proofName = action.meta.arg.name;
+          state.proofMimeType = action.meta.arg.mimeType;
+        },
+        fulfilled: (state, action: PayloadAction<any>) => {
+          state.isUploadingProof = false;
+          state.proofId = action.payload?.id ?? '';
+          state.proofMimeType = action.payload?.mimeType ?? state.proofMimeType;
+          state.proofName = action.payload?.originalName ?? state.proofName;
+        },
+        rejected: (state, action) => {
+          state.isUploadingProof = false;
+          state.proofId = '';
+          state.proofError = action.error?.message ?? 'Upload failed. Tap to retry.';
+        },
+      },
+    ),
+
     preselectBill: create.reducer(
       (state, action: PayloadAction<string>) => {
         const row = state.outstandingRows.find(r => r.billId === action.payload);
@@ -345,6 +401,7 @@ export const payBillsSlice = createAppSlice({
           paymentMethod: toBackendPaymentMethod(f.method),
           bankAccountId: f.bankAccountId,
           reference: f.reference || undefined,
+          proofId: f.proofId,
           applications: cash.map(a => ({
             billId: a.billId,
             amount: (Math.round(a.amount * 100) / 100).toFixed(2),
@@ -371,6 +428,14 @@ export const payBillsSlice = createAppSlice({
     selectOutstandingBillRows: state => state.outstandingRows,
     selectPayBillErrors: state => state.errors,
     selectPayBillIsSaving: state => state.isSaving,
+    selectPayBillProof: state => ({
+      id: state.proofId,
+      name: state.proofName,
+      mimeType: state.proofMimeType,
+      localUri: state.proofLocalUri,
+      isUploading: state.isUploadingProof,
+      error: state.proofError,
+    }),
   },
 });
 
@@ -385,6 +450,8 @@ export const {
   setAvailableCredits,
   fetchVendorCreditsForPayment,
   preselectBill,
+  clearPaymentProof,
+  uploadPaymentProof,
   setPayBillErrors,
   setPayBillIsSaving,
   resetPayBills,
@@ -397,4 +464,5 @@ export const {
   selectOutstandingBillRows,
   selectPayBillErrors,
   selectPayBillIsSaving,
+  selectPayBillProof,
 } = payBillsSlice.selectors;

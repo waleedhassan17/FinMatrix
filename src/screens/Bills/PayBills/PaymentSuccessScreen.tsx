@@ -64,6 +64,9 @@ const PaymentSuccessScreen: React.FC = () => {
           <Row label="Date" value={formatDate(paymentDate)} />
           <Row label="Method" value={METHOD_LABEL[method] ?? method} />
           <Row label="Reference" value={reference || '—'} />
+          {/* Only a cash payment carries one. A settlement funded entirely
+              from vendor credit posts nothing and needs no proof. */}
+          {amount > 0 && <Row label="Proof" value="Attached" />}
           <View style={styles.divider} />
           <Text style={styles.postedNote}>
             {amount > 0

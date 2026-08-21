@@ -313,6 +313,11 @@ export interface BillPayment {
   reference: string;
   amount: number;
   bankAccountId: string;
+  /**
+   * Link to the payment proof. Null on payments recorded before proof became
+   * mandatory — those rows must still render, just without a link.
+   */
+  proofUrl?: string | null;
   allocations: BillPaymentAllocation[];
   notes: string;
   createdBy: string;

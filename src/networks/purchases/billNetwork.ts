@@ -2,7 +2,18 @@
 // FinMatrix — Bill Network (Production API)
 // ═══════════════════════════════════════════════════════
 
-import { api, extractErrorMessage } from '../network/apiHelpers';
+import { Platform } from 'react-native';
+// The /legacy entrypoint, as deliveryNetwork and billingNetwork use: the SDK
+// 19 API dropped cacheDirectory/downloadAsync in favour of File/Paths.
+import * as FileSystem from 'expo-file-system/legacy';
+import {
+  api,
+  extractErrorMessage,
+  postMultipart,
+  API_BASE_URL,
+  getAccessToken,
+  getStoredCompanyId,
+} from '../network/apiHelpers';
 
 export interface BillQueryParams {
   search?: string;
@@ -60,6 +71,8 @@ export interface PayBillsPayload {
   paymentMethod: string;
   bankAccountId: string;
   reference?: string;
+  /** Required by the API — see uploadBillPaymentProofAPI. */
+  proofId: string;
   applications: Array<{ billId: string; amount: string }>;
 }
 
@@ -71,6 +84,91 @@ export const payBillsAPI = async (data: PayBillsPayload): Promise<any> => {
     throw new Error(extractErrorMessage(e));
   }
 };
+
+// ── Payment proof ─────────────────────────────────────
+// Two steps by design: the file is uploaded here and the pay request quotes
+// the id it returns, so the financial endpoint stays JSON.
+
+export interface BillPaymentProof {
+  id: string;
+  url: string;
+  mimeType: string;
+  originalName: string;
+  size: number;
+}
+
+/**
+ * Upload a receipt, bank confirmation or photo of a cash voucher.
+ *
+ * postMultipart, not `api.post`: it omits Content-Type so React Native writes
+ * the multipart boundary itself — the same helper the delivery bill-photo
+ * capture uses.
+ */
+export const uploadBillPaymentProofAPI = async (file: {
+  uri: string;
+  name: string;
+  mimeType: string;
+}): Promise<BillPaymentProof> => {
+  const form = new FormData();
+  // RN's FormData takes this {uri,name,type} shape for a local file.
+  form.append('proof', {
+    uri: file.uri,
+    name: file.name,
+    type: file.mimeType,
+  } as unknown as Blob);
+  const res = await postMultipart('/bill-payments/proofs', form);
+  return res?.data ?? res;
+};
+
+/**
+ * Fetch a proof as a LOCAL file:// URI.
+ *
+ * The stored url points at an auth-gated API route, not a CDN. React Native's
+ * `<Image source={{ uri, headers }} />` does not reliably attach the token, so
+ * pointing an <Image> straight at it yields a 401 and renders blank. Mirrors
+ * downloadBillPhoto in deliveryNetwork.
+ */
+export const downloadBillPaymentProof = async (proofId: string): Promise<string> => {
+  const token = await getAccessToken();
+  const companyId = await getStoredCompanyId();
+  const path = `/bill-payments/proofs/${proofId}/file`;
+  const headers = {
+    Authorization: token ? `Bearer ${token}` : '',
+    ...(companyId ? { 'x-company-id': companyId } : {}),
+  };
+
+  if (Platform.OS === 'web') {
+    // expo-file-system has no web implementation.
+    const res = await fetch(`${API_BASE_URL}${path}`, { headers });
+    if (!res.ok) {
+      throw new Error(
+        res.status === 404
+          ? 'This payment has no proof on file.'
+          : `Could not load the proof (${res.status}).`,
+      );
+    }
+    return URL.createObjectURL(await res.blob());
+  }
+
+  const dest = `${FileSystem.cacheDirectory}payment-proof-${proofId}-${Date.now()}`;
+  const result = await FileSystem.downloadAsync(`${API_BASE_URL}${path}`, dest, { headers });
+  if (result.status >= 400) {
+    throw new Error(
+      result.status === 404
+        ? 'This payment has no proof on file.'
+        : `Could not load the proof (${result.status}).`,
+    );
+  }
+  return result.uri;
+};
+
+/**
+ * The proof id out of a stored proof URL (`/bill-payments/proofs/<id>/file`).
+ * Payments store the url, not the id, so the viewer recovers it from there —
+ * and historical payments, which have neither, simply yield null.
+ */
+export const proofIdFromUrl = (url?: string | null): string | null =>
+  url?.match(/\/bill-payments\/proofs\/([0-9a-f-]{36})\/file/i)?.[1] ?? null;
 
 export const deleteBillAPI = async (id: string): Promise<any> => {
   try {
