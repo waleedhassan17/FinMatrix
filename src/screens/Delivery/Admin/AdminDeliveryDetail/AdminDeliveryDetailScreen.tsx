@@ -24,6 +24,7 @@ import {
   selectDeliveryPersonnel,
   reassignDelivery,
   cancelDelivery,
+  deleteDelivery,
   fetchDeliveries,
 } from '../AssignDeliveries/deliverySlice';
 import {
@@ -138,6 +139,10 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // it would happily swap the rider on a completed delivery — so the gate
   // has to be here.
   const isTerminal = ['delivered', 'failed', 'returned', 'cancelled'].includes(delivery.status);
+  // Never dispatched → the record can simply be discarded. Anything further
+  // along has stock in Goods in Transit and must be cancelled instead, so the
+  // action bar offers one verb or the other, never both.
+  const isDiscardable = delivery.status === 'unassigned';
 
   // ── Handlers ────────────────────────────────────────────────────────────
   // Both handlers await the API and only report success once the server has
@@ -179,6 +184,32 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       ]);
     } catch (err: any) {
       Alert.alert('Cancel failed', err?.message || 'Unable to cancel this delivery.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * Discard a delivery that was created and never dispatched.
+   *
+   * Only offered while the delivery is still unassigned — nothing has been
+   * posted for it, so removing the record leaves inventory and the ledger
+   * exactly as they were. Once it has been dispatched the button becomes
+   * Cancel instead, which restocks and reverses Goods in Transit. The server
+   * enforces the same rule, so if it refuses (DELIVERY_COMMITTED) its message
+   * is shown rather than a generic failure.
+   */
+  const handleDeleteConfirmed = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await dispatch(deleteDelivery(delivery.id)).unwrap();
+      dispatch(resetDetailUIState());
+      Alert.alert('Delivery deleted', 'The delivery has been removed. Nothing was posted to your books.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (err: any) {
+      Alert.alert('Delete failed', err?.message || 'Unable to delete this delivery.');
     } finally {
       setIsSubmitting(false);
     }
@@ -529,15 +560,22 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* ── Cancel Confirm ── */}
         {uiState.showCancelConfirm && (
           <View style={[styles.actionPanel, styles.dangerPanel]}>
-            <Text style={[styles.actionPanelTitle, { color: '#DE350B' }]}>Cancel Delivery?</Text>
+            <Text style={[styles.actionPanelTitle, { color: '#DE350B' }]}>
+              {isDiscardable ? 'Delete Delivery?' : 'Cancel Delivery?'}
+            </Text>
             <Text style={styles.dangerNote}>
-              This cancels the delivery and returns any dispatched stock. It cannot be undone
-              from this screen.
+              {isDiscardable
+                ? 'This delivery was never dispatched, so nothing has been posted for it. Deleting removes the record — your inventory and reports are unaffected.'
+                : 'This cancels the delivery and returns any dispatched stock. It cannot be undone from this screen.'}
             </Text>
             <View style={styles.panelButtons}>
               <CustomButton
-                title={isSubmitting ? 'Cancelling…' : 'Yes, Cancel Delivery'}
-                onPress={handleCancelConfirmed}
+                title={
+                  isSubmitting
+                    ? isDiscardable ? 'Deleting…' : 'Cancelling…'
+                    : isDiscardable ? 'Yes, Delete Delivery' : 'Yes, Cancel Delivery'
+                }
+                onPress={isDiscardable ? handleDeleteConfirmed : handleCancelConfirmed}
                 variant="danger"
                 fullWidth
                 disabled={isSubmitting}
@@ -565,13 +603,16 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Feather name="refresh-cw" size={16} color="#FFFFFF" />
           <Text style={styles.bottomBtnText}>Re-assign</Text>
         </TouchableOpacity>
+        {/* One verb, always the right one: an undispatched delivery is
+            deleted outright; a dispatched one is cancelled so its stock and
+            Goods in Transit are properly reversed. */}
         <TouchableOpacity
           style={[styles.bottomBtn, { backgroundColor: '#DE350B' }, isTerminal && styles.bottomBtnDisabled]}
           onPress={() => dispatch(toggleCancelConfirm())}
           disabled={isTerminal}
         >
-          <Feather name="x" size={16} color="#FFFFFF" />
-          <Text style={styles.bottomBtnText}>Cancel</Text>
+          <Feather name={isDiscardable ? 'trash-2' : 'x'} size={16} color="#FFFFFF" />
+          <Text style={styles.bottomBtnText}>{isDiscardable ? 'Delete' : 'Cancel'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.bottomBtn, { backgroundColor: colors.success }]}

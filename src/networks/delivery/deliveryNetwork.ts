@@ -150,6 +150,19 @@ export const updateDeliveryAPI = async (id: string, data: any): Promise<any> => 
   }
 };
 
+/**
+ * Discard a delivery that was created but never dispatched. The server refuses
+ * (DELIVERY_COMMITTED) once stock has moved — those are cancelled, not deleted.
+ */
+export const deleteDeliveryAPI = async (id: string): Promise<any> => {
+  try {
+    const response = await api.delete(`/deliveries/${id}`);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
 export const updateDeliveryStatusAPI = async (id: string, data: { status: string; notes?: string }): Promise<any> => {
   try {
     const response = await withNetworkRetry(() => api.patch(`/deliveries/${id}/status`, data));

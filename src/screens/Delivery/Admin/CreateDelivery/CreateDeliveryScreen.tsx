@@ -131,6 +131,26 @@ const CreateDeliveryScreen: React.FC = () => {
       Alert.alert('Invalid quantity', 'Quantity must be a whole number of units.');
       return;
     }
+    // Catch a short line here rather than letting the delivery be created and
+    // fail later at assignment. Counts what this draft already promises for
+    // the same item, so adding 15 twice against 22 on hand is caught too.
+    //
+    // The server re-checks and is the authority: it also knows about units
+    // promised on OTHER open deliveries, which this screen cannot see.
+    const onHand = Number(item.quantityOnHand) || 0;
+    const alreadyInDraft = draft.items
+      .filter(i => i.itemId === item.id)
+      .reduce((sum, i) => sum + i.quantity, 0);
+    if (alreadyInDraft + numericQty > onHand) {
+      const left = Math.max(0, onHand - alreadyInDraft);
+      Alert.alert(
+        'Not enough stock',
+        alreadyInDraft > 0
+          ? `${item.name}: ${onHand} in stock and ${alreadyInDraft} already on this delivery, so only ${left} more can be added.`
+          : `${item.name}: only ${onHand} in stock. Reduce the quantity to ${onHand} or less.`,
+      );
+      return;
+    }
     dispatch(
       addDraftItem({
         agencyId: item.agencyId ?? '',

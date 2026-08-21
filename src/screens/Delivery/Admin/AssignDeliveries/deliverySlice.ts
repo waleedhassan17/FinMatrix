@@ -27,6 +27,7 @@ import {
   createDeliveryAPI,
   getShadowInventoryAPI,
   updateDeliveryStatusAPI,
+  deleteDeliveryAPI,
 } from '../../../../networks/delivery/deliveryNetwork';
 import {
   deliveryListSerializer,
@@ -275,6 +276,27 @@ export const deliverySlice = createAppSlice({
     // the two, because the backend restocks and reverses Goods in Transit on
     // cancel; never calling it left the dispatched units off the shelf and
     // their value parked in 1250 indefinitely.
+    /**
+     * Discard a delivery that was created but never dispatched.
+     *
+     * Calls the server FIRST and only mutates state once it confirms — see the
+     * note above about reassign/cancel once being local-only reducers that
+     * reported success while the next fetch silently undid them. The server
+     * refuses with DELIVERY_COMMITTED if stock has already moved; that message
+     * is surfaced to the caller rather than swallowed.
+     */
+    deleteDelivery: create.asyncThunk(
+      async (deliveryId: string) => {
+        await deleteDeliveryAPI(deliveryId);
+        return deliveryId;
+      },
+      {
+        fulfilled: (state, action) => {
+          state.deliveries = state.deliveries.filter(d => d.id !== action.payload);
+        },
+      },
+    ),
+
     reassignDelivery: create.asyncThunk(
       async (payload: { deliveryId: string; personnelId: string }) => {
         // The assign endpoint handles reassignment of an already-assigned
@@ -602,6 +624,7 @@ export const {
   updateDeliveryStatus,
   markNotificationRead,
   reassignDelivery,
+  deleteDelivery,
   cancelDelivery,
   attachBillPhotoToDelivery,
   saveDeliverySignature,
