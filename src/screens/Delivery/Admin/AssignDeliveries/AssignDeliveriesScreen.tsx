@@ -149,10 +149,15 @@ const AssignDeliveriesScreen: React.FC = () => {
             dispatch(clearSelectedDeliveries());
             await dispatch(fetchDeliveries());
             if (failures.length) {
-              // Report honestly rather than claiming a clean sweep.
+              // Report honestly rather than claiming a clean sweep — but when
+              // nothing went through there is one reason to give, and leading
+              // with "0 of 1 removed" just buries it.
+              const removed = ids.length - failures.length;
               Alert.alert(
-                'Some could not be deleted',
-                `${ids.length - failures.length} of ${ids.length} removed. ${failures[0]}`,
+                removed === 0 ? 'Could not delete' : 'Some could not be deleted',
+                removed === 0
+                  ? failures[0]
+                  : `${removed} of ${ids.length} removed. ${failures[0]}`,
               );
             }
           },

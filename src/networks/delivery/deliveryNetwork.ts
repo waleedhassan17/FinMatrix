@@ -159,7 +159,17 @@ export const deleteDeliveryAPI = async (id: string): Promise<any> => {
     const response = await api.delete(`/deliveries/${id}`);
     return response.data;
   } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
+    const msg = extractErrorMessage(e);
+    // An unmatched route answers with Nest's own "Cannot DELETE /api/v1/..."
+    // text, which surfaced a raw URL in the alert. That only happens against a
+    // server predating this endpoint, so say what the user can act on instead
+    // of showing them plumbing.
+    if (/^Cannot (DELETE|delete)\b/.test(msg)) {
+      throw new Error(
+        'This server does not support deleting deliveries yet. Update the backend, then try again.',
+      );
+    }
+    throw new Error(msg);
   }
 };
 
