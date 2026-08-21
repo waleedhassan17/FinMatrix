@@ -34,7 +34,6 @@ const initialFormData: InventoryFormData = {
   maxStock: '',
   barcodeData: '',
   sourceAgencyId: '',
-  isActive: true,
 };
 
 const initialState: InventoryFormSliceState = {

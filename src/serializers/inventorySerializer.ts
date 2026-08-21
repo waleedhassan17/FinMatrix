@@ -192,7 +192,11 @@ export const formDataToInventoryCreatePayload = (
   reorderQuantity: money(form.reorderQuantity),
   minStock: money(form.minStock),
   maxStock: money(form.maxStock),
-  isActive: form.isActive,
+  // isActive is deliberately NOT sent. The item form has no Active switch any
+  // more, and sending the field anyway would let a plain edit re-assert an
+  // active/inactive state that only the guarded Deactivate action should set.
+  // Omitting it is safe both ways: the column defaults to true on create, and
+  // PATCH is partial, so an existing item's state is left alone.
   barcodeData: text(form.barcodeData),
   // Only ever a real agency UUID — an empty string would fail @IsUUID.
   sourceAgencyId: text(form.sourceAgencyId),

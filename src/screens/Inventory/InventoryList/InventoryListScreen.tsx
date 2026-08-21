@@ -42,6 +42,7 @@ import {
 import type { StockFilter, ViewMode } from './inventoryListSlice';
 import type { InventoryItemData } from '../../../models/inventoryModel';
 import { warehouseAgencies } from '../../../models/agencyModel';
+import { isFeatureEnabled } from '../../../utils/featureGates';
 import EmptyState from '../../../components/shared/EmptyState';
 import { formatCurrency } from '../../../utils/formatters';
 
@@ -109,6 +110,7 @@ const InventoryListScreen: React.FC = () => {
   const activeFilter = useAppSelector(selectInventoryActiveFilter);
   const categoryFilter = useAppSelector(selectInventoryCategoryFilter);
   const agencyFilter = useAppSelector(selectInventoryAgencyFilter);
+  const agenciesEnabled = isFeatureEnabled('agencies');
   const viewMode = useAppSelector(selectInventoryViewMode);
   const isLoading = useAppSelector(selectInventoryIsLoading);
   const [activePicker, setActivePicker] = React.useState<PickerType>(null);
@@ -137,8 +139,10 @@ const InventoryListScreen: React.FC = () => {
       result = result.filter(i => i.category === categoryFilter);
     }
 
-    // Agency filter
-    if (agencyFilter !== 'all') {
+    // Agency filter. Bypassed entirely when the feature is off, so a value
+    // left over in the slice cannot silently hide rows from a user who has no
+    // way to see or clear the filter.
+    if (agenciesEnabled && agencyFilter !== 'all') {
       if (agencyFilter === 'none') {
         result = result.filter(i => !i.sourceAgencyId);
       } else {
@@ -196,9 +200,9 @@ const InventoryListScreen: React.FC = () => {
   );
 
   const getAgencyName = useCallback((agencyId?: string) => {
-    if (!agencyId) return null;
+    if (!agenciesEnabled || !agencyId) return null;
     return warehouseAgencies.find(a => a.id === agencyId)?.name ?? null;
-  }, []);
+  }, [agenciesEnabled]);
 
   // ── List View Row ─────────────────────────────────
   const renderListItem = useCallback(
@@ -376,16 +380,18 @@ const InventoryListScreen: React.FC = () => {
           <Text style={styles.dropdownArrow}>▾</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.dropdownBtn}
-          activeOpacity={0.7}
-          onPress={() => setActivePicker('agency')}
-        >
-          <Text style={styles.dropdownBtnText} numberOfLines={1}>
-            {selectedAgencyLabel}
-          </Text>
-          <Text style={styles.dropdownArrow}>▾</Text>
-        </TouchableOpacity>
+        {agenciesEnabled && (
+          <TouchableOpacity
+            style={styles.dropdownBtn}
+            activeOpacity={0.7}
+            onPress={() => setActivePicker('agency')}
+          >
+            <Text style={styles.dropdownBtnText} numberOfLines={1}>
+              {selectedAgencyLabel}
+            </Text>
+            <Text style={styles.dropdownArrow}>▾</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <Modal

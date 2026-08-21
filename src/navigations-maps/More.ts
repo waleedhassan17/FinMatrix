@@ -5,6 +5,7 @@
 // navigator maps over this array — screens register here only.
 
 import type { IRoute } from './types';
+import { isFeatureEnabled } from '../utils/featureGates';
 import MoreHubScreen from '../screens/More/MoreHubScreen';
 import EmployeeListScreen from '../screens/Payroll/EmployeeListScreen';
 import EmployeeFormScreen from '../screens/Payroll/EmployeeFormScreen';
@@ -100,10 +101,17 @@ export const MORE_ROUTES: IRoute[] = [
   { title: MoreRouteNames.COAList, component: COAListScreen },
   { title: MoreRouteNames.COAForm, component: COAFormScreen },
   { title: MoreRouteNames.COADetail, component: COADetailScreen },
-  { title: MoreRouteNames.AgencyList, component: AgencyListScreen },
-  { title: MoreRouteNames.AgencyDetail, component: AgencyDetailScreen },
-  { title: MoreRouteNames.AgencyForm, component: AgencyFormScreen },
-  { title: MoreRouteNames.AgencyInventorySync, component: AgencyInventorySyncScreen },
+  // Registered only while the feature is on. The screens, their slices and
+  // MoreStackParamList's Agency entries all stay in place — the routes are
+  // withheld, not removed, so re-enabling needs no change here.
+  ...(isFeatureEnabled('agencies')
+    ? [
+        { title: MoreRouteNames.AgencyList, component: AgencyListScreen },
+        { title: MoreRouteNames.AgencyDetail, component: AgencyDetailScreen },
+        { title: MoreRouteNames.AgencyForm, component: AgencyFormScreen },
+        { title: MoreRouteNames.AgencyInventorySync, component: AgencyInventorySyncScreen },
+      ]
+    : []),
   { title: MoreRouteNames.CustomerList, component: CustomerListScreen },
   { title: MoreRouteNames.CustomerDetail, component: CustomerDetailScreen },
   { title: MoreRouteNames.CustomerForm, component: CustomerFormScreen },

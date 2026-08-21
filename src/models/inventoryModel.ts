@@ -71,7 +71,9 @@ export interface CreateInventoryItemPayload {
   reorderQuantity?: string;
   minStock?: string;
   maxStock?: string;
-  isActive?: boolean;
+  // isActive is deliberately absent: activation is a guarded action on the
+  // item detail screen, never a field on the edit form. See
+  // formDataToInventoryCreatePayload.
   // serialTracking / lotTracking are deliberately absent. The columns exist
   // and the DTO accepts them, but nothing in the product ever reads them back
   // to enforce serial or lot capture, so the toggles only persisted a promise
@@ -128,9 +130,8 @@ export interface InventoryFormData {
   maxStock: string;
   // Tracking
   barcodeData: string;
-  // Warehouse & status
+  // Warehouse
   sourceAgencyId: string;
-  isActive: boolean;
 }
 
 export const CATEGORY_OPTIONS = [

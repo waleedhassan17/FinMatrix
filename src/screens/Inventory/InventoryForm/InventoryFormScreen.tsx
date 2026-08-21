@@ -8,7 +8,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Switch,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -54,6 +53,7 @@ import {
   formDataToInventoryUpdatePayload,
 } from '../../../serializers/inventorySerializer';
 import { selectAgencies, fetchAgencies } from '../../Agency/AgencyList/agencyListSlice';
+import { isFeatureEnabled } from '../../../utils/featureGates';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 
 type FormRoute = RouteProp<InventoryStackParamList, 'InventoryForm'>;
@@ -75,6 +75,7 @@ const InventoryFormScreen: React.FC = () => {
   const errors = useAppSelector(selectInventoryFormErrors);
   const isSaving = useAppSelector(selectInventoryIsSaving);
   const agencies = useAppSelector(selectAgencies);
+  const agenciesEnabled = isFeatureEnabled('agencies');
 
   const editingId = route.params?.itemId;
   const existing = editingId ? items.find(i => i.itemId === editingId) : undefined;
@@ -96,18 +97,22 @@ const InventoryFormScreen: React.FC = () => {
     setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
 
   // ── Fetch agencies for the source dropdown ────────
+  // Guarded so the withdrawn feature costs no request: this was the only
+  // agencies call outside the Agency screens themselves.
   useEffect(() => {
+    if (!agenciesEnabled) return;
     if (agencies.length === 0) dispatch(fetchAgencies());
-  }, [dispatch, agencies.length]);
+  }, [dispatch, agencies.length, agenciesEnabled]);
 
   // ── Prompt agency selection for new items ─────────
   useEffect(() => {
+    if (!agenciesEnabled) return;
     if (!isEdit && agencies.length > 0 && !form.sourceAgencyId) {
       setShowAgencyPrompt(true);
     }
   // Only on mount for new items
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEdit, agencies.length]);
+  }, [isEdit, agencies.length, agenciesEnabled]);
 
   // ── Pre-fill for edit mode / reset for add ────────
   useEffect(() => {
@@ -128,7 +133,6 @@ const InventoryFormScreen: React.FC = () => {
         maxStock: existing.maxStock.toString(),
         barcodeData: existing.barcodeData,
         sourceAgencyId: existing.sourceAgencyId ?? '',
-        isActive: existing.isActive,
       }));
     } else {
       dispatch(resetInventoryForm());
@@ -436,32 +440,35 @@ const InventoryFormScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ── Warehouse & Status Section ── */}
-          {renderSectionHeader('location', '📍  Warehouse & Status')}
-          {!collapsed.location && (
-            <View style={styles.sectionBody}>
-              <CustomDropdown
-                label="Warehouse / Agency"
-                options={agencyOptions}
-                value={form.sourceAgencyId}
-                onChange={val => updateField('sourceAgencyId', val)}
-                placeholder="Select warehouse (optional)..."
-              />
-              <View style={styles.toggleRow}>
-                <View>
-                  <Text style={styles.toggleLabel}>Active</Text>
-                  <Text style={styles.toggleHint}>
-                    Inactive items won’t appear in stock reports
-                  </Text>
+          {/* ── Warehouse Section ──
+              Was "Warehouse & Status" and also carried an Active switch. That
+              switch is gone, not hidden: it was a second, UNGUARDED way to
+              deactivate an item. PATCH /inventory/items/:id takes isActive and
+              Object.assign's it straight onto the row, so flipping it off here
+              deactivated an item that still held stock — stranding its value in
+              GL 1200 — while the Deactivate button on the item detail screen
+              refuses exactly that. Activating and deactivating belong there,
+              where the on-hand guard lives and where reactivation already is.
+
+              An item that already carries a sourceAgencyId keeps it: the form
+              still holds the value and still sends it, so hiding the picker
+              never clears an existing association. A new item leaves it empty
+              and the serializer omits empty optional fields. */}
+          {agenciesEnabled && (
+            <>
+              {renderSectionHeader('location', '📍  Warehouse')}
+              {!collapsed.location && (
+                <View style={styles.sectionBody}>
+                  <CustomDropdown
+                    label="Warehouse / Agency"
+                    options={agencyOptions}
+                    value={form.sourceAgencyId}
+                    onChange={val => updateField('sourceAgencyId', val)}
+                    placeholder="Select warehouse (optional)..."
+                  />
                 </View>
-                <Switch
-                  value={form.isActive}
-                  onValueChange={val => updateField('isActive', val)}
-                  trackColor={{ false: colors.border, true: colors.success + '60' }}
-                  thumbColor={form.isActive ? colors.success : '#ccc'}
-                />
-              </View>
-            </View>
+              )}
+            </>
           )}
 
           {/* ── Save ── */}
@@ -482,7 +489,7 @@ const InventoryFormScreen: React.FC = () => {
 
       {/* ── Agency Selection Prompt ── */}
       <Modal
-        visible={showAgencyPrompt}
+        visible={agenciesEnabled && showAgencyPrompt}
         transparent
         animationType="fade"
         onRequestClose={() => setShowAgencyPrompt(false)}
@@ -643,28 +650,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   halfField: { flex: 1 },
-
-  // ── Toggle ────────────────────────────────────────
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.white,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  toggleLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  toggleHint: {
-    fontSize: 12,
-    color: colors.textLight,
-    marginTop: 2,
-    fontFamily: THEME.typography.fontFamily,
-  },
 
   // ── Save button ───────────────────────────────────
   btnRow: {

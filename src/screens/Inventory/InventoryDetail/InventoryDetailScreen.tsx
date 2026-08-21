@@ -42,6 +42,7 @@ import {
 } from './inventoryDetailSlice';
 import type { InventoryDetailTab } from './inventoryDetailSlice';
 import { movementLabel } from '../../../models/inventoryModel';
+import { isFeatureEnabled } from '../../../utils/featureGates';
 import { warehouseAgencies } from '../../../models/agencyModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
@@ -382,8 +383,11 @@ const InventoryDetailScreen: React.FC = () => {
               { label: 'Barcode', value: item.barcodeData || '—' },
               // Was its own Locations tab. The app has no location concept —
               // no endpoint exposes inventory_locations — so a source agency
-              // is all there is, and it is one row, not a tab.
-              { label: 'Source Agency', value: agencyName || '—' },
+              // is all there is, and it is one row, not a tab. Dropped
+              // entirely, not blanked, while the agencies feature is off.
+              ...(isFeatureEnabled('agencies')
+                ? [{ label: 'Source Agency', value: agencyName || '—' }]
+                : []),
               { label: 'Unit of Measure', value: item.unitOfMeasure },
               { label: 'Status', value: item.isActive ? 'Active' : 'Inactive' },
               { label: 'Last Updated', value: formatDate(item.lastUpdated) },
