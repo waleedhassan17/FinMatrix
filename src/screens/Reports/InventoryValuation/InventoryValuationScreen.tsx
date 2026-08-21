@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import React, { useEffect } from 'react';
 import { View, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -23,6 +24,9 @@ import {
   Card,
   ACCENT,
   reportContentStyle,
+  ReportTitleBlock,
+  useStatementCompany,
+  asOfLabel,
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -33,6 +37,7 @@ const InventoryValuationScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectInventoryValuationState);
+  const company = useStatementCompany();
 
   useEffect(() => {
     dispatch(fetchInventoryValuationReport());
@@ -62,6 +67,13 @@ const InventoryValuationScreen: React.FC = () => {
               ]}
             />
 
+            {/* The endpoint values stock as it stands now — there is no date filter. */}
+            <ReportTitleBlock
+              company={company}
+              report="Inventory Valuation Summary"
+              periodLabel={asOfLabel(dayjs().format('YYYY-MM-DD'))}
+            />
+
             {categories.length > 0 && (
               <SectionCard title="Value by Category" icon="layers">
                 {categories.map(cat => (
@@ -84,8 +96,8 @@ const InventoryValuationScreen: React.FC = () => {
                       <TCell width={200} head>Item</TCell>
                       <TCell width={120} head>SKU</TCell>
                       <TCell width={70} head align="right">Qty</TCell>
-                      <TCell width={110} head align="right">Cost</TCell>
-                      <TCell width={130} head align="right">Value</TCell>
+                      <TCell width={110} head align="right">Avg Cost</TCell>
+                      <TCell width={130} head align="right">Asset Value</TCell>
                     </View>
                     {rows.map((row, i) => (
                       <View key={row.itemId} style={[tableStyles.row, i % 2 === 1 && tableStyles.rowAlt]}>
@@ -96,6 +108,14 @@ const InventoryValuationScreen: React.FC = () => {
                         <TCell width={130} align="right" strong>{rs(row.value)}</TCell>
                       </View>
                     ))}
+                    {/* The server's own totalValue — the rows above are not re-summed. */}
+                    <View style={tableStyles.totalRow}>
+                      <TCell width={200} strong>TOTAL</TCell>
+                      <TCell width={120}>{''}</TCell>
+                      <TCell width={70} align="right">{''}</TCell>
+                      <TCell width={110} align="right">{''}</TCell>
+                      <TCell width={130} align="right" strong>{rs(report.totalValue ?? 0)}</TCell>
+                    </View>
                   </View>
                 </ScrollView>
               </SectionCard>

@@ -24,6 +24,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { THEME } from '../../utils/theme';
+import { useAppSelector } from '../../hooks/useReduxHooks';
+import { selectActiveCompany } from '../../screens/Auth/companySlice';
+import { DEFAULT_COMPANY } from '../../utils/invoicePdf';
+import { parenNegative } from './reportFormat';
+
+// Re-exported so every screen has one import site for the reports kit.
+export { parenNegative, asOfLabel, rangeLabel, classifyAccount, reconcile } from './reportFormat';
+export type { AccountGroup } from './reportFormat';
 
 const T = THEME;
 
@@ -540,6 +548,96 @@ export const EmptyBlock: React.FC<{ icon?: keyof typeof Feather.glyphMap; title:
   </View>
 );
 
+// ═══════════════════════════════════════════════════════
+// Statement primitives — QuickBooks-style formal statements
+// ═══════════════════════════════════════════════════════
+// These build the statement BODY that sits beneath the navy ReportHeader and
+// the KPI tiles. They are presentation only: every figure passed in comes
+// straight from the API response, and nothing here recomputes an amount.
+
+/**
+ * The name a statement is headed with — the signed-in company, falling back to
+ * the invoice/PDF placeholder if none is loaded yet. Read-only.
+ */
+export const useStatementCompany = (): string => {
+  const company = useAppSelector(selectActiveCompany);
+  return company?.name?.trim() || DEFAULT_COMPANY.name;
+};
+
+/**
+ * The block every formal statement opens with: who, what, over what period,
+ * and on what basis.
+ */
+export const ReportTitleBlock: React.FC<{
+  company: string;
+  report: string;
+  periodLabel: string;
+  basis?: 'Accrual' | 'Cash';
+}> = ({ company, report, periodLabel, basis = 'Accrual' }) => (
+  <Card>
+    <View style={S.titleBlock}>
+      <Text style={S.titleCompany}>{company}</Text>
+      <Text style={S.titleReport}>{report}</Text>
+      <Text style={S.titlePeriod}>{periodLabel}</Text>
+      <Text style={S.titleBasis}>{basis} basis</Text>
+    </View>
+  </Card>
+);
+
+/**
+ * One line of a statement. `depth` indents the label so sub-accounts sit under
+ * their group; `isTotal` rules off above the amount; `isGrand` is the heavier
+ * treatment for TOTAL ASSETS / NET INCOME and the like.
+ */
+export const StatementRow: React.FC<{
+  label: string;
+  amount?: number;
+  depth?: number;
+  bold?: boolean;
+  italic?: boolean;
+  isTotal?: boolean;
+  isGrand?: boolean;
+  /** Optional second column, used by the P&L prior-period compare. */
+  prior?: number;
+  showPrior?: boolean;
+  currency?: string;
+}> = ({
+  label,
+  amount,
+  depth = 0,
+  bold,
+  italic,
+  isTotal,
+  isGrand,
+  prior,
+  showPrior,
+  currency = 'Rs ',
+}) => {
+  const emphasise = bold || isGrand;
+  return (
+    <View style={[S.stRow, isTotal && S.stRowTotal, isGrand && S.stRowGrand]}>
+      <Text
+        style={[
+          S.stLabel,
+          { paddingLeft: depth * 16 },
+          emphasise && S.stEmphasis,
+          italic && S.stItalic,
+        ]}
+        numberOfLines={2}>
+        {label}
+      </Text>
+      <Text style={[S.stAmount, emphasise && S.stEmphasis]}>
+        {amount === undefined ? '' : parenNegative(amount, currency)}
+      </Text>
+      {showPrior ? (
+        <Text style={[S.stAmount, emphasise && S.stEmphasis]}>
+          {prior === undefined ? '—' : parenNegative(prior, currency)}
+        </Text>
+      ) : null}
+    </View>
+  );
+};
+
 // Standard scroll content padding for report bodies.
 export const reportContentStyle: ViewStyle = {
   padding: T.spacing.md,
@@ -706,6 +804,48 @@ const S = StyleSheet.create({
   },
   badgeDot: { width: 5, height: 5, borderRadius: 2.5 },
   badgeText: { ...T.typography.labelSm, letterSpacing: 0.2 },
+
+  // Statement primitives
+  titleBlock: { alignItems: 'center', gap: 2 },
+  titleCompany: {
+    ...T.typography.h3,
+    fontSize: 16,
+    fontWeight: '800',
+    color: T.colors.textPrimary,
+    textAlign: 'center',
+  },
+  titleReport: {
+    ...T.typography.bodyMd,
+    fontSize: 14,
+    fontWeight: '700',
+    color: T.colors.textPrimary,
+    textAlign: 'center',
+  },
+  titlePeriod: { ...T.typography.bodySm, color: T.colors.textSecondary, textAlign: 'center' },
+  titleBasis: {
+    ...T.typography.caption,
+    color: T.colors.textTertiary,
+    textAlign: 'center',
+    marginTop: 1,
+  },
+
+  stRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 6, gap: T.spacing.sm },
+  stRowTotal: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: T.colors.border,
+    marginTop: 2,
+    paddingTop: 8,
+  },
+  stRowGrand: {
+    borderTopWidth: 2,
+    borderTopColor: T.colors.textPrimary,
+    marginTop: 4,
+    paddingTop: 9,
+  },
+  stLabel: { ...T.typography.bodySm, color: T.colors.textPrimary, flex: 1 },
+  stAmount: { ...T.typography.bodySm, color: T.colors.textPrimary, width: 118, textAlign: 'right' },
+  stEmphasis: { fontWeight: '800' },
+  stItalic: { fontStyle: 'italic', color: T.colors.textSecondary },
 
   // Progress
   progressBg: { height: 8, backgroundColor: T.colors.neutral100, borderRadius: 4, overflow: 'hidden' },

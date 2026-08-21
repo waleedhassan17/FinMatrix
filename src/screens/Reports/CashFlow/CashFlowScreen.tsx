@@ -16,30 +16,37 @@ import {
   SectionCard,
   KpiGrid,
   DateField,
-  SummaryLine,
   LoadingBlock,
   ErrorBlock,
   ACCENT,
   reportContentStyle,
+  ReportTitleBlock,
+  StatementRow,
+  useStatementCompany,
+  rangeLabel,
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
 
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
-const Section: React.FC<{ title: string; section: CashFlowSection }> = ({ title, section }) => (
-  <SectionCard title={title} icon="activity">
+/**
+ * One activities section, in the order the statement presents it. The line
+ * items are ledger-derived and rendered exactly as the API returned them —
+ * label and amount both — and the subtotal is `section.total`, never a re-sum.
+ */
+const Section: React.FC<{ activity: string; section: CashFlowSection }> = ({ activity, section }) => (
+  <SectionCard title={`Cash Flows from ${activity} Activities`} icon="activity">
     {section.lines.length === 0 && <Text style={styles.noneText}>No activity in this period.</Text>}
     {section.lines.map((l, i) => (
-      <View key={`${l.label}-${i}`} style={styles.row}>
-        <Text style={styles.lineLabel}>{l.label}</Text>
-        <Text style={[styles.lineVal, l.amount < 0 && styles.negative]}>{rs(l.amount)}</Text>
-      </View>
+      <StatementRow key={`${l.label}-${i}`} label={l.label} amount={l.amount} depth={1} />
     ))}
-    <View style={styles.subtotalRow}>
-      <Text style={styles.subtotalLabel}>Net cash from {title.toLowerCase()}</Text>
-      <Text style={[styles.subtotalVal, section.total < 0 && styles.negative]}>{rs(section.total)}</Text>
-    </View>
+    <StatementRow
+      label={`Net cash provided by ${activity.toLowerCase()} activities`}
+      amount={section.total}
+      bold
+      isTotal
+    />
   </SectionCard>
 );
 
@@ -47,6 +54,7 @@ const CashFlowScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectCashFlowState);
+  const company = useStatementCompany();
 
   useEffect(() => {
     dispatch(fetchCashFlowReport(state.range));
@@ -88,16 +96,20 @@ const CashFlowScreen: React.FC = () => {
               ]}
             />
 
-            <Section title="Operating" section={report.operating} />
-            <Section title="Investing" section={report.investing} />
-            <Section title="Financing" section={report.financing} />
+            <ReportTitleBlock
+              company={company}
+              report="Statement of Cash Flows"
+              periodLabel={rangeLabel(state.range.startDate, state.range.endDate)}
+            />
 
-            <SectionCard title="Net Change in Cash" icon="repeat">
-              <SummaryLine label="Beginning cash" value={rs(report.beginningCash)} />
-              <SummaryLine label="Net change" value={rs(report.netChange)} valueColor={positive ? THEME.colors.success : THEME.colors.danger} />
-              <View style={styles.endWrap}>
-                <SummaryLine label="Ending cash" value={rs(report.endingCash)} strong highlight />
-              </View>
+            <Section activity="Operating" section={report.operating} />
+            <Section activity="Investing" section={report.investing} />
+            <Section activity="Financing" section={report.financing} />
+
+            <SectionCard title="Cash at End of Period" icon="repeat">
+              <StatementRow label="Net cash increase for period" amount={report.netChange} bold isTotal />
+              <StatementRow label="Cash at beginning of period" amount={report.beginningCash} />
+              <StatementRow label="Cash at end of period" amount={report.endingCash} isGrand />
             </SectionCard>
           </>
         )}
@@ -108,28 +120,7 @@ const CashFlowScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   filterRow: { flexDirection: 'row', gap: THEME.spacing.sm },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: THEME.colors.borderLight,
-  },
-  lineLabel: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, flex: 1 },
-  lineVal: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
-  negative: { color: THEME.colors.danger },
   noneText: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, fontStyle: 'italic' },
-  subtotalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 10,
-    marginTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
-  },
-  subtotalLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, fontWeight: '700' },
-  subtotalVal: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '800' },
-  endWrap: { marginTop: 4 },
 });
 
 export default CashFlowScreen;

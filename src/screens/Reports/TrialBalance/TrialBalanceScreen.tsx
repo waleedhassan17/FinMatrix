@@ -21,6 +21,9 @@ import {
   EmptyBlock,
   ACCENT,
   reportContentStyle, amountColWidth,
+  ReportTitleBlock,
+  useStatementCompany,
+  rangeLabel,
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -31,6 +34,7 @@ const TrialBalanceScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectTrialBalanceState);
+  const company = useStatementCompany();
 
   useEffect(() => {
     dispatch(fetchTrialBalanceReport(state.range));
@@ -73,6 +77,12 @@ const TrialBalanceScreen: React.FC = () => {
 
         {report && !state.isLoading && (
           <>
+            <ReportTitleBlock
+              company={company}
+              report="Trial Balance"
+              periodLabel={rangeLabel(state.range.startDate, state.range.endDate)}
+            />
+
             <KpiGrid
               items={[
                 { label: 'Total Debits', value: rs(report.totalDebits), accent: ACCENT.blue, icon: 'arrow-down-circle' },

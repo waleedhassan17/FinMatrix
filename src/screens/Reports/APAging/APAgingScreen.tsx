@@ -21,6 +21,9 @@ import {
   tableStyles,
   ACCENT,
   reportContentStyle,
+  ReportTitleBlock,
+  useStatementCompany,
+  asOfLabel,
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -31,6 +34,7 @@ const APAgingScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectAPAgingState);
+  const company = useStatementCompany();
 
   useEffect(() => {
     dispatch(fetchARAgingReport(state.asOfDate));
@@ -43,7 +47,7 @@ const APAgingScreen: React.FC = () => {
 
   return (
     <ReportContainer>
-      <ReportHeader title="A/P Aging" subtitle="Outstanding receivables" onBack={() => navigation.goBack()} />
+      <ReportHeader title="A/P Aging" subtitle="Outstanding payables" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
         <Card>
@@ -57,6 +61,12 @@ const APAgingScreen: React.FC = () => {
 
         {report && !state.isLoading && (
           <>
+            <ReportTitleBlock
+              company={company}
+              report="A/P Aging Summary"
+              periodLabel={asOfLabel(state.asOfDate)}
+            />
+
             <KpiGrid
               items={[
                 { label: 'Total Outstanding', value: rs(t?.total ?? 0), accent: ACCENT.blue, icon: 'inbox' },
@@ -79,7 +89,7 @@ const APAgingScreen: React.FC = () => {
                       <TCell width={100} head align="right">1–30</TCell>
                       <TCell width={100} head align="right">31–60</TCell>
                       <TCell width={100} head align="right">61–90</TCell>
-                      <TCell width={100} head align="right">90+</TCell>
+                      <TCell width={116} head align="right">91 and over</TCell>
                       <TCell width={130} head align="right">Total</TCell>
                     </View>
 
@@ -90,7 +100,7 @@ const APAgingScreen: React.FC = () => {
                         <TCell width={100} align="right">{rs(row.bucket1to30)}</TCell>
                         <TCell width={100} align="right">{rs(row.bucket31to60)}</TCell>
                         <TCell width={100} align="right">{rs(row.bucket61to90)}</TCell>
-                        <TCell width={100} align="right" color={row.bucket90Plus > 0 ? ACCENT.red : undefined}>
+                        <TCell width={116} align="right" color={row.bucket90Plus > 0 ? ACCENT.red : undefined}>
                           {rs(row.bucket90Plus)}
                         </TCell>
                         <TCell width={130} align="right" strong>{rs(row.total)}</TCell>
@@ -103,7 +113,7 @@ const APAgingScreen: React.FC = () => {
                       <TCell width={100} align="right" strong>{rs(t!.bucket1to30)}</TCell>
                       <TCell width={100} align="right" strong>{rs(t!.bucket31to60)}</TCell>
                       <TCell width={100} align="right" strong>{rs(t!.bucket61to90)}</TCell>
-                      <TCell width={100} align="right" strong>{rs(t!.bucket90Plus)}</TCell>
+                      <TCell width={116} align="right" strong>{rs(t!.bucket90Plus)}</TCell>
                       <TCell width={130} align="right" strong>{rs(t!.total)}</TCell>
                     </View>
                   </View>
