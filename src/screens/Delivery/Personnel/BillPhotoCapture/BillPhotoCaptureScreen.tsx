@@ -77,6 +77,18 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
   // Paid before dispatch: the rider collects a signature, never money.
   const isPrepaid = Boolean(delivery?.prepaid);
 
+  /**
+   * The payment status this submission will carry.
+   *
+   * Pre-paid deliveries are settled already and show no PAID / NOT PAID
+   * choice, so `paidStatus` stays null for them forever. Everything that asks
+   * "do we have an answer yet?" — the submit guard, the button's disabled
+   * state, the payload — must read THIS, not the raw state, or the button
+   * stays greyed out on a form the rider has completed. Deriving it once
+   * keeps those three in agreement.
+   */
+  const effectivePaidStatus = isPrepaid ? 'paid' : paidStatus;
+
   // Per-line delivered/returned split. The rider enters what came BACK; what
   // was delivered is the remainder. Every line used to be hard-coded to
   // "fully delivered, nothing returned", so a customer taking 8 of 10 could
@@ -206,7 +218,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     // Pre-paid deliveries never ask the question, so there is nothing to
     // require. They submit 'paid', matching what Stage 1 already recorded.
-    if (!isPrepaid && !paidStatus) {
+    if (!effectivePaidStatus) {
       Alert.alert(
         'Payment status required',
         'Select whether the customer PAID (cash collected) or NOT PAID (on credit) before submitting.',
@@ -239,7 +251,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           photoUri,
           source: photoSource ?? 'camera',
           signedBy: signedBy.trim(),
-          paidStatus: isPrepaid ? 'paid' : paidStatus,
+          paidStatus: effectivePaidStatus,
           note: note.trim() || undefined,
           // deliveredQty is the field with ledger effect: on approval the
           // backend derives returned as (dispatched - delivered), invoices
@@ -593,11 +605,11 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           <TouchableOpacity
             style={[
               styles.submitBtn,
-              (!photoUri || !paidStatus || isSubmitting || alreadySubmitted || !!invalidLine) &&
+              (!photoUri || !effectivePaidStatus || isSubmitting || alreadySubmitted || !!invalidLine) &&
                 styles.submitBtnDisabled,
             ]}
             onPress={handleSubmit}
-            disabled={!photoUri || !paidStatus || isSubmitting || alreadySubmitted || !!invalidLine}
+            disabled={!photoUri || !effectivePaidStatus || isSubmitting || alreadySubmitted || !!invalidLine}
             activeOpacity={0.9}
           >
             {isSubmitting ? (
