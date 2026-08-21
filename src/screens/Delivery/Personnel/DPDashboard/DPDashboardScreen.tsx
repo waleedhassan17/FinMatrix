@@ -217,16 +217,41 @@ const DPDashboardScreen: React.FC = () => {
   // The status change is a server call; announcing "in transit" without
   // waiting meant a rejected transition still read as success and the rider
   // carried on believing the office had been told.
+  /**
+   * The one legal step forward from the delivery's current status.
+   *
+   * The server allows pending → picked_up → in_transit and rejects the jump,
+   * because collecting stock from the warehouse and setting off with it are
+   * separate events its history and monitor rely on. This shortcut used to
+   * always send 'in_transit', so from 'pending' — the state every new job is
+   * in — it failed with "Cannot move a delivery from 'pending' to
+   * 'in_transit'". Advance one step and let the detail screen carry on.
+   */
+  const nextStep = (() => {
+    switch (nextDelivery?.status) {
+      case 'pending':
+        return { status: 'picked_up' as const, label: 'Pick Up Items', done: 'Items picked up' };
+      case 'picked_up':
+        return { status: 'in_transit' as const, label: 'Start Delivery', done: 'Delivery started' };
+      default:
+        return null; // in_transit / arrived → just open the detail screen
+    }
+  })();
+
   const handleStartDelivery = async () => {
     if (!nextDelivery) return;
-    if (nextDelivery.status === 'pending') {
+    if (nextStep) {
       try {
         await dispatch(
-          startDelivery({ deliveryId: nextDelivery.id, note: 'Started from dashboard' }),
+          startDelivery({
+            deliveryId: nextDelivery.id,
+            status: nextStep.status,
+            note: 'Updated from dashboard',
+          }),
         ).unwrap();
-        Alert.alert('Delivery Started', `${nextDelivery.referenceNo} is now in transit.`);
+        Alert.alert(nextStep.done, `${nextDelivery.referenceNo} updated.`);
       } catch (e: any) {
-        Alert.alert('Could not start', e?.message ?? 'The delivery status was not updated. Please try again.');
+        Alert.alert('Could not update', e?.message ?? 'The delivery status was not updated. Please try again.');
         return;
       }
     }
@@ -426,7 +451,9 @@ const DPDashboardScreen: React.FC = () => {
                 activeOpacity={0.85}
               >
                 <Text style={styles.startDeliveryButtonText}>
-                  {nextDelivery.status === 'pending' ? 'Start Delivery' : 'Continue Delivery'}
+                  {/* Name the step the button actually performs — it used to
+                      promise "Start Delivery" from pending and then fail. */}
+                  {nextStep?.label ?? 'Continue Delivery'}
                 </Text>
                 <Feather name="arrow-right" size={16} color={THEME.colors.textInverse} />
               </TouchableOpacity>

@@ -36,13 +36,19 @@ export const dpDashboardSlice = createAppSlice({
     resetDashboardState: create.reducer(() => initialState),
 
     startDelivery: create.asyncThunk(
-      async (payload: { deliveryId: string; note?: string }, thunkAPI) => {
+      async (
+        payload: { deliveryId: string; note?: string; status: 'picked_up' | 'in_transit' },
+        thunkAPI,
+      ) => {
         const result = dpDashboardSerializer(await startDeliveryAPI(payload));
         if (result) {
+          // Mirror the SAME status the server accepted. This used to say
+          // 'in_transit' regardless, so local state disagreed with the server
+          // the moment the target was anything else.
           thunkAPI.dispatch(
             updateDeliveryStatus({
               deliveryId: payload.deliveryId,
-              status: 'in_transit',
+              status: payload.status,
               note: payload.note,
             }),
           );
