@@ -24,23 +24,15 @@ import { useSignOut } from '../../../hooks/useSignOut';
 import { selectUser } from '../../Auth/authSlice';
 import { authForgotPassword } from '../../../networks/auth/authNetwork';
 import { NOTIFICATION_ICON_NAME } from '../../../components/shared/NotificationIcon';
+import { THEME, statusStyle } from '../../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, shadows, typography } = THEME;
 
 // Real destinations for the support links.
 const DOCS_URL = 'https://github.com/waleedhassan17/FinMatrix';
 const SUPPORT_EMAIL = 'waleedhassansfd@gmail.com';
 const NOTIF_PREFS_KEY = 'superadmin.notifPrefs';
-
-// ── Design tokens ─────────────────────────────────────
-const C = {
-  bg: '#F4F5F7',
-  surface: '#FFFFFF',
-  primary: '#0052CC',
-  primaryDark: '#0747A6',
-  border: '#DFE1E6',
-  text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4' },
-  red: '#DE350B',
-  green: '#00875A',
-};
 
 // ── Reusable Section ──────────────────────────────────
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -73,10 +65,10 @@ const SettingRow: React.FC<{
     activeOpacity={toggle || disabled ? 1 : 0.7}
     disabled={disabled || (toggle && !onToggle) || (!onPress && !toggle)}
   >
-    <View style={[S.settingIconWrap, { backgroundColor: danger ? '#FEF2F2' : '#EEF2FF' }]}>
-      <Feather name={icon as any} size={16} color={danger ? C.red : (iconColor ?? C.primary)} />
+    <View style={[S.settingIconWrap, { backgroundColor: danger ? colors.dangerLighter : colors.primaryLighter }]}>
+      <Feather name={icon as any} size={16} color={danger ? colors.danger : (iconColor ?? colors.primary)} />
     </View>
-    <Text style={[S.settingLabel, danger && { color: C.red }]}>{label}</Text>
+    <Text style={[S.settingLabel, danger && { color: colors.danger }]}>{label}</Text>
     <View style={S.settingRight}>
       {value ? <Text style={S.settingValue}>{value}</Text> : null}
       {disabled ? (
@@ -85,11 +77,11 @@ const SettingRow: React.FC<{
         <Switch
           value={toggleValue}
           onValueChange={onToggle}
-          trackColor={{ false: '#E2E8F0', true: `${C.primary}80` }}
-          thumbColor={toggleValue ? C.primary : '#94A3B8'}
+          trackColor={{ false: colors.neutral200, true: `${colors.primary}80` }}
+          thumbColor={toggleValue ? colors.primary : colors.neutral400}
         />
       ) : onPress && !danger ? (
-        <Feather name="chevron-right" size={16} color={C.text.muted} />
+        <Feather name="chevron-right" size={16} color={colors.textTertiary} />
       ) : null}
     </View>
   </TouchableOpacity>
@@ -162,7 +154,7 @@ const AdminSettingsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={S.root} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
       <View style={S.header}>
@@ -176,7 +168,7 @@ const AdminSettingsScreen: React.FC = () => {
       >
         {/* Profile Card */}
         <LinearGradient
-          colors={[C.primary, C.primaryDark]}
+          colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={S.profileCard}
@@ -198,13 +190,13 @@ const AdminSettingsScreen: React.FC = () => {
 
         {/* Platform Status */}
         <View style={S.statusBar}>
-          <InfoBadge label="API" value="Online" color={C.green} />
+          <InfoBadge label="API" value="Online" color={colors.success} />
           <View style={S.statusDivider} />
-          <InfoBadge label="Version" value="2.4.1" color={C.primary} />
+          <InfoBadge label="Version" value="2.4.1" color={colors.primary} />
           <View style={S.statusDivider} />
-          <InfoBadge label="Mode" value="Live" color={C.green} />
+          <InfoBadge label="Mode" value="Live" color={colors.success} />
           <View style={S.statusDivider} />
-          <InfoBadge label="Region" value="US-East" color={C.text.secondary} />
+          <InfoBadge label="Region" value="US-East" color={colors.textSecondary} />
         </View>
 
         {/* Account */}
@@ -252,15 +244,15 @@ const AdminSettingsScreen: React.FC = () => {
 
         {/* Security */}
         <Section title="Security">
-          <SettingRow icon="shield" iconColor={C.text.muted} label="Two-Factor Auth" disabled />
-          <SettingRow icon="activity" iconColor={C.primary} label="Audit Log" disabled isLast />
+          <SettingRow icon="shield" iconColor={colors.textTertiary} label="Two-Factor Auth" disabled />
+          <SettingRow icon="activity" iconColor={colors.primary} label="Audit Log" disabled isLast />
         </Section>
 
         {/* Support */}
         <Section title="Support">
-          <SettingRow icon="book-open" iconColor={C.primary} label="Documentation" onPress={() => openUrl(DOCS_URL)} />
-          <SettingRow icon="message-circle" iconColor={C.green} label="Contact Support" onPress={() => openUrl(`mailto:${SUPPORT_EMAIL}?subject=FinMatrix%20Support`)} />
-          <SettingRow icon="info" iconColor={C.text.muted} label="About FinMatrix" value="v2.4.1" isLast />
+          <SettingRow icon="book-open" iconColor={colors.primary} label="Documentation" onPress={() => openUrl(DOCS_URL)} />
+          <SettingRow icon="message-circle" iconColor={colors.success} label="Contact Support" onPress={() => openUrl(`mailto:${SUPPORT_EMAIL}?subject=FinMatrix%20Support`)} />
+          <SettingRow icon="info" iconColor={colors.textTertiary} label="About FinMatrix" value="v2.4.1" isLast />
         </Section>
 
         {/* Sign Out */}
@@ -288,23 +280,23 @@ const AdminSettingsScreen: React.FC = () => {
 
 // ─── Styles ──────────────────────────────────────────
 const S = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1, backgroundColor: colors.background },
 
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: C.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: C.text.primary },
-  headerSub: { fontSize: 11, color: C.text.secondary, marginTop: 1 },
+  headerTitle: { ...typography.h4, color: colors.textPrimary },
+  headerSub: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
 
-  content: { padding: 16, gap: 16 },
+  content: { padding: spacing.md, gap: spacing.md },
 
   // Profile card
   profileCard: {
-    borderRadius: 16, padding: 20, flexDirection: 'row',
+    borderRadius: radius.xl, padding: spacing.lg, flexDirection: 'row',
     alignItems: 'center', gap: 14, overflow: 'hidden',
   },
   profileDecor: {
@@ -317,18 +309,18 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
   },
-  profileAvatarText: { fontSize: 20, fontWeight: '800', color: '#FFF' },
+  profileAvatarText: { ...typography.h3, color: colors.neutral0 },
   profileInfo: { flex: 1, gap: 2 },
-  profileName: { fontSize: 16, fontWeight: '700', color: '#FFF' },
-  profileEmail: { fontSize: 12, color: 'rgba(255,255,255,0.75)' },
+  profileName: { ...typography.h4, color: colors.neutral0 },
+  profileEmail: { ...typography.caption, color: 'rgba(255,255,255,0.75)' },
   profileRolePill: {
-    alignSelf: 'flex-start', marginTop: 4,
+    alignSelf: 'flex-start', marginTop: spacing.xxs,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+    paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: radius.sm,
   },
-  profileRoleText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+  profileRoleText: { ...typography.overline, color: colors.neutral0 },
   profileEditBtn: {
-    width: 34, height: 34, borderRadius: 10,
+    width: 34, height: 34, borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
   },
@@ -336,42 +328,42 @@ const S = StyleSheet.create({
   // Status bar
   statusBar: {
     flexDirection: 'row',
-    backgroundColor: C.surface,
-    borderRadius: 12, borderWidth: 1, borderColor: C.border,
-    paddingVertical: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
+    paddingVertical: spacing.sm,
   },
-  statusDivider: { width: 1, backgroundColor: C.border, marginVertical: 2 },
+  statusDivider: { width: 1, backgroundColor: colors.border, marginVertical: 2 },
   infoBadge: { flex: 1, alignItems: 'center', gap: 3 },
-  infoBadgeLabel: { fontSize: 10, color: C.text.muted },
-  infoBadgeValue: { fontSize: 12, fontWeight: '700' },
+  infoBadgeLabel: { ...typography.overline, color: colors.textTertiary },
+  infoBadgeValue: { ...typography.labelSm },
 
   // Section
-  section: { gap: 8 },
-  sectionTitle: { fontSize: 12, fontWeight: '700', color: C.text.secondary, textTransform: 'uppercase', letterSpacing: 0.6, paddingLeft: 4 },
+  section: { gap: spacing.xs },
+  sectionTitle: { ...typography.labelSm, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6, paddingLeft: spacing.xxs },
   sectionCard: {
-    backgroundColor: C.surface, borderRadius: 14,
-    borderWidth: 1, borderColor: C.border, overflow: 'hidden',
+    backgroundColor: colors.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
   },
 
   // Setting row
   settingRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 13, gap: 12,
+    paddingHorizontal: spacing.md, paddingVertical: 13, gap: spacing.sm,
   },
-  settingRowBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
+  settingRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   settingIconWrap: {
-    width: 32, height: 32, borderRadius: 8,
+    width: 32, height: 32, borderRadius: radius.sm,
     alignItems: 'center', justifyContent: 'center',
   },
-  settingLabel: { flex: 1, fontSize: 14, fontWeight: '500', color: C.text.primary },
-  settingRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  settingValue: { fontSize: 12, color: C.text.secondary },
-  soonTag: { backgroundColor: '#EBECF0', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  soonTagText: { fontSize: 10, fontWeight: '700', color: C.text.muted, letterSpacing: 0.4 },
+  settingLabel: { flex: 1, ...typography.h5, color: colors.textPrimary },
+  settingRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  settingValue: { ...typography.labelSm, color: colors.textSecondary },
+  soonTag: { backgroundColor: colors.neutral100, borderRadius: radius.xs, paddingHorizontal: 7, paddingVertical: 2 },
+  soonTagText: { ...typography.overline, color: colors.textTertiary, letterSpacing: 0.4 },
 
   footer: {
-    textAlign: 'center', fontSize: 11, color: C.text.muted,
-    lineHeight: 18, marginTop: 4,
+    textAlign: 'center', ...typography.caption, color: colors.textTertiary,
+    lineHeight: 18, marginTop: spacing.xxs,
   },
 });
 

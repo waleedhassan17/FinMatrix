@@ -25,6 +25,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
+import { THEME, statusStyle } from '../../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, shadows, typography } = THEME;
 import {
   loadCompanies,
   updateCompanyStatusLocal,
@@ -36,24 +40,6 @@ import {
   selectCompaniesError,
   type CompanyListItem,
 } from '../superAdminSlice';
-
-// ── Design tokens ─────────────────────────────────────
-const C = {
-  bg: '#F4F5F7',
-  surface: '#FFFFFF',
-  primary: '#0052CC',
-  border: '#DFE1E6',
-  text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4' },
-  status: {
-    active: { bg: '#E3FCEF', text: '#00875A', border: '#ABF5D1' },
-    approved: { bg: '#E3FCEF', text: '#00875A', border: '#ABF5D1' },
-    pending: { bg: '#FFFAE6', text: '#FF8B00', border: '#FFF0B3' },
-    pending_approval: { bg: '#FFFAE6', text: '#FF8B00', border: '#FFF0B3' },
-    inactive: { bg: '#FFEBE6', text: '#DE350B', border: '#FFBDAD' },
-    suspended: { bg: '#FFEBE6', text: '#DE350B', border: '#FFBDAD' },
-    rejected: { bg: '#EBECF0', text: '#5E6C84', border: '#DFE1E6' },
-  },
-};
 
 const FILTERS = [
   { label: 'All', value: 'all' },
@@ -122,7 +108,7 @@ const ReviewModal: React.FC<{
 
   if (!company) return null;
 
-  const cfg = (C.status as any)[company.status] ?? C.status.active;
+  const cfg = statusStyle(company.status);
   // Normalize status onto the canonical model to pick the available actions.
   const norm =
     company.status === 'approved' || company.status === 'active' || !company.status
@@ -153,7 +139,7 @@ const ReviewModal: React.FC<{
       >
         <Animated.View style={[S.modal, { transform: [{ scale: scaleAnim }] }]}>
           {/* Modal Header */}
-          <LinearGradient colors={['#0052CC', '#0747A6']} style={S.modalHeader}>
+          <LinearGradient colors={[colors.primary, colors.primaryDark]} style={S.modalHeader}>
             <View style={S.modalAvatar}>
               <Text style={S.modalAvatarText}>{company.name.slice(0, 2).toUpperCase()}</Text>
             </View>
@@ -162,7 +148,7 @@ const ReviewModal: React.FC<{
               <Text style={S.modalIndustry}>{company.industry ?? 'General'}</Text>
             </View>
             <View style={[S.modalStatusBadge, { backgroundColor: cfg.bg }]}>
-              <Text style={[S.modalStatusText, { color: cfg.text }]}>{company.status}</Text>
+              <Text style={[S.modalStatusText, { color: cfg.fg }]}>{company.status}</Text>
             </View>
           </LinearGradient>
 
@@ -211,7 +197,7 @@ const ReviewModal: React.FC<{
                   style={[S.actionOption, action === 'approve' && S.actionOptionActive]}
                   onPress={() => setAction('approve')}
                 >
-                  <View style={[S.actionOptionIcon, { backgroundColor: '#DCFCE7' }]}>
+                  <View style={[S.actionOptionIcon, { backgroundColor: colors.successLighter }]}>
                     <Feather name="check-circle" size={20} color="#16A34A" />
                   </View>
                   <View style={S.actionOptionInfo}>
@@ -228,7 +214,7 @@ const ReviewModal: React.FC<{
                   style={[S.actionOption, action === 'reject' && S.actionOptionActive]}
                   onPress={() => setAction('reject')}
                 >
-                  <View style={[S.actionOptionIcon, { backgroundColor: '#FEE2E2' }]}>
+                  <View style={[S.actionOptionIcon, { backgroundColor: colors.dangerLighter }]}>
                     <Feather name="x-circle" size={20} color="#DC2626" />
                   </View>
                   <View style={S.actionOptionInfo}>
@@ -245,7 +231,7 @@ const ReviewModal: React.FC<{
                   style={[S.actionOption, action === 'deactivate' && S.actionOptionActive]}
                   onPress={() => setAction('deactivate')}
                 >
-                  <View style={[S.actionOptionIcon, { backgroundColor: '#FEF9C3' }]}>
+                  <View style={[S.actionOptionIcon, { backgroundColor: colors.warningLighter }]}>
                     <Feather name="pause-circle" size={20} color="#D97706" />
                   </View>
                   <View style={S.actionOptionInfo}>
@@ -262,7 +248,7 @@ const ReviewModal: React.FC<{
                   style={[S.actionOption, action === 'reactivate' && S.actionOptionActive]}
                   onPress={() => setAction('reactivate')}
                 >
-                  <View style={[S.actionOptionIcon, { backgroundColor: '#DCFCE7' }]}>
+                  <View style={[S.actionOptionIcon, { backgroundColor: colors.successLighter }]}>
                     <Feather name="play-circle" size={20} color="#16A34A" />
                   </View>
                   <View style={S.actionOptionInfo}>
@@ -296,7 +282,7 @@ const ReviewModal: React.FC<{
                     placeholder="Or type a custom reason..."
                     multiline
                     numberOfLines={3}
-                    placeholderTextColor={C.text.muted}
+                    placeholderTextColor={colors.textTertiary}
                   />
                 </View>
               )}
@@ -315,7 +301,7 @@ const ReviewModal: React.FC<{
                 disabled={submitting}
               >
                 {submitting ? (
-                  <ActivityIndicator size="small" color="#FFF" />
+                  <ActivityIndicator size="small" color={colors.neutral0} />
                 ) : (
                   <Text style={S.submitBtnText}>
                     {action === 'approve'
@@ -341,7 +327,7 @@ const InfoRow: React.FC<{ icon: string; label: string; value: string }> = ({
 }) => (
   <View style={S.infoRow}>
     <View style={S.infoIcon}>
-      <Feather name={icon as any} size={15} color={C.primary} />
+      <Feather name={icon as any} size={15} color={colors.primary} />
     </View>
     <Text style={S.infoLabel}>{label}</Text>
     <Text style={S.infoValue} numberOfLines={1}>{value}</Text>
@@ -353,7 +339,7 @@ const CompanyCard: React.FC<{
   company: CompanyListItem;
   onPress: () => void;
 }> = ({ company, onPress }) => {
-  const cfg = (C.status as any)[company.status] ?? C.status.active;
+  const cfg = statusStyle(company.status);
   return (
     <TouchableOpacity style={S.companyCard} onPress={onPress} activeOpacity={0.75}>
       <View style={S.companyAvatar}>
@@ -369,10 +355,10 @@ const CompanyCard: React.FC<{
         )}
       </View>
       <View style={S.companyRight}>
-        <View style={[S.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
-          <Text style={[S.statusText, { color: cfg.text }]}>{company.status}</Text>
+        <View style={[S.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.fg }]}>
+          <Text style={[S.statusText, { color: cfg.fg }]}>{company.status}</Text>
         </View>
-        <Feather name="chevron-right" size={16} color={C.text.muted} style={{ marginTop: 4 }} />
+        <Feather name="chevron-right" size={16} color={colors.textTertiary} style={{ marginTop: spacing.xxs }} />
       </View>
     </TouchableOpacity>
   );
@@ -478,7 +464,7 @@ const CompanyManagementScreen: React.FC = () => {
       {/* Header */}
       <View style={S.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={S.backBtn}>
-          <Feather name="arrow-left" size={22} color={C.text.primary} />
+          <Feather name="arrow-left" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={S.headerCenter}>
           <Text style={S.headerTitle}>Companies</Text>
@@ -489,7 +475,7 @@ const CompanyManagementScreen: React.FC = () => {
           style={S.refreshBtn}
           disabled={status === 'loading'}
         >
-          <Feather name="refresh-cw" size={18} color={C.primary} />
+          <Feather name="refresh-cw" size={18} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -509,7 +495,7 @@ const CompanyManagementScreen: React.FC = () => {
 
       {isLoading ? (
         <View style={S.centered}>
-          <ActivityIndicator size="large" color={C.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={S.loadingText}>Loading companies...</Text>
         </View>
       ) : error ? (
@@ -532,13 +518,13 @@ const CompanyManagementScreen: React.FC = () => {
           onEndReachedThreshold={0.3}
           ListEmptyComponent={
             <View style={S.empty}>
-              <Feather name="briefcase" size={40} color={C.text.muted} />
+              <Feather name="briefcase" size={40} color={colors.textTertiary} />
               <Text style={S.emptyText}>No companies found</Text>
             </View>
           }
           ListFooterComponent={
             status === 'loading' && companies.length > 0 ? (
-              <ActivityIndicator color={C.primary} style={{ padding: 16 }} />
+              <ActivityIndicator color={colors.primary} style={{ padding: spacing.md }} />
             ) : null
           }
         />
@@ -558,78 +544,78 @@ const CompanyManagementScreen: React.FC = () => {
 };
 
 const S = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border, gap: 12,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm,
   },
-  backBtn: { padding: 4 },
+  backBtn: { padding: spacing.xxs },
   headerCenter: { flex: 1 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: C.text.primary },
-  headerSub: { fontSize: 11, color: C.text.secondary, marginTop: 1 },
+  headerTitle: { ...typography.h4, color: colors.textPrimary },
+  headerSub: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
   refreshBtn: { padding: 6 },
 
   filtersRow: {
-    backgroundColor: C.surface,
-    borderBottomWidth: 1, borderBottomColor: C.border,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  filtersContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  filtersContent: { paddingHorizontal: spacing.md, paddingVertical: 10, gap: spacing.xs },
   chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xxs,
     paddingHorizontal: 14, paddingVertical: 6,
-    borderRadius: 20, backgroundColor: '#F1F5F9',
-    borderWidth: 1, borderColor: C.border,
+    borderRadius: 20, backgroundColor: colors.neutral100,
+    borderWidth: 1, borderColor: colors.border,
   },
-  chipActive: { backgroundColor: C.primary, borderColor: C.primary },
-  chipText: { fontSize: 12, fontWeight: '600', color: C.text.secondary },
-  chipTextActive: { color: '#FFF' },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { ...typography.labelSm, color: colors.textSecondary },
+  chipTextActive: { color: colors.neutral0 },
   chipBadge: {
     minWidth: 18, height: 18, borderRadius: 9,
-    backgroundColor: C.border,
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+    backgroundColor: colors.border,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxs,
   },
   chipBadgeActive: { backgroundColor: 'rgba(255,255,255,0.3)' },
-  chipBadgeText: { fontSize: 10, fontWeight: '700', color: C.text.secondary },
-  chipBadgeTextActive: { color: '#FFF' },
+  chipBadgeText: { ...typography.overline, color: colors.textSecondary },
+  chipBadgeTextActive: { color: colors.neutral0 },
 
-  listContent: { padding: 16, gap: 10, paddingBottom: 30 },
+  listContent: { padding: spacing.md, gap: 10, paddingBottom: 30 },
   companyCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: C.surface, borderRadius: 12,
-    padding: 14, gap: 12,
-    borderWidth: 1, borderColor: C.border,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    padding: 14, gap: spacing.sm,
+    borderWidth: 1, borderColor: colors.border,
+    shadowColor: colors.neutral900, shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
   companyAvatar: {
     width: 46, height: 46, borderRadius: 23,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.primaryLighter,
     alignItems: 'center', justifyContent: 'center',
   },
-  companyAvatarText: { fontSize: 16, fontWeight: '800', color: C.primary },
+  companyAvatarText: { ...typography.h4, color: colors.primary },
   companyInfo: { flex: 1 },
-  companyName: { fontSize: 14, fontWeight: '700', color: C.text.primary },
-  companyMeta: { fontSize: 11, color: C.text.secondary, marginTop: 2 },
+  companyName: { ...typography.h5, color: colors.textPrimary },
+  companyMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   companyPlan: {
-    fontSize: 10, color: C.primary, fontWeight: '600',
-    marginTop: 3, backgroundColor: '#EEF2FF',
-    alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
+    ...typography.overline, color: colors.primary, 
+    marginTop: 3, backgroundColor: colors.primaryLighter,
+    alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.xs,
   },
-  companyRight: { alignItems: 'flex-end', gap: 4 },
+  companyRight: { alignItems: 'flex-end', gap: spacing.xxs },
   statusBadge: {
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 10, borderWidth: 1,
+    paddingHorizontal: spacing.xs, paddingVertical: 3,
+    borderRadius: radius.md, borderWidth: 1,
   },
-  statusText: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
+  statusText: { ...typography.overline, textTransform: 'capitalize' },
 
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { fontSize: 13, color: C.text.secondary },
-  errorText: { fontSize: 13, color: '#DE350B', textAlign: 'center', paddingHorizontal: 20 },
-  retryBtn: { paddingHorizontal: 20, paddingVertical: 8, backgroundColor: C.primary, borderRadius: 8 },
-  retryText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  loadingText: { ...typography.bodySm, color: colors.textSecondary },
+  errorText: { ...typography.bodySm, color: colors.danger, textAlign: 'center', paddingHorizontal: spacing.lg },
+  retryBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.xs, backgroundColor: colors.primary, borderRadius: radius.sm },
+  retryText: { color: colors.neutral0, ...typography.labelMd },
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyText: { fontSize: 14, color: C.text.secondary },
+  emptyText: { ...typography.bodySm, color: colors.textSecondary },
 
   // Modal
   modalOverlay: {
@@ -637,91 +623,91 @@ const S = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modal: {
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
     maxHeight: '90%', overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 16, gap: 12,
+    padding: spacing.md, gap: spacing.sm,
   },
   modalAvatar: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center', justifyContent: 'center',
   },
-  modalAvatarText: { fontSize: 16, fontWeight: '800', color: '#FFF' },
+  modalAvatarText: { ...typography.h4, color: colors.neutral0 },
   modalHeaderInfo: { flex: 1 },
-  modalCompanyName: { fontSize: 16, fontWeight: '700', color: '#FFF' },
-  modalIndustry: { fontSize: 11, color: 'rgba(255,255,255,0.75)' },
-  modalStatusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
-  modalStatusText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
-  modalTabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: C.border },
-  modalTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  modalTabActive: { borderBottomWidth: 2, borderBottomColor: C.primary },
-  modalTabText: { fontSize: 13, fontWeight: '600', color: C.text.secondary },
-  modalTabTextActive: { color: C.primary },
-  modalContent: { maxHeight: 340, padding: 16 },
+  modalCompanyName: { ...typography.h4, color: colors.neutral0 },
+  modalIndustry: { ...typography.caption, color: 'rgba(255,255,255,0.75)' },
+  modalStatusBadge: { paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs, borderRadius: radius.md },
+  modalStatusText: { ...typography.overline, textTransform: 'capitalize' },
+  modalTabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalTab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center' },
+  modalTabActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
+  modalTabText: { ...typography.labelMd, color: colors.textSecondary },
+  modalTabTextActive: { color: colors.primary },
+  modalContent: { maxHeight: 340, padding: spacing.md },
   modalFooter: {
-    flexDirection: 'row', padding: 16, gap: 10,
-    borderTopWidth: 1, borderTopColor: C.border,
+    flexDirection: 'row', padding: spacing.md, gap: 10,
+    borderTopWidth: 1, borderTopColor: colors.border,
   },
   cancelBtn: {
-    flex: 1, paddingVertical: 12, borderRadius: 10,
-    backgroundColor: '#F1F5F9', alignItems: 'center',
+    flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md,
+    backgroundColor: colors.neutral100, alignItems: 'center',
   },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: C.text.secondary },
-  submitBtn: { flex: 2, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  submitApprove: { backgroundColor: '#00875A' },
-  submitReject: { backgroundColor: '#DE350B' },
-  submitBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  cancelBtnText: { ...typography.h5, color: colors.textSecondary },
+  submitBtn: { flex: 2, paddingVertical: spacing.sm, borderRadius: radius.md, alignItems: 'center' },
+  submitApprove: { backgroundColor: colors.success },
+  submitReject: { backgroundColor: colors.danger },
+  submitBtnText: { ...typography.h5, color: colors.neutral0 },
 
   infoRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.neutral100,
   },
   infoIcon: {
-    width: 32, height: 32, borderRadius: 8,
-    backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
+    width: 32, height: 32, borderRadius: radius.sm,
+    backgroundColor: colors.primaryLighter, alignItems: 'center', justifyContent: 'center',
   },
-  infoLabel: { width: 80, fontSize: 12, color: C.text.secondary, fontWeight: '500' },
-  infoValue: { flex: 1, fontSize: 13, color: C.text.primary, fontWeight: '600' },
+  infoLabel: { width: 80, ...typography.caption, color: colors.textSecondary },
+  infoValue: { flex: 1, ...typography.bodySm, color: colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   rejectionBox: {
-    marginTop: 12, padding: 12,
-    backgroundColor: '#FFEBE6', borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#DE350B',
+    marginTop: spacing.sm, padding: spacing.sm,
+    backgroundColor: colors.dangerLighter, borderRadius: radius.sm, borderLeftWidth: 3, borderLeftColor: colors.danger,
   },
-  rejectionLabel: { fontSize: 11, fontWeight: '700', color: '#BF2600', marginBottom: 4 },
-  rejectionText: { fontSize: 12, color: '#7F1D1D' },
+  rejectionLabel: { ...typography.overline, color: colors.danger, marginBottom: spacing.xxs },
+  rejectionText: { ...typography.caption, color: colors.danger },
 
-  actionPrompt: { fontSize: 13, color: C.text.secondary, marginBottom: 12 },
+  actionPrompt: { ...typography.bodySm, color: colors.textSecondary, marginBottom: spacing.sm },
   actionOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 14, borderRadius: 12, borderWidth: 1, borderColor: C.border,
-    marginBottom: 8, backgroundColor: '#FAFAFA',
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    padding: 14, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
+    marginBottom: spacing.xs, backgroundColor: colors.neutral25,
   },
   actionOptionActive: {
-    borderColor: C.primary, backgroundColor: '#EEF2FF',
+    borderColor: colors.primary, backgroundColor: colors.primaryLighter,
   },
-  actionOptionIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  actionOptionIcon: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   actionOptionInfo: { flex: 1 },
-  actionOptionTitle: { fontSize: 13, fontWeight: '700', color: C.text.primary },
-  actionOptionDesc: { fontSize: 11, color: C.text.secondary, marginTop: 2 },
+  actionOptionTitle: { ...typography.labelMd, color: colors.textPrimary },
+  actionOptionDesc: { ...typography.overline, color: colors.textSecondary, marginTop: 2 },
 
-  reasonSection: { marginTop: 8 },
-  reasonLabel: { fontSize: 12, fontWeight: '700', color: C.text.primary, marginBottom: 8 },
+  reasonSection: { marginTop: spacing.xs },
+  reasonLabel: { ...typography.caption, color: colors.textPrimary, marginBottom: spacing.xs },
   quickReasons: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   quickReason: {
     paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 16, backgroundColor: '#F1F5F9',
-    borderWidth: 1, borderColor: C.border,
+    borderRadius: radius.xl, backgroundColor: colors.neutral100,
+    borderWidth: 1, borderColor: colors.border,
   },
-  quickReasonActive: { backgroundColor: '#EEF2FF', borderColor: C.primary },
-  quickReasonText: { fontSize: 11, color: C.text.secondary },
-  quickReasonTextActive: { color: C.primary, fontWeight: '600' },
+  quickReasonActive: { backgroundColor: colors.primaryLighter, borderColor: colors.primary },
+  quickReasonText: { ...typography.caption, color: colors.textSecondary },
+  quickReasonTextActive: { color: colors.primary, fontWeight: typography.labelLg.fontWeight },
   reasonInput: {
-    borderWidth: 1, borderColor: C.border, borderRadius: 10,
-    padding: 12, fontSize: 13, color: C.text.primary,
-    textAlignVertical: 'top', minHeight: 80, backgroundColor: '#FAFAFA',
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+    padding: spacing.sm, ...typography.bodySm, color: colors.textPrimary,
+    textAlignVertical: 'top', minHeight: 80, backgroundColor: colors.neutral25,
   },
 });
 
