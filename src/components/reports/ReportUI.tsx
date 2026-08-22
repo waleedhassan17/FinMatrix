@@ -534,17 +534,28 @@ export const ErrorBlock: React.FC<{ message: string; onRetry?: () => void }> = (
   </View>
 );
 
-export const EmptyBlock: React.FC<{ icon?: keyof typeof Feather.glyphMap; title: string; hint?: string }> = ({
-  icon = 'inbox',
-  title,
-  hint,
-}) => (
+// `actionLabel`/`onAction` render a centred call-to-action, for the genuine
+// first-run zero-state where the empty block is the user's primary route
+// forward. Optional — existing callers are unaffected.
+export const EmptyBlock: React.FC<{
+  icon?: keyof typeof Feather.glyphMap;
+  title: string;
+  hint?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}> = ({ icon = 'inbox', title, hint, actionLabel, onAction }) => (
   <View style={S.stateBlock}>
     <View style={[S.stateIcon, { backgroundColor: T.colors.neutral100 }]}>
       <Feather name={icon} size={20} color={T.colors.textTertiary} />
     </View>
     <Text style={S.stateText}>{title}</Text>
     {hint ? <Text style={S.stateHint}>{hint}</Text> : null}
+    {actionLabel && onAction ? (
+      <TouchableOpacity style={S.stateAction} onPress={onAction} activeOpacity={0.8}>
+        <Feather name="plus" size={THEME.form.addPill.iconSize} color={T.colors.neutral0} />
+        <Text style={S.stateActionText}>{actionLabel}</Text>
+      </TouchableOpacity>
+    ) : null}
   </View>
 );
 
@@ -969,4 +980,21 @@ const S = StyleSheet.create({
     backgroundColor: T.colors.primaryLight,
   },
   retryText: { ...T.typography.labelMd, color: T.colors.primary },
+  // Same spec as the header create pill, so the two create affordances match.
+  stateAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: T.spacing.xxs,
+    backgroundColor: THEME.form.addPill.background,
+    paddingHorizontal: THEME.form.addPill.paddingHorizontal,
+    paddingVertical: THEME.form.addPill.paddingVertical,
+    borderRadius: THEME.form.addPill.radius,
+  },
+  stateActionText: {
+    fontFamily: THEME.typography.fontFamily,
+    fontSize: THEME.form.addPill.fontSize,
+    fontWeight: THEME.form.addPill.fontWeight,
+    color: T.colors.neutral0,
+  },
 });
