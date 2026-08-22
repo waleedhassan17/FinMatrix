@@ -9,7 +9,7 @@ import {
   fetchProfitLossReport,
   selectProfitLossState,
   setProfitLossComparisonEnabled,
-  setProfitLossRange,
+  setProfitLossRange
 } from './profitLossSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { ProfitLossReport } from '../../../models/profitLossModel';
@@ -29,7 +29,7 @@ import {
   StatementRow,
   useStatementCompany,
   rangeLabel,
-  reconcile,
+  reconcile
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -116,7 +116,7 @@ const ProfitLossScreen: React.FC = () => {
                 dispatch(setProfitLossComparisonEnabled(value));
               }}
               trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.primary + '66' }}
-              thumbColor={state.comparisonEnabled ? THEME.colors.primary : '#F8FAFC'}
+              thumbColor={state.comparisonEnabled ? THEME.colors.primary : THEME.colors.neutral50}
             />
           </View>
         </Card>
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.textTertiary,
     marginTop: THEME.spacing.sm,
     fontStyle: 'italic',
-  },
+  }
 });
 
 export default ProfitLossScreen;

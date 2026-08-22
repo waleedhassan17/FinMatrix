@@ -13,7 +13,7 @@ import {
   ReportHeader,
   SectionCard,
   Badge,
-  EmptyBlock,
+  EmptyBlock
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -23,7 +23,7 @@ const CATEGORY_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   ar: 'arrow-down-left',
   inventory: 'package',
   sales: 'trending-up',
-  delivery: 'truck',
+  delivery: 'truck'
 };
 
 const getCatIcon = (key: string): keyof typeof Feather.glyphMap => CATEGORY_ICONS[key] ?? 'file-text';
@@ -148,8 +148,8 @@ const styles = StyleSheet.create({
   itemRowBordered: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.borderLight },
   itemAccent: { width: 3, alignSelf: 'stretch', backgroundColor: THEME.colors.primary, opacity: 0.85 },
   itemContent: { flex: 1, paddingVertical: 13, paddingLeft: 13 },
-  itemTitle: { ...THEME.typography.bodyMd, fontWeight: '600', color: THEME.colors.textPrimary },
-  itemSub: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginTop: 1 },
+  itemTitle: { ...THEME.typography.labelLg,  color: THEME.colors.textPrimary },
+  itemSub: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginTop: 1 }
 });
 
 export default ReportsHubScreen;

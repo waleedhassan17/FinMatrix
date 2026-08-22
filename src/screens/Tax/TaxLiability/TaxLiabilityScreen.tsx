@@ -12,6 +12,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchTaxLiability,
@@ -20,7 +23,7 @@ import {
   selectTaxLiabilityTotals,
   selectTaxLiabilityRange,
   selectTaxLiabilityLoading,
-  selectTaxLiabilityError,
+  selectTaxLiabilityError
 } from './taxLiabilitySlice';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 import type { TaxLiabilityRow } from '../../../types';
@@ -36,7 +39,7 @@ import {
   LoadingBlock,
   ErrorBlock,
   EmptyBlock,
-  ACCENT,
+  ACCENT
 } from '../../../components/reports/ReportUI';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -80,7 +83,7 @@ const TaxLiabilityScreen: React.FC = () => {
             <DateField label="To" value={range.to} onChangeText={v => dispatch(setRange({ from: range.from, to: v }))} />
           </View>
           <TouchableOpacity style={styles.calcBtn} onPress={handleCalculate} activeOpacity={0.85}>
-            <Feather name="refresh-cw" size={14} color="#fff" />
+            <Feather name="refresh-cw" size={14} color={colors.neutral0} />
             <Text style={styles.calcBtnText}>Calculate</Text>
           </TouchableOpacity>
         </Card>
@@ -133,7 +136,7 @@ const TaxLiabilityScreen: React.FC = () => {
               <View style={styles.dueBanner}>
                 <Feather name="alert-triangle" size={16} color={THEME.colors.warning} />
                 <Text style={styles.dueText}>
-                  Outstanding tax liability of <Text style={{ fontWeight: '700' }}>{fmt(totals.net)}</Text>. Consider recording a payment.
+                  Outstanding tax liability of <Text style={{ fontWeight: typography.labelLg.fontWeight }}>{fmt(totals.net)}</Text>. Consider recording a payment.
                 </Text>
               </View>
             ) : (
@@ -155,7 +158,7 @@ const TaxLiabilityScreen: React.FC = () => {
       {/* Record Payment CTA */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.recordBtn} onPress={handleRecordPayment} activeOpacity={0.85}>
-          <Feather name="credit-card" size={18} color="#fff" />
+          <Feather name="credit-card" size={18} color={colors.neutral0} />
           <Text style={styles.recordBtnText}>Record Tax Payment</Text>
         </TouchableOpacity>
       </View>
@@ -178,9 +181,9 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     marginTop: THEME.spacing.sm + 2,
   },
-  calcBtnText: { ...THEME.typography.labelLg, color: '#fff' },
+  calcBtnText: { ...THEME.typography.labelLg, color: colors.neutral0 },
 
-  tdName: { ...THEME.typography.bodySm, fontWeight: '600', color: THEME.colors.textPrimary },
+  tdName: { ...THEME.typography.labelMd,  color: THEME.colors.textPrimary },
   tdSub: { ...THEME.typography.labelSm, color: THEME.colors.textTertiary, marginTop: 1, letterSpacing: 0 },
 
   dueBanner: {
@@ -218,7 +221,7 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.lg,
     height: 50,
   },
-  recordBtnText: { ...THEME.typography.h5, color: '#fff' },
+  recordBtnText: { ...THEME.typography.h5, color: colors.neutral0 }
 });
 
 export default TaxLiabilityScreen;

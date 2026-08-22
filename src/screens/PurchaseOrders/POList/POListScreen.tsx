@@ -51,7 +51,7 @@ import type { PurchaseOrder } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
-const { colors, spacing, radius, shadows, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 const POListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();

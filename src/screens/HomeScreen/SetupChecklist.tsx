@@ -9,6 +9,9 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 import type { SetupStatus } from './adminDashboardSlice';
 
 const FONT = THEME.typography.fontFamily;
@@ -40,14 +43,14 @@ export const SETUP_STEPS: SetupStep[] = [
     label: 'Add Opening Balances',
     hint: 'Tell us what your business already has — we guide you',
     icon: 'edit-3',
-    screen: 'OpeningBalance',
+    screen: 'OpeningBalance'
   },
   {
     key: 'chartOfAccounts',
     label: 'Review Chart of Accounts',
     hint: 'Check the seeded accounts and add any you need',
     icon: 'book-open',
-    screen: 'COAList',
+    screen: 'COAList'
   },
   {
     key: 'inventory',
@@ -58,28 +61,28 @@ export const SETUP_STEPS: SetupStep[] = [
     // small-business / large-org tiers ship no inventory screens at all.
     screen: 'InventoryForm',
     optional: true,
-    feature: 'inventory',
+    feature: 'inventory'
   },
   {
     key: 'customers',
     label: 'Add Customers',
     hint: 'So you can raise invoices',
     icon: 'users',
-    screen: 'CustomerForm',
+    screen: 'CustomerForm'
   },
   {
     key: 'vendors',
     label: 'Add Vendors',
     hint: 'So you can record bills',
     icon: 'truck',
-    screen: 'VendorForm',
+    screen: 'VendorForm'
   },
   {
     key: 'taxRates',
     label: 'Set Tax rates',
     hint: 'Configure the sales tax you charge',
     icon: 'percent',
-    screen: 'TaxSettings',
+    screen: 'TaxSettings'
   },
 ];
 
@@ -92,21 +95,21 @@ interface Props {
 }
 
 const C = {
-  surface: '#FFFFFF',
-  line: '#E8EAEF',
-  ink: '#0F172A',
-  ink2: '#475467',
-  ink3: '#8A93A4',
-  brand: '#0B6E4F',
-  brandSoft: '#E7F4EF',
-  done: '#0E8A5F',
+  surface: THEME.colors.neutral0,
+  line: THEME.colors.border,
+  ink: THEME.colors.neutral900,
+  ink2: THEME.colors.neutral600,
+  ink3: colors.textTertiary,
+  brand: THEME.colors.actionGreenDark,
+  brandSoft: THEME.colors.primaryLighter,
+  done: THEME.colors.success
 };
 
 const SetupChecklist: React.FC<Props> = ({
   setup,
   onNavigate,
   onDismiss,
-  steps = SETUP_STEPS,
+  steps = SETUP_STEPS
 }) => {
   // Progress counts only the steps actually shown, so a tier without
   // inventory does not sit permanently at "5 of 6 done".
@@ -150,7 +153,7 @@ const SetupChecklist: React.FC<Props> = ({
           >
             <View style={[st.check, done && st.checkDone]}>
               {done ? (
-                <Feather name="check" size={14} color="#FFFFFF" />
+                <Feather name="check" size={14} color={colors.neutral0} />
               ) : (
                 <Feather name={step.icon} size={14} color={C.ink3} />
               )}
@@ -189,13 +192,13 @@ const st = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
-  title: { fontSize: 15, fontWeight: '700', color: C.ink, fontFamily: FONT },
-  sub: { fontSize: 12, color: C.ink2, fontFamily: FONT, marginTop: 2 },
-  dismiss: { fontSize: 13, fontWeight: '600', color: C.ink3, fontFamily: FONT },
+  title: { ...THEME.typography.labelLg, color: C.ink, fontFamily: FONT },
+  sub: { ...THEME.typography.caption, color: C.ink2, fontFamily: FONT, marginTop: 2 },
+  dismiss: { ...THEME.typography.labelMd, color: C.ink3, fontFamily: FONT },
   track: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#EEF0F4',
+    backgroundColor: THEME.colors.neutral100,
     overflow: 'hidden',
     marginBottom: 12,
   },
@@ -205,7 +208,7 @@ const st = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F1F3F6',
+    borderTopColor: THEME.colors.neutral100,
   },
   check: {
     width: 26,
@@ -218,9 +221,9 @@ const st = StyleSheet.create({
     marginRight: 12,
   },
   checkDone: { backgroundColor: C.done, borderColor: C.done },
-  rowLabel: { fontSize: 14, fontWeight: '600', color: C.ink, fontFamily: FONT },
+  rowLabel: { ...THEME.typography.h5, color: C.ink, fontFamily: FONT },
   rowLabelDone: { color: C.ink2 },
-  rowHint: { fontSize: 12, color: C.ink3, fontFamily: FONT, marginTop: 1 },
+  rowHint: { ...THEME.typography.caption, color: C.ink3, fontFamily: FONT, marginTop: 1 }
 });
 
 export default SetupChecklist;

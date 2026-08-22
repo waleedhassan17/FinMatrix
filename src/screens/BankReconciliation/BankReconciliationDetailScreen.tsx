@@ -6,6 +6,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, typography } = THEME;
 import { formatCurrency } from '../../utils/formatters';
 import { getReconciliationByIdAPI, deleteReconciliationAPI } from '../../networks/accounting/reconciliationNetwork';
 import { reconciliationSingleSerializer } from '../../serializers/reconciliationSerializer';
@@ -161,24 +164,24 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
   rowLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
-  rowValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
-  bold: { ...THEME.typography.bodyMd, fontWeight: '800' },
+  rowValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
+  bold: { ...THEME.typography.bodyMd, fontWeight: typography.labelLg.fontWeight },
   entryRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   entryInfo: { flex: 1 },
-  entryRef: { ...THEME.typography.bodySm, fontWeight: '600', color: THEME.colors.textPrimary },
+  entryRef: { ...THEME.typography.labelMd,  color: THEME.colors.textPrimary },
   entryMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 1 },
-  entryAmt: { ...THEME.typography.bodySm, fontWeight: '700' },
+  entryAmt: { ...THEME.typography.bodySm, fontWeight: typography.labelLg.fontWeight },
   notes: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(9,30,66,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  modalCard: { width: '100%', maxWidth: 420, backgroundColor: '#FFFFFF', borderRadius: THEME.radius.lg, padding: 20 },
-  modalTitle: { ...THEME.typography.bodyLg, fontWeight: '800', color: THEME.colors.textPrimary },
+  modalCard: { width: '100%', maxWidth: 420, backgroundColor: colors.neutral0, borderRadius: THEME.radius.lg, padding: 20 },
+  modalTitle: { ...THEME.typography.h4,  color: THEME.colors.textPrimary },
   modalBody: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, lineHeight: 19, marginTop: 8 },
   modalRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 18 },
   modalBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: THEME.radius.md },
-  modalCancel: { backgroundColor: '#F4F5F7' },
-  modalCancelText: { ...THEME.typography.bodySm, fontWeight: '700', color: THEME.colors.textPrimary },
+  modalCancel: { backgroundColor: colors.background },
+  modalCancelText: { ...THEME.typography.labelMd,  color: THEME.colors.textPrimary },
   modalDanger: { backgroundColor: THEME.colors.danger },
-  modalDangerText: { ...THEME.typography.bodySm, fontWeight: '700', color: '#FFFFFF' },
+  modalDangerText: { ...THEME.typography.labelMd,  color: colors.neutral0 }
 });
 
 export default BankReconciliationDetailScreen;

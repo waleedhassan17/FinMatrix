@@ -50,7 +50,7 @@ const BudgetFormScreen: React.FC = () => {
       setLines(rows.map(r => ({
         accountId: r.accountId,
         annual: String(r.annualTotal ?? 0),
-        months: r.monthlyAmounts,
+        months: r.monthlyAmounts
       })));
       if (!name.trim()) setName(`FY${fiscalYear} Operating Budget`);
       Toast.show({ type: 'success', text1: 'Pre-filled', text2: `${rows.length} account line${rows.length === 1 ? '' : 's'} loaded from ${fy} actuals. Adjust the amounts, then create.` });
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   lineMain: { flex: 1 },
   del: { paddingTop: 28, paddingHorizontal: 4 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  bold: { ...THEME.typography.bodyMd, fontWeight: '800', color: THEME.colors.textPrimary },
+  bold: { ...THEME.typography.labelLg,  color: THEME.colors.textPrimary }
 });
 
 export default BudgetFormScreen;

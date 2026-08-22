@@ -31,7 +31,7 @@ import { THEME } from '../../theme';
 import { AdminScreenHeader, KpiStatCard, DataTableRow } from '../../components/admin/AdminUI';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, spacing, radius, shadows, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 import {
   loadPlatformStats,
   selectPlatformStats,

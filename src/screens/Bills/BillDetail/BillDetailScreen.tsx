@@ -58,7 +58,7 @@ import type { TransactionsStackParamList } from '../../../navigators/stacks/Tran
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type DetailRoute = RouteProp<TransactionsStackParamList, 'BillDetail'>;
-const { colors, spacing, radius, shadows, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 const METHOD_LABEL: Record<string, string> = {
   cash: 'Cash',

@@ -23,7 +23,7 @@ import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import { THEME } from '../../../../utils/theme';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, spacing, radius, shadows, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectActiveCompany, addDeliveryPersonnel, addMember } from '../../../Auth/companySlice';
 import { registerAdminCreatedPersonnel } from '../../../../networks/auth/authNetwork';

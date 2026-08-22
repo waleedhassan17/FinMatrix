@@ -17,6 +17,10 @@ import { Feather } from '@expo/vector-icons';
 
 import type { TrendPoint } from '../../models/analyticsDashboardModel';
 import { C, FONT, card, compactRs } from './dashboardTheme';
+import { THEME } from '../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 
 // Plotting height of the revenue chart (bars only — labels sit below it).
 export const BAR_AREA = 92;
@@ -28,7 +32,7 @@ export const WINDOW_MONTHS = 5;
 const MONTH_NAMES: Record<string, string> = {
   jan: 'January', feb: 'February', mar: 'March', apr: 'April',
   may: 'May', jun: 'June', jul: 'July', aug: 'August',
-  sep: 'September', oct: 'October', nov: 'November', dec: 'December',
+  sep: 'September', oct: 'October', nov: 'November', dec: 'December'
 };
 const monthKey = (label: string): string => label.trim().slice(0, 3).toLowerCase();
 const fullMonth = (label: string): string => MONTH_NAMES[monthKey(label)] ?? label;
@@ -83,7 +87,7 @@ export const buildRevenueWindow = (points: TrendPoint[]): RevenueSlot[] => {
         if (monthKey(p.label) !== mk) return false;
         const py = yearKey(p.label);
         return py === null || py === yy;
-      }),
+      })
     };
   });
 };
@@ -119,7 +123,7 @@ export const RevenueTrendCard: React.FC<{ points: TrendPoint[] | null }> = ({ po
             ? {
                 max: Math.max(acc.max, sl.point.value),
                 total: acc.total + sl.point.value,
-                monthsWithData: acc.monthsWithData + 1,
+                monthsWithData: acc.monthsWithData + 1
               }
             : acc,
         { max: 0, total: 0, monthsWithData: 0 },
@@ -274,15 +278,16 @@ const s = StyleSheet.create({
   revTopRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
   revHeadBlock: { flex: 1 },
   revValue: {
-    fontSize: 32, fontWeight: '800', color: C.ink, fontFamily: FONT,
+    ...THEME.typography.displayMd,
+    color: C.ink, fontFamily: FONT,
     letterSpacing: -0.9, lineHeight: 37, fontVariant: ['tabular-nums'],
   },
-  revCaption: { fontSize: 11, color: C.ink3, fontFamily: FONT, marginTop: 3 },
+  revCaption: { ...THEME.typography.caption, color: C.ink3, fontFamily: FONT, marginTop: 3 },
   revDelta: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, marginBottom: 2,
   },
-  revDeltaText: { fontSize: 12, fontWeight: '700', fontFamily: FONT, fontVariant: ['tabular-nums'] },
+  revDeltaText: { ...THEME.typography.labelSm, fontFamily: FONT, fontVariant: ['tabular-nums'] },
   // Always WINDOW_MONTHS columns at flex:1, so a bar is the same width whether
   // the company has one month of history or five, and the newest sits hard
   // against the right edge where the calendar puts it.
@@ -293,23 +298,23 @@ const s = StyleSheet.create({
   // Mirrors revChart exactly — same flex and gap — or the month labels drift
   // out from under their bars.
   revLabelRow: { flexDirection: 'row', gap: 10, marginTop: 7 },
-  revLabel: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '600', color: C.ink3, fontFamily: FONT },
-  revLabelOn: { color: C.ink, fontWeight: '700' },
+  revLabel: { ...THEME.typography.overline, flex: 1, textAlign: 'center', color: C.ink3, fontFamily: FONT },
+  revLabelOn: { color: C.ink, fontWeight: typography.labelLg.fontWeight },
   /** A month the company earned nothing in — present on the axis, but quiet. */
-  revLabelOff: { color: C.ink3, opacity: 0.45, fontWeight: '600' },
+  revLabelOff: { color: C.ink3, opacity: 0.45, fontWeight: typography.labelLg.fontWeight },
   revFooter: {
     flexDirection: 'row', alignItems: 'center',
     marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: C.lineSoft,
   },
   revFootItem: { flex: 1 },
   revFootDivider: { width: 1, height: 26, backgroundColor: C.line, marginHorizontal: 12 },
-  revFootCaption: { fontSize: 11, color: C.ink3, fontFamily: FONT },
-  revFootNote: { flex: 1, fontSize: 11, color: C.ink3, fontFamily: FONT, lineHeight: 16 },
-  revFootValue: { fontSize: 14, fontWeight: '700', color: C.ink, fontFamily: FONT, marginTop: 2, fontVariant: ['tabular-nums'] },
+  revFootCaption: { ...THEME.typography.caption, color: C.ink3, fontFamily: FONT },
+  revFootNote: { ...THEME.typography.caption, flex: 1, color: C.ink3, fontFamily: FONT, lineHeight: 16 },
+  revFootValue: { ...THEME.typography.h5, color: C.ink, fontFamily: FONT, marginTop: 2, fontVariant: ['tabular-nums'] },
   revEmpty: { alignItems: 'center', paddingVertical: 16, gap: 5 },
   revEmptyIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 3 },
-  revEmptyTitle: { fontSize: 13, fontWeight: '700', color: C.ink, fontFamily: FONT },
-  revEmptySub: { fontSize: 12, color: C.ink3, textAlign: 'center', lineHeight: 17, fontFamily: FONT },
+  revEmptyTitle: { ...THEME.typography.labelMd, color: C.ink, fontFamily: FONT },
+  revEmptySub: { ...THEME.typography.caption, color: C.ink3, textAlign: 'center', lineHeight: 17, fontFamily: FONT }
 });
 
 export default RevenueTrendCard;

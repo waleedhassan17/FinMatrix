@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
+  TextInput
 } from 'react-native';
 import { Alert } from '../../utils/alert';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -14,7 +14,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
-  fetchJournalEntry, selectJournalEntryState, postJournalEntry, voidJournalEntry,
+  fetchJournalEntry, selectJournalEntryState, postJournalEntry, voidJournalEntry
 } from './journalEntrySlice';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   totalText: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   reasonInput: { borderWidth: 1, borderColor: THEME.colors.border, borderRadius: 8, padding: 10, minHeight: 60, textAlignVertical: 'top', ...THEME.typography.bodyMd, color: THEME.colors.textPrimary },
   voidHint: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 8 },
-  actions: { gap: 10 },
+  actions: { gap: 10 }
 });
 
 export default GeneralJournalDetailScreen;

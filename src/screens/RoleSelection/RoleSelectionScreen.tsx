@@ -5,11 +5,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  ScrollView,
+  ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, shadows } from '../../theme';
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { ROUTES } from '../../navigations-maps/Base';
 import { useAppDispatch } from '../../hooks/useReduxHooks';
 import { setRole } from './roleSelectionSlice';
@@ -20,18 +22,18 @@ import type { RootStackParamList } from '../../types';
 
 /* ── Brand Colors ───────────────────────────────────── */
 const BRAND = {
-  navy: '#091E42',
-  navyDark: '#091E42',
-  blue: '#059669',
-  blueLight: '#ECFDF5',
-  coral: '#DE350B',
-  coralLight: '#FFEBE6',
-  bg: '#F4F5F7',
-  card: '#FFFFFF',
-  textDark: '#172B4D',
-  textMid: '#5E6C84',
-  textLight: '#8993A4',
-  border: '#DFE1E6',
+  navy: colors.neutral900,
+  navyDark: colors.neutral900,
+  blue: colors.actionGreen,
+  blueLight: colors.actionGreenLighter,
+  coral: colors.danger,
+  coralLight: colors.dangerLighter,
+  bg: colors.background,
+  card: colors.neutral0,
+  textDark: colors.textPrimary,
+  textMid: colors.textSecondary,
+  textLight: colors.textTertiary,
+  border: colors.border
 };
 
 type RoleSelectionNavigationProp = NativeStackNavigationProp<
@@ -63,7 +65,7 @@ const RoleCard: React.FC<RoleCardProps> = ({
   title,
   subtitle,
   description,
-  onPress,
+  onPress
 }) => (
   <TouchableOpacity
     style={cardStyles.wrapper}
@@ -177,17 +179,17 @@ const cardStyles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     flexDirection: 'row',
-    ...shadows.card,
+    ...shadows.sm,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: colors.neutral900,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowRadius: 6
   },
   accentBar: {
     width: 4,
     borderTopLeftRadius: 14,
-    borderBottomLeftRadius: 14,
+    borderBottomLeftRadius: 14
   },
   body: {
     flex: 1,
@@ -195,7 +197,7 @@ const cardStyles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 20,
     paddingLeft: 16,
-    paddingRight: 14,
+    paddingRight: 14
   },
   letterCircle: {
     width: 52,
@@ -205,45 +207,39 @@ const cardStyles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 14,
     alignSelf: 'flex-start',
-    marginTop: 2,
+    marginTop: 2
   },
   letterText: {
-    fontSize: 22,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.h2
+    
   },
   textBlock: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 8
   },
   title: {
-    fontSize: 17,
-    fontWeight: '700',
+    ...typography.h4,
     color: BRAND.textDark,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: 2,
+    marginBottom: 2
   },
   subtitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: 8,
+    ...typography.labelMd,
+    marginBottom: 8
   },
   description: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: BRAND.textMid,
-    fontFamily: THEME.typography.fontFamily,
-    lineHeight: 19,
+    lineHeight: 19
   },
   arrowWrap: {
     justifyContent: 'center',
     alignItems: 'center',
     width: 28,
-    alignSelf: 'center',
+    alignSelf: 'center'
   },
   arrow: {
-    fontSize: 20,
-    fontWeight: '600',
+    ...typography.h3
+    
   },
 });
 
@@ -265,21 +261,18 @@ const styles = StyleSheet.create({
     marginBottom: 36,
   },
   logoTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.displayMd,
     marginBottom: 6,
   },
   logoFin: {
-    color: '#00875A',
+    color: colors.success,
   },
   logoMatrix: {
     color: BRAND.textDark,
   },
   logoSubtitle: {
-    fontSize: 14,
+    ...typography.bodySm,
     color: BRAND.textMid,
-    fontFamily: THEME.typography.fontFamily,
   },
 
   /* Heading */
@@ -288,17 +281,14 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   headingTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...typography.h2,
     color: BRAND.textDark,
-    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.2,
     marginBottom: 6,
   },
   headingSubtitle: {
-    fontSize: 14,
+    ...typography.bodySm,
     color: BRAND.textMid,
-    fontFamily: THEME.typography.fontFamily,
   },
 
   /* Cards */
@@ -315,16 +305,14 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   footerPowered: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: BRAND.textLight,
-    fontFamily: THEME.typography.fontFamily,
     marginBottom: 4,
   },
   footerVersion: {
-    fontSize: 12,
+    ...typography.caption,
     color: BRAND.textLight + 'AA',
-    fontFamily: THEME.typography.fontFamily,
-  },
+  }
 });
 
 export default RoleSelectionScreen;

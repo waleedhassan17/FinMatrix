@@ -4,6 +4,9 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchEmployees, selectPayrollState } from './payrollSlice';
 import { formatCurrency } from '../../utils/formatters';
@@ -56,9 +59,9 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 10 },
   card: { backgroundColor: THEME.colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: THEME.colors.border },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardName: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '700' },
+  cardName: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   cardSub: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, marginTop: 3 },
-  cardPay: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '700', marginTop: 6 },
+  cardPay: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary, marginTop: 6 }
 });
 
 export default EmployeeListScreen;

@@ -27,7 +27,7 @@ import { AdminScreenHeader } from '../../../components/admin/AdminUI';
 import { CHART_SERIES } from '../../../components/reports/ReportUI';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, spacing, radius, shadows, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 import {
   loadPlatformStats,
   selectPlatformStats,

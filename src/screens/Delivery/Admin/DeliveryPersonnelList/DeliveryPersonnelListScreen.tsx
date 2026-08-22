@@ -22,7 +22,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME, statusStyle } from '../../../../utils/theme';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, spacing, radius, shadows, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { ROUTES } from '../../../../navigations-maps/Base';
 import EmptyState from '../../../../components/shared/EmptyState';
 import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks';

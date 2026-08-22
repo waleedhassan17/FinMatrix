@@ -15,7 +15,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME, PRIORITY_CONFIG } from '../../../../utils/theme';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, spacing, radius, shadows, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectUnassignedDeliveries, selectDeliveryPersonnel, assignSelectedDeliveries } from '../AssignDeliveries/deliverySlice';

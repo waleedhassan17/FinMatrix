@@ -11,42 +11,46 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
+  RefreshControl
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import {
   AuthLayout,
   AuthHeader,
-  AuthFooterBar,
+  AuthFooterBar
 } from '../../components/auth/AuthUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { useSignOut } from '../../hooks/useSignOut';
 import { bootstrapSession } from '../../components/app-container/appContainerSlice';
+import { THEME } from '../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, typography } = THEME;
 import {
   getBillingStatusAPI,
   getPlansForTypeAPI,
   type BillingStatus,
-  type TierPlanCard,
+  type TierPlanCard
 } from '../../networks/billing/billingNetwork';
 
 const DS = {
-  navy: '#091E42',
-  primary: '#059669',
-  amber: '#B54708',
-  bg: '#F4F5F7',
-  surface: '#FFFFFF',
-  border: '#DFE1E6',
-  text: { h: '#172B4D', sub: '#5E6C84', muted: '#8993A4', inv: '#FFFFFF' },
+  navy: THEME.colors.neutral900,
+  primary: THEME.colors.actionGreen,
+  amber: THEME.colors.warningHover,
+  bg: THEME.colors.background,
+  surface: THEME.colors.neutral0,
+  border: THEME.colors.border,
+  text: { h: THEME.colors.textPrimary, sub: THEME.colors.textSecondary, muted: THEME.colors.textTertiary, inv: THEME.colors.neutral0 }
 };
 
 // Plan cards come from GET /billing/plans — the two tier plans (3mo + 6mo)
 // for THIS company's type, with server-set prices. The legacy standard/pro
 // cards that used to be hardcoded here are no longer offered anywhere (the
 // backend also rejects them for tier companies with PLAN_TYPE_MISMATCH).
-const PLAN_ACCENTS = ['#00875A', '#6554C0'];
+const PLAN_ACCENTS = [THEME.colors.success, THEME.colors.secondary];
 
 const perksFor = (p: TierPlanCard): string[] => {
   const perks = ['Full accounting suite'];
@@ -200,7 +204,7 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
         )}
 
         {awaiting && (
-          <View style={[S.banner, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
+          <View style={[S.banner, { backgroundColor: THEME.colors.warningLighter, borderColor: THEME.colors.warningLight }]}>
             <Feather name="clock" size={16} color={DS.amber} />
             <Text style={[S.bannerText, { color: DS.amber }]}>
               Bill submitted successfully — waiting for admin approval. Your plan activates
@@ -209,9 +213,9 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         )}
         {rejected && !awaiting && (
-          <View style={[S.banner, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+          <View style={[S.banner, { backgroundColor: colors.dangerLighter, borderColor: colors.dangerLight }]}>
             <Feather name="alert-circle" size={16} color="#B91C1C" />
-            <Text style={[S.bannerText, { color: '#B91C1C' }]}>
+            <Text style={[S.bannerText, { color: THEME.colors.dangerHover }]}>
               Your last payment could not be verified
               {status?.lastSubmission?.rejectionReason
                 ? `: ${status.lastSubmission.rejectionReason}`
@@ -273,9 +277,9 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
 };
 
 function statusPill(s: string) {
-  if (s === 'expired') return { backgroundColor: '#FEE2E2' };
-  if (s === 'expiring') return { backgroundColor: '#FEF3C7' };
-  return { backgroundColor: '#DCFCE7' };
+  if (s === 'expired') return { backgroundColor: colors.dangerLight };
+  if (s === 'expiring') return { backgroundColor: colors.warningLighter };
+  return { backgroundColor: colors.successLighter };
 }
 
 const S = StyleSheet.create({
@@ -287,29 +291,29 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)', marginBottom: 12,
   },
   brandRow: { marginBottom: 14, marginTop: 4 },
-  brand: { fontSize: 20, fontWeight: '800' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#FFF' },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 6, lineHeight: 19 },
+  brand: { ...THEME.typography.h3, fontWeight: typography.labelLg.fontWeight },
+  headerTitle: { ...THEME.typography.displaySm, color: colors.neutral0 },
+  headerSub: { ...THEME.typography.bodySm, color: 'rgba(255,255,255,0.7)', marginTop: 6, lineHeight: 19 },
   scroll: { padding: 16, gap: 14, paddingBottom: 40 },
 
   reassure: {
-    flexDirection: 'row', gap: 10, backgroundColor: '#F0FDF4', borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: '#BBF7D0',
+    flexDirection: 'row', gap: 10, backgroundColor: colors.actionGreenLighter, borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: THEME.colors.successLight,
   },
-  reassureText: { flex: 1, fontSize: 13, color: '#166534', lineHeight: 19 },
+  reassureText: { ...THEME.typography.bodySm, flex: 1, color: THEME.colors.successHover, lineHeight: 19 },
 
   currentCard: { backgroundColor: DS.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: DS.border },
-  currentLabel: { fontSize: 11, fontWeight: '700', color: DS.text.muted, letterSpacing: 1 },
+  currentLabel: { ...THEME.typography.overline, color: DS.text.muted, letterSpacing: 1 },
   currentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  currentPlan: { fontSize: 20, fontWeight: '800', color: DS.text.h },
-  currentMeta: { fontSize: 12, color: DS.text.sub, marginTop: 6 },
+  currentPlan: { ...THEME.typography.h3, color: DS.text.h },
+  currentMeta: { ...THEME.typography.caption, color: DS.text.sub, marginTop: 6 },
   pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  pillText: { fontSize: 10, fontWeight: '800', color: DS.text.h },
+  pillText: { ...THEME.typography.overline, color: DS.text.h },
 
   banner: { flexDirection: 'row', gap: 8, alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1 },
-  bannerText: { flex: 1, fontSize: 12, lineHeight: 17 },
+  bannerText: { ...THEME.typography.caption, flex: 1, lineHeight: 17 },
 
-  pickHeading: { fontSize: 14, fontWeight: '700', color: DS.text.h, marginTop: 4 },
+  pickHeading: { ...THEME.typography.h5, color: DS.text.h, marginTop: 4 },
   planCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: DS.surface,
     borderRadius: 14, padding: 16, borderWidth: 1, borderColor: DS.border,
@@ -317,16 +321,16 @@ const S = StyleSheet.create({
   planCardDisabled: { opacity: 0.45 },
   planStripe: { width: 4, alignSelf: 'stretch', borderRadius: 3 },
   planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  planName: { fontSize: 17, fontWeight: '800', color: DS.text.h },
-  planPrice: { fontSize: 15, fontWeight: '800', color: DS.primary },
-  planDuration: { fontSize: 12, fontWeight: '600', color: DS.text.muted },
-  planTotal: { fontSize: 11, fontWeight: '600', color: DS.text.sub, marginTop: 2 },
+  planName: { ...THEME.typography.h4, color: DS.text.h },
+  planPrice: { ...THEME.typography.labelLg, color: DS.primary },
+  planDuration: { ...THEME.typography.labelSm, color: DS.text.muted },
+  planTotal: { ...THEME.typography.overline, color: DS.text.sub, marginTop: 2 },
   perkRow: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 2 },
-  perkText: { fontSize: 12, color: DS.text.sub },
+  perkText: { ...THEME.typography.caption, color: DS.text.sub },
 
-  footnote: { fontSize: 11, color: DS.text.muted, textAlign: 'center', lineHeight: 16, marginTop: 4 },
+  footnote: { ...THEME.typography.caption, color: DS.text.muted, textAlign: 'center', lineHeight: 16, marginTop: 4 },
   signOut: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
-  signOutText: { fontSize: 14, color: DS.text.sub, fontWeight: '600' },
+  signOutText: { ...THEME.typography.bodySm, color: DS.text.sub, fontWeight: typography.labelLg.fontWeight }
 });
 
 export default RenewSubscriptionScreen;

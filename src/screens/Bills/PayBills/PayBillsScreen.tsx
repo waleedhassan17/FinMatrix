@@ -30,7 +30,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { THEME } from '../../../utils/theme';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, spacing, radius, shadows, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 const PANEL = THEME.form.summaryPanel;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {

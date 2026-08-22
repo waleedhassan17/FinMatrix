@@ -5,13 +5,16 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
+  RefreshControl
 } from 'react-native';
 import { Alert } from '../../utils/alert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchPayrollRuns, selectPayrollState, createRun } from './payrollSlice';
 import { formatCurrency } from '../../utils/formatters';
@@ -80,10 +83,10 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 10 },
   card: { backgroundColor: THEME.colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: THEME.colors.border },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardName: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '700' },
+  cardName: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
   cardSub: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  cardPay: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '800' },
+  cardPay: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight }
 });
 
 export default PayrollRunListScreen;

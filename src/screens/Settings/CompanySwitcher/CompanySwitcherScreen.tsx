@@ -1,13 +1,15 @@
 import React, { useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Alert,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectActiveCompany, setActiveCompany } from '../../Auth/companySlice';
 import { selectCompanies, selectSwitcherLoading, loadCompanies } from './companySwitcherSlice';
@@ -17,15 +19,15 @@ import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
 const P = {
-  brand: '#059669',
-  brandLight: '#ECFDF5',
-  pageBg: '#F6F8FB',
-  card: '#FFFFFF',
-  text: '#1E293B',
-  sub: '#94A3B8',
-  divider: '#E2E8F0',
-  active: '#059669',
-  activeBg: '#ECFDF5',
+  brand: colors.actionGreen,
+  brandLight: colors.actionGreenLighter,
+  pageBg: colors.neutral50,
+  card: colors.neutral0,
+  text: colors.neutral800,
+  sub: colors.neutral400,
+  divider: colors.neutral200,
+  active: colors.actionGreen,
+  activeBg: colors.actionGreenLighter
 };
 
 const CompanySwitcherScreen: React.FC = () => {
@@ -134,38 +136,35 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     backgroundColor: P.card,
     borderBottomWidth: 1,
     borderBottomColor: P.divider,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...typography.h3,
     color: P.text,
-    fontFamily: THEME.typography.fontFamily,
   },
-  list: { padding: spacing.md, paddingBottom: spacing.xl },
+  list: { padding: spacing.md, paddingBottom: spacing.xxl },
   empty: {
+    ...typography.bodySm,
     textAlign: 'center',
     marginTop: 60,
-    fontSize: 14,
     color: P.sub,
-    fontFamily: THEME.typography.fontFamily,
   },
   companyCard: {
     backgroundColor: P.card,
-    borderRadius: borderRadius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.card,
+    marginBottom: spacing.xs,
+    ...shadows.sm,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
   activeCard: {
     borderColor: P.active,
-    backgroundColor: '#FAFFFE',
+    backgroundColor: colors.neutral25,
   },
   cardTop: {
     flexDirection: 'row',
@@ -182,16 +181,13 @@ const s = StyleSheet.create({
   },
   cardInfo: { flex: 1 },
   companyName: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.h4,
     color: P.text,
-    fontFamily: THEME.typography.fontFamily,
   },
   companyIndustry: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: P.sub,
     marginTop: 2,
-    fontFamily: THEME.typography.fontFamily,
   },
   activeBadge: {
     flexDirection: 'row',
@@ -203,15 +199,13 @@ const s = StyleSheet.create({
     gap: 4,
   },
   activeText: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.labelSm,
     color: P.active,
-    fontFamily: THEME.typography.fontFamily,
   },
   cardBottom: {
     flexDirection: 'row',
     marginTop: 12,
-    gap: spacing.sm,
+    gap: spacing.xs,
     paddingLeft: 56,
   },
   chip: {
@@ -224,17 +218,15 @@ const s = StyleSheet.create({
     gap: 4,
   },
   chipText: {
-    fontSize: 12,
+    ...typography.caption,
     color: P.sub,
-    fontFamily: THEME.typography.fontFamily,
   },
   footerNote: {
+    ...typography.caption,
     marginTop: spacing.md,
-    marginHorizontal: spacing.sm,
-    fontSize: 12,
+    marginHorizontal: spacing.xs,
     lineHeight: 18,
     color: P.sub,
     textAlign: 'center',
-    fontFamily: THEME.typography.fontFamily,
-  },
+  }
 });

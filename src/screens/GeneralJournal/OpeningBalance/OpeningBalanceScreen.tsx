@@ -27,13 +27,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import { useAppDispatch } from '../../../hooks/useReduxHooks';
 import { saveJournalEntry } from '../journalEntrySlice';
 import { getAccountsAPI } from '../../../networks/accounting/coaNetwork';
@@ -46,7 +49,7 @@ import {
   ReportContainer,
   ReportHeader,
   Card,
-  DateField,
+  DateField
 } from '../../../components/reports/ReportUI';
 import {
   ACTIONS,
@@ -56,7 +59,7 @@ import {
   HELP,
   INTRO,
   STEPS,
-  SUCCESS,
+  SUCCESS
 } from './openingBalanceContent';
 
 const rs = (n: number) => formatCurrency(n, 'Rs ');
@@ -99,7 +102,7 @@ const QUICK_ADD: Record<
     // belongs, and it is what auto-balance uses — keep the two consistent.
     { codes: ['3900', '3000'], label: 'My own money', icon: 'user' },
     { codes: ['2000'], label: 'Money I owe', icon: 'file-text' },
-  ],
+  ]
 };
 
 /** Equity account that absorbs a difference, mirroring QuickBooks. */
@@ -130,7 +133,7 @@ const OpeningBalanceScreen: React.FC = () => {
               label: `${a.code} · ${a.name}`,
               value: a.id,
               type: a.type,
-              code: a.code,
+              code: a.code
             })),
         );
       } catch (e: any) {
@@ -279,7 +282,7 @@ const OpeningBalanceScreen: React.FC = () => {
     const payload = lines.map((l, i) => ({
       ...l,
       description: 'Opening balance',
-      lineOrder: i,
+      lineOrder: i
     }));
 
     setSaving(true);
@@ -291,7 +294,7 @@ const OpeningBalanceScreen: React.FC = () => {
         lines: payload,
         // Stamps the GL rows source_type='opening_balance', which is what the
         // dashboard's setup checklist looks for to tick this step off.
-        isOpeningBalance: true,
+        isOpeningBalance: true
       }),
     );
     setSaving(false);
@@ -412,7 +415,7 @@ const OpeningBalanceScreen: React.FC = () => {
             body:
               totals.diff > 0
                 ? BALANCE.autoOwnHeavier(rs(Math.abs(totals.diff)))
-                : BALANCE.autoOweHeavier(rs(Math.abs(totals.diff))),
+                : BALANCE.autoOweHeavier(rs(Math.abs(totals.diff)))
           }
         : { tone: THEME.colors.warning, title: BALANCE.noEquityTitle, body: BALANCE.noEquityBody };
 
@@ -585,21 +588,21 @@ const s = StyleSheet.create({
   content: { padding: 16, gap: 14 },
 
   p: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, lineHeight: 20 },
-  h: { ...THEME.typography.bodyMd, fontWeight: '700', color: THEME.colors.textPrimary, marginTop: 2 },
+  h: { ...THEME.typography.labelLg,  color: THEME.colors.textPrimary, marginTop: 2 },
   reassure: { ...THEME.typography.caption, color: THEME.colors.textTertiary, fontStyle: 'italic' },
   analogy: {
     flexDirection: 'row',
     gap: 8,
     backgroundColor: `${THEME.colors.primary}0F`,
     borderRadius: 10,
-    padding: 10,
+    padding: 10
   },
   analogyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, flex: 1, lineHeight: 19 },
 
   stepHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   stepNum: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  stepNumText: { ...THEME.typography.caption, fontWeight: '800', color: THEME.colors.textInverse },
-  stepTitle: { ...THEME.typography.bodyMd, fontWeight: '700', color: THEME.colors.textPrimary },
+  stepNumText: { ...THEME.typography.labelSm,  color: THEME.colors.textInverse },
+  stepTitle: { ...THEME.typography.labelLg,  color: THEME.colors.textPrimary },
   stepSub: { ...THEME.typography.caption, color: THEME.colors.textSecondary, marginTop: 1 },
 
   helper: { flexDirection: 'row', gap: 7, borderRadius: 10, borderWidth: 1, padding: 9, marginBottom: 10 },
@@ -615,9 +618,9 @@ const s = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: THEME.colors.border,
-    backgroundColor: THEME.colors.backgroundAlt,
+    backgroundColor: THEME.colors.backgroundAlt
   },
-  chipText: { ...THEME.typography.caption, color: THEME.colors.textPrimary, fontWeight: '600' },
+  chipText: { ...THEME.typography.caption, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
 
   rowCard: {
     position: 'relative',
@@ -627,7 +630,7 @@ const s = StyleSheet.create({
     backgroundColor: THEME.colors.backgroundAlt,
     padding: 12,
     paddingTop: 10,
-    marginBottom: 10,
+    marginBottom: 10
   },
   remove: {
     position: 'absolute',
@@ -639,16 +642,15 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: THEME.colors.background,
-    zIndex: 2,
+    zIndex: 2
   },
   // Label above the control, mirroring CustomDropdown, so the two fields in a
   // row card share one visual rhythm instead of a label-left/field-right split.
   rowBottom: { marginTop: -4 },
   amountLabel: {
     ...THEME.typography.bodyMd,
-    fontWeight: '500',
     color: THEME.colors.textPrimary,
-    marginBottom: 8,
+    marginBottom: 8
   },
   amount: {
     flexDirection: 'row',
@@ -659,9 +661,9 @@ const s = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: THEME.colors.surface,
     paddingHorizontal: 12,
-    height: 46,
+    height: 46
   },
-  currency: { ...THEME.typography.bodyMd, color: THEME.colors.textTertiary, fontWeight: '700' },
+  currency: { ...THEME.typography.bodyMd, color: THEME.colors.textTertiary, fontWeight: typography.labelLg.fontWeight },
   amountInput: {
     flex: 1,
     // Without this the field renders EMPTY on web. react-native-web turns
@@ -670,17 +672,17 @@ const s = StyleSheet.create({
     // right-aligned text is pushed outside the visible box. Totals were
     // correct all along; only the display was clipped.
     minWidth: 0,
-    ...THEME.typography.bodyLg,
-    fontWeight: '700',
+    ...THEME.typography.h4,
+    
     color: THEME.colors.textPrimary,
     textAlign: 'right',
-    padding: 0,
+    padding: 0
   },
   fieldError: { ...THEME.typography.caption, color: THEME.colors.danger, marginTop: 5 },
 
   empty: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginBottom: 6 },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 6 },
-  addRowText: { ...THEME.typography.bodySm, color: THEME.colors.primary, fontWeight: '700' },
+  addRowText: { ...THEME.typography.bodySm, color: THEME.colors.primary, fontWeight: typography.labelLg.fontWeight },
 
   scales: {
     flexDirection: 'row',
@@ -689,14 +691,14 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.borderLight,
-    marginBottom: 10,
+    marginBottom: 10
   },
   scale: { flex: 1, gap: 2 },
   scaleLabel: { ...THEME.typography.caption, color: THEME.colors.textSecondary },
-  scaleValue: { ...THEME.typography.bodyMd, fontWeight: '800' },
+  scaleValue: { ...THEME.typography.bodyMd, fontWeight: typography.labelLg.fontWeight },
 
   status: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 6 },
-  statusTitle: { ...THEME.typography.bodyMd, fontWeight: '800' },
+  statusTitle: { ...THEME.typography.bodyMd, fontWeight: typography.labelLg.fontWeight },
   statusBody: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, lineHeight: 19 },
   diffRow: {
     flexDirection: 'row',
@@ -705,34 +707,33 @@ const s = StyleSheet.create({
     marginTop: 4,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: THEME.colors.borderLight,
+    borderTopColor: THEME.colors.borderLight
   },
-  diffLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, fontWeight: '600' },
-  diffValue: { ...THEME.typography.bodyLg, fontWeight: '800' },
+  diffLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, fontWeight: typography.labelLg.fontWeight },
+  diffValue: { ...THEME.typography.bodyLg, fontWeight: typography.labelLg.fontWeight },
   plug: {
     marginTop: 8,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.borderLight,
-    gap: 6,
+    gap: 6
   },
   plugHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   plugTag: {
-    ...THEME.typography.caption,
+    ...THEME.typography.labelSm,
     color: THEME.colors.info,
-    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.4
   },
   plugRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   plugAccount: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, flex: 1, minWidth: 0 },
-  plugAmount: { ...THEME.typography.bodyMd, fontWeight: '800', color: THEME.colors.info },
+  plugAmount: { ...THEME.typography.labelLg,  color: THEME.colors.info },
   fixHint: { ...THEME.typography.caption, color: THEME.colors.textTertiary, textAlign: 'center' },
 
   exRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
   exDot: { width: 7, height: 7, borderRadius: 4 },
   exLabel: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, flex: 1 },
-  exAmount: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '700' },
+  exAmount: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   exTotals: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -741,9 +742,9 @@ const s = StyleSheet.create({
     backgroundColor: `${THEME.colors.success}0F`,
     borderRadius: 9,
     paddingVertical: 8,
-    marginVertical: 4,
+    marginVertical: 4
   },
-  exTotalText: { ...THEME.typography.caption, color: THEME.colors.textPrimary, fontWeight: '700' },
+  exTotalText: { ...THEME.typography.caption, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   exBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -753,16 +754,16 @@ const s = StyleSheet.create({
     borderColor: THEME.colors.primary,
     borderRadius: 10,
     paddingVertical: 10,
-    marginTop: 4,
+    marginTop: 4
   },
-  exBtnText: { ...THEME.typography.bodySm, color: THEME.colors.primary, fontWeight: '700' },
+  exBtnText: { ...THEME.typography.bodySm, color: THEME.colors.primary, fontWeight: typography.labelLg.fontWeight },
 
   qa: { gap: 3, paddingVertical: 5 },
-  q: { ...THEME.typography.bodySm, fontWeight: '700', color: THEME.colors.textPrimary },
+  q: { ...THEME.typography.labelMd,  color: THEME.colors.textPrimary },
   a: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, lineHeight: 19 },
 
   clear: { alignItems: 'center', paddingVertical: 10 },
-  clearText: { ...THEME.typography.bodySm, color: THEME.colors.textTertiary, fontWeight: '600' },
+  clearText: { ...THEME.typography.bodySm, color: THEME.colors.textTertiary, fontWeight: typography.labelLg.fontWeight },
 });
 
 export default OpeningBalanceScreen;

@@ -7,7 +7,7 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
   fetchJournalEntries, selectJournalEntryState, setJournalStatusFilter,
-  type JournalEntryStatusFilter,
+  type JournalEntryStatusFilter
 } from './journalEntrySlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
@@ -87,7 +87,7 @@ const GeneralJournalListScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   list: { flex: 1 },
-  content: { padding: 16, paddingTop: 4, gap: 10, flexGrow: 1 },
+  content: { padding: 16, paddingTop: 4, gap: 10, flexGrow: 1 }
 });
 
 export default GeneralJournalListScreen;

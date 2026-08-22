@@ -14,7 +14,7 @@ import {
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
+  Platform
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -23,6 +23,9 @@ import type { RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   loadTaxPaymentDeps,
@@ -35,7 +38,7 @@ import {
   selectTaxPaymentLoading,
   selectTaxPaymentSaving,
   selectTaxPaymentError,
-  selectTaxPaymentSaved,
+  selectTaxPaymentSaved
 } from './taxPaymentSlice';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 import type { TaxRate } from '../../../types';
@@ -46,7 +49,7 @@ import {
   SectionCard,
   SummaryLine,
   LoadingBlock,
-  DateField,
+  DateField
 } from '../../../components/reports/ReportUI';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -64,7 +67,7 @@ function SelectStrip<T extends { id: string }>({
   selectedId,
   onSelect,
   label,
-  sublabel,
+  sublabel
 }: {
   items: T[];
   selectedId: string;
@@ -267,10 +270,10 @@ const TaxPaymentScreen: React.FC = () => {
             disabled={isSaving}
           >
             {isSaving ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={colors.neutral0} size="small" />
             ) : (
               <>
-                <Feather name="check" size={18} color="#fff" />
+                <Feather name="check" size={18} color={colors.neutral0} />
                 <Text style={styles.submitBtnText}>Record Payment</Text>
               </>
             )}
@@ -314,7 +317,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stripChipSelected: { backgroundColor: THEME.colors.primaryLight, borderColor: THEME.colors.primary },
-  stripChipText: { ...THEME.typography.bodySm, fontWeight: '600', color: THEME.colors.textSecondary },
+  stripChipText: { ...THEME.typography.labelMd,  color: THEME.colors.textSecondary },
   stripChipTextSelected: { color: THEME.colors.primary },
   stripChipSub: { ...THEME.typography.overline, color: THEME.colors.textTertiary, marginTop: 2 },
 
@@ -344,7 +347,7 @@ const styles = StyleSheet.create({
   currencyPrefix: {
     backgroundColor: THEME.colors.primaryLight,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#A7F3D0',
+    borderColor: colors.successLight,
     borderRightWidth: 0,
     borderTopLeftRadius: THEME.radius.md,
     borderBottomLeftRadius: THEME.radius.md,
@@ -397,7 +400,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  submitBtnText: { ...THEME.typography.h5, color: '#fff' },
+  submitBtnText: { ...THEME.typography.h5, color: colors.neutral0 }
 });
 
 export default TaxPaymentScreen;

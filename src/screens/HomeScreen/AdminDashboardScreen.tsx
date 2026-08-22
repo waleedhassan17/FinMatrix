@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
-  Easing,
+  Easing
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,7 +36,7 @@ import {
   selectDashboardSetup,
   selectRevenueTrend,
   refreshDashboard,
-  loadDashboard,
+  loadDashboard
 } from './adminDashboardSlice';
 import SetupChecklist, { SETUP_STEPS, type SetupStep } from './SetupChecklist';
 import type { DashboardStackParamList } from '../../navigators/stacks/DashboardStack';
@@ -44,12 +44,16 @@ import type {
   DashboardStat,
   RecentTransaction,
   DashboardAlert,
-  DeliveryOverviewData,
+  DeliveryOverviewData
 } from '../../models/dashboardModel';
 import { isFeatureVisible } from '../../utils/featureGates';
 import { ReportContainer } from '../../components/reports/ReportUI';
 import { C, FONT, card } from './dashboardTheme';
 import RevenueTrendCard, { BAR_AREA, WINDOW_MONTHS } from './RevenueTrendCard';
+import { THEME } from '../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
 
@@ -383,7 +387,7 @@ const AdminDashboardScreen: React.FC = () => {
 // ═════════════════════════════════════════════════════
 
 const SectionHeader: React.FC<{ title: string; caption?: string; action?: string; onAction?: () => void }> = ({
-  title, caption, action, onAction,
+  title, caption, action, onAction
 }) => (
   <View style={s.sectionHeader}>
     <View style={s.sectionTitleWrap}>
@@ -422,7 +426,7 @@ const StatCard: React.FC<{
 
 // ── Delivery progress card ────────────────────────────
 const DeliveryProgressCard: React.FC<{ delivery: DeliveryOverviewData; completedPct: number }> = ({
-  delivery, completedPct,
+  delivery, completedPct
 }) => {
   const waiting = delivery.pending + delivery.assigned;
   const hasData = delivery.total > 0;
@@ -473,7 +477,7 @@ const DeliveryProgressCard: React.FC<{ delivery: DeliveryOverviewData; completed
 
 // ── Action tile ───────────────────────────────────────
 const ActionTile: React.FC<{ icon: string; label: string; color: string; onPress: () => void }> = ({
-  icon, label, color, onPress,
+  icon, label, color, onPress
 }) => (
   <TouchableOpacity style={s.actionTile} onPress={onPress} activeOpacity={0.75}>
     <View style={[s.actionIconWrap, { backgroundColor: color + '14' }]}>
@@ -526,7 +530,7 @@ const AlertBanner: React.FC<{ alert: DashboardAlert }> = ({ alert }) => {
   const cfg = {
     red: { tint: C.neg, icon: 'alert-circle' },
     amber: { tint: C.warn, icon: 'alert-triangle' },
-    blue: { tint: C.info, icon: 'info' },
+    blue: { tint: C.info, icon: 'info' }
   }[alert.severity];
   return (
     <View style={[s.alertBanner, { backgroundColor: cfg.tint + '12', borderLeftColor: cfg.tint }]}>
@@ -539,7 +543,7 @@ const AlertBanner: React.FC<{ alert: DashboardAlert }> = ({ alert }) => {
 // ── Skeleton ──────────────────────────────────────────
 const Skel: React.FC<{ w: number | string; h: number; r?: number; style?: Record<string, string | number> }> = ({ w, h, r = 8, style }) => {
   const opacity = usePulse();
-  const animatedStyle: Record<string, string | number | Animated.Value> = { height: h, borderRadius: r, backgroundColor: '#E5E8EE', opacity };
+  const animatedStyle: Record<string, string | number | Animated.Value> = { height: h, borderRadius: r, backgroundColor: THEME.colors.border, opacity };
   if (typeof w === 'number') {
     animatedStyle.width = w;
   } else if (typeof w === 'string') {
@@ -611,8 +615,8 @@ const s = StyleSheet.create({
   headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 11 },
   headerTextBlock: { flex: 1 },
-  companyName: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.2, fontFamily: FONT },
-  greetingText: { fontSize: 12, color: 'rgba(255,255,255,0.62)', marginBottom: 1, fontFamily: FONT },
+  companyName: { ...THEME.typography.h3, color: colors.neutral0, letterSpacing: -0.2, fontFamily: FONT },
+  greetingText: { ...THEME.typography.caption, color: 'rgba(255,255,255,0.62)', marginBottom: 1, fontFamily: FONT },
   headerMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
   statusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -620,14 +624,14 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(16,185,129,0.28)',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
   },
-  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34D399' },
-  statusPillText: { fontSize: 11, color: '#A7F3D0', fontWeight: '700', fontFamily: FONT },
+  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: THEME.colors.success },
+  statusPillText: { ...THEME.typography.overline, color: colors.successLight, fontFamily: FONT },
   datePill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(255,255,255,0.10)',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
   },
-  datePillText: { fontSize: 11, color: 'rgba(255,255,255,0.88)', fontWeight: '600', fontFamily: FONT },
+  datePillText: { ...THEME.typography.overline, color: 'rgba(255,255,255,0.88)', fontFamily: FONT },
 
   // Body
   body: { paddingTop: 16, paddingBottom: 28, gap: 16 },
@@ -639,9 +643,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, marginBottom: -6,
   },
   sectionTitleWrap: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: C.ink, letterSpacing: -0.2, fontFamily: FONT },
-  sectionCaption: { fontSize: 11, color: C.ink3, fontWeight: '500', fontFamily: FONT },
-  sectionAction: { fontSize: 12, color: C.brand, fontWeight: '600', fontFamily: FONT },
+  sectionTitle: { ...THEME.typography.labelLg, color: C.ink, letterSpacing: -0.2, fontFamily: FONT },
+  sectionCaption: { ...THEME.typography.caption, color: C.ink3, fontFamily: FONT },
+  sectionAction: { ...THEME.typography.labelSm, color: C.brand, fontFamily: FONT },
 
   // Generic card
   card: { ...card, marginHorizontal: 16, padding: 16 },
@@ -651,59 +655,59 @@ const s = StyleSheet.create({
   statCard: { ...card, flex: 1, padding: 14 },
   statTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   statIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  statValue: { fontSize: 22, fontWeight: '800', color: C.ink, fontFamily: FONT, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
-  statLabel: { fontSize: 12, fontWeight: '700', color: C.ink2, fontFamily: FONT, marginTop: 3 },
-  statSub: { fontSize: 11, color: C.ink3, fontFamily: FONT, marginTop: 1 },
+  statValue: { ...THEME.typography.h2, color: C.ink, fontFamily: FONT, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  statLabel: { ...THEME.typography.labelSm, color: C.ink2, fontFamily: FONT, marginTop: 3 },
+  statSub: { ...THEME.typography.caption, color: C.ink3, fontFamily: FONT, marginTop: 1 },
 
   // Delivery
   deliveryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  deliveryPct: { fontSize: 30, fontWeight: '800', color: C.ink, fontFamily: FONT, lineHeight: 34, letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
-  mutedSm: { fontSize: 11, color: C.ink3, fontFamily: FONT, marginTop: 2 },
+  deliveryPct: { ...THEME.typography.displayMd, color: C.ink, fontFamily: FONT, lineHeight: 34, letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
+  mutedSm: { ...THEME.typography.caption, color: C.ink3, fontFamily: FONT, marginTop: 2 },
   totalPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.canvas, borderWidth: 1, borderColor: C.line, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  totalPillText: { fontSize: 12, color: C.ink2, fontWeight: '600', fontFamily: FONT, fontVariant: ['tabular-nums'] },
+  totalPillText: { ...THEME.typography.labelSm, color: C.ink2, fontFamily: FONT, fontVariant: ['tabular-nums'] },
   segTrack: { height: 9, flexDirection: 'row', backgroundColor: C.lineSoft, borderRadius: 5, overflow: 'hidden', gap: 2, marginBottom: 14 },
   chipsRow: { flexDirection: 'row', gap: 8 },
   chip: { flex: 1, alignItems: 'center', backgroundColor: C.canvas, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingVertical: 8 },
-  chipVal: { fontSize: 18, fontWeight: '800', color: C.ink, fontFamily: FONT, lineHeight: 21, fontVariant: ['tabular-nums'] },
+  chipVal: { ...THEME.typography.h3, color: C.ink, fontFamily: FONT, lineHeight: 21, fontVariant: ['tabular-nums'] },
   chipLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
   chipDot: { width: 6, height: 6, borderRadius: 3 },
-  chipLabel: { fontSize: 10, fontWeight: '600', color: C.ink2, fontFamily: FONT },
+  chipLabel: { ...THEME.typography.overline, color: C.ink2, fontFamily: FONT },
 
   // Quick actions
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
   actionTile: { ...card, flex: 1, minWidth: '30%', padding: 14, alignItems: 'center', gap: 8 },
   actionIconWrap: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  actionLabel: { fontSize: 11, fontWeight: '600', color: C.ink, textAlign: 'center', fontFamily: FONT },
+  actionLabel: { ...THEME.typography.overline, color: C.ink, textAlign: 'center', fontFamily: FONT },
 
   // Inventory
   invCard: { ...card, marginHorizontal: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 },
   invIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  invCount: { fontSize: 24, fontWeight: '800', color: C.ink, fontFamily: FONT, lineHeight: 28, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  invCount: { ...THEME.typography.displaySm, color: C.ink, fontFamily: FONT, lineHeight: 28, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
   invBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  invBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: FONT },
+  invBadgeText: { ...THEME.typography.overline, fontFamily: FONT },
 
   // Transactions
   txCard: { ...card, marginHorizontal: 16, padding: 0, overflow: 'hidden' },
   txRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, gap: 12 },
   txDivider: { borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   txIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  txDesc: { fontSize: 13, fontWeight: '600', color: C.ink, fontFamily: FONT },
-  txDate: { fontSize: 11, color: C.ink3, marginTop: 2, fontFamily: FONT },
+  txDesc: { ...THEME.typography.labelMd, color: C.ink, fontFamily: FONT },
+  txDate: { ...THEME.typography.caption, color: C.ink3, marginTop: 2, fontFamily: FONT },
   txRight: { alignItems: 'flex-end', gap: 3 },
-  txAmount: { fontSize: 13, fontWeight: '800', fontFamily: FONT, fontVariant: ['tabular-nums'] },
-  txType: { fontSize: 10, fontWeight: '600', color: C.ink3, fontFamily: FONT },
+  txAmount: { ...THEME.typography.labelMd, fontFamily: FONT, fontVariant: ['tabular-nums'] },
+  txType: { ...THEME.typography.overline, color: C.ink3, fontFamily: FONT },
 
   // Empty
   emptyCard: { ...card, marginHorizontal: 16, paddingVertical: 26, paddingHorizontal: 16, alignItems: 'center', gap: 6, borderStyle: 'dashed', borderColor: C.line },
   emptyIconBg: { width: 44, height: 44, borderRadius: 14, backgroundColor: C.brand + '12', alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  emptyTitle: { fontSize: 14, fontWeight: '700', color: C.ink, fontFamily: FONT },
-  emptySub: { fontSize: 12, color: C.ink3, textAlign: 'center', fontFamily: FONT, lineHeight: 17 },
+  emptyTitle: { ...THEME.typography.h5, color: C.ink, fontFamily: FONT },
+  emptySub: { ...THEME.typography.caption, color: C.ink3, textAlign: 'center', fontFamily: FONT, lineHeight: 17 },
   emptyCta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 9, backgroundColor: C.brand + '12' },
-  emptyCtaText: { fontSize: 12, fontWeight: '700', color: C.brand, fontFamily: FONT },
+  emptyCtaText: { ...THEME.typography.labelSm, color: C.brand, fontFamily: FONT },
 
   // Alerts
   alertBanner: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 11, borderRadius: 10, borderLeftWidth: 3 },
-  alertText: { fontSize: 12, flex: 1, fontFamily: FONT },
+  alertText: { ...THEME.typography.caption, flex: 1, fontFamily: FONT }
 });
 
 export default AdminDashboardScreen;

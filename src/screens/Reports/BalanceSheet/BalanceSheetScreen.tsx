@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchBalanceSheetReport,
   selectBalanceSheetState,
-  setBalanceSheetAsOfDate,
+  setBalanceSheetAsOfDate
 } from './balanceSheetSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
@@ -30,7 +30,7 @@ import {
   asOfLabel,
   classifyAccount,
   reconcile,
-  type AccountGroup,
+  type AccountGroup
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -231,7 +231,7 @@ const BalanceSheetScreen: React.FC = () => {
 const AccountGroupBlock: React.FC<{ label: string; items?: AcctItem[]; total?: number }> = ({
   label,
   items,
-  total,
+  total
 }) => {
   if (!items || items.length === 0) return null;
   return (
@@ -252,7 +252,7 @@ const AccountGroupBlock: React.FC<{ label: string; items?: AcctItem[]; total?: n
 
 const styles = StyleSheet.create({
   empty: { ...THEME.typography.bodySm, color: THEME.colors.textTertiary, textAlign: 'center', paddingVertical: 8 },
-  balanceBadge: { marginTop: 10 },
+  balanceBadge: { marginTop: 10 }
 });
 
 export default BalanceSheetScreen;

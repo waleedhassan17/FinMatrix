@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Modal,
-  TouchableOpacity,
+  TouchableOpacity
 } from 'react-native';
 import { Alert } from '../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -14,6 +14,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchPayrollRun, selectPayrollState, processRun, removeRun } from './payrollSlice';
 import { formatCurrency } from '../../utils/formatters';
@@ -172,15 +175,15 @@ const styles = StyleSheet.create({
   bodyRow: { flexDirection: 'row', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   bodyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
   colName: { flex: 1.4 }, colVal: { flex: 1, textAlign: 'right' },
-  bold: { fontWeight: '800' },
+  bold: { fontWeight: typography.labelLg.fontWeight },
   actions: { gap: 10 },
   hint: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, paddingTop: 8 },
   slipBackdrop: { flex: 1, backgroundColor: 'rgba(9,30,66,0.5)', justifyContent: 'center', padding: 24 },
-  slipCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 18, gap: 8 },
+  slipCard: { backgroundColor: colors.neutral0, borderRadius: 16, padding: 18, gap: 8 },
   slipHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  slipTitle: { ...THEME.typography.bodyLg, fontWeight: '800', color: THEME.colors.textPrimary },
+  slipTitle: { ...THEME.typography.h4,  color: THEME.colors.textPrimary },
   slipClose: { padding: 4 },
-  slipEmployee: { ...THEME.typography.bodyLg, fontWeight: '700', color: THEME.colors.textPrimary },
+  slipEmployee: { ...THEME.typography.h4,  color: THEME.colors.textPrimary },
   slipMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   slipDivider: { height: StyleSheet.hairlineWidth, backgroundColor: THEME.colors.border, marginVertical: 6 },
   slipRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
@@ -188,7 +191,7 @@ const styles = StyleSheet.create({
   slipActionHalf: { flex: 1 },
   slipDraftHint: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, textAlign: 'center', paddingTop: 6 },
   slipLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
-  slipValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
+  slipValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary }
 });
 
 export default PayrollRunDetailScreen;

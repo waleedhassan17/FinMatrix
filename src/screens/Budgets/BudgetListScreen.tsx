@@ -4,6 +4,9 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchBudgets, selectBudgetState } from './budgetSlice';
 import { formatCurrency } from '../../utils/formatters';
@@ -54,10 +57,10 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 10 },
   card: { backgroundColor: THEME.colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: THEME.colors.border },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardNumber: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '700', flex: 1 },
+  cardNumber: { ...THEME.typography.labelLg, color: THEME.colors.textPrimary, flex: 1 },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   cardDate: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  cardTotal: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '800' },
+  cardTotal: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight }
 });
 
 export default BudgetListScreen;

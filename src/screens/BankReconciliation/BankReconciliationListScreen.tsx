@@ -117,16 +117,16 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   acctRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   acctInfo: { flex: 1, paddingRight: 10 },
-  acctName: { ...THEME.typography.bodyMd, fontWeight: '700', color: THEME.colors.textPrimary },
+  acctName: { ...THEME.typography.labelLg,  color: THEME.colors.textPrimary },
   acctMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 2 },
   acctRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  acctBalance: { ...THEME.typography.bodyMd, fontWeight: '700', color: ACCENT.teal },
+  acctBalance: { ...THEME.typography.labelLg,  color: ACCENT.teal },
   histRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   histInfo: { flex: 1 },
-  histDate: { ...THEME.typography.bodyMd, fontWeight: '600', color: THEME.colors.textPrimary },
+  histDate: { ...THEME.typography.labelLg,  color: THEME.colors.textPrimary },
   histMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 2 },
-  histBalance: { ...THEME.typography.bodyMd, fontWeight: '700', color: THEME.colors.textPrimary },
-  note: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, lineHeight: 18 },
+  histBalance: { ...THEME.typography.labelLg,  color: THEME.colors.textPrimary },
+  note: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, lineHeight: 18 }
 });
 
 export default BankReconciliationListScreen;

@@ -25,7 +25,7 @@ import type { TransactionsStackParamList } from '../../../navigators/stacks/Tran
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type ScreenRoute = RouteProp<TransactionsStackParamList, 'PaymentSuccess'>;
 
-const { colors, spacing, radius, shadows } = THEME;
+const { colors, radius, shadows, spacing } = THEME;
 
 const METHOD_LABEL: Record<string, string> = {
   cash: 'Cash',

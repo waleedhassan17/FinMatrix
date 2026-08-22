@@ -4,8 +4,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, shadows } from '../../theme';
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppSelector } from '../../hooks/useReduxHooks';
 import { selectFeatures, selectUser } from '../Auth/authSlice';
 import { isFeatureVisible } from '../../utils/featureGates';
@@ -38,16 +40,16 @@ interface MoreSection {
 
 /* ───────────── colour tokens for icon circles ───────────── */
 const IC = {
-  blueBg: '#ECFDF5', blue: '#059669',
-  greenBg: '#E3FCEF', green: '#00875A',
-  amberBg: '#FFFAE6', amber: '#FF991F',
-  tealBg: '#E6FCFF', teal: '#00B8D9',
-  purpleBg: '#EAE6FF', purple: '#6554C0',
-  redBg: '#FFEBE6', red: '#DE350B',
-  indigoBg: '#E6F0FF', indigo: '#0065FF',
-  cyanBg: '#E6FCFF', cyan: '#00B8D9',
-  orangeBg: '#FFFAE6', orange: '#FF8B00',
-  grayBg: '#EBECF0', gray: '#5E6C84',
+  blueBg: colors.actionGreenLighter, blue: colors.actionGreen,
+  greenBg: colors.successLighter, green: colors.success,
+  amberBg: colors.warningLighter, amber: colors.warning,
+  tealBg: colors.actionGreenLighter, teal: colors.info,
+  purpleBg: colors.secondaryLight, purple: colors.secondary,
+  redBg: colors.dangerLighter, red: colors.danger,
+  indigoBg: colors.infoLight, indigo: colors.info,
+  cyanBg: colors.actionGreenLighter, cyan: colors.info,
+  orangeBg: colors.warningLighter, orange: colors.warning,
+  grayBg: colors.neutral100, gray: colors.textSecondary
 };
 
 const SECTIONS: MoreSection[] = [
@@ -67,7 +69,7 @@ const SECTIONS: MoreSection[] = [
         onPress: nav => nav.navigate('BankReconciliationList'),
         feature: 'bankReconciliation',
       },
-    ],
+    ]
   },
   {
     title: 'PEOPLE',
@@ -93,7 +95,7 @@ const SECTIONS: MoreSection[] = [
         onPress: nav => nav.navigate('EmployeeList'),
         feature: 'payroll',
       },
-    ],
+    ]
   },
   {
     title: 'MONEY',
@@ -104,7 +106,7 @@ const SECTIONS: MoreSection[] = [
         subtitle: 'Tax rates, liability report & payments',
         onPress: nav => nav.navigate('TaxSettings'),
       },
-    ],
+    ]
   },
   {
     title: 'OPERATIONS',
@@ -131,7 +133,7 @@ const SECTIONS: MoreSection[] = [
         onPress: nav => nav.navigate('AgencyList'),
         feature: 'agencies',
       },
-    ],
+    ]
   },
   {
     title: 'SYSTEM',
@@ -142,7 +144,7 @@ const SECTIONS: MoreSection[] = [
         subtitle: 'Company, users, preferences & app config',
         onPress: nav => nav.navigate('Settings'),
       },
-    ],
+    ]
   },
 ];
 
@@ -157,7 +159,7 @@ const MoreHubScreen: React.FC = () => {
   const companyType = useAppSelector(selectUser)?.companyType;
   const sections = SECTIONS.map(section => ({
     ...section,
-    rows: section.rows.filter(r => isFeatureVisible(r.feature, features, companyType)),
+    rows: section.rows.filter(r => isFeatureVisible(r.feature, features, companyType))
   })).filter(section => section.rows.length > 0);
 
   const customerCount = useAppSelector(selectCustomers).length;
@@ -199,7 +201,7 @@ const MoreHubScreen: React.FC = () => {
                         <Text style={styles.rowLabel}>{row.label}</Text>
                         <Text style={styles.rowSubtitle}>{row.subtitle}</Text>
                       </View>
-                      <Feather name="chevron-right" size={18} color={colors.textLight} />
+                      <Feather name="chevron-right" size={18} color={colors.textTertiary} />
                     </TouchableOpacity>
                   </React.Fragment>
                 );
@@ -215,10 +217,10 @@ const MoreHubScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -230,22 +232,22 @@ const styles = StyleSheet.create({
     },
   scrollContent: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xl,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xxl,
   },
   sectionHeader: {
-    ...THEME.typography.caption,
-    fontWeight: '600',
+    ...THEME.typography.labelSm,
+    
     color: colors.textSecondary,
     letterSpacing: 0.8,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xs,
-    marginLeft: spacing.xs,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xxs,
+    marginLeft: spacing.xxs,
   },
   sectionCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    ...shadows.card,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    ...shadows.sm,
     overflow: 'hidden',
   },
   divider: {
@@ -267,17 +269,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: spacing.md,
   },
-  rowContent: { flex: 1, marginRight: spacing.sm },
+  rowContent: { flex: 1, marginRight: spacing.xs },
   rowLabel: {
-    ...THEME.typography.bodyLg,
-    fontWeight: '600',
+    ...THEME.typography.h4,
+    
     color: colors.textPrimary,
     marginBottom: 2,
   },
   rowSubtitle: {
     ...THEME.typography.caption,
     color: colors.textSecondary,
-  },
+  }
 });
 
 export default MoreHubScreen;

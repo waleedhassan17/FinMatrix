@@ -77,7 +77,7 @@ const GeneralJournalFormScreen: React.FC = () => {
         debit: (parseFloat(l.debit) || 0).toString(),
         credit: (parseFloat(l.credit) || 0).toString(),
         lineOrder: i,
-      })),
+      }))
     }));
     setSaving(false);
     if (r.meta.requestStatus === 'fulfilled') navigation.goBack();
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
   totalLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
   totalValue: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
-  bold: { ...THEME.typography.labelLg, color: THEME.colors.textPrimary },
+  bold: { ...THEME.typography.labelLg, color: THEME.colors.textPrimary }
 });
 
 export default GeneralJournalFormScreen;

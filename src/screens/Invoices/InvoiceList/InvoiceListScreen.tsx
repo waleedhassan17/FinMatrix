@@ -46,7 +46,7 @@ import type { Invoice } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
-const { colors, spacing, radius, shadows, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Draft',

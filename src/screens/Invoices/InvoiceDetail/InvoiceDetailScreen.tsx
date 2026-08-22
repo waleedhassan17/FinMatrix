@@ -62,7 +62,7 @@ import type { TransactionsStackParamList } from '../../../navigators/stacks/Tran
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type DetailRoute = RouteProp<TransactionsStackParamList, 'InvoiceDetail'>;
-const { colors, spacing, radius, shadows, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
   draft: 'Draft',

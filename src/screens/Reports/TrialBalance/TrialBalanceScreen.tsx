@@ -4,6 +4,9 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { fetchTrialBalanceReport, selectTrialBalanceState, setTrialBalanceRange } from './trialBalanceSlice';
 import { formatCurrency } from '../../../utils/formatters';
@@ -23,7 +26,7 @@ import {
   reportContentStyle, amountColWidth,
   ReportTitleBlock,
   useStatementCompany,
-  rangeLabel,
+  rangeLabel
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -154,7 +157,7 @@ const styles = StyleSheet.create({
     borderTopColor: THEME.colors.borderLight,
   },
   bodyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
-  acctName: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
+  acctName: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   acctCode: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   colAcct: { flex: 1, minWidth: 150 },
   colVal: { textAlign: 'right', flexShrink: 0 },
@@ -168,7 +171,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderTopColor: THEME.colors.border,
   },
-  totalText: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '800' },
+  totalText: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight }
 });
 
 export default TrialBalanceScreen;

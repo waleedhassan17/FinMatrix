@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
+  Dimensions
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -16,7 +16,7 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchDeliveryDailyReport,
   setDeliveryDailyDate,
-  selectDeliveryDailyReportState,
+  selectDeliveryDailyReportState
 } from './deliveryDailyReportSlice';
 import type { DeliveryPersonnelStat } from '../../../models/deliveryDailyReportModel';
 import {
@@ -32,7 +32,7 @@ import {
   tableStyles,
   ACCENT,
   CHART_SERIES,
-  reportContentStyle,
+  reportContentStyle
 } from '../../../components/reports/ReportUI';
 
 const CHART_WIDTH = Dimensions.get('window').width - THEME.spacing.md * 4;
@@ -74,7 +74,7 @@ const DeliveryDailyReportScreen: React.FC = () => {
         population: item.count,
         color: CHART_SERIES[idx % CHART_SERIES.length],
         legendFontColor: THEME.colors.textSecondary,
-        legendFontSize: 11,
+        legendFontSize: 11
       })),
     [report?.agencyDistribution],
   );
@@ -142,7 +142,7 @@ const DeliveryDailyReportScreen: React.FC = () => {
                   height={200}
                   chartConfig={{
                     color: (opacity = 1) => `rgba(5,150,105,${opacity})`,
-                    labelColor: () => THEME.colors.textSecondary,
+                    labelColor: () => THEME.colors.textSecondary
                   }}
                   accessor="population"
                   backgroundColor="transparent"
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dateText: { flex: 1, textAlign: 'center', ...THEME.typography.labelLg, color: THEME.colors.textPrimary },
-  empty: { ...THEME.typography.bodySm, color: THEME.colors.textTertiary, textAlign: 'center', paddingVertical: 14 },
+  empty: { ...THEME.typography.bodySm, color: THEME.colors.textTertiary, textAlign: 'center', paddingVertical: 14 }
 });
 
 export default DeliveryDailyReportScreen;
