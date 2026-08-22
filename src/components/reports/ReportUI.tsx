@@ -24,6 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { THEME } from '../../utils/theme';
+import { HEADER_NAVY } from '../../theme';
 import { useAppSelector } from '../../hooks/useReduxHooks';
 import { selectActiveCompany } from '../../screens/Auth/companySlice';
 import { DEFAULT_COMPANY } from '../../utils/invoicePdf';
@@ -35,10 +36,9 @@ export type { AccountGroup } from './reportFormat';
 
 const T = THEME;
 
-// Shared navy header gradient (matches the company dashboard hero). These
-// three are a token DEFINITION, not a usage -- the one place the header
-// navy is written down. Exempt from the no-raw-hex check for that reason.
-export const HEADER_NAVY = ['#0E1726', '#16243B', '#1C2F4C'] as const;
+// Re-exported so the reports kit stays one import site; the value itself is a
+// token and lives in theme.ts.
+export { HEADER_NAVY } from '../../theme';
 
 // Curated accent palette for KPI tiles / chart series — used everywhere
 // so a "blue metric" looks the same on every screen.

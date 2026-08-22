@@ -29,6 +29,12 @@ jobs:
       - name: Type-check
         run: npx tsc --noEmit
 
+      # A hard gate, unlike lint below. It passes today, so anything it catches
+      # is a regression rather than backlog -- which is the only way a style
+      # check stays worth reading. See scripts/check-design-tokens.js.
+      - name: Design tokens
+        run: npm run check:tokens
+
       # Informational for now: the codebase carries ~285 pre-existing lint
       # errors and ~1125 warnings. Failing the build on them from day one
       # would make this job noise that everyone learns to ignore. Burn the

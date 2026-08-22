@@ -363,6 +363,14 @@ export const THEME = {
 
 export type Theme = typeof THEME;
 
+/**
+ * The navy header gradient, shared by every screen that has one: the reports
+ * kit, the transactions stack, and the dashboard. It lives here rather than in
+ * a component so a module can use the colour without importing the component
+ * that happens to render it.
+ */
+export const HEADER_NAVY = ['#0E1726', '#16243B', '#1C2F4C'] as const;
+
 // ───────────────────────────────────────────────
 // 6b. Status colours — one resolver for the whole app
 // ───────────────────────────────────────────────
