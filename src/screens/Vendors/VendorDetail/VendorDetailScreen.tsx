@@ -10,7 +10,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
+  RefreshControl
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -19,8 +19,10 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectVendors, upsertVendor } from '../VendorList/vendorListSlice';
 import { selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
@@ -36,7 +38,7 @@ import {
   fetchVendorBills,
   fetchVendorPayments,
   toggleActiveOnDetail,
-  type VendorDetailTab,
+  type VendorDetailTab
 } from './vendorDetailSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
@@ -44,7 +46,7 @@ import { PAYMENT_TERMS_LABELS } from '../../../models/vendorModel';
 import {
   vendorSingleSerializer,
   type VendorBillRow,
-  type VendorPaymentRow,
+  type VendorPaymentRow
 } from '../../../serializers/vendorSerializer';
 import { getVendorStatementAPI } from '../../../networks/purchases/vendorNetwork';
 import { shareVendorStatementPdf } from '../../../utils/statementPdf';
@@ -67,8 +69,8 @@ const BILL_STATUS_COLORS: Record<string, string> = {
   received: colors.secondary,
   partial: colors.warning,
   overdue: colors.danger,
-  draft: colors.textLight,
-  void: colors.textLight,
+  draft: colors.textTertiary,
+  void: colors.textTertiary
 };
 
 // ═══════════════════════════════════════════════════════
@@ -152,14 +154,14 @@ const VendorDetailScreen: React.FC = () => {
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
       .navigate('TransactionsStack', {
         screen: 'BillForm',
-        params: { vendorId: vendor.id },
+        params: { vendorId: vendor.id }
       });
   };
   const handleRecordPayment = () => {
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
       .navigate('TransactionsStack', {
         screen: 'PayBills',
-        params: { vendorId: vendor.id },
+        params: { vendorId: vendor.id }
       });
   };
   const handleSendStatement = async () => {
@@ -215,7 +217,7 @@ const VendorDetailScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.actionGreen} />
         }
       >
         {/* ── Top Card: Balance ───────────────────── */}
@@ -228,8 +230,8 @@ const VendorDetailScreen: React.FC = () => {
           </View>
 
           {/* Status Badge */}
-          <View style={[styles.statusBadge, { backgroundColor: vendor.isActive ? colors.success + '18' : colors.textLight + '18' }]}>
-            <Text style={[styles.statusBadgeText, { color: vendor.isActive ? colors.success : colors.textLight }]}>
+          <View style={[styles.statusBadge, { backgroundColor: vendor.isActive ? colors.success + '18' : colors.textTertiary + '18' }]}>
+            <Text style={[styles.statusBadgeText, { color: vendor.isActive ? colors.success : colors.textTertiary }]}>
               {vendor.isActive ? '● Active' : '● Inactive'}
             </Text>
           </View>
@@ -238,11 +240,11 @@ const VendorDetailScreen: React.FC = () => {
         {/* ── Action Buttons ─────────────────────── */}
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.actionBtn} onPress={handleCreateBill} activeOpacity={0.7}>
-            <Feather name="file-text" size={20} color={colors.primary} style={{ marginBottom: spacing.xs }} />
+            <Feather name="file-text" size={20} color={colors.actionGreen} style={{ marginBottom: spacing.xxs }} />
             <Text style={styles.actionLabel}>Create Bill</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={handleRecordPayment} activeOpacity={0.7}>
-            <Feather name="dollar-sign" size={20} color={colors.primary} style={{ marginBottom: spacing.xs }} />
+            <Feather name="dollar-sign" size={20} color={colors.actionGreen} style={{ marginBottom: spacing.xxs }} />
             <Text style={styles.actionLabel}>Record Payment</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -251,7 +253,7 @@ const VendorDetailScreen: React.FC = () => {
             activeOpacity={0.7}
             disabled={isSharingStatement}
           >
-            <Feather name="send" size={20} color={colors.primary} style={{ marginBottom: spacing.xs }} />
+            <Feather name="send" size={20} color={colors.actionGreen} style={{ marginBottom: spacing.xxs }} />
             <Text style={styles.actionLabel}>{isSharingStatement ? 'Preparing…' : 'Send Statement'}</Text>
           </TouchableOpacity>
         </View>
@@ -365,7 +367,7 @@ const TabStateBlock: React.FC<{
   if (loading && isEmpty) {
     return (
       <View style={styles.tabStateBlock}>
-        <ActivityIndicator size="small" color={colors.primary} />
+        <ActivityIndicator size="small" color={colors.actionGreen} />
         <Text style={styles.tabStateText}>Loading…</Text>
       </View>
     );
@@ -382,7 +384,7 @@ const TabStateBlock: React.FC<{
   if (isEmpty) {
     return (
       <View style={styles.tabStateBlock}>
-        <Feather name="inbox" size={28} color={colors.textLight} />
+        <Feather name="inbox" size={28} color={colors.textTertiary} />
         <Text style={styles.tabStateText}>{emptyText}</Text>
       </View>
     );
@@ -397,7 +399,7 @@ const BILL_STATUS_LABELS: Record<string, string> = {
   partial: 'Partial',
   overdue: 'Overdue',
   draft: 'Draft',
-  void: 'Void',
+  void: 'Void'
 };
 
 const BillsTab: React.FC<{
@@ -423,8 +425,8 @@ const BillsTab: React.FC<{
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={styles.listCardAmount}>{formatCurrency(bill.amount, 'Rs ')}</Text>
-              <View style={[styles.miniStatusBadge, { backgroundColor: (BILL_STATUS_COLORS[bill.status] ?? colors.textLight) + '18' }]}>
-                <Text style={[styles.miniStatusText, { color: BILL_STATUS_COLORS[bill.status] ?? colors.textLight }]}>
+              <View style={[styles.miniStatusBadge, { backgroundColor: (BILL_STATUS_COLORS[bill.status] ?? colors.textTertiary) + '18' }]}>
+                <Text style={[styles.miniStatusText, { color: BILL_STATUS_COLORS[bill.status] ?? colors.textTertiary }]}>
                   {BILL_STATUS_LABELS[bill.status] ?? bill.status}
                 </Text>
               </View>
@@ -495,132 +497,132 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', marginRight: spacing.sm },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
+  headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', marginRight: spacing.xs },
+  backBtn: { marginRight: spacing.xxs, padding: spacing.xxs / 2 },
+  backIcon: { ...typography.h1, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
   headerTitle: { ...THEME.typography.h2, color: colors.textPrimary, flex: 1 },
-  scrollContent: { paddingBottom: spacing.xl },
+  scrollContent: { paddingBottom: spacing.xxl },
 
   // ── Top Card ───────────────────────────────────
   topCard: {
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.xl,
     marginTop: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    ...shadows.card,
+    ...shadows.sm,
   },
   topCardRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
   topCardLabel: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: 2 },
-  topCardBalance: { ...THEME.typography.h1, color: colors.primary },
+  topCardBalance: { ...THEME.typography.h1, color: colors.actionGreen },
 
   statusBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: spacing.xxs,
     borderRadius: 6,
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
   },
-  statusBadgeText: { ...THEME.typography.caption, fontWeight: '700' },
+  statusBadgeText: { ...THEME.typography.caption, fontWeight: typography.labelLg.fontWeight },
 
   // ── Action Buttons ─────────────────────────────
   actionRow: {
     flexDirection: 'row',
-    marginHorizontal: spacing.lg,
+    marginHorizontal: spacing.xl,
     marginTop: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   actionBtn: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
     paddingVertical: spacing.md,
     alignItems: 'center',
-    ...shadows.small,
+    ...shadows.xs,
   },
-  actionIcon: { fontSize: 22, marginBottom: spacing.xs },
+  actionIcon: { ...typography.h2, marginBottom: spacing.xxs },
   actionLabel: { ...THEME.typography.labelSm, color: colors.textPrimary, textAlign: 'center' },
 
   // ── Tabs ───────────────────────────────────────
   tabRow: {
     flexDirection: 'row',
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    padding: spacing.xs,
-    ...shadows.small,
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xs,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    padding: spacing.xxs,
+    ...shadows.xs,
   },
-  tab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', borderRadius: 6 },
-  tabActive: { backgroundColor: colors.primary },
+  tab: { flex: 1, paddingVertical: spacing.xs, alignItems: 'center', borderRadius: 6 },
+  tabActive: { backgroundColor: colors.actionGreen },
   tabText: { ...THEME.typography.labelLg, color: colors.textSecondary },
-  tabTextActive: { color: colors.white },
+  tabTextActive: { color: colors.surface },
 
   // ── Tab Content ────────────────────────────────
-  tabContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  tabContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs },
 
   // ── Info Cards ─────────────────────────────────
   infoCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.small,
+    marginBottom: spacing.xs,
+    ...shadows.xs,
   },
   infoCardTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
+    
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs + 1,
+    paddingVertical: spacing.xxs + 1,
   },
-  infoIcon: { fontSize: 14, marginRight: spacing.sm, width: 22 },
+  infoIcon: { ...typography.bodySm, marginRight: spacing.xs, width: 22 },
   infoLabel: { ...THEME.typography.bodySm, color: colors.textSecondary, width: 100 },
-  infoValue: { ...THEME.typography.bodySm, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+  infoValue: { ...THEME.typography.labelMd,  color: colors.textPrimary, flex: 1 },
 
   addressText: { ...THEME.typography.bodyMd, color: colors.textPrimary, lineHeight: 22 },
   notesText: { ...THEME.typography.bodyMd, color: colors.textSecondary, lineHeight: 21 },
 
   // ── List Cards (Bills / Payments) ──────────────
   listCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.small,
+    marginBottom: spacing.xs,
+    ...shadows.xs,
   },
   listCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  listCardTitle: { ...THEME.typography.h4, fontWeight: '700', color: colors.textPrimary },
+  listCardTitle: { ...THEME.typography.h4,  color: colors.textPrimary },
   listCardSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
-  listCardAmount: { ...THEME.typography.h4, fontWeight: '700', color: colors.textPrimary },
-  listCardDetail: { ...THEME.typography.caption, color: colors.textLight, marginTop: spacing.sm },
+  listCardAmount: { ...THEME.typography.h4,  color: colors.textPrimary },
+  listCardDetail: { ...THEME.typography.caption, color: colors.textTertiary, marginTop: spacing.xs },
 
   miniStatusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginTop: 4 },
   tabStateBlock: {
     alignItems: 'center',
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.xl,
+    gap: spacing.xs,
   },
-  tabStateText: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
-  miniStatusText: { ...THEME.typography.labelSm, fontWeight: '700' },
+  tabStateText: { ...typography.bodySm, color: colors.textSecondary, textAlign: 'center' },
+  miniStatusText: { ...THEME.typography.labelSm, fontWeight: typography.labelLg.fontWeight },
 
   // ── Empty / Center ─────────────────────────────
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  emptyIcon: { ...THEME.typography.displayLg, fontSize: 48 },
-  emptyText: { ...THEME.typography.h4, fontWeight: '400', color: colors.textSecondary },
+  emptyIcon: { ...typography.displayLg },
+  emptyText: { ...typography.bodyLg, color: colors.textSecondary }
 });
 
 export default VendorDetailScreen;

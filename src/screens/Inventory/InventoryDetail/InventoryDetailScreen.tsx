@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  StatusBar,
+  StatusBar
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import Toast from 'react-native-toast-message';
@@ -22,13 +22,15 @@ import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navig
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { HEADER_NAVY } from '../../../components/reports/ReportUI';
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
   setOpeningStock,
-  toggleInventoryItem,
+  toggleInventoryItem
 } from '../InventoryList/inventoryListSlice';
 import { selectUser } from '../../Auth/authSlice';
 import {
@@ -38,7 +40,7 @@ import {
   selectInventoryDetailError,
   setActiveTab,
   resetInventoryDetail,
-  fetchItemMovements,
+  fetchItemMovements
 } from './inventoryDetailSlice';
 import type { InventoryDetailTab } from './inventoryDetailSlice';
 import { movementLabel } from '../../../models/inventoryModel';
@@ -147,7 +149,7 @@ const InventoryDetailScreen: React.FC = () => {
                   Toast.show({
                     type: 'success',
                     text1: 'Opening stock recorded',
-                    text2: `${item.name}: ${qty} on hand`,
+                    text2: `${item.name}: ${qty} on hand`
                   });
                 } catch (e: any) {
                   Toast.show({
@@ -180,7 +182,7 @@ const InventoryDetailScreen: React.FC = () => {
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
       .navigate('TransactionsStack', {
         screen: 'POForm',
-        params: { prefillItemId: item.itemId },
+        params: { prefillItemId: item.itemId }
       });
   }, [item, navigation]);
 
@@ -266,7 +268,7 @@ const InventoryDetailScreen: React.FC = () => {
       {/* Header */}
       <LinearGradient colors={HEADER_NAVY} style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={24} color="#FFFFFF" />
+          <Feather name="arrow-left" size={24} color={colors.neutral0} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Item Detail</Text>
       </LinearGradient>
@@ -412,7 +414,7 @@ const InventoryDetailScreen: React.FC = () => {
 
             {movementsStatus === 'loading' && (
               <View style={styles.emptyTab}>
-                <ActivityIndicator color={colors.primary} />
+                <ActivityIndicator color={colors.actionGreen} />
               </View>
             )}
 
@@ -475,7 +477,7 @@ const InventoryDetailScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
 
-        <View style={{ height: spacing.xl }} />
+        <View style={{ height: spacing.xxl }} />
       </ScrollView>
       </View>
     </SafeAreaView>
@@ -490,133 +492,123 @@ const styles = StyleSheet.create({
   safeTop: { backgroundColor: HEADER_NAVY[0] },
   body: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  notFound: { fontSize: 16, color: colors.textSecondary, marginBottom: spacing.md, fontFamily: THEME.typography.fontFamily },
-  goBack: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  notFound: { ...typography.bodyLg, color: colors.textSecondary, marginBottom: spacing.md },
+  goBack: { ...typography.labelLg, color: colors.secondary },
 
   // ── Header ────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.md,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
+  backBtn: { marginRight: spacing.xxs, padding: spacing.xxs / 2 },
+  headerTitle: { ...typography.h3, color: colors.neutral0 },
 
   scroll: { flex: 1 },
-  scrollContent: { padding: spacing.lg },
+  scrollContent: { padding: spacing.xl },
 
   // ── Top Card ──────────────────────────────────────
   topCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.card,
+    ...shadows.sm,
   },
   topCardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  topCardLeft: { flex: 1, marginRight: spacing.sm },
+  topCardLeft: { flex: 1, marginRight: spacing.xs },
   topCardRight: { alignItems: 'flex-end' },
   itemName: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...typography.h3,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
     marginBottom: 2,
   },
   itemSku: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.bodySm,
+    color: colors.textTertiary,
     marginBottom: 4,
   },
   itemCategory: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: spacing.xxs,
     borderRadius: 12,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
   },
-  statusDot: { width: 7, height: 7, borderRadius: 4, marginRight: spacing.xs },
-  statusText: { fontSize: 12, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  statusDot: { width: 7, height: 7, borderRadius: 4, marginRight: spacing.xxs },
+  statusText: { ...typography.labelSm },
   agencyBadge: {
     backgroundColor: colors.secondary + '15',
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 2,
     borderRadius: 8,
   },
   agencyBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.overline,
     color: colors.secondary,
-    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Metrics ───────────────────────────────────────
   metricsRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginBottom: spacing.md,
   },
   metricCard: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    padding: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    padding: spacing.xs,
     alignItems: 'center',
-    ...shadows.small,
+    ...shadows.xs,
   },
   metricValue: {
-    fontSize: 20,
-    fontWeight: '800',
+    ...typography.h3,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   metricLabel: {
-    fontSize: 10,
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.overline,
+    color: colors.textTertiary,
     marginTop: 2,
   },
 
   // ── Action Buttons ────────────────────────────────
   actionRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginBottom: spacing.md,
   },
   actionBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  actionBtnIcon: { fontSize: 18, marginBottom: 2 },
-  actionBtnText: { fontSize: 11, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  actionBtnIcon: { ...typography.h3, marginBottom: 2 },
+  actionBtnText: { ...typography.overline, color: colors.textPrimary },
 
   // ── Tabs ──────────────────────────────────────────
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
     padding: 3,
     marginBottom: spacing.md,
     borderWidth: 1,
@@ -624,125 +616,115 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     alignItems: 'center',
-    borderRadius: borderRadius.sm - 2,
+    borderRadius: radius.sm - 2,
   },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '500', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  tabTextActive: { color: colors.white, fontWeight: '600' },
+  tabActive: { backgroundColor: colors.actionGreen },
+  tabText: { ...typography.bodySm, color: colors.textSecondary },
+  tabTextActive: { color: colors.surface, fontWeight: typography.labelLg.fontWeight },
 
   // ── Info Card ─────────────────────────────────────
   infoCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    ...shadows.card,
+    ...shadows.sm,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
     paddingHorizontal: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, maxWidth: '55%', textAlign: 'right' },
+  infoLabel: { ...typography.bodySm, color: colors.textSecondary },
+  infoValue: { ...typography.labelMd, color: colors.textPrimary, maxWidth: '55%', textAlign: 'right' },
 
   // ── Transactions ──────────────────────────────────
   txnCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    ...shadows.card,
+    ...shadows.sm,
   },
   txnHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.primary + '08',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
+    backgroundColor: colors.actionGreen + '08',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   txnHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
+    ...typography.overline,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
   },
   txnRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  txnRowAlt: { backgroundColor: '#FAFBFC' },
-  txnDate: { fontSize: 11, fontWeight: '500', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  txnRef: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  txnRowAlt: { backgroundColor: colors.backgroundAlt },
+  txnDate: { ...typography.caption, color: colors.textPrimary },
+  txnRef: { ...typography.caption, color: colors.textSecondary },
   mvTypeBadge: {
     width: 70,
-    paddingHorizontal: spacing.xs + 2,
+    paddingHorizontal: spacing.xxs + 2,
     paddingVertical: 2,
     borderRadius: 6,
     alignItems: 'center',
   },
   mvTypeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.overline,
+    
   },
   mvQty: {
+    ...typography.labelMd,
     width: 55,
-    fontSize: 13,
-    fontWeight: '700',
     textAlign: 'right',
-    fontFamily: THEME.typography.fontFamily,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   mvBalance: {
+    ...typography.labelSm,
     width: 55,
-    fontSize: 12,
-    fontWeight: '600',
     textAlign: 'right',
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   emptyTab: {
-    padding: spacing.xl,
+    padding: spacing.xxl,
     alignItems: 'center',
   },
   emptyTabText: {
-    fontSize: 14,
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.bodySm,
+    color: colors.textTertiary,
     textAlign: 'center',
   },
   retryBtn: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xxs + 2,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.secondary + '40',
   },
   retryBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.labelMd,
     color: colors.secondary,
-    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Toggle Button ─────────────────────────────────
   toggleBtn: {
     marginTop: spacing.md,
-    paddingVertical: spacing.sm + 4,
-    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xs + 4,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.danger + '40',
     alignItems: 'center',
@@ -752,14 +734,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success + '08',
   },
   toggleBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.h5,
     color: colors.danger,
-    fontFamily: THEME.typography.fontFamily,
   },
   toggleBtnTextActive: {
     color: colors.success,
-  },
+  }
 });
 
 export default InventoryDetailScreen;

@@ -15,7 +15,7 @@ import {
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
+  Platform
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -23,15 +23,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAgencies, fetchAgencies } from '../AgencyList/agencyListSlice';
 import {
   selectAgencyDetailTab,
   setActiveTab,
   resetAgencyDetail,
-  type AgencyDetailTab,
+  type AgencyDetailTab
 } from './agencyDetailSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { AGENCY_TYPE_COLORS } from '../../../models/agencyModel';
@@ -66,7 +68,7 @@ const EMPTY_FORM: AddItemForm = {
   unitOfMeasure: 'unit',
   quantityOnHand: '0',
   unitCost: '0',
-  sellingPrice: '0',
+  sellingPrice: '0'
 };
 
 // ═══════════════════════════════════════════════════════
@@ -156,7 +158,7 @@ const InventoryTab: React.FC<{ agencyId: string; agencyName: string }> = ({ agen
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.actionGreen} />
       </View>
     );
   }
@@ -188,7 +190,7 @@ const InventoryTab: React.FC<{ agencyId: string; agencyName: string }> = ({ agen
       <FlatList
         data={items}
         keyExtractor={i => i.id}
-        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingHorizontal: spacing.xl, paddingTop: spacing.xs, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
           const qty = parseFloat(String(item.quantityOnHand)) || 0;
@@ -241,7 +243,7 @@ const InventoryTab: React.FC<{ agencyId: string; agencyName: string }> = ({ agen
                   <Feather name="x" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
                 <AddField label="Item Name *" value={addForm.name} placeholder="e.g. Habib Cooking Oil 5L"
                   onChangeText={v => setAddForm(f => ({ ...f, name: v }))} />
                 <AddField label="SKU *" value={addForm.sku} placeholder="e.g. CO-HABIB-5L"
@@ -251,7 +253,7 @@ const InventoryTab: React.FC<{ agencyId: string; agencyName: string }> = ({ agen
                 <AddField label="Unit of Measure" value={addForm.unitOfMeasure} placeholder="e.g. bottle, pack"
                   onChangeText={v => setAddForm(f => ({ ...f, unitOfMeasure: v }))} />
                 <View style={styles.addFieldRow}>
-                  <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <View style={{ flex: 1, marginRight: spacing.xs }}>
                     <AddField label="Opening Qty" value={addForm.quantityOnHand} placeholder="0"
                       onChangeText={v => setAddForm(f => ({ ...f, quantityOnHand: v }))} keyboardType="numeric" />
                   </View>
@@ -266,7 +268,7 @@ const InventoryTab: React.FC<{ agencyId: string; agencyName: string }> = ({ agen
               <View style={styles.modalFooter}>
                 <CustomButton title="Cancel" onPress={() => { setShowAddModal(false); setAddForm(EMPTY_FORM); }}
                   variant="secondary" size="md" fullWidth />
-                <View style={{ width: spacing.sm }} />
+                <View style={{ width: spacing.xs }} />
                 <CustomButton title="Add Item" onPress={handleAddItem} variant="primary" size="md" fullWidth
                   isLoading={isSaving} />
               </View>
@@ -289,7 +291,7 @@ const AddField: React.FC<{
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={colors.textLight}
+      placeholderTextColor={colors.textTertiary}
       keyboardType={keyboardType}
       autoCapitalize={autoCapitalize}
     />
@@ -300,8 +302,8 @@ const AddField: React.FC<{
 // DELIVERIES TAB
 // ═══════════════════════════════════════════════════════
 const DeliveriesTab: React.FC<{ agencyName: string }> = ({ agencyName }) => (
-  <View style={[styles.center, { flex: 1, paddingVertical: spacing.xl * 2 }]}>
-    <Text style={{ fontSize: 32, marginBottom: spacing.sm }}>🚚</Text>
+  <View style={[styles.center, { flex: 1, paddingVertical: spacing.xxl * 2 }]}>
+    <Text style={[typography.displayMd, { marginBottom: spacing.xs }]}>🚚</Text>
     <Text style={styles.emptyText}>Delivery history</Text>
     <Text style={styles.emptySubText}>Deliveries routed through {agencyName} will appear here.</Text>
   </View>
@@ -327,10 +329,10 @@ const AnalyticsTab: React.FC<{ agencyId: string }> = ({ agencyId }) => {
   const lowStock = items.filter(i => { const q = parseFloat(String(i.quantityOnHand)) || 0; return q > 0 && q < 50; }).length;
 
   return (
-    <ScrollView contentContainerStyle={{ padding: spacing.lg }} showsVerticalScrollIndicator={false}>
+    <ScrollView contentContainerStyle={{ padding: spacing.xl }} showsVerticalScrollIndicator={false}>
       <Text style={styles.analyticsSectionTitle}>Inventory Overview</Text>
       <View style={styles.analyticsRow}>
-        <AnalyticCard label="Total Items" value={String(items.length)} color={colors.primary} />
+        <AnalyticCard label="Total Items" value={String(items.length)} color={colors.actionGreen} />
         <AnalyticCard label="In Stock" value={String(inStock)} color={colors.success} />
         <AnalyticCard label="Low Stock" value={String(lowStock)} color={colors.warning} />
       </View>
@@ -501,98 +503,98 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1, textAlign: 'center' },
+  backBtn: { ...typography.labelLg, color: colors.secondary },
+  headerTitle: { ...typography.h3, color: colors.textPrimary, flex: 1, textAlign: 'center' },
 
   // ── Info Card ─────────────────────────────────────
   infoCard: {
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.xl,
     marginTop: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    ...shadows.card,
+    ...shadows.sm,
   },
-  infoTop: { flexDirection: 'row', marginBottom: spacing.sm },
-  infoName: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.xs },
-  typeBadge: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  typeBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
-  infoDesc: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
-  infoRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.xs + 2, gap: spacing.xs },
-  infoLabel: { fontSize: 14 },
-  infoValue: { fontSize: 13, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
+  infoTop: { flexDirection: 'row', marginBottom: spacing.xs },
+  infoName: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.xxs },
+  typeBadge: { alignSelf: 'flex-start', paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs, borderRadius: 6 },
+  typeBadgeText: { ...typography.overline },
+  infoDesc: { ...typography.bodySm, color: colors.textSecondary, marginBottom: spacing.xs },
+  infoRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.xxs + 2, gap: spacing.xxs },
+  infoLabel: { ...typography.bodySm },
+  infoValue: { ...typography.bodySm, color: colors.textPrimary, flex: 1 },
 
-  statRow: { flexDirection: 'row', marginTop: spacing.sm, gap: spacing.sm },
+  statRow: { flexDirection: 'row', marginTop: spacing.xs, gap: spacing.xs },
   statBox: {
     flex: 1,
-    backgroundColor: colors.primary + '08',
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.actionGreen + '08',
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs,
     alignItems: 'center',
   },
-  statValue: { fontSize: 13, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  statLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  statValue: { ...typography.labelMd, color: colors.actionGreen },
+  statLabel: { ...typography.overline, color: colors.textSecondary, marginTop: 2 },
 
   // ── Tabs ──────────────────────────────────────────
   tabRow: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
-    marginTop: spacing.sm,
+    backgroundColor: colors.surface,
+    marginTop: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm + 2 },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.textLight, fontFamily: THEME.typography.fontFamily },
-  tabTextActive: { color: colors.primary },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: spacing.xs + 2 },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: colors.actionGreen },
+  tabText: { ...typography.labelMd, color: colors.textTertiary },
+  tabTextActive: { color: colors.actionGreen },
 
   // ── Inventory Tab ─────────────────────────────────
   invSummaryBar: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   invSummaryItem: { flex: 1, alignItems: 'center' },
-  invSummaryDivider: { width: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
-  invSummaryVal: { fontSize: 14, fontWeight: '800', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  invSummaryLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  invSummaryDivider: { width: 1, backgroundColor: colors.border, marginVertical: spacing.xxs },
+  invSummaryVal: { ...typography.h5, color: colors.textPrimary },
+  invSummaryLabel: { ...typography.overline, color: colors.textSecondary, marginTop: 2 },
 
   invItemCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    padding: spacing.sm + 2,
-    marginBottom: spacing.xs + 2,
-    ...shadows.small,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    padding: spacing.xs + 2,
+    marginBottom: spacing.xxs + 2,
+    ...shadows.xs,
   },
-  invItemName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  invItemSku: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  invItemName: { ...typography.labelMd, color: colors.textPrimary },
+  invItemSku: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
   invItemRight: { alignItems: 'flex-end', gap: 4 },
-  invQtyBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 8 },
-  invQtyText: { fontSize: 13, fontWeight: '800', fontFamily: THEME.typography.fontFamily },
-  invItemValue: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  invQtyBadge: { paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: 8 },
+  invQtyText: { ...typography.labelMd },
+  invItemValue: { ...typography.caption, color: colors.textSecondary },
 
   fab: {
     position: 'absolute',
-    bottom: spacing.lg,
-    right: spacing.lg,
-    backgroundColor: colors.primary,
+    bottom: spacing.xl,
+    right: spacing.xl,
+    backgroundColor: colors.actionGreen,
     borderRadius: 24,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    ...shadows.card,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xs + 2,
+    ...shadows.sm,
   },
-  fabText: { fontSize: 14, fontWeight: '700', color: colors.white, fontFamily: THEME.typography.fontFamily },
+  fabText: { ...typography.h5, color: colors.surface },
 
   // ── Add Item Modal ─────────────────────────────────
   modalOverlay: {
@@ -601,11 +603,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '90%',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
   },
   modalHeader: {
@@ -614,68 +616,67 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  modalTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  modalClose: { fontSize: 18, color: colors.textLight, padding: spacing.xs },
+  modalTitle: { ...typography.h4, color: colors.textPrimary },
+  modalClose: { ...typography.h3, color: colors.textTertiary, padding: spacing.xxs },
   modalFooter: {
     flexDirection: 'row',
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xl,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
 
-  addField: { marginBottom: spacing.sm },
-  addFieldLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: 4 },
+  addField: { marginBottom: spacing.xs },
+  addFieldLabel: { ...typography.labelSm, color: colors.textSecondary, marginBottom: 4 },
   addFieldInput: {
+    ...typography.bodySm,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.sm,
-    fontSize: 14,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: spacing.xs,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   addFieldRow: { flexDirection: 'row' },
 
   // ── Deliveries Tab ────────────────────────────────
 
   // ── Analytics Tab ─────────────────────────────────
-  analyticsSectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
-  analyticsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  analyticsSectionTitle: { ...typography.h5, color: colors.textPrimary, marginBottom: spacing.xs },
+  analyticsRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md },
   analyticCard: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    padding: spacing.sm + 2,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    padding: spacing.xs + 2,
     alignItems: 'center',
     borderTopWidth: 3,
-    ...shadows.small,
+    ...shadows.xs,
   },
-  analyticCardVal: { fontSize: 20, fontWeight: '800', fontFamily: THEME.typography.fontFamily },
-  analyticCardLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  analyticCardVal: { ...typography.h3 },
+  analyticCardLabel: { ...typography.overline, color: colors.textSecondary, marginTop: 2 },
   analyticsTotalCard: {
-    backgroundColor: colors.primary + '0A',
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.actionGreen + '0A',
+    borderRadius: radius.lg,
     padding: spacing.md,
     alignItems: 'center',
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.primary + '20',
+    borderColor: colors.actionGreen + '20',
   },
-  analyticsTotalLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  analyticsTotalVal: { fontSize: 22, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily, marginTop: 4 },
-  analyticsBar: { marginBottom: spacing.sm },
-  analyticsBarName: { fontSize: 12, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: 4 },
+  analyticsTotalLabel: { ...typography.caption, color: colors.textSecondary },
+  analyticsTotalVal: { ...typography.h2, color: colors.actionGreen, marginTop: 4 },
+  analyticsBar: { marginBottom: spacing.xs },
+  analyticsBarName: { ...typography.labelSm, color: colors.textPrimary, marginBottom: 4 },
   analyticsBarTrack: { height: 8, borderRadius: 4, backgroundColor: colors.border, overflow: 'hidden', marginBottom: 2 },
   analyticsBarFill: { height: 8, borderRadius: 4, backgroundColor: colors.secondary },
-  analyticsBarVal: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  analyticsBarVal: { ...typography.caption, color: colors.textSecondary },
 
   // ── Common ────────────────────────────────────────
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: spacing.xl * 2 },
-  emptyText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  emptySubText: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginTop: 4, textAlign: 'center' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: spacing.xxl * 2 },
+  emptyText: { ...typography.h5, color: colors.textSecondary },
+  emptySubText: { ...typography.caption, color: colors.textTertiary, marginTop: 4, textAlign: 'center' }
 });
 
 export default AgencyDetailScreen;

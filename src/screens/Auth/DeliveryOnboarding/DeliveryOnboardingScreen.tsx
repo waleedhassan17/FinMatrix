@@ -7,13 +7,15 @@ import {
   Dimensions,
   TouchableOpacity,
   Animated,
-  StatusBar,
+  StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { colors, spacing, borderRadius } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch } from '../../../hooks/useReduxHooks';
 import { setDeliveryOnboardingSeen } from '../authSlice';
 import type { RootStackParamList } from '../../../types';
@@ -23,9 +25,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryOnboarding'>;
 const { width } = Dimensions.get('window');
 
 const BRAND = {
-  navy: '#0F172A',
-  emerald: '#059669',
-  emeraldLight: '#00875A',
+  navy: colors.neutral900,
+  emerald: colors.actionGreen,
+  emeraldLight: colors.actionGreenDark
 };
 
 const slides = [
@@ -33,19 +35,19 @@ const slides = [
     id: '1',
     letter: '01',
     title: 'View Your Assignments',
-    description: 'See all deliveries assigned to you for today, with route details and customer information.',
+    description: 'See all deliveries assigned to you for today, with route details and customer information.'
   },
   {
     id: '2',
     letter: '02',
     title: 'Complete Deliveries',
-    description: 'Capture digital signatures, confirm receipts, and update delivery status in real-time.',
+    description: 'Capture digital signatures, confirm receipts, and update delivery status in real-time.'
   },
   {
     id: '3',
     letter: '03',
     title: 'Smart Inventory',
-    description: 'Your inventory updates are reviewed by admin before syncing — keeping everything accurate.',
+    description: 'Your inventory updates are reviewed by admin before syncing — keeping everything accurate.'
   },
 ];
 
@@ -128,12 +130,12 @@ const DeliveryOnboardingScreen: React.FC<Props> = ({ navigation }) => {
           const dotWidth = scrollX.interpolate({
             inputRange,
             outputRange: [8, 28, 8],
-            extrapolate: 'clamp',
+            extrapolate: 'clamp'
           });
           const opacity = scrollX.interpolate({
             inputRange,
             outputRange: [0.3, 1, 0.3],
-            extrapolate: 'clamp',
+            extrapolate: 'clamp'
           });
           return (
             <Animated.View
@@ -186,50 +188,45 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    paddingHorizontal: spacing.lg + 4,
-    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.xl + 4,
+    paddingTop: spacing.xl,
     paddingBottom: spacing.md,
   },
   headerBrandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   headerBrandDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: BRAND.emerald,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   headerBrandLabel: {
-    fontSize: THEME.typography.caption.fontSize,
-    fontWeight: '600',
+    ...typography.labelSm,
     color: colors.textSecondary,
     letterSpacing: 1.2,
-    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...typography.displaySm,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
-    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.xxs,
     letterSpacing: -0.3,
   },
   headerSubtitle: {
-    fontSize: THEME.typography.bodyLg.fontSize,
+    ...typography.bodyLg,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   slide: {
     width,
     alignItems: 'center',
-    paddingHorizontal: spacing.xl + 8,
-    paddingTop: spacing.xl + 16,
+    paddingHorizontal: spacing.xxl + 8,
+    paddingTop: spacing.xxl + 16,
   },
   slideNumberContainer: {
-    marginBottom: spacing.lg + 8,
+    marginBottom: spacing.xl + 8,
   },
   slideNumberCircle: {
     width: 120,
@@ -242,27 +239,22 @@ const styles = StyleSheet.create({
     borderColor: BRAND.emerald + '20',
   },
   slideNumber: {
-    fontSize: 36,
-    fontWeight: '800',
+    ...typography.displayLg,
     color: BRAND.emerald,
-    fontFamily: THEME.typography.fontFamily,
   },
   slideTitle: {
-    fontSize: 22,
-    fontWeight: '600',
+    ...typography.h2,
     color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: spacing.sm + 4,
-    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.xs + 4,
     letterSpacing: -0.2,
   },
   slideDesc: {
-    fontSize: THEME.typography.bodyLg.fontSize,
+    ...typography.bodyLg,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
-    paddingHorizontal: spacing.sm,
-    fontFamily: THEME.typography.fontFamily,
+    paddingHorizontal: spacing.xs,
   },
   dotsContainer: {
     flexDirection: 'row',
@@ -276,8 +268,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   bottomBar: {
-    paddingHorizontal: spacing.lg + 4,
-    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xl + 4,
+    paddingBottom: spacing.xl,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -285,11 +277,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   skipText: {
-    fontSize: THEME.typography.bodyLg.fontSize,
+    ...typography.bodyLg,
     color: colors.textSecondary,
-    fontWeight: '500',
-    fontFamily: THEME.typography.fontFamily,
-  },
+  }
 });
 
 export default DeliveryOnboardingScreen;

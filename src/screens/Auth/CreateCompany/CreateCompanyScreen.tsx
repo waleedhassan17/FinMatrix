@@ -9,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  LayoutAnimation,
+  LayoutAnimation
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,15 +25,18 @@ import {
   AuthSelect,
   AuthSectionLabel,
   AuthNotice,
-  AUTH,
+  AUTH
 } from '../../../components/auth/AuthUI';
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import { isValidPkPhone, normalizePkPhone, PK_PHONE_MESSAGE } from '../../../utils/phone';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   createCompany,
   type CompanyData,
-  type CompanyMember,
+  type CompanyMember
 } from '../companySlice';
 import { setUser } from '../authSlice';
 import {
@@ -41,11 +44,11 @@ import {
   clearCompanyDraft,
   selectCompanyDraft,
   selectDraftOwnerId,
-  type CompanyDraftField,
+  type CompanyDraftField
 } from './createCompanySlice';
 import {
   warehouseAgencies,
-  type WarehouseAgency,
+  type WarehouseAgency
 } from '../../../models/agencyModel';
 import { dummyDeliveryPersonnel } from '../../../models/deliveryModel';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
@@ -58,63 +61,63 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CreateCompany'>;
 // Design System — matches auth flow screens
 // ═══════════════════════════════════════════════════════
 const DS = {
-  navy900: '#0B1120',
-  navy800: '#0F172A',
-  navy700: '#1E293B',
+  navy900: THEME.colors.neutral900,
+  navy800: THEME.colors.neutral900,
+  navy700: THEME.colors.neutral800,
 
-  green500: '#059669',
-  green400: '#00875A',
-  green300: '#34D399',
-  green50: '#ECFDF5',
-  greenBorder: '#A7F3D0',
+  green500: THEME.colors.actionGreen,
+  green400: THEME.colors.actionGreenDark,
+  green300: THEME.colors.success,
+  green50: THEME.colors.actionGreenLighter,
+  greenBorder: THEME.colors.successLight,
 
-  blue600: '#2563EB',
-  blue500: '#0065FF',
-  blue100: '#DBEAFE',
-  blue50: '#EFF6FF',
+  blue600: THEME.colors.info,
+  blue500: THEME.colors.info,
+  blue100: THEME.colors.infoLight,
+  blue50: THEME.colors.background,
 
-  slate50: '#F8FAFC',
-  slate100: '#F1F5F9',
-  slate200: '#E2E8F0',
-  slate300: '#CBD5E1',
-  slate400: '#94A3B8',
-  slate500: '#64748B',
+  slate50: THEME.colors.neutral50,
+  slate100: THEME.colors.background,
+  slate200: THEME.colors.neutral200,
+  slate300: THEME.colors.neutral300,
+  slate400: THEME.colors.neutral400,
+  slate500: THEME.colors.neutral500,
 
-  red50: '#FEF2F2',
-  red100: '#FEE2E2',
-  red500: '#DE350B',
-  red700: '#B91C1C',
-  red900: '#7F1D1D',
+  red50: THEME.colors.dangerLighter,
+  red100: THEME.colors.dangerLight,
+  red500: THEME.colors.danger,
+  red700: THEME.colors.dangerHover,
+  red900: THEME.colors.dangerHover,
 
-  amber50: '#FFFBEB',
-  amber600: '#FF8B00',
-  amber800: '#92400E',
-  amberBorder: '#FDE68A',
+  amber50: THEME.colors.warningLighter,
+  amber600: THEME.colors.warning,
+  amber800: THEME.colors.warningHover,
+  amberBorder: THEME.colors.warningLight,
 
-  white: '#FFFFFF',
+  white: THEME.colors.neutral0,
 
   radius: { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 },
 
   shadowSm: {
-    shadowColor: '#0B1120',
+    shadowColor: THEME.colors.neutral900,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 2
   },
   shadowMd: {
-    shadowColor: '#0B1120',
+    shadowColor: THEME.colors.neutral900,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 4
   },
   shadowLg: {
-    shadowColor: '#0B1120',
+    shadowColor: THEME.colors.neutral900,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 24,
-    elevation: 8,
+    elevation: 8
   },
 };
 
@@ -166,15 +169,15 @@ const STEP_HEADERS: {
 }[] = [
   {
     title: 'Company Details',
-    subtitle: 'Enter your business information to get started',
+    subtitle: 'Enter your business information to get started'
   },
   {
     title: 'Warehouse Agencies',
-    subtitle: 'Select agencies whose inventory you want to manage',
+    subtitle: 'Select agencies whose inventory you want to manage'
   },
   {
     title: 'Review & Create',
-    subtitle: 'Confirm your details and launch your workspace',
+    subtitle: 'Confirm your details and launch your workspace'
   },
 ];
 
@@ -217,7 +220,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const {
     companyName, industry, legalStructure, street, city, stateProv,
-    zipCode, country, phone, email, website, taxId,
+    zipCode, country, phone, email, website, taxId
   } = draft;
 
   const setCompanyName = (v: string) => setField('companyName', v);
@@ -243,7 +246,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
     type: '',
     description: '',
     address: '',
-    contact: '',
+    contact: ''
   });
 
   // Step 3
@@ -322,7 +325,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
       id: `custom_${uuidv4().slice(0, 8)}`,
       name: customAgency.name,
       type: (customAgency.type as any) || 'Distribution',
-      typeBadgeColor: '#FF991F',
+      typeBadgeColor: THEME.colors.warning,
       description: customAgency.description || 'Custom agency',
       productCount: 0,
       city: '',
@@ -330,7 +333,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
       address: customAgency.address,
       contactPhone: customAgency.contact,
       contactEmail: '',
-      inventory: [],
+      inventory: []
     };
     setCustomAgencies(prev => [...prev, newAgency]);
     setSelectedAgencyIds(prev => [...prev, newAgency.id]);
@@ -340,7 +343,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
       type: '',
       description: '',
       address: '',
-      contact: '',
+      contact: ''
     });
   };
 
@@ -374,7 +377,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         // Canonical +92XXXXXXXXXX — the server stores this shape.
         phone: normalizePkPhone(phone),
         email: email.trim(),
-        taxId: taxId.trim(),
+        taxId: taxId.trim()
       });
 
       const companyId: string = backendCompany?.id ?? backendCompany?.companyId ?? `company_${uuidv4().slice(0, 8)}`;
@@ -386,7 +389,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         setUser({
           ...user,
           companyId,
-          companyStatus: backendCompany?.status ?? 'email_verified',
+          companyStatus: backendCompany?.status ?? 'email_verified'
         }),
       );
 
@@ -397,7 +400,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         displayName: user.displayName,
         email: user.email,
         phone: user.phoneNumber,
-        joinedAt: now,
+        joinedAt: now
       };
 
       const companyData: CompanyData = {
@@ -420,7 +423,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         deliveryPersonnel: [
           ...dummyDeliveryPersonnel.map(dp => ({ ...dp, companyId })),
         ],
-        createdAt: now,
+        createdAt: now
       };
 
       // The company row now exists — the local draft has served its purpose.
@@ -1041,7 +1044,7 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
 // ═══════════════════════════════════════════════════════
 const SummaryRow: React.FC<{ label: string; value: string }> = ({
   label,
-  value,
+  value
 }) => (
   <View style={s.summaryRow}>
     <Text style={s.summaryLabel}>{label}</Text>
@@ -1094,7 +1097,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backIcon: { fontSize: 18, color: DS.white, fontWeight: '400' },
+  backIcon: { ...THEME.typography.h3, color: DS.white },
   rolePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1111,25 +1114,20 @@ const s = StyleSheet.create({
     backgroundColor: DS.green400,
   },
   rolePillText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...THEME.typography.overline,
     color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
+    ...THEME.typography.h1,
     color: DS.white,
     marginBottom: 6,
-    fontFamily: THEME.typography.fontFamily,
     letterSpacing: -0.4,
   },
   headerSub: {
-    fontSize: 15,
+    ...THEME.typography.bodyMd,
     color: 'rgba(255,255,255,0.45)',
-    fontFamily: THEME.typography.fontFamily,
     lineHeight: 22,
   },
 
@@ -1175,15 +1173,13 @@ const s = StyleSheet.create({
     borderColor: DS.green500,
   },
   stepLabel: {
-    fontSize: 10,
-    fontWeight: '500',
+    ...THEME.typography.overline,
     color: DS.slate400,
-    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  stepLabelActive: { color: DS.navy800, fontWeight: '600' },
-  stepLabelDone: { color: DS.green500, fontWeight: '600' },
+  stepLabelActive: { color: DS.navy800, fontWeight: typography.labelLg.fontWeight },
+  stepLabelDone: { color: DS.green500, fontWeight: typography.labelLg.fontWeight },
   stepConnector: {
     flex: 1,
     height: 2,
@@ -1212,10 +1208,8 @@ const s = StyleSheet.create({
     borderRadius: 2,
   },
   progressLabel: {
-    fontSize: 11,
+    ...THEME.typography.caption,
     color: DS.slate400,
-    fontFamily: THEME.typography.fontFamily,
-    fontWeight: '500',
     textAlign: 'right',
   },
 
@@ -1246,10 +1240,8 @@ const s = StyleSheet.create({
     marginHorizontal: 8,
   },
   sectionDividerText: {
-    fontSize: 11,
+    ...THEME.typography.overline,
     color: DS.slate500,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -1299,10 +1291,8 @@ const s = StyleSheet.create({
     marginBottom: 6,
   },
   agencyName: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...THEME.typography.labelLg,
     color: DS.navy800,
-    fontFamily: THEME.typography.fontFamily,
   },
   typeBadge: {
     flexDirection: 'row',
@@ -1318,15 +1308,13 @@ const s = StyleSheet.create({
     borderRadius: 2.5,
   },
   typeBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
+    ...THEME.typography.overline,
+    
   },
   agencyDesc: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     color: DS.slate500,
     marginBottom: 10,
-    fontFamily: THEME.typography.fontFamily,
     lineHeight: 18,
   },
   agencyMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -1336,9 +1324,8 @@ const s = StyleSheet.create({
     gap: 4,
   },
   agencyMetaText: {
-    fontSize: 11,
+    ...THEME.typography.caption,
     color: DS.slate500,
-    fontFamily: THEME.typography.fontFamily,
   },
   expandButton: {
     flexDirection: 'row',
@@ -1349,10 +1336,8 @@ const s = StyleSheet.create({
     paddingVertical: 10,
   },
   expandText: {
-    fontSize: 12,
+    ...THEME.typography.labelSm,
     color: DS.blue600,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
   },
   inventoryPreview: {
     paddingHorizontal: 16,
@@ -1376,16 +1361,13 @@ const s = StyleSheet.create({
     marginRight: 10,
   },
   inventoryItemName: {
+    ...THEME.typography.bodySm,
     flex: 1,
-    fontSize: 13,
     color: DS.navy800,
-    fontFamily: THEME.typography.fontFamily,
   },
   inventoryItemPrice: {
-    fontSize: 13,
+    ...THEME.typography.labelMd,
     color: DS.green500,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Selection summary ──
@@ -1401,10 +1383,8 @@ const s = StyleSheet.create({
     borderColor: DS.greenBorder + '60',
   },
   selectionSummaryText: {
-    fontSize: 13,
+    ...THEME.typography.labelMd,
     color: DS.green500,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Error banner ──
@@ -1427,12 +1407,11 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  errorIconChar: { color: DS.white, fontSize: 12, fontWeight: '700' },
+  errorIconChar: { ...THEME.typography.caption, color: DS.white, fontWeight: typography.labelLg.fontWeight },
   errorBannerText: {
+    ...THEME.typography.bodySm,
     flex: 1,
     color: DS.red900,
-    fontSize: 13,
-    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Add custom ──
@@ -1458,10 +1437,8 @@ const s = StyleSheet.create({
     marginRight: 10,
   },
   addCustomText: {
+    ...THEME.typography.h5,
     color: DS.blue600,
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
   },
   customForm: {
     backgroundColor: DS.slate50,
@@ -1477,10 +1454,8 @@ const s = StyleSheet.create({
     marginBottom: 14,
   },
   customFormTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...THEME.typography.labelLg,
     color: DS.navy800,
-    fontFamily: THEME.typography.fontFamily,
   },
   buttonRow: { flexDirection: 'row', marginTop: 12 },
   buttonSpacer: { width: 10 },
@@ -1500,10 +1475,8 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   summaryCardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...THEME.typography.h5,
     color: DS.navy800,
-    fontFamily: THEME.typography.fontFamily,
   },
   summaryDivider: {
     height: 1,
@@ -1519,18 +1492,15 @@ const s = StyleSheet.create({
     borderBottomColor: DS.slate200 + '60',
   },
   summaryLabel: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     color: DS.slate500,
-    fontFamily: THEME.typography.fontFamily,
   },
   summaryValue: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     color: DS.navy800,
-    fontWeight: '500',
     flex: 1,
     textAlign: 'right',
     marginLeft: 12,
-    fontFamily: THEME.typography.fontFamily,
   },
   agencySummaryRow: {
     flexDirection: 'row',
@@ -1550,9 +1520,8 @@ const s = StyleSheet.create({
     marginRight: 10,
   },
   agencySummaryName: {
-    fontSize: 13,
+    ...THEME.typography.bodySm,
     color: DS.navy800,
-    fontFamily: THEME.typography.fontFamily,
   },
   agencySummaryBadge: {
     backgroundColor: DS.slate200,
@@ -1561,10 +1530,8 @@ const s = StyleSheet.create({
     borderRadius: DS.radius.full,
   },
   agencySummaryItems: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...THEME.typography.overline,
     color: DS.slate500,
-    fontFamily: THEME.typography.fontFamily,
   },
   totalRow: {
     flexDirection: 'row',
@@ -1575,16 +1542,12 @@ const s = StyleSheet.create({
     marginTop: 6,
   },
   totalLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...THEME.typography.h5,
     color: DS.navy800,
-    fontFamily: THEME.typography.fontFamily,
   },
   totalValue: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...THEME.typography.h5,
     color: DS.green500,
-    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Invite code ──
@@ -1609,11 +1572,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   inviteCodeLabel: {
-    fontSize: 12,
+    ...THEME.typography.labelSm,
     color: DS.slate500,
-    fontFamily: THEME.typography.fontFamily,
     marginBottom: 14,
-    fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
@@ -1630,16 +1591,13 @@ const s = StyleSheet.create({
     ...DS.shadowSm,
   },
   codeChar: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...THEME.typography.h2,
     color: DS.navy800,
-    fontFamily: THEME.typography.fontFamily,
   },
   inviteCodeHint: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: DS.slate400,
     textAlign: 'center',
-    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Action bar ──
@@ -1663,16 +1621,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   actionSecondaryIcon: {
-    fontSize: 16,
+    ...THEME.typography.bodyLg,
     color: DS.navy800,
     marginRight: 6,
-    fontWeight: '400',
   },
   actionSecondaryLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...THEME.typography.h5,
     color: DS.navy800,
-    fontFamily: THEME.typography.fontFamily,
   },
   actionPrimary: {
     flex: 1.4,
@@ -1693,10 +1648,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   actionPrimaryLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...THEME.typography.h5,
     color: DS.white,
-    fontFamily: THEME.typography.fontFamily,
     letterSpacing: 0.3,
   },
 
@@ -1715,10 +1668,9 @@ const s = StyleSheet.create({
     backgroundColor: DS.green500,
   },
   secText: {
-    fontSize: 12,
+    ...THEME.typography.caption,
     color: DS.slate400,
-    fontFamily: THEME.typography.fontFamily,
-  },
+  }
 });
 
 export default CreateCompanyScreen;

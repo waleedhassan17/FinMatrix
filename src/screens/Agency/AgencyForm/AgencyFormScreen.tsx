@@ -10,7 +10,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
+  TouchableOpacity
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,8 +18,10 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, borderRadius } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAgencies, createAgency, editAgency, fetchAgencies } from '../AgencyList/agencyListSlice';
 import {
@@ -28,7 +30,7 @@ import {
   setErrors,
   setIsSaving,
   loadAgencyForEdit,
-  resetAgencyForm,
+  resetAgencyForm
 } from './agencyFormSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
@@ -39,7 +41,7 @@ import {
   AGENCY_TYPE_COLORS,
   PROVINCE_OPTIONS,
   validateAgency,
-  type AgencyType,
+  type AgencyType
 } from '../../../models/agencyModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
@@ -95,7 +97,7 @@ const AgencyFormScreen: React.FC = () => {
       city: form.city,
       province: form.province,
       contactPhone: form.contactPhone,
-      contactEmail: form.contactEmail,
+      contactEmail: form.contactEmail
     });
 
     if (Object.keys(validationErrors).length > 0) {
@@ -119,7 +121,7 @@ const AgencyFormScreen: React.FC = () => {
         city: form.city,
         province: form.province,
         contactPhone: form.contactPhone,
-        contactEmail: form.contactEmail,
+        contactEmail: form.contactEmail
       };
 
       if (isEditing) {
@@ -133,7 +135,7 @@ const AgencyFormScreen: React.FC = () => {
       Toast.show({
           type: 'success',
           text1: isEditing ? 'Agency Updated' : 'Agency Created',
-          text2: `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`,
+          text2: `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`
         });
         navigation.goBack();
     } catch (err: any) {
@@ -204,7 +206,7 @@ const AgencyFormScreen: React.FC = () => {
           />
 
           <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={{ flex: 1, marginRight: spacing.xs }}>
               <CustomInput
                 label="City *"
                 value={form.city}
@@ -266,7 +268,7 @@ const AgencyFormScreen: React.FC = () => {
             </View>
           </View>
 
-          <View style={{ height: spacing.xl }} />
+          <View style={{ height: spacing.xxl }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -280,13 +282,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   scroll: { flex: 1 },
-  scrollContent: { padding: spacing.lg },
+  scrollContent: { padding: spacing.xl },
 
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm },
+  sectionTitle: { ...typography.h4, color: colors.textPrimary, marginBottom: spacing.xs },
   row: { flexDirection: 'row' },
 
-  btnRow: { flexDirection: 'row', marginTop: spacing.xl, gap: spacing.md },
-  btnCol: { flex: 1, minHeight: 48 },
+  btnRow: { flexDirection: 'row', marginTop: spacing.xxl, gap: spacing.md },
+  btnCol: { flex: 1, minHeight: 48 }
 });
 
 export default AgencyFormScreen;

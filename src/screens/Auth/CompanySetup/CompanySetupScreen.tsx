@@ -13,7 +13,7 @@ import { selectActiveCompany } from '../companySlice';
 import { ROUTES } from '../../../navigations-maps/Base';
 import {
   WAREHOUSE_ONLY_BUILD,
-  DEFAULT_COMPANY_TYPE,
+  DEFAULT_COMPANY_TYPE
 } from '../../../utils/featureGates';
 import type { RootStackParamList } from '../../../types';
 import {
@@ -23,7 +23,7 @@ import {
   AuthOptionCard,
   AuthChips,
   AuthSectionLabel,
-  AuthSteps,
+  AuthSteps
 } from '../../../components/auth/AuthUI';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanySetup'>;
@@ -49,7 +49,7 @@ const CompanySetupScreen: React.FC<Props> = ({ navigation }) => {
   const start = () =>
     WAREHOUSE_ONLY_BUILD
       ? navigation.navigate(ROUTES.CREATE_COMPANY as any, {
-          companyType: DEFAULT_COMPANY_TYPE,
+          companyType: DEFAULT_COMPANY_TYPE
         })
       : navigation.navigate(ROUTES.COMPANY_TYPE_SELECT as any);
 

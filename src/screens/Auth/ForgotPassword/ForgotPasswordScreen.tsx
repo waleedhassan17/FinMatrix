@@ -16,7 +16,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   authForgotPassword,
   authVerifyOtp,
-  authResetPassword,
+  authResetPassword
 } from '../../../networks/auth/authNetwork';
 import { useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectSelectedRole } from '../authSlice';
@@ -31,16 +31,19 @@ import {
   AuthChecklist,
   PasswordStrength,
   OtpInput,
-  AUTH,
+  AUTH
 } from '../../../components/auth/AuthUI';
 import type { RootStackParamList, UserRole } from '../../../types';
+import { THEME } from '../../../theme';
+
+const { typography } = THEME;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 
 type Step = 'request' | 'otp' | 'reset';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8}$/;
 const RESEND_COOLDOWN = 60;
 
 const STEP_INDEX: Record<Step, number> = { request: 1, otp: 2, reset: 3 };
@@ -183,7 +186,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     { label: 'At least 8 characters', met: password.length >= 8 },
     {
       label: 'An uppercase and a lowercase letter',
-      met: /[a-z]/.test(password) && /[A-Z]/.test(password),
+      met: /[a-z]/.test(password) && /[A-Z]/.test(password)
     },
     { label: 'At least one number', met: /\d/.test(password) },
   ];
@@ -201,7 +204,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     reset: {
       title: 'New password',
       subtitle: 'Choose a strong password for your account.',
-    },
+    }
   };
 
   const primary =
@@ -319,9 +322,8 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   tile: { marginBottom: AUTH.space.xl },
   label: {
+    ...THEME.typography.labelMd,
     fontFamily: AUTH.font,
-    fontSize: 13,
-    fontWeight: '600',
     color: AUTH.ink[700],
     marginBottom: AUTH.space.md,
   },
@@ -331,15 +333,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: AUTH.space.lg,
   },
-  resendHint: { fontFamily: AUTH.font, fontSize: 13, color: AUTH.ink[500] },
+  resendHint: { ...THEME.typography.bodySm, fontFamily: AUTH.font, color: AUTH.ink[500] },
   resendAction: {
+    ...THEME.typography.labelMd,
     fontFamily: AUTH.font,
-    fontSize: 13,
-    fontWeight: '700',
     color: AUTH.brand,
   },
-  resendDisabled: { color: AUTH.ink[400], fontWeight: '500' },
-  gap: { height: AUTH.space.xl },
+  resendDisabled: { ...typography.labelSm, color: AUTH.ink[400] },
+  gap: { height: AUTH.space.xl }
 });
 
 export default ForgotPasswordScreen;

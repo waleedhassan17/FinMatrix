@@ -12,7 +12,7 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
+  ActivityIndicator
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -20,8 +20,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAgencies } from '../AgencyList/agencyListSlice';
 import {
@@ -42,7 +44,7 @@ import {
   resetSync,
   syncSelectedItems,
   type SyncRow,
-  type SyncStatus,
+  type SyncStatus
 } from './agencyInventorySyncSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
@@ -55,7 +57,7 @@ const STATUS_CONFIG: Record<SyncStatus, { label: string; color: string; bg: stri
   synced: { label: 'Synced', color: colors.success, bg: colors.success + '18' },
   mismatch: { label: 'Mismatch', color: colors.warning, bg: colors.warning + '18' },
   agency_only: { label: 'Agency Only', color: colors.secondary, bg: colors.secondary + '18' },
-  system_only: { label: 'System Only', color: colors.textLight, bg: colors.textLight + '18' },
+  system_only: { label: 'System Only', color: colors.textTertiary, bg: colors.textTertiary + '18' }
 };
 
 const FILTER_CHIPS: { key: SyncStatus | 'all'; label: string }[] = [
@@ -273,7 +275,7 @@ const AgencyInventorySyncScreen: React.FC = () => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search items…"
-          placeholderTextColor={colors.textLight}
+          placeholderTextColor={colors.textTertiary}
           value={searchQuery}
           onChangeText={v => dispatch(setSearchQuery(v))}
         />
@@ -315,8 +317,8 @@ const AgencyInventorySyncScreen: React.FC = () => {
           contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={{ padding: spacing.xl, alignItems: 'center' }}>
-              <Text style={{ color: colors.textLight, fontSize: 14 }}>No items match your filter</Text>
+            <View style={{ padding: spacing.xxl, alignItems: 'center' }}>
+              <Text style={[typography.h5, { color: colors.textTertiary }]}>No items match your filter</Text>
             </View>
           }
         />
@@ -326,7 +328,7 @@ const AgencyInventorySyncScreen: React.FC = () => {
       <View style={styles.bottomBar}>
         {isSyncing && (
           <View style={styles.syncingOverlay}>
-            <ActivityIndicator size="small" color={colors.white} />
+            <ActivityIndicator size="small" color={colors.surface} />
             <Text style={styles.syncingText}>Syncing…</Text>
           </View>
         )}
@@ -338,7 +340,7 @@ const AgencyInventorySyncScreen: React.FC = () => {
           fullWidth
           disabled={isSyncing}
         />
-        <View style={{ width: spacing.sm }} />
+        <View style={{ width: spacing.xs }} />
         <CustomButton
           title={`Sync Selected (${selectedCount})`}
           onPress={handleSyncSelected}
@@ -361,52 +363,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { fontSize: 15, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1, textAlign: 'center' },
+  backBtn: { ...typography.labelLg, color: colors.secondary },
+  headerTitle: { ...typography.h3, color: colors.textPrimary, flex: 1, textAlign: 'center' },
 
   agencyBar: {
-    backgroundColor: colors.primary + '0A',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.actionGreen + '0A',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  agencyName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  agencyMeta: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  agencyName: { ...typography.labelLg, color: colors.textPrimary },
+  agencyMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
 
   summaryRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xs,
+    gap: spacing.xs,
   },
   summaryBox: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs,
     alignItems: 'center',
     borderWidth: 1,
   },
-  summaryVal: { fontSize: 20, fontWeight: '800', fontFamily: THEME.typography.fontFamily },
-  summaryLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  summaryVal: { ...typography.h3 },
+  summaryLabel: { ...typography.overline, color: colors.textSecondary, marginTop: 2 },
 
-  searchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  searchWrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs },
   searchInput: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
+    ...typography.bodySm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
-    fontSize: 14,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -414,36 +415,36 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.xs,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xs,
+    gap: spacing.xxs,
   },
   chip: {
-    paddingHorizontal: spacing.sm + 2,
+    paddingHorizontal: spacing.xs + 2,
     paddingVertical: 5,
     borderRadius: 14,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
   chipActive: { backgroundColor: colors.secondary, borderColor: colors.secondary },
-  chipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  chipTextActive: { color: colors.white },
-  selectAllText: { fontSize: 12, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
+  chipText: { ...typography.overline, color: colors.textSecondary },
+  chipTextActive: { color: colors.surface },
+  selectAllText: { ...typography.labelSm, color: colors.secondary },
 
   // ── Row card ───────────────────────────────────────
   rowCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.xs + 2,
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.xxs + 2,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   checkbox: {
     width: 22,
@@ -455,17 +456,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkboxChecked: { backgroundColor: colors.secondary, borderColor: colors.secondary },
-  checkmark: { fontSize: 13, fontWeight: '700', color: colors.white },
+  checkmark: { ...typography.labelMd, color: colors.surface },
 
-  rowName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  rowSku: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+  rowName: { ...typography.labelMd, color: colors.textPrimary },
+  rowSku: { ...typography.caption, color: colors.textTertiary },
 
   qtyCol: { alignItems: 'center', width: 48 },
-  qtyLabel: { fontSize: 9, color: colors.textLight, fontFamily: THEME.typography.fontFamily, textTransform: 'uppercase' },
-  qtyValue: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  qtyLabel: { ...typography.overline, color: colors.textTertiary, textTransform: 'uppercase' },
+  qtyValue: { ...typography.h5, color: colors.textPrimary },
 
   statusBadge: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8, minWidth: 55, alignItems: 'center' },
-  statusText: { fontSize: 9, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  statusText: { ...typography.overline },
 
   // ── Bottom bar ─────────────────────────────────────
   bottomBar: {
@@ -474,25 +475,25 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.white,
+    paddingBottom: spacing.xl,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    ...shadows.card,
+    ...shadows.sm,
   },
   syncingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: borderRadius.md,
+    borderRadius: radius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     zIndex: 1,
   },
-  syncingText: { fontSize: 14, fontWeight: '600', color: colors.white, fontFamily: THEME.typography.fontFamily },
+  syncingText: { ...typography.h5, color: colors.surface }
 });
 
 export default AgencyInventorySyncScreen;

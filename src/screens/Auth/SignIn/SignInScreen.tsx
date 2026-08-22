@@ -26,17 +26,21 @@ import {
   selectSignInPassword,
   selectSignInRememberMe,
   selectSignInStatus,
-  selectSignInError,
+  selectSignInError
 } from './signInSlice';
 import { validateSignIn, validateDeliverySignIn } from '../../../models/authModel';
 import type { RootStackParamList, UserRole } from '../../../types';
+import { THEME } from '../../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 import {
   AuthLayout,
   AuthHeader,
   AuthFooterBar,
   AuthField,
   AuthNotice,
-  AUTH,
+  AUTH
 } from '../../../components/auth/AuthUI';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
@@ -213,7 +217,7 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
             accessibilityRole="checkbox"
             accessibilityState={{ checked: rememberMe }}>
             <View style={[s.checkbox, rememberMe && s.checkboxOn]}>
-              {rememberMe ? <Feather name="check" size={12} color="#FFFFFF" /> : null}
+              {rememberMe ? <Feather name="check" size={12} color={colors.neutral0} /> : null}
             </View>
             <Text style={s.remLabel}>Remember me</Text>
           </Pressable>
@@ -262,11 +266,10 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxOn: { backgroundColor: AUTH.brand, borderColor: AUTH.brand },
-  remLabel: { fontFamily: AUTH.font, fontSize: 13.5, color: AUTH.ink[700] },
+  remLabel: { ...THEME.typography.bodySm, fontFamily: AUTH.font, color: AUTH.ink[700] },
   link: {
+    ...THEME.typography.h5,
     fontFamily: AUTH.font,
-    fontSize: 13.5,
-    fontWeight: '700',
     color: AUTH.brand,
   },
   bottomRow: {
@@ -276,7 +279,7 @@ const s = StyleSheet.create({
     flexWrap: 'wrap',
     marginTop: AUTH.space.xxl,
   },
-  bottomText: { fontFamily: AUTH.font, fontSize: 13.5, color: AUTH.ink[500] },
+  bottomText: { ...THEME.typography.bodySm, fontFamily: AUTH.font, color: AUTH.ink[500] }
 });
 
 export default SignInScreen;
