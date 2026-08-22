@@ -25,8 +25,11 @@ import type { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import dayjs from 'dayjs';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, shadows, typography } = THEME;
+const PANEL = THEME.form.summaryPanel;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInvoiceFormState,
@@ -74,22 +77,6 @@ const DISCOUNT_OPTIONS = [
   { label: 'Fixed (Rs)', value: 'amount' },
   { label: 'Percentage (%)', value: 'percent' },
 ];
-
-// ── Premium palette ───────────────────────────────
-const P = {
-  headerFrom: '#0A1628',
-  headerTo: '#132F4C',
-  accent: '#059669',
-  accentLight: '#ECFDF5',
-  cardBg: '#FFFFFF',
-  sectionLabel: '#64748B',
-  totalsBg: '#0F172A',
-  totalsText: '#F1F5F9',
-  totalsGold: '#F59E0B',
-  lineBorder: '#E2E8F0',
-  lineAccent: '#059669',
-  dangerAccent: '#EF4444',
-};
 
 // ═══════════════════════════════════════════════════════
 // COMPONENT
@@ -312,16 +299,16 @@ const InvoiceFormScreen: React.FC = () => {
         onBack={() => navigation.goBack()}
       />
 
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F1F5F9' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
           {/* ── Section: Customer & Dates ────────────── */}
-          <FormSectionHeader title="INVOICE DETAILS" dotColor={P.accent} />
+          <FormSectionHeader title="INVOICE DETAILS" dotColor={colors.actionGreen} />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: P.accent }]} />
+            <View style={[styles.cardAccent, { backgroundColor: colors.actionGreen }]} />
             <View style={styles.cardBody}>
               <CustomDropdown
                 label="Customer *"
@@ -341,7 +328,7 @@ const InvoiceFormScreen: React.FC = () => {
                 disabled={isEditing}
               />
               <View style={styles.rowFields}>
-                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                <View style={{ flex: 1, marginRight: spacing.xs }}>
                   <DateField
                     label="Issue Date *"
                     value={form.issueDate}
@@ -366,7 +353,7 @@ const InvoiceFormScreen: React.FC = () => {
           {/* ── Section: Line Items ──────────────────── */}
           <FormSectionHeader
             title="LINE ITEMS"
-            dotColor="#6366F1"
+            dotColor={colors.info}
             right={<AddButton label="Add Item" onPress={() => dispatch(addLine())} />}
           />
           {form.errors.lines && (
@@ -401,12 +388,12 @@ const InvoiceFormScreen: React.FC = () => {
           ))}
 
           {/* ── Section: Discount ────────────────────── */}
-          <FormSectionHeader title="DISCOUNT" dotColor="#F59E0B" />
+          <FormSectionHeader title="DISCOUNT" dotColor={colors.warning} />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: '#F59E0B' }]} />
+            <View style={[styles.cardAccent, { backgroundColor: colors.warning }]} />
             <View style={styles.cardBody}>
               <View style={styles.rowFields}>
-                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                <View style={{ flex: 1, marginRight: spacing.xs }}>
                   <CustomDropdown
                     label="Discount Type"
                     options={DISCOUNT_OPTIONS}
@@ -434,9 +421,9 @@ const InvoiceFormScreen: React.FC = () => {
           </View>
 
           {/* ── Section: Notes ───────────────────────── */}
-          <FormSectionHeader title="NOTES" dotColor="#8B5CF6" />
+          <FormSectionHeader title="NOTES" dotColor={colors.secondary} />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: '#8B5CF6' }]} />
+            <View style={[styles.cardAccent, { backgroundColor: colors.secondary }]} />
             <View style={styles.cardBody}>
               <CustomInput
                 label="Notes"
@@ -450,13 +437,13 @@ const InvoiceFormScreen: React.FC = () => {
 
           {/* ── Premium Totals Panel ──────────────────── */}
           <LinearGradient
-            colors={['#0F172A', '#1E293B']}
+            colors={PANEL.gradient}
             style={styles.totalsCard}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
             <View style={styles.totalsHeader}>
-              <Feather name="credit-card" size={16} color={P.totalsGold} />
+              <Feather name="credit-card" size={16} color={PANEL.accent} />
               <Text style={styles.totalsHeaderText}>Invoice Summary</Text>
             </View>
             <View style={styles.totalsDivider} />
@@ -472,7 +459,7 @@ const InvoiceFormScreen: React.FC = () => {
                     ? `(${form.discountValue}%)`
                     : '(Fixed)'}
                 </Text>
-                <Text style={[styles.totalsValue, { color: '#34D399' }]}>
+                <Text style={[styles.totalsValue, { color: PANEL.positive }]}>
                   − {formatCurrency(form.discountAmount, 'Rs ')}
                 </Text>
               </View>
@@ -490,12 +477,12 @@ const InvoiceFormScreen: React.FC = () => {
 
           {/* ── Action Buttons ───────────────────────── */}
           <View style={styles.btnRow}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={{ flex: 1, marginRight: spacing.xs }}>
               <SecondaryButton
                 title="Save Draft"
                 onPress={() => handleSave('draft')}
                 disabled={form.isSaving}
-                icon={<Feather name="save" size={16} color={colors.primary} />}
+                icon={<Feather name="save" size={16} color={colors.actionGreen} />}
               />
             </View>
             <View style={{ flex: 1.4 }}>
@@ -503,7 +490,7 @@ const InvoiceFormScreen: React.FC = () => {
                 title={form.isSaving ? 'Saving…' : 'Save & Send'}
                 onPress={() => handleSave('sent')}
                 isLoading={form.isSaving}
-                icon={<Feather name="send" size={16} color="#FFFFFF" />}
+                icon={<Feather name="send" size={16} color={colors.neutral0} />}
               />
             </View>
           </View>
@@ -517,7 +504,7 @@ const InvoiceFormScreen: React.FC = () => {
 // STYLES
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  container: { flex: 1, backgroundColor: colors.background },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
 
   // ── Header ──────────────────────────────────────
@@ -525,7 +512,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
 
   // ── Section labels ──────────────────────────────
@@ -533,12 +520,12 @@ const styles = StyleSheet.create({
   // ── Section card with accent stripe ─────────────
   sectionCard: {
     flexDirection: 'row',
-    backgroundColor: P.cardBg,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    ...shadows.small,
+    ...shadows.xs,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.neutral200,
   },
   cardAccent: {
     width: 4,
@@ -551,74 +538,49 @@ const styles = StyleSheet.create({
 
   // ── Line items header ──────────────────────────
   lineError: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.danger,
-    marginBottom: spacing.sm,
-    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.xs,
   },
   lineItemPicker: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
 
   // ── Premium Totals Panel ────────────────────────
   totalsCard: {
-    borderRadius: borderRadius.md + 4,
+    borderRadius: radius.lg + 4,
     padding: spacing.md + 4,
-    marginTop: spacing.lg,
-    ...shadows.large,
+    marginTop: spacing.xl,
+    ...shadows.md,
   },
   totalsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs + 2,
-    marginBottom: spacing.sm,
+    gap: spacing.xxs + 2,
+    marginBottom: spacing.xs,
   },
-  totalsHeaderText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: P.totalsGold,
-    fontFamily: THEME.typography.fontFamily,
-    letterSpacing: 0.5,
-  },
+  totalsHeaderText: { ...typography.labelMd, color: PANEL.accent, letterSpacing: 0.5 },
   totalsDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginVertical: spacing.xs + 2,
+    backgroundColor: PANEL.divider,
+    marginVertical: spacing.xxs + 2,
   },
   totalsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.xxs + 2,
   },
-  totalsLabel: {
-    fontSize: 14,
-    color: 'rgba(241,245,249,0.6)',
-    fontFamily: THEME.typography.fontFamily,
-  },
-  totalsValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: P.totalsText,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  grandTotalLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: P.totalsGold,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  grandTotalValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    fontFamily: THEME.typography.fontFamily,
-  },
+  // h5's 14px at body weight -- the label is quieter than the value beside it.
+  totalsLabel: { ...typography.h5, fontWeight: typography.bodyMd.fontWeight, color: PANEL.label },
+  totalsValue: { ...typography.h5, color: PANEL.text, fontVariant: ['tabular-nums'] },
+  grandTotalLabel: { ...typography.h4, color: PANEL.accent },
+  grandTotalValue: { ...typography.h2, color: colors.neutral0, fontVariant: ['tabular-nums'] },
 
   // ── Buttons ────────────────────────────────────
   btnRow: {
     flexDirection: 'row',
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
     marginBottom: spacing.md,
   },
 });

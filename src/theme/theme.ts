@@ -53,6 +53,11 @@ const palette = {
   emerald700: '#047857',
   emeraldLighter: '#ECFDF5',
 
+  // On-dark accents. The ramps above are tuned for white grounds and go muddy
+  // on the near-black summary panel, so its two accents are named separately.
+  amber400: '#F59E0B',
+  emerald400: '#34D399',
+
   // Semantic — success / warning / danger / info
   green600: '#16A34A',
   greenLight: '#D8F3E1',
@@ -288,6 +293,26 @@ const form = {
     textTransform: 'uppercase' as const,
   },
   sectionDot: { size: 8, color: colors.actionGreen },
+  /**
+   * The dark "summary / totals" panel that closes every transaction form.
+   * All five forms drew this panel from their own local palette; the spec
+   * lives here so the gradient, the label/value contrast and the two on-dark
+   * accents are identical across Invoice, Bill, PO, PayBills and
+   * ReceivePayment.
+   */
+  summaryPanel: {
+    gradient: [colors.neutral900, colors.neutral800] as [string, string],
+    /** Figures and headings on the panel. */
+    text: colors.neutral100,
+    /** Row labels — deliberately dimmer than the values beside them. */
+    label: 'rgba(238, 242, 246, 0.65)',
+    /** Hairline rule between rows. */
+    divider: 'rgba(238, 242, 246, 0.14)',
+    /** The "gold" accent: panel icon and grand total. */
+    accent: palette.amber400,
+    /** A credit or discount — money coming back off the total. */
+    positive: palette.emerald400,
+  },
 } as const;
 
 // ───────────────────────────────────────────────
