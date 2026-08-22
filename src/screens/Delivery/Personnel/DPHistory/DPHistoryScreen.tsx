@@ -13,7 +13,7 @@ import {
   setHistoryDateFilter,
   setHistoryCustomDateStart,
   setHistoryCustomDateEnd,
-  setHistoryPage,
+  setHistoryPage
 } from './dpHistorySlice';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
 import { THEME, STATUS_CONFIG } from '../../../../utils/theme';
@@ -96,7 +96,7 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
     total: myDeliveries.length,
     delivered: myDeliveries.filter(d => d.status === 'delivered').length,
     failed: myDeliveries.filter(d => d.status === 'failed').length,
-    returned: myDeliveries.filter(d => d.status === 'returned').length,
+    returned: myDeliveries.filter(d => d.status === 'returned').length
   }), [myDeliveries]);
 
   const totalPages = Math.ceil(myDeliveries.length / ITEMS_PER_PAGE);
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backIcon: {
-    fontSize: 20,
+    ...THEME.typography.h3,
     color: THEME.colors.neutral700,
   },
   headerCenter: {
@@ -372,7 +372,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...THEME.typography.h3,
-    fontWeight: '700',
     color: DP_BRAND.white,
   },
   headerSubtitle: {
@@ -429,12 +428,11 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     ...THEME.typography.bodySm,
-    fontWeight: '500',
     color: THEME.colors.textSecondary,
   },
   filterChipTextActive: {
     color: THEME.colors.textInverse,
-    fontWeight: '600',
+    fontWeight: THEME.typography.labelMd.fontWeight,
   },
   customDateRow: {
     flexDirection: 'row',
@@ -494,13 +492,12 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   statusFilterText: {
-    ...THEME.typography.caption,
-    fontWeight: '500',
+    ...THEME.typography.labelSm,
     color: THEME.colors.textSecondary,
   },
   statusFilterTextActive: {
     color: DP_BRAND.primary,
-    fontWeight: '600',
+    fontWeight: THEME.typography.labelMd.fontWeight,
   },
 
   // Stats Bar
@@ -527,8 +524,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.textPrimary,
   },
   statLabel: {
-    ...THEME.typography.labelSm,
-    fontWeight: '400',
+    ...THEME.typography.caption,
     color: THEME.colors.textSecondary,
     marginTop: 4,
   },
@@ -552,7 +548,6 @@ const styles = StyleSheet.create({
   },
   resultsTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   resultsCount: {
@@ -575,7 +570,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyIcon: {
-    fontSize: 28,
+    ...THEME.typography.h1,
+    
   },
   emptyTitle: {
     ...THEME.typography.h4,
@@ -606,7 +602,8 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   historyIconText: {
-    fontSize: 16,
+    ...THEME.typography.bodyLg,
+    
   },
   historyContent: {
     flex: 1,
@@ -619,7 +616,6 @@ const styles = StyleSheet.create({
   },
   historyRef: {
     ...THEME.typography.h5,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   historyBadge: {
@@ -629,7 +625,6 @@ const styles = StyleSheet.create({
   },
   historyBadgeText: {
     ...THEME.typography.overline,
-    fontWeight: '600',
     textTransform: undefined,
   },
   historyCustomer: {
@@ -643,13 +638,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   historyMetaText: {
-    ...THEME.typography.labelSm,
-    fontWeight: '400',
+    ...THEME.typography.caption,
     color: THEME.colors.textTertiary,
   },
   historyMetaDot: {
-    ...THEME.typography.labelSm,
-    fontWeight: '400',
+    ...THEME.typography.caption,
     color: THEME.colors.textTertiary,
     marginHorizontal: 6,
   },
@@ -677,8 +670,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.neutral200,
   },
   pageBtnText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
+    ...THEME.typography.labelMd,
     color: THEME.colors.textInverse,
   },
   pageBtnTextDisabled: {
@@ -689,9 +681,8 @@ const styles = StyleSheet.create({
   },
   pageInfoText: {
     ...THEME.typography.bodySm,
-    fontWeight: '500',
     color: THEME.colors.textSecondary,
-  },
+  }
 });
 
 export default DPHistoryScreen;

@@ -9,7 +9,7 @@ import {
   Linking,
   Platform,
   StatusBar,
-  Animated,
+  Animated
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -154,7 +154,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           subtitle: 'Collect items from warehouse',
           icon: 'package',
           color: THEME.colors.secondary,
-          handler: () => advanceStatus('picked_up', `Items picked up at ${new Date().toISOString()}`),
+          handler: () => advanceStatus('picked_up', `Items picked up at ${new Date().toISOString()}`)
         };
       case 'picked_up':
         return {
@@ -162,7 +162,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           subtitle: 'Begin your route',
           icon: 'truck',
           color: THEME.colors.warning,
-          handler: () => advanceStatus('in_transit', `Delivery started at ${new Date().toISOString()}`),
+          handler: () => advanceStatus('in_transit', `Delivery started at ${new Date().toISOString()}`)
         };
       case 'in_transit':
         return {
@@ -170,7 +170,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           subtitle: 'Confirm arrival at destination',
           icon: 'map-pin',
           color: THEME.colors.info,
-          handler: () => advanceStatus('arrived', `Arrived at location at ${new Date().toISOString()}`),
+          handler: () => advanceStatus('arrived', `Arrived at location at ${new Date().toISOString()}`)
         };
       case 'arrived':
         return {
@@ -178,7 +178,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           subtitle: 'Photograph the customer-signed bill',
           icon: 'camera',
           color: THEME.colors.success,
-          handler: () => navigation.navigate('BillPhotoCapture', { deliveryId: delivery.id }),
+          handler: () => navigation.navigate('BillPhotoCapture', { deliveryId: delivery.id })
         };
       default:
         // delivered / failed / cancelled / returned → no further action.
@@ -191,7 +191,7 @@ const DPDeliveryDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     delivered: { label: 'Delivered', sub: 'This delivery is complete', icon: 'check-circle', color: THEME.colors.success },
     failed: { label: 'Delivery Failed', sub: 'This delivery was marked failed', icon: 'x-circle', color: THEME.colors.danger },
     cancelled: { label: 'Cancelled', sub: 'This delivery was cancelled', icon: 'slash', color: THEME.colors.textSecondary },
-    returned: { label: 'Returned', sub: 'Items were returned', icon: 'corner-up-left', color: THEME.colors.warning },
+    returned: { label: 'Returned', sub: 'Items were returned', icon: 'corner-up-left', color: THEME.colors.warning }
   };
   const terminalConfig = TERMINAL_CONFIG[delivery.status] ?? null;
   const completedAtLabel = delivery.deliveredAt
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backIcon: {
-    fontSize: 20,
+    ...THEME.typography.h3,
     color: THEME.colors.neutral700,
   },
   headerCenter: {
@@ -519,7 +519,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: DP_BRAND.white,
     marginBottom: 5,
   },
@@ -535,7 +534,7 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     ...THEME.typography.labelSm,
-    fontWeight: '600',
+    
   },
   gpsPill: {
     flexDirection: 'row',
@@ -552,12 +551,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#22c55e',
+    backgroundColor: THEME.colors.success,
   },
   gpsText: {
     ...THEME.typography.overline,
-    color: '#DCFCE7',
-    fontWeight: '700',
+    color: THEME.colors.successLighter,
   },
   moreBtn: {
     width: 40,
@@ -568,7 +566,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   moreIcon: {
-    fontSize: 20,
+    ...THEME.typography.h3,
     color: DP_BRAND.white,
   },
   headerSpacer: {
@@ -609,14 +607,14 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   cardIcon: {
-    fontSize: 18,
+    ...THEME.typography.h3,
+    
   },
   cardHeaderText: {
     flex: 1,
   },
   cardTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   cardSubtitle: {
@@ -658,20 +656,19 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   actionRowIconText: {
-    fontSize: 18,
+    ...THEME.typography.h3,
+    
   },
   actionRowContent: {
     flex: 1,
   },
   actionRowLabel: {
     ...THEME.typography.labelSm,
-    fontWeight: '500',
     color: THEME.colors.textTertiary,
     marginBottom: 2,
   },
   actionRowValue: {
     ...THEME.typography.bodyMd,
-    fontWeight: '500',
     color: THEME.colors.textPrimary,
   },
   actionRowChevron: {
@@ -718,7 +715,6 @@ const styles = StyleSheet.create({
   },
   priorityText: {
     ...THEME.typography.labelSm,
-    fontWeight: '700',
     letterSpacing: 0.5,
   },
 
@@ -735,7 +731,6 @@ const styles = StyleSheet.create({
   },
   tableHeaderCell: {
     ...THEME.typography.labelSm,
-    fontWeight: '700',
     color: THEME.colors.textTertiary,
     letterSpacing: 0.5,
     flex: 1,
@@ -772,7 +767,6 @@ const styles = StyleSheet.create({
   },
   itemBulletText: {
     ...THEME.typography.labelSm,
-    fontWeight: '700',
     color: THEME.colors.textInverse,
   },
   itemName: {
@@ -787,8 +781,7 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.md,
   },
   qtyText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '700',
+    ...THEME.typography.labelMd,
     color: DP_BRAND.primary,
   },
 
@@ -830,13 +823,11 @@ const styles = StyleSheet.create({
     ...THEME.shadows.sm,
   },
   timelineDotCheck: {
-    ...THEME.typography.bodyMd,
-    fontWeight: '700',
+    ...THEME.typography.labelLg,
     color: THEME.colors.textInverse,
   },
   timelineDotNumber: {
-    ...THEME.typography.caption,
-    fontWeight: '700',
+    ...THEME.typography.labelSm,
     color: THEME.colors.textTertiary,
   },
   timelineDotNumberCurrent: {
@@ -887,7 +878,6 @@ const styles = StyleSheet.create({
   },
   currentBadgeText: {
     ...THEME.typography.labelSm,
-    fontWeight: '600',
     color: DP_BRAND.primary,
   },
 
@@ -908,7 +898,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   completedTextWrap: { flex: 1, marginLeft: 12 },
-  completedTitle: { ...THEME.typography.h4, fontWeight: '700' },
+  completedTitle: { ...THEME.typography.h4 },
   completedSub: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, marginTop: 2 },
   actionButtonContent: {
     flexDirection: 'row',
@@ -917,7 +907,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   actionButtonIcon: {
-    fontSize: 24,
+    ...THEME.typography.displaySm,
     marginRight: 16,
   },
   actionButtonText: {
@@ -926,7 +916,6 @@ const styles = StyleSheet.create({
   },
   actionButtonTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textInverse,
   },
   actionButtonSubtitle: {
@@ -943,8 +932,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionButtonArrowText: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...THEME.typography.h3,
     color: THEME.colors.textInverse,
   },
 
@@ -966,7 +954,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   emptyIcon: {
-    fontSize: 36,
+    ...THEME.typography.displayLg,
+    
   },
   emptyTitle: {
     ...THEME.typography.h2,
@@ -989,7 +978,7 @@ const styles = StyleSheet.create({
   emptyButtonText: {
     ...THEME.typography.labelLg,
     color: THEME.colors.textInverse,
-  },
+  }
 });
 
 export default DPDeliveryDetailScreen;

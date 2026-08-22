@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  TouchableOpacity
 } from 'react-native';
 import { Alert } from '../../utils/alert';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -18,6 +18,9 @@ import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, ProgressBar, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 import type { ReportsStackParamList } from '../../navigators/stacks/ReportsStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 
 type Nav = NativeStackNavigationProp<ReportsStackParamList>;
 type Rt = RouteProp<Record<string, { budgetId: string }>, string>;
@@ -111,17 +114,17 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   row: { paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight, gap: 5 },
   rowTop: { flexDirection: 'row', justifyContent: 'space-between' },
-  acctName: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600', flex: 1 },
-  acctVar: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, fontWeight: '700' },
+  acctName: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary, flex: 1 },
+  acctVar: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, fontWeight: typography.labelLg.fontWeight },
   acctMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between' },
   monthTable: { marginTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.border },
   monthHead: { flexDirection: 'row', paddingVertical: 5 },
-  monthHeadText: { fontWeight: '700', textTransform: 'uppercase' },
+  monthHeadText: { fontWeight: THEME.typography.labelMd.fontWeight, textTransform: 'uppercase' },
   monthRow: { flexDirection: 'row', paddingVertical: 3 },
   monthCell: { flex: 1, ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   monthCellNum: { flex: 1.2, textAlign: 'right', ...THEME.typography.labelSm, color: THEME.colors.textPrimary },
-  bold: { ...THEME.typography.bodyMd, fontWeight: '800', color: THEME.colors.textPrimary },
+  bold: { ...THEME.typography.labelLg,  color: THEME.colors.textPrimary }
 });
 
 export default BudgetDetailScreen;

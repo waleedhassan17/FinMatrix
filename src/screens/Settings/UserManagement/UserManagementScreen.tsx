@@ -5,14 +5,13 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Modal,
+  Modal
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser } from '../../Auth/authSlice';
@@ -21,33 +20,36 @@ import {
   selectInviteEmail, selectInviteRole, selectIsInviting,
   fetchUsers, openInviteModal, closeInviteModal,
   setInviteEmail, setInviteRole, inviteUser,
-  changeUserRole, deleteUser,
+  changeUserRole, deleteUser
 } from './userManagementSlice';
 import type { CompanyMember } from '../../Auth/companySlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
+
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
 const P = {
-  brand: '#059669',
-  brandLight: '#ECFDF5',
-  pageBg: '#F6F8FB',
-  card: '#FFFFFF',
-  text: '#1E293B',
-  sub: '#94A3B8',
-  divider: '#E2E8F0',
-  admin: '#2563EB',
-  adminBg: '#EFF6FF',
-  delivery: '#059669',
-  deliveryBg: '#ECFDF5',
-  danger: '#DE350B',
+  brand: colors.actionGreen,
+  brandLight: colors.actionGreenLighter,
+  pageBg: colors.neutral50,
+  card: colors.neutral0,
+  text: colors.neutral800,
+  sub: colors.neutral400,
+  divider: colors.neutral200,
+  admin: colors.info,
+  adminBg: colors.infoLight,
+  delivery: colors.actionGreen,
+  deliveryBg: colors.actionGreenLighter,
+  danger: colors.danger
 };
 
 const ROLE_COLORS: Record<string, { bg: string; fg: string }> = {
   admin: { bg: P.adminBg, fg: P.admin },
-  delivery: { bg: P.deliveryBg, fg: P.delivery },
+  delivery: { bg: P.deliveryBg, fg: P.delivery }
 };
 
 const UserManagementScreen: React.FC = () => {
@@ -203,7 +205,7 @@ const UserManagementScreen: React.FC = () => {
                       size={16}
                       color={sel ? P.brand : P.sub}
                     />
-                    <Text style={[s.roleOptText, sel && { color: P.brand, fontWeight: '600' }]}>
+                    <Text style={[s.roleOptText, sel && { color: P.brand, fontWeight: typography.labelLg.fontWeight }]}>
                       {r.charAt(0).toUpperCase() + r.slice(1)}
                     </Text>
                   </TouchableOpacity>
@@ -231,33 +233,30 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     backgroundColor: P.card,
     borderBottomWidth: 1,
     borderBottomColor: P.divider,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...typography.h3,
     color: P.text,
-    fontFamily: THEME.typography.fontFamily,
   },
-  list: { padding: spacing.md, paddingBottom: spacing.xl },
+  list: { padding: spacing.md, paddingBottom: spacing.xxl },
   empty: {
+    ...typography.bodySm,
     textAlign: 'center',
     marginTop: 60,
-    fontSize: 14,
     color: P.sub,
-    fontFamily: THEME.typography.fontFamily,
   },
   userCard: {
     flexDirection: 'row',
     backgroundColor: P.card,
-    borderRadius: borderRadius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.card,
+    marginBottom: spacing.xs,
+    ...shadows.sm,
   },
   avatar: {
     width: 44,
@@ -269,22 +268,17 @@ const s = StyleSheet.create({
     marginRight: 12,
   },
   avatarText: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...typography.labelLg,
     color: P.brand,
-    fontFamily: THEME.typography.fontFamily,
   },
   userInfo: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   userName: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.labelLg,
     color: P.text,
-    fontFamily: THEME.typography.fontFamily,
   },
   youBadge: {
-    fontSize: 10,
-    fontWeight: '700',
+    ...typography.overline,
     color: P.brand,
     backgroundColor: P.brandLight,
     borderRadius: 4,
@@ -294,10 +288,9 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
   userEmail: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: P.sub,
     marginTop: 2,
-    fontFamily: THEME.typography.fontFamily,
   },
   metaRow: {
     flexDirection: 'row',
@@ -313,9 +306,8 @@ const s = StyleSheet.create({
     borderRadius: 6,
   },
   roleText: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.labelSm,
+    
   },
   overlay: {
     flex: 1,
@@ -326,7 +318,7 @@ const s = StyleSheet.create({
     backgroundColor: P.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: spacing.lg,
+    padding: spacing.xl,
     paddingBottom: 40,
   },
   modalHeader: {
@@ -336,23 +328,19 @@ const s = StyleSheet.create({
     marginBottom: spacing.md,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...typography.h3,
     color: P.text,
-    fontFamily: THEME.typography.fontFamily,
   },
   roleSelectLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.h5,
     color: P.text,
     marginTop: spacing.md,
-    marginBottom: spacing.sm,
-    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.xs,
   },
   roleRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.xs,
+    marginBottom: spacing.xl,
   },
   roleOption: {
     flex: 1,
@@ -360,14 +348,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     borderWidth: 1.5,
     borderColor: P.divider,
     gap: 6,
   },
   roleOptText: {
-    fontSize: 14,
+    ...typography.bodySm,
     color: P.sub,
-    fontFamily: THEME.typography.fontFamily,
-  },
+  }
 });

@@ -98,7 +98,7 @@ const s = StyleSheet.create({
   },
   title: {
     ...THEME.typography.bodyMd,
-    fontWeight: '700',
+    fontWeight: THEME.typography.labelMd.fontWeight,
     color: THEME.colors.textPrimary,
   },
   sub: {

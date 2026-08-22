@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  StatusBar,
+  StatusBar
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,14 +21,13 @@ import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { getStoredCompanyId } from '../../../utils/storageUtils';
-import { colors, spacing, borderRadius } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectAccounts,
   createAccount,
-  editAccount,
+  editAccount
 } from '../COAList/coaListSlice';
 import {
   selectFormData,
@@ -38,7 +37,7 @@ import {
   setFormData,
   setFormErrors,
   setIsSaving,
-  resetCoaForm,
+  resetCoaForm
 } from './coaFormSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -46,12 +45,15 @@ import CustomButton from '../../../Custom-Components/CustomButton';
 import {
   validateAccount,
   ACCOUNT_TYPE_OPTIONS,
-  SUB_TYPE_OPTIONS,
+  SUB_TYPE_OPTIONS
 } from '../../../models/coaModel';
 import type { AccountType, AccountSubType } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import {
-  getAvailableAccountNumbers,
+  getAvailableAccountNumbers
 } from '../../../utils/accountNumberUtils';
 
 type FormRoute = RouteProp<MoreStackParamList, 'COAForm'>;
@@ -171,7 +173,7 @@ const COAFormScreen: React.FC = () => {
               balance: balanceNum,
               normalBalance,
               isActive: form.isActive,
-            },
+            }
           }),
         ).unwrap();
         Toast.show({ type: 'success', text1: 'Success', text2: 'Account updated successfully.' });
@@ -298,7 +300,7 @@ const COAFormScreen: React.FC = () => {
               value={form.isActive}
               onValueChange={val => updateField('isActive', val)}
               trackColor={{ false: colors.border, true: colors.success + '60' }}
-              thumbColor={form.isActive ? colors.success : '#ccc'}
+              thumbColor={form.isActive ? colors.success : colors.neutral300}
             />
           </View>
 
@@ -314,7 +316,7 @@ const COAFormScreen: React.FC = () => {
             />
           </View>
 
-          <View style={{ height: spacing.xl }} />
+          <View style={{ height: spacing.xxl }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -331,97 +333,82 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   backBtn: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.labelLg,
     color: colors.secondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...typography.h3,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   headerSpacer: { width: 60 },
   form: {
-    padding: spacing.lg,
+    padding: spacing.xl,
   },
   dollarSign: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.h4,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: spacing.md,
   },
   toggleLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.h5,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   toggleHint: {
-    fontSize: 12,
-    color: colors.textLight,
+    ...typography.caption,
+    color: colors.textTertiary,
     marginTop: 2,
-    fontFamily: THEME.typography.fontFamily,
   },
   btnRow: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   codeDisplay: {
     marginBottom: spacing.md,
   },
   codeLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.labelMd,
     color: colors.textSecondary,
     marginBottom: 6,
-    fontFamily: THEME.typography.fontFamily,
   },
   codeValueRow: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.background,
     paddingVertical: 14,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
   codeValue: {
-    fontSize: 16,
-    fontWeight: '700',
+    ...typography.h4,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   codePlaceholder: {
-    fontSize: 14,
-    color: colors.textLight,
+    ...typography.bodySm,
+    color: colors.textTertiary,
     fontStyle: 'italic',
-    fontFamily: THEME.typography.fontFamily,
   },
   codeHelperText: {
-    fontSize: 11,
-    color: colors.textLight,
+    ...typography.caption,
+    color: colors.textTertiary,
     marginTop: 4,
-    fontFamily: THEME.typography.fontFamily,
-  },
+  }
 });
 
 export default COAFormScreen;

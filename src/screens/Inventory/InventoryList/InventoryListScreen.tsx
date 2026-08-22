@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Dimensions,
-  Modal,
+  Modal
 } from 'react-native';
 
 import { Feather } from '@expo/vector-icons';
@@ -20,7 +20,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { ReportContainer, ReportHeader, HEADER_NAVY, HeaderAction } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
@@ -37,7 +36,7 @@ import {
   setActiveFilter,
   setCategoryFilter,
   setAgencyFilter,
-  setViewMode,
+  setViewMode
 } from './inventoryListSlice';
 import type { StockFilter, ViewMode } from './inventoryListSlice';
 import type { InventoryItemData } from '../../../models/inventoryModel';
@@ -46,14 +45,17 @@ import { isFeatureEnabled } from '../../../utils/featureGates';
 import EmptyState from '../../../components/shared/EmptyState';
 import { formatCurrency } from '../../../utils/formatters';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const GRID_CARD_WIDTH = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2;
+const GRID_CARD_WIDTH = (SCREEN_WIDTH - spacing.xl * 2 - spacing.xs) / 2;
 type PickerType = 'category' | 'agency' | null;
 
 // ── Constants ─────────────────────────────────────────
 type FilterChip = { key: StockFilter; label: string; color: string };
 const STOCK_FILTER_CHIPS: FilterChip[] = [
-  { key: 'all', label: 'All', color: colors.primary },
+  { key: 'all', label: 'All', color: colors.actionGreen },
   { key: 'in_stock', label: 'In Stock', color: colors.success },
   { key: 'low_stock', label: 'Low Stock', color: colors.warning },
   { key: 'out_of_stock', label: 'Out of Stock', color: colors.danger },
@@ -307,13 +309,13 @@ const InventoryListScreen: React.FC = () => {
                 style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
                 onPress={() => dispatch(setViewMode('list'))}
               >
-                <Feather name="list" size={16} color={viewMode === 'list' ? '#FFFFFF' : 'rgba(255,255,255,0.7)'} />
+                <Feather name="list" size={16} color={viewMode === 'list' ? colors.neutral0 : 'rgba(255,255,255,0.7)'} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.viewToggleBtn, viewMode === 'grid' && styles.viewToggleBtnActive]}
                 onPress={() => dispatch(setViewMode('grid'))}
               >
-                <Feather name="grid" size={15} color={viewMode === 'grid' ? '#FFFFFF' : 'rgba(255,255,255,0.7)'} />
+                <Feather name="grid" size={15} color={viewMode === 'grid' ? colors.neutral0 : 'rgba(255,255,255,0.7)'} />
               </TouchableOpacity>
             </View>
             <HeaderAction label="New" onPress={() => navigation.navigate('InventoryForm')} />
@@ -331,7 +333,7 @@ const InventoryListScreen: React.FC = () => {
           <TextInput
             style={styles.searchInput}
             placeholder="Search by name, SKU, or barcode..."
-            placeholderTextColor={colors.textLight}
+            placeholderTextColor={colors.textTertiary}
             value={searchQuery}
             onChangeText={text => dispatch(setSearchQuery(text))}
             autoCorrect={false}
@@ -477,8 +479,8 @@ const InventoryListScreen: React.FC = () => {
             <RefreshControl
               refreshing={isLoading}
               onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
+              colors={[colors.actionGreen]}
+              tintColor={colors.actionGreen}
             />
           }
         />
@@ -497,8 +499,8 @@ const InventoryListScreen: React.FC = () => {
             <RefreshControl
               refreshing={isLoading}
               onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
+              colors={[colors.actionGreen]}
+              tintColor={colors.actionGreen}
             />
           }
         />
@@ -519,16 +521,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.surface,
   },
   headerTitle: {
     ...THEME.typography.h2,
     color: colors.textPrimary,
   },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
 
   // ── View Toggle ───────────────────────────────────
   viewToggle: {
@@ -546,26 +548,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   viewToggleBtnActive: {
-    backgroundColor: THEME.colors.primary,
+    backgroundColor: THEME.colors.actionGreen,
   },
 
   // ── Search ────────────────────────────────────────
   searchContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surface,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm + 4,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs + 4,
     height: 42,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  searchIcon: { fontSize: 14, marginRight: spacing.sm },
+  searchIcon: { ...typography.bodySm, marginRight: spacing.xs },
   searchInput: {
     ...THEME.typography.bodyMd,
     flex: 1,
@@ -573,44 +575,43 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   clearBtn: {
-    fontSize: 16,
-    color: colors.textLight,
-    paddingHorizontal: spacing.xs,
+    ...typography.bodyLg,
+    color: colors.textTertiary,
+    paddingHorizontal: spacing.xxs,
   },
 
   // ── Filter Chips ──────────────────────────────────
   chipRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
-    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surface,
+    gap: spacing.xs,
   },
   chip: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.xxs + 2,
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   chipText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '500',
+    ...typography.bodySm,
     color: colors.textSecondary,
   },
   chipTextSelected: {
-    color: colors.white,
-    fontWeight: '600',
+    ...typography.h5,
+    color: colors.surface,
   },
 
   // ── Dropdown Row ──────────────────────────────────
   dropdownRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.surface,
+    gap: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -619,9 +620,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.xs + 4,
-    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.xs + 4,
+    paddingVertical: spacing.xxs + 4,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
@@ -632,73 +633,71 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   dropdownArrow: {
-    fontSize: 10,
-    color: colors.textLight,
-    marginLeft: spacing.xs,
+    ...typography.overline,
+    color: colors.textTertiary,
+    marginLeft: spacing.xxs,
   },
 
   pickerOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.25)',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
   pickerModal: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     maxHeight: '70%',
-    ...shadows.card,
+    ...shadows.sm,
   },
   pickerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   pickerTitle: {
     ...THEME.typography.h5,
-    fontWeight: '700',
+    
     color: colors.textPrimary,
   },
   pickerClose: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.h5,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   pickerOption: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   pickerOptionSelected: {
-    backgroundColor: colors.primary + '12',
+    backgroundColor: colors.actionGreen + '12',
   },
   pickerOptionText: {
     ...THEME.typography.bodyMd,
     color: colors.textPrimary,
   },
   pickerOptionTextSelected: {
-    color: colors.primary,
-    fontWeight: '700',
+    ...typography.h5,
+    color: colors.actionGreen,
   },
 
   // ── Summary Bar ───────────────────────────────────
   summaryBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.sm,
-    ...shadows.card,
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xxs,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.xs,
+    ...shadows.sm,
   },
   summaryItem: {
     flex: 1,
@@ -706,13 +705,12 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     ...THEME.typography.h5,
-    fontWeight: '700',
+    
     color: colors.textPrimary,
   },
   summaryLabel: {
-    fontSize: 10,
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.overline,
+    color: colors.textTertiary,
     marginTop: 1,
   },
   summaryDivider: {
@@ -722,63 +720,58 @@ const styles = StyleSheet.create({
   },
 
   // ── List View ─────────────────────────────────────
-  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl },
+  listContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxl },
   emptyContainer: { flexGrow: 1 },
 
   listRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 4,
-    borderRadius: borderRadius.sm,
-    marginTop: spacing.sm,
-    ...shadows.small,
+    paddingVertical: spacing.xs + 4,
+    borderRadius: radius.sm,
+    marginTop: spacing.xs,
+    ...shadows.xs,
   },
-  listRowLeft: { flex: 1, marginRight: spacing.sm },
+  listRowLeft: { flex: 1, marginRight: spacing.xs },
   listName: {
     ...THEME.typography.h4,
-    fontWeight: '700',
+    
     color: colors.textPrimary,
   },
   listSku: {
     ...THEME.typography.caption,
-    fontFamily: THEME.typography.fontFamily,
     marginTop: 1,
   },
   listMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.xs,
-    gap: spacing.xs,
+    marginTop: spacing.xxs,
+    gap: spacing.xxs,
   },
   listCategory: {
-    ...THEME.typography.labelSm,
-    fontWeight: '400',
+    ...typography.caption,
     color: colors.textSecondary,
   },
   agencyBadge: {
     backgroundColor: colors.secondary + '15',
-    paddingHorizontal: spacing.xs + 4,
+    paddingHorizontal: spacing.xxs + 4,
     paddingVertical: 1,
     borderRadius: 8,
   },
   agencyBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
+    ...typography.overline,
     color: colors.secondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   listRowRight: { alignItems: 'flex-end' },
   listQty: {
     ...THEME.typography.h2,
-    fontWeight: '800',
+    
   },
   listUnitCost: {
-    fontSize: 11,
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.caption,
+    color: colors.textTertiary,
     marginTop: 1,
   },
   listTotalVal: {
@@ -787,17 +780,17 @@ const styles = StyleSheet.create({
   },
 
   // ── Grid View ─────────────────────────────────────
-  gridContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl },
+  gridContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxl },
   gridRow: {
     justifyContent: 'space-between',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   gridCard: {
     width: GRID_CARD_WIDTH,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    ...shadows.small,
+    ...shadows.xs,
   },
   gridImagePlaceholder: {
     width: '100%',
@@ -807,22 +800,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   gridImageText: {
-    fontSize: 32,
+    ...typography.displayMd,
+    
   },
   gridCardBody: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
   gridName: {
-    ...THEME.typography.bodySm,
-    fontWeight: '700',
+    ...THEME.typography.labelMd,
+    
     color: colors.textPrimary,
     marginBottom: 2,
   },
   gridSku: {
-    fontSize: 11,
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.xs,
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginBottom: spacing.xxs,
   },
   gridBottom: {
     flexDirection: 'row',
@@ -830,15 +823,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   gridQty: {
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.labelMd,
+    
   },
   statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
+  }
 });
 
 export default InventoryListScreen;

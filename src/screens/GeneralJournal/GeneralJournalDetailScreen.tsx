@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
+  TextInput
 } from 'react-native';
 import { Alert } from '../../utils/alert';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -14,19 +14,17 @@ import type { RouteProp } from '@react-navigation/native';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
-  fetchJournalEntry, selectJournalEntryState, postJournalEntry, voidJournalEntry,
+  fetchJournalEntry, selectJournalEntryState, postJournalEntry, voidJournalEntry
 } from './journalEntrySlice';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
-import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'JournalEntryDetail'>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
-const STATUS_COLOR: Record<string, string> = {
-  draft: ACCENT.amber, posted: ACCENT.green, void: THEME.colors.textSecondary,
-};
 
 const GeneralJournalDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -70,7 +68,7 @@ const GeneralJournalDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
           <View style={styles.headRow}>
-            <Badge label={e.status} color={STATUS_COLOR[e.status] ?? THEME.colors.textSecondary} dot />
+            <Badge label={e.status} color={txnStatusColor(e.status)} dot />
             <Text style={styles.total}>{rs(e.totalDebits)}</Text>
           </View>
           <Info label="Date" value={e.date} />
@@ -148,24 +146,24 @@ const Info: React.FC<{ label: string; value: string; strong?: boolean }> = ({ la
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  total: { ...THEME.typography.bodyLg, color: THEME.colors.textPrimary, fontWeight: '800' },
+  total: { ...THEME.typography.h4, color: THEME.colors.textPrimary },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   infoLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
-  infoValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: 12 },
-  bold: { ...THEME.typography.bodyMd, fontWeight: '800' },
+  infoValue: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
+  bold: { ...THEME.typography.labelLg },
   lineHead: { flexDirection: 'row', paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.border },
   headText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
   lineRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   colAcct: { flex: 1.6 },
   colVal: { flex: 1, textAlign: 'right' },
-  lineDesc: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
+  lineDesc: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   lineMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   lineVal: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
   totalRow: { flexDirection: 'row', paddingVertical: 10, marginTop: 2, borderTopWidth: 2, borderTopColor: THEME.colors.border },
-  totalText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '800' },
+  totalText: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   reasonInput: { borderWidth: 1, borderColor: THEME.colors.border, borderRadius: 8, padding: 10, minHeight: 60, textAlignVertical: 'top', ...THEME.typography.bodyMd, color: THEME.colors.textPrimary },
   voidHint: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 8 },
-  actions: { gap: 10 },
+  actions: { gap: 10 }
 });
 
 export default GeneralJournalDetailScreen;

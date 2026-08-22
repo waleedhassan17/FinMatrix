@@ -8,15 +8,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Linking,
-  StatusBar,
+  StatusBar
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, spacing, borderRadius, shadows } from '../../../../theme';
-import { THEME } from '../../../../utils/theme';
+import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import {
@@ -25,18 +24,21 @@ import {
   reassignDelivery,
   cancelDelivery,
   deleteDelivery,
-  fetchDeliveries,
+  fetchDeliveries
 } from '../AssignDeliveries/deliverySlice';
 import {
   selectDetailUIState,
   toggleReassignPanel,
   setReassignPersonnelId,
   toggleCancelConfirm,
-  resetDetailUIState,
+  resetDetailUIState
 } from './adminDeliveryDetailSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import { updateDeliveryAPI } from '../../../../networks/delivery/deliveryNetwork';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'AdminDeliveryDetail'>;
 
@@ -44,17 +46,11 @@ type Props = NativeStackScreenProps<MoreStackParamList, 'AdminDeliveryDetail'>;
 // Every status the backend can return needs an entry here, or the header badge
 // renders "undefined <status>". picked_up, arrived and cancelled were all
 // reachable and all missing.
-const STATUS_COLORS: Record<string, string> = {
-  unassigned: '#64748B',
-  pending: '#FF8B00',
-  picked_up: '#0065FF',
-  in_transit: '#2563EB',
-  arrived: '#6554C0',
-  delivered: '#059669',
-  failed: '#DE350B',
-  returned: '#EA580C',
-  cancelled: '#94A3B8',
-};
+// Delivery status colours come from THEME.STATUS_CONFIG, the same source
+// the driver-facing screens read, so a delivery is one colour on both sides.
+const STATUS_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.color]),
+);
 
 const STATUS_ICONS: Record<string, string> = {
   unassigned: '⚪',
@@ -65,14 +61,15 @@ const STATUS_ICONS: Record<string, string> = {
   delivered: '🟢',
   failed: '🔴',
   returned: '🟠',
-  cancelled: '⚫',
+  cancelled: '⚫'
 };
 
-const PRIORITY_COLORS: Record<string, string> = {
-  high: '#B91C1C',
-  medium: '#B45309',
-  low: '#0F766E',
-};
+// Priority colours come from THEME.PRIORITY_CONFIG, the same source the
+// driver-facing screens read. The local copies disagreed: `high` was dark
+// red on three screens and dark amber on the delivery monitor.
+const PRIORITY_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(PRIORITY_CONFIG).map(([k, v]) => [k, v.color]),
+);
 
 // ── Component ────────────────────────────────────────────────────────────────
 const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -98,7 +95,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         .filter(p => p.status === 'active' && p.userId !== delivery?.assignedTo)
         .map(p => ({
           label: `${p.displayName} (Load: ${p.currentLoad}/${p.maxLoad})`,
-          value: p.userId,
+          value: p.userId
         })),
     [allPersonnel, delivery?.assignedTo],
   );
@@ -119,7 +116,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.body}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <Feather name="arrow-left" size={24} color="#FFFFFF" />
+              <Feather name="arrow-left" size={24} color={colors.neutral0} />
             </TouchableOpacity>
             <Text style={styles.title}>Delivery Detail</Text>
             <View style={{ width: 36 }} />
@@ -132,7 +129,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   }
 
-  const statusColor = STATUS_COLORS[delivery.status] ?? '#64748B';
+  const statusColor = STATUS_COLORS[delivery.status] ?? colors.neutral500;
 
   // The server's status machine treats these as terminal and rejects any
   // transition out of them. The assign endpoint has no such guard, though —
@@ -259,7 +256,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       await updateDeliveryAPI(delivery.id, {
         destAddress: manualAddress.trim() || undefined,
-        ...(hasCoords ? { destLat: lat, destLng: lng } : {}),
+        ...(hasCoords ? { destLat: lat, destLng: lng } : {})
       });
       await dispatch(fetchDeliveries());
       setLocationModalVisible(false);
@@ -280,13 +277,13 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={24} color="#FFFFFF" />
+          <Feather name="arrow-left" size={24} color={colors.neutral0} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.title}>{delivery.referenceNo}</Text>
         </View>
         <View style={[styles.headerStatusBadge, { backgroundColor: 'rgba(255,255,255,0.16)' }]}>
-          <Text style={[styles.headerStatusText, { color: '#FFFFFF' }]}>
+          <Text style={[styles.headerStatusText, { color: colors.neutral0 }]}>
             {STATUS_ICONS[delivery.status]} {delivery.status.replace('_', ' ')}
           </Text>
         </View>
@@ -337,15 +334,15 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 styles.verifyBadge,
                 {
                   backgroundColor: delivery.customerVerified
-                    ? '#059669' + '22'
-                    : '#64748B' + '22',
+                    ? colors.actionGreen + '22'
+                    : colors.neutral500 + '22',
                 },
               ]}
             >
               <Text
                 style={[
                   styles.verifyText,
-                  { color: delivery.customerVerified ? '#059669' : '#64748B' },
+                  { color: delivery.customerVerified ? colors.actionGreen : colors.neutral500 },
                 ]}
               >
                 {delivery.customerVerified ? '✓ Verified' : '— Unverified'}
@@ -412,15 +409,15 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     styles.personStatusBadge,
                     {
                       backgroundColor:
-                        assignedPerson.status === 'active' ? '#059669' + '20' : '#FF8B00' + '20',
+                        assignedPerson.status === 'active' ? colors.actionGreen + '20' : colors.warning + '20',
                     },
                   ]}
                 >
                   <Text
                     style={{
-                      fontSize: 11,
-                      fontWeight: '600',
-                      color: assignedPerson.status === 'active' ? '#059669' : '#FF8B00',
+                      ...typography.overline,
+                      
+                      color: assignedPerson.status === 'active' ? colors.actionGreen : colors.warning,
                     }}
                   >
                     {assignedPerson.status}
@@ -444,7 +441,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           {delivery.statusHistory && delivery.statusHistory.length > 0 ? (
             delivery.statusHistory.map((entry, idx) => {
               const isLast = idx === (delivery.statusHistory?.length ?? 0) - 1;
-              const entryColor = STATUS_COLORS[entry.status] ?? '#64748B';
+              const entryColor = STATUS_COLORS[entry.status] ?? colors.neutral500;
               return (
                 <View key={idx} style={styles.timelineItem}>
                   <View style={styles.timelineLine}>
@@ -488,7 +485,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           ) : (
             <View style={[styles.signatureBox, styles.signatureEmpty]}>
               <Text style={styles.signatureIcon}>✍️</Text>
-              <Text style={[styles.signatureLabel, { color: colors.textLight }]}>
+              <Text style={[styles.signatureLabel, { color: colors.textTertiary }]}>
                 No signature captured
               </Text>
             </View>
@@ -560,7 +557,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* ── Cancel Confirm ── */}
         {uiState.showCancelConfirm && (
           <View style={[styles.actionPanel, styles.dangerPanel]}>
-            <Text style={[styles.actionPanelTitle, { color: '#DE350B' }]}>
+            <Text style={[styles.actionPanelTitle, { color: colors.danger }]}>
               {isDiscardable ? 'Delete Delivery?' : 'Cancel Delivery?'}
             </Text>
             <Text style={styles.dangerNote}>
@@ -600,25 +597,25 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={() => dispatch(toggleReassignPanel())}
           disabled={isTerminal}
         >
-          <Feather name="refresh-cw" size={16} color="#FFFFFF" />
+          <Feather name="refresh-cw" size={16} color={colors.neutral0} />
           <Text style={styles.bottomBtnText}>Re-assign</Text>
         </TouchableOpacity>
         {/* One verb, always the right one: an undispatched delivery is
             deleted outright; a dispatched one is cancelled so its stock and
             Goods in Transit are properly reversed. */}
         <TouchableOpacity
-          style={[styles.bottomBtn, { backgroundColor: '#DE350B' }, isTerminal && styles.bottomBtnDisabled]}
+          style={[styles.bottomBtn, { backgroundColor: colors.danger }, isTerminal && styles.bottomBtnDisabled]}
           onPress={() => dispatch(toggleCancelConfirm())}
           disabled={isTerminal}
         >
-          <Feather name={isDiscardable ? 'trash-2' : 'x'} size={16} color="#FFFFFF" />
+          <Feather name={isDiscardable ? 'trash-2' : 'x'} size={16} color={colors.neutral0} />
           <Text style={styles.bottomBtnText}>{isDiscardable ? 'Delete' : 'Cancel'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.bottomBtn, { backgroundColor: colors.success }]}
           onPress={handleContact}
         >
-          <Feather name="phone" size={16} color="#FFFFFF" />
+          <Feather name="phone" size={16} color={colors.neutral0} />
           <Text style={styles.bottomBtnText}>Contact</Text>
         </TouchableOpacity>
       </View>
@@ -701,19 +698,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: colors.warningLighter,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: colors.warningLight,
     borderRadius: 10,
     padding: 12,
     marginBottom: 12,
   },
   noPinText: {
     flex: 1,
-    fontSize: 12,
+    ...typography.caption,
     lineHeight: 18,
-    color: '#92400E',
-    fontFamily: THEME.typography.fontFamily,
+    color: colors.warningHover,
   },
   modalBackdrop: {
     flex: 1,
@@ -723,43 +719,39 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.neutral0,
     borderRadius: 16,
     padding: 20,
     width: '100%',
     maxWidth: 440,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0F172A',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.h4,
+    
+    color: colors.neutral900,
     marginBottom: 6,
   },
   modalHint: {
-    fontSize: 12,
+    ...typography.caption,
     lineHeight: 18,
-    color: '#64748B',
-    fontFamily: THEME.typography.fontFamily,
+    color: colors.neutral500,
     marginBottom: 14,
   },
   modalFieldLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.labelSm,
+    
+    color: colors.neutral700,
     marginBottom: 4,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.neutral200,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 14,
-    color: '#0F172A',
-    fontFamily: THEME.typography.fontFamily,
-    backgroundColor: '#F8FAFC',
+    ...typography.bodySm,
+    color: colors.neutral900,
+    backgroundColor: colors.neutral50,
     marginBottom: 12,
   },
   modalActions: {
@@ -778,38 +770,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.md,
     backgroundColor: HEADER_NAVY[0],
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
-  backBtn: { padding: spacing.xs },
-  back: { ...THEME.typography.displaySm, color: colors.primary },
+  backBtn: { padding: spacing.xxs },
+  back: { ...THEME.typography.displaySm, color: colors.actionGreen },
   headerCenter: { flex: 1, alignItems: 'center' },
-  title: { ...THEME.typography.h3, color: '#FFFFFF' },
+  title: { ...THEME.typography.h3, color: colors.neutral0 },
   headerStatusBadge: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 4,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
   },
-  headerStatusText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+  headerStatusText: { ...typography.overline, textTransform: 'capitalize' },
 
-  content: { padding: spacing.md, paddingBottom: spacing.xl },
+  content: { padding: spacing.md, paddingBottom: spacing.xxl },
 
   // Section
   section: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.card,
+    ...shadows.sm,
   },
   sectionTitle: {
     ...THEME.typography.h3,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
-    paddingBottom: spacing.xs,
+    marginBottom: spacing.xs,
+    paddingBottom: spacing.xxs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -819,7 +811,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xxs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border + '60',
   },
@@ -831,33 +823,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     marginBottom: spacing.md,
-    ...shadows.small,
+    ...shadows.xs,
   },
   priorityBadge: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radius.sm,
   },
-  priorityText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+  priorityText: { ...typography.labelSm, letterSpacing: 0.5 },
 
   // Verify badge
   verifyBadge: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 3,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
   },
-  verifyText: { fontSize: 12, fontWeight: '600' },
+  verifyText: { ...typography.caption, fontWeight: typography.labelLg.fontWeight },
 
   // Items
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border + '50',
   },
@@ -868,41 +860,41 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondary + '20',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
-  itemIndexText: { fontSize: 11, fontWeight: '700', color: colors.secondary },
-  itemName: { ...THEME.typography.bodyMd, fontWeight: '600', color: colors.textPrimary },
+  itemIndexText: { ...typography.overline, color: colors.secondary },
+  itemName: { ...THEME.typography.labelLg,  color: colors.textPrimary },
   itemAgency: { ...THEME.typography.caption, color: colors.textSecondary },
-  itemQty: { ...THEME.typography.bodyLg, fontWeight: '700', color: colors.primary },
+  itemQty: { ...THEME.typography.h4,  color: colors.actionGreen },
 
   // Person card
   personCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   personAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.primary + '20',
+    backgroundColor: colors.actionGreen + '20',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  personAvatarText: { ...THEME.typography.h3, color: colors.primary },
-  personName: { ...THEME.typography.bodyLg, fontWeight: '600', color: colors.textPrimary },
+  personAvatarText: { ...THEME.typography.h3, color: colors.actionGreen },
+  personName: { ...THEME.typography.h4,  color: colors.textPrimary },
   personMeta: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
   personStatusBadge: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 3,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
   },
-  assignedAt: { ...THEME.typography.caption, color: colors.textLight, marginTop: spacing.xs },
+  assignedAt: { ...THEME.typography.caption, color: colors.textTertiary, marginTop: spacing.xxs },
 
   // Timeline
-  timelineItem: { flexDirection: 'row', marginBottom: spacing.sm },
-  timelineLine: { alignItems: 'center', width: 24, marginRight: spacing.sm },
+  timelineItem: { flexDirection: 'row', marginBottom: spacing.xs },
+  timelineLine: { alignItems: 'center', width: 24, marginRight: spacing.xs },
   timelineDot: { width: 12, height: 12, borderRadius: 6 },
   timelineConnector: {
     width: 2,
@@ -911,80 +903,80 @@ const styles = StyleSheet.create({
     marginTop: 2,
     minHeight: 24,
   },
-  timelineContent: { flex: 1, paddingBottom: spacing.sm },
-  timelineStatus: { ...THEME.typography.bodyMd, fontWeight: '600' },
+  timelineContent: { flex: 1, paddingBottom: spacing.xs },
+  timelineStatus: { ...THEME.typography.bodyMd, fontWeight: typography.labelLg.fontWeight },
   timelineTime: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
   timelineNote: { ...THEME.typography.caption, color: colors.textPrimary, marginTop: 2 },
-  timelineBy: { ...THEME.typography.caption, color: colors.textLight, marginTop: 1 },
+  timelineBy: { ...THEME.typography.caption, color: colors.textTertiary, marginTop: 1 },
 
   // Signature
   signatureBox: {
     alignItems: 'center',
     paddingVertical: spacing.md,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     backgroundColor: colors.secondary + '10',
   },
   signatureEmpty: { backgroundColor: colors.border + '40' },
-  signatureIcon: { fontSize: 28, marginBottom: spacing.xs },
-  signatureLabel: { ...THEME.typography.bodyMd, fontWeight: '600', color: colors.textPrimary },
+  signatureIcon: { ...typography.h1, marginBottom: spacing.xxs },
+  signatureLabel: { ...THEME.typography.bodyMd,  color: colors.textPrimary },
   signatureSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 4 },
 
   // Photos
   photoThumb: {
     width: 80,
     height: 80,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     backgroundColor: colors.border + '60',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
-  photoThumbIcon: { fontSize: 24 },
+  photoThumbIcon: { ...typography.displaySm },
   photoThumbLabel: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
   photoEmpty: {
     alignItems: 'center',
     paddingVertical: spacing.md,
-    gap: spacing.xs,
+    gap: spacing.xxs,
   },
 
   // Placeholder note
-  placeholderNote: { ...THEME.typography.bodyMd, color: colors.textLight },
+  placeholderNote: { ...THEME.typography.bodyMd, color: colors.textTertiary },
 
   // Action panels (inline)
   actionPanel: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.card,
+    ...shadows.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
   dangerPanel: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+    backgroundColor: colors.dangerLighter,
+    borderColor: colors.dangerLight,
   },
-  actionPanelTitle: { ...THEME.typography.h3, color: colors.textPrimary, marginBottom: spacing.sm },
-  dangerNote: { ...THEME.typography.bodyMd, color: '#991B1B', marginBottom: spacing.md },
-  panelButtons: { marginTop: spacing.sm, gap: spacing.sm },
-  linkBtn: { alignItems: 'center', paddingVertical: spacing.sm },
+  actionPanelTitle: { ...THEME.typography.h3, color: colors.textPrimary, marginBottom: spacing.xs },
+  dangerNote: { ...THEME.typography.bodyMd, color: colors.dangerHover, marginBottom: spacing.md },
+  panelButtons: { marginTop: spacing.xs, gap: spacing.xs },
+  linkBtn: { alignItems: 'center', paddingVertical: spacing.xs },
   linkBtnText: { ...THEME.typography.bodyMd, color: colors.secondary },
 
   // Bottom action bar
   bottomBar: {
     flexDirection: 'row',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.cardBg,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   bottomBtn: {
     gap: 4,
     flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -992,12 +984,12 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   bottomBtnText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '700',
+    color: colors.surface,
+    ...typography.labelSm,
+    
     textAlign: 'center',
     lineHeight: 16,
-  },
+  }
 });
 
 export default AdminDeliveryDetailScreen;

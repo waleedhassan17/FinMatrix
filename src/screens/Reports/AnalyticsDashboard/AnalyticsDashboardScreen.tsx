@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
+  Dimensions
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +17,9 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { fetchAnalyticsDashboard, selectAnalyticsDashboardState } from './analyticsDashboardSlice';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import { formatCurrency } from '../../../utils/formatters';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 import {
   ReportContainer,
   ReportHeader,
@@ -26,7 +29,7 @@ import {
   ErrorBlock,
   ACCENT,
   CHART_SERIES,
-  reportContentStyle,
+  reportContentStyle
 } from '../../../components/reports/ReportUI';
 
 type AnalyticsDashboardScreenProps = NativeStackScreenProps<ReportsStackParamList, 'AnalyticsDashboard'>;
@@ -118,12 +121,12 @@ const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ nav
         amount: item.value,
         color: CHART_SERIES[idx % CHART_SERIES.length],
         legendFontColor: THEME.colors.textSecondary,
-        legendFontSize: 11,
+        legendFontSize: 11
       })),
     [expenseCategories],
   );
 
-  const AGING_COLORS = [ACCENT.green, ACCENT.blue, ACCENT.amber, '#F97316', ACCENT.red];
+  const AGING_COLORS = [ACCENT.green, ACCENT.blue, ACCENT.amber, THEME.colors.warning, ACCENT.red];
   const hasData = !!data && kpis.months > 0;
 
   return (
@@ -138,7 +141,7 @@ const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ nav
           <>
             {/* ── Revenue hero ── */}
             <LinearGradient
-              colors={['#047857', '#10B981']}
+              colors={[THEME.colors.actionGreenDark, THEME.colors.actionGreen]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.hero}
@@ -154,7 +157,7 @@ const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ nav
                       <Feather
                         name={kpis.revMoM >= 0 ? 'trending-up' : 'trending-down'}
                         size={12}
-                        color="#FFFFFF"
+                        color={colors.neutral0}
                       />
                       <Text style={styles.heroDeltaText}>
                         {kpis.revMoM >= 0 ? '+' : ''}{kpis.revMoM.toFixed(1)}%
@@ -184,7 +187,7 @@ const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ nav
                   label: 'Total Expenses',
                   value: fmtRsCompact(kpis.totalExpenses),
                   accent: ACCENT.amber,
-                  icon: 'arrow-down-circle',
+                  icon: 'arrow-down-circle'
                 },
                 {
                   label: 'Outstanding A/R',
@@ -197,7 +200,7 @@ const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ nav
                   label: kpis.topCustomer ? `Top: ${kpis.topCustomer.label}` : 'Top Customer',
                   value: kpis.topCustomer ? fmtRsCompact(kpis.topCustomer.value) : '—',
                   accent: ACCENT.violet,
-                  icon: 'award',
+                  icon: 'award'
                 },
               ]}
             />
@@ -398,7 +401,8 @@ const TrendLineChart: React.FC<{
       fillShadowGradientToOpacity: 0.02,
       propsForBackgroundLines: { stroke: THEME.colors.borderLight, strokeDasharray: '4 7', strokeWidth: 1 },
       propsForDots: { r: '4', strokeWidth: '2', stroke: color, fill: THEME.colors.surface },
-      propsForLabels: { fontSize: 11 },
+      // react-native-chart-kit config, not a RN style: it takes a raw number.
+      propsForLabels: { fontSize: THEME.typography.overline.fontSize }
     }}
     style={styles.chart}
     onDataPointClick={onPointPress ? ({ index, value }) => onPointPress(index, value) : undefined}
@@ -418,26 +422,26 @@ const styles = StyleSheet.create({
   },
   heroRow: { flexDirection: 'row', alignItems: 'center' },
   heroLabel: { ...THEME.typography.labelSm, color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase' },
-  heroValue: { ...THEME.typography.displaySm, color: '#FFFFFF', marginTop: 4 },
+  heroValue: { ...THEME.typography.displaySm, color: colors.neutral0, marginTop: 4 },
   heroDeltaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   heroDeltaPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: THEME.radius.full,
   },
-  heroDeltaText: { ...THEME.typography.labelMd, color: '#FFFFFF' },
+  heroDeltaText: { ...THEME.typography.labelMd, color: colors.neutral0 },
   heroDeltaCaption: { ...THEME.typography.caption, color: 'rgba(255,255,255,0.8)' },
   heroAside: {
     backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: THEME.radius.lg,
     paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center',
   },
   heroAsideLabel: { ...THEME.typography.caption, color: 'rgba(255,255,255,0.75)' },
-  heroAsideValue: { ...THEME.typography.h4, color: '#FFFFFF', marginTop: 2 },
+  heroAsideValue: { ...THEME.typography.h4, color: colors.neutral0, marginTop: 2 },
 
   // Charts
   chart: { borderRadius: THEME.radius.md, marginLeft: -THEME.spacing.sm, marginTop: 4 },
   empty: { ...THEME.typography.bodySm, color: THEME.colors.textTertiary, textAlign: 'center', paddingVertical: 16 },
   axisHint: { alignItems: 'flex-end', marginBottom: -6 },
-  axisHintText: { ...THEME.typography.caption, color: THEME.colors.textTertiary, fontSize: 10 },
+  axisHintText: { ...THEME.typography.overline, color: THEME.colors.textTertiary },
   tooltip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -473,7 +477,7 @@ const styles = StyleSheet.create({
   legendWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14, justifyContent: 'center' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 9, height: 9, borderRadius: 2 },
-  legendText: { ...THEME.typography.caption, color: THEME.colors.textSecondary },
+  legendText: { ...THEME.typography.caption, color: THEME.colors.textSecondary }
 });
 
 export default AnalyticsDashboardScreen;

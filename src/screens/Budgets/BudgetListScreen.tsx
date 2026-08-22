@@ -10,6 +10,9 @@ import { formatCurrency } from '../../utils/formatters';
 import type { ReportsStackParamList } from '../../navigators/stacks/ReportsStack';
 import { ReportContainer, ReportHeader, HeaderAction, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
+
 type Nav = NativeStackNavigationProp<ReportsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 const STATUS_COLOR: Record<string, string> = { draft: THEME.colors.textSecondary, active: ACCENT.green, archived: ACCENT.amber };
@@ -54,10 +57,10 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 10 },
   card: { backgroundColor: THEME.colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: THEME.colors.border },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardNumber: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '700', flex: 1 },
+  cardNumber: { ...THEME.typography.labelLg, color: THEME.colors.textPrimary, flex: 1 },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   cardDate: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  cardTotal: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '800' },
+  cardTotal: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight }
 });
 
 export default BudgetListScreen;

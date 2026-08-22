@@ -4,9 +4,12 @@
  *   ./theme.ts and are re-exported here.
  * - The legacy tokens below (colors, spacing, borderRadius, radius, shadows)
  *   predate THEME and are still consumed by older screens; prefer THEME for
- *   new work. The `typography` export is no longer referenced by any screen.
+ *   new work. Note their names collide with THEME's at different VALUES —
+ *   legacy spacing.lg is 24 where THEME's is 20 — so migrate by value, never
+ *   by swapping the import.
+ * - The legacy `typography` scale has been removed; THEME.typography is the
+ *   only type scale and the only place a font family is defined.
  */
-import { Platform } from 'react-native';
 
 export * from './theme';
 
@@ -39,25 +42,10 @@ export const colors = {
   overlay: 'rgba(9, 30, 66, 0.54)',
 };
 
-const fontFamily = Platform.select({
-  android: 'Roboto',
-  default: 'System',
-})!;
-
-export const typography = {
-  fontFamily,
-  h1: { fontSize: 28, fontWeight: '700' as const, fontFamily },
-  h2: { fontSize: 24, fontWeight: '600' as const, fontFamily },
-  h3: { fontSize: 20, fontWeight: '600' as const, fontFamily },
-  h4: { fontSize: 18, fontWeight: '500' as const, fontFamily },
-  body: { fontSize: 16, fontWeight: '400' as const, fontFamily },
-  bodySmall: { fontSize: 14, fontWeight: '400' as const, fontFamily },
-  small: { fontSize: 14, fontWeight: '400' as const, fontFamily },
-  label: { fontSize: 14, fontWeight: '600' as const, fontFamily },
-  button: { fontSize: 16, fontWeight: '600' as const, fontFamily },
-  overline: { fontSize: 11, fontWeight: '600' as const, fontFamily },
-  caption: { fontSize: 12, fontWeight: '400' as const, fontFamily },
-};
+// The legacy `typography` scale that used to sit here is gone. Nothing
+// imported it, and it was the second of three places that defined a typeface —
+// which made "change the brand font in one line" untrue. THEME.typography in
+// ./theme.ts is now the only type scale and the only font-family definition.
 
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
 export const borderRadius = { sm: 8, md: 12, lg: 16 };

@@ -12,7 +12,7 @@ import { formatCurrency } from '../../utils/formatters';
 import {
   getUnreconciledAPI,
   createReconciliationAPI,
-  markClearedAPI,
+  markClearedAPI
 } from '../../networks/accounting/reconciliationNetwork';
 import { unreconciledSerializer } from '../../serializers/reconciliationSerializer';
 import type { UnreconciledEntry } from '../../models/reconciliationModel';
@@ -20,6 +20,9 @@ import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField, KpiGrid, LoadingBlock, EmptyBlock, ACCENT } from '../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type Rt = RouteProp<MoreStackParamList, 'BankReconciliation'>;
@@ -115,7 +118,7 @@ const BankReconciliationScreen: React.FC = () => {
   // ── QuickBooks layout: payments/withdrawals vs deposits, with cleared totals ──
   const { payments, deposits } = useMemo(() => ({
     payments: entries.filter(e => e.amount < 0),
-    deposits: entries.filter(e => e.amount >= 0),
+    deposits: entries.filter(e => e.amount >= 0)
   }), [entries]);
   const sectionStats = useCallback((list: UnreconciledEntry[]) => {
     const ticked = list.filter(e => cleared.has(e.id));
@@ -203,7 +206,7 @@ const BankReconciliationScreen: React.FC = () => {
           <View style={[styles.banner, styles.bannerDanger]}>
             <Feather name="alert-octagon" size={16} color={THEME.colors.danger} />
             <Text style={[styles.bannerText, { color: THEME.colors.danger }]}>
-              Beginning balance is off by <Text style={{ fontWeight: '700' }}>{rs(beginningMismatch)}</Text> versus the last
+              Beginning balance is off by <Text style={{ fontWeight: typography.labelLg.fontWeight }}>{rs(beginningMismatch)}</Text> versus the last
               reconciliation{lastStatementDate ? ` (${lastStatementDate})` : ''}. A reconciled transaction was changed outside
               the app — resolve this before reconciling further.
             </Text>
@@ -258,7 +261,7 @@ const BankReconciliationScreen: React.FC = () => {
               <View style={styles.banner}>
                 <Feather name="alert-triangle" size={16} color={THEME.colors.warning} />
                 <Text style={styles.bannerText}>
-                  Out of balance by <Text style={{ fontWeight: '700' }}>{rs(difference)}</Text>. Tick the entries that appear on
+                  Out of balance by <Text style={{ fontWeight: typography.labelLg.fontWeight }}>{rs(difference)}</Text>. Tick the entries that appear on
                   your statement until the difference is 0. If the statement has an item your books lack (bank fee, interest),
                   add it as a normal transaction first — reconciliation never posts entries.
                 </Text>
@@ -277,12 +280,12 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   entryRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   entryInfo: { flex: 1 },
-  entryRef: { ...THEME.typography.bodySm, fontWeight: '600', color: THEME.colors.textPrimary },
+  entryRef: { ...THEME.typography.labelMd,  color: THEME.colors.textPrimary },
   entryMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 1 },
-  entryAmt: { ...THEME.typography.bodySm, fontWeight: '700' },
+  entryAmt: { ...THEME.typography.bodySm, fontWeight: typography.labelLg.fontWeight },
   banner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: THEME.colors.warningLight, borderRadius: THEME.radius.md, borderWidth: StyleSheet.hairlineWidth, borderColor: THEME.colors.warning + '40', paddingHorizontal: 12, paddingVertical: 11 },
   bannerDanger: { backgroundColor: THEME.colors.dangerLight, borderColor: THEME.colors.danger + '40' },
-  bannerText: { flex: 1, ...THEME.typography.bodySm, color: THEME.colors.warningHover, lineHeight: 18 },
+  bannerText: { flex: 1, ...THEME.typography.bodySm, color: THEME.colors.warningHover, lineHeight: 18 }
 });
 
 export default BankReconciliationScreen;

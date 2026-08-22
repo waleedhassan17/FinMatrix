@@ -7,7 +7,7 @@ import {
   StatusBar,
   TextInput,
   FlatList,
-  RefreshControl,
+  RefreshControl
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,11 +16,10 @@ import { Feather } from '@expo/vector-icons';
 import { getPlanLimitsAPI, type PlanLimits } from '../../../../networks/billing/billingNetwork';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HEADER_NAVY,
-  HeaderAction,
+  HeaderAction
 } from '../../../../components/reports/ReportUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, spacing, borderRadius, shadows } from '../../../../theme';
-import { THEME } from '../../../../utils/theme';
+import { THEME, statusStyle } from '../../../../utils/theme';
 import { ROUTES } from '../../../../navigations-maps/Base';
 import EmptyState from '../../../../components/shared/EmptyState';
 import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks';
@@ -28,29 +27,30 @@ import { selectDeliveryPersonnel, fetchDeliveryPersonnel } from '../../Admin/Ass
 import type { DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import type { RootStackParamList } from '../../../../types';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
+
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryPersonnelList'>;
 
 type FilterKey = 'all' | 'available' | 'busy' | 'on_leave';
 
-const STATUS_COLORS: Record<string, string> = {
-  available: colors.success,
-  busy: '#FF991F',
-  on_leave: '#9CA3AF',
-  active: colors.success,
-  inactive: '#9CA3AF',
-};
+// Availability states resolve through the app-wide status palette:
+// available/active are success, busy is warning, on_leave/inactive neutral.
+const STATUS_COLORS: Record<string, string> = new Proxy({}, {
+  get: (_, k: string) => statusStyle(k).fg
+}) as Record<string, string>;
 
 const VEHICLE_LABELS: Record<string, string> = {
   motorcycle: 'Motorcycle',
   van: 'Van',
-  truck: 'Truck',
+  truck: 'Truck'
 };
 
 const TAB_COLORS: Record<FilterKey, string> = {
-  all: colors.primary,
+  all: colors.actionGreen,
   available: colors.success,
-  busy: '#FF991F',
-  on_leave: '#9CA3AF',
+  busy: colors.warning,
+  on_leave: colors.neutral400
 };
 
 const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
@@ -95,7 +95,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
           { text: 'Not now', style: 'cancel' },
           {
             text: 'Upgrade plan',
-            onPress: () => navigation.navigate('RenewSubscription' as any, { mode: 'change' }),
+            onPress: () => navigation.navigate('RenewSubscription' as any, { mode: 'change' })
           },
         ],
       );
@@ -142,13 +142,13 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
   const getLoadColor = (current: number, max: number) => {
     const pct = (current / max) * 100;
     if (pct < 50) return colors.success;
-    if (pct <= 80) return '#FF991F';
+    if (pct <= 80) return colors.warning;
     return colors.danger;
   };
 
   const renderPersonCard = ({ item }: { item: DummyDeliveryPerson }) => {
     const status = getEffectiveStatus(item);
-    const statusColor = STATUS_COLORS[status] || colors.textLight;
+    const statusColor = STATUS_COLORS[status] || colors.textTertiary;
     const loadColor = getLoadColor(item.currentLoad, item.maxLoad);
     const loadPct = Math.min((item.currentLoad / item.maxLoad) * 100, 100);
 
@@ -223,7 +223,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
       {/* Header */}
       <LinearGradient colors={HEADER_NAVY} style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Feather name="arrow-left" size={24} color="#FFFFFF" />
+          <Feather name="arrow-left" size={24} color={colors.neutral0} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Delivery Team</Text>
         <HeaderAction label="New" onPress={guardedAdd} />
@@ -235,9 +235,9 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
           <Feather
             name={atLimit ? 'alert-triangle' : 'users'}
             size={15}
-            color={atLimit ? '#B54708' : colors.primary}
+            color={atLimit ? colors.warningHover : colors.actionGreen}
           />
-          <Text style={[styles.usageText, atLimit && { color: '#B54708' }]}>
+          <Text style={[styles.usageText, atLimit && { color: colors.warningHover }]}>
             {limits.currentCount} of {limits.deliveryPersonnelLimit} delivery personnel used
             {atLimit ? ' — plan limit reached' : ''}
           </Text>
@@ -253,9 +253,9 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
       {/* Summary */}
       <View style={styles.summaryBar}>
         {[
-          { label: 'Total', value: stats.total, color: colors.primary },
+          { label: 'Total', value: stats.total, color: colors.actionGreen },
           { label: 'Active', value: stats.active, color: colors.success },
-          { label: 'On Leave', value: stats.onLeave, color: '#9CA3AF' },
+          { label: 'On Leave', value: stats.onLeave, color: colors.neutral400 },
           { label: 'Available', value: stats.available, color: colors.success },
         ].map((item, i) => (
           <View key={i} style={styles.summaryItem}>
@@ -270,7 +270,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name, phone, or email..."
-          placeholderTextColor={colors.textLight}
+          placeholderTextColor={colors.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -296,7 +296,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
               ]}
               activeOpacity={0.7}
               onPress={() => setActiveFilter(f.key)}>
-              <Text style={[styles.filterLabel, active && { color: accent, fontWeight: '600' as const }]}>
+              <Text style={[styles.filterLabel, active && [typography.h5, { color: accent }]]}>
                 {f.label}
               </Text>
               <View style={[
@@ -348,118 +348,117 @@ const styles = StyleSheet.create({
   safeTop: { backgroundColor: HEADER_NAVY[0] },
   body: { flex: 1, backgroundColor: colors.background },
   header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm, paddingBottom: spacing.md,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xs, paddingBottom: spacing.md,
     borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
   },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
+  backBtn: { marginRight: spacing.xxs, padding: spacing.xxs / 2 },
   headerTitle: {
-    flex: 1, textAlign: 'center', fontSize: THEME.typography.h3.fontSize, fontWeight: '600',
-    color: '#FFFFFF', fontFamily: THEME.typography.fontFamily,
+    flex: 1, textAlign: 'center', ...THEME.typography.h3,
+    color: colors.neutral0,
   },
   usageBar: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#ECFDF5', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+    backgroundColor: colors.actionGreenLighter, paddingHorizontal: spacing.xl, paddingVertical: spacing.xs,
   },
-  usageBarWarn: { backgroundColor: '#FFF7ED' },
-  usageText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  usageUpgrade: { fontSize: 13, fontWeight: '800', color: '#B54708', fontFamily: THEME.typography.fontFamily },
+  usageBarWarn: { backgroundColor: colors.warningLighter },
+  usageText: { flex: 1, ...typography.labelMd, color: colors.actionGreen },
+  usageUpgrade: { ...typography.labelMd, color: colors.warningHover },
   summaryBar: {
-    flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
-    gap: spacing.sm, backgroundColor: colors.white,
+    flexDirection: 'row', paddingHorizontal: spacing.xl, paddingVertical: spacing.xs,
+    gap: spacing.xs, backgroundColor: colors.surface,
   },
   summaryItem: {
-    flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: 8,
+    flex: 1, alignItems: 'center', paddingVertical: spacing.xs, borderRadius: 8,
     backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border,
   },
   summaryNumber: {
-    fontSize: 20, fontWeight: '700', fontFamily: THEME.typography.fontFamily,
+    ...typography.h3,
   },
   summaryLabel: {
-    fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily,
+    ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2,
   },
   searchContainer: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white,
-    marginHorizontal: spacing.lg, marginTop: spacing.sm,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    marginHorizontal: spacing.xl, marginTop: spacing.xs,
     paddingHorizontal: spacing.md, height: 42, borderRadius: 10,
     borderWidth: 1, borderColor: colors.border,
   },
   searchInput: {
-    flex: 1, fontSize: THEME.typography.bodyMd.fontSize, color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily, padding: 0,
+    flex: 1, ...THEME.typography.bodyMd, color: colors.textPrimary, padding: 0,
   },
-  clearIcon: { fontSize: 20, color: colors.textLight, padding: spacing.xs },
+  clearIcon: { ...typography.h3, color: colors.textTertiary, padding: spacing.xxs },
   filterTrack: {
-    flexDirection: 'row', marginHorizontal: spacing.lg, marginTop: spacing.sm,
-    marginBottom: spacing.xs, padding: 3, borderRadius: 12,
+    flexDirection: 'row', marginHorizontal: spacing.xl, marginTop: spacing.xs,
+    marginBottom: spacing.xxs, padding: 3, borderRadius: 12,
     backgroundColor: colors.border + '80', gap: 3,
   },
   filterTab: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: spacing.sm, borderRadius: 10, gap: 5,
+    paddingVertical: spacing.xs, borderRadius: 10, gap: 5,
     borderLeftWidth: 3, borderLeftColor: 'transparent',
   },
   filterTabActive: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   filterLabel: {
-    fontSize: 12, fontWeight: '500', color: colors.textLight, fontFamily: THEME.typography.fontFamily,
+    ...typography.labelSm, color: colors.textTertiary,
   },
   filterCount: {
     minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center',
     backgroundColor: colors.border, paddingHorizontal: 4,
   },
   filterCountText: {
-    fontSize: 10, fontWeight: '600', color: colors.textLight, fontFamily: THEME.typography.fontFamily,
+    ...typography.overline, color: colors.textTertiary,
   },
-  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl },
+  listContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxl },
   personCard: {
-    flexDirection: 'row', backgroundColor: colors.white, borderRadius: borderRadius.md + 2,
-    padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border,
+    flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.lg + 2,
+    padding: spacing.md, marginBottom: spacing.xs, borderWidth: 1, borderColor: colors.border,
   },
   avatar: {
     width: 48, height: 48, borderRadius: 14, alignItems: 'center',
-    justifyContent: 'center', marginRight: spacing.sm + 4,
+    justifyContent: 'center', marginRight: spacing.xs + 4,
   },
-  avatarText: { fontSize: 16, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  avatarText: { ...typography.h4 },
   personInfo: { flex: 1 },
   nameRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xxs,
   },
   personName: {
-    fontSize: 15, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1,
+    ...typography.labelLg, color: colors.textPrimary, flex: 1,
   },
   statusBadge: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm,
-    paddingVertical: 2, borderRadius: 6, gap: 4, marginLeft: spacing.xs,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.xs,
+    paddingVertical: 2, borderRadius: 6, gap: 4, marginLeft: spacing.xxs,
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 11, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
+  statusText: { ...typography.caption },
   vehicleRow: {
-    flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs, gap: spacing.xs,
+    flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xxs, gap: spacing.xxs,
   },
-  vehicleLabel: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  vehicleSeparator: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textLight },
-  vehicleNumber: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  loadContainer: { marginBottom: spacing.xs },
-  loadLabel: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginBottom: 3, fontFamily: THEME.typography.fontFamily },
+  vehicleLabel: { ...THEME.typography.caption, color: colors.textSecondary },
+  vehicleSeparator: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textTertiary },
+  vehicleNumber: { ...THEME.typography.caption, color: colors.textSecondary },
+  loadContainer: { marginBottom: spacing.xxs },
+  loadLabel: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: 3 },
   loadTrack: { height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden' },
   loadFill: { height: 4, borderRadius: 2 },
   bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  ratingText: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  zonesRow: { flexDirection: 'row', gap: spacing.xs },
+  ratingText: { ...THEME.typography.caption, color: colors.textSecondary },
+  zonesRow: { flexDirection: 'row', gap: spacing.xxs },
   zoneTag: {
-    backgroundColor: colors.secondary + '0C', paddingHorizontal: spacing.xs + 2,
+    backgroundColor: colors.secondary + '0C', paddingHorizontal: spacing.xxs + 2,
     paddingVertical: 1, borderRadius: 4,
   },
-  zoneText: { fontSize: 10, color: colors.secondary, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
-  emptyContainer: { alignItems: 'center', paddingTop: spacing.xl * 2 },
+  zoneText: { ...typography.overline, color: colors.secondary },
+  emptyContainer: { alignItems: 'center', paddingTop: spacing.xxl * 2 },
   emptyCircle: {
     width: 64, height: 64, borderRadius: 32, backgroundColor: colors.border + '40',
     justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md,
   },
-  emptyIcon: { fontSize: 24, fontWeight: '700', color: colors.textLight },
-  emptyText: { fontSize: THEME.typography.bodyLg.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  emptyIcon: { ...typography.displaySm, color: colors.textTertiary },
+  emptyText: { ...THEME.typography.bodyLg, color: colors.textSecondary }
 });
 
 export default DeliveryPersonnelListScreen;

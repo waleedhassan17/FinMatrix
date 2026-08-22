@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Animated,
   StatusBar,
-  RefreshControl,
+  RefreshControl
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,7 +21,7 @@ import {
   selectDeliveries,
   selectDeliveryPersonnel,
   fetchDeliveries,
-  fetchDeliveryPersonnel,
+  fetchDeliveryPersonnel
 } from '../../Admin/AssignDeliveries/deliverySlice';
 import { startDelivery } from './dpDashboardSlice';
 import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DPDashboardStack';
@@ -183,7 +183,7 @@ const DPDashboardScreen: React.FC = () => {
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
+    outputRange: ['0%', '100%']
   });
 
   const nextDelivery = useMemo(
@@ -262,7 +262,7 @@ const DPDashboardScreen: React.FC = () => {
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
-    day: 'numeric',
+    day: 'numeric'
   });
 
   const statusConfig = nextDelivery ? STATUS_CONFIG[nextDelivery.status] ?? STATUS_CONFIG.pending : null;
@@ -552,7 +552,7 @@ const DPDashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DP_BRAND.primary,
+    backgroundColor: DP_BRAND.primary
   },
 
   // Header (gradient)
@@ -566,23 +566,23 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.28,
     shadowRadius: 12,
-    elevation: 6,
+    elevation: 6
   },
   headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   headerLeft: { flex: 1, marginRight: 12 },
   greeting: {
     ...THEME.typography.overline,
     color: DP_BRAND.headerTextSecondary,
     letterSpacing: 1,
-    marginBottom: 4,
+    marginBottom: 4
   },
   userName: {
     ...THEME.typography.h1,
-    color: DP_BRAND.white,
+    color: DP_BRAND.white
   },
 
   // Header meta row
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 18,
+    marginTop: 18
   },
   dateBadge: {
     flexDirection: 'row',
@@ -599,16 +599,15 @@ const styles = StyleSheet.create({
     backgroundColor: DP_BRAND.headerOverlaySolid,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: THEME.radius.full,
+    borderRadius: THEME.radius.full
   },
   dateText: {
     ...THEME.typography.labelSm,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    color: THEME.colors.neutral0
   },
   dutyPillOff: {
     backgroundColor: 'rgba(15, 23, 42, 0.35)',
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: 'rgba(255,255,255,0.25)'
   },
   dutyPill: {
     flexDirection: 'row',
@@ -619,12 +618,11 @@ const styles = StyleSheet.create({
     borderColor: DP_BRAND.headerOverlayBorder,
     paddingHorizontal: 11,
     paddingVertical: 6,
-    borderRadius: THEME.radius.full,
+    borderRadius: THEME.radius.full
   },
   dutyPillText: {
     ...THEME.typography.labelSm,
-    fontWeight: '600',
-    color: DP_BRAND.white,
+    color: DP_BRAND.white
   },
   gpsTrackingPill: {
     flexDirection: 'row',
@@ -635,28 +633,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: THEME.radius.full,
-    gap: 6,
+    gap: 6
   },
   gpsTrackingDot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#22c55e',
+    backgroundColor: THEME.colors.success
   },
   gpsTrackingText: {
     ...THEME.typography.labelSm,
-    fontWeight: '600',
-    color: '#DCFCE7',
+    color: THEME.colors.successLighter
   },
 
   // Scroll
   scrollView: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: THEME.colors.background
   },
   scrollContent: {
     padding: 16,
-    paddingTop: 18,
+    paddingTop: 18
   },
 
   // Progress Card
@@ -667,18 +664,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     ...THEME.shadows.sm,
     borderWidth: 1,
-    borderColor: THEME.colors.borderLight,
+    borderColor: THEME.colors.borderLight
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 18
   },
   progressTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    flex: 1
   },
   progressIconWrap: {
     width: 36,
@@ -687,37 +684,36 @@ const styles = StyleSheet.create({
     backgroundColor: DP_BRAND.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 12
   },
   progressTitleText: {
-    flex: 1,
+    flex: 1
   },
   progressTitle: {
     ...THEME.typography.h4,
-    color: THEME.colors.textPrimary,
+    color: THEME.colors.textPrimary
   },
   progressSubtitle: {
     ...THEME.typography.caption,
     color: THEME.colors.textSecondary,
-    marginTop: 2,
+    marginTop: 2
   },
   progressPercentage: {
     backgroundColor: DP_BRAND.primarySoft,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.md
   },
   progressPercentageText: {
     ...THEME.typography.h4,
-    fontWeight: '800',
-    color: DP_BRAND.primary,
+    color: DP_BRAND.primary
   },
   progressBarContainer: {
     height: 8,
     backgroundColor: THEME.colors.neutral100,
     borderRadius: 4,
     marginBottom: 20,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
   progressBarFill: {
     position: 'absolute',
@@ -725,36 +721,36 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     backgroundColor: DP_BRAND.primary,
-    borderRadius: 4,
+    borderRadius: 4
   },
 
   // Stats Grid
   statsGrid: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 8
   },
   statCard: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: 16,
     borderRadius: THEME.radius.lg,
-    borderWidth: 1,
+    borderWidth: 1
   },
   statCardPending: {
     backgroundColor: THEME.colors.primaryLighter,
-    borderColor: THEME.colors.primaryLight,
+    borderColor: THEME.colors.primaryLight
   },
   statCardInProgress: {
     backgroundColor: THEME.colors.warningLighter,
-    borderColor: THEME.colors.warningLight,
+    borderColor: THEME.colors.warningLight
   },
   statCardCompleted: {
     backgroundColor: THEME.colors.successLighter,
-    borderColor: THEME.colors.successLight,
+    borderColor: THEME.colors.successLight
   },
   statCardFailed: {
     backgroundColor: THEME.colors.dangerLighter,
-    borderColor: THEME.colors.dangerLight,
+    borderColor: THEME.colors.dangerLight
   },
   statIconCircle: {
     width: 30,
@@ -763,16 +759,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-    ...THEME.shadows.xs,
+    ...THEME.shadows.xs
   },
   statValue: {
     ...THEME.typography.h2,
-    color: THEME.colors.textPrimary,
+    color: THEME.colors.textPrimary
   },
   statLabel: {
     ...THEME.typography.labelSm,
     color: THEME.colors.textSecondary,
-    marginTop: 4,
+    marginTop: 4
   },
 
   // Section Headers
@@ -780,22 +776,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 12
   },
   sectionTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
-    color: THEME.colors.textPrimary,
+    color: THEME.colors.textPrimary
   },
   sectionLinkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 2
   },
   sectionLink: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
-    color: DP_BRAND.primary,
+    ...THEME.typography.labelMd,
+    color: DP_BRAND.primary
   },
 
   // Next Delivery Card
@@ -806,75 +800,72 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     ...THEME.shadows.sm,
     borderWidth: 1,
-    borderColor: THEME.colors.borderLight,
+    borderColor: THEME.colors.borderLight
   },
   nextDeliveryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 16
   },
   nextDeliveryInfo: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 12
   },
   nextDeliveryCustomerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 4,
+    marginBottom: 4
   },
   nextDeliveryCustomer: {
     ...THEME.typography.h4,
-    fontWeight: '700',
-    color: THEME.colors.textPrimary,
+    color: THEME.colors.textPrimary
   },
   priorityBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: THEME.radius.xs,
+    borderRadius: THEME.radius.xs
   },
   priorityBadgeText: {
     ...THEME.typography.overline,
-    fontSize: 10,
-    letterSpacing: 0.5,
+    letterSpacing: 0.5
   },
   nextDeliveryRef: {
     ...THEME.typography.bodySm,
-    fontWeight: '500',
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.textSecondary
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: THEME.radius.full,
+    borderRadius: THEME.radius.full
   },
   statusBadgeText: {
-    ...THEME.typography.labelSm,
-    fontWeight: '600',
+    ...THEME.typography.labelSm
+    
   },
   nextDeliveryDetails: {
     gap: 10,
     marginBottom: 18,
-    paddingLeft: 2,
+    paddingLeft: 2
   },
   nextDeliveryDetailRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'flex-start'
   },
   detailIconWrap: {
     width: 24,
     marginRight: 10,
-    paddingTop: 2,
+    paddingTop: 2
   },
   nextDeliveryAddress: {
     ...THEME.typography.bodyMd,
     flex: 1,
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.textSecondary
   },
   nextDeliveryMeta: {
     ...THEME.typography.bodyMd,
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.textSecondary
   },
   startDeliveryButton: {
     flexDirection: 'row',
@@ -884,17 +875,17 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: THEME.radius.lg,
     gap: 8,
-    ...THEME.shadows.sm,
+    ...THEME.shadows.sm
   },
   startDeliveryButtonText: {
     ...THEME.typography.labelLg,
-    color: THEME.colors.textInverse,
+    color: THEME.colors.textInverse
   },
 
   // No Delivery State
   noDeliveryState: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 32
   },
   noDeliveryIconWrap: {
     width: 56,
@@ -903,16 +894,16 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.successLighter,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 16
   },
   noDeliveryTitle: {
     ...THEME.typography.h4,
     color: THEME.colors.textPrimary,
-    marginBottom: 4,
+    marginBottom: 4
   },
   noDeliveryText: {
     ...THEME.typography.bodySm,
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.textSecondary
   },
 
   // Activity Card
@@ -923,16 +914,16 @@ const styles = StyleSheet.create({
     ...THEME.shadows.sm,
     borderWidth: 1,
     borderColor: THEME.colors.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
   emptyActivityState: {
     paddingVertical: 32,
     alignItems: 'center',
-    gap: 8,
+    gap: 8
   },
   emptyActivityText: {
     ...THEME.typography.bodySm,
-    color: THEME.colors.textTertiary,
+    color: THEME.colors.textTertiary
   },
   activityItem: {
     flexDirection: 'row',
@@ -940,13 +931,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.borderLight,
+    borderBottomColor: THEME.colors.borderLight
   },
   activityItemLast: {
-    borderBottomWidth: 0,
+    borderBottomWidth: 0
   },
   activityIconWrap: {
-    marginRight: 14,
+    marginRight: 14
   },
   activityCheck: {
     width: 34,
@@ -954,24 +945,23 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     backgroundColor: THEME.colors.successLighter,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   activityContent: {
-    flex: 1,
+    flex: 1
   },
   activityCustomer: {
     ...THEME.typography.labelLg,
-    color: THEME.colors.textPrimary,
+    color: THEME.colors.textPrimary
   },
   activityRef: {
     ...THEME.typography.caption,
     color: THEME.colors.textSecondary,
-    marginTop: 2,
+    marginTop: 2
   },
   activityTime: {
-    ...THEME.typography.caption,
-    fontWeight: '500',
-    color: THEME.colors.textTertiary,
+    ...THEME.typography.labelSm,
+    color: THEME.colors.textTertiary
   },
 
   // Performance Card
@@ -981,20 +971,20 @@ const styles = StyleSheet.create({
     padding: 20,
     ...THEME.shadows.sm,
     borderWidth: 1,
-    borderColor: THEME.colors.borderLight,
+    borderColor: THEME.colors.borderLight
   },
   performanceGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   performanceItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   performanceDivider: {
     width: 1,
     height: 52,
-    backgroundColor: THEME.colors.borderLight,
+    backgroundColor: THEME.colors.borderLight
   },
   performanceIconCircle: {
     width: 44,
@@ -1002,17 +992,16 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 10
   },
   performanceValue: {
     ...THEME.typography.h2,
-    color: THEME.colors.textPrimary,
+    color: THEME.colors.textPrimary
   },
   performanceLabel: {
     ...THEME.typography.labelSm,
-    fontWeight: '500',
     color: THEME.colors.textSecondary,
-    marginTop: 4,
+    marginTop: 4
   },
 });
 

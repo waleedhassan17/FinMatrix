@@ -10,20 +10,12 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   RefreshControl,
-  ScrollView,
-  StatusBar,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -37,25 +29,24 @@ import {
   setStatusFilter,
   type InvoiceStatusFilter,
 } from './invoiceListSlice';
-import EmptyState from '../../../components/shared/EmptyState';
-import CustomButton from '../../../Custom-Components/CustomButton';
-import { HEADER_NAVY, HeaderAction } from '../../../components/reports/ReportUI';
+import {
+  ReportContainer,
+  ReportHeader,
+  HeaderAction,
+  HeaderIconButton,
+  EmptyBlock,
+  LoadingBlock,
+  ErrorBlock,
+} from '../../../components/reports/ReportUI';
+import { TxnCard } from '../../../components/transactions/TxnListUI';
+import { FilterTabs, type TabItem } from '../../../components/shared/Tabs';
+import { txnStatusColor } from '../../../components/transactions/txnStatus';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
-import type { Invoice, InvoiceStatus } from '../../../types';
+import type { Invoice } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
-
-// ── Status → colour mapping ──────────────────────────
-const STATUS_COLOR: Record<string, string> = {
-  draft: colors.textSecondary,
-  sent: colors.secondary,
-  partial: '#FF991F',
-  paid: colors.success,
-  overdue: colors.danger,
-  void: '#64748B',
-  cancelled: colors.textLight,
-};
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Draft',
@@ -104,12 +95,12 @@ const InvoiceListScreen: React.FC = () => {
     return c;
   }, [invoices]);
 
-  const TABS: { label: string; value: InvoiceStatusFilter }[] = [
-    { label: 'All', value: 'all' },
-    { label: 'Draft', value: 'draft' },
-    { label: 'Sent', value: 'sent' },
-    { label: 'Overdue', value: 'overdue' },
-    { label: 'Paid', value: 'paid' },
+  const TABS: TabItem<InvoiceStatusFilter>[] = [
+    { label: 'All', value: 'all', count: counts.all },
+    { label: 'Draft', value: 'draft', count: counts.draft },
+    { label: 'Sent', value: 'sent', count: counts.sent },
+    { label: 'Overdue', value: 'overdue', count: counts.overdue },
+    { label: 'Paid', value: 'paid', count: counts.paid },
   ];
 
   // ── Filtered list ───────────────────────────────
@@ -153,53 +144,23 @@ const InvoiceListScreen: React.FC = () => {
 
   // ── Render invoice card ─────────────────────────
   const renderCard = ({ item: inv }: { item: Invoice }) => {
-    const statusCol = STATUS_COLOR[inv.status];
     const balance = inv.total - inv.amountPaid;
 
     return (
-      <TouchableOpacity
-        style={[styles.card, { borderLeftColor: statusCol, borderLeftWidth: 4 }]}
-        activeOpacity={0.7}
+      <TxnCard
+        number={inv.invoiceNumber}
+        subtitle={inv.customerName}
+        statusLabel={STATUS_LABEL[inv.status]}
+        statusColor={txnStatusColor(inv.status)}
+        metaLeft={`Issued: ${formatDate(inv.issueDate)}`}
+        metaRight={`Due: ${formatDate(inv.dueDate)}`}
+        primaryLabel="Total"
+        primaryValue={formatCurrency(inv.total, 'Rs ')}
+        secondaryLabel="Balance"
+        secondaryValue={formatCurrency(balance, 'Rs ')}
+        secondaryColor={balance > 0 ? colors.danger : colors.success}
         onPress={() => navigation.navigate('InvoiceDetail', { invoiceId: inv.id })}
-      >
-        {/* Top row */}
-        <View style={styles.cardTop}>
-          <View style={{ flex: 1, marginRight: spacing.sm }}>
-            <Text style={styles.cardInvNo}>{inv.invoiceNumber}</Text>
-            <Text style={styles.cardCustomer} numberOfLines={1}>{inv.customerName}</Text>
-          </View>
-          <View style={[styles.badge, { backgroundColor: statusCol + '18' }]}>
-            <Text style={[styles.badgeText, { color: statusCol }]}>
-              {STATUS_LABEL[inv.status]}
-            </Text>
-          </View>
-        </View>
-
-        {/* Dates */}
-        <View style={styles.cardDates}>
-          <Text style={styles.dateText}>Issued: {formatDate(inv.issueDate)}</Text>
-          <Text style={styles.dateText}>Due: {formatDate(inv.dueDate)}</Text>
-        </View>
-
-        {/* Amounts */}
-        <View style={styles.cardBottom}>
-          <View>
-            <Text style={styles.amtLabel}>Total</Text>
-            <Text style={styles.amtValue}>{formatCurrency(inv.total, 'Rs ')}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.amtLabel}>Balance</Text>
-            <Text
-              style={[
-                styles.amtValue,
-                { color: balance > 0 ? colors.danger : colors.success },
-              ]}
-            >
-              {formatCurrency(balance, 'Rs ')}
-            </Text>
-          </View>
-        </View>
-      </TouchableOpacity>
+      />
     );
   };
 
@@ -212,41 +173,29 @@ const InvoiceListScreen: React.FC = () => {
   const isFirstRun = !initialLoading && !error && invoices.length === 0;
 
   return (
-    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
-      <View style={styles.body}>
-      {/* Header */}
-      <LinearGradient colors={HEADER_NAVY} style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerTitleRow}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backBtn}
-              activeOpacity={0.7}>
-              <Feather name="arrow-left" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Invoices</Text>
-          </View>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.searchToggle}>
-            <Feather name="search" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-          <HeaderAction label="New" onPress={() => navigation.navigate('InvoiceForm')} />
-        </View>
-      </LinearGradient>
+    <ReportContainer>
+      <ReportHeader
+        title="Invoices"
+        onBack={() => navigation.goBack()}
+        right={
+          <>
+            <HeaderIconButton icon="search" onPress={() => setShowSearch(!showSearch)} />
+            <HeaderAction label="New" onPress={() => navigation.navigate('InvoiceForm')} />
+          </>
+        }
+      />
 
       {/* Summary bar — hidden on first-run and during initial load */}
       {!initialLoading && !isFirstRun && (
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, { fontSize: 14 }]}>
+          <Text style={styles.summaryMoney}>
             {formatCurrency(totalOutstanding, 'Rs ')}
           </Text>
           <Text style={styles.summaryLabel}>Outstanding</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, { fontSize: 14, color: colors.danger }]}>
+          <Text style={[styles.summaryMoney, { color: colors.danger }]}>
             {formatCurrency(overdueAmount, 'Rs ')}
           </Text>
           <Text style={styles.summaryLabel}>Overdue</Text>
@@ -266,7 +215,7 @@ const InvoiceListScreen: React.FC = () => {
             value={searchQuery}
             onChangeText={v => dispatch(setSearchQuery(v))}
             placeholder="Search by invoice # or customer…"
-            placeholderTextColor={colors.textLight}
+            placeholderTextColor={colors.textTertiary}
             autoFocus
           />
         </View>
@@ -274,70 +223,32 @@ const InvoiceListScreen: React.FC = () => {
 
       {/* Filter tabs — hidden during initial load and first-run */}
       {!initialLoading && !isFirstRun && (
-      <View style={styles.tabsBar}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsScroll}
-        contentContainerStyle={styles.tabsRow}
-      >
-        {TABS.map(tab => {
-          const active = statusFilter === tab.value;
-          return (
-            <TouchableOpacity
-              key={tab.value}
-              style={[styles.tab, active && styles.tabActive]}
-              activeOpacity={0.7}
-              onPress={() => dispatch(setStatusFilter(tab.value))}
-            >
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                {tab.label}
-              </Text>
-              <View style={[styles.tabCount, active && styles.tabCountActive]}>
-                <Text style={[styles.tabCountText, active && styles.tabCountTextActive]}>
-                  {counts[tab.value]}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-      </View>
+        <FilterTabs
+          tabs={TABS}
+          active={statusFilter}
+          onChange={v => dispatch(setStatusFilter(v))}
+        />
       )}
 
       {/* List */}
       {initialLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <LoadingBlock />
       ) : error && invoices.length === 0 ? (
-        <View style={styles.emptyFull}>
-          <EmptyState
-            icon="alert-triangle"
-            title="Failed to Load"
-            message={error}
-            actionLabel="Retry"
-            onAction={() => dispatch(fetchInvoices())}
-          />
-        </View>
+        <ErrorBlock message={error} onRetry={() => dispatch(fetchInvoices())} />
       ) : isFirstRun ? (
-        <View style={styles.emptyFull}>
-          <EmptyState
-            icon="file-text"
-            title="No invoices yet"
-            message="Create your first invoice to start billing customers and tracking payments."
-            actionLabel="Create Invoice"
-            onAction={() => navigation.navigate('InvoiceForm')}
-          />
-        </View>
+        <EmptyBlock
+          icon="file-text"
+          title="No invoices yet"
+          hint="Create your first invoice to start billing customers and tracking payments."
+          actionLabel="Create Invoice"
+          onAction={() => navigation.navigate('InvoiceForm')}
+        />
       ) : filtered.length === 0 ? (
-        <View style={styles.center}>
-          <EmptyState
-            icon="search"
-            title="No Invoices Found"
-            message={searchQuery ? `No results for "${searchQuery}"` : 'Try a different filter.'}
-          />
-        </View>
+        <EmptyBlock
+          icon="search"
+          title="No invoices found"
+          hint={searchQuery ? `No results for "${searchQuery}"` : 'Try a different filter.'}
+        />
       ) : (
         <FlatList
           data={filtered}
@@ -351,156 +262,56 @@ const InvoiceListScreen: React.FC = () => {
           }
         />
       )}
-
-      {/* FAB — hidden on first-run (the empty state has its own CTA) */}
-      </View>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
 // ═══════════════════════════════════════════════════════
 // STYLES
 // ═══════════════════════════════════════════════════════
+// Scaffold, tabs and cards now come from ReportUI / TxnListUI; what remains
+// is the summary strip and the search field, which are specific to this screen.
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  safeTop: { backgroundColor: HEADER_NAVY[0] },
-  body: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerLeft: { flex: 1 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
-  searchToggle: { padding: spacing.xs },
-  searchToggleIcon: { fontSize: 18 },
-
   // ── Summary ────────────────────────────────────
   summaryRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xxs,
+    gap: spacing.xs,
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
     alignItems: 'center',
-    ...shadows.small,
+    ...shadows.xs,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  summaryValue: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  summaryLabel: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
+  summaryValue: { ...typography.h3, color: colors.actionGreen },
+  // Money sits a step smaller than the plain count so a long figure fits.
+  summaryMoney: { ...typography.h5, color: colors.actionGreen, fontVariant: ['tabular-nums'] },
+  summaryLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
 
   // ── Search ─────────────────────────────────────
-  searchRow: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  searchRow: { paddingHorizontal: spacing.xl, marginBottom: spacing.xs },
   searchInput: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
+    borderRadius: THEME.form.controlRadius,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: 14,
+    paddingVertical: spacing.sm,
+    ...typography.bodyMd,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
 
-  // ── Tabs ───────────────────────────────────────
-  // Fixed-height bar so the tab row keeps a constant vertical slot and never
-  // shifts between "has results" / "empty filter" list states.
-  tabsBar: {
-    height: 52,
-    justifyContent: 'center',
-  },
-  tabsScroll: {
-    flexGrow: 0,
-    flexShrink: 0,
-  },
-  tabsRow: {
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: 20,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  tabTextActive: { color: colors.white },
-  tabCount: {
-    marginLeft: spacing.xs,
-    backgroundColor: colors.background,
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    minWidth: 22,
-    alignItems: 'center',
-  },
-  tabCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
-  tabCountText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  tabCountTextActive: { color: colors.white },
-
-  // ── Cards ──────────────────────────────────────
+  // ── List ───────────────────────────────────────
   list: { flex: 1 },
-  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.xl * 3 },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.small,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
-  cardInvNo: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  cardCustomer: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
-  badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
-
-  cardDates: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
-  dateText: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
-
-  cardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.sm,
-  },
-  amtLabel: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
-  amtValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-
-  // ── Empty / Loading ────────────────────────────
-  center: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', gap: spacing.md, paddingTop: spacing.xl * 2, paddingBottom: spacing.xl * 4 },
-  emptyFull: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
-  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-
-  // ── FAB ────────────────────────────────────────
+  listContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxl * 3 },
 });
 
 export default InvoiceListScreen;

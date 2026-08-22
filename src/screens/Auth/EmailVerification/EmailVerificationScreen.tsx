@@ -19,10 +19,14 @@ import { setUser, selectSelectedRole } from '../authSlice';
 import {
   authResendVerification,
   authVerifyEmail,
-  authMe,
+  authMe
 } from '../../../networks/auth/authNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
 import { useSignOut } from '../../../hooks/useSignOut';
+import { THEME } from '../../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import {
   AuthLayout,
   AuthHeader,
@@ -31,7 +35,7 @@ import {
   AuthNotice,
   AuthHelpCard,
   AUTH,
-  type AuthTone,
+  type AuthTone
 } from '../../../components/auth/AuthUI';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'EmailVerification'>;
@@ -229,22 +233,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: AUTH.space.lg,
     marginBottom: AUTH.space.lg,
   },
-  sentToLabel: { fontFamily: AUTH.font, fontSize: 12.5, color: AUTH.ink[500] },
+  sentToLabel: { ...THEME.typography.caption, fontFamily: AUTH.font, color: AUTH.ink[500] },
   sentToValue: {
+    ...THEME.typography.labelLg,
     fontFamily: AUTH.font,
-    fontSize: 15,
-    fontWeight: '700',
     color: AUTH.ink[900],
   },
   resend: {
+    ...THEME.typography.h5,
     fontFamily: AUTH.font,
-    fontSize: 14,
-    fontWeight: '700',
     color: AUTH.brand,
     textAlign: 'center',
     paddingVertical: AUTH.space.xl,
   },
-  resendOff: { color: AUTH.ink[400], fontWeight: '600' },
+  resendOff: { color: AUTH.ink[400], fontWeight: typography.labelLg.fontWeight }
 });
 
 export default EmailVerificationScreen;

@@ -17,6 +17,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
+import { THEME, statusStyle } from '../../../theme';
+import { AdminScreenHeader } from '../../../components/admin/AdminUI';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import {
   WAREHOUSE_ONLY_BUILD,
   DEFAULT_COMPANY_TYPE,
@@ -27,20 +32,12 @@ import {
   selectPlansStatus,
 } from '../superAdminSlice';
 
-const C = {
-  bg: '#F4F5F7',
-  surface: '#FFFFFF',
-  primary: '#0052CC',
-  border: '#DFE1E6',
-  text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4' },
-};
-
 const PLAN_GRADIENTS: readonly [string, string][] = [
-  ['#0052CC', '#0747A6'],
-  ['#0065FF', '#0052CC'],
-  ['#00875A', '#006644'],
-  ['#FF991F', '#FF8B00'],
-  ['#6554C0', '#5243AA'],
+  [colors.primary, colors.primaryDark],
+  [colors.info, colors.primaryDark],
+  [colors.success, colors.successHover],
+  [colors.warning, colors.warningHover],
+  [colors.secondary, colors.secondary],
 ];
 
 // NOTE: the plan create/edit modal that used to live here was removed.
@@ -160,7 +157,7 @@ const PlanCard: React.FC<{ plan: DisplayPlan; gradientIdx: number }> = ({ plan, 
         {plan.deliveryPersonnelLimit ? (
           <View style={S.planMetaRow}>
             <View style={S.planMeta}>
-              <Feather name="truck" size={13} color={C.text.secondary} />
+              <Feather name="truck" size={13} color={colors.textSecondary} />
               <Text style={S.planMetaText}>
                 Up to {plan.deliveryPersonnelLimit} delivery personnel
               </Text>
@@ -184,7 +181,7 @@ const PlanCard: React.FC<{ plan: DisplayPlan; gradientIdx: number }> = ({ plan, 
             false "0 companies". Dropped rather than left lying. */}
         {plan.totalLabel || plan.disabled ? (
           <View style={S.planCountRow}>
-            <Feather name="briefcase" size={13} color={C.text.muted} />
+            <Feather name="briefcase" size={13} color={colors.textTertiary} />
             <Text style={S.planCountText}>
               {plan.totalLabel
                 ? `${plan.totalLabel} billed once for the full period`
@@ -246,23 +243,23 @@ const SubscriptionPlansScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={S.container} edges={['top']}>
-      <View style={S.header}>
-        <TouchableOpacity onPress={() => (navigation as any).goBack()} style={S.backBtn}>
-          <Feather name="arrow-left" size={22} color={C.text.primary} />
-        </TouchableOpacity>
-        <View style={S.headerCenter}>
-          <Text style={S.headerTitle}>Subscription Plans</Text>
-          <Text style={S.headerSub}>
-            {WAREHOUSE_ONLY_BUILD
-              ? 'Six warehouse plans · 3 / 5 / 10 delivery personnel · PKR · defined in server config'
-              : 'Six plans · two per business type · PKR · defined in server config'}
-          </Text>
-        </View>
-      </View>
+      <AdminScreenHeader
+        title="Subscription Plans"
+        subtitle={
+          WAREHOUSE_ONLY_BUILD
+            ? 'Six warehouse plans · 3 / 5 / 10 delivery personnel · PKR · defined in server config'
+            : 'Six plans · two per business type · PKR · defined in server config'
+        }
+        left={
+          <TouchableOpacity onPress={() => (navigation as any).goBack()} style={S.backBtn}>
+            <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        }
+      />
 
       {isLoading ? (
         <View style={S.centered}>
-          <ActivityIndicator size="large" color={C.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={S.loadingText}>Loading plans...</Text>
         </View>
       ) : (
@@ -272,7 +269,7 @@ const SubscriptionPlansScreen: React.FC = () => {
               const tierPlans = displayPlans.filter(p => p.companyType === tier);
               if (tierPlans.length === 0) return null;
               return (
-                <View key={tier} style={{ gap: 12 }}>
+                <View key={tier} style={{ gap: spacing.sm }}>
                   <Text style={S.tierHeading}>{TIER_LABELS[tier]}</Text>
                   {tierPlans.map((p, index) => (
                     <PlanCard key={p.name} plan={p} gradientIdx={index} />
@@ -292,31 +289,21 @@ const SubscriptionPlansScreen: React.FC = () => {
 };
 
 const S = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border, gap: 12,
-  },
-  backBtn: { padding: 4 },
-  headerCenter: { flex: 1 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: C.text.primary },
-  headerSub: { fontSize: 11, color: C.text.secondary, marginTop: 1 },
-  addBtn: { borderRadius: 20, overflow: 'hidden' },
-  addBtnGrad: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: colors.background },
+  backBtn: { padding: spacing.xxs },
 
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { fontSize: 13, color: C.text.secondary },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  loadingText: { ...typography.bodySm, color: colors.textSecondary },
 
-  listContent: { padding: 16, gap: 16, paddingBottom: 30 },
+  listContent: { padding: spacing.md, gap: spacing.md, paddingBottom: 30 },
   tierHeading: {
-    fontSize: 13, fontWeight: '800', color: C.text.secondary,
-    letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 4,
+    ...typography.labelMd, color: colors.textSecondary,
+    letterSpacing: 0.6, textTransform: 'uppercase', marginTop: spacing.xxs,
   },
   planCard: {
-    backgroundColor: C.surface, borderRadius: 16, overflow: 'hidden',
-    borderWidth: 1, borderColor: C.border,
-    shadowColor: '#0052CC', shadowOffset: { width: 0, height: 2 },
+    backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden',
+    borderWidth: 1, borderColor: colors.border,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   planCardInactive: { opacity: 0.7 },
@@ -327,123 +314,35 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
   planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  planName: { fontSize: 20, fontWeight: '800', color: '#FFF' },
-  inactiveBadge: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  inactiveBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+  planName: { ...typography.h3, color: colors.neutral0 },
   statusBadge: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+    paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
   statusBadgeMuted: { backgroundColor: 'rgba(255,255,255,0.18)' },
-  statusBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
-  planDesc: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+  statusBadgeText: { ...typography.overline, color: colors.neutral0 },
+  planDesc: { ...typography.caption, color: 'rgba(255,255,255,0.85)', marginTop: spacing.xxs },
   planPriceRow: {
     flexDirection: 'row', alignItems: 'flex-end', marginTop: 14, gap: 6,
   },
-  planPriceLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
-  planPrice: { fontSize: 22, fontWeight: '800', color: '#FFF' },
-  planPriceFreq: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 3 },
-  planPriceDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.3)' },
+  planPrice: { ...typography.h2, color: colors.neutral0 },
+  planPriceFreq: { ...typography.bodySm, color: 'rgba(255,255,255,0.75)', marginBottom: 3 },
   planCountRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderTopWidth: 1, borderTopColor: C.border, paddingTop: 12,
+    borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm,
   },
-  planCountText: { fontSize: 12, fontWeight: '600', color: C.text.secondary },
+  planCountText: { ...typography.labelSm, color: colors.textSecondary },
 
   planBody: { padding: 14 },
-  planMetaRow: { flexDirection: 'row', gap: 16, marginBottom: 10 },
+  planMetaRow: { flexDirection: 'row', gap: spacing.md, marginBottom: 10 },
   planMeta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  planMetaText: { fontSize: 12, color: C.text.secondary },
-  featuresList: { gap: 5, marginBottom: 12 },
+  planMetaText: { ...typography.caption, color: colors.textSecondary },
+  featuresList: { gap: 5, marginBottom: spacing.sm },
   featureItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  featureText: { fontSize: 12, color: C.text.primary },
-  moreFeatures: { fontSize: 11, color: C.text.muted, marginTop: 2 },
-  planActions: {
-    flexDirection: 'row', gap: 10, borderTopWidth: 1,
-    borderTopColor: C.border, paddingTop: 12,
-  },
-  editBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 5, paddingVertical: 8, borderRadius: 8,
-    backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: '#C7D2FE',
-  },
-  editBtnText: { fontSize: 13, fontWeight: '600', color: C.primary },
-  deleteBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 5, paddingVertical: 8, borderRadius: 8,
-    backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
-  },
-  deleteBtnText: { fontSize: 13, fontWeight: '600', color: '#DE350B' },
-
-  empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: C.text.primary },
-  emptyText: { fontSize: 13, color: C.text.secondary },
-  emptyCreateBtn: {
-    marginTop: 8, paddingHorizontal: 24, paddingVertical: 10,
-    backgroundColor: C.primary, borderRadius: 10,
-  },
-  emptyCreateText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  featureText: { ...typography.caption, color: colors.textPrimary },
 
   // Form Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  formModal: {
-    backgroundColor: C.surface,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    maxHeight: '90%', overflow: 'hidden',
-  },
-  formModalHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 16,
-  },
-  formModalTitle: { fontSize: 17, fontWeight: '700', color: '#FFF' },
-  formModalClose: { padding: 4 },
-  formContent: { padding: 16, maxHeight: 450 },
-  formFooter: {
-    flexDirection: 'row', padding: 16, gap: 10,
-    borderTopWidth: 1, borderTopColor: C.border,
-  },
-  cancelBtn: {
-    flex: 1, paddingVertical: 12, borderRadius: 10,
-    backgroundColor: '#F1F5F9', alignItems: 'center',
-  },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: C.text.secondary },
-  saveBtn: {
-    flex: 2, paddingVertical: 12, borderRadius: 10,
-    backgroundColor: C.primary, alignItems: 'center',
-  },
-  saveBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 
-  formField: { marginBottom: 14 },
-  formLabel: { fontSize: 12, fontWeight: '700', color: C.text.primary, marginBottom: 6 },
-  formInput: {
-    borderWidth: 1, borderColor: C.border, borderRadius: 10,
-    padding: 12, fontSize: 14, color: C.text.primary, backgroundColor: '#FAFAFA',
-  },
-  formInputMulti: { minHeight: 80, textAlignVertical: 'top' },
-  formRow: { flexDirection: 'row', gap: 10 },
-  formHalf: { flex: 1 },
-
-  featuresLabel: { fontSize: 12, fontWeight: '700', color: C.text.primary, marginBottom: 8 },
-  featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
-  featureChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: 16, backgroundColor: '#F1F5F9',
-    borderWidth: 1, borderColor: C.border,
-  },
-  featureChipActive: { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' },
-  featureChipText: { fontSize: 11, color: C.text.secondary },
-  featureChipTextActive: { color: C.primary, fontWeight: '600' },
-
-  activeRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 8,
-    paddingVertical: 8,
-  },
-  activeLabel: { fontSize: 14, fontWeight: '600', color: C.text.primary },
 });
 
 export default SubscriptionPlansScreen;

@@ -7,15 +7,18 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
-  fetchGeneralLedger, selectGeneralLedgerState, setLedgerAccount, setLedgerRange,
+  fetchGeneralLedger, selectGeneralLedgerState, setLedgerAccount, setLedgerRange
 } from './generalLedgerSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { LedgerEntry } from '../../../models/generalLedgerModel';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import {
   ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, DateField, Badge,
   LoadingBlock, ErrorBlock, EmptyBlock, ACCENT, reportContentStyle, amountColWidth,
-  ReportTitleBlock, useStatementCompany, rangeLabel,
+  ReportTitleBlock, useStatementCompany, rangeLabel
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -227,11 +230,11 @@ const styles = StyleSheet.create({
   chip: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: 16, backgroundColor: THEME.colors.neutral100, borderWidth: 1, borderColor: THEME.colors.border },
   chipActive: { backgroundColor: THEME.colors.primary + '18', borderColor: THEME.colors.primary },
   chipText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  chipTextActive: { color: THEME.colors.primary, fontWeight: '700' },
+  chipTextActive: { color: THEME.colors.primary, fontWeight: typography.labelLg.fontWeight },
   acctRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
-  acctName: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
+  acctName: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   acctCode: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  acctBal: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '700', flexShrink: 0, marginLeft: 10 },
+  acctBal: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary, flexShrink: 0, marginLeft: 10 },
   headRow: { gap: 10, flexDirection: 'row', paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.border },
   headText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
   bodyRow: { gap: 10, flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
@@ -243,11 +246,11 @@ const styles = StyleSheet.create({
   colAcct: { flex: 1, minWidth: 190 },
   colVal: { textAlign: 'right', flexShrink: 0 },
   groupHead: { paddingTop: 14, paddingBottom: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.border },
-  groupHeadText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '800' },
+  groupHeadText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   groupTotalRow: { gap: 10, flexDirection: 'row', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.border },
-  groupTotalText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, fontWeight: '700' },
+  groupTotalText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, fontWeight: typography.labelLg.fontWeight },
   totalRow: { gap: 10, flexDirection: 'row', paddingVertical: 10, marginTop: 2, borderTopWidth: 2, borderTopColor: THEME.colors.border },
-  totalText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '800' },
+  totalText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight }
 });
 
 export default GeneralLedgerScreen;

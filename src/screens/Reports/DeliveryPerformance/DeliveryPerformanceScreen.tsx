@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Dimensions,
+  Dimensions
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { BarChart } from 'react-native-chart-kit';
@@ -14,10 +14,13 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchDeliveryPerformance,
   setDeliveryPerformanceRange,
-  selectDeliveryPerformanceState,
+  selectDeliveryPerformanceState
 } from './deliveryPerformanceSlice';
 import { getLastNDaysRange } from '../../../models/reportModel';
 import type { DeliveryPerformanceRow } from '../../../models/deliveryPerformanceModel';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import {
   ReportContainer,
   ReportHeader,
@@ -32,7 +35,7 @@ import {
   ErrorBlock,
   EmptyBlock,
   ACCENT,
-  reportContentStyle,
+  reportContentStyle
 } from '../../../components/reports/ReportUI';
 
 const CHART_WIDTH = Dimensions.get('window').width - THEME.spacing.md * 4;
@@ -91,7 +94,7 @@ const DeliveryPerformanceScreen: React.FC = () => {
     if (trend.length === 0) return null;
     return {
       labels: trend.map(p => p.label),
-      datasets: [{ data: trend.map(p => p.delivered + p.failed) }],
+      datasets: [{ data: trend.map(p => p.delivered + p.failed) }]
     };
   }, [report?.dailyTrend]);
 
@@ -130,7 +133,7 @@ const DeliveryPerformanceScreen: React.FC = () => {
                     decimalPlaces: 0,
                     color: (opacity = 1) => `rgba(5,150,105,${opacity})`,
                     labelColor: () => THEME.colors.textSecondary,
-                    barPercentage: 0.6,
+                    barPercentage: 0.6
                   }}
                   style={{ borderRadius: THEME.radius.sm, marginLeft: -THEME.spacing.sm }}
                   showValuesOnTopOfBars
@@ -168,8 +171,8 @@ const styles = StyleSheet.create({
   personName: { ...THEME.typography.h5, color: THEME.colors.textPrimary },
   metricsRow: { flexDirection: 'row', justifyContent: 'space-around' },
   metricItem: { alignItems: 'center' },
-  metricValue: { ...THEME.typography.h4, fontWeight: '700' },
-  metricLabel: { ...THEME.typography.caption, color: THEME.colors.textSecondary, marginTop: 2 },
+  metricValue: { ...THEME.typography.h4, fontWeight: typography.labelLg.fontWeight },
+  metricLabel: { ...THEME.typography.caption, color: THEME.colors.textSecondary, marginTop: 2 }
 });
 
 export default DeliveryPerformanceScreen;

@@ -15,19 +15,18 @@ import {
   ScrollView,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Platform,
+  Platform
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectCompanyProfileForm, selectCompanyProfileSaving,
-  setField, loadCompanyData, saveProfile,
+  setField, loadCompanyData, saveProfile
 } from './companyProfileSlice';
 import { selectActiveCompany, loadCompany } from '../../Auth/companySlice';
 import { selectUser } from '../../Auth/authSlice';
@@ -36,17 +35,20 @@ import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HeaderAction, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
+
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
 const P = {
-  brand: '#059669',
-  brandLight: '#ECFDF5',
-  pageBg: '#F6F8FB',
-  card: '#FFFFFF',
-  text: '#1E293B',
-  sub: '#94A3B8',
-  divider: '#E2E8F0',
-  sectionLabel: '#64748B',
+  brand: colors.actionGreen,
+  brandLight: colors.actionGreenLighter,
+  pageBg: colors.neutral50,
+  card: colors.neutral0,
+  text: colors.neutral800,
+  sub: colors.neutral400,
+  divider: colors.neutral200,
+  sectionLabel: colors.neutral500
 };
 
 const FISCAL_MONTHS = [
@@ -247,9 +249,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: P.card,
-    borderRadius: borderRadius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    ...shadows.card,
+    ...shadows.sm,
   },
   identityAvatar: {
     width: 56,
@@ -259,55 +261,48 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: colors.successLight,
   },
   identityInitials: {
-    fontSize: 20,
-    fontWeight: '800',
+    ...typography.h3,
     color: P.brand,
-    fontFamily: THEME.typography.fontFamily,
   },
   identityName: {
-    fontSize: 17,
-    fontWeight: '800',
+    ...typography.h4,
     color: P.text,
-    fontFamily: THEME.typography.fontFamily,
   },
   identityMeta: {
-    fontSize: 12,
+    ...typography.caption,
     color: P.sub,
     marginTop: 2,
-    fontFamily: THEME.typography.fontFamily,
   },
   hintRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: spacing.xs,
-    marginLeft: spacing.xs,
+    marginTop: spacing.xxs,
+    marginLeft: spacing.xxs,
   },
   hintText: {
+    ...typography.caption,
     flex: 1,
-    fontSize: 11,
     color: P.sectionLabel,
-    fontFamily: THEME.typography.fontFamily,
   },
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.labelSm,
     color: P.sectionLabel,
     letterSpacing: 0.8,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xs,
-    marginLeft: spacing.xs,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xxs,
+    marginLeft: spacing.xxs,
   },
   card: {
     backgroundColor: P.card,
-    borderRadius: borderRadius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    ...shadows.card,
+    ...shadows.sm,
   },
-  twoCol: { flexDirection: 'row', gap: spacing.sm },
+  twoCol: { flexDirection: 'row', gap: spacing.xs },
   col: { flex: 1 },
   fiscalRow: {
     flexDirection: 'row',
@@ -315,15 +310,11 @@ const s = StyleSheet.create({
     paddingVertical: 4,
   },
   fieldLabel: {
-    fontSize: 15,
-    fontWeight: '500',
+    ...typography.bodyMd,
     color: P.text,
-    fontFamily: THEME.typography.fontFamily,
   },
   fiscalVal: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.h5,
     color: P.brand,
-    fontFamily: THEME.typography.fontFamily,
-  },
+  }
 });

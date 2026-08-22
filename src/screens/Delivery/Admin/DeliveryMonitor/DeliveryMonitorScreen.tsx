@@ -9,15 +9,14 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  StatusBar,
+  StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, spacing, borderRadius, shadows } from '../../../../theme';
-import { THEME } from '../../../../utils/theme';
+import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import type { DashboardStackParamList } from '../../../../navigators/stacks/DashboardStack';
 import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks';
 import { selectDeliveries, selectDeliveryPersonnel } from '../AssignDeliveries/deliverySlice';
@@ -27,9 +26,12 @@ import {
   setFilterStatus,
   setSortBy,
   type MonitorFilterStatus,
-  type MonitorSortBy,
+  type MonitorSortBy
 } from './deliveryMonitorSlice';
 import { getDeliveryMapDataAPI } from '../../../../networks/delivery/deliveryNetwork';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<DashboardStackParamList, 'DeliveryMonitor'>;
 
@@ -70,17 +72,11 @@ interface MapData {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const STATUS_COLORS: Record<string, string> = {
-  unassigned: '#64748B',
-  pending: '#FF8B00',
-  picked_up: '#6554C0',
-  in_transit: '#2563EB',
-  arrived: '#0891B2',
-  delivered: '#059669',
-  failed: '#DE350B',
-  returned: '#EA580C',
-  cancelled: '#94A3B8',
-};
+// Delivery status colours come from THEME.STATUS_CONFIG, the same source
+// the driver-facing screens read, so a delivery is one colour on both sides.
+const STATUS_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.color]),
+);
 
 const STATUS_LABELS: Record<string, string> = {
   unassigned: 'Unassigned',
@@ -90,18 +86,19 @@ const STATUS_LABELS: Record<string, string> = {
   arrived: 'Arrived',
   delivered: 'Delivered',
   failed: 'Failed',
-  returned: 'Returned',
+  returned: 'Returned'
 };
 
-const PRIORITY_COLORS: Record<string, string> = {
-  urgent: '#B91C1C',
-  high: '#B45309',
-  normal: '#0F766E',
-};
+// Priority colours come from THEME.PRIORITY_CONFIG, the same source the
+// driver-facing screens read. The local copies disagreed: `high` was dark
+// red on three screens and dark amber on the delivery monitor.
+const PRIORITY_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(PRIORITY_CONFIG).map(([k, v]) => [k, v.color]),
+);
 
 const PRIORITY_RANK: Record<string, number> = { urgent: 3, high: 2, normal: 1 };
 const STATUS_RANK: Record<string, number> = {
-  in_transit: 6, arrived: 5, picked_up: 4, pending: 3, unassigned: 2, failed: 1, returned: 0, delivered: 0,
+  in_transit: 6, arrived: 5, picked_up: 4, pending: 3, unassigned: 2, failed: 1, returned: 0, delivered: 0
 };
 
 const FILTER_CHIPS: Array<{ label: string; value: MonitorFilterStatus }> = [
@@ -187,9 +184,8 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
     inTransit: deliveries.filter(d => ['picked_up', 'in_transit', 'arrived'].includes(d.status)).length,
     delivered: deliveries.filter(d => d.status === 'delivered').length,
     failed: deliveries.filter(d => d.status === 'failed').length,
-    unassigned: deliveries.filter(d => d.status === 'unassigned').length,
+    unassigned: deliveries.filter(d => d.status === 'unassigned').length
   }), [deliveries]);
-
 
   // ── List (filtered + sorted) ──────────────────────────────────────────────
   const filteredList = useMemo(() => {
@@ -206,7 +202,6 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [deliveries, filterStatus, sortBy]);
 
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
@@ -215,7 +210,7 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
       {/* ── Header ── */}
       <LinearGradient colors={HEADER_NAVY} style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
-          <Feather name="arrow-left" size={20} color="#FFFFFF" />
+          <Feather name="arrow-left" size={20} color={colors.neutral0} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.title}>Delivery Monitor</Text>
@@ -224,19 +219,19 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
         </View>
         <TouchableOpacity onPress={() => fetchMapData(true)} style={styles.headerBtn}>
-          <Feather name="refresh-cw" size={18} color="#FFFFFF" />
+          <Feather name="refresh-cw" size={18} color={colors.neutral0} />
         </TouchableOpacity>
       </LinearGradient>
 
       {/* ── Stats Bar ── */}
       <View style={styles.statsBar}>
         {[
-          { label: 'Total', count: stats.total, color: '#059669' },
+          { label: 'Total', count: stats.total, color: colors.actionGreen },
           { label: 'Pending', count: stats.pending, color: STATUS_COLORS.pending },
           { label: 'Transit', count: stats.inTransit, color: STATUS_COLORS.in_transit },
           { label: 'Done', count: stats.delivered, color: STATUS_COLORS.delivered },
           { label: 'Failed', count: stats.failed, color: STATUS_COLORS.failed },
-          { label: 'Tracking', count: mapData?.locatedPersonnel ?? 0, color: '#6554C0' },
+          { label: 'Tracking', count: mapData?.locatedPersonnel ?? 0, color: colors.secondary },
         ].map(item => (
           <View key={item.label} style={styles.statItem}>
             <View style={[styles.statDot, { backgroundColor: item.color }]} />
@@ -275,7 +270,7 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
             >
               {FILTER_CHIPS.map(chip => {
                 const active = filterStatus === chip.value;
-                const chipColor = chip.value === 'all' ? colors.primary : STATUS_COLORS[chip.value] ?? '#64748B';
+                const chipColor = chip.value === 'all' ? colors.actionGreen : STATUS_COLORS[chip.value] ?? colors.neutral500;
                 return (
                   <TouchableOpacity
                     key={chip.value}
@@ -303,12 +298,12 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
             }
             ListEmptyComponent={
               <View style={styles.empty}>
-                <Feather name="inbox" size={40} color="#CBD5E1" />
+                <Feather name="inbox" size={40} color={colors.neutral300} />
                 <Text style={styles.emptyText}>No deliveries match this filter</Text>
               </View>
             }
             renderItem={({ item: delivery }) => {
-              const statusColor = STATUS_COLORS[delivery.status] ?? '#64748B';
+              const statusColor = STATUS_COLORS[delivery.status] ?? colors.neutral500;
               const personName = delivery.assignedTo ? personnelMap[delivery.assignedTo] : null;
               const hasGps = (mapData?.markers ?? []).some(
                 m => m.deliveryId === delivery.id && m.personnel?.lat != null,
@@ -378,7 +373,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 14,
     borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomRightRadius: 20
   },
   headerBtn: {
     width: 36, height: 36,
@@ -386,26 +381,26 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.18)'
   },
   headerCenter: { flex: 1, alignItems: 'center' },
-  title: { fontSize: 17, fontWeight: '700', color: '#FFFFFF' },
-  subtitle: { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
+  title: { ...typography.h4, color: colors.neutral0 },
+  subtitle: { ...typography.caption, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
 
   // Stats Bar
   statsBar: {
     flexDirection: 'row',
-    backgroundColor: colors.cardBg,
+    backgroundColor: colors.surface,
     paddingVertical: 10,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    justifyContent: 'space-around',
+    justifyContent: 'space-around'
   },
   statItem: { alignItems: 'center', flex: 1 },
   statDot: { width: 8, height: 8, borderRadius: 4, marginBottom: 2 },
-  statCount: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
-  statLabel: { fontSize: 10, color: colors.textSecondary, textAlign: 'center' },
+  statCount: { ...typography.h4, color: colors.textPrimary },
+  statLabel: { ...typography.overline, color: colors.textSecondary, textAlign: 'center' },
 
   // View Toggle
   viewToggleRow: {
@@ -414,9 +409,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
-    backgroundColor: colors.cardBg,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.border
   },
   viewToggle: {
     flexDirection: 'row',
@@ -424,7 +419,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 3,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.border
   },
   toggleBtn: {
     flexDirection: 'row',
@@ -432,11 +427,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 6,
-    gap: 5,
+    gap: 5
   },
-  toggleBtnActive: { backgroundColor: colors.primary },
-  toggleBtnText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
-  toggleBtnTextActive: { color: '#fff' },
+  toggleBtnActive: { backgroundColor: colors.actionGreen },
+  toggleBtnText: { ...typography.labelMd, color: colors.textSecondary },
+  toggleBtnTextActive: { color: colors.neutral0 },
   fitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -444,35 +439,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: colors.primary + '15',
+    backgroundColor: colors.actionGreen + '15',
     borderWidth: 1,
-    borderColor: colors.primary + '30',
+    borderColor: colors.actionGreen + '30'
   },
-  fitBtnText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  fitBtnText: { ...typography.labelSm, color: colors.actionGreen },
 
   // Map
   mapContainer: { flex: 1 },
   map: { flex: 1 },
   mapLoading: {
     flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.neutral100
   },
-  mapLoadingText: { fontSize: 14, color: colors.textSecondary },
+  mapLoadingText: { ...typography.bodySm, color: colors.textSecondary },
 
   // Marker
   markerContainer: { alignItems: 'center' },
   markerPin: {
     width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3, shadowRadius: 3, elevation: 5,
+    borderWidth: 2, borderColor: colors.neutral0,
+    shadowColor: colors.neutral900, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 3, elevation: 5
   },
   markerTail: {
     width: 0, height: 0,
     borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8,
     borderLeftColor: 'transparent', borderRightColor: 'transparent',
-    marginTop: -1,
+    marginTop: -1
   },
 
   // Destination pin — hollow white pin with a status-colored border,
@@ -481,15 +476,15 @@ const styles = StyleSheet.create({
   destMarkerPin: {
     width: 30, height: 30, borderRadius: 15,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', borderWidth: 2.5,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25, shadowRadius: 3, elevation: 4,
+    backgroundColor: colors.neutral0, borderWidth: 2.5,
+    shadowColor: colors.neutral900, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 3, elevation: 4
   },
   destMarkerTail: {
     width: 0, height: 0,
     borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 7,
     borderLeftColor: 'transparent', borderRightColor: 'transparent',
-    marginTop: -1,
+    marginTop: -1
   },
 
   // Callout
@@ -497,17 +492,17 @@ const styles = StyleSheet.create({
   calloutContent: { padding: 12 },
   calloutHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
   calloutStatusDot: { width: 8, height: 8, borderRadius: 4 },
-  calloutStatus: { fontSize: 13, fontWeight: '700', color: '#1E293B', flex: 1 },
+  calloutStatus: { ...typography.labelMd, color: colors.neutral800, flex: 1 },
   calloutPriority: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  calloutPriorityText: { fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
-  calloutCustomer: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 2 },
-  calloutAddress: { fontSize: 11, color: '#64748B', marginBottom: 8 },
-  calloutDivider: { height: 1, backgroundColor: '#E2E8F0', marginBottom: 8 },
+  calloutPriorityText: { ...typography.overline, letterSpacing: 0.5 },
+  calloutCustomer: { ...typography.h5, color: colors.neutral900, marginBottom: 2 },
+  calloutAddress: { ...typography.overline, color: colors.neutral500, marginBottom: 8 },
+  calloutDivider: { height: 1, backgroundColor: colors.neutral200, marginBottom: 8 },
   calloutMeta: { gap: 4, marginBottom: 8 },
   calloutMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  calloutMetaText: { fontSize: 11, color: '#64748B' },
+  calloutMetaText: { ...typography.caption, color: colors.neutral500 },
   calloutTapHint: { alignItems: 'flex-end' },
-  calloutTapHintText: { fontSize: 11, fontWeight: '600', color: '#2563EB' },
+  calloutTapHintText: { ...typography.caption, color: colors.info },
 
   // No GPS overlay
   noGpsOverlay: {
@@ -515,7 +510,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingBottom: 24,
     alignItems: 'center',
-    pointerEvents: 'none' as any,
+    pointerEvents: 'none' as any
   },
   noGpsCard: {
     backgroundColor: 'rgba(255,255,255,0.95)',
@@ -523,16 +518,16 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     width: '85%',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, shadowRadius: 8, elevation: 6,
+    shadowColor: colors.neutral900, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, shadowRadius: 8, elevation: 6
   },
   noGpsIcon: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 10,
+    backgroundColor: colors.neutral100, alignItems: 'center', justifyContent: 'center',
+    marginBottom: 10
   },
-  noGpsTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
-  noGpsText: { fontSize: 12, color: '#64748B', textAlign: 'center', lineHeight: 16 },
+  noGpsTitle: { ...typography.labelLg, color: colors.neutral800, marginBottom: 4 },
+  noGpsText: { ...typography.caption, color: colors.neutral500, textAlign: 'center', lineHeight: 16 },
 
   // GPS count badge
   gpsCountBadge: {
@@ -541,81 +536,81 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.95)',
     paddingHorizontal: 10, paddingVertical: 6,
     borderRadius: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+    shadowColor: colors.neutral900, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1, shadowRadius: 4, elevation: 3
   },
-  gpsDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
-  gpsCountText: { fontSize: 12, fontWeight: '700', color: '#1E293B' },
+  gpsDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
+  gpsCountText: { ...typography.labelSm, color: colors.neutral800 },
 
   // List Controls
   listControls: {
-    backgroundColor: colors.cardBg,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingTop: 10,
-    paddingBottom: 4,
+    paddingBottom: 4
   },
   sortRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  sortLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: '500' },
+  sortLabel: { ...typography.labelSm, color: colors.textSecondary },
   sortChip: {
     paddingHorizontal: 10, paddingVertical: 4,
     borderRadius: 6, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.cardBg,
+    backgroundColor: colors.surface
   },
-  sortChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  sortChipText: { fontSize: 12, color: colors.textSecondary },
-  sortChipTextActive: { color: '#fff', fontWeight: '600' },
+  sortChipActive: { backgroundColor: colors.actionGreen, borderColor: colors.actionGreen },
+  sortChipText: { ...typography.caption, color: colors.textSecondary },
+  sortChipTextActive: { color: colors.neutral0, fontWeight: typography.labelLg.fontWeight },
   filterRowContent: { gap: 6, paddingBottom: 10, paddingRight: spacing.md },
   filterChip: {
     paddingHorizontal: 14, paddingVertical: 6,
     borderRadius: 20, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.cardBg,
+    backgroundColor: colors.surface
   },
-  filterChipText: { fontSize: 12, color: colors.textSecondary },
-  filterChipTextActive: { color: '#fff', fontWeight: '600' },
+  filterChipText: { ...typography.caption, color: colors.textSecondary },
+  filterChipTextActive: { color: colors.neutral0, fontWeight: typography.labelLg.fontWeight },
 
   // List
   listContent: { padding: spacing.md, paddingBottom: 32 },
-  feedHeader: { fontSize: 13, color: colors.textSecondary, marginBottom: 10, fontWeight: '500' },
+  feedHeader: { ...typography.bodySm, color: colors.textSecondary, marginBottom: 10 },
 
   // Delivery Card
   card: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     marginBottom: 10,
-    ...shadows.card,
-    overflow: 'hidden',
+    ...shadows.sm,
+    overflow: 'hidden'
   },
   cardTop: { flexDirection: 'row' },
   cardStatusStripe: { width: 4 },
   cardMain: { flex: 1, padding: 14 },
   cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  cardCustomer: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, flex: 1, marginRight: 8 },
-  cardAddress: { fontSize: 12, color: colors.textSecondary, marginBottom: 8 },
+  cardCustomer: { ...typography.labelLg, color: colors.textPrimary, flex: 1, marginRight: 8 },
+  cardAddress: { ...typography.labelSm, color: colors.textSecondary, marginBottom: 8 },
   cardMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
-  metaChip: { fontSize: 11, color: colors.textSecondary },
+  metaChip: { ...typography.caption, color: colors.textSecondary },
   priorityBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 },
-  priorityText: { fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+  priorityText: { ...typography.overline, letterSpacing: 0.5 },
   gpsPill: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#DCFCE7', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10,
+    backgroundColor: colors.successLighter, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10
   },
-  gpsPillDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#00875A' },
-  gpsPillText: { fontSize: 10, fontWeight: '700', color: '#00875A' },
+  gpsPillDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.success },
+  gpsPillText: { ...typography.overline, color: colors.success },
   cardFooter: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 14, paddingVertical: 8,
     borderTopWidth: 1, borderTopColor: colors.border,
-    backgroundColor: colors.background,
+    backgroundColor: colors.background
   },
-  refNo: { fontSize: 11, color: colors.textLight },
+  refNo: { ...typography.overline, color: colors.textTertiary },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-  statusText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
+  statusText: { ...typography.overline, textTransform: 'capitalize' },
 
   // Empty
   empty: { alignItems: 'center', paddingVertical: 48, gap: 12 },
-  emptyText: { fontSize: 14, color: colors.textSecondary },
+  emptyText: { ...typography.bodySm, color: colors.textSecondary },
 });
 
 export default DeliveryMonitorScreen;

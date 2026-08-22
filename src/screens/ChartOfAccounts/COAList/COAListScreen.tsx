@@ -14,7 +14,7 @@ import {
   RefreshControl,
   ActionSheetIOS,
   Platform,
-  ScrollView,
+  ScrollView
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -32,18 +32,21 @@ import {
   setSearchQuery,
   setActiveFilter,
   selectSearchQuery,
-  selectActiveFilter,
+  selectActiveFilter
 } from './coaListSlice';
 import type { COAFilter } from './coaListSlice';
 import { blockSystemDeactivation, isSystemAccount } from '../../../utils/systemAccounts';
 import type { Account, AccountType } from '../../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 import {
   ReportContainer,
   ReportHeader,
   KpiGrid,
   EmptyBlock,
   ACCENT,
-  HeaderAction,
+  HeaderAction
 } from '../../../components/reports/ReportUI';
 
 // ── Constants ─────────────────────────────────────────
@@ -52,7 +55,7 @@ const TYPE_COLORS: Record<AccountType, string> = {
   liability: ACCENT.red,
   equity: ACCENT.violet,
   revenue: ACCENT.green,
-  expense: ACCENT.amber,
+  expense: ACCENT.amber
 };
 
 const TYPE_LABELS: Record<AccountType, string> = {
@@ -60,7 +63,7 @@ const TYPE_LABELS: Record<AccountType, string> = {
   liability: 'Liabilities',
   equity: 'Equity',
   revenue: 'Revenue',
-  expense: 'Expenses',
+  expense: 'Expenses'
 };
 
 const FILTER_CHIPS: { key: COAFilter; label: string }[] = [
@@ -184,7 +187,7 @@ const COAListScreen: React.FC = () => {
             options,
             cancelButtonIndex: 3,
             destructiveButtonIndex: account.isActive && canDeactivate ? 1 : -1,
-            title: `${account.code} — ${account.name}`,
+            title: `${account.code} — ${account.name}`
           },
           idx => handleActionChoice(idx, account),
         );
@@ -197,7 +200,7 @@ const COAListScreen: React.FC = () => {
             onPress: () => {
               if (blockSystemDeactivation(account)) return;
               dispatch(toggleAccount(account.id));
-            },
+            }
           },
           { text: 'View Detail', onPress: () => navigation.navigate('COADetail', { accountId: account.id }) },
           { text: 'Cancel', style: 'cancel' },
@@ -384,7 +387,7 @@ const styles = StyleSheet.create({
   },
   chipSelected: { backgroundColor: THEME.colors.primary, borderColor: THEME.colors.primary },
   chipText: { ...THEME.typography.labelMd, color: THEME.colors.textSecondary },
-  chipTextSelected: { color: '#FFFFFF' },
+  chipTextSelected: { color: colors.neutral0 },
 
   // Section header
   sectionHeader: {
@@ -423,7 +426,7 @@ const styles = StyleSheet.create({
   accountRight: { alignItems: 'flex-end' },
   accountBalance: { ...THEME.typography.labelLg },
 
-  empty: { paddingTop: THEME.spacing.xl },
+  empty: { paddingTop: THEME.spacing.xl }
 });
 
 export default COAListScreen;

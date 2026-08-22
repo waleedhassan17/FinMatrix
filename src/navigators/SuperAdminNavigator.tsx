@@ -14,6 +14,7 @@ import RevenueAnalyticsScreen from '../screens/SuperAdmin/Analytics/RevenueAnaly
 import SubscriptionPlansScreen from '../screens/SuperAdmin/SubscriptionPlans/SubscriptionPlansScreen';
 import PaymentSubmissionsScreen from '../screens/SuperAdmin/PaymentSubmissions/PaymentSubmissionsScreen';
 import AdminSettingsScreen from '../screens/SuperAdmin/AdminSettings/AdminSettingsScreen';
+import { THEME } from '../theme';
 
 export type SuperAdminTabParamList = {
   Dashboard: undefined;
@@ -33,7 +34,7 @@ const TAB_CONFIG: Record<string, { icon: string; label: string }> = {
   Payments: { icon: 'check-square', label: 'Payments' },
   Analytics: { icon: 'bar-chart-2', label: 'Analytics' },
   Plans: { icon: 'credit-card', label: 'Plans' },
-  Settings: { icon: 'settings', label: 'Settings' },
+  Settings: { icon: 'settings', label: 'Settings' }
 };
 
 // ── Custom Tab Bar Icon ───────────────────────────────
@@ -64,8 +65,8 @@ const SuperAdminNavigator: React.FC = () => (
         </Text>
       ),
       tabBarStyle: TS.tabBar,
-      tabBarActiveTintColor: '#0052CC',
-      tabBarInactiveTintColor: '#8993A4',
+      tabBarActiveTintColor: THEME.colors.info,
+      tabBarInactiveTintColor: THEME.colors.textTertiary,
       tabBarHideOnKeyboard: true,
     })}
   >
@@ -80,32 +81,31 @@ const SuperAdminNavigator: React.FC = () => (
 
 const TS = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.neutral0,
     borderTopWidth: 1,
-    borderTopColor: '#DFE1E6',
+    borderTopColor: THEME.colors.border,
     height: Platform.OS === 'ios' ? 80 : 62,
     paddingBottom: Platform.OS === 'ios' ? 24 : 8,
     paddingTop: 6,
     elevation: 8,
-    shadowColor: '#091E42',
+    shadowColor: THEME.colors.neutral900,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowRadius: 8
   },
   iconWrap: {
     width: 36,
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 8
   },
   iconWrapActive: {
-    backgroundColor: '#DEEBFF',
+    backgroundColor: THEME.colors.infoLight
   },
   tabLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 1,
+    ...THEME.typography.overline,
+    marginTop: 1
   },
 });
 

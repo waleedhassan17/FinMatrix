@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
-  Platform,
+  Platform
 } from 'react-native';
 import { Alert } from '../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -21,7 +21,7 @@ import {
   AuthHeader,
   AuthFooterBar,
   AuthIconTile,
-  AuthTimeline,
+  AuthTimeline
 } from '../../components/auth/AuthUI';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
@@ -30,22 +30,26 @@ import type { RootStackParamList } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { selectUser, setUser } from '../Auth/authSlice';
 import { authMe, submitCompanyAPI } from '../../networks/auth/authNetwork';
+import { THEME } from '../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 import {
   getBankDetailsAPI,
   getCachedBankDetails,
   submitPaymentAPI,
   type BankDetails,
-  type PlanKey,
+  type PlanKey
 } from '../../networks/billing/billingNetwork';
 
 const DS = {
-  navy: '#091E42',
-  primary: '#059669',
-  primaryDark: '#047857',
-  bg: '#F4F5F7',
-  surface: '#FFFFFF',
-  border: '#DFE1E6',
-  text: { h: '#172B4D', sub: '#5E6C84', muted: '#8993A4', inv: '#FFFFFF' },
+  navy: THEME.colors.neutral900,
+  primary: THEME.colors.actionGreen,
+  primaryDark: THEME.colors.actionGreenDark,
+  bg: THEME.colors.background,
+  surface: THEME.colors.neutral0,
+  border: THEME.colors.border,
+  text: { h: THEME.colors.textPrimary, sub: THEME.colors.textSecondary, muted: THEME.colors.textTertiary, inv: THEME.colors.neutral0 }
 };
 
 // RN's Alert is a no-op on react-native-web — fall back to window.alert there
@@ -110,7 +114,7 @@ const SubscriptionPayScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'], // modern API (MediaTypeOptions is deprecated)
-        quality: 0.7,
+        quality: 0.7
       });
       if (!res.canceled && res.assets?.[0]) {
         const a = res.assets[0];
@@ -339,67 +343,67 @@ const S = StyleSheet.create({
   header: { backgroundColor: DS.navy, paddingHorizontal: 20, paddingBottom: 20 },
   back: {
     width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)', marginBottom: 14,
+    backgroundColor: 'rgba(255,255,255,0.12)', marginBottom: 14
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: '#FFF' },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  headerTitle: { ...THEME.typography.h2, color: colors.neutral0 },
+  headerSub: { ...THEME.typography.bodySm, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
   scroll: { padding: 16, gap: 14, paddingBottom: 40 },
 
   card: {
     backgroundColor: DS.surface, borderRadius: 16, padding: 18,
-    borderWidth: 1, borderColor: DS.border,
+    borderWidth: 1, borderColor: DS.border
   },
-  cardLabel: { fontSize: 11, fontWeight: '700', color: DS.text.muted, letterSpacing: 1 },
-  amount: { fontSize: 34, fontWeight: '800', color: DS.text.h, marginTop: 6 },
-  billMeta: { fontSize: 13, color: DS.text.sub, marginTop: 4 },
+  cardLabel: { ...THEME.typography.overline, color: DS.text.muted, letterSpacing: 1 },
+  amount: { ...THEME.typography.displayLg, color: DS.text.h, marginTop: 6 },
+  billMeta: { ...THEME.typography.bodySm, color: DS.text.sub, marginTop: 4 },
 
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: DS.text.h, marginBottom: 12 },
+  sectionTitle: { ...THEME.typography.labelLg, color: DS.text.h, marginBottom: 12 },
   row: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#F1F2F4',
+    borderBottomWidth: 1, borderBottomColor: THEME.colors.neutral100
   },
-  rowLabel: { fontSize: 11, color: DS.text.muted },
-  rowValue: { fontSize: 15, color: DS.text.h, fontWeight: '600', marginTop: 2 },
+  rowLabel: { ...THEME.typography.caption, color: DS.text.muted },
+  rowValue: { ...THEME.typography.labelLg, color: DS.text.h, marginTop: 2 },
   copyBtn: {
-    width: 36, height: 36, borderRadius: 10, backgroundColor: '#ECFDF5',
-    alignItems: 'center', justifyContent: 'center',
+    width: 36, height: 36, borderRadius: 10, backgroundColor: colors.actionGreenLighter,
+    alignItems: 'center', justifyContent: 'center'
   },
   noteBox: {
-    flexDirection: 'row', gap: 8, backgroundColor: '#F0FDF4', borderRadius: 10,
-    padding: 12, marginTop: 12,
+    flexDirection: 'row', gap: 8, backgroundColor: colors.actionGreenLighter, borderRadius: 10,
+    padding: 12, marginTop: 12
   },
-  noteText: { flex: 1, fontSize: 12, color: DS.text.sub, lineHeight: 18 },
+  noteText: { ...THEME.typography.caption, flex: 1, color: DS.text.sub, lineHeight: 18 },
 
   uploadBox: {
-    borderWidth: 1.5, borderColor: '#A7F3D0', borderStyle: 'dashed', borderRadius: 12,
-    paddingVertical: 28, alignItems: 'center', gap: 6, backgroundColor: '#F0FDF4',
+    borderWidth: 1.5, borderColor: colors.successLight, borderStyle: 'dashed', borderRadius: 12,
+    paddingVertical: 28, alignItems: 'center', gap: 6, backgroundColor: colors.actionGreenLighter
   },
-  uploadText: { fontSize: 14, fontWeight: '600', color: DS.text.h },
-  uploadHint: { fontSize: 11, color: DS.text.muted },
-  preview: { width: '100%', height: 200, borderRadius: 12, backgroundColor: '#EEE' },
+  uploadText: { ...THEME.typography.h5, color: DS.text.h },
+  uploadHint: { ...THEME.typography.caption, color: DS.text.muted },
+  preview: { width: '100%', height: 200, borderRadius: 12, backgroundColor: THEME.colors.primaryLighter },
   changeBtn: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', paddingTop: 12 },
-  changeBtnText: { fontSize: 13, fontWeight: '600', color: DS.primary },
+  changeBtnText: { ...THEME.typography.labelMd, color: DS.primary },
 
   cta: {
     height: 54, borderRadius: 14, backgroundColor: DS.primary,
-    alignItems: 'center', justifyContent: 'center', marginTop: 4,
+    alignItems: 'center', justifyContent: 'center', marginTop: 4
   },
   ctaDisabled: { opacity: 0.5 },
-  ctaLabel: { fontSize: 16, fontWeight: '700', color: '#FFF' },
-  legal: { fontSize: 11, color: DS.text.muted, textAlign: 'center', lineHeight: 16, marginTop: 4 },
+  ctaLabel: { ...THEME.typography.h4, color: colors.neutral0 },
+  legal: { ...THEME.typography.caption, color: DS.text.muted, textAlign: 'center', lineHeight: 16, marginTop: 4 },
 
   doneBtn: {
     flexDirection: 'row', gap: 8, alignSelf: 'stretch', height: 54, borderRadius: 14,
     backgroundColor: DS.primary, alignItems: 'center', justifyContent: 'center',
     shadowColor: DS.primaryDark, shadowOpacity: 0.25, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    shadowOffset: { width: 0, height: 4 }, elevation: 4
   },
   successIcon: {
-    width: 84, height: 84, borderRadius: 42, backgroundColor: '#ECFDF5',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 20,
+    width: 84, height: 84, borderRadius: 42, backgroundColor: colors.actionGreenLighter,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 20
   },
-  successTitle: { fontSize: 22, fontWeight: '800', color: DS.text.h, textAlign: 'center' },
-  successSub: { fontSize: 14, color: DS.text.sub, textAlign: 'center', lineHeight: 21, marginTop: 10, marginBottom: 28 },
+  successTitle: { ...THEME.typography.h2, color: DS.text.h, textAlign: 'center' },
+  successSub: { ...THEME.typography.bodySm, color: DS.text.sub, textAlign: 'center', lineHeight: 21, marginTop: 10, marginBottom: 28 },
 });
 
 export default SubscriptionPayScreen;

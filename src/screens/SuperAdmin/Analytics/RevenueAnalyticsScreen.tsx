@@ -22,6 +22,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
+import { THEME, statusStyle } from '../../../theme';
+import { AdminScreenHeader } from '../../../components/admin/AdminUI';
+import { CHART_SERIES } from '../../../components/reports/ReportUI';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import {
   loadPlatformStats,
   selectPlatformStats,
@@ -34,21 +40,8 @@ import {
 
 const { width: W } = Dimensions.get('window');
 
-// ── Design tokens ─────────────────────────────────────
-const C = {
-  bg: '#F4F5F7',
-  surface: '#FFFFFF',
-  primary: '#0052CC',
-  primaryDark: '#0747A6',
-  border: '#DFE1E6',
-  text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4', white: '#FFFFFF' },
-  green: '#00875A',
-  red: '#DE350B',
-  amber: '#FF991F',
-};
-
 // Plan badge palette (cycled in order plans appear)
-const PLAN_COLORS = ['#0065FF', '#0052CC', '#6554C0', '#00875A', '#FF991F'];
+const PLAN_COLORS = CHART_SERIES;
 
 // ── Currency helpers (PKR; API amounts are minor units = paisa) ──
 const toRs = (minorUnits: number): number => minorUnits / 100;
@@ -99,9 +92,9 @@ const MetricCard: React.FC<{
           <Feather
             name={positive ? 'trending-up' : 'trending-down'}
             size={11}
-            color={positive ? C.green : C.red}
+            color={positive ? colors.success : colors.danger}
           />
-          <Text style={[S.metricChange, { color: positive ? C.green : C.red }]}>{change}</Text>
+          <Text style={[S.metricChange, { color: positive ? colors.success : colors.danger }]}>{change}</Text>
         </View>
       ) : null}
     </Animated.View>
@@ -130,12 +123,12 @@ const RevenueBarChart: React.FC<{
                 S.barFill,
                 {
                   height: `${bar.heightPct}%` as any,
-                  backgroundColor: bar.isLatest ? C.primary : `${C.primary}60`,
+                  backgroundColor: bar.isLatest ? colors.primary : `${colors.primary}60`,
                 },
               ]}
             />
           </View>
-          <Text style={[S.barLabel, bar.isLatest && { color: C.primary, fontWeight: '700' }]}>
+          <Text style={[S.barLabel, bar.isLatest && { color: colors.primary, fontWeight: typography.labelLg.fontWeight }]}>
             {bar.month}
           </Text>
         </View>
@@ -220,15 +213,15 @@ const PaymentRow: React.FC<{
   date: string;
 }> = ({ company, plan, amount, date }) => (
   <View style={S.coRow}>
-    <View style={[S.coAvatar, { backgroundColor: '#DCFCE7' }]}>
-      <Feather name="check" size={16} color={C.green} />
+    <View style={[S.coAvatar, { backgroundColor: colors.successLighter }]}>
+      <Feather name="check" size={16} color={colors.success} />
     </View>
     <View style={S.coMeta}>
       <Text style={S.coName} numberOfLines={1}>{company}</Text>
       <Text style={S.coPlan}>{plan} · {new Date(date).toLocaleDateString()}</Text>
     </View>
     <View style={S.coRight}>
-      <Text style={[S.coRevenue, { color: C.green }]}>+{amount}</Text>
+      <Text style={[S.coRevenue, { color: colors.success }]}>+{amount}</Text>
     </View>
   </View>
 );
@@ -236,7 +229,7 @@ const PaymentRow: React.FC<{
 // ── Empty state ───────────────────────────────────────
 const EmptyHint: React.FC<{ icon: string; text: string }> = ({ icon, text }) => (
   <View style={S.empty}>
-    <Feather name={icon as any} size={22} color={C.text.muted} />
+    <Feather name={icon as any} size={22} color={colors.textTertiary} />
     <Text style={S.emptyText}>{text}</Text>
   </View>
 );
@@ -338,34 +331,34 @@ const RevenueAnalyticsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={S.root} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
-      <View style={S.header}>
-        <View>
-          <Text style={S.headerTitle}>Revenue Analytics</Text>
-          <Text style={S.headerSub}>Platform financial overview</Text>
-        </View>
-        <View style={[S.headerBadge, { backgroundColor: '#DCFCE7' }]}>
-          <View style={S.liveIndicator} />
-          <Text style={S.headerBadgeText}>Live</Text>
-        </View>
-      </View>
+      <AdminScreenHeader
+        title="Revenue Analytics"
+        subtitle="Platform financial overview"
+        right={
+          <View style={[S.headerBadge, { backgroundColor: colors.successLighter }]}>
+            <View style={S.liveIndicator} />
+            <Text style={S.headerBadgeText}>Live</Text>
+          </View>
+        }
+      />
 
       {loading ? (
         <View style={S.loaderWrap}>
-          <ActivityIndicator size="large" color={C.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={S.loaderText}>Loading platform financials…</Text>
         </View>
       ) : (
         <ScrollView
           contentContainerStyle={[S.content, { paddingBottom: insets.bottom + 20 }]}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         >
           {/* Total Revenue Banner */}
           <LinearGradient
-            colors={[C.primary, C.primaryDark]}
+            colors={[colors.primary, colors.primaryDark]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={S.mrrBanner}
@@ -397,28 +390,28 @@ const RevenueAnalyticsScreen: React.FC = () => {
               label="Approved Payments"
               value={String(analytics.paymentsCount)}
               icon="check-circle"
-              color={C.primary}
+              color={colors.primary}
               delay={0}
             />
             <MetricCard
               label="Total Companies"
               value={String(totalCompanies)}
               icon="briefcase"
-              color={C.green}
+              color={colors.success}
               delay={80}
             />
             <MetricCard
               label="Avg. Payment"
               value={fmtRs(analytics.avgPayment)}
               icon="dollar-sign"
-              color={C.amber}
+              color={colors.warning}
               delay={160}
             />
             <MetricCard
               label="Pending Payments"
               value={String(analytics.pendingSubmissions)}
               icon="clock"
-              color={C.red}
+              color={colors.danger}
               delay={240}
             />
           </View>
@@ -435,9 +428,9 @@ const RevenueAnalyticsScreen: React.FC = () => {
                   <Feather
                     name={analytics.trendPct >= 0 ? 'trending-up' : 'trending-down'}
                     size={13}
-                    color={analytics.trendPct >= 0 ? C.green : C.red}
+                    color={analytics.trendPct >= 0 ? colors.success : colors.danger}
                   />
-                  <Text style={[S.trendBadgeText, { color: analytics.trendPct >= 0 ? C.green : C.red }]}>
+                  <Text style={[S.trendBadgeText, { color: analytics.trendPct >= 0 ? colors.success : colors.danger }]}>
                     {analytics.trendPct >= 0 ? '+' : ''}{analytics.trendPct}%
                   </Text>
                 </View>
@@ -531,38 +524,36 @@ const RevenueAnalyticsScreen: React.FC = () => {
 
 // ─── Styles ──────────────────────────────────────────
 const S = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1, backgroundColor: colors.background },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: C.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: C.text.primary },
-  headerSub: { fontSize: 11, color: C.text.secondary, marginTop: 1 },
   headerBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
-  liveIndicator: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.green },
-  headerBadgeText: { fontSize: 12, fontWeight: '700', color: '#00875A' },
+  liveIndicator: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.success },
+  headerBadgeText: { ...typography.labelSm, color: colors.success },
 
-  loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loaderText: { fontSize: 13, color: C.text.secondary },
+  loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  loaderText: { ...typography.bodySm, color: colors.textSecondary },
 
-  empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 28, gap: 8 },
-  emptyText: { fontSize: 12, color: C.text.muted },
+  empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 28, gap: spacing.xs },
+  emptyText: { ...typography.caption, color: colors.textTertiary },
 
-  content: { padding: 16, gap: 14 },
+  content: { padding: spacing.md, gap: 14 },
 
   // MRR Banner
   mrrBanner: {
-    borderRadius: 16, padding: 20, flexDirection: 'row',
+    borderRadius: radius.xl, padding: spacing.lg, flexDirection: 'row',
     alignItems: 'center', overflow: 'hidden',
   },
   mrrDecor1: {
@@ -576,128 +567,112 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   mrrLeft: { flex: 1 },
-  mrrLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', letterSpacing: 0.8 },
-  mrrValue: { fontSize: 32, fontWeight: '800', color: '#FFF', marginTop: 4 },
-  mrrGrowthRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  mrrGrowthText: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+  mrrLabel: { ...typography.caption, color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', letterSpacing: 0.8 },
+  mrrValue: { ...typography.displayMd, color: colors.neutral0, marginTop: spacing.xxs },
+  mrrGrowthRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, marginTop: 6 },
+  mrrGrowthText: { ...typography.caption, color: 'rgba(255,255,255,0.85)', fontWeight: typography.labelLg.fontWeight },
   mrrRight: { alignItems: 'flex-end' },
   mrrArrBox: {
-    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.md,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, alignItems: 'center',
   },
-  mrrArrLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
-  mrrArrValue: { fontSize: 18, fontWeight: '800', color: '#FFF', marginTop: 2 },
+  mrrArrLabel: { ...typography.overline, color: 'rgba(255,255,255,0.7)', fontWeight: typography.labelLg.fontWeight },
+  mrrArrValue: { ...typography.h3, color: colors.neutral0, marginTop: 2 },
 
   // Metrics grid
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   metricCard: {
     width: (W - 42) / 2,
-    backgroundColor: C.surface,
-    borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: C.border,
-    gap: 4,
+    backgroundColor: colors.surface,
+    borderRadius: 14, padding: spacing.md,
+    borderWidth: 1, borderColor: colors.border,
+    gap: spacing.xxs,
   },
   metricIconBox: {
     width: 34, height: 34, borderRadius: 9,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xxs,
   },
-  metricValue: { fontSize: 22, fontWeight: '800', color: C.text.primary },
-  metricLabel: { fontSize: 11, color: C.text.secondary },
+  metricValue: { ...typography.h2, color: colors.textPrimary },
+  metricLabel: { ...typography.caption, color: colors.textSecondary },
   metricChangeRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-  metricChange: { fontSize: 11, fontWeight: '600' },
+  metricChange: { ...typography.labelSm },
 
   // Cards
   card: {
-    backgroundColor: C.surface,
-    borderRadius: 14, borderWidth: 1, borderColor: C.border, overflow: 'hidden',
+    backgroundColor: colors.surface,
+    borderRadius: 14, borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
   },
   cardHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    padding: 16, paddingBottom: 12,
+    padding: spacing.md, paddingBottom: spacing.sm,
   },
-  cardTitle: { fontSize: 14, fontWeight: '700', color: C.text.primary },
-  cardSub: { fontSize: 11, color: C.text.secondary, marginTop: 2 },
+  cardTitle: { ...typography.h5, color: colors.textPrimary },
+  cardSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   trendBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xxs,
+    backgroundColor: colors.successLighter, paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs, borderRadius: radius.sm,
   },
-  trendBadgeText: { fontSize: 12, fontWeight: '700' },
+  trendBadgeText: { ...typography.labelSm },
 
   // Bar chart
   chartContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     height: 140,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 8,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.xs,
   },
   barWrapper: { flex: 1, alignItems: 'center', height: '100%' },
-  barValue: { fontSize: 9, color: C.text.muted, marginBottom: 3 },
+  barValue: { ...typography.overline, color: colors.textTertiary, marginBottom: 3 },
   barTrack: {
-    flex: 1, width: '100%', backgroundColor: '#F1F5F9',
+    flex: 1, width: '100%', backgroundColor: colors.neutral100,
     borderRadius: 4, overflow: 'hidden', justifyContent: 'flex-end',
   },
   barFill: { width: '100%', borderRadius: 4, minHeight: 4 },
-  barLabel: { fontSize: 10, color: C.text.secondary, marginTop: 4 },
+  barLabel: { ...typography.overline, color: colors.textSecondary, marginTop: spacing.xxs },
 
   // Plan rows
-  plansList: { padding: 16, gap: 14 },
-  planRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  plansList: { padding: spacing.md, gap: 14 },
+  planRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   planBadge: {
-    width: 42, height: 42, borderRadius: 10,
+    width: 42, height: 42, borderRadius: radius.md,
     alignItems: 'center', justifyContent: 'center',
   },
-  planBadgeText: { fontSize: 11, fontWeight: '800' },
+  planBadgeText: { ...typography.overline },
   planMeta: { flex: 1 },
   planTopRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  planName: { fontSize: 13, fontWeight: '700', color: C.text.primary },
-  planRevenue: { fontSize: 13, fontWeight: '700', color: C.text.primary },
+  planName: { ...typography.bodySm, color: colors.textPrimary },
+  planRevenue: { ...typography.labelMd, color: colors.textPrimary },
   planTrack: {
-    height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden',
+    height: 6, backgroundColor: colors.neutral100, borderRadius: 3, overflow: 'hidden',
   },
   planFill: { height: '100%', borderRadius: 3 },
-  planSub: { fontSize: 11, color: C.text.secondary, marginTop: 4 },
+  planSub: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xxs },
 
   // Company rows
   coRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12, gap: 10,
-    borderTopWidth: 1, borderTopColor: C.border,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: 10,
+    borderTopWidth: 1, borderTopColor: colors.border,
   },
   coRank: {
     width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.primaryLighter, alignItems: 'center', justifyContent: 'center',
   },
-  coRankText: { fontSize: 11, fontWeight: '800', color: C.primary },
+  coRankText: { ...typography.overline, color: colors.primary },
   coAvatar: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
+    width: 36, height: 36, borderRadius: radius.md,
+    backgroundColor: colors.primaryLighter, alignItems: 'center', justifyContent: 'center',
   },
-  coAvatarText: { fontSize: 13, fontWeight: '700', color: C.primary },
+  coAvatarText: { ...typography.labelMd, color: colors.primary },
   coMeta: { flex: 1 },
-  coName: { fontSize: 13, fontWeight: '600', color: C.text.primary },
-  coPlan: { fontSize: 11, color: C.text.secondary, marginTop: 1 },
-  coRight: { alignItems: 'flex-end', gap: 4 },
-  coRevenue: { fontSize: 13, fontWeight: '700', color: C.text.primary },
-  coBadge: {
-    backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5,
-  },
-  coBadgeText: { fontSize: 9, fontWeight: '700', color: '#DE350B', textTransform: 'capitalize' },
+  coName: { ...typography.labelMd, color: colors.textPrimary },
+  coPlan: { ...typography.overline, color: colors.textSecondary, marginTop: 1 },
+  coRight: { alignItems: 'flex-end', gap: spacing.xxs },
+  coRevenue: { ...typography.bodySm, color: colors.textPrimary },
 
   // Forecast
-  forecastCard: {
-    borderRadius: 14, padding: 16,
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-  },
-  forecastIcon: {
-    width: 40, height: 40, borderRadius: 10,
-    backgroundColor: 'rgba(99,102,241,0.12)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  forecastContent: { flex: 1 },
-  forecastTitle: { fontSize: 13, fontWeight: '700', color: C.primary },
-  forecastSub: { fontSize: 12, color: '#4338CA', lineHeight: 18, marginTop: 3 },
 });
 
 export default RevenueAnalyticsScreen;

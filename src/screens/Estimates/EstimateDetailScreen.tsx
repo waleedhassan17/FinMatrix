@@ -18,7 +18,8 @@ import {
 } from './estimateSlice';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
-import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -67,7 +68,7 @@ const EstimateDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
           <View style={styles.headRow}>
-            <Badge label={e.status} color={STATUS_COLOR[e.status] ?? THEME.colors.textSecondary} dot />
+            <Badge label={e.status} color={txnStatusColor(e.status)} dot />
             <Text style={styles.total}>{rs(e.total)}</Text>
           </View>
           <Info label="Estimate date" value={e.estimateDate} />
@@ -108,10 +109,6 @@ const EstimateDetailScreen: React.FC = () => {
   );
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  draft: THEME.colors.textSecondary, sent: ACCENT.blue, accepted: ACCENT.green,
-  declined: ACCENT.red, converted: ACCENT.violet, expired: ACCENT.amber,
-};
 
 const Info: React.FC<{ label: string; value: string; strong?: boolean }> = ({ label, value, strong }) => (
   <View style={styles.infoRow}>
@@ -123,15 +120,15 @@ const Info: React.FC<{ label: string; value: string; strong?: boolean }> = ({ la
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  total: { ...THEME.typography.bodyLg, color: THEME.colors.textPrimary, fontWeight: '800' },
+  total: { ...THEME.typography.h4, color: THEME.colors.textPrimary },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   infoLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
-  infoValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
-  bold: { ...THEME.typography.bodyMd, fontWeight: '800' },
+  infoValue: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
+  bold: { ...THEME.typography.labelLg },
   lineRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
-  lineDesc: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
+  lineDesc: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   lineMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  lineTotal: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '700' },
+  lineTotal: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   divider: { height: 1, backgroundColor: THEME.colors.border, marginVertical: 8 },
   notes: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
   actions: { gap: 10 },

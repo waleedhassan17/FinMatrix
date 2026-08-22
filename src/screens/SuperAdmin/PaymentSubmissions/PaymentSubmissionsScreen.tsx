@@ -26,6 +26,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { THEME, statusStyle } from '../../../theme';
+import { AdminScreenHeader } from '../../../components/admin/AdminUI';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 import {
   listPaymentSubmissionsAPI,
   approvePaymentSubmissionAPI,
@@ -36,9 +41,9 @@ import {
 } from '../../../networks/billing/billingNetwork';
 
 const KIND_COLORS: Record<string, string> = {
-  NEW: '#0052CC',
-  RENEWAL: '#00875A',
-  UPGRADE: '#6554C0',
+  NEW: colors.info,
+  RENEWAL: colors.success,
+  UPGRADE: colors.secondary,
 };
 
 // RN's Alert is a no-op on react-native-web — fall back to window.alert there
@@ -149,10 +154,10 @@ const PaymentSubmissionsScreen: React.FC = () => {
     <SafeAreaView style={[S.safe, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
       <View style={S.body}>
-        <LinearGradient colors={HEADER_NAVY} style={S.header}>
-          <Text style={S.headerTitle}>Payment Verification</Text>
-          <Text style={S.headerSub}>Review manual bank-transfer submissions</Text>
-        </LinearGradient>
+        <AdminScreenHeader
+          title="Payment Verification"
+          subtitle="Review manual bank-transfer submissions"
+        />
 
         <View style={S.filterRow}>
           {FILTERS.map((f) => {
@@ -171,7 +176,7 @@ const PaymentSubmissionsScreen: React.FC = () => {
 
         {loading ? (
           <View style={S.center}>
-            <ActivityIndicator size="large" color="#0052CC" />
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : (
           <ScrollView
@@ -189,7 +194,7 @@ const PaymentSubmissionsScreen: React.FC = () => {
           >
             {rows.length === 0 ? (
               <View style={S.empty}>
-                <Feather name="inbox" size={40} color="#B3BAC5" />
+                <Feather name="inbox" size={40} color={colors.textDisabled} />
                 <Text style={S.emptyText}>No {filter === 'all' ? '' : filter} submissions</Text>
               </View>
             ) : (
@@ -204,8 +209,8 @@ const PaymentSubmissionsScreen: React.FC = () => {
                         {sub.companyEmail ?? ''}
                       </Text>
                     </View>
-                    <View style={[S.kindBadge, { backgroundColor: (KIND_COLORS[sub.kind] ?? '#42526E') + '18' }]}>
-                      <Text style={[S.kindText, { color: KIND_COLORS[sub.kind] ?? '#42526E' }]}>
+                    <View style={[S.kindBadge, { backgroundColor: (KIND_COLORS[sub.kind] ?? colors.textSecondary) + '18' }]}>
+                      <Text style={[S.kindText, { color: KIND_COLORS[sub.kind] ?? colors.textSecondary }]}>
                         {sub.kind}
                       </Text>
                     </View>
@@ -220,7 +225,7 @@ const PaymentSubmissionsScreen: React.FC = () => {
 
                   {sub.hasScreenshot && (
                     <TouchableOpacity style={S.viewShot} onPress={() => openScreenshot(sub.id)}>
-                      <Feather name="image" size={15} color="#0052CC" />
+                      <Feather name="image" size={15} color={colors.primary} />
                       <Text style={S.viewShotText}>View transfer screenshot</Text>
                     </TouchableOpacity>
                   )}
@@ -247,7 +252,7 @@ const PaymentSubmissionsScreen: React.FC = () => {
                         onPress={() => setApproveTarget(sub)}
                       >
                         {busyId === sub.id ? (
-                          <ActivityIndicator size="small" color="#FFF" />
+                          <ActivityIndicator size="small" color={colors.neutral0} />
                         ) : (
                           <Text style={S.approveBtnText}>Approve</Text>
                         )}
@@ -266,10 +271,10 @@ const PaymentSubmissionsScreen: React.FC = () => {
       <Modal visible={shotOpen} transparent animationType="fade" onRequestClose={closeShot}>
         <View style={S.shotBackdrop}>
           <TouchableOpacity style={S.shotClose} onPress={closeShot}>
-            <Feather name="x" size={26} color="#FFF" />
+            <Feather name="x" size={26} color={colors.neutral0} />
           </TouchableOpacity>
           {shotLoading ? (
-            <ActivityIndicator size="large" color="#FFF" />
+            <ActivityIndicator size="large" color={colors.neutral0} />
           ) : shotUri ? (
             <Image source={{ uri: shotUri }} style={S.shotImage} resizeMode="contain" />
           ) : null}
@@ -305,7 +310,7 @@ const PaymentSubmissionsScreen: React.FC = () => {
                 onPress={confirmApprove}
               >
                 {busyId === approveTarget?.id ? (
-                  <ActivityIndicator size="small" color="#FFF" />
+                  <ActivityIndicator size="small" color={colors.neutral0} />
                 ) : (
                   <Text style={S.approveBtnText}>Approve</Text>
                 )}
@@ -335,7 +340,7 @@ const PaymentSubmissionsScreen: React.FC = () => {
               <TouchableOpacity style={[S.btn, S.rejectBtn]} onPress={() => setRejectTarget(null)}>
                 <Text style={S.rejectBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[S.btn, S.approveBtn, { backgroundColor: '#DE350B' }]} onPress={submitReject}>
+              <TouchableOpacity style={[S.btn, S.approveBtn, { backgroundColor: colors.danger }]} onPress={submitReject}>
                 <Text style={S.approveBtnText}>Confirm reject</Text>
               </TouchableOpacity>
             </View>
@@ -355,68 +360,62 @@ const Meta: React.FC<{ label: string; value: string }> = ({ label, value }) => (
 
 const S = StyleSheet.create({
   safe: { flex: 1 },
-  body: { flex: 1, backgroundColor: '#F4F5F7' },
+  body: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
-    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16,
-    borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
-  },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#FFF' },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
 
-  filterRow: { flexDirection: 'row', gap: 8, padding: 12 },
+  filterRow: { flexDirection: 'row', gap: spacing.xs, padding: spacing.sm },
   filterChip: {
-    flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 10,
-    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DFE1E6',
+    flex: 1, alignItems: 'center', paddingVertical: spacing.xs, borderRadius: radius.md,
+    backgroundColor: colors.neutral0, borderWidth: 1, borderColor: colors.border,
   },
-  filterChipActive: { backgroundColor: '#0052CC', borderColor: '#0052CC' },
-  filterText: { fontSize: 12, fontWeight: '600', color: '#5E6C84' },
-  filterTextActive: { color: '#FFF' },
+  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterText: { ...typography.labelSm, color: colors.textSecondary },
+  filterTextActive: { color: colors.neutral0 },
 
-  scroll: { paddingHorizontal: 12, paddingTop: 4 },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { fontSize: 14, color: '#8993A4', textTransform: 'capitalize' },
+  scroll: { paddingHorizontal: spacing.sm, paddingTop: spacing.xxs },
+  empty: { alignItems: 'center', paddingTop: 60, gap: spacing.sm },
+  emptyText: { ...typography.bodySm, color: colors.textTertiary, textTransform: 'capitalize' },
 
   card: {
-    backgroundColor: '#FFF', borderRadius: 14, padding: 16, marginBottom: 12,
-    borderWidth: 1, borderColor: '#EBECF0',
+    backgroundColor: colors.neutral0, borderRadius: 14, padding: spacing.md, marginBottom: spacing.sm,
+    borderWidth: 1, borderColor: colors.neutral100,
   },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  company: { fontSize: 16, fontWeight: '700', color: '#172B4D' },
-  companyEmail: { fontSize: 12, color: '#8993A4', marginTop: 2 },
-  kindBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  kindText: { fontSize: 11, fontWeight: '800' },
+  company: { ...typography.h4, color: colors.textPrimary },
+  companyEmail: { ...typography.labelSm, color: colors.textTertiary, marginTop: 2 },
+  kindBadge: { paddingHorizontal: 10, paddingVertical: spacing.xxs, borderRadius: radius.sm },
+  kindText: { ...typography.labelSm },
 
   metaRow: { flexDirection: 'row', marginTop: 14, gap: 10 },
   meta: { flex: 1 },
-  metaLabel: { fontSize: 10, color: '#8993A4', letterSpacing: 0.5 },
-  metaValue: { fontSize: 14, fontWeight: '700', color: '#172B4D', marginTop: 2, textTransform: 'capitalize' },
-  date: { fontSize: 11, color: '#8993A4', marginTop: 10 },
+  metaLabel: { ...typography.overline, color: colors.textTertiary, letterSpacing: 0.5 },
+  metaValue: { ...typography.bodySm, color: colors.textPrimary, marginTop: 2, textTransform: 'capitalize' },
+  date: { ...typography.overline, color: colors.textTertiary, marginTop: 10 },
 
-  viewShot: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
-  viewShotText: { fontSize: 13, fontWeight: '600', color: '#0052CC' },
-  rejReason: { fontSize: 12, color: '#B91C1C', marginTop: 10 },
+  viewShot: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm },
+  viewShotText: { ...typography.bodySm, color: colors.primary },
+  rejReason: { ...typography.labelSm, color: colors.danger, marginTop: 10 },
 
   actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  btn: { flex: 1, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  approveBtn: { backgroundColor: '#00875A' },
-  approveBtnText: { color: '#FFF', fontWeight: '700', fontSize: 14 },
-  rejectBtn: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DFE1E6' },
-  rejectBtnText: { color: '#42526E', fontWeight: '700', fontSize: 14 },
+  btn: { flex: 1, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  approveBtn: { backgroundColor: colors.success },
+  approveBtnText: { color: colors.neutral0,  ...typography.bodySm },
+  rejectBtn: { backgroundColor: colors.neutral0, borderWidth: 1, borderColor: colors.border },
+  rejectBtnText: { ...typography.labelMd, color: colors.textSecondary },
 
   shotBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' },
-  shotClose: { position: 'absolute', top: 50, right: 20, zIndex: 2, padding: 8 },
+  shotClose: { position: 'absolute', top: 50, right: 20, zIndex: 2, padding: spacing.xs },
   shotImage: { width: '92%', height: '80%' },
 
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(9,30,66,0.6)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  modalCard: { width: '100%', backgroundColor: '#FFF', borderRadius: 16, padding: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#172B4D' },
-  modalSub: { fontSize: 13, color: '#5E6C84', marginTop: 6, lineHeight: 19 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(9,30,66,0.6)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  modalCard: { width: '100%', backgroundColor: colors.neutral0, borderRadius: radius.xl, padding: spacing.lg },
+  modalTitle: { ...typography.h3, color: colors.textPrimary },
+  modalSub: { ...typography.bodySm, color: colors.textSecondary, marginTop: 6, lineHeight: 19 },
   modalInput: {
-    marginTop: 14, borderWidth: 1, borderColor: '#DFE1E6', borderRadius: 10,
-    padding: 12, minHeight: 80, textAlignVertical: 'top', color: '#172B4D',
+    marginTop: 14, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+    padding: spacing.sm, minHeight: 80, textAlignVertical: 'top', color: colors.textPrimary,
   },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: spacing.md },
 });
 
 export default PaymentSubmissionsScreen;

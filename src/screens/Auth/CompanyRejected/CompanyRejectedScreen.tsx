@@ -12,11 +12,12 @@ import { setUser, selectSelectedRole } from '../authSlice';
 import {
   authMe,
   getCompanyAPI,
-  submitCompanyAPI,
+  submitCompanyAPI
 } from '../../../networks/auth/authNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
 import { useSignOut } from '../../../hooks/useSignOut';
 import type { UserRole } from '../../../types';
+import { THEME } from '../../../theme';
 import {
   AuthLayout,
   AuthHeader,
@@ -25,7 +26,7 @@ import {
   AuthNotice,
   StatusPill,
   AUTH,
-  type AuthTone,
+  type AuthTone
 } from '../../../components/auth/AuthUI';
 
 const CompanyRejectedScreen: React.FC = () => {
@@ -169,8 +170,8 @@ const styles = StyleSheet.create({
     marginBottom: AUTH.space.xl,
   },
   body: {
+    ...THEME.typography.bodySm,
     fontFamily: AUTH.font,
-    fontSize: 14,
     lineHeight: 22,
     color: AUTH.ink[500],
     marginBottom: AUTH.space.lg,
@@ -184,19 +185,18 @@ const styles = StyleSheet.create({
     gap: AUTH.space.sm,
   },
   reasonLabel: {
+    ...THEME.typography.overline,
     fontFamily: AUTH.font,
-    fontSize: 11,
-    fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
     color: AUTH.ink[400],
   },
   reasonText: {
+    ...THEME.typography.bodySm,
     fontFamily: AUTH.font,
-    fontSize: 14,
     lineHeight: 21,
     color: AUTH.ink[700],
-  },
+  }
 });
 
 export default CompanyRejectedScreen;

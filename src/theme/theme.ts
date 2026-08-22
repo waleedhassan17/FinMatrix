@@ -45,6 +45,21 @@ const palette = {
   violet600: '#7C3AED',
   violetLight: '#EFE9FD',
 
+  // Emerald — the app's create/confirm action colour. Off the slate/teal
+  // ramp, but load-bearing: it paints every "New"/"Add" pill (THEME.form.
+  // addPill) and the form section dots across ~28 screens. Named here so
+  // those specs stop carrying a magic hex; the rendered colour is unchanged.
+  emerald600: '#059669',
+  emerald700: '#047857',
+  emeraldLighter: '#ECFDF5',
+
+  // On-dark accents. The ramps above are tuned for white grounds and go muddy
+  // on the near-black summary panel, so its two accents are named separately.
+  amber400: '#F59E0B',
+  amber300: '#FBBF24',
+  emerald400: '#34D399',
+  red400: '#F87171',
+
   // Semantic — success / warning / danger / info
   green600: '#16A34A',
   greenLight: '#D8F3E1',
@@ -75,6 +90,12 @@ const colors = {
   // Secondary
   secondary: palette.violet600,
   secondaryLight: palette.violetLight,
+
+  // Create/confirm action green (see palette.emerald600) — distinct from
+  // `primary`, which is brand teal. Both are live in the UI today.
+  actionGreen: palette.emerald600,
+  actionGreenDark: palette.emerald700,
+  actionGreenLighter: palette.emeraldLighter,
 
   // Success
   success: palette.green600,
@@ -145,6 +166,34 @@ const fontFamily = Platform.select({
   default: 'System',
 })!;
 
+/**
+ * ROLE MAP — which token a given piece of UI takes.
+ *
+ * This is the reference the consistency passes work from. A style should name
+ * a role, never a size and weight: `...typography.labelMd`, not
+ * `fontSize: 13, fontWeight: '600'`.
+ *
+ *   Screen title (navy header)     h2 · colors.neutral0
+ *   Screen subtitle                bodySm · white @ 62%
+ *   Section header                 form.sectionTitle (11px, uppercase, tracked)
+ *   Card / row primary             labelLg · textPrimary
+ *   Card / row secondary           bodySm · textSecondary
+ *   KPI or stat value              h2 (h3 where space is tight)
+ *   KPI or stat label              caption · textSecondary
+ *   Money — row                    labelLg, right-aligned, tabular-nums
+ *   Money — total                  h4, right-aligned, tabular-nums
+ *   Status badge                   labelSm + statusStyle(status)
+ *   Table head                     overline · textSecondary
+ *   Table cell                     caption · textPrimary
+ *   Field label                    labelMd · textSecondary
+ *   Input / selected value         bodyMd · textPrimary
+ *   Helper, hint, caption          caption · textTertiary
+ *   Button label                   labelLg
+ *
+ * When a hardcoded pair has no exact role, take the nearest: the scale uses
+ * 600/700 where hand-written styles often reach for 700/800, so some text
+ * renders one weight lighter. That is the intended outcome of adopting it.
+ */
 const typography = {
   fontFamily,
 
@@ -256,7 +305,7 @@ const form = {
   controlRadius: 10,
   /** Height/spec of the green "Add" pill — identical everywhere it appears. */
   addPill: {
-    background: '#059669',
+    background: colors.actionGreen,
     radius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -269,11 +318,35 @@ const form = {
     fontFamily,
     fontSize: 11,
     fontWeight: '700' as const,
-    color: '#64748B',
+    color: colors.neutral500,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
   },
-  sectionDot: { size: 8, color: '#059669' },
+  sectionDot: { size: 8, color: colors.actionGreen },
+  /**
+   * The dark "summary / totals" panel that closes every transaction form.
+   * All five forms drew this panel from their own local palette; the spec
+   * lives here so the gradient, the label/value contrast and the two on-dark
+   * accents are identical across Invoice, Bill, PO, PayBills and
+   * ReceivePayment.
+   */
+  summaryPanel: {
+    gradient: [colors.neutral900, colors.neutral800] as [string, string],
+    /** Figures and headings on the panel. */
+    text: colors.neutral100,
+    /** Row labels — deliberately dimmer than the values beside them. */
+    label: 'rgba(238, 242, 246, 0.65)',
+    /** Hairline rule between rows. */
+    divider: 'rgba(238, 242, 246, 0.14)',
+    /** The "gold" accent: panel icon and grand total. */
+    accent: palette.amber400,
+    /** A credit or discount — money coming back off the total. */
+    positive: palette.emerald400,
+    /** A figure that needs attention: overdrawn account, unapplied amount. */
+    caution: palette.amber300,
+    /** A figure that is outright wrong — an overpayment with nowhere to go. */
+    negative: palette.red400,
+  },
 } as const;
 
 // ───────────────────────────────────────────────
@@ -289,6 +362,73 @@ export const THEME = {
 } as const;
 
 export type Theme = typeof THEME;
+
+/**
+ * The navy header gradient, shared by every screen that has one: the reports
+ * kit, the transactions stack, and the dashboard. It lives here rather than in
+ * a component so a module can use the colour without importing the component
+ * that happens to render it.
+ */
+export const HEADER_NAVY = ['#0E1726', '#16243B', '#1C2F4C'] as const;
+
+// ───────────────────────────────────────────────
+// 6b. Status colours — one resolver for the whole app
+// ───────────────────────────────────────────────
+/**
+ * Resolves any status word to a foreground/background pair.
+ *
+ * Every domain in the app names its states differently — an invoice is `paid`,
+ * a company is `active`, a payment is `approved` — but they mean the same six
+ * things, and before this they were coloured by whichever palette the screen
+ * happened to define. The SuperAdmin console alone carried five copies of an
+ * Atlassian status map.
+ *
+ * Boundary with STATUS_CONFIG below: that map is the delivery domain's own
+ * vocabulary and adds a label and an icon this cannot. Its colours are already
+ * theme tokens, so the two agree on tone without one having to call the other.
+ * Use STATUS_CONFIG where a delivery needs its icon; use this everywhere else.
+ */
+const STATUS_TIER = {
+  // Inert or terminated — no attention wanted.
+  neutral: { fg: colors.neutral500, bg: colors.neutral100 },
+  // Live, awaiting the other party.
+  info: { fg: colors.info, bg: colors.infoLight },
+  // In progress, or waiting on someone here.
+  warning: { fg: colors.warning, bg: colors.warningLighter },
+  // The happy terminal state.
+  success: { fg: colors.success, bg: colors.successLighter },
+  // Needs attention now.
+  danger: { fg: colors.danger, bg: colors.dangerLighter },
+  // Moved on into another document or state.
+  moved: { fg: colors.secondary, bg: colors.secondaryLight },
+} as const;
+
+const STATUS_TIER_OF: Record<string, keyof typeof STATUS_TIER> = {
+  // ── neutral ──
+  draft: 'neutral', void: 'neutral', cancelled: 'neutral', inactive: 'neutral',
+  unassigned: 'neutral', archived: 'neutral', none: 'neutral', on_leave: 'neutral',
+  // ── personnel availability ──
+  available: 'success', busy: 'warning',
+  // ── info ──
+  open: 'info', sent: 'info', submitted: 'info', new: 'info',
+  // ── warning ──
+  partial: 'warning', partially_received: 'warning', refunded: 'warning',
+  expired: 'warning', pending: 'warning', pending_approval: 'warning',
+  processing: 'warning', trial: 'warning', unpaid: 'warning',
+  // ── success ──
+  paid: 'success', fully_received: 'success', received: 'success',
+  approved: 'success', applied: 'success', fulfilled: 'success',
+  accepted: 'success', posted: 'success', active: 'success',
+  delivered: 'success', completed: 'success', verified: 'success',
+  // ── danger ──
+  overdue: 'danger', declined: 'danger', rejected: 'danger', failed: 'danger',
+  suspended: 'danger', blocked: 'danger',
+  // ── moved on ──
+  closed: 'moved', invoiced: 'moved', converted: 'moved', returned: 'moved',
+};
+
+export const statusStyle = (status: string): { fg: string; bg: string } =>
+  STATUS_TIER[STATUS_TIER_OF[status] ?? 'neutral'];
 
 // ───────────────────────────────────────────────
 // 7. Delivery status configuration
@@ -323,6 +463,7 @@ export interface PriorityStyle {
 
 export const PRIORITY_CONFIG: Record<string, PriorityStyle> = {
   low: { label: 'Low', color: colors.success, bg: colors.successLight },
+  normal: { label: 'Normal', color: colors.success, bg: colors.successLight },
   medium: { label: 'Medium', color: colors.warning, bg: colors.warningLight },
   high: { label: 'High', color: colors.danger, bg: colors.dangerLight },
   urgent: { label: 'Urgent', color: '#FFFFFF', bg: colors.danger },

@@ -6,28 +6,36 @@
 // ink scale as the ones beside it.
 
 import { THEME } from '../../utils/theme';
+import { HEADER_NAVY } from '../../theme';
+
+const T = THEME;
 
 // ── Accounting palette ────────────────────────────────
-// Quiet surfaces, dark ink figures, one disciplined brand
-// green. Color appears only as small semantic signals.
+// Quiet surfaces, dark ink figures, one disciplined brand green. Colour
+// appears only as small semantic signals.
+//
+// These are NAMES for design-system tokens, not values of their own. The
+// dashboard's vocabulary (ink / pos / neg) is worth keeping because it reads
+// like the domain, but every colour resolves to the same token the rest of the
+// app uses -- so "positive" here is the same green as a paid invoice.
 export const C = {
-  canvas: '#F5F6F8',
-  surface: '#FFFFFF',
-  line: '#E8EAEF',
-  lineSoft: '#EEF0F4',
-  ink: '#0F172A',
-  ink2: '#475467',
-  ink3: '#8A93A4',
-  brand: '#0B6E4F',
-  pos: '#0E8A5F',
-  neg: '#C4362B',
-  warn: '#B7791F',
-  info: '#2A60C9',
-  indigo: '#4F46E5',
-  teal: '#0E7C86',
-  slate: '#475467',
-  bar: '#C9D0DB', // quiet slate for past months in the revenue chart
-  navy: ['#0E1726', '#16243B', '#1C2F4C'] as const,
+  canvas: T.colors.background,
+  surface: T.colors.surface,
+  line: T.colors.border,
+  lineSoft: T.colors.borderLight,
+  ink: T.colors.textPrimary,
+  ink2: T.colors.textSecondary,
+  ink3: T.colors.textTertiary,
+  brand: T.colors.primary,
+  pos: T.colors.success,
+  neg: T.colors.danger,
+  warn: T.colors.warning,
+  info: T.colors.info,
+  indigo: T.colors.secondary,
+  teal: T.colors.primary,
+  slate: T.colors.textSecondary,
+  bar: T.colors.neutral300, // quiet slate for past months in the revenue chart
+  navy: HEADER_NAVY,
 };
 
 export const FONT = THEME.typography.fontFamily;
@@ -35,10 +43,10 @@ export const FONT = THEME.typography.fontFamily;
 /** The card surface every block on the dashboard is drawn on. */
 export const card = {
   backgroundColor: C.surface,
-  borderRadius: 16,
+  borderRadius: T.radius.xl,
   borderWidth: 1,
   borderColor: C.line,
-  shadowColor: '#0F172A',
+  shadowColor: T.colors.neutral900,
   shadowOpacity: 0.04,
   shadowRadius: 10,
   shadowOffset: { width: 0, height: 4 },

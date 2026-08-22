@@ -21,16 +21,14 @@ import { getBillsAPI } from '../../networks/purchases/billNetwork';
 import { billListSerializer } from '../../serializers/billSerializer';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
-import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import type { Bill } from '../../types';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'VendorCreditDetail'>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
-const STATUS_COLOR: Record<string, string> = {
-  open: ACCENT.blue, applied: ACCENT.green, closed: ACCENT.violet, void: THEME.colors.textSecondary,
-};
 
 const VendorCreditDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -88,7 +86,7 @@ const VendorCreditDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
           <View style={styles.headRow}>
-            <Badge label={c.status} color={STATUS_COLOR[c.status] ?? THEME.colors.textSecondary} dot />
+            <Badge label={c.status} color={txnStatusColor(c.status)} dot />
             <Text style={styles.total}>{rs(c.total)}</Text>
           </View>
           <Info label="Date" value={c.date} />
@@ -136,16 +134,16 @@ const Info: React.FC<{ label: string; value: string; strong?: boolean }> = ({ la
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  total: { ...THEME.typography.bodyLg, color: THEME.colors.textPrimary, fontWeight: '800' },
+  total: { ...THEME.typography.h4, color: THEME.colors.textPrimary },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   infoLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
-  infoValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
-  bold: { ...THEME.typography.bodyMd, fontWeight: '800' },
+  infoValue: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
+  bold: { ...THEME.typography.labelLg },
   lineRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   invRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
-  lineDesc: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
+  lineDesc: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   lineMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  lineTotal: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '700' },
+  lineTotal: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   actions: { gap: 10 },
 });
 

@@ -1,5 +1,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { THEME } from '../../theme';
+
+const { colors, spacing, radius, typography } = THEME;
 
 interface Props {
   children: ReactNode;
@@ -52,31 +55,29 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#F8FAFC',
+    padding: spacing.xl,
+    backgroundColor: colors.neutral50,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#059669',
-    marginBottom: 12,
+    ...typography.h3,
+    color: colors.actionGreen,
+    marginBottom: spacing.sm,
   },
   message: {
-    fontSize: 14,
-    color: '#64748B',
+    ...typography.bodySm,
+    color: colors.neutral500,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.xl,
   },
   button: {
-    backgroundColor: '#059669',
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 8,
+    backgroundColor: colors.actionGreen,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xxl,
+    borderRadius: radius.sm,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.h4,
+    color: colors.neutral0,
   },
 });
 

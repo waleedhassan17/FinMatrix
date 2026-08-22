@@ -8,6 +8,7 @@
 // Plus the existing form-validation helpers used by the form screen.
 
 import type { Bill, BillLine, BillStatus } from '../types';
+import { txnStatusColor } from '../components/transactions/txnStatus';
 
 // ─── Raw API entity (backend shape) ──────────────────
 // 1-to-1 with the `Bill` UI type today; defined separately so
@@ -76,13 +77,14 @@ export const BILL_STATUS_LABELS: Record<BillStatus, string> = {
   void: 'Void',
 };
 
+/** Presentation-only: resolved from the canonical stack-wide status palette. */
 export const BILL_STATUS_COLORS: Record<BillStatus, string> = {
-  draft: '#8993A4',
-  open: '#059669',
-  partial: '#FF991F',
-  paid: '#00875A',
-  overdue: '#DE350B',
-  void: '#64748B',
+  draft: txnStatusColor('draft'),
+  open: txnStatusColor('open'),
+  partial: txnStatusColor('partial'),
+  paid: txnStatusColor('paid'),
+  overdue: txnStatusColor('overdue'),
+  void: txnStatusColor('void'),
 };
 
 export interface BillFormLineData {

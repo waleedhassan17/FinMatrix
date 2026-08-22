@@ -8,7 +8,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Modal,
+  Modal
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +20,6 @@ import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomInput from '../../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
-import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectActiveCompany, addDeliveryPersonnel, addMember } from '../../../Auth/companySlice';
@@ -28,12 +27,15 @@ import { registerAdminCreatedPersonnel } from '../../../../networks/auth/authNet
 import type { DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import type { RootStackParamList } from '../../../../types';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
+
 type Props = NativeStackScreenProps<RootStackParamList, 'AddDeliveryPersonnel'>;
 
 const BRAND = {
-  navy: '#0F172A',
-  emerald: '#059669',
-  emeraldLight: '#00875A',
+  navy: colors.neutral900,
+  emerald: colors.actionGreen,
+  emeraldLight: colors.success
 };
 
 const VEHICLE_TYPES = [
@@ -144,7 +146,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
           displayName: fullName.trim(),
           role: 'delivery', companyId: activeCompany.companyId, phoneNumber: phone.trim(),
           photoURL: null, isActive: true, createdAt: now, updatedAt: now, username,
-        },
+        }
       });
 
       const backendUserId = result?.data?.userId ?? result?.data?.id ?? `dp_${uuidv4().slice(0, 8)}`;
@@ -156,13 +158,13 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
         maxLoad, rating: 0, totalDeliveries: 0, onTimeRate: 0, status: 'active',
         vehicleType: vehicleType as DummyDeliveryPerson['vehicleType'],
         vehicleNumber: vehicleNumber.trim(),
-        zones: selectedZones.length > 0 ? selectedZones : ['Zone A'],
+        zones: selectedZones.length > 0 ? selectedZones : ['Zone A']
       };
 
       dispatch(addDeliveryPersonnel({ companyId: activeCompany.companyId, person }));
       dispatch(addMember({
         companyId: activeCompany.companyId,
-        member: { userId: backendUserId, role: 'delivery', displayName: fullName.trim(), email: finalEmail.toLowerCase(), phone: phone.trim(), joinedAt: now },
+        member: { userId: backendUserId, role: 'delivery', displayName: fullName.trim(), email: finalEmail.toLowerCase(), phone: phone.trim(), joinedAt: now }
       }));
 
       setCreatedPerson({ name: fullName.trim(), username, email: finalEmail.toLowerCase(), password: tempPassword });
@@ -252,7 +254,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={{ marginTop: spacing.lg }}>
+      <View style={{ marginTop: spacing.xl }}>
         <CustomButton title="Create Account" onPress={handleCreatePersonnel} variant="primary" size="lg" fullWidth isLoading={isCreating} />
       </View>
     </ScrollView>
@@ -291,7 +293,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
               )}
               <View style={styles.modalButtons}>
                 <CustomButton title="Share" onPress={() => { if (createdPerson) copyToClipboard(`Name: ${createdPerson.name}\nEmail: ${createdPerson.email}\nUsername: ${createdPerson.username}\nPassword: ${createdPerson.password}`, 'Credentials'); }} variant="secondary" size="md" />
-                <View style={{ width: spacing.sm }} />
+                <View style={{ width: spacing.xs }} />
                 <CustomButton title="Done" onPress={handleDismissSuccess} variant="primary" size="md" />
               </View>
             </View>
@@ -305,11 +307,11 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  backArrow: { fontSize: 24, color: colors.textPrimary, marginTop: -2, fontWeight: '300' },
-  tabContent: { padding: spacing.lg, paddingBottom: spacing.xl + 40 },
+  backArrow: { ...typography.displaySm, color: colors.textPrimary, marginTop: -2 },
+  tabContent: { padding: spacing.xl, paddingBottom: spacing.xxl + 40 },
 
-  quickAddDesc: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, marginBottom: spacing.lg, lineHeight: 20, fontFamily: THEME.typography.fontFamily },
-  fieldLabel: { fontSize: THEME.typography.bodyMd.fontSize, fontWeight: '500', color: colors.textPrimary, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
+  quickAddDesc: { ...THEME.typography.bodyMd, color: colors.textSecondary, marginBottom: spacing.xl, lineHeight: 20 },
+  fieldLabel: { ...THEME.typography.bodyMd,  color: colors.textPrimary, marginBottom: spacing.xxs },
 
   // Username
   usernameRow: { marginBottom: spacing.md },
@@ -318,8 +320,8 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.navy + '08', borderRadius: 10,
     borderWidth: 1, borderColor: BRAND.navy + '30', paddingHorizontal: spacing.md,
   },
-  usernameText: { flex: 1, fontSize: THEME.typography.bodyLg.fontSize, fontWeight: '700', color: BRAND.navy, fontFamily: THEME.typography.fontFamily, letterSpacing: 0.5 },
-  usernameHint: { fontSize: 11, color: '#94A3B8', marginTop: 4, fontFamily: THEME.typography.fontFamily },
+  usernameText: { flex: 1, ...THEME.typography.h4, color: BRAND.navy, letterSpacing: 0.5 },
+  usernameHint: { ...typography.caption, color: colors.neutral400, marginTop: 4 },
 
   passwordRow: { marginBottom: spacing.md },
   passwordBox: {
@@ -327,50 +329,50 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.emerald + '08', borderRadius: 10,
     borderWidth: 1, borderColor: BRAND.emerald + '30', paddingHorizontal: spacing.md,
   },
-  passwordText: { flex: 1, fontSize: THEME.typography.bodyLg.fontSize, fontWeight: '600', color: BRAND.emerald, fontFamily: THEME.typography.fontFamily, letterSpacing: 1.5 },
-  copyButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  copyText: { fontSize: THEME.typography.bodyMd.fontSize, color: BRAND.emerald, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
-  passwordActionsRow: { flexDirection: 'row', gap: spacing.lg, marginTop: 2, marginBottom: 2 },
-  zonesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  passwordText: { flex: 1, ...THEME.typography.h4, color: BRAND.emerald, letterSpacing: 1.5 },
+  copyButton: { paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs },
+  copyText: { ...THEME.typography.labelLg, color: BRAND.emerald },
+  passwordActionsRow: { flexDirection: 'row', gap: spacing.xl, marginTop: 2, marginBottom: 2 },
+  zonesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
   zoneChip: {
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 8,
-    borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.white,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 8,
+    borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface,
   },
   zoneChipSelected: { borderColor: BRAND.emerald, backgroundColor: BRAND.emerald + '0A' },
-  zoneChipText: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
+  zoneChipText: { ...THEME.typography.bodyMd, color: colors.textSecondary },
   zoneChipTextSelected: { color: BRAND.emerald },
   sliderContainer: { marginBottom: spacing.md },
-  sliderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  sliderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   sliderBtn: {
     width: 36, height: 36, borderRadius: 10, backgroundColor: BRAND.navy + '0A',
     alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: BRAND.navy + '20',
   },
-  sliderBtnText: { fontSize: 20, color: BRAND.navy, fontWeight: '600' },
+  sliderBtnText: { ...typography.h3, color: BRAND.navy, fontWeight: typography.labelLg.fontWeight },
   sliderTrack: { flex: 1, height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' },
   sliderFill: { height: 6, backgroundColor: BRAND.emerald, borderRadius: 3 },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   modalCard: {
-    backgroundColor: colors.white, borderRadius: borderRadius.md + 4, padding: spacing.lg,
+    backgroundColor: colors.surface, borderRadius: radius.lg + 4, padding: spacing.xl,
     width: '100%', maxWidth: 400, alignItems: 'center', borderWidth: 1, borderColor: colors.border,
   },
   modalCheckCircle: {
-    width: 56, height: 56, borderRadius: 16, backgroundColor: '#ECFDF5',
-    justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md, borderWidth: 1, borderColor: '#A7F3D0',
+    width: 56, height: 56, borderRadius: 16, backgroundColor: colors.actionGreenLighter,
+    justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md, borderWidth: 1, borderColor: colors.successLight,
   },
-  modalCheck: { fontSize: 28, color: colors.success, fontWeight: '700' },
-  modalTitle: { fontSize: THEME.typography.h3.fontSize, fontWeight: '600', color: colors.textPrimary, textAlign: 'center', marginBottom: spacing.md, fontFamily: THEME.typography.fontFamily },
+  modalCheck: { ...typography.h1, color: colors.success, fontWeight: typography.labelLg.fontWeight },
+  modalTitle: { ...THEME.typography.h3,  color: colors.textPrimary, textAlign: 'center', marginBottom: spacing.md },
   credentialsCard: {
     width: '100%', backgroundColor: colors.background, borderRadius: 10,
-    padding: spacing.md, marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, marginBottom: spacing.xl, borderWidth: 1, borderColor: colors.border,
   },
   credentialRow: {
     flexDirection: 'row', justifyContent: 'space-between',
-    paddingVertical: spacing.xs + 2, borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingVertical: spacing.xxs + 2, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  credentialLabel: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  credentialValue: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textPrimary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
-  modalButtons: { flexDirection: 'row' },
+  credentialLabel: { ...THEME.typography.bodyMd, color: colors.textSecondary },
+  credentialValue: { ...THEME.typography.labelLg, color: colors.textPrimary },
+  modalButtons: { flexDirection: 'row' }
 });
 
 export default AddDeliveryPersonnelScreen;

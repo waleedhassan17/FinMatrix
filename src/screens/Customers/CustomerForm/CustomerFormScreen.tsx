@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  Switch,
+  Switch
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +20,6 @@ import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, spacing, borderRadius } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -30,13 +29,13 @@ import {
   setIsSaving,
   toggleSameAsBilling,
   loadCustomerForEdit,
-  resetCustomerForm,
+  resetCustomerForm
 } from './customerFormSlice';
 import {
   selectCustomers,
   fetchCustomers,
   createCustomer,
-  editCustomer,
+  editCustomer
 } from '../CustomerList/customerListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
@@ -45,6 +44,9 @@ import CustomButton from '../../../Custom-Components/CustomButton';
 import { validateCustomer, PAYMENT_TERMS_OPTIONS } from '../../../models/customerModel';
 import { customerToFormData, formDataToCustomerPayload } from '../../../serializers/customerSerializer';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type FormRoute = RouteProp<MoreStackParamList, 'CustomerForm'>;
@@ -102,7 +104,7 @@ const CustomerFormScreen: React.FC = () => {
       paymentTerms: form.paymentTerms,
       contactPerson: form.contactPerson,
       taxId: form.taxId,
-      notes: form.notes,
+      notes: form.notes
     });
 
     if (Object.keys(validationErrors).length > 0) {
@@ -134,7 +136,7 @@ const CustomerFormScreen: React.FC = () => {
           paymentTerms: form.paymentTerms,
           contactPerson: form.contactPerson,
           taxId: form.taxId,
-          notes: form.notes,
+          notes: form.notes
         },
       );
 
@@ -149,7 +151,7 @@ const CustomerFormScreen: React.FC = () => {
       Toast.show({
           type: 'success',
           text1: isEditing ? 'Customer Updated' : 'Customer Created',
-          text2: `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`,
+          text2: `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully.`
         });
         navigation.goBack();
     } catch (e: any) {
@@ -246,7 +248,7 @@ const CustomerFormScreen: React.FC = () => {
               placeholder="Province"
             />
             <View style={styles.rowFields}>
-              <View style={{ flex: 1, marginRight: spacing.sm }}>
+              <View style={{ flex: 1, marginRight: spacing.xs }}>
                 <CustomInput
                   label="Zip Code"
                   value={form.billingZipCode}
@@ -274,8 +276,8 @@ const CustomerFormScreen: React.FC = () => {
               <Switch
                 value={form.sameAsBilling}
                 onValueChange={(_value: boolean) => { dispatch(toggleSameAsBilling()); }}
-                trackColor={{ false: colors.border, true: colors.primary + '60' }}
-                thumbColor={form.sameAsBilling ? colors.primary : colors.textLight}
+                trackColor={{ false: colors.border, true: colors.actionGreen + '60' }}
+                thumbColor={form.sameAsBilling ? colors.actionGreen : colors.textTertiary}
               />
             </View>
 
@@ -302,7 +304,7 @@ const CustomerFormScreen: React.FC = () => {
                   placeholder="Province"
                 />
                 <View style={styles.rowFields}>
-                  <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <View style={{ flex: 1, marginRight: spacing.xs }}>
                     <CustomInput
                       label="Zip Code"
                       value={form.shippingZipCode}
@@ -359,7 +361,7 @@ const CustomerFormScreen: React.FC = () => {
 
           {/* ── Action Buttons ───────────────────────── */}
           <View style={styles.btnRow}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={{ flex: 1, marginRight: spacing.xs }}>
               <CustomButton
                 title="Cancel"
                 onPress={() => navigation.goBack()}
@@ -390,22 +392,20 @@ const CustomerFormScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
+  backIcon: { ...typography.h1, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
+  scrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.xxl },
 
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...typography.labelLg,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     marginTop: spacing.md,
   },
   sectionCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
   },
 
   rowFields: { flexDirection: 'row' },
@@ -414,21 +414,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.xs,
   },
   toggleLabel: {
-    fontSize: 15,
-    fontWeight: '500',
+    ...typography.bodyMd,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
 
   btnRow: {
     flexDirection: 'row',
-    marginTop: spacing.lg,
-    marginBottom: spacing.xl,
-  },
+    marginTop: spacing.xl,
+    marginBottom: spacing.xxl,
+  }
 });
 
 export default CustomerFormScreen;

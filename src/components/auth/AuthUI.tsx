@@ -35,6 +35,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { AUTH, type AuthTone } from './authTokens';
+import { THEME } from '../../theme';
+
+// The auth flow keeps its own colour world (AUTH); type comes from the
+// app scale so the flow is not a second typographic system.
+const { typography } = THEME;
 
 export { AUTH, AUTH_DS, type AuthTone } from './authTokens';
 
@@ -99,7 +104,7 @@ export const AuthHeader: React.FC<{
               accessibilityRole="button"
               accessibilityLabel="Go back"
               style={({ pressed }) => [s.backChip, pressed && s.pressed]}>
-              <Feather name="arrow-left" size={19} color="#FFFFFF" />
+              <Feather name="arrow-left" size={19} color={AUTH.header.title} />
             </Pressable>
           ) : (
             <View />
@@ -178,7 +183,7 @@ export const AuthFooterBar: React.FC<{
         ]}>
         {primary.loading ? (
           <>
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={AUTH.header.title} />
             {primary.loadingLabel ? (
               <Text style={s.primaryLabel}>{primary.loadingLabel}</Text>
             ) : null}
@@ -187,7 +192,7 @@ export const AuthFooterBar: React.FC<{
           <>
             <Text style={s.primaryLabel}>{primary.label}</Text>
             {!noArrow ? (
-              <Feather name="arrow-right" size={18} color="#FFFFFF" />
+              <Feather name="arrow-right" size={18} color={AUTH.header.title} />
             ) : null}
           </>
         )}
@@ -453,7 +458,7 @@ export const AuthChecklist: React.FC<{
           <Feather
             name="check"
             size={11}
-            color={it.met ? '#FFFFFF' : AUTH.ink[400]}
+            color={it.met ? AUTH.header.title : AUTH.ink[400]}
           />
         </View>
         <Text style={[s.checkLabel, it.met && s.checkLabelOn]}>{it.label}</Text>
@@ -487,7 +492,7 @@ export const AuthTimeline: React.FC<{
           <Feather
             name={it.done ? 'check' : 'circle'}
             size={it.done ? 12 : 8}
-            color={it.done ? '#FFFFFF' : AUTH.ink[400]}
+            color={it.done ? AUTH.header.title : AUTH.ink[400]}
           />
         </View>
         <View style={s.tlBody}>
@@ -741,37 +746,33 @@ const s = StyleSheet.create({
   },
   pillDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: AUTH.brandDot },
   pillText: {
+    ...typography.overline,
     fontFamily: AUTH.font,
-    fontSize: 11,
-    fontWeight: '700',
     letterSpacing: 0.9,
     textTransform: 'uppercase',
     color: AUTH.header.pillText,
   },
   brand: { flexDirection: 'row', alignItems: 'center', marginBottom: AUTH.space.sm },
   brandFin: {
+    ...typography.h4,
     fontFamily: AUTH.font,
-    fontSize: 16,
-    fontWeight: '800',
     color: AUTH.brandDot,
   },
   brandMatrix: {
+    ...typography.h4,
     fontFamily: AUTH.font,
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    color: AUTH.header.title,
   },
   headerTitle: {
+    ...typography.displayMd,
     fontFamily: AUTH.font,
-    fontSize: 30,
-    fontWeight: '800',
     color: AUTH.header.title,
     letterSpacing: -0.6,
     lineHeight: 36,
   },
   headerSub: {
+    ...typography.bodySm,
     fontFamily: AUTH.font,
-    fontSize: 14,
     color: AUTH.header.subtitle,
     lineHeight: 21,
     marginTop: AUTH.space.sm,
@@ -791,9 +792,8 @@ const s = StyleSheet.create({
   },
   stepSegOn: { backgroundColor: AUTH.brandDot },
   stepLabel: {
+    ...typography.labelSm,
     fontFamily: AUTH.font,
-    fontSize: 12,
-    fontWeight: '600',
     color: 'rgba(255,255,255,0.72)',
   },
 
@@ -821,16 +821,14 @@ const s = StyleSheet.create({
   primaryBtnPressed: { backgroundColor: AUTH.brandDark },
   primaryBtnDisabled: { backgroundColor: AUTH.lineStrong },
   primaryLabel: {
+    ...typography.h4,
     fontFamily: AUTH.font,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    color: AUTH.header.title,
   },
   secondaryBtn: { alignItems: 'center', paddingVertical: AUTH.space.lg },
   secondaryLabel: {
+    ...typography.labelLg,
     fontFamily: AUTH.font,
-    fontSize: 15,
-    fontWeight: '700',
     color: AUTH.ink[700],
   },
   secondaryLabelDisabled: { color: AUTH.ink[400] },
@@ -841,7 +839,7 @@ const s = StyleSheet.create({
     gap: 6,
     paddingBottom: AUTH.space.md,
   },
-  footerNoteText: { fontFamily: AUTH.font, fontSize: 12, color: AUTH.ink[400] },
+  footerNoteText: { ...typography.caption, fontFamily: AUTH.font, color: AUTH.ink[400], },
 
   // ── Blocks ──
   tile: {
@@ -861,9 +859,8 @@ const s = StyleSheet.create({
   cardPadded: { padding: AUTH.space.xl },
 
   label: {
+    ...typography.labelMd,
     fontFamily: AUTH.font,
-    fontSize: 13,
-    fontWeight: '600',
     color: AUTH.ink[700],
     marginBottom: AUTH.space.sm,
   },
@@ -875,9 +872,8 @@ const s = StyleSheet.create({
     marginBottom: AUTH.space.md,
   },
   sectionLabel: {
+    ...typography.overline,
     fontFamily: AUTH.font,
-    fontSize: 11,
-    fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
     color: AUTH.ink[400],
@@ -899,9 +895,9 @@ const s = StyleSheet.create({
   inputWrapFocus: { borderColor: AUTH.brand, borderWidth: 1.5 },
   inputWrapError: { borderColor: AUTH.status.error.accent },
   input: {
+    ...typography.bodyMd,
     flex: 1,
     fontFamily: AUTH.font,
-    fontSize: 15,
     color: AUTH.ink[900],
     paddingVertical: AUTH.space.md,
     ...(Platform.OS === 'web' ? { outlineStyle: 'none' as never } : null),
@@ -913,15 +909,14 @@ const s = StyleSheet.create({
     backgroundColor: AUTH.sunken,
   },
   showBtnText: {
+    ...typography.labelMd,
     fontFamily: AUTH.font,
-    fontSize: 13,
-    fontWeight: '700',
     color: AUTH.ink[700],
   },
   selectValue: {
+    ...typography.bodyMd,
     flex: 1,
     fontFamily: AUTH.font,
-    fontSize: 15,
     color: AUTH.ink[900],
     paddingVertical: AUTH.space.md,
   },
@@ -940,9 +935,8 @@ const s = StyleSheet.create({
     maxHeight: '70%',
   },
   sheetTitle: {
+    ...typography.labelLg,
     fontFamily: AUTH.font,
-    fontSize: 15,
-    fontWeight: '700',
     color: AUTH.ink[900],
     paddingHorizontal: AUTH.space.xl,
     paddingBottom: AUTH.space.md,
@@ -958,17 +952,17 @@ const s = StyleSheet.create({
     borderRadius: AUTH.radius.md,
   },
   sheetRowPressed: { backgroundColor: AUTH.sunken },
-  sheetRowText: { fontFamily: AUTH.font, fontSize: 15, color: AUTH.ink[700] },
-  sheetRowTextOn: { color: AUTH.ink[900], fontWeight: '700' },
+  sheetRowText: { ...typography.bodyMd, fontFamily: AUTH.font, color: AUTH.ink[700], },
+  sheetRowTextOn: { color: AUTH.ink[900], fontWeight: typography.labelLg.fontWeight },
   fieldError: {
+    ...typography.caption,
     fontFamily: AUTH.font,
-    fontSize: 12,
     color: AUTH.status.error.fg,
     marginTop: 6,
   },
   fieldHint: {
+    ...typography.caption,
     fontFamily: AUTH.font,
-    fontSize: 12,
     color: AUTH.ink[500],
     marginTop: 6,
   },
@@ -985,8 +979,8 @@ const s = StyleSheet.create({
   },
   noticeIcon: { marginTop: 1 },
   noticeBody: { flex: 1, gap: 2 },
-  noticeTitle: { fontFamily: AUTH.font, fontSize: 13, fontWeight: '700' },
-  noticeText: { fontFamily: AUTH.font, fontSize: 13, lineHeight: 20 },
+  noticeTitle: { ...typography.bodySm, fontFamily: AUTH.font, fontWeight: typography.labelLg.fontWeight, },
+  noticeText: { ...typography.bodySm, fontFamily: AUTH.font, lineHeight: 20, },
   helpCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -998,9 +992,9 @@ const s = StyleSheet.create({
     padding: AUTH.space.lg,
   },
   helpText: {
+    ...typography.bodySm,
     flex: 1,
     fontFamily: AUTH.font,
-    fontSize: 13,
     lineHeight: 20,
     color: AUTH.ink[500],
   },
@@ -1024,8 +1018,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   checkDotOn: { backgroundColor: AUTH.brand },
-  checkLabel: { fontFamily: AUTH.font, fontSize: 13.5, color: AUTH.ink[500] },
-  checkLabelOn: { color: AUTH.ink[900], fontWeight: '600' },
+  checkLabel: { ...typography.bodySm, fontFamily: AUTH.font, color: AUTH.ink[500], },
+  checkLabelOn: { color: AUTH.ink[900], fontWeight: typography.labelLg.fontWeight },
 
   // ── Numbered steps ──
   stepsList: {
@@ -1050,15 +1044,14 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   stepNumText: {
+    ...typography.labelSm,
     fontFamily: AUTH.font,
-    fontSize: 12,
-    fontWeight: '700',
     color: AUTH.ink[500],
   },
   stepItemText: {
+    ...typography.bodySm,
     flex: 1,
     fontFamily: AUTH.font,
-    fontSize: 13.5,
     lineHeight: 20,
     color: AUTH.ink[700],
   },
@@ -1089,13 +1082,12 @@ const s = StyleSheet.create({
   tlDotOn: { backgroundColor: AUTH.brand },
   tlBody: { flex: 1, gap: 2 },
   tlTitle: {
+    ...typography.h5,
     fontFamily: AUTH.font,
-    fontSize: 14,
-    fontWeight: '700',
     color: AUTH.ink[900],
   },
-  tlTitleMuted: { color: AUTH.ink[500], fontWeight: '600' },
-  tlDetail: { fontFamily: AUTH.font, fontSize: 12.5, color: AUTH.ink[500] },
+  tlTitleMuted: { color: AUTH.ink[500], fontWeight: typography.labelLg.fontWeight },
+  tlDetail: { ...typography.caption, fontFamily: AUTH.font, color: AUTH.ink[500], },
 
   // ── Chips ──
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: AUTH.space.sm },
@@ -1111,9 +1103,8 @@ const s = StyleSheet.create({
   },
   chipDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: AUTH.brand },
   chipText: {
+    ...typography.labelSm,
     fontFamily: AUTH.font,
-    fontSize: 12.5,
-    fontWeight: '600',
     color: AUTH.ink[700],
   },
 
@@ -1129,7 +1120,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
   statusDot: { width: 7, height: 7, borderRadius: 3.5 },
-  statusText: { fontFamily: AUTH.font, fontSize: 12.5, fontWeight: '700' },
+  statusText: { ...typography.caption, fontFamily: AUTH.font, fontWeight: typography.labelLg.fontWeight, },
 
   // ── Option card ──
   option: {
@@ -1153,9 +1144,8 @@ const s = StyleSheet.create({
     flexWrap: 'wrap',
   },
   optionTitle: {
+    ...typography.h4,
     fontFamily: AUTH.font,
-    fontSize: 17,
-    fontWeight: '800',
     color: AUTH.ink[900],
     letterSpacing: -0.2,
   },
@@ -1166,16 +1156,15 @@ const s = StyleSheet.create({
     paddingVertical: 3,
   },
   optionBadgeText: {
+    ...typography.overline,
     fontFamily: AUTH.font,
-    fontSize: 10,
-    fontWeight: '800',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     color: AUTH.brand,
   },
   optionTagline: {
+    ...typography.bodySm,
     fontFamily: AUTH.font,
-    fontSize: 13.5,
     lineHeight: 20,
     color: AUTH.ink[500],
   },
@@ -1205,9 +1194,9 @@ const s = StyleSheet.create({
   },
   optionFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: AUTH.space.md },
   optionFeatureText: {
+    ...typography.bodySm,
     flex: 1,
     fontFamily: AUTH.font,
-    fontSize: 13.5,
     color: AUTH.ink[700],
   },
 
@@ -1221,11 +1210,10 @@ const s = StyleSheet.create({
     backgroundColor: AUTH.line,
   },
   strengthMeta: { flexDirection: 'row', justifyContent: 'space-between' },
-  strengthLabel: { fontFamily: AUTH.font, fontSize: 12.5, color: AUTH.ink[500] },
+  strengthLabel: { ...typography.caption, fontFamily: AUTH.font, color: AUTH.ink[500], },
   strengthValue: {
+    ...typography.labelSm,
     fontFamily: AUTH.font,
-    fontSize: 12.5,
-    fontWeight: '700',
     color: AUTH.ink[400],
   },
 
@@ -1251,12 +1239,12 @@ const s = StyleSheet.create({
   otpBoxActive: { borderColor: AUTH.brand, borderWidth: 1.5 },
   otpBoxError: { borderColor: AUTH.status.error.accent },
   otpDigit: {
+    ...typography.h2,
     fontFamily: AUTH.font,
-    fontSize: 22,
-    fontWeight: '700',
     color: AUTH.ink[900],
   },
   otpHidden: {
+    ...typography.h2,
     position: 'absolute',
     top: 0,
     left: 0,
@@ -1264,7 +1252,6 @@ const s = StyleSheet.create({
     bottom: 0,
     opacity: 0,
     color: 'transparent',
-    fontSize: 22,
     textAlign: 'center',
   },
 });

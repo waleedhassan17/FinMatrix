@@ -13,8 +13,8 @@ import InventoryStack from './stacks/InventoryStack';
 import MoreStack from './stacks/MoreStack';
 
 // ── Design Tokens ──
-const ACTIVE = '#059669';
-const INACTIVE = '#8993A4';
+const ACTIVE = THEME.colors.actionGreen;
+const INACTIVE = THEME.colors.textTertiary;
 const TAB_HEIGHT = 72;
 
 type IconName = React.ComponentProps<typeof Feather>['name'];
@@ -32,7 +32,7 @@ const Tab = createBottomTabNavigator<AdminTabParamList>();
 const TabIcon: React.FC<{ icon: IconName; focused: boolean; badgeCount?: number }> = ({
   icon,
   focused,
-  badgeCount = 0,
+  badgeCount = 0
 }) => (
   <View style={styles.iconWrapper}>
     <View style={[styles.iconPill, focused && styles.iconPillActive]}>
@@ -54,23 +54,23 @@ const AdminTabNavigator: React.FC = () => {
           height: TAB_HEIGHT + insets.bottom,
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 8,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: THEME.colors.neutral0,
           borderTopWidth: 1,
-          borderTopColor: '#DFE1E6',
+          borderTopColor: THEME.colors.border,
           elevation: 8,
-          shadowColor: '#091E42',
+          shadowColor: THEME.colors.neutral900,
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.06,
-          shadowRadius: 8,
+          shadowRadius: 8
         },
         tabBarActiveTintColor: ACTIVE,
         tabBarInactiveTintColor: INACTIVE,
         tabBarLabelStyle: {
           ...THEME.typography.labelSm,
-          marginTop: 2,
+          marginTop: 2
         },
         tabBarItemStyle: {
-          paddingTop: 2,
+          paddingTop: 2
         },
       }}>
       <Tab.Screen
@@ -80,7 +80,7 @@ const AdminTabNavigator: React.FC = () => {
           tabBarLabel: 'Dashboard',
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="grid" focused={focused} />
-          ),
+          )
         }}
       />
       <Tab.Screen
@@ -88,7 +88,7 @@ const AdminTabNavigator: React.FC = () => {
         component={TransactionsStack}
         options={{
           tabBarLabel: 'Transactions',
-          tabBarIcon: ({ focused }) => <TabIcon icon="repeat" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="repeat" focused={focused} />
         }}
       />
       <Tab.Screen
@@ -96,7 +96,7 @@ const AdminTabNavigator: React.FC = () => {
         component={ReportsStack}
         options={{
           tabBarLabel: 'Reports',
-          tabBarIcon: ({ focused }) => <TabIcon icon="bar-chart-2" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="bar-chart-2" focused={focused} />
         }}
       />
       <Tab.Screen
@@ -104,7 +104,7 @@ const AdminTabNavigator: React.FC = () => {
         component={InventoryStack}
         options={{
           tabBarLabel: 'Inventory',
-          tabBarIcon: ({ focused }) => <TabIcon icon="archive" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="archive" focused={focused} />
         }}
       />
       <Tab.Screen
@@ -112,7 +112,7 @@ const AdminTabNavigator: React.FC = () => {
         component={MoreStack}
         options={{
           tabBarLabel: 'More',
-          tabBarIcon: ({ focused }) => <TabIcon icon="menu" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="menu" focused={focused} />
         }}
       />
     </Tab.Navigator>
@@ -134,8 +134,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconPillActive: {
-    backgroundColor: '#ECFDF5',
-  },
+    backgroundColor: THEME.colors.actionGreenLighter,
+  }
 });
 
 export default AdminTabNavigator;

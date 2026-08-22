@@ -8,22 +8,24 @@ import {
   TextInput,
   Animated,
   KeyboardAvoidingView,
-  Platform,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser } from '../authSlice';
 import {
   addMember,
   setActiveCompany,
-  type CompanyMember,
+  type CompanyMember
 } from '../companySlice';
 import type { RootStackParamList } from '../../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JoinCompany'>;
 
@@ -218,7 +220,7 @@ const JoinCompanyScreen: React.FC<Props> = ({ navigation }) => {
                   variant="secondary"
                   size="md"
                 />
-                <View style={{ width: spacing.sm }} />
+                <View style={{ width: spacing.xs }} />
                 <CustomButton
                   title="Confirm & Join"
                   onPress={handleJoin}
@@ -253,9 +255,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 4,
-    backgroundColor: colors.white,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xs + 4,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -271,25 +273,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backArrow: {
-    fontSize: 24,
+    ...typography.displaySm,
     color: colors.textPrimary,
     marginTop: -2,
-    fontWeight: '300',
   },
   headerTitle: {
+    ...typography.h3,
     flex: 1,
     textAlign: 'center',
-    fontSize: THEME.typography.h3.fontSize,
-    fontWeight: '600',
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   headerSpacer: { width: 36 },
   content: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: spacing.lg + 4,
-    paddingTop: spacing.xl + 16,
+    paddingHorizontal: spacing.xl + 4,
+    paddingTop: spacing.xxl + 16,
   },
   iconCircle: {
     width: 72,
@@ -298,7 +297,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondary + '0A',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
     borderWidth: 1.5,
     borderColor: colors.secondary + '20',
   },
@@ -311,44 +310,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconText: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...typography.h2,
     color: colors.secondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...typography.displaySm,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
-    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.xs,
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: THEME.typography.bodyMd.fontSize,
+    ...typography.bodyMd,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.xxl,
     paddingHorizontal: spacing.md,
-    fontFamily: THEME.typography.fontFamily,
   },
   codeRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginBottom: spacing.md,
   },
   codeBox: {
+    ...typography.h2,
     width: 48,
     height: 56,
-    borderRadius: borderRadius.sm + 2,
+    borderRadius: radius.sm + 2,
     borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: colors.white,
-    fontSize: 22,
-    fontWeight: '700',
+    backgroundColor: colors.surface,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   codeBoxFilled: {
     borderColor: colors.secondary,
@@ -358,73 +350,65 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
   },
   errorText: {
+    ...typography.bodyMd,
     color: colors.danger,
-    fontSize: THEME.typography.bodyMd.fontSize,
     marginBottom: spacing.md,
-    fontFamily: THEME.typography.fontFamily,
   },
   buttonContainer: {
     width: '100%',
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
   },
   confirmationCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md + 4,
-    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg + 4,
+    padding: spacing.xl,
     alignItems: 'center',
     width: '100%',
     marginTop: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    ...shadows.card,
+    ...shadows.sm,
   },
   companyBadge: {
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: colors.primary + '0C',
+    backgroundColor: colors.actionGreen + '0C',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.sm + 4,
+    marginBottom: spacing.xs + 4,
   },
   companyBadgeText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.primary,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.h2,
+    color: colors.actionGreen,
   },
   confirmationName: {
-    fontSize: THEME.typography.h2.fontSize,
-    fontWeight: '600',
+    ...typography.h2,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
-    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.xxs,
   },
   confirmationMeta: {
-    fontSize: THEME.typography.bodyMd.fontSize,
+    ...typography.bodyMd,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    fontFamily: THEME.typography.fontFamily,
+    marginBottom: spacing.xs,
   },
   roleBadge: {
-    backgroundColor: colors.primary + '0A',
+    backgroundColor: colors.actionGreen + '0A',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.xxs + 2,
     borderRadius: 8,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.primary + '15',
+    borderColor: colors.actionGreen + '15',
   },
   roleBadgeText: {
-    fontSize: THEME.typography.bodyMd.fontSize,
-    color: colors.primary,
-    fontWeight: '500',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.bodyMd,
+    color: colors.actionGreen,
   },
   confirmationButtons: {
     flexDirection: 'row',
-    marginTop: spacing.sm,
-  },
+    marginTop: spacing.xs,
+  }
 });
 
 export default JoinCompanyScreen;

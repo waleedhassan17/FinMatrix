@@ -13,7 +13,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
+  TouchableOpacity
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import Toast from 'react-native-toast-message';
@@ -22,12 +22,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
-  adjustStock,
+  adjustStock
 } from '../InventoryList/inventoryListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
@@ -37,10 +36,13 @@ import {
   ADJUSTMENT_REASONS,
   previewAdjustmentPosting,
   reasonHint,
-  type AdjustmentReason,
+  type AdjustmentReason
 } from '../../../models/adjustmentModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type AdjRoute = RouteProp<InventoryStackParamList, 'Adjustment'>;
 type Nav = NativeStackNavigationProp<InventoryStackParamList>;
@@ -143,7 +145,7 @@ const AdjustmentScreen: React.FC = () => {
           itemId: selectedItemId,
           newQty,
           reason: reason as AdjustmentReason,
-          notes: notes.trim() || undefined,
+          notes: notes.trim() || undefined
         }),
       ).unwrap();
 
@@ -158,7 +160,7 @@ const AdjustmentScreen: React.FC = () => {
         // adjustment moves stock and nothing else; the user already agreed to
         // that in the confirmation, so this just keeps the wording honest.
         text1: adjustment?.journalEntryId ? 'Adjustment posted' : 'Stock adjusted',
-        text2: `${selectedItem!.name}: ${currentQty} → ${newQty} (${variance > 0 ? '+' : ''}${variance})`,
+        text2: `${selectedItem!.name}: ${currentQty} → ${newQty} (${variance > 0 ? '+' : ''}${variance})`
       });
       navigation.goBack();
     } catch (e: any) {
@@ -292,7 +294,7 @@ const AdjustmentScreen: React.FC = () => {
           {selectedItem && hasEntry && variance !== 0 && newQty >= 0 && (
             <View style={styles.resultRow}>
               <Text style={styles.resultQty}>{currentQty}</Text>
-              <Feather name="arrow-right" size={16} color={colors.textLight} />
+              <Feather name="arrow-right" size={16} color={colors.textTertiary} />
               <Text style={styles.resultQty}>{newQty}</Text>
               <View style={{ flex: 1 }} />
               <Text
@@ -409,20 +411,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   scroll: { flex: 1 },
-  scrollContent: { padding: spacing.lg },
+  scrollContent: { padding: spacing.xl },
 
   fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.labelMd,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
   },
   hint: {
-    fontSize: 12,
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
-    marginTop: -spacing.sm,
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: -spacing.xs,
     marginBottom: spacing.md,
     lineHeight: 17,
   },
@@ -431,32 +430,29 @@ const styles = StyleSheet.create({
   contextCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
     paddingVertical: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.small,
+    ...shadows.xs,
   },
   contextCol: { flex: 1, alignItems: 'center' },
   contextDivider: { width: StyleSheet.hairlineWidth, height: 28, backgroundColor: colors.border },
   contextValue: {
-    fontSize: 16,
-    fontWeight: '800',
+    ...typography.h4,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   contextLabel: {
-    fontSize: 11,
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.caption,
+    color: colors.textTertiary,
     marginTop: 2,
   },
 
   // ── Mode selector ─────────────────────────────────
   segmented: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
     padding: 3,
     marginBottom: spacing.md,
     borderWidth: 1,
@@ -464,129 +460,110 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     alignItems: 'center',
-    borderRadius: borderRadius.sm - 2,
+    borderRadius: radius.sm - 2,
   },
-  segmentActive: { backgroundColor: colors.primary },
+  segmentActive: { backgroundColor: colors.actionGreen },
   segmentText: {
-    fontSize: 13,
-    fontWeight: '500',
+    ...typography.bodySm,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
-  segmentTextActive: { color: colors.white, fontWeight: '600' },
+  segmentTextActive: { color: colors.surface, fontWeight: typography.labelLg.fontWeight },
 
   // ── Result strip ──────────────────────────────────
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm + 4,
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs + 4,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.small,
+    ...shadows.xs,
   },
   resultQty: {
-    fontSize: 17,
-    fontWeight: '700',
+    ...typography.h4,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
-  resultDelta: { fontSize: 20, fontWeight: '800', fontFamily: THEME.typography.fontFamily },
+  resultDelta: { ...typography.h3 },
 
   // ── Journal entry preview ─────────────────────────
   jeCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.primary + '25',
+    borderColor: colors.actionGreen + '25',
   },
   jeHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   jeTitle: {
-    fontSize: 12,
-    fontWeight: '700',
+    ...typography.labelSm,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
     textTransform: 'uppercase',
   },
   jeValue: {
-    fontSize: 15,
-    fontWeight: '800',
+    ...typography.labelLg,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   jeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.xxs + 2,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
   jeSide: {
+    ...typography.labelSm,
     width: 24,
-    fontSize: 12,
-    fontWeight: '700',
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   jeAcctNo: {
+    ...typography.labelSm,
     width: 42,
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
+    color: colors.textTertiary,
   },
   jeAcctName: {
+    ...typography.caption,
     flex: 1,
-    fontSize: 12,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   jeAmount: {
-    fontSize: 12,
-    fontWeight: '700',
+    ...typography.labelSm,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
     textAlign: 'right',
   },
   jeFoot: {
-    fontSize: 11,
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
-    marginTop: spacing.sm,
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: spacing.xs,
     lineHeight: 16,
   },
 
   // ── Zero-cost warning ─────────────────────────────
   warnCard: {
     backgroundColor: colors.warning + '10',
-    borderRadius: borderRadius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.warning + '40',
   },
-  warnHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xs },
+  warnHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, marginBottom: spacing.xxs },
   warnTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    ...typography.labelMd,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   warnBody: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
     lineHeight: 18,
   },
 
@@ -594,18 +571,18 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm + 2,
-    paddingBottom: spacing.sm + 2,
-    backgroundColor: colors.white,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xs + 2,
+    paddingBottom: spacing.xs + 2,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   // The commit action carries more weight than the escape hatch, which the
   // header's back arrow already duplicates.
   footerCancel: { flex: 1 },
-  footerPrimary: { flex: 1.7 },
+  footerPrimary: { flex: 1.7 }
 });
 
 export default AdjustmentScreen;

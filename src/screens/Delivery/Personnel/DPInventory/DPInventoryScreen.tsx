@@ -8,13 +8,13 @@ import {
   selectInventoryUpdateRequests,
   selectDeliveryPersonnel,
   selectShadowInventory,
-  fetchShadowInventory,
+  fetchShadowInventory
 } from '../../Admin/AssignDeliveries/deliverySlice';
 import {
   selectDPInventoryUI,
   setInventorySearchTerm,
   setInventorySortBy,
-  setInventoryCategory,
+  setInventoryCategory
 } from './dpInventorySlice';
 import type { DPInventoryStackParamList } from '../../../../navigators/stacks/DPInventoryStack';
 import { Feather } from '@expo/vector-icons';
@@ -32,7 +32,7 @@ const SORT_OPTIONS = [
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
   synced: { color: THEME.colors.success, bg: THEME.colors.successLight, icon: 'check' },
   pending: { color: THEME.colors.warning, bg: THEME.colors.warningLight, icon: 'clock' },
-  rejected: { color: THEME.colors.danger, bg: THEME.colors.dangerLight, icon: 'x' },
+  rejected: { color: THEME.colors.danger, bg: THEME.colors.dangerLight, icon: 'x' }
 };
 
 const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
@@ -70,7 +70,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
         originalQty: item.quantity,
         currentQty: item.quantity,
         status: deriveStatus(item.itemId, item.personnelId),
-        changesToday: [] as Array<{ id: string; delta: number; reason: string; timestamp: string }>,
+        changesToday: [] as Array<{ id: string; delta: number; reason: string; timestamp: string }>
       }));
 
     if (searchTerm.trim()) {
@@ -103,7 +103,7 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
     synced: items.filter(i => i.status === 'synced').length,
     pending: items.filter(i => i.status === 'pending').length,
     rejected: items.filter(i => i.status === 'rejected').length,
-    totalQty: items.reduce((sum, i) => sum + i.currentQty, 0),
+    totalQty: items.reduce((sum, i) => sum + i.currentQty, 0)
   }), [items]);
 
   return (
@@ -377,12 +377,11 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.full,
   },
   shadowBtnIcon: {
-    fontSize: THEME.typography.bodyMd.fontSize,
+    ...THEME.typography.bodyMd,
     marginRight: 6,
   },
   shadowBtnText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
+    ...THEME.typography.labelMd,
     color: DP_BRAND.white,
   },
 
@@ -417,7 +416,7 @@ const styles = StyleSheet.create({
   },
   statCardSecondary: {
     backgroundColor: THEME.colors.secondaryLight,
-    borderColor: '#E2D7FB',
+    borderColor: THEME.colors.infoLight,
   },
   statIconWrap: {
     width: 44,
@@ -430,7 +429,8 @@ const styles = StyleSheet.create({
     ...THEME.shadows.xs,
   },
   statIcon: {
-    fontSize: THEME.typography.h2.fontSize,
+    ...THEME.typography.h2,
+    
   },
   statInfo: {},
   statValue: {
@@ -438,8 +438,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.textPrimary,
   },
   statLabel: {
-    ...THEME.typography.labelSm,
-    fontWeight: '400',
+    ...THEME.typography.caption,
     color: THEME.colors.textSecondary,
     marginTop: 2,
   },
@@ -461,11 +460,10 @@ const styles = StyleSheet.create({
   },
   miniStatValue: {
     ...THEME.typography.h3,
-    fontWeight: '700',
+    
   },
   miniStatLabel: {
-    ...THEME.typography.labelSm,
-    fontWeight: '400',
+    ...THEME.typography.caption,
     color: THEME.colors.textSecondary,
     marginTop: 2,
   },
@@ -494,7 +492,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   searchIconText: {
-    fontSize: THEME.typography.bodyMd.fontSize,
+    ...THEME.typography.bodyMd,
+    
   },
   searchInput: {
     flex: 1,
@@ -534,7 +533,7 @@ const styles = StyleSheet.create({
     borderColor: DP_BRAND.primary,
   },
   sortChipIcon: {
-    fontSize: THEME.typography.overline.fontSize,
+    ...THEME.typography.caption,
     marginRight: 4,
   },
   sortChipText: {
@@ -543,7 +542,7 @@ const styles = StyleSheet.create({
   },
   sortChipTextActive: {
     color: THEME.colors.textInverse,
-    fontWeight: '600',
+    fontWeight: THEME.typography.labelMd.fontWeight,
   },
 
   // Card
@@ -571,14 +570,14 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   cardIcon: {
-    fontSize: THEME.typography.h3.fontSize,
+    ...THEME.typography.h3,
+    
   },
   cardHeaderText: {
     flex: 1,
   },
   cardTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   cardSubtitle: {
@@ -614,7 +613,6 @@ const styles = StyleSheet.create({
   },
   itemName: {
     ...THEME.typography.h5,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
     flex: 1,
     marginRight: 8,
@@ -627,12 +625,11 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.sm,
   },
   itemBadgeIcon: {
-    fontSize: THEME.typography.overline.fontSize,
+    ...THEME.typography.caption,
     marginRight: 4,
   },
   itemBadgeText: {
     ...THEME.typography.overline,
-    fontWeight: '600',
     textTransform: 'capitalize',
   },
   itemDetails: {
@@ -645,22 +642,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   qtyLabel: {
-    ...THEME.typography.overline,
-    fontWeight: '400',
+    ...THEME.typography.caption,
     textTransform: undefined,
     color: THEME.colors.textTertiary,
     marginBottom: 2,
   },
   qtyValue: {
     ...THEME.typography.h3,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   qtyArrow: {
     paddingHorizontal: 12,
   },
   qtyArrowText: {
-    fontSize: THEME.typography.h4.fontSize,
+    ...THEME.typography.bodyLg,
     color: THEME.colors.textTertiary,
   },
   diffBadge: {
@@ -679,7 +674,7 @@ const styles = StyleSheet.create({
   },
   diffText: {
     ...THEME.typography.labelMd,
-    fontWeight: '700',
+    
   },
   diffTextPositive: {
     color: THEME.colors.success,
@@ -774,9 +769,8 @@ const styles = StyleSheet.create({
   },
   requestBadgeText: {
     ...THEME.typography.overline,
-    fontWeight: '600',
     textTransform: 'capitalize',
-  },
+  }
 });
 
 export default DPInventoryScreen;

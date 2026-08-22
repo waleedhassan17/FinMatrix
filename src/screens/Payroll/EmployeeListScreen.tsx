@@ -10,6 +10,9 @@ import { formatCurrency } from '../../utils/formatters';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 import { ReportContainer, ReportHeader, HeaderIconButton, HeaderAction, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
+
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
@@ -56,9 +59,9 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 10 },
   card: { backgroundColor: THEME.colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: THEME.colors.border },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardName: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: '700' },
+  cardName: { ...THEME.typography.bodyMd, color: THEME.colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   cardSub: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, marginTop: 3 },
-  cardPay: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '700', marginTop: 6 },
+  cardPay: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary, marginTop: 6 }
 });
 
 export default EmployeeListScreen;

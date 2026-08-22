@@ -27,10 +27,14 @@ import {
   selectSignUpConfirmPassword,
   selectSignUpAcceptedTerms,
   selectSignUpStatus,
-  selectSignUpError,
+  selectSignUpError
 } from './signUpSlice';
 import { validateSignUp } from '../../../models/authModel';
 import type { RootStackParamList, UserRole } from '../../../types';
+import { THEME } from '../../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, typography } = THEME;
 import {
   AuthLayout,
   AuthHeader,
@@ -39,7 +43,7 @@ import {
   AuthNotice,
   AuthChecklist,
   PasswordStrength,
-  AUTH,
+  AUTH
 } from '../../../components/auth/AuthUI';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
@@ -77,7 +81,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSignUp = async () => {
     dispatch(clearSignUpError());
     const validationErrors = validateSignUp({
-      fullName, email, phone, password, confirmPassword, acceptedTerms,
+      fullName, email, phone, password, confirmPassword, acceptedTerms
     });
     setErrors(validationErrors);
 
@@ -113,7 +117,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
     { label: 'At least 8 characters', met: password.length >= 8 },
     {
       label: 'An uppercase and a lowercase letter',
-      met: /[a-z]/.test(password) && /[A-Z]/.test(password),
+      met: /[a-z]/.test(password) && /[A-Z]/.test(password)
     },
     { label: 'At least one number', met: /\d/.test(password) },
   ];
@@ -227,7 +231,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
           accessibilityRole="checkbox"
           accessibilityState={{ checked: acceptedTerms }}>
           <View style={[s.checkbox, acceptedTerms && s.checkboxOn]}>
-            {acceptedTerms ? <Feather name="check" size={12} color="#FFFFFF" /> : null}
+            {acceptedTerms ? <Feather name="check" size={12} color={colors.neutral0} /> : null}
           </View>
           <Text style={s.termsText}>
             I agree to the <Text style={s.termsStrong}>Terms of Service</Text> and{' '}
@@ -272,16 +276,16 @@ const s = StyleSheet.create({
   },
   checkboxOn: { backgroundColor: AUTH.brand, borderColor: AUTH.brand },
   termsText: {
+    ...THEME.typography.bodySm,
     flex: 1,
     fontFamily: AUTH.font,
-    fontSize: 13.5,
     lineHeight: 21,
     color: AUTH.ink[500],
   },
-  termsStrong: { color: AUTH.ink[900], fontWeight: '700' },
+  termsStrong: { color: AUTH.ink[900], fontWeight: typography.labelLg.fontWeight },
   termsError: {
+    ...THEME.typography.caption,
     fontFamily: AUTH.font,
-    fontSize: 12,
     color: AUTH.status.error.fg,
     marginTop: AUTH.space.sm,
   },
@@ -292,13 +296,12 @@ const s = StyleSheet.create({
     flexWrap: 'wrap',
     marginTop: AUTH.space.xxl,
   },
-  bottomText: { fontFamily: AUTH.font, fontSize: 13.5, color: AUTH.ink[500] },
+  bottomText: { ...THEME.typography.bodySm, fontFamily: AUTH.font, color: AUTH.ink[500] },
   link: {
+    ...THEME.typography.h5,
     fontFamily: AUTH.font,
-    fontSize: 13.5,
-    fontWeight: '700',
     color: AUTH.brand,
-  },
+  }
 });
 
 export default SignUpScreen;

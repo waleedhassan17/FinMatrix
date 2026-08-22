@@ -12,18 +12,17 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
-  StatusBar,
+  StatusBar
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HEADER_NAVY,
-  HeaderAction,
+  HeaderAction
 } from '../../../components/reports/ReportUI';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -41,7 +40,7 @@ import {
   setStatusFilter,
   setSortField,
   type VendorStatusFilter,
-  type VendorSortField,
+  type VendorSortField
 } from './vendorListSlice';
 import EmptyState from '../../../components/shared/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
@@ -49,6 +48,9 @@ import { formatCurrency } from '../../../utils/formatters';
 import { PAYMENT_TERMS_LABELS } from '../../../models/vendorModel';
 import type { Vendor, PaymentTerms } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
@@ -143,20 +145,20 @@ const VendorListScreen: React.FC = () => {
     <TouchableOpacity
       style={[
         styles.card,
-        { borderLeftColor: vendor.isActive ? colors.success : colors.textLight, borderLeftWidth: 4 },
+        { borderLeftColor: vendor.isActive ? colors.success : colors.textTertiary, borderLeftWidth: 4 },
       ]}
       activeOpacity={0.7}
       onPress={() => navigation.navigate('VendorDetail', { vendorId: vendor.id })}
     >
       <View style={styles.cardHeader}>
-        <View style={{ flex: 1, marginRight: spacing.sm }}>
+        <View style={{ flex: 1, marginRight: spacing.xs }}>
           <Text style={styles.cardName} numberOfLines={1}>{vendor.name}</Text>
           {!!vendor.contactPerson && (
             <Text style={styles.cardContact} numberOfLines={1}>{vendor.contactPerson}</Text>
           )}
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: vendor.isActive ? colors.success + '18' : colors.textLight + '18' }]}>
-          <Text style={[styles.statusBadgeText, { color: vendor.isActive ? colors.success : colors.textLight }]}>
+        <View style={[styles.statusBadge, { backgroundColor: vendor.isActive ? colors.success + '18' : colors.textTertiary + '18' }]}>
+          <Text style={[styles.statusBadgeText, { color: vendor.isActive ? colors.success : colors.textTertiary }]}>
             {vendor.isActive ? 'Active' : 'Inactive'}
           </Text>
         </View>
@@ -201,13 +203,13 @@ const VendorListScreen: React.FC = () => {
       <LinearGradient colors={HEADER_NAVY} style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-            <Feather name="arrow-left" size={24} color="#FFFFFF" />
+            <Feather name="arrow-left" size={24} color={colors.neutral0} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Vendors</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.searchToggle}>
-            <Feather name="search" size={18} color="#FFFFFF" />
+            <Feather name="search" size={18} color={colors.neutral0} />
           </TouchableOpacity>
           <HeaderAction label="New" onPress={() => navigation.navigate('VendorForm')} />
         </View>
@@ -224,7 +226,7 @@ const VendorListScreen: React.FC = () => {
           <Text style={styles.summaryLabel}>Active</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, { fontSize: 14 }]}>{formatCurrency(totalOwed, 'Rs ')}</Text>
+          <Text style={[styles.summaryValue, typography.h5]}>{formatCurrency(totalOwed, 'Rs ')}</Text>
           <Text style={styles.summaryLabel}>Total Owed</Text>
         </View>
       </View>
@@ -237,7 +239,7 @@ const VendorListScreen: React.FC = () => {
             value={searchQuery}
             onChangeText={v => dispatch(setSearchQuery(v))}
             placeholder="Search by name, contact, email, phone…"
-            placeholderTextColor={colors.textLight}
+            placeholderTextColor={colors.textTertiary}
             autoFocus
           />
         </View>
@@ -277,7 +279,7 @@ const VendorListScreen: React.FC = () => {
       {/* List */}
       {isLoading && vendors.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.actionGreen} />
         </View>
       ) : error && vendors.length === 0 ? (
         <View style={styles.center}>
@@ -308,11 +310,11 @@ const VendorListScreen: React.FC = () => {
           onEndReachedThreshold={0.4}
           ListFooterComponent={
             isLoadingMore ? (
-              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.md }} />
+              <ActivityIndicator size="small" color={colors.actionGreen} style={{ marginVertical: spacing.md }} />
             ) : null
           }
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.actionGreen]} />
           }
         />
       )}
@@ -334,48 +336,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.md,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
   headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { ...THEME.typography.h2, color: '#FFFFFF' },
-  searchToggle: { padding: spacing.xs },
-  searchToggleIcon: { fontSize: 18 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  backBtn: { marginRight: spacing.xxs, padding: spacing.xxs / 2 },
+  backIcon: { ...typography.h1, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
+  headerTitle: { ...THEME.typography.h2, color: colors.neutral0 },
+  searchToggle: { padding: spacing.xxs },
+  searchToggleIcon: { ...typography.h3 },
 
   // ── Summary ────────────────────────────────────
   summaryRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm + 4,
-    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs + 4,
+    paddingHorizontal: spacing.xs,
     alignItems: 'center',
-    ...shadows.small,
+    ...shadows.xs,
   },
-  summaryValue: { ...THEME.typography.h3, color: colors.primary },
-  summaryLabel: { ...THEME.typography.labelSm, fontWeight: '400', color: colors.textSecondary, marginTop: 2 },
+  summaryValue: { ...THEME.typography.h3, color: colors.actionGreen },
+  summaryLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
 
   // ── Search ─────────────────────────────────────
-  searchRow: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  searchRow: { paddingHorizontal: spacing.xl, marginBottom: spacing.xs },
   searchInput: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
     ...THEME.typography.bodyMd,
     color: colors.textPrimary,
   },
@@ -384,27 +386,27 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    gap: spacing.xs + 2,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.xs,
+    gap: spacing.xxs + 2,
   },
   chip: {
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.xs + 4,
+    paddingVertical: spacing.xxs + 2,
     borderRadius: 20,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipActive: { backgroundColor: colors.actionGreen, borderColor: colors.actionGreen },
   chipText: { ...THEME.typography.labelMd, color: colors.textSecondary },
-  chipTextActive: { color: colors.white },
+  chipTextActive: { color: colors.surface },
   filterSpacer: { flex: 1 },
   sortChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xxs + 2,
     borderRadius: 20,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -413,35 +415,35 @@ const styles = StyleSheet.create({
   sortChipTextActive: { color: colors.secondary },
 
   // ── Cards ──────────────────────────────────────
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: 80 },
+  listContent: { paddingHorizontal: spacing.xl, paddingBottom: 80 },
   card: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     borderWidth: 1,
     borderColor: colors.border,
-    ...shadows.small,
+    ...shadows.xs,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
-  cardName: { ...THEME.typography.h4, fontWeight: '700', color: colors.textPrimary },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.xs },
+  cardName: { ...THEME.typography.h4,  color: colors.textPrimary },
   cardContact: { ...THEME.typography.bodySm, color: colors.textSecondary, marginTop: 2 },
-  statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  statusBadgeText: { ...THEME.typography.labelSm, fontWeight: '700' },
+  statusBadge: { paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs, borderRadius: 6 },
+  statusBadgeText: { ...THEME.typography.labelSm, fontWeight: typography.labelLg.fontWeight },
 
-  cardBody: { marginBottom: spacing.sm, gap: spacing.xs },
+  cardBody: { marginBottom: spacing.xs, gap: spacing.xxs },
   cardInfoRow: { flexDirection: 'row', alignItems: 'center' },
-  cardInfoIcon: { fontSize: 12, marginRight: spacing.xs + 2 },
+  cardInfoIcon: { ...typography.caption, marginRight: spacing.xxs + 2 },
   cardInfoText: { ...THEME.typography.bodySm, color: colors.textSecondary, flex: 1 },
 
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
-  cardFooterLabel: { ...THEME.typography.labelSm, fontWeight: '400', color: colors.textLight },
-  cardFooterValue: { ...THEME.typography.h4, fontWeight: '700' },
-  cardTerms: { ...THEME.typography.bodySm, fontWeight: '600', color: colors.textSecondary },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.xs },
+  cardFooterLabel: { ...typography.caption, color: colors.textTertiary },
+  cardFooterValue: { ...THEME.typography.h4, fontWeight: typography.labelLg.fontWeight },
+  cardTerms: { ...THEME.typography.labelMd,  color: colors.textSecondary },
 
   // ── Empty / Loading ────────────────────────────
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
+  emptyIcon: { ...typography.displayLg, marginBottom: spacing.xs },
   emptyText: { ...THEME.typography.bodyLg, color: colors.textSecondary },
 
   // ── FAB ────────────────────────────────────────

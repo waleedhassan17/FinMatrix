@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   Animated,
   ActivityIndicator,
-  StatusBar,
+  StatusBar
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,36 +31,39 @@ import {
   AuthHeader,
   AuthFooterBar,
   AuthOptionCard,
-  AUTH,
+  AUTH
 } from '../../../components/auth/AuthUI';
 import {
   WAREHOUSE_ONLY_BUILD,
-  DEFAULT_COMPANY_TYPE,
+  DEFAULT_COMPANY_TYPE
 } from '../../../utils/featureGates';
 import { THEME } from '../../../utils/theme';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
+
 // ── Design tokens ─────────────────────────────────────
 const DS = {
-  navy: '#091E42',
-  primary: '#059669',
-  primaryDark: '#047857',
-  green: '#00875A',
-  amber: '#FF991F',
-  purple: '#6554C0',
-  bg: '#F4F5F7',
-  surface: '#FFFFFF',
-  border: '#DFE1E6',
-  text: { h: '#172B4D', sub: '#5E6C84', muted: '#8993A4', inv: '#FFFFFF' },
-  radius: { sm: 8, md: 12, lg: 16, xl: 20 },
+  navy: colors.neutral900,
+  primary: colors.actionGreen,
+  primaryDark: colors.actionGreenDark,
+  green: colors.actionGreenDark,
+  amber: colors.warning,
+  purple: colors.secondary,
+  bg: colors.background,
+  surface: colors.neutral0,
+  border: colors.neutral200,
+  text: { h: colors.textPrimary, sub: colors.neutral500, muted: colors.textTertiary, inv: colors.neutral0 },
+  radius: { sm: 8, md: 12, lg: 16, xl: 20 }
 };
 
 const PLAN_COLORS: Record<string, { gradient: [string, string]; badge: string; accent: string }> = {
-  Free:         { gradient: ['#FAFBFC', '#EBECF0'],   badge: '#5E6C84', accent: '#344563' },
-  Standard:     { gradient: ['#ECFDF5', '#D1FAE5'],   badge: '#059669', accent: '#047857' },
-  Pro:          { gradient: ['#EAE6FF', '#C0B6F2'],   badge: '#6554C0', accent: '#5243AA' },
-  Starter:      { gradient: ['#ECFDF5', '#D1FAE5'],   badge: '#059669', accent: '#047857' },
-  Professional: { gradient: ['#ECFDF5', '#A7F3D0'],   badge: '#047857', accent: '#065F46' },
-  Enterprise:   { gradient: ['#EAE6FF', '#C0B6F2'],   badge: '#6554C0', accent: '#5243AA' },
+  Free:         { gradient: [colors.neutral25, colors.border],   badge: colors.neutral500, accent: colors.neutral700 },
+  Standard:     { gradient: [colors.actionGreenLighter, colors.successLight],   badge: colors.actionGreen, accent: colors.actionGreenDark },
+  Pro:          { gradient: [colors.secondaryLight, colors.secondaryLight],   badge: colors.secondary, accent: colors.secondary },
+  Starter:      { gradient: [colors.actionGreenLighter, colors.successLight],   badge: colors.actionGreen, accent: colors.actionGreenDark },
+  Professional: { gradient: [colors.actionGreenLighter, colors.successLight],   badge: colors.actionGreenDark, accent: colors.primaryDark },
+  Enterprise:   { gradient: [colors.secondaryLight, colors.secondaryLight],   badge: colors.secondary, accent: colors.secondary }
 };
 
 interface Plan {
@@ -84,9 +87,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SubscriptionSelect'>;
 
 // Gradient per tier — matches the Super-Admin Subscription Plans card style.
 const PLAN_GRADIENTS: Record<string, [string, string]> = {
-  Free: ['#42526E', '#253858'],
-  Standard: ['#00875A', '#006644'],
-  Pro: ['#6554C0', '#5243AA'],
+  Free: [colors.neutral600, colors.neutral700],
+  Standard: [colors.actionGreenDark, colors.successHover],
+  Pro: [colors.secondary, colors.secondary]
 };
 
 // ── Plan Card (same UI/UX as Super-Admin Subscription Plans) ──
@@ -122,7 +125,7 @@ const PlanCard: React.FC<{
             ) : isPopular ? (
               <View style={S.tagBadge}><Text style={S.tagBadgeText}>Popular</Text></View>
             ) : selected ? (
-              <Feather name="check-circle" size={22} color="#FFF" />
+              <Feather name="check-circle" size={22} color={colors.neutral0} />
             ) : (
               <Feather name="circle" size={22} color="rgba(255,255,255,0.7)" />
             )}
@@ -175,7 +178,7 @@ const PlanCard: React.FC<{
               </View>
             ) : selected ? (
               <View style={S.footerSelected}>
-                <Feather name="check" size={14} color="#FFF" />
+                <Feather name="check" size={14} color={colors.neutral0} />
                 <Text style={S.footerSelectedText}>Selected</Text>
               </View>
             ) : (
@@ -199,7 +202,7 @@ const PlanCard: React.FC<{
 const RUNG_META: Record<number, { name: string; tagline: string }> = {
   3: { name: 'Starter', tagline: 'For a small delivery team finding its feet' },
   5: { name: 'Growth', tagline: 'For a growing operation running daily routes' },
-  10: { name: 'Scale', tagline: 'For a full fleet with high delivery volume' },
+  10: { name: 'Scale', tagline: 'For a full fleet with high delivery volume' }
 };
 const rungName = (limit: number) => RUNG_META[limit]?.name ?? `Up to ${limit}`;
 const rungTagline = (limit: number) =>
@@ -208,7 +211,7 @@ const rungTagline = (limit: number) =>
 const TIER_TITLES: Record<string, string> = {
   small_business: 'Small Business',
   large_org: 'Large Organization',
-  warehouse: 'Warehouse',
+  warehouse: 'Warehouse'
 };
 
 /** "12 months" reads as a count; "1 year" reads as a plan. */
@@ -230,7 +233,7 @@ const TierCard: React.FC<{
       <View style={[S.tierCard, selected && S.tierCardSelected]}>
         {isLonger ? (
           <View style={S.saveBadge}>
-            <Feather name="zap" size={10} color="#FFF" />
+            <Feather name="zap" size={10} color={colors.neutral0} />
             <Text style={S.saveBadgeText}>Save {plan.monthlySavingsLabel}</Text>
           </View>
         ) : (
@@ -245,7 +248,7 @@ const TierCard: React.FC<{
           {plan.totalLabel} billed once{'\n'}for {durationLabel}
         </Text>
         <View style={[S.tierSelect, selected && S.tierSelectOn]}>
-          <Feather name={selected ? 'check-circle' : 'circle'} size={15} color={selected ? '#FFF' : DS.text.muted} />
+          <Feather name={selected ? 'check-circle' : 'circle'} size={15} color={selected ? colors.neutral0 : DS.text.muted} />
           <Text style={[S.tierSelectText, selected && S.tierSelectTextOn]}>
             {selected ? 'Selected' : 'Select'}
           </Text>
@@ -618,7 +621,7 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress: companyType ? handleTierPrimary : handleContinue,
           loading: submitting,
           loadingLabel: 'Setting up',
-          disabled: !!companyType && (tierStep === 'tier' ? !selectedLimit : !selectedTierKey),
+          disabled: !!companyType && (tierStep === 'tier' ? !selectedLimit : !selectedTierKey)
         }}
         secondary={
           companyType && tierStep === 'period'
@@ -641,43 +644,45 @@ const S = StyleSheet.create({
   header: { position: 'relative', overflow: 'hidden' },
   orbTR: {
     position: 'absolute', width: 200, height: 200, borderRadius: 100,
-    top: -70, right: -60, backgroundColor: 'rgba(99,102,241,0.12)',
+    top: -70, right: -60, backgroundColor: 'rgba(99,102,241,0.12)'
   },
   orbBL: {
     position: 'absolute', width: 140, height: 140, borderRadius: 70,
-    bottom: -40, left: -40, backgroundColor: 'rgba(16,185,129,0.08)',
+    bottom: -40, left: -40, backgroundColor: 'rgba(16,185,129,0.08)'
   },
   headerContent: { paddingHorizontal: 24, paddingBottom: 36, paddingTop: 12 },
   logoRow: { marginBottom: 20 },
-  brand: { fontSize: 22, fontWeight: '800', fontFamily: THEME.typography.fontFamily },
+  brand: { ...THEME.typography.h2 },
   headerTitle: {
-    fontSize: 28, fontWeight: '800', color: DS.text.inv, letterSpacing: -0.5,
-    fontFamily: THEME.typography.fontFamily, marginBottom: 10,
+    ...THEME.typography.h1,
+    color: DS.text.inv, letterSpacing: -0.5,
+    marginBottom: 10
   },
   headerSub: {
-    fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 22,
-    fontFamily: THEME.typography.fontFamily, marginBottom: 16,
+    ...THEME.typography.bodySm,
+    color: 'rgba(255,255,255,0.6)', lineHeight: 22,
+    marginBottom: 16
   },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20
   },
-  pillText: { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '500' },
+  pillText: { ...THEME.typography.overline, color: 'rgba(255,255,255,0.7)' },
 
   // Content
   content: { padding: 16, gap: 12 },
   loaderWrap: { alignItems: 'center', paddingVertical: 40, gap: 12 },
-  loadingText: { fontSize: 14, color: DS.text.sub },
+  loadingText: { ...THEME.typography.bodySm, color: DS.text.sub },
 
   // Plan Card
   // ── Plan card (matches Super-Admin Subscription Plans) ──
   planCard: {
     backgroundColor: DS.surface, borderRadius: 16, overflow: 'hidden',
     borderWidth: 1.5, borderColor: DS.border,
-    shadowColor: '#0052CC', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+    shadowColor: colors.info, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3
   },
   planCardSelected: { borderColor: DS.primary, borderWidth: 2.5 },
   planCardInactive: { opacity: 0.65 },
@@ -685,44 +690,44 @@ const S = StyleSheet.create({
   planDecor: {
     position: 'absolute', right: -20, top: -20,
     width: 100, height: 100, borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.1)'
   },
   planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  planName: { fontSize: 20, fontWeight: '800', color: '#FFF', fontFamily: THEME.typography.fontFamily },
+  planName: { ...THEME.typography.h3, color: colors.neutral0 },
   tagBadge: {
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.25)'
   },
-  tagBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
-  planDesc: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4, lineHeight: 17 },
+  tagBadgeText: { ...THEME.typography.overline, color: colors.neutral0 },
+  planDesc: { ...THEME.typography.caption, color: 'rgba(255,255,255,0.85)', marginTop: 4, lineHeight: 17 },
   planPriceRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 14, gap: 6 },
-  planPrice: { fontSize: 22, fontWeight: '800', color: '#FFF' },
-  planPriceFreq: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 3 },
+  planPrice: { ...THEME.typography.h2, color: colors.neutral0 },
+  planPriceFreq: { ...THEME.typography.bodySm, color: 'rgba(255,255,255,0.75)', marginBottom: 3 },
 
   planBody: { padding: 14 },
   planMetaRow: { flexDirection: 'row', gap: 16, marginBottom: 10, flexWrap: 'wrap' },
   planMeta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  planMetaText: { fontSize: 12, color: DS.text.sub },
+  planMetaText: { ...THEME.typography.caption, color: DS.text.sub },
   featuresList: { gap: 5, marginBottom: 12 },
   featureItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  featureText: { fontSize: 12, color: '#172B4D', fontFamily: THEME.typography.fontFamily },
+  featureText: { ...THEME.typography.caption, color: colors.textPrimary },
 
   planFooter: { borderTopWidth: 1, borderTopColor: DS.border, paddingTop: 12 },
   footerSelect: {
     alignItems: 'center', paddingVertical: 9, borderRadius: 8,
-    backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: '#C7D2FE',
+    backgroundColor: colors.infoLight, borderWidth: 1, borderColor: colors.infoLight
   },
-  footerSelectText: { fontSize: 13, fontWeight: '700', color: DS.primary },
+  footerSelectText: { ...THEME.typography.labelMd, color: DS.primary },
   footerSelected: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: 9, borderRadius: 8, backgroundColor: DS.primary,
+    paddingVertical: 9, borderRadius: 8, backgroundColor: DS.primary
   },
-  footerSelectedText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+  footerSelectedText: { ...THEME.typography.labelMd, color: colors.neutral0 },
   footerDisabled: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: 9, borderRadius: 8, backgroundColor: '#F1F5F9',
+    paddingVertical: 9, borderRadius: 8, backgroundColor: colors.neutral100
   },
-  footerDisabledText: { fontSize: 13, fontWeight: '600', color: DS.text.muted },
+  footerDisabledText: { ...THEME.typography.labelMd, color: DS.text.muted },
 
   // CTA
   ctaSection: { marginTop: 8, gap: 10 },
@@ -730,80 +735,81 @@ const S = StyleSheet.create({
     height: 54, borderRadius: DS.radius.lg,
     backgroundColor: DS.primary, justifyContent: 'center', alignItems: 'center',
     shadowColor: DS.primary, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
+    shadowOpacity: 0.3, shadowRadius: 10, elevation: 6
   },
   ctaDisabled: { opacity: 0.7 },
   ctaRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   ctaLabel: {
-    fontSize: 16, fontWeight: '700', color: '#FFF',
-    fontFamily: THEME.typography.fontFamily, letterSpacing: 0.3,
+    ...THEME.typography.h4,
+    color: colors.neutral0,
+    letterSpacing: 0.3
   },
   skipBtn: { alignItems: 'center', paddingVertical: 10 },
   skipText: {
-    fontSize: 14, color: DS.text.muted,
-    fontFamily: THEME.typography.fontFamily, fontWeight: '500',
+    ...THEME.typography.h5,
+    color: DS.text.muted
   },
 
   // ── Tier plan cards (three-tier model) ──
   tierHeading: {
-    fontSize: 15, fontWeight: '700', color: DS.text.h,
-    fontFamily: THEME.typography.fontFamily, marginBottom: 2,
+    ...THEME.typography.labelLg,
+    color: DS.text.h,
+    marginBottom: 2
   },
   tierRow: { flexDirection: 'row', gap: 12 },
   tierSubheading: {
-    fontFamily: THEME.typography.fontFamily,
-    fontSize: 13.5,
+    ...THEME.typography.bodySm,
     lineHeight: 20,
     color: DS.text.sub,
     marginTop: -6,
-    marginBottom: 16,
+    marginBottom: 16
   },
   rungBlock: { marginBottom: 18 },
   rungHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 9 },
   rungTitle: {
-    fontFamily: THEME.typography.fontFamily,
-    fontSize: 13,
-    fontWeight: '700',
+    ...THEME.typography.labelMd,
     color: DS.text.h,
-    letterSpacing: 0.2,
+    letterSpacing: 0.2
   },
   tierCard: {
     backgroundColor: DS.surface, borderRadius: 16, borderWidth: 1.5, borderColor: DS.border,
     padding: 14, alignItems: 'center',
-    shadowColor: '#0052CC', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+    shadowColor: colors.info, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3
   },
   tierCardSelected: { borderColor: DS.primary, borderWidth: 2.5 },
   saveBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: DS.amber, borderRadius: 10,
-    paddingHorizontal: 8, paddingVertical: 3, marginBottom: 8,
+    paddingHorizontal: 8, paddingVertical: 3, marginBottom: 8
   },
-  saveBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+  saveBadgeText: { ...THEME.typography.overline, color: colors.neutral0 },
   saveBadgeSpacer: { height: 19, marginBottom: 8 },
-  tierDuration: { fontSize: 13, fontWeight: '700', color: DS.text.sub },
+  tierDuration: { ...THEME.typography.labelMd, color: DS.text.sub },
   tierPriceRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 6 },
-  tierPrice: { fontSize: 24, fontWeight: '800', color: DS.text.h },
-  tierPriceUnit: { fontSize: 13, color: DS.text.muted, marginBottom: 3 },
+  tierPrice: { ...THEME.typography.displaySm, color: DS.text.h },
+  tierPriceUnit: { ...THEME.typography.bodySm, color: DS.text.muted, marginBottom: 3 },
   tierTotal: {
-    fontSize: 11, color: DS.text.muted, textAlign: 'center', lineHeight: 16, marginTop: 6,
+    ...THEME.typography.caption,
+    color: DS.text.muted, textAlign: 'center', lineHeight: 16, marginTop: 6
   },
   tierSelect: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     alignSelf: 'stretch', paddingVertical: 8, borderRadius: 8, marginTop: 12,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.neutral100
   },
   tierSelectOn: { backgroundColor: DS.primary },
-  tierSelectText: { fontSize: 12, fontWeight: '700', color: DS.text.sub },
-  tierSelectTextOn: { color: '#FFF' },
+  tierSelectText: { ...THEME.typography.labelSm, color: DS.text.sub },
+  tierSelectTextOn: { color: colors.neutral0 },
   tierNote: {
-    flexDirection: 'row', gap: 8, backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12,
+    flexDirection: 'row', gap: 8, backgroundColor: colors.actionGreenLighter, borderRadius: 10, padding: 12
   },
-  tierNoteText: { flex: 1, fontSize: 12, color: DS.text.sub, lineHeight: 18 },
+  tierNoteText: { ...THEME.typography.caption, flex: 1, color: DS.text.sub, lineHeight: 18 },
 
   legalText: {
-    fontSize: 10, color: DS.text.muted, textAlign: 'center',
-    lineHeight: 16, marginTop: 4, fontFamily: THEME.typography.fontFamily,
+    ...THEME.typography.overline,
+    color: DS.text.muted, textAlign: 'center',
+    lineHeight: 16, marginTop: 4
   },
 });
 

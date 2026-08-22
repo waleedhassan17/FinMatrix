@@ -11,7 +11,7 @@ import {
   Modal,
   Platform,
   RefreshControl,
-  Share,
+  Share
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,31 +19,33 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../../Custom-Components/CustomButton';
-import { colors, spacing, borderRadius } from '../../../../theme';
-import { THEME } from '../../../../utils/theme';
+import { THEME, statusStyle } from '../../../../utils/theme';
 import {
   getPersonnelDetailAPI,
   getDeliveriesAPI,
   updatePersonnelAPI,
   togglePersonnelAvailabilityAPI,
-  resetPersonnelPasswordAPI,
+  resetPersonnelPasswordAPI
 } from '../../../../networks/delivery/deliveryNetwork';
 import type { RootStackParamList } from '../../../../types';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
+
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryPersonnelDetail'>;
 
-const STATUS_COLORS: Record<string, string> = {
-  active: colors.success,
-  on_leave: '#9CA3AF',
-  inactive: '#9CA3AF',
-};
+// Availability states resolve through the app-wide status palette:
+// available/active are success, busy is warning, on_leave/inactive neutral.
+const STATUS_COLORS: Record<string, string> = new Proxy({}, {
+  get: (_, k: string) => statusStyle(k).fg
+}) as Record<string, string>;
 
 const VEHICLE_LABELS: Record<string, string> = {
   motorcycle: 'Motorcycle',
   bike: 'Bike',
   car: 'Car',
   van: 'Van',
-  truck: 'Truck',
+  truck: 'Truck'
 };
 
 const ACTIVE_STATUSES = ['pending', 'picked_up', 'in_transit', 'arrived'];
@@ -91,7 +93,7 @@ const mapProfile = (raw: any): RiderProfile => ({
   rating: toNum(raw?.rating),
   totalDeliveries: toNum(raw?.totalDeliveries),
   onTimeRate: toNum(raw?.onTimeRate),
-  currentLoad: toNum(raw?.currentLoad),
+  currentLoad: toNum(raw?.currentLoad)
 });
 
 const mapDelivery = (raw: any): RiderDelivery => ({
@@ -100,7 +102,7 @@ const mapDelivery = (raw: any): RiderDelivery => ({
   customerName: raw?.customerName ?? 'Customer',
   status: raw?.status ?? 'pending',
   itemCount: Array.isArray(raw?.items) ? raw.items.length : 0,
-  date: raw?.completedAt ?? raw?.scheduledDate ?? raw?.preferredDate ?? raw?.createdAt ?? '',
+  date: raw?.completedAt ?? raw?.scheduledDate ?? raw?.preferredDate ?? raw?.createdAt ?? ''
 });
 
 // Confirmations must be Modals in this app — Alert.alert button callbacks
@@ -172,7 +174,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
       <SafeAreaView style={styles.container}>
         <ScreenHeader onBack={() => navigation.goBack()} />
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.actionGreen} />
           <Text style={styles.emptyText}>Loading rider…</Text>
         </View>
       </SafeAreaView>
@@ -184,7 +186,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
       <SafeAreaView style={styles.container}>
         <ScreenHeader onBack={() => navigation.goBack()} />
         <View style={styles.centerContent}>
-          <Feather name="user-x" size={40} color={colors.textLight} />
+          <Feather name="user-x" size={40} color={colors.textTertiary} />
           <Text style={styles.emptyText}>{loadError || 'Personnel not found'}</Text>
           <CustomButton title="Retry" onPress={fetchAll} variant="primary" size="md" />
           <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="secondary" size="md" />
@@ -199,7 +201,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
   const isDeactivated = person.status === 'inactive';
   const statusColor = person.isAvailable && person.status === 'active'
     ? colors.success
-    : STATUS_COLORS[person.status] || '#9CA3AF';
+    : STATUS_COLORS[person.status] || colors.neutral400;
 
   const activeDeliveries = deliveries.filter(d => ACTIVE_STATUSES.includes(d.status));
   const completedDeliveries = deliveries.filter(d => !ACTIVE_STATUSES.includes(d.status) && d.status !== 'unassigned');
@@ -255,21 +257,21 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
       body: `Generate a new temporary password for ${person.displayName}? Their current password stops working immediately.`,
       cta: 'Reset Password',
       danger: false,
-      run: handleResetPassword,
+      run: handleResetPassword
     },
     deactivate: {
       title: 'Deactivate Rider',
       body: `${person.displayName} will no longer be able to sign in or receive deliveries. Their delivery records and history are kept.`,
       cta: 'Deactivate',
       danger: true,
-      run: () => handleSetStatus('inactive'),
+      run: () => handleSetStatus('inactive')
     },
     reactivate: {
       title: 'Reactivate Rider',
       body: `${person.displayName} will be able to sign in and receive deliveries again. Plan limits apply to active riders.`,
       cta: 'Reactivate',
       danger: false,
-      run: () => handleSetStatus('active'),
+      run: () => handleSetStatus('active')
     },
   };
 
@@ -278,10 +280,10 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
     in_transit: colors.secondary,
     arrived: colors.secondary,
     picked_up: colors.secondary,
-    pending: '#FF991F',
+    pending: colors.warning,
     failed: colors.danger,
-    cancelled: colors.textLight,
-    returned: '#FF991F',
+    cancelled: colors.textTertiary,
+    returned: colors.warning
   };
 
   return (
@@ -293,7 +295,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.actionGreen} />
         }
       >
         {/* Profile Card */}
@@ -327,7 +329,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
           <Text style={styles.sectionTitle}>Vehicle & Assignment</Text>
           <View style={styles.vehicleInfo}>
             <View style={styles.vehicleIconBox}>
-              <Feather name="truck" size={18} color={colors.primary} />
+              <Feather name="truck" size={18} color={colors.actionGreen} />
             </View>
             <View style={styles.vehicleDetails}>
               <Text style={styles.vehicleType}>
@@ -371,7 +373,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, {
                 width: `${Math.min(person.onTimeRate, 100)}%`,
-                backgroundColor: person.onTimeRate >= 90 ? colors.success : person.onTimeRate >= 70 ? '#FF991F' : colors.danger,
+                backgroundColor: person.onTimeRate >= 90 ? colors.success : person.onTimeRate >= 70 ? colors.warning : colors.danger
               }]} />
             </View>
           </View>
@@ -394,7 +396,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
         <View style={styles.sectionCard}>
           {deliveriesState === 'loading' && deliveries.length === 0 ? (
             <View style={styles.listStateBlock}>
-              <ActivityIndicator size="small" color={colors.primary} />
+              <ActivityIndicator size="small" color={colors.actionGreen} />
             </View>
           ) : deliveriesState === 'failed' && deliveries.length === 0 ? (
             <View style={styles.listStateBlock}>
@@ -407,7 +409,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
               if (rows.length === 0) {
                 return (
                   <View style={styles.listStateBlock}>
-                    <Feather name="inbox" size={24} color={colors.textLight} />
+                    <Feather name="inbox" size={24} color={colors.textTertiary} />
                     <Text style={styles.listStateText}>
                       {activeSection === 'assignments'
                         ? 'No active deliveries assigned right now.'
@@ -431,8 +433,8 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
                       {d.date ? ` · ${new Date(d.date).toLocaleDateString('en-PK', { month: 'short', day: 'numeric' })}` : ''}
                     </Text>
                   </View>
-                  <View style={[styles.deliveryStatusBadge, { backgroundColor: (deliveryStatusColors[d.status] || colors.textLight) + '10' }]}>
-                    <Text style={[styles.deliveryStatusText, { color: deliveryStatusColors[d.status] || colors.textLight }]}>
+                  <View style={[styles.deliveryStatusBadge, { backgroundColor: (deliveryStatusColors[d.status] || colors.textTertiary) + '10' }]}>
+                    <Text style={[styles.deliveryStatusText, { color: deliveryStatusColors[d.status] || colors.textTertiary }]}>
                       {d.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
                     </Text>
                   </View>
@@ -451,22 +453,22 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
                 label: 'Monitor Deliveries',
                 icon: 'activity' as const,
                 onPress: () => (navigation as any).navigate('DeliveryMonitor'),
-                color: '#2563EB',
-                disabled: false,
+                color: colors.info,
+                disabled: false
               },
               {
                 label: person.isAvailable ? 'Set Unavailable' : 'Set Available',
                 icon: (person.isAvailable ? 'pause-circle' : 'play-circle') as 'pause-circle' | 'play-circle',
                 onPress: handleToggleAvailability,
                 color: colors.secondary,
-                disabled: isActing || isDeactivated,
+                disabled: isActing || isDeactivated
               },
               {
                 label: 'Reset Password',
                 icon: 'key' as const,
                 onPress: () => setConfirm('reset'),
-                color: colors.primary,
-                disabled: isActing,
+                color: colors.actionGreen,
+                disabled: isActing
               },
               isDeactivated
                 ? {
@@ -474,14 +476,14 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
                     icon: 'user-check' as const,
                     onPress: () => setConfirm('reactivate'),
                     color: colors.success,
-                    disabled: isActing,
+                    disabled: isActing
                   }
                 : {
                     label: 'Deactivate',
                     icon: 'user-x' as const,
                     onPress: () => setConfirm('deactivate'),
                     color: colors.danger,
-                    disabled: isActing,
+                    disabled: isActing
                   },
             ].map((action, i) => (
               <TouchableOpacity
@@ -539,7 +541,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
       <Modal visible={tempCredentials !== null} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setTempCredentials(null)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Feather name="check-circle" size={28} color={colors.success} style={{ alignSelf: 'center', marginBottom: spacing.sm }} />
+            <Feather name="check-circle" size={28} color={colors.success} style={{ alignSelf: 'center', marginBottom: spacing.xs }} />
             <Text style={styles.modalTitle}>Password Reset</Text>
             <Text style={styles.modalBody}>Share these credentials with the rider securely. The temporary password is shown only once.</Text>
             <View style={styles.credsBox}>
@@ -554,7 +556,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
                 onPress={() => {
                   if (!tempCredentials) return;
                   Share.share({
-                    message: `FinMatrix rider login\nEmail: ${tempCredentials.email}\nTemporary password: ${tempCredentials.password}`,
+                    message: `FinMatrix rider login\nEmail: ${tempCredentials.email}\nTemporary password: ${tempCredentials.password}`
                   }).catch(() => { /* user cancelled */ });
                 }}
               />
@@ -581,11 +583,11 @@ const ScreenHeader: React.FC<{ onBack: () => void }> = ({ onBack }) => (
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg, gap: spacing.md },
-  emptyText: { fontSize: THEME.typography.bodyLg.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
+  centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, gap: spacing.md },
+  emptyText: { ...typography.bodyLg, color: colors.textSecondary, textAlign: 'center' },
   header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 4, backgroundColor: colors.white,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xs + 4, backgroundColor: colors.surface,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   backIconContainer: {
@@ -593,127 +595,131 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center',
   },
   headerTitle: {
-    flex: 1, textAlign: 'center', fontSize: THEME.typography.h3.fontSize, fontWeight: '600',
-    color: colors.textPrimary, fontFamily: THEME.typography.fontFamily,
+    ...typography.h3,
+    flex: 1, textAlign: 'center', color: colors.textPrimary,
   },
   headerSpacer: { width: 36 },
-  scrollContent: { padding: spacing.lg, paddingBottom: spacing.xl + 40 },
+  scrollContent: { padding: spacing.xl, paddingBottom: spacing.xxl + 40 },
 
   profileCard: {
-    backgroundColor: colors.white, borderRadius: borderRadius.md + 4, padding: spacing.lg,
+    backgroundColor: colors.surface, borderRadius: radius.lg + 4, padding: spacing.xl,
     alignItems: 'center', marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
   },
   largeAvatar: {
     width: 72, height: 72, borderRadius: 20, alignItems: 'center',
     justifyContent: 'center', marginBottom: spacing.md,
   },
-  largeAvatarText: { fontSize: 26, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
-  personName: { fontSize: 20, fontWeight: '600', color: colors.textPrimary, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
-  personEmail: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
-  personPhone: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.secondary, fontWeight: '500', marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
+  largeAvatarText: { ...typography.h1 },
+  personName: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.xxs },
+  personEmail: { ...typography.bodyMd, color: colors.textSecondary, marginBottom: spacing.xxs },
+  personPhone: { ...typography.bodyMd, color: colors.secondary, marginBottom: spacing.xs },
   profileStatusBadge: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs, borderRadius: 8, gap: 6,
+    paddingVertical: spacing.xxs, borderRadius: 8, gap: 6,
   },
   profileStatusDot: { width: 8, height: 8, borderRadius: 4 },
-  profileStatusText: { fontSize: THEME.typography.bodyMd.fontSize, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
+  profileStatusText: { ...typography.labelLg },
 
   sectionCard: {
-    backgroundColor: colors.white, borderRadius: borderRadius.md + 2, padding: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radius.lg + 2, padding: spacing.md,
     marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
   },
   sectionTitle: {
-    fontSize: THEME.typography.h3.fontSize, fontWeight: '600', color: colors.textPrimary,
-    marginBottom: spacing.md, fontFamily: THEME.typography.fontFamily,
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
   },
   vehicleInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
   vehicleIconBox: {
-    width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primary + '0A',
+    width: 44, height: 44, borderRadius: 12, backgroundColor: colors.actionGreen + '0A',
     justifyContent: 'center', alignItems: 'center', marginRight: spacing.md,
   },
   vehicleDetails: {},
-  vehicleType: { fontSize: THEME.typography.bodyLg.fontSize, fontWeight: '500', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  vehiclePlate: { fontSize: THEME.typography.bodyLg.fontSize, color: colors.textSecondary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
-  zonesRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  zoneTag: { backgroundColor: colors.secondary + '0C', paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs, borderRadius: 6 },
-  zoneTagText: { fontSize: THEME.typography.caption.fontSize, color: colors.secondary, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
+  vehicleType: { ...typography.bodyLg, color: colors.textPrimary },
+  vehiclePlate: { ...typography.h4, color: colors.textSecondary },
+  zonesRow: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
+  zoneTag: { backgroundColor: colors.secondary + '0C', paddingHorizontal: spacing.xs + 4, paddingVertical: spacing.xxs, borderRadius: 6 },
+  zoneTagText: { ...typography.labelSm, color: colors.secondary },
 
-  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
   metricItem: {
-    width: '47%', backgroundColor: colors.background, borderRadius: 8, padding: spacing.sm + 4,
+    width: '47%', backgroundColor: colors.background, borderRadius: 8, padding: spacing.xs + 4,
     alignItems: 'center', borderWidth: 1, borderColor: colors.border,
   },
-  metricNumber: { fontSize: 20, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  metricLabel: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily },
-  progressWrapper: { marginTop: spacing.xs },
-  progressLabel: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
+  metricNumber: { ...typography.h3, color: colors.actionGreen },
+  metricLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  progressWrapper: { marginTop: spacing.xxs },
+  progressLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xxs },
   progressTrack: { height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: 6, borderRadius: 3 },
 
   toggleRow: {
-    flexDirection: 'row', borderRadius: 10, backgroundColor: colors.white,
+    flexDirection: 'row', borderRadius: 10, backgroundColor: colors.surface,
     overflow: 'hidden', marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
   },
-  toggleBtn: { flex: 1, paddingVertical: spacing.sm + 4, alignItems: 'center' },
-  toggleActive: { backgroundColor: colors.primary + '08', borderBottomWidth: 2, borderBottomColor: colors.primary },
-  toggleText: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, fontWeight: '500', fontFamily: THEME.typography.fontFamily },
-  toggleTextActive: { color: colors.primary, fontWeight: '600' },
+  toggleBtn: { flex: 1, paddingVertical: spacing.xs + 4, alignItems: 'center' },
+  toggleActive: { backgroundColor: colors.actionGreen + '08', borderBottomWidth: 2, borderBottomColor: colors.actionGreen },
+  toggleText: { ...typography.bodyMd, color: colors.textSecondary },
+  toggleTextActive: { color: colors.actionGreen, fontWeight: typography.labelLg.fontWeight },
 
-  listStateBlock: { alignItems: 'center', paddingVertical: spacing.lg, gap: spacing.sm },
-  listStateText: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
+  listStateBlock: { alignItems: 'center', paddingVertical: spacing.xl, gap: spacing.xs },
+  listStateText: { ...typography.bodyMd, color: colors.textSecondary, textAlign: 'center' },
 
   deliveryRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingVertical: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   deliveryInfo: { flex: 1 },
-  deliveryCustomer: { fontSize: THEME.typography.bodyMd.fontSize, fontWeight: '500', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  deliveryTime: { fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily },
-  deliveryStatusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 6 },
-  deliveryStatusText: { fontSize: THEME.typography.caption.fontSize, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
+  deliveryCustomer: { ...typography.bodyMd, color: colors.textPrimary },
+  deliveryTime: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  deliveryStatusBadge: { paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: 6 },
+  deliveryStatusText: { ...typography.labelSm },
 
   actionsCard: {
-    backgroundColor: colors.white, borderRadius: borderRadius.md + 2, padding: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radius.lg + 2, padding: spacing.md,
     borderWidth: 1, borderColor: colors.border,
   },
-  actionsGrid: { flexDirection: 'row', gap: spacing.sm },
+  actionsGrid: { flexDirection: 'row', gap: spacing.xs },
   actionBtn: {
     flex: 1, backgroundColor: colors.background, borderRadius: 10, padding: spacing.md,
     alignItems: 'center', borderWidth: 1, borderColor: colors.border,
   },
   actionIconCircle: {
-    width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xs,
+    width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xxs,
   },
   actionLabel: {
-    fontSize: 11, color: colors.textPrimary, fontWeight: '500', textAlign: 'center', fontFamily: THEME.typography.fontFamily,
+    ...typography.caption, color: colors.textPrimary,  textAlign: 'center',
   },
   deactivatedNote: {
-    marginTop: spacing.md, fontSize: THEME.typography.caption.fontSize, color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily, lineHeight: 18,
+    ...typography.caption,
+    marginTop: spacing.md, color: colors.textSecondary,
+    lineHeight: 18,
   },
 
   modalBackdrop: {
     flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'center',
-    alignItems: 'center', padding: spacing.lg,
+    alignItems: 'center', padding: spacing.xl,
   },
   modalCard: {
-    backgroundColor: colors.white, borderRadius: borderRadius.md + 4, padding: spacing.lg,
+    backgroundColor: colors.surface, borderRadius: radius.lg + 4, padding: spacing.xl,
     width: '100%', maxWidth: 420,
   },
   modalTitle: {
-    fontSize: THEME.typography.h3.fontSize, fontWeight: '700', color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily, marginBottom: spacing.sm, textAlign: 'center',
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs, textAlign: 'center',
   },
   modalBody: {
-    fontSize: THEME.typography.bodyMd.fontSize, color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily, lineHeight: 20, textAlign: 'center',
+    ...typography.bodyMd,
+    color: colors.textSecondary,
+    lineHeight: 20, textAlign: 'center',
   },
-  modalActions: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, marginTop: spacing.lg },
+  modalActions: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xs, marginTop: spacing.xl },
   credsBox: {
     backgroundColor: colors.background, borderRadius: 10, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginTop: spacing.md, gap: spacing.xs,
+    padding: spacing.md, marginTop: spacing.md, gap: spacing.xxs,
   },
-  credsLine: { fontSize: THEME.typography.bodyMd.fontSize, color: colors.textPrimary, fontWeight: '600', fontFamily: THEME.typography.fontFamily },
+  credsLine: { ...typography.labelLg, color: colors.textPrimary }
 });
 
 export default DeliveryPersonnelDetailScreen;

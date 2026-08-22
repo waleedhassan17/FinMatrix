@@ -7,17 +7,15 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchSalesOrders, selectSalesOrderState, setSalesOrderStatusFilter, type SalesOrderStatusFilter } from './salesOrderSlice';
 import { formatCurrency } from '../../utils/formatters';
-import type { SalesOrderStatus } from '../../models/salesOrderModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
-import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
+import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
-const STATUS_COLOR: Record<SalesOrderStatus, string> = {
-  open: ACCENT.blue, partial: ACCENT.amber, fulfilled: ACCENT.green, invoiced: ACCENT.violet, cancelled: THEME.colors.textSecondary,
-};
 
 const SalesOrderListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -33,7 +31,7 @@ const SalesOrderListScreen: React.FC = () => {
     return c;
   }, [state.salesOrders]);
 
-  const TABS: TxnTab<SalesOrderStatusFilter>[] = [
+  const TABS: TabItem<SalesOrderStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
     { label: 'Open', value: 'open', count: counts.open },
     { label: 'Partial', value: 'partial', count: counts.partial },
@@ -56,7 +54,7 @@ const SalesOrderListScreen: React.FC = () => {
         right={<HeaderAction label="New" onPress={() => navigation.navigate('SalesOrderForm', {})} />}
       />
 
-      <TxnTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setSalesOrderStatusFilter(v))} />
+      <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setSalesOrderStatusFilter(v))} />
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
@@ -76,7 +74,7 @@ const SalesOrderListScreen: React.FC = () => {
               number={o.orderNumber}
               subtitle={o.customerName || 'Customer'}
               statusLabel={titleCase(o.status)}
-              statusColor={STATUS_COLOR[o.status]}
+              statusColor={txnStatusColor(o.status)}
               metaLeft={`Order: ${o.orderDate}`}
               metaRight={`${fulfilledLines}/${o.lines.length} lines`}
               primaryLabel="Total"

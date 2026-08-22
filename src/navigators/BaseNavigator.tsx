@@ -13,6 +13,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppSelector } from '../hooks/useReduxHooks';
 import type { RootStackParamList } from '../types';
 import type { IRoute } from '../navigations-maps/types';
+import { THEME } from '../theme';
 import {
   ONBOARDING_ROUTE,
   UNAUTHENTICATED_ROUTES,
@@ -21,7 +22,7 @@ import {
   RENEW_ROUTES,
   REJECTED_ROUTES,
   DRAFT_COMPANY_ROUTES,
-  COMPANY_ONBOARDING_ROUTES,
+  COMPANY_ONBOARDING_ROUTES
 } from '../navigations-maps/Auth';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -72,8 +73,8 @@ const BaseNavigator: React.FC = () => {
       id="BaseNavigator"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#F8FAFC' },
-        animation: 'none',
+        contentStyle: { backgroundColor: THEME.colors.neutral50 },
+        animation: 'none'
       }}>
       {routes.map(route => (
         <Stack.Screen

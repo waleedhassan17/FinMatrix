@@ -5,7 +5,7 @@ import {
   StyleSheet,
   StatusBar,
   Animated,
-  Easing,
+  Easing
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../../utils/theme';
@@ -14,13 +14,13 @@ import { THEME } from '../../utils/theme';
 // Design Tokens (pixel-perfect match)
 // ═══════════════════════════════════════
 const B = {
-  navy: '#0B1120',
-  emerald: '#00875A',
+  navy: THEME.colors.neutral900,
+  emerald: THEME.colors.success,
   w95: 'rgba(255,255,255,0.95)',
   w40: 'rgba(255,255,255,0.40)',
   w20: 'rgba(255,255,255,0.20)',
   w06: 'rgba(255,255,255,0.06)',
-  w03: 'rgba(255,255,255,0.03)',
+  w03: 'rgba(255,255,255,0.03)'
 };
 
 // ═══════════════════════════════════════
@@ -34,7 +34,7 @@ const TM = {
   LOAD: 1700,
   BREATHE: 2500,
   EXIT: 3000,
-  EXIT_DUR: 600,
+  EXIT_DUR: 600
 };
 
 // ═══════════════════════════════════════
@@ -253,7 +253,7 @@ const SplashOverlay: React.FC<SplashOverlayProps> = ({ onFinish }) => {
             $.wordmarkWrap,
             {
               opacity: wordOpacity,
-              transform: [{ translateY: wordTransY }, { scale: wordScale }],
+              transform: [{ translateY: wordTransY }, { scale: wordScale }]
             },
           ]}>
           <Text style={$.wordmark}>
@@ -267,7 +267,7 @@ const SplashOverlay: React.FC<SplashOverlayProps> = ({ onFinish }) => {
           style={{
             opacity: tagOpacity,
             transform: [{ translateY: tagTransY }],
-            marginBottom: 56,
+            marginBottom: 56
           }}>
           <Text style={$.tagline}>Enterprise Accounting Platform</Text>
         </Animated.View>
@@ -298,7 +298,7 @@ const $ = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: B.navy,
     zIndex: 999,
-    elevation: 999,
+    elevation: 999
   },
 
   // ── Decorative Geometry ──
@@ -311,7 +311,7 @@ const $ = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     borderColor: B.w06,
-    transform: [{ rotate: '15deg' }],
+    transform: [{ rotate: '15deg' }]
   },
   decorCircle: {
     position: 'absolute',
@@ -321,7 +321,7 @@ const $ = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     borderWidth: 1,
-    borderColor: B.w06,
+    borderColor: B.w06
   },
   decorSquare: {
     position: 'absolute',
@@ -332,7 +332,7 @@ const $ = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: B.w03,
-    transform: [{ rotate: '-20deg' }],
+    transform: [{ rotate: '-20deg' }]
   },
   decorDot: {
     position: 'absolute',
@@ -342,14 +342,14 @@ const $ = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: B.w03,
+    borderColor: B.w03
   },
 
   // ── Content ──
   content: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   // ── Accent Line (real gradient via LinearGradient) ──
@@ -357,51 +357,51 @@ const $ = StyleSheet.create({
     height: 3,
     marginBottom: 28,
     overflow: 'hidden',
-    borderRadius: 2,
+    borderRadius: 2
   },
   accentLineGradient: {
     flex: 1,
-    borderRadius: 2,
+    borderRadius: 2
   },
 
   // ── Wordmark ──
   wordmarkWrap: {
-    marginBottom: 12,
+    marginBottom: 12
   },
   wordmark: {
     ...THEME.typography.displayLg,
-    letterSpacing: -1,
+    letterSpacing: -1
   },
   wordFin: {
-    color: B.emerald,
+    color: B.emerald
   },
   wordMatrix: {
-    color: B.w95,
+    color: B.w95
   },
 
   // ── Tagline ──
   tagline: {
     ...THEME.typography.bodyMd,
     color: B.w40,
-    letterSpacing: 0.56,
+    letterSpacing: 0.56
   },
 
   // ── Loader ──
   loaderWrap: {
-    alignItems: 'center',
+    alignItems: 'center'
   },
   loaderTrack: {
     width: 44,
     height: 2.5,
     borderRadius: 2,
     backgroundColor: B.w06,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
   loaderFill: {
     width: 20,
     height: 2.5,
     borderRadius: 2,
-    backgroundColor: B.emerald,
+    backgroundColor: B.emerald
   },
 
   // ── Version ──
@@ -410,12 +410,12 @@ const $ = StyleSheet.create({
     bottom: 48,
     left: 0,
     right: 0,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   versionText: {
     ...THEME.typography.labelSm,
     color: B.w20,
-    letterSpacing: 0.66,
+    letterSpacing: 0.66
   },
 });
 

@@ -10,7 +10,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
+  RefreshControl
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -19,7 +19,6 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { toggleCustomerActive, upsertCustomer } from '../CustomerList/customerListSlice';
@@ -36,7 +35,7 @@ import {
   fetchCustomerDetail,
   fetchCustomerInvoices,
   fetchCustomerPayments,
-  type CustomerDetailTab,
+  type CustomerDetailTab
 } from './customerDetailSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
@@ -47,6 +46,9 @@ import { useCompanyInfo } from '../../../utils/companyInfo';
 import { mapCustomer } from '../../../serializers/customerSerializer';
 import type { PaymentTerms, Customer } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type DetailRoute = RouteProp<MoreStackParamList, 'CustomerDetail'>;
@@ -62,8 +64,8 @@ const INVOICE_STATUS_COLORS: Record<string, string> = {
   sent: colors.secondary,
   partial: colors.warning,
   overdue: colors.danger,
-  draft: colors.textLight,
-  void: colors.textLight,
+  draft: colors.textTertiary,
+  void: colors.textTertiary
 };
 
 const INVOICE_STATUS_LABELS: Record<string, string> = {
@@ -72,7 +74,7 @@ const INVOICE_STATUS_LABELS: Record<string, string> = {
   partial: 'Partial',
   overdue: 'Overdue',
   draft: 'Draft',
-  void: 'Void',
+  void: 'Void'
 };
 
 // ═══════════════════════════════════════════════════════
@@ -129,7 +131,7 @@ const CustomerDetailScreen: React.FC = () => {
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScreenHeader title="Customer" onBack={() => navigation.goBack()} />
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.actionGreen} />
           <Text style={styles.emptyText}>Loading customer…</Text>
         </View>
       </SafeAreaView>
@@ -141,7 +143,7 @@ const CustomerDetailScreen: React.FC = () => {
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScreenHeader title="Customer" onBack={() => navigation.goBack()} />
         <View style={styles.center}>
-          <Feather name="user-x" size={40} color={colors.textLight} />
+          <Feather name="user-x" size={40} color={colors.textTertiary} />
           <Text style={styles.emptyText}>{error || 'Customer not found'}</Text>
           <CustomButton
             title="Retry"
@@ -170,14 +172,14 @@ const CustomerDetailScreen: React.FC = () => {
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
       .navigate('TransactionsStack', {
         screen: 'InvoiceForm',
-        params: { customerId: customer.id },
+        params: { customerId: customer.id }
       });
   };
   const handleRecordPayment = () => {
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
       .navigate('TransactionsStack', {
         screen: 'ReceivePayment',
-        params: { customerId: customer.id },
+        params: { customerId: customer.id }
       });
   };
   const handleSendStatement = async () => {
@@ -252,7 +254,7 @@ const CustomerDetailScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.actionGreen} />
         }
       >
         {/* ── Top Card: Balance + Credit Usage ────── */}
@@ -289,8 +291,8 @@ const CustomerDetailScreen: React.FC = () => {
           )}
 
           {/* Status Badge */}
-          <View style={[styles.statusBadge, { backgroundColor: customer.isActive ? colors.success + '18' : colors.textLight + '18' }]}>
-            <Text style={[styles.statusBadgeText, { color: customer.isActive ? colors.success : colors.textLight }]}>
+          <View style={[styles.statusBadge, { backgroundColor: customer.isActive ? colors.success + '18' : colors.textTertiary + '18' }]}>
+            <Text style={[styles.statusBadgeText, { color: customer.isActive ? colors.success : colors.textTertiary }]}>
               {customer.isActive ? '● Active' : '● Inactive'}
             </Text>
           </View>
@@ -348,8 +350,8 @@ const CustomerDetailScreen: React.FC = () => {
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={styles.listCardAmount}>{formatCurrency(inv.amount, 'Rs ')}</Text>
-                      <View style={[styles.miniStatusBadge, { backgroundColor: (INVOICE_STATUS_COLORS[inv.status] ?? colors.textLight) + '18' }]}>
-                        <Text style={[styles.miniStatusText, { color: INVOICE_STATUS_COLORS[inv.status] ?? colors.textLight }]}>
+                      <View style={[styles.miniStatusBadge, { backgroundColor: (INVOICE_STATUS_COLORS[inv.status] ?? colors.textTertiary) + '18' }]}>
+                        <Text style={[styles.miniStatusText, { color: INVOICE_STATUS_COLORS[inv.status] ?? colors.textTertiary }]}>
                           {INVOICE_STATUS_LABELS[inv.status] ?? inv.status}
                         </Text>
                       </View>
@@ -441,7 +443,7 @@ const ActionButton: React.FC<{
     activeOpacity={0.7}
     disabled={disabled}
   >
-    <Feather name={icon} size={20} color={colors.primary} style={{ marginBottom: spacing.xs }} />
+    <Feather name={icon} size={20} color={colors.actionGreen} style={{ marginBottom: spacing.xxs }} />
     <Text style={styles.actionLabel}>{label}</Text>
   </TouchableOpacity>
 );
@@ -459,7 +461,7 @@ const ListTabState: React.FC<{
   if ((status === 'loading' || status === 'idle') && isEmpty) {
     return (
       <View style={styles.tabStateBlock}>
-        <ActivityIndicator size="small" color={colors.primary} />
+        <ActivityIndicator size="small" color={colors.actionGreen} />
         <Text style={styles.tabStateText}>Loading…</Text>
       </View>
     );
@@ -476,7 +478,7 @@ const ListTabState: React.FC<{
   if (isEmpty) {
     return (
       <View style={styles.tabStateBlock}>
-        <Feather name={emptyIcon} size={28} color={colors.textLight} />
+        <Feather name={emptyIcon} size={28} color={colors.textTertiary} />
         <Text style={styles.tabStateText}>{emptyText}</Text>
       </View>
     );
@@ -565,37 +567,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerLeft: { flex: 1, marginRight: spacing.sm },
+  headerLeft: { flex: 1, marginRight: spacing.xs },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  headerTitle: { flex: 1, fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  scrollContent: { paddingBottom: spacing.xl },
+  backBtn: { marginRight: spacing.xxs, padding: spacing.xxs / 2 },
+  headerTitle: { ...typography.h3, flex: 1, color: colors.textPrimary },
+  scrollContent: { paddingBottom: spacing.xxl },
 
   // ── Top Card ───────────────────────────────────
   topCard: {
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.xl,
     marginTop: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    ...shadows.card,
+    ...shadows.sm,
   },
   topCardRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
-  topCardLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
-  topCardBalance: { fontSize: 24, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily },
-  topCardPurchases: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  topCardLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: 2 },
+  topCardBalance: { ...typography.displaySm, color: colors.actionGreen },
+  topCardPurchases: { ...typography.h4, color: colors.textPrimary },
 
-  creditSection: { marginBottom: spacing.sm },
-  creditHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  creditLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  creditPercent: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  creditSection: { marginBottom: spacing.xs },
+  creditHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xxs },
+  creditLabel: { ...typography.labelMd, color: colors.textSecondary },
+  creditPercent: { ...typography.labelMd, color: colors.textPrimary },
   creditBarTrack: {
     height: 8,
     backgroundColor: colors.border,
@@ -603,108 +605,106 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   creditBarFill: { height: '100%', borderRadius: 4 },
-  creditFooter: { marginTop: spacing.xs },
-  creditFooterText: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+  creditFooter: { marginTop: spacing.xxs },
+  creditFooterText: { ...typography.caption, color: colors.textTertiary },
 
   statusBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: spacing.xxs,
     borderRadius: 6,
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
   },
-  statusBadgeText: { fontSize: 12, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  statusBadgeText: { ...typography.labelSm },
 
   // ── Action Buttons ─────────────────────────────
   actionRow: {
     flexDirection: 'row',
-    marginHorizontal: spacing.lg,
+    marginHorizontal: spacing.xl,
     marginTop: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   actionBtn: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
     paddingVertical: spacing.md,
     alignItems: 'center',
-    ...shadows.small,
+    ...shadows.xs,
   },
-  actionLabel: { fontSize: 11, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
+  actionLabel: { ...typography.overline, color: colors.textPrimary, textAlign: 'center' },
 
   // ── Tabs ───────────────────────────────────────
   tabRow: {
     flexDirection: 'row',
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    padding: spacing.xs,
-    ...shadows.small,
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xs,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    padding: spacing.xxs,
+    ...shadows.xs,
   },
-  tab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', borderRadius: 6 },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  tabTextActive: { color: colors.white },
+  tab: { flex: 1, paddingVertical: spacing.xs, alignItems: 'center', borderRadius: 6 },
+  tabActive: { backgroundColor: colors.actionGreen },
+  tabText: { ...typography.h5, color: colors.textSecondary },
+  tabTextActive: { color: colors.surface },
 
   // ── Tab Content ────────────────────────────────
-  tabContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: 0 },
+  tabContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs, gap: 0 },
   tabStateBlock: {
     alignItems: 'center',
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.xl,
+    gap: spacing.xs,
   },
-  tabStateText: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
+  tabStateText: { ...typography.bodySm, color: colors.textSecondary, textAlign: 'center' },
 
   // ── Info Cards ─────────────────────────────────
   infoCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.small,
+    marginBottom: spacing.xs,
+    ...shadows.xs,
   },
   infoCardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...typography.labelLg,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs + 1,
+    paddingVertical: spacing.xxs + 1,
   },
-  infoIcon: { marginRight: spacing.sm, width: 22 },
-  infoLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, width: 100 },
-  infoValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
+  infoIcon: { marginRight: spacing.xs, width: 22 },
+  infoLabel: { ...typography.bodySm, color: colors.textSecondary, width: 100 },
+  infoValue: { ...typography.labelMd, color: colors.textPrimary, flex: 1 },
 
-  addressText: { fontSize: 14, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, lineHeight: 22 },
-  notesText: { fontSize: 14, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 21 },
+  addressText: { ...typography.bodySm, color: colors.textPrimary, lineHeight: 22 },
+  notesText: { ...typography.bodySm, color: colors.textSecondary, lineHeight: 21 },
 
   // ── List Cards (Invoices / Payments) ───────────
   listCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.small,
+    marginBottom: spacing.xs,
+    ...shadows.xs,
   },
   listCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  listCardTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  listCardSub: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
-  listCardAmount: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  listCardDetail: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginTop: spacing.sm },
+  listCardTitle: { ...typography.labelLg, color: colors.textPrimary },
+  listCardSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  listCardAmount: { ...typography.h4, color: colors.textPrimary },
+  listCardDetail: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xs },
 
   miniStatusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginTop: 4 },
-  miniStatusText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
+  miniStatusText: { ...typography.overline },
 
   // ── Empty / Center ─────────────────────────────
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xl },
-  emptyText: { fontSize: 15, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, textAlign: 'center' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xxl },
+  emptyText: { ...typography.bodyMd, color: colors.textSecondary, textAlign: 'center' }
 });
 
 export default CustomerDetailScreen;

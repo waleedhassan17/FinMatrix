@@ -18,7 +18,7 @@ import {
   ScrollView,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
+  Platform
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { useNavigation } from '@react-navigation/native';
@@ -41,11 +41,14 @@ import {
   selectTaxModalVisible,
   selectTaxEditingId,
   selectTaxForm,
-  selectTaxIsSaving,
+  selectTaxIsSaving
 } from './taxSettingsSlice';
 import type { TaxRate, TaxType } from '../../../types';
 import { getStoredCompanyId } from '../../../utils/storageUtils';
 import { getCompanyAPI, updateCompanyAPI } from '../../../networks/auth/authNetwork';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, typography } = THEME;
 import {
   ReportContainer,
   ReportHeader,
@@ -55,7 +58,7 @@ import {
   LoadingBlock,
   EmptyBlock,
   ACCENT,
-  HeaderAction,
+  HeaderAction
 } from '../../../components/reports/ReportUI';
 
 const TAX_TYPES: TaxType[] = ['GST', 'WHT', 'Income Tax', 'Sales Tax', 'Custom'];
@@ -65,7 +68,7 @@ const TYPE_COLOR: Record<TaxType, string> = {
   WHT: ACCENT.amber,
   'Income Tax': ACCENT.violet,
   'Sales Tax': ACCENT.teal,
-  Custom: THEME.colors.neutral500,
+  Custom: THEME.colors.neutral500
 };
 
 const TaxSettingsScreen: React.FC = () => {
@@ -189,7 +192,7 @@ const TaxSettingsScreen: React.FC = () => {
                 dispatch(toggleActive(item.id));
               }}
               trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.primary + '60' }}
-              thumbColor={item.isActive ? THEME.colors.primary : '#B0BAC6'}
+              thumbColor={item.isActive ? THEME.colors.primary : THEME.colors.textDisabled}
               ios_backgroundColor={THEME.colors.neutral200}
             />
             <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => dispatch(openEditModal(item))}>
@@ -259,7 +262,7 @@ const TaxSettingsScreen: React.FC = () => {
                     onValueChange={handleToggleRegistered}
                     disabled={regSaving || !companyId}
                     trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.primary + '60' }}
-                    thumbColor={taxRegistered ? THEME.colors.primary : '#B0BAC6'}
+                    thumbColor={taxRegistered ? THEME.colors.primary : THEME.colors.textDisabled}
                     ios_backgroundColor={THEME.colors.neutral200}
                   />
                 </View>
@@ -355,7 +358,7 @@ const TaxSettingsScreen: React.FC = () => {
                     dispatch(setFormField({ isActive: v }));
                   }}
                   trackColor={{ false: THEME.colors.neutral200, true: THEME.colors.primary + '60' }}
-                  thumbColor={form.isActive ? THEME.colors.primary : '#B0BAC6'}
+                  thumbColor={form.isActive ? THEME.colors.primary : THEME.colors.textDisabled}
                   ios_backgroundColor={THEME.colors.neutral200}
                 />
               </View>
@@ -371,7 +374,7 @@ const TaxSettingsScreen: React.FC = () => {
                   disabled={isSaving}
                 >
                   {isSaving ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    <ActivityIndicator color={colors.neutral0} size="small" />
                   ) : (
                     <Text style={styles.saveBtnText}>{editingId ? 'Update' : 'Add Rate'}</Text>
                   )}
@@ -392,7 +395,7 @@ const styles = StyleSheet.create({
   regCard: { paddingVertical: 12, paddingHorizontal: 14 },
   regRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   regTextWrap: { flex: 1 },
-  regTitle: { ...THEME.typography.bodyMd, fontWeight: '700', color: THEME.colors.textPrimary },
+  regTitle: { ...THEME.typography.labelLg,  color: THEME.colors.textPrimary },
   regSub: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 3, lineHeight: 16 },
 
   errorBanner: {
@@ -413,7 +416,7 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   rateName: { ...THEME.typography.h5, color: THEME.colors.textPrimary, flex: 1 },
-  rateValue: { ...THEME.typography.h5, fontWeight: '800' },
+  rateValue: { ...THEME.typography.h5, fontWeight: typography.labelLg.fontWeight },
   rateDesc: { ...THEME.typography.caption, color: THEME.colors.textSecondary, marginTop: 2 },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
 
@@ -480,7 +483,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  activeHint: { ...THEME.typography.labelSm, fontWeight: '400', color: THEME.colors.textTertiary, marginTop: 2 },
+  activeHint: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginTop: 2 },
   modalBtns: { flexDirection: 'row', gap: 10, marginTop: THEME.spacing.lg },
   cancelBtn: {
     flex: 1,
@@ -493,7 +496,7 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: { ...THEME.typography.h5, color: THEME.colors.textSecondary },
   saveBtn: { flex: 2, height: 46, borderRadius: THEME.radius.md, backgroundColor: THEME.colors.primary, alignItems: 'center', justifyContent: 'center' },
-  saveBtnText: { ...THEME.typography.h5, color: '#fff' },
+  saveBtnText: { ...THEME.typography.h5, color: colors.neutral0 }
 });
 
 export default TaxSettingsScreen;

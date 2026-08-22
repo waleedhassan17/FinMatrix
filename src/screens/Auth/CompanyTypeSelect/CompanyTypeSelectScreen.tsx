@@ -14,7 +14,7 @@ import {
   AuthLayout,
   AuthHeader,
   AuthFooterBar,
-  AuthOptionCard,
+  AuthOptionCard
 } from '../../../components/auth/AuthUI';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyTypeSelect'>;
@@ -72,7 +72,7 @@ const TYPE_CARDS: TypeCard[] = [
       'Payroll, budgets, audit log & period close',
       'Full inventory with average costing',
       'Purchase orders, 3-way match (GRNI) & deliveries',
-    ],
+    ]
   },
 ];
 

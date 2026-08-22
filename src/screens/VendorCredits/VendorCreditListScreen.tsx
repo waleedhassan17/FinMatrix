@@ -7,17 +7,15 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchVendorCredits, selectVendorCreditState, setVendorCreditStatusFilter, type VendorCreditStatusFilter } from './vendorCreditSlice';
 import { formatCurrency } from '../../utils/formatters';
-import type { VendorCreditStatus } from '../../models/vendorCreditModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
-import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
+import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
-const STATUS_COLOR: Record<VendorCreditStatus, string> = {
-  open: ACCENT.blue, applied: ACCENT.green, closed: ACCENT.violet, void: THEME.colors.textSecondary,
-};
 
 const VendorCreditListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -33,7 +31,7 @@ const VendorCreditListScreen: React.FC = () => {
     return c;
   }, [state.vendorCredits]);
 
-  const TABS: TxnTab<VendorCreditStatusFilter>[] = [
+  const TABS: TabItem<VendorCreditStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
     { label: 'Open', value: 'open', count: counts.open },
     { label: 'Applied', value: 'applied', count: counts.applied },
@@ -55,7 +53,7 @@ const VendorCreditListScreen: React.FC = () => {
         right={<HeaderAction label="New" onPress={() => navigation.navigate('VendorCreditForm', {})} />}
       />
 
-      <TxnTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setVendorCreditStatusFilter(v))} />
+      <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setVendorCreditStatusFilter(v))} />
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
@@ -73,7 +71,7 @@ const VendorCreditListScreen: React.FC = () => {
             number={v.vendorCreditNumber}
             subtitle={v.vendorName || 'Vendor'}
             statusLabel={titleCase(v.status)}
-            statusColor={STATUS_COLOR[v.status]}
+            statusColor={txnStatusColor(v.status)}
             metaLeft={`Date: ${v.date}`}
             primaryLabel="Total"
             primaryValue={rs(v.total)}

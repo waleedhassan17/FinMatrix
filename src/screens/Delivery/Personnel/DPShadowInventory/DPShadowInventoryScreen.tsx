@@ -7,7 +7,7 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  StatusBar,
+  StatusBar
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,7 +22,7 @@ import {
   closeChangeLog,
   selectShadowInventoryUI,
   setShadowInventorySearchTerm,
-  setShadowInventorySortBy,
+  setShadowInventorySortBy
 } from './dpShadowInventorySlice';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
@@ -32,7 +32,7 @@ type Props = NativeStackScreenProps<DPInventoryStackParamList, 'DPShadowInventor
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
   synced: { color: THEME.colors.success, bg: THEME.colors.successLight, icon: 'check' },
   pending: { color: THEME.colors.warning, bg: THEME.colors.warningLight, icon: 'clock' },
-  rejected: { color: THEME.colors.danger, bg: THEME.colors.dangerLight, icon: 'x' },
+  rejected: { color: THEME.colors.danger, bg: THEME.colors.dangerLight, icon: 'x' }
 };
 
 const SORT_OPTIONS = [
@@ -85,7 +85,7 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
           originalQty: item.originalQty ?? item.quantity,
           currentQty: item.quantity,
           status,
-          changesToday: [] as ShadowDisplayItem['changesToday'],
+          changesToday: [] as ShadowDisplayItem['changesToday']
         };
       });
 
@@ -116,7 +116,7 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
     total: items.length,
     synced: items.filter(i => i.status === 'synced').length,
     pending: items.filter(i => i.status === 'pending').length,
-    totalChanges: items.reduce((sum, i) => sum + i.changesToday.length, 0),
+    totalChanges: items.reduce((sum, i) => sum + i.changesToday.length, 0)
   }), [items]);
 
   return (
@@ -165,7 +165,7 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={[styles.statValue, { color: THEME.colors.warning }]}>{stats.pending}</Text>
             <Text style={styles.statLabel}>Pending</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: THEME.colors.secondaryLight, borderColor: '#D4CCFF' }]}>
+          <View style={[styles.statCard, { backgroundColor: THEME.colors.secondaryLight, borderColor: THEME.colors.secondary + '33' }]}>
             <Feather name="edit" size={18} color={THEME.colors.secondary} style={{ marginBottom: 4 }} />
             <Text style={[styles.statValue, { color: THEME.colors.secondary }]}>{stats.totalChanges}</Text>
             <Text style={styles.statLabel}>Changes</Text>
@@ -468,7 +468,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...THEME.typography.h3,
-    fontWeight: '700',
     color: DP_BRAND.white,
   },
   headerSubtitle: {
@@ -485,7 +484,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   infoIcon: {
-    fontSize: THEME.typography.h3.fontSize,
+    ...THEME.typography.h3,
+    
   },
 
   scrollView: {
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statIcon: {
-    fontSize: THEME.typography.h3.fontSize,
+    ...THEME.typography.h3,
     marginBottom: 4,
   },
   statValue: {
@@ -518,8 +518,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.textPrimary,
   },
   statLabel: {
-    ...THEME.typography.overline,
-    fontWeight: '500',
+    ...THEME.typography.caption,
     textTransform: undefined,
     color: THEME.colors.textSecondary,
     marginTop: 2,
@@ -584,13 +583,12 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   sortChipText: {
-    ...THEME.typography.caption,
-    fontWeight: '500',
+    ...THEME.typography.labelSm,
     color: THEME.colors.textSecondary,
   },
   sortChipTextActive: {
     color: THEME.colors.textInverse,
-    fontWeight: '600',
+    fontWeight: THEME.typography.labelMd.fontWeight,
   },
 
   // Card
@@ -618,14 +616,14 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   cardIcon: {
-    fontSize: THEME.typography.h3.fontSize,
+    ...THEME.typography.h3,
+    
   },
   cardHeaderText: {
     flex: 1,
   },
   cardTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   cardSubtitle: {
@@ -662,12 +660,10 @@ const styles = StyleSheet.create({
   itemNameRow: {},
   itemName: {
     ...THEME.typography.h5,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   itemId: {
-    ...THEME.typography.labelSm,
-    fontWeight: '400',
+    ...THEME.typography.caption,
     color: THEME.colors.textTertiary,
     marginTop: 2,
   },
@@ -685,7 +681,6 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...THEME.typography.overline,
-    fontWeight: '600',
     textTransform: 'capitalize',
   },
   qtyRow: {
@@ -699,7 +694,6 @@ const styles = StyleSheet.create({
   },
   qtyLabel: {
     ...THEME.typography.overline,
-    fontSize: 9,
     textTransform: undefined,
     color: THEME.colors.textTertiary,
     letterSpacing: 0.5,
@@ -731,8 +725,8 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.neutral100,
   },
   diffText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '700',
+    ...THEME.typography.labelMd,
+    
   },
   diffTextPositive: {
     color: THEME.colors.success,
@@ -795,7 +789,6 @@ const styles = StyleSheet.create({
   },
   submitTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textInverse,
   },
   submitSubtitle: {
@@ -883,7 +876,6 @@ const styles = StyleSheet.create({
   },
   requestBadgeText: {
     ...THEME.typography.overline,
-    fontWeight: '600',
     textTransform: 'capitalize',
   },
 
@@ -989,7 +981,7 @@ const styles = StyleSheet.create({
   },
   changeDeltaText: {
     ...THEME.typography.h5,
-    fontWeight: '700',
+    
   },
   changeDeltaTextPositive: {
     color: THEME.colors.success,
@@ -1007,7 +999,7 @@ const styles = StyleSheet.create({
   modalCloseBtnText: {
     ...THEME.typography.h4,
     color: THEME.colors.textInverse,
-  },
+  }
 });
 
 export default DPShadowInventoryScreen;

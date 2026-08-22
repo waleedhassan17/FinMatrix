@@ -26,7 +26,7 @@ import {
   reportContentStyle,
   ReportTitleBlock,
   useStatementCompany,
-  asOfLabel,
+  asOfLabel
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;

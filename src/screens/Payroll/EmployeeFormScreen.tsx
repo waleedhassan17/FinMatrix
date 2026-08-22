@@ -48,7 +48,7 @@ const EmployeeFormScreen: React.FC = () => {
     if (!firstName.trim() || !lastName.trim()) { Toast.show({ type: 'error', text1: 'Missing name', text2: 'First and last name are required.' }); return; }
     const payload: any = {
       firstName, lastName, email: email || undefined, department: department || undefined, position: position || undefined,
-      payType, salary, hourlyRate, payFrequency, deductionAmount: deduction,
+      payType, salary, hourlyRate, payFrequency, deductionAmount: deduction
     };
     setSaving(true);
     try {
@@ -94,7 +94,7 @@ const EmployeeFormScreen: React.FC = () => {
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   row: { flexDirection: 'row', gap: 12 },
-  col: { flex: 1 },
+  col: { flex: 1 }
 });
 
 export default EmployeeFormScreen;

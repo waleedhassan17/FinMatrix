@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...THEME.typography.bodyMd,
-    fontWeight: '500',
+    fontWeight: THEME.typography.labelSm.fontWeight,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
@@ -236,11 +236,11 @@ const styles = StyleSheet.create({
   },
   optionTextSelected: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: THEME.typography.labelMd.fontWeight,
   },
   checkmark: {
     ...THEME.typography.h3,
-    fontWeight: '700',
+    fontWeight: THEME.typography.labelMd.fontWeight,
     color: colors.primary,
   },
   emptyText: {

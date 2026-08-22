@@ -25,8 +25,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+const PANEL = THEME.form.summaryPanel;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectReceivePaymentState,
@@ -52,6 +52,9 @@ import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
+
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type PaymentRoute = RouteProp<TransactionsStackParamList, 'ReceivePayment'>;
 
@@ -61,14 +64,6 @@ const METHOD_OPTIONS = [
   { label: 'Cheque', value: 'cheque' },
   { label: 'Online (EasyPaisa / JazzCash)', value: 'online' },
 ];
-
-const P = {
-  headerFrom: '#0A1628',
-  headerTo: '#132F4C',
-  accent: '#059669',
-  accentLight: '#ECFDF5',
-  totalsGold: '#F59E0B',
-};
 
 // ═══════════════════════════════════════════════════════
 const ReceivePaymentScreen: React.FC = () => {
@@ -227,7 +222,7 @@ const ReceivePaymentScreen: React.FC = () => {
         onBack={() => navigation.goBack()}
       />
 
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F1F5F9' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.neutral100 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -235,11 +230,11 @@ const ReceivePaymentScreen: React.FC = () => {
         >
           {/* ── Payment Details ─────────────────────── */}
           <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: P.accent }]} />
+            <View style={[styles.sectionDot, { backgroundColor: colors.actionGreen }]} />
             <Text style={styles.sectionTitle}>PAYMENT DETAILS</Text>
           </View>
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: P.accent }]} />
+            <View style={[styles.cardAccent, { backgroundColor: colors.actionGreen }]} />
             <View style={styles.cardBody}>
               <CustomDropdown
                 label="Customer *"
@@ -251,7 +246,7 @@ const ReceivePaymentScreen: React.FC = () => {
                 searchable
               />
               <View style={styles.rowFields}>
-                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                <View style={{ flex: 1, marginRight: spacing.xs }}>
                   <DateField
                     label="Payment Date *"
                     value={form.paymentDate}
@@ -283,7 +278,7 @@ const ReceivePaymentScreen: React.FC = () => {
               />
               {hasOutstanding && (
                 <TouchableOpacity onPress={() => dispatch(payInFull())} activeOpacity={0.7} style={styles.payFullChip}>
-                  <Feather name="zap" size={14} color={P.accent} />
+                  <Feather name="zap" size={14} color={colors.actionGreen} />
                   <Text style={styles.payFullChipText}>
                     Pay in Full ({formatCurrency(totalOutstanding, 'Rs ')})
                   </Text>
@@ -294,8 +289,8 @@ const ReceivePaymentScreen: React.FC = () => {
 
           {/* ── Outstanding Invoices ─────────────────── */}
           <View style={styles.sectionLabelRow2}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2 }}>
-              <View style={[styles.sectionDot, { backgroundColor: '#6366F1' }]} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xxs + 2 }}>
+              <View style={[styles.sectionDot, { backgroundColor: colors.info }]} />
               <Text style={styles.sectionTitle}>OUTSTANDING INVOICES</Text>
             </View>
             {hasOutstanding && (
@@ -308,15 +303,15 @@ const ReceivePaymentScreen: React.FC = () => {
           {!form.customerId ? (
             <View style={styles.emptyCard}>
               <View style={styles.emptyIconBg}>
-                <Feather name="user" size={20} color="#6366F1" />
+                <Feather name="user" size={20} color={colors.info} />
               </View>
               <Text style={styles.emptyTitle}>Select a customer</Text>
               <Text style={styles.emptyText}>Pick a customer above to see their outstanding invoices.</Text>
             </View>
           ) : !hasOutstanding ? (
             <View style={styles.emptyCard}>
-              <View style={[styles.emptyIconBg, { backgroundColor: '#ECFDF5' }]}>
-                <Feather name="check-circle" size={20} color={P.accent} />
+              <View style={[styles.emptyIconBg, { backgroundColor: colors.actionGreenLighter }]}>
+                <Feather name="check-circle" size={20} color={colors.actionGreen} />
               </View>
               <Text style={styles.emptyTitle}>All caught up</Text>
               <Text style={styles.emptyText}>{form.customerName} has no outstanding invoices.</Text>
@@ -342,14 +337,14 @@ const ReceivePaymentScreen: React.FC = () => {
                 >
                   <View style={styles.checkboxWrap}>
                     <View style={[styles.checkbox, row.checked && styles.checkboxChecked]}>
-                      {row.checked && <Feather name="check" size={13} color="#FFFFFF" />}
+                      {row.checked && <Feather name="check" size={13} color={colors.neutral0} />}
                     </View>
                   </View>
-                  <Text style={[styles.tdText, { flex: 1.2, fontWeight: '600' }]}>{row.invoiceNumber}</Text>
+                  <Text style={[styles.tdText, styles.tdStrong, { flex: 1.2 }]}>{row.invoiceNumber}</Text>
                   <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatDate(row.dueDate)}</Text>
                   <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatCurrency(row.balance, 'Rs ')}</Text>
                   <Text
-                    style={[styles.tdText, styles.tdRight, { flex: 1, fontWeight: '700' }, row.allocated > 0 && { color: colors.success }]}
+                    style={[styles.tdText, styles.tdRight, styles.tdStrong, { flex: 1 }, row.allocated > 0 && { color: colors.success }]}
                   >
                     {row.allocated > 0 ? formatCurrency(row.allocated, 'Rs ') : '—'}
                   </Text>
@@ -361,21 +356,21 @@ const ReceivePaymentScreen: React.FC = () => {
           {/* ── Summary Panel ────────────────────────── */}
           {paymentAmount > 0 && (
             <LinearGradient
-              colors={['#0F172A', '#1E293B']}
+              colors={PANEL.gradient}
               style={styles.summaryCard}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
               <View style={styles.summaryHeader}>
-                <Feather name="credit-card" size={16} color="#F59E0B" />
+                <Feather name="credit-card" size={16} color={PANEL.accent} />
                 <Text style={styles.summaryHeaderText}>Payment Summary</Text>
               </View>
               <View style={styles.summaryDivider} />
               <SummaryRow label="Payment Amount" value={formatCurrency(paymentAmount, 'Rs ')} />
-              <SummaryRow label="Applied to Invoices" value={formatCurrency(totalAllocated, 'Rs ')} valueColor={totalAllocated > 0 ? '#34D399' : undefined} />
+              <SummaryRow label="Applied to Invoices" value={formatCurrency(totalAllocated, 'Rs ')} valueColor={totalAllocated > 0 ? PANEL.positive : undefined} />
               {overpayment > 0 && (
                 <>
-                  <SummaryRow label="Unapplied Amount" value={formatCurrency(overpayment, 'Rs ')} valueColor={form.saveOverpaymentAsCredit ? '#FBBF24' : '#F87171'} />
+                  <SummaryRow label="Unapplied Amount" value={formatCurrency(overpayment, 'Rs ')} valueColor={form.saveOverpaymentAsCredit ? PANEL.caution : PANEL.negative} />
                   <View style={styles.creditToggleRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.creditToggleLabel}>Save as Customer Credit</Text>
@@ -398,11 +393,11 @@ const ReceivePaymentScreen: React.FC = () => {
 
           {/* ── Notes ────────────────────────────────── */}
           <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: '#8B5CF6' }]} />
+            <View style={[styles.sectionDot, { backgroundColor: colors.secondary }]} />
             <Text style={styles.sectionTitle}>NOTES</Text>
           </View>
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: '#8B5CF6' }]} />
+            <View style={[styles.cardAccent, { backgroundColor: colors.secondary }]} />
             <View style={styles.cardBody}>
               <CustomInput
                 label="Payment Notes"
@@ -414,13 +409,13 @@ const ReceivePaymentScreen: React.FC = () => {
             </View>
           </View>
 
-          <View style={{ height: spacing.xl }} />
+          <View style={{ height: spacing.xxl }} />
         </ScrollView>
       </KeyboardAvoidingView>
 
       {/* ── Sticky Action Bar ─────────────────────── */}
       <View style={styles.actionBar}>
-        <View style={{ flex: 1, marginRight: spacing.sm }}>
+        <View style={{ flex: 1, marginRight: spacing.xs }}>
           <SecondaryButton title="Cancel" onPress={() => navigation.goBack()} disabled={form.isSaving} />
         </View>
         <View style={{ flex: 1.4 }}>
@@ -428,7 +423,7 @@ const ReceivePaymentScreen: React.FC = () => {
             title={form.isSaving ? 'Recording…' : 'Record Payment'}
             onPress={handleSave}
             isLoading={form.isSaving}
-            icon={<Feather name="check-circle" size={16} color="#FFFFFF" />}
+            icon={<Feather name="check-circle" size={16} color={colors.neutral0} />}
           />
         </View>
       </View>
@@ -438,14 +433,14 @@ const ReceivePaymentScreen: React.FC = () => {
         <Animated.View style={[sStyles.overlay, { opacity: successOpacity }]}>
           <Animated.View style={[sStyles.card, { transform: [{ scale: successScale }] }]}>
             <Animated.View style={[sStyles.checkCircle, { transform: [{ scale: checkScale }] }]}>
-              <Feather name="check" size={40} color="#FFFFFF" />
+              <Feather name="check" size={40} color={colors.neutral0} />
             </Animated.View>
             <Text style={sStyles.title}>Payment Recorded!</Text>
             <Text style={sStyles.amount}>{successMsg}</Text>
             <Text style={sStyles.sub}>{successSub}</Text>
             <View style={sStyles.divider} />
             <TouchableOpacity style={sStyles.btn} onPress={handleSuccessDismiss} activeOpacity={0.8}>
-              <LinearGradient colors={['#059669', '#047857']} style={sStyles.btnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <LinearGradient colors={[colors.actionGreen, colors.actionGreenDark]} style={sStyles.btnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                 <Feather name="arrow-left" size={16} color="#FFF" />
                 <Text style={sStyles.btnText}>Back to Invoice</Text>
               </LinearGradient>
@@ -467,21 +462,20 @@ const SummaryRow: React.FC<{ label: string; value: string; valueColor?: string }
 
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  container: { flex: 1, backgroundColor: colors.neutral100 },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
 
+  scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.xs },
 
-  scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
-
-  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.sm, gap: spacing.xs + 2 },
-  sectionLabelRow2: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg, marginBottom: spacing.sm },
+  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.xs, gap: spacing.xxs + 2 },
+  sectionLabelRow2: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xl, marginBottom: spacing.xs },
   sectionDot: { width: 8, height: 8, borderRadius: 4 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#64748B', fontFamily: THEME.typography.fontFamily, letterSpacing: 1 },
-  sectionHint: { fontSize: 12, fontWeight: '600', color: '#94A3B8', fontFamily: THEME.typography.fontFamily },
+  sectionTitle: { ...THEME.form.sectionTitle },
+  sectionHint: { ...typography.labelSm, color: colors.neutral400 },
 
   sectionCard: {
-    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: borderRadius.md,
-    overflow: 'hidden', ...shadows.small, borderWidth: 1, borderColor: '#E2E8F0',
+    flexDirection: 'row', backgroundColor: colors.neutral0, borderRadius: radius.lg,
+    overflow: 'hidden', ...shadows.xs, borderWidth: 1, borderColor: colors.neutral200,
   },
   cardAccent: { width: 4 },
   cardBody: { flex: 1, padding: spacing.md },
@@ -489,70 +483,73 @@ const styles = StyleSheet.create({
 
   payFullChip: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6,
-    backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0',
-    borderRadius: 20, paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.xs + 2, marginTop: spacing.xs,
+    backgroundColor: colors.actionGreenLighter, borderWidth: 1, borderColor: colors.successLight,
+    borderRadius: 20, paddingHorizontal: spacing.xs + 2, paddingVertical: spacing.xxs + 2, marginTop: spacing.xxs,
   },
-  payFullChipText: { fontSize: 13, fontWeight: '700', color: '#059669', fontFamily: THEME.typography.fontFamily },
+  payFullChipText: { ...typography.labelMd, color: colors.actionGreen },
 
   emptyCard: {
-    backgroundColor: '#FFFFFF', borderRadius: borderRadius.md, paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed',
+    backgroundColor: colors.neutral0, borderRadius: radius.lg, paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.md, alignItems: 'center', borderWidth: 1, borderColor: colors.neutral200, borderStyle: 'dashed',
   },
   emptyIconBg: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF2FF',
-    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs,
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.infoLight,
+    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xxs,
   },
-  emptyTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
-  emptyText: { fontSize: 12, color: colors.textSecondary, textAlign: 'center', fontFamily: THEME.typography.fontFamily, lineHeight: 18 },
-  allocError: { fontSize: 12, color: '#EF4444', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: '#FEF2F2', borderRadius: borderRadius.sm, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
+  emptyTitle: { ...typography.h5, color: colors.textPrimary, marginBottom: 2 },
+  emptyText: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
+  allocError: { ...typography.caption, color: colors.danger, paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs, backgroundColor: colors.dangerLighter, borderRadius: radius.sm, marginBottom: spacing.xxs },
 
-  tableWrap: { backgroundColor: '#FFFFFF', borderRadius: borderRadius.md, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0', ...shadows.small },
+  tableWrap: { backgroundColor: colors.neutral0, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.neutral200, ...shadows.xs },
   tableHeader: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.sm, backgroundColor: '#F8FAFC', borderBottomWidth: 2, borderBottomColor: '#059669',
+    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xxs + 2,
+    paddingHorizontal: spacing.xs, backgroundColor: colors.neutral50, borderBottomWidth: 2, borderBottomColor: colors.actionGreen,
   },
-  thText: { fontSize: 10, fontWeight: '700', color: '#059669', textTransform: 'uppercase', fontFamily: THEME.typography.fontFamily, letterSpacing: 0.5 },
+  thText: { ...typography.overline, color: colors.actionGreen },
   thRight: { textAlign: 'right' },
   tableRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm, backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F1F5F9',
+    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs, backgroundColor: colors.neutral0,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.neutral100,
   },
-  tableRowEven: { backgroundColor: '#FAFBFC' },
-  tableRowChecked: { backgroundColor: '#F0FDF4' },
-  tdText: { fontSize: 12, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  tableRowEven: { backgroundColor: colors.backgroundAlt },
+  tableRowChecked: { backgroundColor: colors.actionGreenLighter },
+  tdText: { ...typography.caption, color: colors.textPrimary },
+  // labelSm carries emphasis at the same 12px, so an emphasised cell
+  // never reflows the column.
+  tdStrong: { ...typography.labelSm },
   tdRight: { textAlign: 'right' },
 
   checkboxWrap: { width: 32, alignItems: 'center' },
   checkbox: {
-    width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#CBD5E1',
-    justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF',
+    width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: colors.neutral300,
+    justifyContent: 'center', alignItems: 'center', backgroundColor: colors.neutral0,
   },
-  checkboxChecked: { backgroundColor: '#059669', borderColor: '#059669' },
+  checkboxChecked: { backgroundColor: colors.actionGreen, borderColor: colors.actionGreen },
 
-  summaryCard: { borderRadius: borderRadius.md + 4, padding: spacing.md + 4, marginTop: spacing.lg, ...shadows.large },
-  summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2, marginBottom: spacing.sm },
-  summaryHeaderText: { fontSize: 13, fontWeight: '700', color: '#F59E0B', fontFamily: THEME.typography.fontFamily, letterSpacing: 0.5 },
-  summaryDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: spacing.xs + 2 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs + 1 },
-  summaryLabel: { fontSize: 13, color: 'rgba(241,245,249,0.6)', fontFamily: THEME.typography.fontFamily },
-  summaryValue: { fontSize: 14, fontWeight: '700', color: '#F1F5F9', fontFamily: THEME.typography.fontFamily },
+  summaryCard: { borderRadius: radius.lg + 4, padding: spacing.md + 4, marginTop: spacing.xl, ...shadows.md },
+  summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs + 2, marginBottom: spacing.xs },
+  summaryHeaderText: { ...typography.labelMd, color: PANEL.accent, letterSpacing: 0.5 },
+  summaryDivider: { height: 1, backgroundColor: PANEL.divider, marginVertical: spacing.xxs + 2 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xxs + 1 },
+  summaryLabel: { ...typography.bodySm, color: PANEL.label },
+  summaryValue: { ...typography.h5, color: PANEL.text, fontVariant: ['tabular-nums'] },
 
   creditToggleRow: {
-    flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginTop: spacing.xs,
-    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)',
+    flexDirection: 'row', alignItems: 'center', paddingTop: spacing.xs, marginTop: spacing.xxs,
+    borderTopWidth: 1, borderTopColor: PANEL.divider,
   },
-  creditToggleLabel: { fontSize: 13, fontWeight: '700', color: '#F1F5F9', fontFamily: THEME.typography.fontFamily },
-  creditToggleHint: { fontSize: 11, color: 'rgba(241,245,249,0.5)', marginTop: 2, lineHeight: 16, fontFamily: THEME.typography.fontFamily },
-  toggleSwitch: { width: 44, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2, marginLeft: spacing.sm },
-  toggleSwitchOn: { backgroundColor: '#059669' },
-  toggleKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF', ...shadows.small },
+  creditToggleLabel: { ...typography.labelMd, color: PANEL.text },
+  creditToggleHint: { ...typography.caption, color: PANEL.label, marginTop: 2 },
+  toggleSwitch: { width: 44, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2, marginLeft: spacing.xs },
+  toggleSwitchOn: { backgroundColor: colors.actionGreen },
+  toggleKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.neutral0, ...shadows.xs },
   toggleKnobOn: { transform: [{ translateX: 18 }] },
 
   actionBar: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2, backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: '#E2E8F0', ...shadows.card,
+    paddingVertical: spacing.xs + 2, backgroundColor: colors.neutral0,
+    borderTopWidth: 1, borderTopColor: colors.neutral200, ...shadows.sm,
   },
 });
 
@@ -564,33 +561,31 @@ const sStyles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   card: {
-    width: SCREEN_W * 0.82, backgroundColor: '#FFFFFF',
+    width: SCREEN_W * 0.82, backgroundColor: colors.neutral0,
     borderRadius: 24, paddingVertical: 36, paddingHorizontal: 28,
     alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 12 },
+    shadowColor: colors.neutral900, shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25, shadowRadius: 24, elevation: 20,
   },
   checkCircle: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#059669', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.actionGreen, alignItems: 'center', justifyContent: 'center',
     marginBottom: 20,
-    shadowColor: '#059669', shadowOffset: { width: 0, height: 6 },
+    shadowColor: colors.actionGreen, shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
   },
   title: {
-    fontSize: 22, fontWeight: '800', color: '#0F172A',
-    fontFamily: THEME.typography.fontFamily, marginBottom: 6,
+    ...typography.h2, color: colors.neutral900, marginBottom: 6,
   },
   amount: {
-    fontSize: 28, fontWeight: '800', color: '#059669',
-    fontFamily: THEME.typography.fontFamily, marginBottom: 4,
+    ...typography.h1, color: colors.actionGreen, marginBottom: 4,
+    fontVariant: ['tabular-nums'],
   },
   sub: {
-    fontSize: 14, color: '#64748B', textAlign: 'center',
-    fontFamily: THEME.typography.fontFamily, lineHeight: 20,
+    ...typography.bodySm, color: colors.neutral500, textAlign: 'center', lineHeight: 20,
   },
   divider: {
-    width: '80%', height: 1, backgroundColor: '#E2E8F0',
+    width: '80%', height: 1, backgroundColor: colors.neutral200,
     marginVertical: 22,
   },
   btn: { width: '100%', borderRadius: 14, overflow: 'hidden' },
@@ -599,8 +594,7 @@ const sStyles = StyleSheet.create({
     gap: 8, paddingVertical: 16,
   },
   btnText: {
-    fontSize: 16, fontWeight: '700', color: '#FFFFFF',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.h4, color: colors.neutral0,
   },
 });
 

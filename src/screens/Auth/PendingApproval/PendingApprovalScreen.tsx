@@ -17,6 +17,7 @@ import { authMe } from '../../../networks/auth/authNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
 import { useSignOut } from '../../../hooks/useSignOut';
 import type { UserRole } from '../../../types';
+import { THEME } from '../../../theme';
 import {
   AuthLayout,
   AuthHeader,
@@ -26,7 +27,7 @@ import {
   AuthTimeline,
   StatusPill,
   AUTH,
-  type AuthTone,
+  type AuthTone
 } from '../../../components/auth/AuthUI';
 
 const PendingApprovalScreen: React.FC = () => {
@@ -80,7 +81,7 @@ const PendingApprovalScreen: React.FC = () => {
         message:
           status === 'rejected'
             ? 'Your registration was reviewed — see the details on the next screen.'
-            : 'Not approved yet. Your payment is with our team; we will email you as soon as it is verified.',
+            : 'Not approved yet. Your payment is with our team; we will email you as soon as it is verified.'
       });
     } catch (e: any) {
       setNotice({ tone: 'error', message: e?.message ?? 'Could not refresh status' });
@@ -178,12 +179,12 @@ const styles = StyleSheet.create({
     marginBottom: AUTH.space.xl,
   },
   body: {
+    ...THEME.typography.bodySm,
     fontFamily: AUTH.font,
-    fontSize: 14,
     lineHeight: 22,
     color: AUTH.ink[500],
     marginBottom: AUTH.space.xl,
-  },
+  }
 });
 
 export default PendingApprovalScreen;

@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
 
   // ── Text ──
   text: {
-    fontWeight: '600',
+    fontWeight: THEME.typography.labelMd.fontWeight,
     fontFamily: THEME.typography.fontFamily,
   },
   text_primary: {

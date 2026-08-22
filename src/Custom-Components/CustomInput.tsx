@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...THEME.typography.bodyMd,
-    fontWeight: '500',
+    fontWeight: THEME.typography.labelSm.fontWeight,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },

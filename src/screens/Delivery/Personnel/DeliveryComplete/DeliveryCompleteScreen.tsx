@@ -7,7 +7,7 @@ import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/D
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import {
-  resetDeliveryCompleteState,
+  resetDeliveryCompleteState
 } from './dpDeliveryCompleteSlice';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
@@ -46,7 +46,7 @@ const ConfettiParticle: React.FC<{
 
   const spin = rotate.interpolate({
     inputRange: [0, 6],
-    outputRange: ['0deg', '1080deg'],
+    outputRange: ['0deg', '1080deg']
   });
 
   return (
@@ -59,7 +59,7 @@ const ConfettiParticle: React.FC<{
           height: size * 0.6,
           backgroundColor: color,
           opacity,
-          transform: [{ translateY }, { translateX }, { rotate: spin }],
+          transform: [{ translateY }, { translateX }, { rotate: spin }]
         },
       ]}
     />
@@ -137,13 +137,15 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const spin = badgeRotate.interpolate({
     inputRange: [0, 1],
-    outputRange: ['-90deg', '0deg'],
+    outputRange: ['-90deg', '0deg']
   });
 
-  // Confetti configuration
+  // Confetti configuration. The last three are deliberately off-system: this
+  // is a celebration animation, and a festive scatter wants colours the rest of
+  // the UI does not use. Documented as an exception to the token rule.
   const confettiColors = [
-    THEME.colors.success, THEME.colors.primary, THEME.colors.warning, 
-    THEME.colors.secondary, '#FF6B6B', '#4ECDC4', '#45B7D1'
+    THEME.colors.success, THEME.colors.primary, THEME.colors.warning,
+    THEME.colors.secondary, '#FF6B6B', '#4ECDC4', '#45B7D1',
   ];
   const confettiParticles = useMemo(() => {
     return Array.from({ length: 30 }).map((_, i) => ({
@@ -377,7 +379,6 @@ const styles = StyleSheet.create({
   },
   badgeIcon: {
     ...THEME.typography.displayLg,
-    fontSize: 44,
     color: THEME.colors.textInverse,
   },
 
@@ -393,8 +394,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    ...THEME.typography.h4,
-    fontWeight: '400',
+    ...THEME.typography.bodyLg,
     color: THEME.colors.neutral600,
     textAlign: 'center',
     maxWidth: 280,
@@ -427,11 +427,10 @@ const styles = StyleSheet.create({
   },
   cardIcon: {
     ...THEME.typography.h2,
-    fontWeight: '400',
+    
   },
   cardTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
     letterSpacing: -0.2,
   },
@@ -487,8 +486,8 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.warningLight,
   },
   syncIndicatorIcon: {
-    ...THEME.typography.h4,
-    fontWeight: '400',
+    ...THEME.typography.bodyLg,
+    
   },
   syncInfo: {
     flex: 1,
@@ -530,7 +529,6 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     ...THEME.typography.labelSm,
-    fontWeight: '500',
     color: THEME.colors.textSecondary,
     marginTop: 4,
   },
@@ -575,7 +573,6 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     ...THEME.typography.displayLg,
-    fontSize: 48,
     marginBottom: 16,
   },
   emptyTitle: {
@@ -586,7 +583,7 @@ const styles = StyleSheet.create({
   emptyText: {
     ...THEME.typography.bodyMd,
     color: THEME.colors.textSecondary,
-  },
+  }
 });
 
 export default DeliveryCompleteScreen;

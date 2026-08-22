@@ -23,8 +23,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
+const PANEL = THEME.form.summaryPanel;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectPOFormState,
@@ -59,16 +59,11 @@ import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
+
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'POForm'>;
-
-const P = {
-  headerFrom: '#0A1628',
-  headerTo: '#132F4C',
-  accent: '#0052CC',
-  accentLight: '#E6F0FF',
-  totalsGold: '#F59E0B',
-};
 
 // ═══════════════════════════════════════════════════════
 const POFormScreen: React.FC = () => {
@@ -292,16 +287,16 @@ const POFormScreen: React.FC = () => {
         onBack={() => navigation.goBack()}
       />
 
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F1F5F9' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.neutral100 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
           {/* ── PO Details ─────────────────────────── */}
-          <FormSectionHeader title="PO DETAILS" dotColor={P.accent} />
+          <FormSectionHeader title="PO DETAILS" dotColor={colors.info} />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: P.accent }]} />
+            <View style={[styles.cardAccent, { backgroundColor: colors.info }]} />
             <View style={styles.cardBody}>
               <CustomDropdown
                 label="Vendor *"
@@ -322,7 +317,7 @@ const POFormScreen: React.FC = () => {
                 disabled
               />
               <View style={styles.rowFields}>
-                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                <View style={{ flex: 1, marginRight: spacing.xs }}>
                   <DateField
                     label="Order Date *"
                     value={form.orderDate}
@@ -347,7 +342,7 @@ const POFormScreen: React.FC = () => {
           {/* ── Line Items ─────────────────────────── */}
           <FormSectionHeader
             title="ITEMS"
-            dotColor="#6554C0"
+            dotColor={colors.secondary}
             right={<AddButton label="Add Item" onPress={() => dispatch(addLine())} />}
           />
           {!!form.errors.lines && (
@@ -356,7 +351,7 @@ const POFormScreen: React.FC = () => {
 
           {form.lines.map((line, idx) => (
             <View key={line.id} style={styles.lineCard}>
-              <View style={[styles.lineCardAccent, { backgroundColor: idx % 2 === 0 ? '#0052CC' : '#6554C0' }]} />
+              <View style={[styles.lineCardAccent, { backgroundColor: idx % 2 === 0 ? colors.info : colors.secondary }]} />
               <View style={styles.lineCardBody}>
                 <View style={styles.lineHeader}>
                   <View style={styles.lineBadge}>
@@ -365,7 +360,7 @@ const POFormScreen: React.FC = () => {
                   <Text style={styles.lineLabel}>Item</Text>
                   {form.lines.length > 1 && (
                     <TouchableOpacity style={styles.lineDeleteBtn} onPress={() => dispatch(removeLine(line.id))}>
-                      <Feather name="trash-2" size={14} color="#EF4444" />
+                      <Feather name="trash-2" size={14} color={colors.danger} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -384,11 +379,11 @@ const POFormScreen: React.FC = () => {
                   value={line.description}
                   onChangeText={v => dispatch(updateLine({ id: line.id, field: 'description', value: v }))}
                   placeholder="Description"
-                  placeholderTextColor={colors.textLight}
+                  placeholderTextColor={colors.textTertiary}
                 />
 
                 <View style={styles.lineNumRow}>
-                  <View style={{ flex: 1, minWidth: 132, marginRight: spacing.sm }}>
+                  <View style={{ flex: 1, minWidth: 132, marginRight: spacing.xs }}>
                     <Text style={styles.fieldLabel}>Quantity</Text>
                     <TextInput
                       style={styles.numericInput}
@@ -397,7 +392,7 @@ const POFormScreen: React.FC = () => {
                         dispatch(updateLine({ id: line.id, field: 'quantity', value: v.replace(/[^0-9.]/g, '') }))
                       }
                       placeholder="0"
-                      placeholderTextColor={colors.textLight}
+                      placeholderTextColor={colors.textTertiary}
                       keyboardType="decimal-pad"
                     />
                   </View>
@@ -410,7 +405,7 @@ const POFormScreen: React.FC = () => {
                         dispatch(updateLine({ id: line.id, field: 'unitPrice', value: v.replace(/[^0-9.]/g, '') }))
                       }
                       placeholder="0"
-                      placeholderTextColor={colors.textLight}
+                      placeholderTextColor={colors.textTertiary}
                       keyboardType="decimal-pad"
                     />
                   </View>
@@ -446,7 +441,7 @@ const POFormScreen: React.FC = () => {
                 )}
 
                 <View style={styles.lineTotalRow}>
-                  <Feather name="arrow-right" size={12} color={colors.primary} />
+                  <Feather name="arrow-right" size={12} color={colors.actionGreen} />
                   <Text style={styles.lineTotal}>
                     Line Total: {formatCurrency(line.amount, 'Rs ')}
                   </Text>
@@ -457,13 +452,13 @@ const POFormScreen: React.FC = () => {
 
           {/* ── Totals ─────────────────────────────── */}
           <LinearGradient
-            colors={['#0F172A', '#1E293B']}
+            colors={PANEL.gradient}
             style={styles.totalsCard}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
             <View style={styles.totalsHeader}>
-              <Feather name="credit-card" size={16} color={P.totalsGold} />
+              <Feather name="credit-card" size={16} color={PANEL.accent} />
               <Text style={styles.totalsHeaderText}>PO Summary</Text>
             </View>
             <View style={styles.totalsDivider} />
@@ -479,9 +474,9 @@ const POFormScreen: React.FC = () => {
           </LinearGradient>
 
           {/* ── Notes ──────────────────────────────── */}
-          <FormSectionHeader title="NOTES" dotColor="#8B5CF6" />
+          <FormSectionHeader title="NOTES" dotColor={colors.secondary} />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: '#8B5CF6' }]} />
+            <View style={[styles.cardAccent, { backgroundColor: colors.secondary }]} />
             <View style={styles.cardBody}>
               <CustomInput
                 label="Notes (Optional)"
@@ -495,12 +490,12 @@ const POFormScreen: React.FC = () => {
 
           {/* ── Actions ────────────────────────────── */}
           <View style={styles.btnRow}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
+            <View style={{ flex: 1, marginRight: spacing.xs }}>
               <SecondaryButton
                 title="Save Draft"
                 onPress={() => handleSave('draft')}
                 disabled={form.isSaving}
-                icon={<Feather name="save" size={16} color={colors.primary} />}
+                icon={<Feather name="save" size={16} color={colors.actionGreen} />}
               />
             </View>
             <View style={{ flex: 1.4 }}>
@@ -508,7 +503,7 @@ const POFormScreen: React.FC = () => {
                 title={form.isSaving ? 'Saving…' : isEditing ? 'Update & Send' : 'Save & Send'}
                 onPress={() => handleSave('sent')}
                 isLoading={form.isSaving}
-                icon={<Feather name="send" size={16} color="#FFFFFF" />}
+                icon={<Feather name="send" size={16} color={colors.neutral0} />}
               />
             </View>
           </View>
@@ -520,64 +515,63 @@ const POFormScreen: React.FC = () => {
 
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  container: { flex: 1, backgroundColor: colors.neutral100 },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
 
-
-  scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl },
-
+  scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xxl },
 
   sectionCard: {
-    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: borderRadius.md,
-    overflow: 'hidden', ...shadows.small, borderWidth: 1, borderColor: '#E2E8F0',
+    flexDirection: 'row', backgroundColor: colors.neutral0, borderRadius: radius.lg,
+    overflow: 'hidden', ...shadows.xs, borderWidth: 1, borderColor: colors.neutral200,
   },
   cardAccent: { width: 4 },
   cardBody: { flex: 1, padding: spacing.md },
   rowFields: { flexDirection: 'row' },
 
-  lineError: { fontSize: 12, color: colors.danger, marginBottom: spacing.sm, fontFamily: THEME.typography.fontFamily },
+  lineError: { ...typography.caption, color: colors.danger, marginBottom: spacing.xs },
 
   lineCard: {
-    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: borderRadius.md,
-    overflow: 'hidden', marginBottom: spacing.sm, ...shadows.small, borderWidth: 1, borderColor: '#E2E8F0',
+    flexDirection: 'row', backgroundColor: colors.neutral0, borderRadius: radius.lg,
+    overflow: 'hidden', marginBottom: spacing.xs, ...shadows.xs, borderWidth: 1, borderColor: colors.neutral200,
   },
   lineCardAccent: { width: 4 },
   lineCardBody: { flex: 1, padding: spacing.md },
-  lineHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs, gap: spacing.xs },
-  lineBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  lineBadgeText: { fontSize: 11, fontWeight: '800', color: '#64748B', fontFamily: THEME.typography.fontFamily },
-  lineLabel: { flex: 1, fontSize: 12, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', letterSpacing: 0.5, fontFamily: THEME.typography.fontFamily },
-  lineDeleteBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center' },
+  lineHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xxs, gap: spacing.xxs },
+  lineBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.neutral100, alignItems: 'center', justifyContent: 'center' },
+  lineBadgeText: { ...typography.overline, color: colors.neutral500 },
+  lineLabel: { flex: 1, ...typography.overline, color: colors.textTertiary },
+  lineDeleteBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.dangerLight, justifyContent: 'center', alignItems: 'center' },
 
   descInput: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
-    ...THEME.typography.bodyMd, color: colors.textPrimary, marginTop: spacing.xs,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs, paddingVertical: spacing.xs,
+    ...THEME.typography.bodyMd, color: colors.textPrimary, marginTop: spacing.xxs,
   },
-  lineNumRow: { flexDirection: 'row', marginTop: spacing.sm, flexWrap: 'wrap', rowGap: spacing.xs },
-  fieldLabel: { ...THEME.typography.caption, fontWeight: '500', color: colors.textSecondary, marginBottom: spacing.xs },
+  lineNumRow: { flexDirection: 'row', marginTop: spacing.xs, flexWrap: 'wrap', rowGap: spacing.xxs },
+  fieldLabel: { ...typography.labelSm, color: colors.textSecondary, marginBottom: spacing.xxs },
   numericInput: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs, paddingVertical: spacing.xs,
     ...THEME.typography.bodyMd, color: colors.textPrimary,
   },
-  lineTotalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: spacing.sm },
+  lineTotalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: spacing.xs },
   costPreview: { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: colors.border },
   costPreviewText: { ...THEME.typography.caption, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  costPreviewAfter: { fontWeight: '700' },
-  lineTotal: { fontSize: 13, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily },
+  costPreviewAfter: { fontWeight: typography.labelLg.fontWeight },
+  lineTotal: { ...typography.labelMd, color: colors.actionGreen, fontVariant: ['tabular-nums'] },
 
-  totalsCard: { borderRadius: borderRadius.md + 4, padding: spacing.md + 4, marginTop: spacing.lg, ...shadows.large },
-  totalsHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2, marginBottom: spacing.sm },
-  totalsHeaderText: { fontSize: 13, fontWeight: '700', color: '#F59E0B', fontFamily: THEME.typography.fontFamily, letterSpacing: 0.5 },
-  totalsDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: spacing.xs + 2 },
-  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs },
-  totalsLabel: { fontSize: 14, color: 'rgba(241,245,249,0.6)', fontFamily: THEME.typography.fontFamily },
-  totalsValue: { fontSize: 14, fontWeight: '600', color: '#F1F5F9', fontFamily: THEME.typography.fontFamily },
-  grandTotalLabel: { fontSize: 16, fontWeight: '700', color: '#F59E0B', fontFamily: THEME.typography.fontFamily },
-  grandTotalValue: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
+  totalsCard: { borderRadius: radius.lg + 4, padding: spacing.md + 4, marginTop: spacing.xl, ...shadows.md },
+  totalsHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs + 2, marginBottom: spacing.xs },
+  totalsHeaderText: { ...typography.labelMd, color: PANEL.accent, letterSpacing: 0.5 },
+  totalsDivider: { height: 1, backgroundColor: PANEL.divider, marginVertical: spacing.xxs + 2 },
+  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xxs },
+  // h5's 14px at body weight -- the label is quieter than the value beside it.
+  totalsLabel: { ...typography.h5, fontWeight: typography.bodyMd.fontWeight, color: PANEL.label },
+  totalsValue: { ...typography.h5, color: PANEL.text, fontVariant: ['tabular-nums'] },
+  grandTotalLabel: { ...typography.h4, color: PANEL.accent },
+  grandTotalValue: { ...typography.h2, color: colors.neutral0, fontVariant: ['tabular-nums'] },
 
-  btnRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.md },
+  btnRow: { flexDirection: 'row', marginTop: spacing.xl, marginBottom: spacing.md },
 });
 
 export default POFormScreen;

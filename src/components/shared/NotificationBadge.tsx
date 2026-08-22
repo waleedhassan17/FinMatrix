@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../../theme';
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 
 interface NotificationBadgeProps {
   count: number;
@@ -27,12 +29,12 @@ const styles = StyleSheet.create({
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#DE350B',
+    backgroundColor: THEME.colors.danger,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
     borderWidth: 1.5,
-    borderColor: colors.white,
+    borderColor: colors.neutral0,
     zIndex: 10,
   },
   badgeWide: {
@@ -41,7 +43,7 @@ const styles = StyleSheet.create({
   },
   text: {
     ...THEME.typography.overline,
-    color: colors.white,
+    color: colors.neutral0,
   },
 });
 

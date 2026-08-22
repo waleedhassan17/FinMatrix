@@ -7,20 +7,18 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
   fetchJournalEntries, selectJournalEntryState, setJournalStatusFilter,
-  type JournalEntryStatusFilter,
+  type JournalEntryStatusFilter
 } from './journalEntrySlice';
 import { formatCurrency } from '../../utils/formatters';
-import type { JournalEntryStatus } from '../../models/journalEntryModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
-import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
+import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
-const STATUS_COLOR: Record<JournalEntryStatus, string> = {
-  draft: ACCENT.amber, posted: ACCENT.green, void: THEME.colors.textSecondary,
-};
 
 const GeneralJournalListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -36,7 +34,7 @@ const GeneralJournalListScreen: React.FC = () => {
     return c;
   }, [state.entries]);
 
-  const TABS: TxnTab<JournalEntryStatusFilter>[] = [
+  const TABS: TabItem<JournalEntryStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
     { label: 'Draft', value: 'draft', count: counts.draft },
     { label: 'Posted', value: 'posted', count: counts.posted },
@@ -57,7 +55,7 @@ const GeneralJournalListScreen: React.FC = () => {
         right={<HeaderAction label="New" onPress={() => navigation.navigate('JournalEntryForm', {})} />}
       />
 
-      <TxnTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setJournalStatusFilter(v))} />
+      <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setJournalStatusFilter(v))} />
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
@@ -75,7 +73,7 @@ const GeneralJournalListScreen: React.FC = () => {
             number={e.reference}
             subtitle={e.memo || 'No memo'}
             statusLabel={titleCase(e.status)}
-            statusColor={STATUS_COLOR[e.status]}
+            statusColor={txnStatusColor(e.status)}
             metaLeft={`Date: ${e.date}`}
             primaryLabel="Total"
             primaryValue={rs(e.totalDebits)}
@@ -89,7 +87,7 @@ const GeneralJournalListScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   list: { flex: 1 },
-  content: { padding: 16, paddingTop: 4, gap: 10, flexGrow: 1 },
+  content: { padding: 16, paddingTop: 4, gap: 10, flexGrow: 1 }
 });
 
 export default GeneralJournalListScreen;

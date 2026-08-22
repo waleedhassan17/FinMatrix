@@ -1,42 +1,44 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
-  ActivityIndicator,
+  ActivityIndicator
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   getBillingStatusAPI, getPlanLimitsAPI,
-  type BillingStatus, type PlanLimits,
+  type BillingStatus, type PlanLimits
 } from '../../../networks/billing/billingNetwork';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { ReportHeader, HeaderAction, HEADER_NAVY } from '../../../components/reports/ReportUI';
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { useSignOut } from '../../../hooks/useSignOut';
 import { selectFeatures } from '../../Auth/authSlice';
 import {
   selectPreferences, selectSettingsLoading, selectSettingsSaving,
-  setPreference, loadPreferences, savePreferences,
+  setPreference, loadPreferences, savePreferences
 } from './settingsSlice';
 import type { AppPreferences } from '../../../models/settingsModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
+
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
 const P = {
-  brand: '#059669',
-  brandLight: '#ECFDF5',
-  pageBg: '#F6F8FB',
-  card: '#FFFFFF',
-  sectionLabel: '#64748B',
-  text: '#1E293B',
-  sub: '#94A3B8',
-  divider: '#E2E8F0',
-  danger: '#DE350B',
+  brand: colors.actionGreen,
+  brandLight: colors.actionGreenLighter,
+  pageBg: colors.neutral50,
+  card: colors.neutral0,
+  sectionLabel: colors.neutral500,
+  text: colors.neutral800,
+  sub: colors.neutral400,
+  divider: colors.neutral200,
+  danger: colors.danger
 };
 
 /* ─── section row components ─── */
@@ -68,12 +70,11 @@ const ToggleRow: React.FC<ToggleRowProps> = ({ icon, label, value, onChange }) =
     <Switch
       value={value}
       onValueChange={onChange}
-      trackColor={{ false: '#CBD5E1', true: P.brand }}
-      thumbColor={colors.white}
+      trackColor={{ false: colors.neutral300, true: P.brand }}
+      thumbColor={colors.surface}
     />
   </View>
 );
-
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
   <Text style={s.sectionHeader}>{title}</Text>
@@ -102,9 +103,9 @@ const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) =
 
   const subColor =
     status?.subscriptionStatus === 'expired'
-      ? '#DE350B'
+      ? colors.danger
       : status?.subscriptionStatus === 'expiring'
-        ? '#B54708'
+        ? colors.warningHover
         : P.brand;
 
   // A payment is sitting with the super-admin — block re-submission until it
@@ -126,7 +127,7 @@ const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) =
             <View style={s.row}>
               <Feather name="award" size={18} color={P.brand} style={s.rowIcon} />
               <Text style={[s.rowLabel, { flex: 1 }]}>Current Plan</Text>
-              <Text style={[s.rowValue, { color: P.text, fontWeight: '700' }]}>
+              <Text style={[s.rowValue, { color: P.text, fontWeight: typography.labelLg.fontWeight }]}>
                 {status?.planLabel ?? 'Free'}
               </Text>
             </View>
@@ -134,7 +135,7 @@ const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) =
             <View style={s.row}>
               <Feather name="activity" size={18} color={P.brand} style={s.rowIcon} />
               <Text style={[s.rowLabel, { flex: 1 }]}>Status</Text>
-              <Text style={[s.rowValue, { color: subColor, fontWeight: '700', textTransform: 'capitalize' }]}>
+              <Text style={[s.rowValue, { color: subColor, fontWeight: THEME.typography.labelMd.fontWeight, textTransform: 'capitalize' }]}>
                 {status?.subscriptionStatus ?? 'active'}
               </Text>
             </View>
@@ -177,7 +178,7 @@ const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) =
               onPress={onManage}
               disabled={awaitingApproval}
             >
-              <Feather name={awaitingApproval ? 'clock' : 'credit-card'} size={16} color="#FFFFFF" />
+              <Feather name={awaitingApproval ? 'clock' : 'credit-card'} size={16} color={colors.neutral0} />
               <Text style={s.manageBtnText}>
                 {awaitingApproval ? 'Awaiting Admin Approval' : 'Subscribe / Change Plan'}
               </Text>
@@ -208,7 +209,6 @@ const SettingsScreen: React.FC = () => {
     },
     [dispatch],
   );
-
 
   const handleSave = useCallback(() => {
     dispatch(savePreferences());
@@ -297,20 +297,19 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: P.pageBg },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
   body: { flex: 1, backgroundColor: P.pageBg },
-  scroll: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+  scroll: { paddingHorizontal: spacing.md, paddingTop: spacing.xs },
   sectionHeader: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.labelSm,
     color: P.sectionLabel,
     letterSpacing: 0.8,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xs,
-    marginLeft: spacing.xs,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xxs,
+    marginLeft: spacing.xxs,
   },
   card: {
     backgroundColor: P.card,
-    borderRadius: borderRadius.md,
-    ...shadows.card,
+    borderRadius: radius.lg,
+    ...shadows.sm,
     overflow: 'hidden',
   },
   row: {
@@ -321,40 +320,37 @@ const s = StyleSheet.create({
   },
   rowIcon: { marginRight: 12, width: 22 },
   rowLabel: {
-    fontSize: 15,
-    fontWeight: '500',
+    ...typography.bodyMd,
     color: P.text,
-    fontFamily: THEME.typography.fontFamily,
   },
   rowValue: {
-    fontSize: 14,
+    ...typography.bodySm,
     color: P.sub,
     marginRight: 6,
-    fontFamily: THEME.typography.fontFamily,
   },
   divider: { height: 1, backgroundColor: P.divider, marginLeft: 50 },
   manageBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: P.brand, marginHorizontal: spacing.md, marginVertical: 12,
-    paddingVertical: 12, borderRadius: borderRadius.md,
+    paddingVertical: 12, borderRadius: radius.lg,
   },
-  manageBtnDisabled: { backgroundColor: '#94A3B8' },
+  manageBtnDisabled: { backgroundColor: colors.neutral400 },
   awaitCard: {
     flexDirection: 'row', gap: 10, alignItems: 'flex-start',
-    backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA',
-    borderRadius: borderRadius.md, marginHorizontal: spacing.md, marginTop: 12,
+    backgroundColor: colors.warningLighter, borderWidth: 1, borderColor: colors.warningLight,
+    borderRadius: radius.lg, marginHorizontal: spacing.md, marginTop: 12,
     padding: 12,
   },
   awaitTitle: {
-    fontSize: 14, fontWeight: '700', color: '#B54708',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.h5,
+    color: colors.warningHover,
   },
   awaitText: {
-    fontSize: 12, color: '#92400E', lineHeight: 17, marginTop: 3,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.caption,
+    color: colors.warningHover, lineHeight: 17, marginTop: 3,
   },
   manageBtnText: {
-    fontSize: 15, fontWeight: '700', color: '#FFFFFF',
-    fontFamily: THEME.typography.fontFamily,
-  },
+    ...typography.labelLg,
+    color: colors.neutral0,
+  }
 });

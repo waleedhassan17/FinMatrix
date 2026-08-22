@@ -23,7 +23,7 @@ import {
   ReportTitleBlock,
   StatementRow,
   useStatementCompany,
-  rangeLabel,
+  rangeLabel
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
@@ -120,7 +120,7 @@ const CashFlowScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   filterRow: { flexDirection: 'row', gap: THEME.spacing.sm },
-  noneText: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, fontStyle: 'italic' },
+  noneText: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, fontStyle: 'italic' }
 });
 
 export default CashFlowScreen;

@@ -10,7 +10,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
+  TouchableOpacity
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,7 +19,6 @@ import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -28,7 +27,7 @@ import {
   setErrors,
   resetVendorForm,
   saveVendor,
-  fetchVendorForEdit,
+  fetchVendorForEdit
 } from './vendorFormSlice';
 import { fetchVendors, upsertVendor } from '../VendorList/vendorListSlice';
 import { selectAccounts, fetchAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
@@ -38,6 +37,9 @@ import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { validateVendor, PAYMENT_TERMS_OPTIONS } from '../../../models/vendorModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type FormRoute = RouteProp<MoreStackParamList, 'VendorForm'>;
@@ -104,7 +106,7 @@ const VendorFormScreen: React.FC = () => {
       paymentTerms: form.paymentTerms,
       taxId: form.taxId,
       defaultExpenseAccountId: form.defaultExpenseAccountId,
-      notes: form.notes,
+      notes: form.notes
     });
 
     if (Object.keys(validationErrors).length > 0) {
@@ -123,7 +125,7 @@ const VendorFormScreen: React.FC = () => {
       Toast.show({
           type: 'success',
           text1: isEditing ? 'Vendor Updated' : 'Vendor Created',
-          text2: `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully. Now available for Bills & POs.`,
+          text2: `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully. Now available for Bills & POs.`
         });
         navigation.goBack();
     } catch {
@@ -204,7 +206,7 @@ const VendorFormScreen: React.FC = () => {
               placeholder="Province"
             />
             <View style={styles.rowFields}>
-              <View style={{ flex: 1, marginRight: spacing.sm }}>
+              <View style={{ flex: 1, marginRight: spacing.xs }}>
                 <CustomInput
                   label="Zip Code"
                   value={form.zipCode}
@@ -263,7 +265,7 @@ const VendorFormScreen: React.FC = () => {
             />
           </View>
 
-          <View style={{ height: spacing.xl * 2 }} />
+          <View style={{ height: spacing.xxl * 2 }} />
         </ScrollView>
 
         {/* ── Sticky Action Bar ────────────────────── */}
@@ -299,24 +301,24 @@ const VendorFormScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg },
+  backIcon: { ...typography.h1, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
+  scrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.xl },
 
   sectionTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
+    
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     marginTop: spacing.md,
   },
   sectionCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
     borderWidth: 1,
     borderColor: colors.border,
-    ...shadows.small,
+    ...shadows.xs,
   },
 
   rowFields: { flexDirection: 'row' },
@@ -325,15 +327,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    gap: spacing.sm,
-    ...shadows.small,
+    gap: spacing.xs,
+    ...shadows.xs,
   },
   actionSecondary: { flex: 1 },
-  actionPrimary: { flex: 1.4 },
+  actionPrimary: { flex: 1.4 }
 });
 
 export default VendorFormScreen;

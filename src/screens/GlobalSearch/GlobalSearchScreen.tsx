@@ -1,33 +1,35 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  TextInput, SectionList, ActivityIndicator,
+  TextInput, SectionList, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
-import { spacing, borderRadius, shadows } from '../../theme';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
   selectSearchQuery, selectSearchResults, selectIsSearching, selectSearchError, selectRecentSearches,
   setQuery, clearSearch, addRecentSearch, removeRecentSearch, clearRecentSearches,
-  performSearch, MIN_QUERY_LENGTH,
+  performSearch, MIN_QUERY_LENGTH
 } from './globalSearchSlice';
 import { selectFeatures, selectUser } from '../Auth/authSlice';
 import { isFeatureVisible } from '../../utils/featureGates';
 import type { SearchResult, SearchModule } from '../../models/auditModel';
 import { MODULE_COLORS, SEARCH_MODULES } from '../../models/auditModel';
 
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
+
 const P = {
-  brand: '#059669',
-  brandLight: '#ECFDF5',
-  pageBg: '#F6F8FB',
-  card: '#FFFFFF',
-  text: '#1E293B',
-  sub: '#94A3B8',
-  divider: '#E2E8F0',
+  brand: THEME.colors.actionGreen,
+  brandLight: THEME.colors.actionGreenLighter,
+  pageBg: THEME.colors.neutral50,
+  card: THEME.colors.neutral0,
+  text: THEME.colors.neutral800,
+  sub: THEME.colors.neutral400,
+  divider: THEME.colors.neutral200
 };
 
 type SearchNav = NavigationProp<Record<string, object | undefined>>;
@@ -283,7 +285,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     backgroundColor: P.card,
     borderBottomWidth: 1,
     borderBottomColor: P.divider,
@@ -294,7 +296,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: P.pageBg,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     paddingHorizontal: 10,
     height: 40,
     gap: 8,
@@ -305,23 +307,23 @@ const s = StyleSheet.create({
     color: P.text,
     padding: 0,
   },
-  loadingWrap: { paddingVertical: spacing.lg, alignItems: 'center' },
+  loadingWrap: { paddingVertical: spacing.xl, alignItems: 'center' },
   recentSection: { padding: spacing.md },
   recentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   recentTitle: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
+    ...THEME.typography.labelMd,
+    
     color: P.sub,
     letterSpacing: 0.5,
   },
   clearAllText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
+    ...THEME.typography.labelMd,
+    
     color: P.brand,
   },
   recentRow: {
@@ -344,38 +346,38 @@ const s = StyleSheet.create({
     color: P.sub,
     paddingVertical: 10,
   },
-  list: { padding: spacing.md, paddingBottom: spacing.xl },
+  list: { padding: spacing.md, paddingBottom: spacing.xxl },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: spacing.md,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
   },
   moduleBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
   },
-  moduleBadgeText: { ...THEME.typography.labelMd, fontWeight: '700' },
+  moduleBadgeText: { ...THEME.typography.labelMd, fontWeight: typography.labelLg.fontWeight },
   sectionCount: { ...THEME.typography.caption, color: P.sub },
   resultCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: P.card,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     padding: spacing.md,
     marginBottom: 6,
-    ...shadows.small,
+    ...shadows.xs,
   },
   resultDot: { width: 8, height: 8, borderRadius: 4, marginRight: 12 },
   resultContent: { flex: 1 },
   resultTitle: { ...THEME.typography.h4, color: P.text },
   resultSub: { ...THEME.typography.caption, color: P.sub, marginTop: 2 },
-  resultCount: { ...THEME.typography.caption, color: P.sub, marginBottom: spacing.xs },
-  stateWrap: { alignItems: 'center', marginTop: 80, paddingHorizontal: spacing.lg },
-  stateTitle: { ...THEME.typography.h4, color: P.text, marginTop: spacing.sm },
-  stateText: { ...THEME.typography.bodyMd, color: P.sub, marginTop: spacing.xs, textAlign: 'center' },
+  resultCount: { ...THEME.typography.caption, color: P.sub, marginBottom: spacing.xxs },
+  stateWrap: { alignItems: 'center', marginTop: 80, paddingHorizontal: spacing.xl },
+  stateTitle: { ...THEME.typography.h4, color: P.text, marginTop: spacing.xs },
+  stateText: { ...THEME.typography.bodyMd, color: P.sub, marginTop: spacing.xxs, textAlign: 'center' },
   retryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -383,8 +385,8 @@ const s = StyleSheet.create({
     backgroundColor: P.brand,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     marginTop: spacing.md,
   },
-  retryText: { ...THEME.typography.bodySm, fontWeight: '700', color: P.card },
+  retryText: { ...THEME.typography.labelMd,  color: P.card }
 });

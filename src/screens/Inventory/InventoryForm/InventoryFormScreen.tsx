@@ -12,20 +12,19 @@ import {
   Platform,
   TouchableOpacity,
   Modal,
-  FlatList,
+  FlatList
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, borderRadius } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
   createInventoryItem,
-  editInventoryItem,
+  editInventoryItem
 } from '../InventoryList/inventoryListSlice';
 import {
   selectInventoryFormData,
@@ -35,7 +34,7 @@ import {
   setFormData,
   setFormErrors,
   setIsSaving,
-  resetInventoryForm,
+  resetInventoryForm
 } from './inventoryFormSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
@@ -46,15 +45,18 @@ import {
   generateNextSKU,
   CATEGORY_OPTIONS,
   UOM_OPTIONS,
-  COST_METHOD_OPTIONS,
+  COST_METHOD_OPTIONS
 } from '../../../models/inventoryModel';
 import {
   formDataToInventoryCreatePayload,
-  formDataToInventoryUpdatePayload,
+  formDataToInventoryUpdatePayload
 } from '../../../serializers/inventorySerializer';
 import { selectAgencies, fetchAgencies } from '../../Agency/AgencyList/agencyListSlice';
 import { isFeatureEnabled } from '../../../utils/featureGates';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type FormRoute = RouteProp<InventoryStackParamList, 'InventoryForm'>;
 type Nav = NativeStackNavigationProp<InventoryStackParamList>;
@@ -88,7 +90,7 @@ const InventoryFormScreen: React.FC = () => {
     pricing: false,
     stock: false,
     tracking: true,
-    location: false,
+    location: false
   });
 
   const [showAgencyPrompt, setShowAgencyPrompt] = useState(false);
@@ -195,7 +197,7 @@ const InventoryFormScreen: React.FC = () => {
         await dispatch(
           editInventoryItem({
             itemId: editingId,
-            data: formDataToInventoryUpdatePayload(form, { costLocked }),
+            data: formDataToInventoryUpdatePayload(form, { costLocked })
           }),
         ).unwrap();
         Toast.show({ type: 'success', text1: 'Success', text2: 'Item updated successfully.' });
@@ -483,7 +485,7 @@ const InventoryFormScreen: React.FC = () => {
             />
           </View>
 
-          <View style={{ height: spacing.xl }} />
+          <View style={{ height: spacing.xxl }} />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -548,21 +550,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.background,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.xxs,
+  },
+  readOnlyLabel: { ...typography.bodySm, color: colors.textSecondary },
+  readOnlyValue: { ...typography.bodyLg, color: colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
+  fieldHelp: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 17,
     marginBottom: spacing.xs,
   },
-  readOnlyLabel: { color: colors.textSecondary, fontSize: 14 },
-  readOnlyValue: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  fieldHelp: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: spacing.sm,
-  },
   form: {
-    padding: spacing.lg,
+    padding: spacing.xl,
   },
 
   // ── Sections ──────────────────────────────────────
@@ -570,55 +572,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 4,
-    borderRadius: borderRadius.sm,
-    marginTop: spacing.sm,
+    paddingVertical: spacing.xs + 4,
+    borderRadius: radius.sm,
+    marginTop: spacing.xs,
     borderWidth: 1,
     borderColor: colors.border,
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...typography.labelLg,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   sectionChevron: {
-    fontSize: 14,
-    color: colors.textLight,
+    ...typography.bodySm,
+    color: colors.textTertiary,
   },
   sectionBody: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
     borderTopWidth: 0,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
   },
 
   // ── SKU row ───────────────────────────────────────
   skuRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   skuInput: { flex: 1 },
   autoGenBtn: {
     backgroundColor: colors.secondary,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 4,
-    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xs + 4,
+    borderRadius: radius.sm,
     marginBottom: spacing.md,
   },
   autoGenText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.white,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.labelMd,
+    color: colors.surface,
   },
 
   // ── Markup ────────────────────────────────────────
@@ -628,26 +626,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.background,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.sm,
-    marginTop: spacing.xs,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+    marginTop: spacing.xxs,
   },
   markupLabel: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   markupValue: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...typography.labelLg,
     color: colors.success,
-    fontFamily: THEME.typography.fontFamily,
   },
 
   // ── Row fields ────────────────────────────────────
   rowFields: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   halfField: { flex: 1 },
 
@@ -662,63 +657,57 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
   promptSheet: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
     width: '100%',
     maxWidth: 400,
   },
   promptTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    ...typography.h4,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
   },
   promptSubtitle: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
     marginBottom: spacing.md,
   },
   promptOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: spacing.xs + 2,
-    backgroundColor: colors.white,
+    marginBottom: spacing.xxs + 2,
+    backgroundColor: colors.surface,
   },
   promptOptionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '0A',
+    borderColor: colors.actionGreen,
+    backgroundColor: colors.actionGreen + '0A',
   },
   promptOptionText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.h5,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
     flex: 1,
   },
   promptOptionTextSelected: {
-    color: colors.primary,
+    color: colors.actionGreen,
   },
   promptOptionBadge: {
-    fontSize: 10,
-    fontWeight: '700',
+    ...typography.overline,
     color: colors.secondary,
     backgroundColor: colors.secondary + '18',
-    paddingHorizontal: spacing.xs + 2,
+    paddingHorizontal: spacing.xxs + 2,
     paddingVertical: 2,
     borderRadius: 6,
-  },
+  }
 });
 
 export default InventoryFormScreen;
