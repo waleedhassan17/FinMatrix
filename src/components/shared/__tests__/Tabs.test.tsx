@@ -4,7 +4,7 @@
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 
 import React from 'react';
-import { Text } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import renderer, { act } from 'react-test-renderer';
 import { FilterTabs, type TabItem } from '../Tabs';
 
@@ -40,7 +40,7 @@ const tabNodes = (tree: renderer.ReactTestRenderer) =>
 
 /** Lay the row out: a viewport narrower than the content, so it can scroll. */
 const layout = (tree: renderer.ReactTestRenderer, viewport = 320, content = 700) => {
-  const scroll = tree.root.findByType(require('react-native').ScrollView);
+  const scroll = tree.root.findByType(ScrollView);
   act(() => {
     tabNodes(tree).forEach((tab, i) => {
       tab.props.onLayout({ nativeEvent: { layout: { x: i * 140, width: 130 } } });
@@ -90,7 +90,7 @@ describe('FilterTabs', () => {
     // to leave a filtered list looking unfiltered.
     const tree = render('paid');
     const scrollTo = jest.fn();
-    tree.root.findByType(require('react-native').ScrollView).instance.scrollTo = scrollTo;
+    tree.root.findByType(ScrollView).instance.scrollTo = scrollTo;
     layout(tree);
 
     expect(scrollTo).toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe('FilterTabs', () => {
   it('never scrolls to a negative offset for an early tab', () => {
     const tree = render('all');
     const scrollTo = jest.fn();
-    tree.root.findByType(require('react-native').ScrollView).instance.scrollTo = scrollTo;
+    tree.root.findByType(ScrollView).instance.scrollTo = scrollTo;
     layout(tree);
 
     expect(scrollTo.mock.calls[scrollTo.mock.calls.length - 1][0].x).toBe(0);
