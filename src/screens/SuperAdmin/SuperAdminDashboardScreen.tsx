@@ -27,6 +27,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { selectUser } from '../Auth/authSlice';
 import { useSignOut } from '../../hooks/useSignOut';
+import { THEME, statusStyle } from '../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, shadows, typography } = THEME;
 import {
   loadPlatformStats,
   selectPlatformStats,
@@ -37,24 +41,6 @@ import {
 const { width: SCREEN_W } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_W * 0.78;
 const STATUS_H = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
-
-// ── Design tokens ─────────────────────────────────────
-const C = {
-  bg: '#F4F5F7',
-  surface: '#FFFFFF',
-  primary: '#0052CC',
-  primaryDark: '#0747A6',
-  border: '#DFE1E6',
-  text: { primary: '#172B4D', secondary: '#5E6C84', muted: '#8993A4', inverse: '#FFFFFF' },
-  accent: '#0065FF',
-  cardIcon: '#DEEBFF',
-  status: {
-    active: { bg: '#E3FCEF', text: '#00875A' },
-    pending: { bg: '#FFFAE6', text: '#FF8B00' },
-    suspended: { bg: '#FFEBE6', text: '#DE350B' },
-    rejected: { bg: '#EBECF0', text: '#5E6C84' },
-  },
-};
 
 // ── Stat Card (clean surface style) ──────────────────
 const StatCard: React.FC<{
@@ -78,7 +64,7 @@ const StatCard: React.FC<{
     <Animated.View style={[S.statWrap, { opacity, transform: [{ scale }] }]}>
       <View style={S.statCard}>
         <View style={S.statIconBox}>
-          <Feather name={icon as any} size={16} color={C.primary} />
+          <Feather name={icon as any} size={16} color={colors.primary} />
         </View>
         <Text style={S.statValue}>{value}</Text>
         <Text style={S.statLabel}>{label}</Text>
@@ -132,7 +118,7 @@ const SidebarDrawer: React.FC<{
         <Animated.View
           style={[S.drawer, { transform: [{ translateX: slideX }], paddingTop: STATUS_H + 16 }]}
         >
-          <LinearGradient colors={[C.primary, C.primaryDark]} style={S.drawerHeader}>
+          <LinearGradient colors={[colors.primary, colors.primaryDark]} style={S.drawerHeader}>
             <View style={S.drawerAvatar}>
               <Text style={S.drawerAvatarText}>
                 {userName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
@@ -154,16 +140,16 @@ const SidebarDrawer: React.FC<{
                 activeOpacity={0.7}
               >
                 <View style={S.drawerItemIcon}>
-                  <Feather name={item.icon as any} size={18} color={C.primary} />
+                  <Feather name={item.icon as any} size={18} color={colors.primary} />
                 </View>
                 <Text style={S.drawerItemText}>{item.label}</Text>
-                <Feather name="chevron-right" size={16} color={C.text.muted} />
+                <Feather name="chevron-right" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
             ))}
           </View>
 
           <TouchableOpacity style={S.drawerSignOut} onPress={onSignOut} activeOpacity={0.8}>
-            <Feather name="log-out" size={18} color="#DE350B" />
+            <Feather name="log-out" size={18} color={colors.danger} />
             <Text style={S.drawerSignOutText}>Sign Out</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -177,7 +163,7 @@ const RegistrationItem: React.FC<{
   item: { id: string; name: string; industry: string | null; status: string; createdAt: string };
   onPress: () => void;
 }> = ({ item, onPress }) => {
-  const cfg = (C.status as any)[item.status] ?? C.status.active;
+  const cfg = statusStyle(item.status);
   return (
     <TouchableOpacity style={S.regItem} onPress={onPress} activeOpacity={0.7}>
       <View style={S.regAvatar}>
@@ -188,7 +174,7 @@ const RegistrationItem: React.FC<{
         <Text style={S.regIndustry}>{item.industry ?? 'General'}</Text>
       </View>
       <View style={[S.regBadge, { backgroundColor: cfg.bg }]}>
-        <Text style={[S.regBadgeText, { color: cfg.text }]}>{item.status}</Text>
+        <Text style={[S.regBadgeText, { color: cfg.fg }]}>{item.status}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -237,19 +223,19 @@ const SuperAdminDashboardScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={S.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
       <View style={S.header}>
         <TouchableOpacity onPress={() => setDrawerOpen(true)} style={S.menuBtn} activeOpacity={0.7}>
-          <Feather name="menu" size={24} color={C.text.primary} />
+          <Feather name="menu" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={S.headerCenter}>
           <Text style={S.headerTitle}>FinMatrix Admin</Text>
           <Text style={S.headerSub}>Platform Control Panel</Text>
         </View>
         <View style={S.headerAvatar}>
-          <LinearGradient colors={[C.primary, C.primaryDark]} style={S.avatarGrad}>
+          <LinearGradient colors={[colors.primary, colors.primaryDark]} style={S.avatarGrad}>
             <Text style={S.avatarText}>
               {displayName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
             </Text>
@@ -261,12 +247,12 @@ const SuperAdminDashboardScreen: React.FC = () => {
         contentContainerStyle={[S.content, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         {/* Welcome Banner */}
         <LinearGradient
-          colors={[C.primary, C.primaryDark]}
+          colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={S.welcomeBanner}
@@ -284,10 +270,10 @@ const SuperAdminDashboardScreen: React.FC = () => {
         </LinearGradient>
 
         {isLoading ? (
-          <ActivityIndicator size="large" color={C.primary} style={S.loader} />
+          <ActivityIndicator size="large" color={colors.primary} style={S.loader} />
         ) : statsError ? (
           <View style={S.errorBox}>
-            <Feather name="alert-circle" size={20} color="#DE350B" />
+            <Feather name="alert-circle" size={20} color={colors.danger} />
             <Text style={S.errorText}>{statsError}</Text>
             <TouchableOpacity onPress={load} style={S.retryBtn}>
               <Text style={S.retryText}>Retry</Text>
@@ -329,28 +315,28 @@ const SuperAdminDashboardScreen: React.FC = () => {
             {/* Quick Stats Bar */}
             <View style={S.quickStatsBar}>
               <View style={S.quickStatItem}>
-                <Text style={[S.quickStatVal, { color: C.text.primary }]}>
+                <Text style={[S.quickStatVal, { color: colors.textPrimary }]}>
                   {stats.companies.suspended}
                 </Text>
                 <Text style={S.quickStatLabel}>Suspended</Text>
               </View>
               <View style={S.qsDivider} />
               <View style={S.quickStatItem}>
-                <Text style={[S.quickStatVal, { color: C.text.primary }]}>
+                <Text style={[S.quickStatVal, { color: colors.textPrimary }]}>
                   {stats.companies.rejected}
                 </Text>
                 <Text style={S.quickStatLabel}>Rejected</Text>
               </View>
               <View style={S.qsDivider} />
               <View style={S.quickStatItem}>
-                <Text style={[S.quickStatVal, { color: C.text.primary }]}>
+                <Text style={[S.quickStatVal, { color: colors.textPrimary }]}>
                   {stats.subscriptions.totalPlans}
                 </Text>
                 <Text style={S.quickStatLabel}>Plans</Text>
               </View>
               <View style={S.qsDivider} />
               <View style={S.quickStatItem}>
-                <Text style={[S.quickStatVal, { color: C.text.primary }]}>
+                <Text style={[S.quickStatVal, { color: colors.textPrimary }]}>
                   {stats.companies.recentWeek}
                 </Text>
                 <Text style={S.quickStatLabel}>This Week</Text>
@@ -367,7 +353,7 @@ const SuperAdminDashboardScreen: React.FC = () => {
               >
                 <View style={S.actionSurface}>
                   <View style={S.actionIconWrap}>
-                    <Feather name="clock" size={18} color={C.primary} />
+                    <Feather name="clock" size={18} color={colors.primary} />
                   </View>
                   <Text style={S.actionLabel}>Review{' '}Companies</Text>
                   {stats.companies.pending > 0 && (
@@ -385,7 +371,7 @@ const SuperAdminDashboardScreen: React.FC = () => {
               >
                 <View style={S.actionSurface}>
                   <View style={S.actionIconWrap}>
-                    <Feather name="briefcase" size={18} color={C.primary} />
+                    <Feather name="briefcase" size={18} color={colors.primary} />
                   </View>
                   <Text style={S.actionLabel}>All Companies</Text>
                 </View>
@@ -398,7 +384,7 @@ const SuperAdminDashboardScreen: React.FC = () => {
               >
                 <View style={S.actionSurface}>
                   <View style={S.actionIconWrap}>
-                    <Feather name="credit-card" size={18} color={C.primary} />
+                    <Feather name="credit-card" size={18} color={colors.primary} />
                   </View>
                   <Text style={S.actionLabel}>Manage Plans</Text>
                 </View>
@@ -446,144 +432,143 @@ const SuperAdminDashboardScreen: React.FC = () => {
 // ─── Styles ──────────────────────────────────────────
 
 const S = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: C.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
-    gap: 12,
+    borderBottomColor: colors.border,
+    gap: spacing.sm,
   },
-  menuBtn: { padding: 4 },
+  menuBtn: { padding: spacing.xxs },
   headerCenter: { flex: 1 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: C.text.primary },
-  headerSub: { fontSize: 11, color: C.text.secondary, marginTop: 1 },
+  headerTitle: { ...typography.h4, color: colors.textPrimary },
+  headerSub: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
   headerAvatar: {},
   avatarGrad: {
     width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+  avatarText: { ...typography.labelMd, color: colors.neutral0 },
 
-  content: { padding: 16, gap: 14 },
-  loader: { marginTop: 40 },
+  content: { padding: spacing.md, gap: 14 },
+  loader: { marginTop: spacing.xxxl },
 
   errorBox: {
-    alignItems: 'center', gap: 8, padding: 20,
-    backgroundColor: C.surface, borderRadius: 12,
+    alignItems: 'center', gap: spacing.xs, padding: spacing.lg,
+    backgroundColor: colors.surface, borderRadius: radius.lg,
   },
-  errorText: { fontSize: 13, color: '#DE350B', textAlign: 'center' },
+  errorText: { ...typography.bodySm, color: colors.danger, textAlign: 'center' },
   retryBtn: {
-    paddingHorizontal: 20, paddingVertical: 8,
-    backgroundColor: C.primary, borderRadius: 8,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.xs,
+    backgroundColor: colors.primary, borderRadius: radius.sm,
   },
-  retryText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
+  retryText: { ...typography.labelMd, color: colors.neutral0 },
 
   welcomeBanner: {
-    borderRadius: 16, padding: 20, overflow: 'hidden', position: 'relative',
+    borderRadius: radius.xl, padding: spacing.lg, overflow: 'hidden', position: 'relative',
   },
   welcomeDecor: {
     position: 'absolute', right: -30, top: -30,
     width: 120, height: 120, borderRadius: 60,
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  welcomeGreet: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
-  welcomeName: { fontSize: 22, fontWeight: '800', color: '#FFF', marginTop: 2 },
+  welcomeGreet: { ...typography.bodySm, color: 'rgba(255,255,255,0.8)' },
+  welcomeName: { ...typography.h2, color: colors.neutral0, marginTop: 2 },
   welcomeSub: {
-    fontSize: 12, color: 'rgba(255,255,255,0.75)',
-    marginTop: 6, fontWeight: '500',
+    ...typography.labelSm, color: 'rgba(255,255,255,0.75)', marginTop: 6,
   },
 
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: C.text.primary },
+  sectionTitle: { ...typography.labelLg, color: colors.textPrimary },
   sectionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  seeAllText: { fontSize: 13, color: C.primary, fontWeight: '600' },
+  seeAllText: { ...typography.labelMd, color: colors.primary },
 
   statsGrid: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 10,
   },
   statWrap: { width: (SCREEN_W - 42) / 2 },
   statCard: {
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderRadius: 14,
-    padding: 16,
+    padding: spacing.md,
     minHeight: 110,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   statIconBox: {
-    width: 32, height: 32, borderRadius: 8,
-    backgroundColor: C.cardIcon,
+    width: 32, height: 32, borderRadius: radius.sm,
+    backgroundColor: colors.primaryLighter,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 10,
   },
-  statValue: { fontSize: 28, fontWeight: '800', color: C.text.primary },
-  statLabel: { fontSize: 11, color: C.text.secondary, marginTop: 3 },
-  statSub: { fontSize: 10, color: C.text.muted, marginTop: 2 },
+  statValue: { ...typography.h1, color: colors.textPrimary },
+  statLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 3 },
+  statSub: { ...typography.overline, color: colors.textTertiary, marginTop: 2 },
 
   quickStatsBar: {
     flexDirection: 'row',
-    backgroundColor: C.surface,
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     paddingVertical: 14,
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.xs,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   quickStatItem: { flex: 1, alignItems: 'center', gap: 3 },
-  quickStatVal: { fontSize: 20, fontWeight: '800' },
-  quickStatLabel: { fontSize: 10, color: C.text.secondary },
-  qsDivider: { width: 1, backgroundColor: C.border, marginVertical: 4 },
+  quickStatVal: { ...typography.h3, fontVariant: ['tabular-nums'] },
+  quickStatLabel: { ...typography.overline, color: colors.textSecondary },
+  qsDivider: { width: 1, backgroundColor: colors.border, marginVertical: spacing.xxs },
 
   actionsRow: { flexDirection: 'row', gap: 10 },
-  actionCard: { flex: 1, borderRadius: 12, overflow: 'hidden' },
+  actionCard: { flex: 1, borderRadius: radius.lg, overflow: 'hidden' },
   actionSurface: {
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     padding: 14, minHeight: 90,
-    alignItems: 'flex-start', gap: 8, position: 'relative',
-    borderWidth: 1, borderColor: C.border, borderRadius: 12,
+    alignItems: 'flex-start', gap: spacing.xs, position: 'relative',
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg,
   },
   actionIconWrap: {
-    width: 32, height: 32, borderRadius: 8,
-    backgroundColor: C.cardIcon,
+    width: 32, height: 32, borderRadius: radius.sm,
+    backgroundColor: colors.primaryLighter,
     alignItems: 'center', justifyContent: 'center',
   },
-  actionLabel: { fontSize: 12, fontWeight: '600', color: C.text.primary, lineHeight: 16 },
+  actionLabel: { ...typography.labelSm, color: colors.textPrimary, lineHeight: 16 },
   actionBadge: {
     position: 'absolute', top: 10, right: 10,
-    backgroundColor: C.primary, borderRadius: 10,
+    backgroundColor: colors.primary, borderRadius: radius.md,
     minWidth: 20, height: 20,
     alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 5,
   },
-  actionBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '700' },
+  actionBadgeText: { ...typography.overline, color: colors.neutral0 },
 
   card: {
-    backgroundColor: C.surface, borderRadius: 12,
-    borderWidth: 1, borderColor: C.border, overflow: 'hidden',
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
   },
   regItem: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 12, gap: 10,
-    borderBottomWidth: 1, borderBottomColor: C.border,
+    padding: spacing.sm, gap: 10,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   regAvatar: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#DEEBFF',
+    backgroundColor: colors.primaryLighter,
     alignItems: 'center', justifyContent: 'center',
   },
-  regAvatarText: { fontSize: 14, fontWeight: '700', color: C.primary },
+  regAvatarText: { ...typography.h5, color: colors.primary },
   regMeta: { flex: 1 },
-  regName: { fontSize: 14, fontWeight: '600', color: C.text.primary },
-  regIndustry: { fontSize: 11, color: C.text.secondary, marginTop: 2 },
+  regName: { ...typography.h5, color: colors.textPrimary },
+  regIndustry: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   regBadge: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+    paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: radius.md,
   },
-  regBadgeText: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
+  regBadgeText: { ...typography.overline, textTransform: 'capitalize' },
 
   // Drawer
   drawerOverlay: { flex: 1, flexDirection: 'row' },
@@ -593,41 +578,41 @@ const S = StyleSheet.create({
   },
   drawer: {
     width: DRAWER_WIDTH,
-    backgroundColor: C.surface,
-    shadowColor: '#000',
+    backgroundColor: colors.surface,
+    shadowColor: colors.neutral900,
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 16,
   },
   drawerHeader: {
-    padding: 20, paddingBottom: 24, alignItems: 'center', gap: 6,
+    padding: spacing.lg, paddingBottom: spacing.xl, alignItems: 'center', gap: 6,
   },
   drawerAvatar: {
     width: 64, height: 64, borderRadius: 32,
     backgroundColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xxs,
   },
-  drawerAvatarText: { fontSize: 22, fontWeight: '800', color: '#FFF' },
-  drawerName: { fontSize: 16, fontWeight: '700', color: '#FFF' },
-  drawerRole: { fontSize: 12, color: 'rgba(255,255,255,0.75)' },
-  drawerMenu: { flex: 1, paddingTop: 12 },
+  drawerAvatarText: { ...typography.h2, color: colors.neutral0 },
+  drawerName: { ...typography.h4, color: colors.neutral0 },
+  drawerRole: { ...typography.caption, color: 'rgba(255,255,255,0.75)' },
+  drawerMenu: { flex: 1, paddingTop: spacing.sm },
   drawerItem: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 14, gap: 14,
+    paddingHorizontal: spacing.lg, paddingVertical: 14, gap: 14,
   },
   drawerItemIcon: {
-    width: 38, height: 38, borderRadius: 10,
-    backgroundColor: '#DEEBFF',
+    width: 38, height: 38, borderRadius: radius.md,
+    backgroundColor: colors.primaryLighter,
     alignItems: 'center', justifyContent: 'center',
   },
-  drawerItemText: { flex: 1, fontSize: 14, fontWeight: '600', color: C.text.primary },
+  drawerItemText: { flex: 1, ...typography.h5, color: colors.textPrimary },
   drawerSignOut: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 20, gap: 12, borderTopWidth: 1, borderTopColor: C.border,
+    padding: spacing.lg, gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
   },
-  drawerSignOutText: { fontSize: 14, fontWeight: '600', color: '#DE350B' },
+  drawerSignOutText: { ...typography.h5, color: colors.danger },
 });
 
 export default SuperAdminDashboardScreen;
