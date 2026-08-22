@@ -10,17 +10,14 @@ import {
   type JournalEntryStatusFilter,
 } from './journalEntrySlice';
 import { formatCurrency } from '../../utils/formatters';
-import type { JournalEntryStatus } from '../../models/journalEntryModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
-const STATUS_COLOR: Record<JournalEntryStatus, string> = {
-  draft: ACCENT.amber, posted: ACCENT.green, void: THEME.colors.textSecondary,
-};
 
 const GeneralJournalListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -75,7 +72,7 @@ const GeneralJournalListScreen: React.FC = () => {
             number={e.reference}
             subtitle={e.memo || 'No memo'}
             statusLabel={titleCase(e.status)}
-            statusColor={STATUS_COLOR[e.status]}
+            statusColor={txnStatusColor(e.status)}
             metaLeft={`Date: ${e.date}`}
             primaryLabel="Total"
             primaryValue={rs(e.totalDebits)}

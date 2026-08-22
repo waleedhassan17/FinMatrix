@@ -7,17 +7,14 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchSalesOrders, selectSalesOrderState, setSalesOrderStatusFilter, type SalesOrderStatusFilter } from './salesOrderSlice';
 import { formatCurrency } from '../../utils/formatters';
-import type { SalesOrderStatus } from '../../models/salesOrderModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
-const STATUS_COLOR: Record<SalesOrderStatus, string> = {
-  open: ACCENT.blue, partial: ACCENT.amber, fulfilled: ACCENT.green, invoiced: ACCENT.violet, cancelled: THEME.colors.textSecondary,
-};
 
 const SalesOrderListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -76,7 +73,7 @@ const SalesOrderListScreen: React.FC = () => {
               number={o.orderNumber}
               subtitle={o.customerName || 'Customer'}
               statusLabel={titleCase(o.status)}
-              statusColor={STATUS_COLOR[o.status]}
+              statusColor={txnStatusColor(o.status)}
               metaLeft={`Order: ${o.orderDate}`}
               metaRight={`${fulfilledLines}/${o.lines.length} lines`}
               primaryLabel="Total"

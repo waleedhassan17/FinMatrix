@@ -7,17 +7,14 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchCreditMemos, selectCreditMemoState, setCreditMemoStatusFilter, type CreditMemoStatusFilter } from './creditMemoSlice';
 import { formatCurrency } from '../../utils/formatters';
-import type { CreditMemoStatus } from '../../models/creditMemoModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
-const STATUS_COLOR: Record<CreditMemoStatus, string> = {
-  open: ACCENT.blue, applied: ACCENT.green, closed: ACCENT.violet, refunded: ACCENT.amber, void: THEME.colors.textSecondary,
-};
 
 const CreditMemoListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -74,7 +71,7 @@ const CreditMemoListScreen: React.FC = () => {
             number={c.creditMemoNumber}
             subtitle={c.customerName || 'Customer'}
             statusLabel={titleCase(c.status)}
-            statusColor={STATUS_COLOR[c.status]}
+            statusColor={txnStatusColor(c.status)}
             metaLeft={`Date: ${c.date}`}
             primaryLabel="Total"
             primaryValue={rs(c.total)}

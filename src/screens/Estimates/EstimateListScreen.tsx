@@ -8,18 +8,14 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchEstimates, selectEstimateState, setEstimateStatusFilter, type EstimateStatusFilter } from './estimateSlice';
 import { formatCurrency } from '../../utils/formatters';
-import type { EstimateStatus } from '../../models/estimateModel';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
-const STATUS_COLOR: Record<EstimateStatus, string> = {
-  draft: THEME.colors.textSecondary, sent: ACCENT.blue, accepted: ACCENT.green,
-  declined: ACCENT.red, converted: ACCENT.violet, expired: ACCENT.amber,
-};
 
 const EstimateListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -101,7 +97,7 @@ const EstimateListScreen: React.FC = () => {
             number={e.estimateNumber}
             subtitle={e.customerName || 'Customer'}
             statusLabel={titleCase(e.status)}
-            statusColor={STATUS_COLOR[e.status]}
+            statusColor={txnStatusColor(e.status)}
             metaLeft={`Date: ${e.estimateDate}`}
             metaRight={e.expiryDate ? `Valid till: ${e.expiryDate}` : undefined}
             primaryLabel="Total"

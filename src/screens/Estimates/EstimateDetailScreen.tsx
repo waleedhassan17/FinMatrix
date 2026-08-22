@@ -18,7 +18,8 @@ import {
 } from './estimateSlice';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
-import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -67,7 +68,7 @@ const EstimateDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
           <View style={styles.headRow}>
-            <Badge label={e.status} color={STATUS_COLOR[e.status] ?? THEME.colors.textSecondary} dot />
+            <Badge label={e.status} color={txnStatusColor(e.status)} dot />
             <Text style={styles.total}>{rs(e.total)}</Text>
           </View>
           <Info label="Estimate date" value={e.estimateDate} />
@@ -108,10 +109,6 @@ const EstimateDetailScreen: React.FC = () => {
   );
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  draft: THEME.colors.textSecondary, sent: ACCENT.blue, accepted: ACCENT.green,
-  declined: ACCENT.red, converted: ACCENT.violet, expired: ACCENT.amber,
-};
 
 const Info: React.FC<{ label: string; value: string; strong?: boolean }> = ({ label, value, strong }) => (
   <View style={styles.infoRow}>

@@ -21,16 +21,14 @@ import { getInvoicesAPI } from '../../networks/sales/invoiceNetwork';
 import { invoiceListSerializer } from '../../serializers/invoiceSerializer';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
-import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import type { Invoice } from '../../types';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'CreditMemoDetail'>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
-const STATUS_COLOR: Record<string, string> = {
-  open: ACCENT.blue, applied: ACCENT.green, closed: ACCENT.violet, refunded: ACCENT.amber, void: THEME.colors.textSecondary,
-};
 
 const CreditMemoDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -88,7 +86,7 @@ const CreditMemoDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
           <View style={styles.headRow}>
-            <Badge label={c.status} color={STATUS_COLOR[c.status] ?? THEME.colors.textSecondary} dot />
+            <Badge label={c.status} color={txnStatusColor(c.status)} dot />
             <Text style={styles.total}>{rs(c.total)}</Text>
           </View>
           <Info label="Date" value={c.date} />

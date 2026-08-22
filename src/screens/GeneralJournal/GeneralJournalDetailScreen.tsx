@@ -18,15 +18,13 @@ import {
 } from './journalEntrySlice';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
-import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { txnStatusColor } from '../../components/transactions/txnStatus';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'JournalEntryDetail'>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
-const STATUS_COLOR: Record<string, string> = {
-  draft: ACCENT.amber, posted: ACCENT.green, void: THEME.colors.textSecondary,
-};
 
 const GeneralJournalDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -70,7 +68,7 @@ const GeneralJournalDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
           <View style={styles.headRow}>
-            <Badge label={e.status} color={STATUS_COLOR[e.status] ?? THEME.colors.textSecondary} dot />
+            <Badge label={e.status} color={txnStatusColor(e.status)} dot />
             <Text style={styles.total}>{rs(e.totalDebits)}</Text>
           </View>
           <Info label="Date" value={e.date} />
