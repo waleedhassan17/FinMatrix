@@ -9,7 +9,8 @@ import { fetchVendorCredits, selectVendorCreditState, setVendorCreditStatusFilte
 import { formatCurrency } from '../../utils/formatters';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
-import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
+import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
+import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -30,7 +31,7 @@ const VendorCreditListScreen: React.FC = () => {
     return c;
   }, [state.vendorCredits]);
 
-  const TABS: TxnTab<VendorCreditStatusFilter>[] = [
+  const TABS: TabItem<VendorCreditStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
     { label: 'Open', value: 'open', count: counts.open },
     { label: 'Applied', value: 'applied', count: counts.applied },
@@ -52,7 +53,7 @@ const VendorCreditListScreen: React.FC = () => {
         right={<HeaderAction label="New" onPress={() => navigation.navigate('VendorCreditForm', {})} />}
       />
 
-      <TxnTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setVendorCreditStatusFilter(v))} />
+      <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setVendorCreditStatusFilter(v))} />
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>

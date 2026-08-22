@@ -38,7 +38,8 @@ import {
   LoadingBlock,
   ErrorBlock,
 } from '../../../components/reports/ReportUI';
-import { TxnTabs, TxnCard, type TxnTab } from '../../../components/transactions/TxnListUI';
+import { TxnCard } from '../../../components/transactions/TxnListUI';
+import { FilterTabs, type TabItem } from '../../../components/shared/Tabs';
 import { BILL_STATUS_COLORS, BILL_STATUS_LABELS } from '../../../models/billModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { Bill } from '../../../types';
@@ -79,7 +80,7 @@ const BillListScreen: React.FC = () => {
     return c;
   }, [bills]);
 
-  const TABS: TxnTab<BillStatusFilter>[] = [
+  const TABS: TabItem<BillStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
     { label: 'Draft', value: 'draft', count: counts.draft },
     { label: 'Open', value: 'open', count: counts.open },
@@ -198,7 +199,7 @@ const BillListScreen: React.FC = () => {
 
       {/* ── Filter Tabs — hidden on first-run ───── */}
       {showChrome && (
-        <TxnTabs
+        <FilterTabs
           tabs={TABS}
           active={statusFilter}
           onChange={v => dispatch(setStatusFilter(v))}

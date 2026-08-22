@@ -43,7 +43,8 @@ import {
   LoadingBlock,
   ErrorBlock,
 } from '../../../components/reports/ReportUI';
-import { TxnTabs, TxnCard, type TxnTab } from '../../../components/transactions/TxnListUI';
+import { TxnCard } from '../../../components/transactions/TxnListUI';
+import { FilterTabs, type TabItem } from '../../../components/shared/Tabs';
 import { PO_STATUS_COLORS, PO_STATUS_LABELS, formatPODate } from '../../../models/purchaseOrderModel';
 import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrder } from '../../../types';
@@ -95,7 +96,7 @@ const POListScreen: React.FC = () => {
     setRefreshing(false);
   }, [dispatch]);
 
-  const TABS: TxnTab<POStatusFilter>[] = [
+  const TABS: TabItem<POStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
     { label: 'Draft', value: 'draft', count: counts.draft },
     { label: 'Sent', value: 'sent', count: counts.sent },
@@ -192,7 +193,7 @@ const POListScreen: React.FC = () => {
 
       {/* ── Filter Tabs — hidden on first-run ───── */}
       {showChrome && (
-        <TxnTabs
+        <FilterTabs
           tabs={TABS}
           active={statusFilter}
           onChange={v => dispatch(setStatusFilter(v))}

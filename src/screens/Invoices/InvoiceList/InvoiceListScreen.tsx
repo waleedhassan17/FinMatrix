@@ -38,7 +38,8 @@ import {
   LoadingBlock,
   ErrorBlock,
 } from '../../../components/reports/ReportUI';
-import { TxnTabs, TxnCard, type TxnTab } from '../../../components/transactions/TxnListUI';
+import { TxnCard } from '../../../components/transactions/TxnListUI';
+import { FilterTabs, type TabItem } from '../../../components/shared/Tabs';
 import { txnStatusColor } from '../../../components/transactions/txnStatus';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { Invoice } from '../../../types';
@@ -94,7 +95,7 @@ const InvoiceListScreen: React.FC = () => {
     return c;
   }, [invoices]);
 
-  const TABS: TxnTab<InvoiceStatusFilter>[] = [
+  const TABS: TabItem<InvoiceStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
     { label: 'Draft', value: 'draft', count: counts.draft },
     { label: 'Sent', value: 'sent', count: counts.sent },
@@ -222,7 +223,7 @@ const InvoiceListScreen: React.FC = () => {
 
       {/* Filter tabs — hidden during initial load and first-run */}
       {!initialLoading && !isFirstRun && (
-        <TxnTabs
+        <FilterTabs
           tabs={TABS}
           active={statusFilter}
           onChange={v => dispatch(setStatusFilter(v))}

@@ -9,7 +9,8 @@ import { fetchSalesOrders, selectSalesOrderState, setSalesOrderStatusFilter, typ
 import { formatCurrency } from '../../utils/formatters';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
-import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
+import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
+import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -30,7 +31,7 @@ const SalesOrderListScreen: React.FC = () => {
     return c;
   }, [state.salesOrders]);
 
-  const TABS: TxnTab<SalesOrderStatusFilter>[] = [
+  const TABS: TabItem<SalesOrderStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
     { label: 'Open', value: 'open', count: counts.open },
     { label: 'Partial', value: 'partial', count: counts.partial },
@@ -53,7 +54,7 @@ const SalesOrderListScreen: React.FC = () => {
         right={<HeaderAction label="New" onPress={() => navigation.navigate('SalesOrderForm', {})} />}
       />
 
-      <TxnTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setSalesOrderStatusFilter(v))} />
+      <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setSalesOrderStatusFilter(v))} />
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>

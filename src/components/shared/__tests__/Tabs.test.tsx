@@ -1,22 +1,23 @@
-// expo-linear-gradient has no native side under Jest, and TxnTabs uses it only
+// expo-linear-gradient has no native side under Jest, and FilterTabs uses it only
 // as a leaf for the edge fades — a host-component stub keeps this suite
 // dependency-free (same approach as RevenueTrendCard's Feather stub).
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 
 import React from 'react';
+import { Text } from 'react-native';
 import renderer, { act } from 'react-test-renderer';
-import { TxnTabs, type TxnTab } from '../TxnListUI';
+import { FilterTabs, SegmentedTabs, type TabItem } from '../Tabs';
 
 /**
- * These RENDER the tab bar rather than type-check it. The scroll-into-view
- * effect and the edge fades read layout out of refs and state, which tsc
- * cannot check — a stale ref or a bad measurement fails here instead of on a
- * phone.
+ * These RENDER the tab controls rather than type-check them. The
+ * scroll-into-view effect and the edge fades read layout out of refs and
+ * state, which tsc cannot check — a stale ref or a bad measurement fails here
+ * instead of on a phone.
  */
 
 type V = 'all' | 'draft' | 'sent' | 'overdue' | 'paid';
 
-const TABS: TxnTab<V>[] = [
+const TABS: TabItem<V>[] = [
   { label: 'All', value: 'all', count: 12 },
   { label: 'Draft', value: 'draft', count: 3 },
   { label: 'Sent', value: 'sent', count: 0 },
@@ -27,7 +28,7 @@ const TABS: TxnTab<V>[] = [
 const render = (active: V, onChange: (v: V) => void = () => {}) => {
   let tree!: renderer.ReactTestRenderer;
   act(() => {
-    tree = renderer.create(<TxnTabs tabs={TABS} active={active} onChange={onChange} />);
+    tree = renderer.create(<FilterTabs tabs={TABS} active={active} onChange={onChange} />);
   });
   return tree;
 };
@@ -50,7 +51,7 @@ const layout = (tree: renderer.ReactTestRenderer, viewport = 320, content = 700)
   return scroll;
 };
 
-describe('TxnTabs', () => {
+describe('FilterTabs', () => {
   it('renders every tab with its count and selection state', () => {
     const tree = render('all');
     const tabs = tabNodes(tree);
@@ -69,7 +70,7 @@ describe('TxnTabs', () => {
     let tree!: renderer.ReactTestRenderer;
     act(() => {
       tree = renderer.create(
-        <TxnTabs tabs={[{ label: 'Void', value: 'all', count: 1 }]} active="all" onChange={() => {}} />,
+        <FilterTabs tabs={[{ label: 'Void', value: 'all', count: 1 }]} active="all" onChange={() => {}} />,
       );
     });
     expect(tabNodes(tree)[0].props.accessibilityLabel).toBe('Void, 1 item');
@@ -133,5 +134,63 @@ describe('TxnTabs', () => {
     const tree = render('all');
     layout(tree, 700, 700);
     expect(tree.root.findAllByType('LinearGradient' as never)).toHaveLength(0);
+  });
+});
+
+describe('FilterTabs without counts', () => {
+  const PLAIN: TabItem<'all' | 'active'>[] = [
+    { label: 'All', value: 'all' },
+    { label: 'Active', value: 'active' },
+  ];
+
+  it('renders no badge, and leaves the label alone in the accessible name', () => {
+    let tree!: renderer.ReactTestRenderer;
+    act(() => {
+      tree = renderer.create(<FilterTabs tabs={PLAIN} active="all" onChange={() => {}} />);
+    });
+    const tabs = tabNodes(tree);
+    expect(tabs).toHaveLength(2);
+    // With no count there is nothing to append — "All, 0 items" would be a lie.
+    expect(tabs[0].props.accessibilityLabel).toBe('All');
+    // The badge is the only Text beyond the label itself.
+    expect(tree.root.findAllByType(Text).filter(t => typeof t.props.children === 'number')).toHaveLength(0);
+  });
+});
+
+describe('SegmentedTabs', () => {
+  type S = 'overview' | 'invoices' | 'payments';
+  const SECTIONS: TabItem<S>[] = [
+    { label: 'Overview', value: 'overview' },
+    { label: 'Invoices', value: 'invoices' },
+    { label: 'Payments', value: 'payments' },
+  ];
+
+  const renderSeg = (active: S, onChange: (v: S) => void = () => {}) => {
+    let tree!: renderer.ReactTestRenderer;
+    act(() => {
+      tree = renderer.create(<SegmentedTabs tabs={SECTIONS} active={active} onChange={onChange} />);
+    });
+    return tree;
+  };
+
+  it('renders every section with its selection state', () => {
+    const tree = renderSeg('invoices');
+    const tabs = tabNodes(tree);
+    expect(tabs).toHaveLength(3);
+    expect(tabs.map(t => t.props.accessibilityState.selected)).toEqual([false, true, false]);
+  });
+
+  it('reports the tapped section to onChange', () => {
+    const onChange = jest.fn();
+    const tree = renderSeg('overview', onChange);
+    act(() => {
+      tabNodes(tree)[2].props.onPress();
+    });
+    expect(onChange).toHaveBeenCalledWith('payments');
+  });
+
+  it('does not scroll, so no section can be hidden', () => {
+    const tree = renderSeg('overview');
+    expect(tree.root.findAllByType(require('react-native').ScrollView)).toHaveLength(0);
   });
 });

@@ -10,7 +10,8 @@ import { fetchEstimates, selectEstimateState, setEstimateStatusFilter, type Esti
 import { formatCurrency } from '../../utils/formatters';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
-import { TxnTabs, TxnCard, titleCase, type TxnTab } from '../../components/transactions/TxnListUI';
+import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
+import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -34,7 +35,7 @@ const EstimateListScreen: React.FC = () => {
     return c;
   }, [state.estimates]);
 
-  const TABS: TxnTab<EstimateStatusFilter>[] = [
+  const TABS: TabItem<EstimateStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
     { label: 'Draft', value: 'draft', count: counts.draft },
     { label: 'Sent', value: 'sent', count: counts.sent },
@@ -76,7 +77,7 @@ const EstimateListScreen: React.FC = () => {
         {q.length > 0 && <TouchableOpacity onPress={() => setQ('')}><Feather name="x" size={16} color={THEME.colors.textSecondary} /></TouchableOpacity>}
       </View>
 
-      <TxnTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setEstimateStatusFilter(v))} />
+      <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setEstimateStatusFilter(v))} />
 
       <ScrollView
         style={styles.list}
