@@ -1,23 +1,14 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Tabs
+// FinMatrix — FilterTabs
 // ═══════════════════════════════════════════════════════
-// THE two tab controls in the app. Before this module the same two ideas were
-// re-implemented per screen and had drifted into four looks: scrollable status
-// pills with counts, plain filter chips a pixel smaller, a filled segmented
-// switcher, and an underline-indicator bar.
+// THE filter tab row for the Transactions stack: a scrolling row of pills,
+// one active, each optionally carrying a result count. Every Transactions
+// list screen renders this and nothing else, so the row looks and behaves
+// identically across all eight.
 //
-// Which one to reach for:
-//
-//   FilterTabs     — narrows a LIST. A scrolling row of pills, one of which is
-//                    active, optionally carrying a result count. Use on any
-//                    list screen with status or category filters.
-//
-//   SegmentedTabs  — switches SECTIONS of one record. A fixed, fill-width
-//                    control, because the choices are few and known. Use on
-//                    detail screens ("Overview / Invoices / Payments").
-//
-// Both draw their active state the same way — a filled accent pill — so
-// "which one am I on" reads identically wherever tabs appear.
+// It lives in components/shared because it is a plain UI control with no
+// transaction knowledge — but nothing outside the Transactions stack uses it
+// yet, and adopting it elsewhere is a deliberate choice, not a default.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -177,58 +168,6 @@ export function FilterTabs<V extends string>({
   );
 }
 
-// ── SegmentedTabs ─────────────────────────────────────
-/**
- * The detail-screen section switcher. Fill-width and non-scrolling: the
- * sections of one record are few and fixed, so showing them all at once is
- * both possible and clearer than a row that might be hiding one.
- */
-export function SegmentedTabs<V extends string>({
-  tabs,
-  active,
-  onChange,
-  style,
-}: {
-  tabs: TabItem<V>[];
-  active: V;
-  onChange: (value: V) => void;
-  style?: StyleProp<ViewStyle>;
-}) {
-  return (
-    <View style={[s.segment, style]} accessibilityRole="tablist">
-      {tabs.map(tab => {
-        const isActive = active === tab.value;
-        return (
-          <Pressable
-            key={tab.value}
-            style={({ pressed }) => [
-              s.segmentBtn,
-              isActive && s.segmentBtnActive,
-              pressed && !isActive && s.segmentBtnPressed,
-            ]}
-            onPress={() => onChange(tab.value)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-            accessibilityLabel={countLabel(tab.label, tab.count)}
-          >
-            <Text
-              style={[s.segmentText, isActive && s.segmentTextActive]}
-              numberOfLines={1}
-            >
-              {tab.label}
-            </Text>
-            {tab.count !== undefined ? (
-              <View style={[s.badge, isActive && s.badgeActive]}>
-                <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{tab.count}</Text>
-              </View>
-            ) : null}
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
   // ── FilterTabs ──
   // Fixed-height bar so the row keeps a constant vertical slot and never
@@ -265,37 +204,7 @@ const s = StyleSheet.create({
   pillTextActive: { color: colors.neutral0 },
   textEmpty: { color: colors.textTertiary },
 
-  // ── SegmentedTabs ──
-  segment: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 3,
-    gap: 3,
-  },
-  segmentBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xxs + 2,
-    // 44pt with the 3pt track padding either side.
-    minHeight: 38,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.md,
-  },
-  segmentBtnActive: {
-    backgroundColor: colors.actionGreen,
-    ...shadows.xs,
-    shadowColor: colors.actionGreen,
-  },
-  segmentBtnPressed: { backgroundColor: colors.neutral100 },
-  segmentText: { ...typography.labelMd, color: colors.textSecondary },
-  segmentTextActive: { color: colors.neutral0 },
-
-  // ── Count badge, shared by both controls ──
+  // ── Count badge ──
   badge: {
     marginLeft: spacing.xs,
     backgroundColor: colors.background,
