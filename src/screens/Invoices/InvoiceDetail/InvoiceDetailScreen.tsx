@@ -11,19 +11,13 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
-  StatusBar,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -46,6 +40,14 @@ import {
   selectCustomers,
 } from '../../Customers/CustomerList/customerListSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
+import {
+  ReportContainer,
+  ReportHeader,
+  Badge,
+  LoadingBlock,
+  ErrorBlock,
+} from '../../../components/reports/ReportUI';
+import { txnStatusColor } from '../../../components/transactions/txnStatus';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import {
   shareInvoiceViaWhatsApp,
@@ -59,17 +61,7 @@ import type { TransactionsStackParamList } from '../../../navigators/stacks/Tran
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type DetailRoute = RouteProp<TransactionsStackParamList, 'InvoiceDetail'>;
-
-// ── Status → colour mapping ──────────────────────────
-const STATUS_COLOR: Record<InvoiceStatus, string> = {
-  draft: '#94A3B8',
-  sent: colors.secondary,
-  partial: '#FF991F',
-  paid: colors.success,
-  overdue: colors.danger,
-  void: '#64748B',
-  cancelled: '#475569',
-};
+const { colors, spacing, radius, shadows, typography } = THEME;
 
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
   draft: 'Draft',
@@ -199,54 +191,35 @@ const InvoiceDetailScreen: React.FC = () => {
   }, [invoice, customer]);
 
   // ── Loading / Error states ──────────────────────
+  // Both keep the header, so the back affordance never disappears.
   if (isLoading && !invoice) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </SafeAreaView>
+      <ReportContainer>
+        <ReportHeader title="Invoice" onBack={() => navigation.goBack()} />
+        <LoadingBlock />
+      </ReportContainer>
     );
   }
 
   if (error || !invoice) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.center}>
-          <Text style={styles.errorText}>{error || 'Invoice not found'}</Text>
-          <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="secondary" size="md" />
-        </View>
-      </SafeAreaView>
+      <ReportContainer>
+        <ReportHeader title="Invoice" onBack={() => navigation.goBack()} />
+        <ErrorBlock message={error || 'Invoice not found'} />
+      </ReportContainer>
     );
   }
-
-  const statusCol = STATUS_COLOR[invoice.status];
 
   // ═════════════════════════════════════════════════════
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerTitleWrap}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backBtn}
-              activeOpacity={0.7}>
-              <Feather name="arrow-left" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{invoice.invoiceNumber}</Text>
-          </View>
-          <View style={[styles.badge, { backgroundColor: statusCol + '18' }]}>
-            <Text style={[styles.badgeText, { color: statusCol }]}>
-              {STATUS_LABEL[invoice.status]}
-            </Text>
-          </View>
-        </View>
-      </View>
+    <ReportContainer>
+      <ReportHeader
+        title={invoice.invoiceNumber}
+        subtitle={invoice.customerName}
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -257,6 +230,9 @@ const InvoiceDetailScreen: React.FC = () => {
       >
         {/* ── Company Info ────────────────────────── */}
         <View style={styles.invoiceCard}>
+          <View style={styles.statusRow}>
+            <Badge label={STATUS_LABEL[invoice.status]} color={txnStatusColor(invoice.status)} dot />
+          </View>
           <Text style={styles.companyName}>{companyInfo.name}</Text>
           {(companyInfo.addressLine1 || companyInfo.addressLine2) ? (
             <Text style={styles.companyMeta}>
@@ -399,7 +375,7 @@ const InvoiceDetailScreen: React.FC = () => {
         )}
 
         {/* Bottom spacer */}
-        <View style={{ height: spacing.xl * 3 }} />
+        <View style={{ height: spacing.xxl * 3 }} />
       </ScrollView>
 
       {/* ── Action Bar ──────────────────────────────── */}
@@ -538,7 +514,7 @@ const InvoiceDetailScreen: React.FC = () => {
           </>
         )}
       </View>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
@@ -568,108 +544,64 @@ const TotalsRow: React.FC<{
 // ═══════════════════════════════════════════════════════
 // STYLES
 // ═══════════════════════════════════════════════════════
+// The document look (letterhead, ruled table, totals block) is deliberate --
+// this is what gets shared as a PDF -- so the structure stays; only the values
+// move onto the design system.
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  errorText: { fontSize: 15, color: colors.danger, fontFamily: THEME.typography.fontFamily },
-
-  // ── Header ─────────────────────────────────────
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitleWrap: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: spacing.sm },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
-
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  scrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
 
   // ── Invoice card ───────────────────────────────
   invoiceCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    ...shadows.small,
+    ...shadows.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  companyName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.primary,
-    fontFamily: THEME.typography.fontFamily,
-    marginBottom: 2,
-  },
-  companyMeta: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-    lineHeight: 18,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.sm + 2,
-  },
+  statusRow: { flexDirection: 'row', marginBottom: spacing.xs },
+  companyName: { ...typography.h3, color: colors.actionGreen, marginBottom: 2 },
+  companyMeta: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
   invoiceLabel: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.primary,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.h2,
+    color: colors.actionGreen,
     letterSpacing: 2,
     textAlign: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
 
   // ── Meta row ───────────────────────────────────
   metaRow: { flexDirection: 'row', justifyContent: 'space-between' },
   metaCol: { alignItems: 'center', flex: 1 },
-  metaKey: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
-  metaVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  metaKey: { ...typography.caption, color: colors.textTertiary, marginBottom: 2 },
+  metaVal: { ...typography.labelMd, color: colors.textPrimary },
 
   // ── Bill To ────────────────────────────────────
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.xs,
-  },
-  billToName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  // THE section-header spec, shared with every form section header.
+  sectionLabel: { ...THEME.form.sectionTitle, marginBottom: spacing.xxs },
+  billToName: { ...typography.labelLg, color: colors.textPrimary },
 
   // ── Line items table ───────────────────────────
   tableHeader: {
     flexDirection: 'row',
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.xs,
     borderBottomWidth: 1.5,
-    borderBottomColor: colors.primary,
+    borderBottomColor: colors.actionGreen,
   },
-  thText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primary,
-    fontFamily: THEME.typography.fontFamily,
-    textTransform: 'uppercase',
-  },
+  thText: { ...typography.overline, color: colors.actionGreen },
   thRight: { textAlign: 'right' },
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   tableRowEven: { backgroundColor: colors.background },
-  tdText: { fontSize: 12, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  tdRight: { textAlign: 'right' },
+  tdText: { ...typography.caption, color: colors.textPrimary },
+  // Figures align digit-for-digit down the column.
+  tdRight: { textAlign: 'right', fontVariant: ['tabular-nums'] },
 
   // ── Totals ─────────────────────────────────────
   totalsBlock: { marginLeft: 'auto', width: '65%' },
@@ -677,71 +609,69 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xxs,
   },
-  totalsLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  totalsLabelBold: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  totalsValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  totalsValueBold: { fontSize: 16, fontWeight: '800' },
-  grandTotalDivider: {
-    height: 1.5,
-    backgroundColor: colors.primary,
-    marginVertical: spacing.xs,
-  },
+  totalsLabel: { ...typography.bodySm, color: colors.textSecondary },
+  totalsLabelBold: { ...typography.h5, color: colors.textPrimary },
+  totalsValue: { ...typography.labelMd, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
+  totalsValueBold: { ...typography.h4, fontVariant: ['tabular-nums'] },
+  grandTotalDivider: { height: 1.5, backgroundColor: colors.actionGreen, marginVertical: spacing.xxs },
 
-  notesText: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 20 },
+  notesText: { ...typography.bodySm, color: colors.textSecondary },
 
   // ── Payment History ────────────────────────────
   outerSectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...typography.h4,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xs,
   },
   emptyPayments: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.xl,
     paddingHorizontal: spacing.md,
     alignItems: 'center',
-    ...shadows.small,
+    ...shadows.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  emptyPaymentsText: { fontSize: 13, color: colors.textLight, fontFamily: THEME.typography.fontFamily },
+  emptyPaymentsText: { ...typography.bodySm, color: colors.textTertiary },
 
   paymentCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.small,
+    marginBottom: spacing.xs,
+    ...shadows.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   paymentTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  paymentNumber: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  paymentDate: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
-  paymentAmount: { fontSize: 16, fontWeight: '800', color: colors.success, fontFamily: THEME.typography.fontFamily },
+  paymentNumber: { ...typography.h5, color: colors.textPrimary },
+  paymentDate: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  paymentAmount: { ...typography.h4, color: colors.success, fontVariant: ['tabular-nums'] },
   methodBadge: {
-    marginTop: 4,
-    paddingHorizontal: spacing.sm,
+    marginTop: spacing.xxs,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 2,
     backgroundColor: colors.secondary + '18',
-    borderRadius: 4,
+    borderRadius: radius.xs,
   },
-  methodBadgeText: { fontSize: 11, fontWeight: '600', color: colors.secondary, fontFamily: THEME.typography.fontFamily },
-  paymentRef: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginTop: spacing.xs },
+  methodBadgeText: { ...typography.labelSm, color: colors.secondary },
+  paymentRef: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xxs },
 
   // ── Action Bar ─────────────────────────────────
   actionBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm - 2,
-    backgroundColor: colors.white,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    gap: spacing.xs,
-    ...shadows.small,
+    gap: spacing.xxs,
+    ...shadows.xs,
   },
   actionPrimary: { flex: 1.4 },
   actionSecondary: { flex: 1 },
