@@ -398,7 +398,9 @@ const STATUS_TIER = {
 const STATUS_TIER_OF: Record<string, keyof typeof STATUS_TIER> = {
   // ── neutral ──
   draft: 'neutral', void: 'neutral', cancelled: 'neutral', inactive: 'neutral',
-  unassigned: 'neutral', archived: 'neutral', none: 'neutral',
+  unassigned: 'neutral', archived: 'neutral', none: 'neutral', on_leave: 'neutral',
+  // ── personnel availability ──
+  available: 'success', busy: 'warning',
   // ── info ──
   open: 'info', sent: 'info', submitted: 'info', new: 'info',
   // ── warning ──
@@ -453,6 +455,7 @@ export interface PriorityStyle {
 
 export const PRIORITY_CONFIG: Record<string, PriorityStyle> = {
   low: { label: 'Low', color: colors.success, bg: colors.successLight },
+  normal: { label: 'Normal', color: colors.success, bg: colors.successLight },
   medium: { label: 'Medium', color: colors.warning, bg: colors.warningLight },
   high: { label: 'High', color: colors.danger, bg: colors.dangerLight },
   urgent: { label: 'Urgent', color: '#FFFFFF', bg: colors.danger },

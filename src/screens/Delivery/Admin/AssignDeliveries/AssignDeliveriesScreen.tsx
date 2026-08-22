@@ -8,15 +8,17 @@ import {
   RefreshControl,
   Modal,
   FlatList,
-  StatusBar,
+  StatusBar
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, borderRadius } from '../../../../theme';
-import { THEME } from '../../../../utils/theme';
+import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, shadows, typography } = THEME;
 import { ReportHeader, HEADER_NAVY, DateField } from '../../../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
@@ -29,7 +31,7 @@ import {
   selectActiveTab,
   selectSelectedDate,
   selectSelectedDeliveryIds,
-  selectSelectedPersonnelId,
+  selectSelectedPersonnelId
 } from './assignDeliveriesSlice';
 import {
   selectDeliveries,
@@ -37,32 +39,27 @@ import {
   assignSelectedDeliveries,
   deleteDelivery,
   fetchDeliveries,
-  fetchDeliveryPersonnel,
+  fetchDeliveryPersonnel
 } from './deliverySlice';
 import { selectPendingApprovalCount } from '../InventoryApproval/inventoryApprovalSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
-const PRIORITY_COLORS: Record<string, string> = {
-  high: '#B91C1C',
-  medium: '#B45309',
-  low: '#0F766E',
-};
+// Priority colours come from THEME.PRIORITY_CONFIG, the same source the
+// driver-facing screens read. The local copies disagreed: `high` was dark
+// red on three screens and dark amber on the delivery monitor.
+const PRIORITY_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(PRIORITY_CONFIG).map(([k, v]) => [k, v.color]),
+);
 
 // One colour per status, matching AdminDeliveryDetail so a delivery reads the
 // same wherever it appears.
-const STATUS_COLORS: Record<string, string> = {
-  unassigned: '#64748B',
-  pending: '#FF8B00',
-  picked_up: '#0065FF',
-  in_transit: '#2563EB',
-  arrived: '#6554C0',
-  delivered: '#059669',
-  failed: '#DE350B',
-  returned: '#EA580C',
-  cancelled: '#94A3B8',
-};
+// Delivery status colours come from THEME.STATUS_CONFIG, the same source
+// the driver-facing screens read, so a delivery is one colour on both sides.
+const STATUS_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.color]),
+);
 
 const statusLabel = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
@@ -345,7 +342,7 @@ const AssignDeliveriesScreen: React.FC = () => {
                   onPress={handleDeleteSelected}
                   activeOpacity={0.8}
                 >
-                  <Feather name="trash-2" size={15} color="#DE350B" />
+                  <Feather name="trash-2" size={15} color={colors.danger} />
                   <Text style={styles.deleteSelectedText}>
                     Delete Selected ({selectedDeliveryIds.length})
                   </Text>
@@ -381,10 +378,10 @@ const AssignDeliveriesScreen: React.FC = () => {
                   <View
                     style={[
                       styles.statusPill,
-                      { backgroundColor: (STATUS_COLORS[d.status] ?? '#64748B') + '18' },
+                      { backgroundColor: (STATUS_COLORS[d.status] ?? colors.neutral500) + '18' },
                     ]}
                   >
-                    <Text style={[styles.statusPillText, { color: STATUS_COLORS[d.status] ?? '#64748B' }]}>
+                    <Text style={[styles.statusPillText, { color: STATUS_COLORS[d.status] ?? colors.neutral500 }]}>
                       {statusLabel(d.status)}
                     </Text>
                   </View>
@@ -427,10 +424,10 @@ const AssignDeliveriesScreen: React.FC = () => {
                   <View
                     style={[
                       styles.statusPill,
-                      { backgroundColor: (STATUS_COLORS[d.status] ?? '#64748B') + '18' },
+                      { backgroundColor: (STATUS_COLORS[d.status] ?? colors.neutral500) + '18' },
                     ]}
                   >
-                    <Text style={[styles.statusPillText, { color: STATUS_COLORS[d.status] ?? '#64748B' }]}>
+                    <Text style={[styles.statusPillText, { color: STATUS_COLORS[d.status] ?? colors.neutral500 }]}>
                       {statusLabel(d.status)}
                     </Text>
                   </View>
@@ -505,50 +502,46 @@ const AssignDeliveriesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.surface,
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...typography.h2,
+    
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   subtitle: {
     marginTop: 2,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   dateRow: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
   },
   dateLabel: {
-    fontSize: 13,
-    marginBottom: spacing.xs,
+    ...typography.bodySm,
+    marginBottom: spacing.xxs,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   dateInput: {
     height: 44,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     color: colors.textPrimary,
-    backgroundColor: colors.white,
-    fontFamily: THEME.typography.fontFamily,
+    backgroundColor: colors.surface,
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   tab: {
     flex: 1,
@@ -558,13 +551,12 @@ const styles = StyleSheet.create({
   },
   tabActive: {},
   tabText: {
-    fontSize: 14,
+    ...typography.h5,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-    fontWeight: '600',
+    
   },
   tabTextActive: {
-    color: colors.primary,
+    color: colors.actionGreen,
   },
   tabIndicator: {
     position: 'absolute',
@@ -573,14 +565,14 @@ const styles = StyleSheet.create({
     right: spacing.md,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.actionGreen,
   },
   content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
+    padding: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
   section: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
@@ -591,33 +583,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...typography.labelLg,
+    
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
 
   navButton: {
     backgroundColor: colors.secondary + '12',
     borderRadius: 10,
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderWidth: 1,
     borderColor: colors.secondary + '35',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   navButtonText: {
+    ...typography.h5,
     color: colors.secondary,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
   },
   deliveryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -627,45 +617,40 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 6,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   checkboxChecked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.actionGreen,
+    borderColor: colors.actionGreen,
   },
   checkboxTick: {
-    color: colors.white,
-    fontWeight: '700',
+    ...typography.h5,
+    color: colors.surface,
   },
   deliveryInfo: { flex: 1 },
   deliveryRef: {
-    fontWeight: '600',
+    ...typography.h5,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   deliveryMeta: {
     color: colors.textSecondary,
-    fontSize: 12,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.caption,
   },
   priorityPill: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 4,
     borderRadius: 8,
   },
   priorityText: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.overline,
   },
   emptyText: {
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
-  inlineEmpty: { alignItems: 'center', paddingVertical: spacing.lg, gap: 5 },
+  inlineEmpty: { alignItems: 'center', paddingVertical: spacing.xl, gap: 5 },
   inlineEmptyIcon: {
     width: 38,
     height: 38,
@@ -676,20 +661,18 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   inlineEmptyTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.h5,
+    
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   inlineEmptyHint: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 17,
     paddingHorizontal: spacing.md,
-    fontFamily: THEME.typography.fontFamily,
   },
-  personnelRow: { paddingVertical: spacing.xs, gap: spacing.sm },
+  personnelRow: { paddingVertical: spacing.xxs, gap: spacing.xs },
   personCard: {
     width: 210,
     borderWidth: 1,
@@ -699,25 +682,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   personCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '10',
+    borderColor: colors.actionGreen,
+    backgroundColor: colors.actionGreen + '10',
   },
   personName: {
-    fontWeight: '700',
+    ...typography.h5,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   personMeta: {
     marginTop: 2,
     color: colors.textSecondary,
-    fontSize: 12,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.caption,
   },
   loadTrack: {
     height: 6,
     borderRadius: 4,
     backgroundColor: colors.border,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     overflow: 'hidden',
   },
   loadFill: {
@@ -725,33 +706,32 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success,
   },
   zoneText: {
-    marginTop: spacing.sm,
-    fontSize: 12,
+    marginTop: spacing.xs,
+    ...typography.caption,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
   },
   actionRow: {
     marginBottom: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   deleteSelectedBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: '#DE350B55',
-    backgroundColor: '#DE350B0D',
+    borderColor: colors.danger + '55',
+    backgroundColor: colors.danger + '0D',
   },
   deleteSelectedText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '700',
-    color: '#DE350B',
+    ...THEME.typography.labelMd,
+    
+    color: colors.danger,
   },
   simpleRow: {
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight ?? colors.border,
     gap: 3,
@@ -762,13 +742,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   simpleTitle: {
+    ...typography.h5,
     color: colors.textPrimary,
-    fontWeight: '700',
     flex: 1,
-    fontFamily: THEME.typography.fontFamily,
   },
   statusPill: {
     paddingHorizontal: 9,
@@ -776,15 +755,13 @@ const styles = StyleSheet.create({
     borderRadius: 11,
   },
   statusPillText: {
-    fontSize: 11,
-    fontWeight: '700',
+    ...typography.overline,
+    
     letterSpacing: 0.2,
-    fontFamily: THEME.typography.fontFamily,
   },
   simpleSub: {
     color: colors.textSecondary,
-    fontSize: 12,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.caption,
   },
 
   // ── Personnel Picker Modal ─────────────────────
@@ -794,24 +771,22 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingTop: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxl,
     maxHeight: '70%',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...typography.h3,
+    
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   modalSubtitle: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
     marginTop: 4,
     marginBottom: spacing.md,
   },
@@ -829,36 +804,32 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: colors.primary + '18',
+    backgroundColor: colors.actionGreen + '18',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
   },
   modalPersonInitials: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primary,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.h5,
+    
+    color: colors.actionGreen,
   },
   modalPersonName: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.labelLg,
+    
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   modalPersonMeta: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
     marginTop: 2,
   },
   modalAssignBtn: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primary,
-    fontFamily: THEME.typography.fontFamily,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    ...typography.labelMd,
+    
+    color: colors.actionGreen,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xxs,
   },
   modalCancelBtn: {
     marginTop: spacing.md,
@@ -868,11 +839,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   modalCancelText: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.labelLg,
+    
     color: colors.textSecondary,
-    fontFamily: THEME.typography.fontFamily,
-  },
+  }
 });
 
 export default AssignDeliveriesScreen;

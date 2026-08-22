@@ -8,7 +8,7 @@ import {
   TextInput,
   StatusBar,
   KeyboardAvoidingView,
-  Platform,
+  Platform
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -16,8 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, shadows, typography } = THEME;
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { selectCustomers, fetchCustomers } from '../../../Customers/CustomerList/customerListSlice';
 import { selectInventoryItems, fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryListSlice';
@@ -32,7 +34,7 @@ import {
   removeDraftItem,
   updateDraftItemQty,
   resetCreateDeliveryDraft,
-  selectCreateDeliveryDraft,
+  selectCreateDeliveryDraft
 } from './createDeliverySlice';
 import { createDelivery } from '../AssignDeliveries/deliverySlice';
 
@@ -50,7 +52,7 @@ const money = (n: number) => `Rs ${Math.round(n).toLocaleString('en-PK')}`;
 
 const PRIORITIES: Array<{ value: 'high' | 'medium' | 'low'; label: string; color: string }> = [
   { value: 'high', label: 'High', color: colors.danger },
-  { value: 'medium', label: 'Medium', color: '#F59E0B' },
+  { value: 'medium', label: 'Medium', color: colors.warning },
   { value: 'low', label: 'Low', color: colors.success },
 ];
 
@@ -99,7 +101,7 @@ const CreateDeliveryScreen: React.FC = () => {
   const customerOptions = useMemo(
     () => customers.map(c => ({
       label: c.company ? `${c.name} — ${c.company}` : c.name,
-      value: c.id,
+      value: c.id
     })),
     [customers],
   );
@@ -109,7 +111,7 @@ const CreateDeliveryScreen: React.FC = () => {
   const itemOptions = useMemo(
     () => inventory.map(i => ({
       label: `${i.name} · stock ${i.quantityOnHand}`,
-      value: i.id,
+      value: i.id
     })),
     [inventory],
   );
@@ -158,7 +160,7 @@ const CreateDeliveryScreen: React.FC = () => {
         itemId: item.id,
         itemName: item.name,
         quantity: numericQty,
-        unitPrice: item.sellingPrice ?? 0,
+        unitPrice: item.sellingPrice ?? 0
       }),
     );
     setItemId('');
@@ -216,7 +218,7 @@ const CreateDeliveryScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Feather name="arrow-left" size={24} color="#FFFFFF" />
+            <Feather name="arrow-left" size={24} color={colors.neutral0} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>Create Delivery</Text>
@@ -256,11 +258,11 @@ const CreateDeliveryScreen: React.FC = () => {
               icon="package"
               title="Items"
               subtitle={totals.lines ? `${totals.lines} line${totals.lines === 1 ? '' : 's'} added` : 'Add items from inventory'}
-              accent={colors.primary}
+              accent={colors.actionGreen}
             >
               {itemOptions.length === 0 ? (
                 <View style={styles.emptyInventory}>
-                  <Feather name="inbox" size={18} color={colors.textLight} />
+                  <Feather name="inbox" size={18} color={colors.textTertiary} />
                   <Text style={styles.emptyInventoryText}>
                     No inventory items yet. Add items in the Inventory tab first.
                   </Text>
@@ -284,7 +286,7 @@ const CreateDeliveryScreen: React.FC = () => {
                         keyboardType="number-pad"
                         style={styles.qtyInput}
                         placeholder="1"
-                        placeholderTextColor={colors.textLight}
+                        placeholderTextColor={colors.textTertiary}
                       />
                     </View>
                     <TouchableOpacity
@@ -293,7 +295,7 @@ const CreateDeliveryScreen: React.FC = () => {
                       disabled={!itemId}
                       activeOpacity={0.85}
                     >
-                      <Feather name="plus" size={16} color="#FFFFFF" />
+                      <Feather name="plus" size={16} color={colors.neutral0} />
                       <Text style={styles.addBtnText}>Add item</Text>
                     </TouchableOpacity>
                   </View>
@@ -346,13 +348,13 @@ const CreateDeliveryScreen: React.FC = () => {
                       activeOpacity={0.85}
                     >
                       <View style={[styles.segmentDot, { backgroundColor: p.color }]} />
-                      <Text style={[styles.segmentText, active && { color: p.color, fontWeight: '700' }]}>{p.label}</Text>
+                      <Text style={[styles.segmentText, active && { color: p.color, fontWeight: typography.labelLg.fontWeight }]}>{p.label}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
 
-              <View style={{ height: spacing.sm }} />
+              <View style={{ height: spacing.xs }} />
               <CustomInput
                 label="Notes"
                 value={draft.notes}
@@ -362,14 +364,14 @@ const CreateDeliveryScreen: React.FC = () => {
               />
 
               {/* phase1.md Stage 1: pre-paid sale option */}
-              <View style={{ height: spacing.sm }} />
+              <View style={{ height: spacing.xs }} />
               <TouchableOpacity
                 style={[styles.prepaidRow, prePaid && styles.prepaidRowActive]}
                 onPress={() => setPrePaid(v => !v)}
                 activeOpacity={0.85}
               >
                 <View style={[styles.prepaidCheck, prePaid && styles.prepaidCheckActive]}>
-                  {prePaid && <Feather name="check" size={14} color="#FFFFFF" />}
+                  {prePaid && <Feather name="check" size={14} color={colors.neutral0} />}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.prepaidTitle}>Pre-paid sale</Text>
@@ -381,7 +383,7 @@ const CreateDeliveryScreen: React.FC = () => {
               </TouchableOpacity>
             </SectionCard>
 
-            <View style={{ height: spacing.xl * 2 }} />
+            <View style={{ height: spacing.xxl * 2 }} />
           </ScrollView>
         </KeyboardAvoidingView>
 
@@ -397,7 +399,7 @@ const CreateDeliveryScreen: React.FC = () => {
             disabled={!canCreate}
             activeOpacity={0.9}
           >
-            <Feather name="check" size={18} color="#FFFFFF" />
+            <Feather name="check" size={18} color={colors.neutral0} />
             <Text style={styles.createBtnText}>{isCreating ? 'Creating…' : 'Create Delivery'}</Text>
           </TouchableOpacity>
         </View>
@@ -415,120 +417,120 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.md,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     backgroundColor: HEADER_NAVY[0],
   },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  title: { fontSize: 19, fontWeight: '800', color: '#FFFFFF', fontFamily: THEME.typography.fontFamily },
-  subtitle: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2, fontFamily: THEME.typography.fontFamily },
+  backBtn: { marginRight: spacing.xxs, padding: spacing.xxs / 2 },
+  title: { ...typography.h3, color: colors.neutral0 },
+  subtitle: { ...typography.caption, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
 
   content: { padding: spacing.md },
 
   // Card
   card: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: spacing.md,
-    ...shadows.small,
+    ...shadows.xs,
   },
   cardHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.xs,
   },
-  cardIcon: { width: 32, height: 32, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  cardSub: { fontSize: 12, color: colors.textSecondary, marginTop: 1, fontFamily: THEME.typography.fontFamily },
+  cardIcon: { width: 32, height: 32, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { ...typography.labelLg, color: colors.textPrimary },
+  cardSub: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
   cardBody: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
 
   customerChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     backgroundColor: colors.secondary + '0C',
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: spacing.xs,
   },
-  customerChipText: { flex: 1, fontSize: 12.5, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  customerChipText: { flex: 1, ...THEME.typography.caption, color: colors.textSecondary },
 
   emptyInventory: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.background, borderRadius: borderRadius.md,
+    backgroundColor: colors.background, borderRadius: radius.lg,
     padding: spacing.md,
   },
-  emptyInventoryText: { flex: 1, fontSize: 12.5, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  emptyInventoryText: { flex: 1, ...THEME.typography.caption, color: colors.textSecondary },
 
-  addRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginTop: spacing.sm },
+  addRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs, marginTop: spacing.xs },
   qtyWrap: { width: 72 },
-  qtyLabel: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, marginBottom: 4, fontFamily: THEME.typography.fontFamily },
+  qtyLabel: { ...typography.overline, color: colors.textSecondary, marginBottom: 4 },
   qtyInput: {
-    height: 44, borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.sm, textAlign: 'center',
-    color: colors.textPrimary, backgroundColor: colors.white, fontFamily: THEME.typography.fontFamily,
+    height: 44, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg,
+    paddingHorizontal: spacing.xs, textAlign: 'center',
+    color: colors.textPrimary, backgroundColor: colors.surface,
   },
   addBtn: {
     flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: colors.primary, borderRadius: borderRadius.md,
+    backgroundColor: colors.actionGreen, borderRadius: radius.lg,
   },
   addBtnDisabled: { opacity: 0.45 },
-  addBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14, fontFamily: THEME.typography.fontFamily },
+  addBtnText: { ...typography.h5, color: colors.neutral0, ...typography.h5 },
 
-  lineDivider: { height: 1, backgroundColor: colors.border, marginTop: spacing.md, marginBottom: spacing.xs },
-  lineItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
-  lineName: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  lineMeta: { fontSize: 11.5, color: colors.textSecondary, marginTop: 2, fontFamily: THEME.typography.fontFamily },
+  lineDivider: { height: 1, backgroundColor: colors.border, marginTop: spacing.md, marginBottom: spacing.xxs },
+  lineItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs },
+  lineName: { ...typography.bodySm, color: colors.textPrimary },
+  lineMeta: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
   stepper: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.background, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.background, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
   },
   stepBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  stepQty: { minWidth: 26, textAlign: 'center', fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  stepQty: { minWidth: 26, textAlign: 'center', ...typography.h5, color: colors.textPrimary },
   removeBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger + '12' },
 
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.xs, fontFamily: THEME.typography.fontFamily },
-  segment: { flexDirection: 'row', gap: spacing.sm },
+  fieldLabel: { ...typography.labelSm, color: colors.textSecondary, marginBottom: spacing.xxs },
+  segment: { flexDirection: 'row', gap: spacing.xs },
   segmentBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: spacing.sm + 2, borderRadius: borderRadius.md, borderWidth: 1.5, borderColor: colors.border,
-    backgroundColor: colors.white,
+    paddingVertical: spacing.xs + 2, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   segmentDot: { width: 7, height: 7, borderRadius: 3.5 },
-  segmentText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
+  segmentText: { ...typography.labelMd, color: colors.textSecondary },
 
   // Footer
   footer: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md,
-    backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border,
+    paddingHorizontal: spacing.xl, paddingTop: spacing.xs, paddingBottom: spacing.md,
+    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
   },
-  footerValue: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  footerMeta: { fontSize: 12, color: colors.textSecondary, marginTop: 1, fontFamily: THEME.typography.fontFamily },
+  footerValue: { ...typography.h3, color: colors.textPrimary },
+  footerMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
   createBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.primary, borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
+    backgroundColor: colors.actionGreen, borderRadius: radius.lg,
+    paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
   },
   createBtnDisabled: { opacity: 0.45 },
 
   prepaidRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.sm,
+    gap: spacing.xs,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
+    borderRadius: radius.lg,
+    padding: spacing.xs,
     backgroundColor: colors.surface,
   },
   prepaidRowActive: { borderColor: colors.success, backgroundColor: colors.success + '0D' },
@@ -543,9 +545,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   prepaidCheckActive: { backgroundColor: colors.success, borderColor: colors.success },
-  prepaidTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  prepaidSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 16 },
-  createBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15, fontFamily: THEME.typography.fontFamily },
+  prepaidTitle: { ...typography.h5, color: colors.textPrimary },
+  prepaidSub: { ...typography.labelSm, color: colors.textSecondary, marginTop: 2, lineHeight: 16 },
+  createBtnText: { color: colors.neutral0,  ...typography.bodyMd }
 });
 
 export default CreateDeliveryScreen;

@@ -8,14 +8,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, spacing, borderRadius, shadows } from '../../../../theme';
 import { THEME } from '../../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, shadows, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import {
@@ -28,7 +30,7 @@ import {
   fetchApprovalRequests,
   approveRequestAsync,
   rejectRequestAsync,
-  undoApprovalAsync,
+  undoApprovalAsync
 } from './inventoryApprovalSlice';
 import { fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryListSlice';
 import { clearShadowInventoryForRequest } from '../../Admin/AssignDeliveries/deliverySlice';
@@ -346,7 +348,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={24} color={colors.primary} />
+          <Feather name="arrow-left" size={24} color={colors.actionGreen} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.title}>Inventory Approvals</Text>
@@ -628,7 +630,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
               value={rejectComment}
               onChangeText={setRejectComment}
               placeholder="Reason for rejection"
-              placeholderTextColor={colors.textLight}
+              placeholderTextColor={colors.textTertiary}
               multiline
               style={styles.commentInput}
             />
@@ -719,7 +721,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => setPhotoFullscreen(null)}
             activeOpacity={0.85}
           >
-            <Feather name="x" size={22} color="#FFFFFF" />
+            <Feather name="x" size={22} color={colors.neutral0} />
           </TouchableOpacity>
           {!!photoFullscreen && (
             <Image
@@ -741,49 +743,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    backgroundColor: colors.cardBg,
+    backgroundColor: colors.surface,
   },
-  backBtn: { padding: spacing.xs },
-  backText: { ...THEME.typography.displaySm, color: colors.primary },
-  headerCenter: { flex: 1, marginHorizontal: spacing.sm },
+  backBtn: { padding: spacing.xxs },
+  backText: { ...THEME.typography.displaySm, color: colors.actionGreen },
+  headerCenter: { flex: 1, marginHorizontal: spacing.xs },
   title: { ...THEME.typography.h3, color: colors.textPrimary },
   subtitle: { ...THEME.typography.caption, color: colors.textSecondary },
   pendingBadge: {
     minWidth: 72,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xxs,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.sm,
     backgroundColor: colors.warning + '20',
     alignItems: 'center',
   },
-  pendingBadgeLabel: { ...THEME.typography.caption, color: colors.warning, fontWeight: '600' },
-  pendingBadgeCount: { ...THEME.typography.bodyLg, color: colors.warning, fontWeight: '700' },
+  pendingBadgeLabel: { ...THEME.typography.caption, color: colors.warning, fontWeight: typography.labelLg.fontWeight },
+  pendingBadgeCount: { ...THEME.typography.bodyLg, color: colors.warning, fontWeight: typography.labelLg.fontWeight },
 
-  content: { padding: spacing.md, paddingBottom: spacing.xl },
-  filterRow: { gap: spacing.xs, marginBottom: spacing.md },
+  content: { padding: spacing.md, paddingBottom: spacing.xxl },
+  filterRow: { gap: spacing.xxs, marginBottom: spacing.md },
   filterChip: {
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xxs,
     paddingHorizontal: spacing.md,
     borderRadius: 18,
-    backgroundColor: colors.cardBg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterChipText: { ...THEME.typography.bodyMd, color: colors.textSecondary, fontWeight: '600' },
-  filterChipTextActive: { color: colors.white },
+  filterChipActive: { backgroundColor: colors.actionGreen, borderColor: colors.actionGreen },
+  filterChipText: { ...THEME.typography.bodyMd, color: colors.textSecondary, fontWeight: typography.labelLg.fontWeight },
+  filterChipTextActive: { color: colors.surface },
 
   card: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.card,
+    ...shadows.sm,
   },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
   personBlock: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   avatar: {
     width: 36,
@@ -793,19 +795,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: { ...THEME.typography.bodyMd, color: colors.secondary, fontWeight: '700' },
-  personMeta: { marginLeft: spacing.sm, flex: 1 },
-  personName: { ...THEME.typography.bodyLg, color: colors.textPrimary, fontWeight: '600' },
+  avatarText: { ...THEME.typography.bodyMd, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
+  personMeta: { marginLeft: spacing.xs, flex: 1 },
+  personName: { ...THEME.typography.bodyLg, color: colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   personSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
-  statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: borderRadius.sm },
-  statusText: { ...THEME.typography.caption, fontWeight: '700' },
+  statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.sm },
+  statusText: { ...THEME.typography.caption, fontWeight: typography.labelLg.fontWeight },
 
   ledgerStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-    gap: spacing.sm,
+    marginBottom: spacing.xxs,
+    gap: spacing.xs,
   },
   paidBadge: {
     flexDirection: 'row',
@@ -815,82 +817,82 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 999,
   },
-  paidBadgeText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.4 },
+  paidBadgeText: { ...typography.labelSm, letterSpacing: 0.4 },
   ledgerMeta: { flex: 1, alignItems: 'flex-end' },
-  ledgerCustomer: { fontSize: 12, color: colors.textSecondary },
-  ledgerAmount: { fontSize: 15, fontWeight: '800', color: colors.textPrimary },
-  ledgerHint: { fontSize: 11, color: colors.textTertiary, marginBottom: spacing.sm, lineHeight: 15 },
-  tableWrap: { borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm, overflow: 'hidden', marginBottom: spacing.sm },
+  ledgerCustomer: { ...typography.labelSm, color: colors.textSecondary },
+  ledgerAmount: { ...typography.bodyMd, color: colors.textPrimary },
+  ledgerHint: { ...typography.overline, color: colors.textTertiary, marginBottom: spacing.xs, lineHeight: 15 },
+  tableWrap: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, overflow: 'hidden', marginBottom: spacing.xs },
   tableHead: { flexDirection: 'row', backgroundColor: colors.background },
-  tableHeadCell: { ...THEME.typography.caption, color: colors.textSecondary, fontWeight: '700', paddingVertical: 8, paddingHorizontal: 6 },
+  tableHeadCell: { ...THEME.typography.caption, color: colors.textSecondary,  paddingVertical: 8, paddingHorizontal: 6 },
   tableRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border },
-  tableRowChanged: { backgroundColor: '#EAF8F1' },
+  tableRowChanged: { backgroundColor: colors.actionGreenLighter },
   tableCell: { ...THEME.typography.caption, color: colors.textPrimary, paddingVertical: 8, paddingHorizontal: 6 },
   colItem: { flex: 2.3 },
   colSmall: { flex: 1, textAlign: 'center' },
 
   proofBtn: {
     alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xxs,
+    borderRadius: radius.sm,
     backgroundColor: colors.secondary + '1A',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  proofBtnText: { ...THEME.typography.caption, color: colors.secondary, fontWeight: '600' },
+  proofBtnText: { ...THEME.typography.caption, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
   billPhotoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-    padding: spacing.sm,
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+    padding: spacing.xs,
     backgroundColor: colors.background,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  billPhotoThumbWrap: { width: 72, height: 96, borderRadius: borderRadius.sm, overflow: 'hidden', backgroundColor: '#000' },
+  billPhotoThumbWrap: { width: 72, height: 96, borderRadius: radius.sm, overflow: 'hidden', backgroundColor: colors.neutral900 },
   billPhotoThumb: { width: '100%', height: '100%' },
   billPhotoPending: {
     width: '100%', height: '100%',
     alignItems: 'center', justifyContent: 'center',
     gap: 4, padding: 6,
-    backgroundColor: colors.surfaceAlt ?? '#F1F3F5',
+    backgroundColor: colors.backgroundAlt ?? colors.neutral100,
   },
   billPhotoPendingText: {
     ...THEME.typography.caption,
     color: colors.textSecondary,
     textAlign: 'center',
-    fontSize: 10,
+    ...typography.overline,
   },
   billPhotoBadge: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 2, backgroundColor: 'rgba(0,0,0,0.55)' },
-  billPhotoBadgeText: { ...THEME.typography.caption, color: '#fff', textAlign: 'center', fontSize: 10 },
+  billPhotoBadgeText: { ...THEME.typography.caption, color: colors.neutral0, textAlign: 'center', ...typography.overline },
   billPhotoMeta: { flex: 1 },
-  billPhotoLabel: { ...THEME.typography.bodyMd, color: colors.textPrimary, fontWeight: '700' },
+  billPhotoLabel: { ...THEME.typography.bodyMd, color: colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   billPhotoSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
-  proofLink: { ...THEME.typography.caption, color: colors.secondary, fontWeight: '600', marginTop: 6 },
-  proofPhotoTouchable: { width: '100%', aspectRatio: 3 / 4, borderRadius: borderRadius.sm, overflow: 'hidden', backgroundColor: '#000', marginBottom: spacing.sm },
+  proofLink: { ...typography.labelSm, color: colors.secondary, marginTop: 6 },
+  proofPhotoTouchable: { width: '100%', aspectRatio: 3 / 4, borderRadius: radius.sm, overflow: 'hidden', backgroundColor: colors.neutral900, marginBottom: spacing.xs },
   proofPhoto: { width: '100%', height: '100%' },
   fullscreenBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
   fullscreenImage: { width: '100%', height: '100%' },
   fullscreenClose: { position: 'absolute', top: 50, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', zIndex: 5 },
-  fullscreenCloseText: { color: '#fff', fontSize: 22, fontWeight: '600' },
+  fullscreenCloseText: { color: colors.neutral0, ...typography.h2, fontWeight: typography.labelLg.fontWeight },
 
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm, gap: spacing.sm },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs, gap: spacing.xs },
   metaText: { ...THEME.typography.caption, color: colors.textSecondary },
 
-  actionRow: { flexDirection: 'row', gap: spacing.sm },
+  actionRow: { flexDirection: 'row', gap: spacing.xs },
   actionBtn: { flex: 1 },
 
-  reviewInfoBox: { backgroundColor: colors.background, borderRadius: borderRadius.sm, padding: spacing.sm },
+  reviewInfoBox: { backgroundColor: colors.background, borderRadius: radius.sm, padding: spacing.xs },
   reviewInfoText: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: 4 },
-  reviewComment: { ...THEME.typography.bodyMd, color: colors.textPrimary, marginBottom: spacing.sm },
-  undoBtnWrap: { marginTop: spacing.sm, alignSelf: 'flex-start' },
+  reviewComment: { ...THEME.typography.bodyMd, color: colors.textPrimary, marginBottom: spacing.xs },
+  undoBtnWrap: { marginTop: spacing.xs, alignSelf: 'flex-start' },
 
   emptyState: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
     alignItems: 'center',
     marginBottom: spacing.md,
   },
@@ -898,15 +900,15 @@ const styles = StyleSheet.create({
   emptySub: { ...THEME.typography.bodyMd, color: colors.textSecondary, marginTop: 4 },
 
   summaryCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.small,
+    ...shadows.xs,
   },
-  summaryTitle: { ...THEME.typography.bodyLg, color: colors.textPrimary, fontWeight: '700', marginBottom: spacing.sm },
-  summaryRow: { marginBottom: spacing.sm },
-  summaryMain: { ...THEME.typography.bodyMd, color: colors.textPrimary, fontWeight: '600' },
+  summaryTitle: { ...typography.h4, color: colors.textPrimary, marginBottom: spacing.xs },
+  summaryRow: { marginBottom: spacing.xs },
+  summaryMain: { ...THEME.typography.bodyMd, color: colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
   summaryMeta: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
   summaryEmpty: { ...THEME.typography.caption, color: colors.textSecondary },
 
@@ -914,29 +916,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
-    padding: spacing.lg,
+    padding: spacing.xl,
   },
   modalCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
   },
-  modalTitle: { ...THEME.typography.h3, color: colors.textPrimary, marginBottom: spacing.xs },
-  modalSub: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: spacing.sm },
-  modalLine: { ...THEME.typography.bodyMd, color: colors.textPrimary, marginBottom: spacing.xs },
-  modalActionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  modalTitle: { ...THEME.typography.h3, color: colors.textPrimary, marginBottom: spacing.xxs },
+  modalSub: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: spacing.xs },
+  modalLine: { ...THEME.typography.bodyMd, color: colors.textPrimary, marginBottom: spacing.xxs },
+  modalActionRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs },
   modalBtn: { flex: 1 },
   commentInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
     minHeight: 90,
     textAlignVertical: 'top',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
+    marginBottom: spacing.xs,
+  }
 });
 
 export default InventoryApprovalScreen;

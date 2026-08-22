@@ -5,26 +5,29 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
+  StatusBar
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, spacing } from '../../../../theme';
-import { THEME } from '../../../../utils/theme';
+import { THEME, PRIORITY_CONFIG } from '../../../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, shadows, typography } = THEME;
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectUnassignedDeliveries, selectDeliveryPersonnel, assignSelectedDeliveries } from '../AssignDeliveries/deliverySlice';
 import { selectAssignWorkState, toggleDelivery, setPersonnel, resetAssignWork } from './assignWorkSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 
-const PRIORITY_COLORS: Record<string, string> = {
-  high: '#B91C1C',
-  medium: '#B45309',
-  low: '#0F766E',
-};
+// Priority colours come from THEME.PRIORITY_CONFIG, the same source the
+// driver-facing screens read. The local copies disagreed: `high` was dark
+// red on three screens and dark amber on the delivery monitor.
+const PRIORITY_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(PRIORITY_CONFIG).map(([k, v]) => [k, v.color]),
+);
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'AssignWork'>;
 
@@ -121,7 +124,7 @@ const AssignWorkScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.body}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={24} color="#FFFFFF" />
+          <Feather name="arrow-left" size={24} color={colors.neutral0} />
         </TouchableOpacity>
         <Text style={styles.title}>Assign Work</Text>
         <View style={{ width: 20 }} />
@@ -172,7 +175,7 @@ const AssignWorkScreen: React.FC<Props> = ({ navigation }) => {
           <View style={{ marginTop: spacing.md }}>
             <CustomButton title="Assign Selected" onPress={handleAssign} fullWidth />
           </View>
-          <View style={{ marginTop: spacing.sm }}>
+          <View style={{ marginTop: spacing.xs }}>
             <CustomButton title="Auto-Assign" onPress={handleAutoAssign} variant="secondary" fullWidth />
           </View>
         </View>
@@ -190,30 +193,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.md,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     backgroundColor: HEADER_NAVY[0],
   },
   back: {
-    fontSize: 28,
+    ...typography.h1,
     color: colors.textPrimary,
     marginTop: -2,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.h3,
+    
+    color: colors.neutral0,
   },
   content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
+    padding: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
   panel: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
@@ -221,18 +223,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   panelTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: spacing.sm,
+    ...typography.labelLg,
+    
+    marginBottom: spacing.xs,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   check: {
     width: 22,
@@ -240,17 +241,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 6,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.actionGreen,
+    borderColor: colors.actionGreen,
   },
   checkTick: {
-    color: colors.white,
-    fontWeight: '700',
+    ...typography.h5,
+    color: colors.surface,
   },
   radio: {
     width: 22,
@@ -258,40 +259,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 11,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
     justifyContent: 'center',
     alignItems: 'center',
   },
   radioSelected: {
-    borderColor: colors.primary,
+    borderColor: colors.actionGreen,
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.actionGreen,
   },
   rowTitle: {
+    ...typography.h5,
     color: colors.textPrimary,
-    fontWeight: '600',
-    fontFamily: THEME.typography.fontFamily,
   },
   rowSub: {
     color: colors.textSecondary,
-    fontSize: 12,
+    ...typography.caption,
     marginTop: 2,
-    fontFamily: THEME.typography.fontFamily,
   },
   priority: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.overline,
   },
   summary: {
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
-    fontFamily: THEME.typography.fontFamily,
-  },
+    marginBottom: spacing.xxs,
+  }
 });
 
 export default AssignWorkScreen;
