@@ -56,7 +56,9 @@ const palette = {
   // On-dark accents. The ramps above are tuned for white grounds and go muddy
   // on the near-black summary panel, so its two accents are named separately.
   amber400: '#F59E0B',
+  amber300: '#FBBF24',
   emerald400: '#34D399',
+  red400: '#F87171',
 
   // Semantic — success / warning / danger / info
   green600: '#16A34A',
@@ -312,6 +314,10 @@ const form = {
     accent: palette.amber400,
     /** A credit or discount — money coming back off the total. */
     positive: palette.emerald400,
+    /** A figure that needs attention: overdrawn account, unapplied amount. */
+    caution: palette.amber300,
+    /** A figure that is outright wrong — an overpayment with nowhere to go. */
+    negative: palette.red400,
   },
 } as const;
 
