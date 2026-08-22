@@ -10,10 +10,9 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { colors, spacing, borderRadius, shadows } from '../../theme';
-import { THEME } from '../../utils/theme';
+import { THEME as T } from '../../theme';
 
-const FF = THEME.typography.fontFamily;
+const { colors, spacing, radius, shadows, typography } = T;
 
 // Capitalises a raw status key for display (e.g. "partially_received" → "Partially received").
 export const titleCase = (s: string): string =>
@@ -96,7 +95,7 @@ export const TxnCard: React.FC<TxnCardProps> = ({
     onPress={onPress}
   >
     <View style={s.cardTop}>
-      <View style={{ flex: 1, marginRight: spacing.sm }}>
+      <View style={{ flex: 1, marginRight: spacing.xs }}>
         <Text style={s.cardNumber}>{number}</Text>
         {subtitle ? <Text style={s.cardSub} numberOfLines={1}>{subtitle}</Text> : null}
       </View>
@@ -128,61 +127,67 @@ export const TxnCard: React.FC<TxnCardProps> = ({
 );
 
 const s = StyleSheet.create({
-  // Tabs — identical to the Invoices screen, pinned in a fixed-height bar.
+  // Tabs — pinned in a fixed-height bar so the row never shifts between states.
   tabsBar: { height: 52, justifyContent: 'center' },
   tabsScroll: { flexGrow: 0, flexShrink: 0 },
-  tabsRow: { paddingHorizontal: spacing.lg, alignItems: 'center', gap: spacing.sm },
+  tabsRow: { paddingHorizontal: spacing.xl, alignItems: 'center', gap: spacing.xs },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: 20,
-    backgroundColor: colors.white,
+    justifyContent: 'center',
+    // 44pt minimum touch target; the 52pt bar has room for it.
+    minHeight: 44,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, fontFamily: FF },
-  tabTextActive: { color: colors.white },
+  tabActive: { backgroundColor: colors.actionGreen, borderColor: colors.actionGreen },
+  tabText: { ...typography.labelMd, color: colors.textSecondary },
+  tabTextActive: { color: colors.neutral0 },
   tabCount: {
     marginLeft: spacing.xs,
     backgroundColor: colors.background,
-    borderRadius: 10,
-    paddingHorizontal: 6,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.xxs + 2,
     paddingVertical: 1,
     minWidth: 22,
     alignItems: 'center',
   },
   tabCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
-  tabCountText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, fontFamily: FF },
-  tabCountTextActive: { color: colors.white },
+  // letterSpacing zeroed for digits (same treatment as ReportUI's kpiDelta).
+  tabCountText: { ...typography.labelSm, letterSpacing: 0, color: colors.textSecondary },
+  tabCountTextActive: { color: colors.neutral0 },
 
-  // Card — identical to the Invoices screen card.
+  // Card — matches ReportUI's Card surface (radius, border, elevation).
   card: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.small,
+    marginBottom: spacing.xs,
+    ...shadows.xs,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
-  cardNumber: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: FF },
-  cardSub: { fontSize: 13, color: colors.textSecondary, fontFamily: FF, marginTop: 2 },
-  badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: FF },
-  cardDates: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
-  dateText: { fontSize: 12, color: colors.textLight, fontFamily: FF },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.xs },
+  cardNumber: { ...typography.labelLg, color: colors.textPrimary },
+  cardSub: { ...typography.bodySm, color: colors.textSecondary, marginTop: 2 },
+  badge: { paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs, borderRadius: radius.xs },
+  // labelSm is the canonical badge-text role (see ReportUI's Badge).
+  badgeText: { ...typography.labelSm, letterSpacing: 0.2 },
+  cardDates: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
+  dateText: { ...typography.caption, color: colors.textTertiary },
   cardBottom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xs,
   },
-  amtLabel: { fontSize: 11, color: colors.textLight, fontFamily: FF },
-  amtValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: FF },
+  amtLabel: { ...typography.caption, color: colors.textTertiary },
+  // Tabular figures so amounts align digit-for-digit down the list.
+  amtValue: { ...typography.labelLg, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
 });

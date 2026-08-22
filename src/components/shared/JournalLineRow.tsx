@@ -12,8 +12,10 @@ import {
   StyleSheet,
 } from 'react-native';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
-import { colors, spacing, borderRadius } from '../../theme';
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, shadows } = THEME;
 
 interface AccountOption {
   label: string;
@@ -109,7 +111,7 @@ const JournalLineRow: React.FC<JournalLineRowProps> = ({
             value={description}
             onChangeText={onDescriptionChange}
             placeholder="Description"
-            placeholderTextColor={colors.textLight}
+            placeholderTextColor={colors.textTertiary}
           />
         </View>
         <View style={styles.amountField}>
@@ -122,7 +124,7 @@ const JournalLineRow: React.FC<JournalLineRowProps> = ({
             value={debit}
             onChangeText={handleDebitChange}
             placeholder="Debit"
-            placeholderTextColor={colors.textLight}
+            placeholderTextColor={colors.textTertiary}
             keyboardType="decimal-pad"
             editable={!hasCredit}
           />
@@ -137,7 +139,7 @@ const JournalLineRow: React.FC<JournalLineRowProps> = ({
             value={credit}
             onChangeText={handleCreditChange}
             placeholder="Credit"
-            placeholderTextColor={colors.textLight}
+            placeholderTextColor={colors.textTertiary}
             keyboardType="decimal-pad"
             editable={!hasDebit}
           />
@@ -151,10 +153,10 @@ const JournalLineRow: React.FC<JournalLineRowProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    padding: spacing.xs,
+    marginBottom: spacing.xs,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -166,12 +168,12 @@ const styles = StyleSheet.create({
   deleteBtn: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radius.full,
     backgroundColor: colors.danger + '14',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: spacing.sm,
-    marginTop: spacing.lg,
+    marginLeft: spacing.xs,
+    marginTop: spacing.xl,
   },
   deleteBtnText: {
     ...THEME.typography.labelLg,
@@ -179,15 +181,15 @@ const styles = StyleSheet.create({
   },
   fieldsRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   descriptionField: { flex: 1 },
   descInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
     ...THEME.typography.bodyMd,
     color: colors.textPrimary,
   },
@@ -195,20 +197,20 @@ const styles = StyleSheet.create({
   amountInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
     ...THEME.typography.bodyMd,
     color: colors.textPrimary,
     textAlign: 'right',
   },
   debitHighlight: { borderColor: colors.success, backgroundColor: colors.success + '08' },
   creditHighlight: { borderColor: colors.danger, backgroundColor: colors.danger + '08' },
-  amountDisabled: { backgroundColor: colors.background, color: colors.textLight },
+  amountDisabled: { backgroundColor: colors.background, color: colors.textTertiary },
   errorText: {
     ...THEME.typography.caption,
     color: colors.danger,
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
   },
 });
 

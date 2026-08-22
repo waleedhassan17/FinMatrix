@@ -15,8 +15,10 @@ import {
   FlatList,
   ScrollView,
 } from 'react-native';
-import { colors, spacing, borderRadius, shadows } from '../../theme';
 import { THEME } from '../../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, shadows } = THEME;
 import { formatCurrency } from '../../utils/formatters';
 
 const TAX_OPTIONS = [
@@ -92,7 +94,7 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
         value={description}
         onChangeText={onDescriptionChange}
         placeholder="Item description"
-        placeholderTextColor={colors.textLight}
+        placeholderTextColor={colors.textTertiary}
       />
 
       {/* Qty + Rate + Tax row — all three columns share identical
@@ -115,7 +117,7 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
               value={quantity}
               onChangeText={v => sanitizeNumeric(v, onQuantityChange)}
               placeholder="0"
-              placeholderTextColor={colors.textLight}
+              placeholderTextColor={colors.textTertiary}
               keyboardType="decimal-pad"
             />
           </View>
@@ -126,7 +128,7 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
               value={unitPrice}
               onChangeText={v => sanitizeNumeric(v, onUnitPriceChange)}
               placeholder="0.00"
-              placeholderTextColor={colors.textLight}
+              placeholderTextColor={colors.textTertiary}
               keyboardType="decimal-pad"
             />
           </View>
@@ -204,10 +206,10 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.sm,
-    padding: spacing.sm + 2,
-    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    padding: spacing.xs + 2,
+    marginBottom: spacing.xs,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -215,56 +217,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
   },
   lineLabel: {
-    ...THEME.typography.bodySm,
-    fontWeight: '700',
+    ...THEME.typography.labelMd,
     color: colors.textSecondary,
   },
   deleteBtn: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: radius.full,
     backgroundColor: colors.danger + '14',
     justifyContent: 'center',
     alignItems: 'center',
   },
   deleteBtnText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '700',
+    ...THEME.typography.labelMd,
     color: colors.danger,
   },
   descInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
     ...THEME.typography.bodyMd,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   numericScroll: { minWidth: '100%' },
   numericRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     flexGrow: 1,
   },
   numericField: { flex: 1 },
   colTax: { minWidth: 96 },
   fieldLabel: {
-    ...THEME.typography.caption,
-    fontWeight: '500',
+    ...THEME.typography.labelSm,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
   },
   numericInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
     ...THEME.typography.bodyMd,
     color: colors.textPrimary,
     textAlign: 'right',
@@ -278,10 +277,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surface,
   },
   taxTriggerText: {
     ...THEME.typography.bodyMd,
@@ -290,30 +289,29 @@ const styles = StyleSheet.create({
   taxChevron: {
     ...THEME.typography.caption,
     color: colors.textSecondary,
-    marginLeft: spacing.xs,
+    marginLeft: spacing.xxs,
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
   amountLabel: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
+    ...THEME.typography.labelMd,
     color: colors.textSecondary,
     flexShrink: 1,
   },
   // The figure never shrinks or clips — the label gives way instead.
   amountValue: {
     ...THEME.typography.h4,
-    fontWeight: '700',
-    color: colors.primary,
+    fontVariant: ['tabular-nums'],
+    color: colors.actionGreen,
     flexShrink: 0,
-    marginLeft: spacing.sm,
+    marginLeft: spacing.xs,
   },
 
   // Tax picker modal
@@ -321,13 +319,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
-    padding: spacing.lg,
+    padding: spacing.xl,
   },
   taxModal: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
     maxHeight: '60%',
-    ...shadows.large,
+    ...shadows.md,
   },
   taxModalHeader: {
     flexDirection: 'row',
@@ -341,24 +339,26 @@ const styles = StyleSheet.create({
   taxModalClose: {
     ...THEME.typography.h3,
     color: colors.textSecondary,
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.xxs,
   },
   taxOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.sm + 4,
+    paddingVertical: spacing.xs + 4,
     paddingHorizontal: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  taxOptionSelected: { backgroundColor: colors.primary + '10' },
+  taxOptionSelected: { backgroundColor: colors.actionGreen + '10' },
   taxOptionText: { ...THEME.typography.bodyLg, color: colors.textPrimary },
-  taxOptionTextSelected: { color: colors.primary, fontWeight: '600' },
+  taxOptionTextSelected: {
+    color: colors.actionGreen,
+    fontWeight: THEME.typography.labelLg.fontWeight,
+  },
   taxOptionCheck: {
     ...THEME.typography.h3,
-    fontWeight: '700',
-    color: colors.primary,
+    color: colors.actionGreen,
   },
 });
 
