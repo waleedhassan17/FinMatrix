@@ -9,6 +9,7 @@
 
 import type { PurchaseOrder, PurchaseOrderLine, PurchaseOrderStatus } from '../types';
 import { formatDate } from '../utils/formatters';
+import { txnStatusColor } from '../components/transactions/txnStatus';
 
 // ─── Raw API entity (backend shape) ──────────────────
 // These mirror what `/purchase-orders` ACTUALLY returns, verified against the
@@ -105,12 +106,13 @@ export const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
   closed: 'Closed',
 };
 
+/** Presentation-only: resolved from the canonical stack-wide status palette. */
 export const PO_STATUS_COLORS: Record<PurchaseOrderStatus, string> = {
-  draft: '#8993A4',
-  sent: '#059669',
-  partially_received: '#FF991F',
-  fully_received: '#00875A',
-  closed: '#5E6C84',
+  draft: txnStatusColor('draft'),
+  sent: txnStatusColor('sent'),
+  partially_received: txnStatusColor('partially_received'),
+  fully_received: txnStatusColor('fully_received'),
+  closed: txnStatusColor('closed'),
 };
 
 export interface POFormLineData {

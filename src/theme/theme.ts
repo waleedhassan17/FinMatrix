@@ -45,6 +45,14 @@ const palette = {
   violet600: '#7C3AED',
   violetLight: '#EFE9FD',
 
+  // Emerald — the app's create/confirm action colour. Off the slate/teal
+  // ramp, but load-bearing: it paints every "New"/"Add" pill (THEME.form.
+  // addPill) and the form section dots across ~28 screens. Named here so
+  // those specs stop carrying a magic hex; the rendered colour is unchanged.
+  emerald600: '#059669',
+  emerald700: '#047857',
+  emeraldLighter: '#ECFDF5',
+
   // Semantic — success / warning / danger / info
   green600: '#16A34A',
   greenLight: '#D8F3E1',
@@ -75,6 +83,12 @@ const colors = {
   // Secondary
   secondary: palette.violet600,
   secondaryLight: palette.violetLight,
+
+  // Create/confirm action green (see palette.emerald600) — distinct from
+  // `primary`, which is brand teal. Both are live in the UI today.
+  actionGreen: palette.emerald600,
+  actionGreenDark: palette.emerald700,
+  actionGreenLighter: palette.emeraldLighter,
 
   // Success
   success: palette.green600,
@@ -256,7 +270,7 @@ const form = {
   controlRadius: 10,
   /** Height/spec of the green "Add" pill — identical everywhere it appears. */
   addPill: {
-    background: '#059669',
+    background: colors.actionGreen,
     radius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -269,11 +283,11 @@ const form = {
     fontFamily,
     fontSize: 11,
     fontWeight: '700' as const,
-    color: '#64748B',
+    color: colors.neutral500,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
   },
-  sectionDot: { size: 8, color: '#059669' },
+  sectionDot: { size: 8, color: colors.actionGreen },
 } as const;
 
 // ───────────────────────────────────────────────
