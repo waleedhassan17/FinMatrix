@@ -20,7 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOTS = ['src/screens', 'src/components', 'src/Custom-Components'];
+const ROOTS = ['src/screens', 'src/components', 'src/Custom-Components', 'src/navigators'];
 
 const ALLOWED = new Map([
   // Token definitions: the one place each value is written down.

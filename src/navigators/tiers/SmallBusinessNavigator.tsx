@@ -19,11 +19,11 @@ import {
   SB_TRANSACTIONS_ROUTES,
   SB_REPORTS_ROUTES,
   SB_MORE_ROUTES,
-  TierRoute,
+  TierRoute
 } from './tierRoutes';
 
-const ACTIVE = '#059669';
-const INACTIVE = '#8993A4';
+const ACTIVE = THEME.colors.actionGreen;
+const INACTIVE = THEME.colors.textTertiary;
 const TAB_HEIGHT = 72;
 
 type IconName = React.ComponentProps<typeof Feather>['name'];
@@ -66,14 +66,14 @@ const SmallBusinessNavigator: React.FC = () => {
           height: TAB_HEIGHT + insets.bottom,
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 8,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: THEME.colors.neutral0,
           borderTopWidth: 1,
-          borderTopColor: '#DFE1E6',
+          borderTopColor: THEME.colors.border,
           elevation: 8,
-          shadowColor: '#091E42',
+          shadowColor: THEME.colors.neutral900,
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.06,
-          shadowRadius: 8,
+          shadowRadius: 8
         },
         tabBarActiveTintColor: ACTIVE,
         tabBarInactiveTintColor: INACTIVE,
@@ -85,7 +85,7 @@ const SmallBusinessNavigator: React.FC = () => {
         component={SBDashboardStack}
         options={{
           tabBarLabel: 'Dashboard',
-          tabBarIcon: ({ focused }) => <TabIcon icon="grid" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="grid" focused={focused} />
         }}
       />
       <Tab.Screen
@@ -93,7 +93,7 @@ const SmallBusinessNavigator: React.FC = () => {
         component={SBTransactionsStack}
         options={{
           tabBarLabel: 'Transactions',
-          tabBarIcon: ({ focused }) => <TabIcon icon="repeat" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="repeat" focused={focused} />
         }}
       />
       <Tab.Screen
@@ -101,7 +101,7 @@ const SmallBusinessNavigator: React.FC = () => {
         component={SBReportsStack}
         options={{
           tabBarLabel: 'Reports',
-          tabBarIcon: ({ focused }) => <TabIcon icon="bar-chart-2" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="bar-chart-2" focused={focused} />
         }}
       />
       <Tab.Screen
@@ -109,7 +109,7 @@ const SmallBusinessNavigator: React.FC = () => {
         component={SBMoreStack}
         options={{
           tabBarLabel: 'More',
-          tabBarIcon: ({ focused }) => <TabIcon icon="menu" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="menu" focused={focused} />
         }}
       />
     </Tab.Navigator>
@@ -119,7 +119,7 @@ const SmallBusinessNavigator: React.FC = () => {
 const styles = StyleSheet.create({
   iconWrapper: { alignItems: 'center', justifyContent: 'center', width: 56, position: 'relative' },
   iconPill: { width: 34, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  iconPillActive: { backgroundColor: '#ECFDF5' },
+  iconPillActive: { backgroundColor: THEME.colors.actionGreenLighter }
 });
 
 export default SmallBusinessNavigator;
