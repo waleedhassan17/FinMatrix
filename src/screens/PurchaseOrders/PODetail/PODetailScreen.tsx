@@ -18,18 +18,15 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
-  StatusBar,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { useCompanyInfo } from '../../../utils/companyInfo';
 import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import Toast from 'react-native-toast-message';
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import {
   fetchInventoryItems,
   editInventoryItem,
@@ -40,6 +37,15 @@ import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorList
 import { convertPOToBillAPI } from '../../../networks/purchases/purchaseOrderNetwork';
 import { fetchBills } from '../../Bills/BillList/billListSlice';
 import { THEME } from '../../../utils/theme';
+import {
+  ReportContainer,
+  ReportHeader,
+  Badge,
+  LoadingBlock,
+  ErrorBlock,
+} from '../../../components/reports/ReportUI';
+
+const { colors, spacing, radius, shadows, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchPODetail,
@@ -326,30 +332,24 @@ const PODetailScreen: React.FC = () => {
   }, [linkedBillId, navigation]);
 
   // ── Loading / Error ─────────────────────────────
+  // Both keep the header, so the back affordance never disappears.
   if (isLoading && !po) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        {renderHeader(navigation, 'Purchase Order')}
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </SafeAreaView>
+      <ReportContainer>
+        <ReportHeader title="Purchase Order" onBack={() => navigation.goBack()} />
+        <LoadingBlock />
+      </ReportContainer>
     );
   }
 
   if (error || !po) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        {renderHeader(navigation, 'Purchase Order')}
-        <View style={styles.center}>
-          <Text style={styles.errorText}>{error || 'Purchase order not found'}</Text>
-          <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="secondary" size="md" />
-        </View>
-      </SafeAreaView>
+      <ReportContainer>
+        <ReportHeader title="Purchase Order" onBack={() => navigation.goBack()} />
+        <ErrorBlock message={error || 'Purchase order not found'} />
+      </ReportContainer>
     );
   }
-
-  const statusCol = PO_STATUS_COLORS[po.status];
   const isFullyReceived = po.status === 'fully_received';
   const canReceive = po.status === 'sent' || po.status === 'partially_received';
   const isBilled = !!po.billId;
@@ -358,24 +358,12 @@ const PODetailScreen: React.FC = () => {
 
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-              <Feather name="arrow-left" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle} numberOfLines={1}>{po.poNumber}</Text>
-          </View>
-          <View style={[styles.badge, { backgroundColor: statusCol + '18' }]}>
-            <Text style={[styles.badgeText, { color: statusCol }]}>
-              {PO_STATUS_LABELS[po.status]}
-            </Text>
-          </View>
-        </View>
-      </View>
+    <ReportContainer>
+      <ReportHeader
+        title={po.poNumber}
+        subtitle={po.vendorName}
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -386,6 +374,9 @@ const PODetailScreen: React.FC = () => {
       >
         {/* ── PO Card ─────────────────────────── */}
         <View style={styles.poCard}>
+          <View style={styles.statusRow}>
+            <Badge label={PO_STATUS_LABELS[po.status]} color={PO_STATUS_COLORS[po.status]} dot />
+          </View>
           <Text style={styles.companyName}>{companyInfo.name}</Text>
           {(companyInfo.addressLine1 || companyInfo.addressLine2) ? (
             <Text style={styles.companyMeta}>
@@ -444,7 +435,7 @@ const PODetailScreen: React.FC = () => {
                         dispatch(setReceivingQty({ lineId: rl.lineId, qty: parseInt(v.replace(/[^0-9]/g, ''), 10) || 0 }))
                       }
                       placeholder="0"
-                      placeholderTextColor={colors.textLight}
+                      placeholderTextColor={colors.textTertiary}
                       keyboardType="number-pad"
                       editable={rl.remaining > 0}
                     />
@@ -480,8 +471,8 @@ const PODetailScreen: React.FC = () => {
                       styles.tdText,
                       styles.tdRight,
                       { flex: 0.7 },
-                      line.receivedQuantity >= line.quantity && { color: colors.success, fontWeight: '700' },
-                      line.receivedQuantity > 0 && line.receivedQuantity < line.quantity && { color: colors.warning, fontWeight: '700' },
+                      line.receivedQuantity >= line.quantity && styles.tdReceivedFull,
+                      line.receivedQuantity > 0 && line.receivedQuantity < line.quantity && styles.tdReceivedPartial,
                     ]}
                   >
                     {line.receivedQuantity}
@@ -666,25 +657,9 @@ const PODetailScreen: React.FC = () => {
           </>
         )}
       </View>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
-
-// ─── Helpers ─────────────────────────────────────────
-function renderHeader(navigation: Nav, title: string) {
-  return (
-    <View style={styles.header}>
-      <View style={styles.headerRow}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-            <Feather name="arrow-left" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
 
 const TotalsRow: React.FC<{
   label: string;
@@ -707,136 +682,116 @@ const TotalsRow: React.FC<{
 );
 
 // ═══════════════════════════════════════════════════════
+// The document look (letterhead, ruled table, totals block) is deliberate --
+// this is what gets shared as a PDF -- so the structure stays; only the values
+// move onto the design system. Mirrors Invoice/BillDetail exactly.
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  errorText: { fontSize: 15, color: colors.danger, fontFamily: THEME.typography.fontFamily },
-
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: spacing.sm },
-  backBtn: { marginRight: spacing.xs, padding: spacing.xs / 2 },
-  backIcon: { fontSize: 28, color: colors.secondary, fontWeight: '600' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily, flex: 1 },
-  badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 6 },
-  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: THEME.typography.fontFamily },
-
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  scrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
 
   poCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    ...shadows.small,
+    ...shadows.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  companyName: { fontSize: 18, fontWeight: '800', color: colors.primary, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
-  companyMeta: { fontSize: 12, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 18 },
-  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm + 2 },
+  statusRow: { flexDirection: 'row', marginBottom: spacing.xs },
+  companyName: { ...typography.h3, color: colors.actionGreen, marginBottom: 2 },
+  companyMeta: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
   poLabel: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.primary,
-    fontFamily: THEME.typography.fontFamily,
+    ...typography.h2,
+    color: colors.actionGreen,
     letterSpacing: 2,
     textAlign: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
 
   metaRow: { flexDirection: 'row', justifyContent: 'space-between' },
   metaCol: { alignItems: 'center', flex: 1 },
-  metaKey: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginBottom: 2 },
-  metaVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  metaKey: { ...typography.caption, color: colors.textTertiary, marginBottom: 2 },
+  metaVal: { ...typography.labelMd, color: colors.textPrimary },
 
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textLight,
-    fontFamily: THEME.typography.fontFamily,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.xs,
-  },
-  vendorName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
+  // THE section-header spec, shared with every form section header.
+  sectionLabel: { ...THEME.form.sectionTitle, marginBottom: spacing.xxs },
+  vendorName: { ...typography.labelLg, color: colors.textPrimary },
 
   tableHeader: {
     flexDirection: 'row',
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.xs,
     borderBottomWidth: 1.5,
-    borderBottomColor: colors.primary,
+    borderBottomColor: colors.actionGreen,
   },
-  thText: { fontSize: 11, fontWeight: '700', color: colors.primary, fontFamily: THEME.typography.fontFamily, textTransform: 'uppercase' },
+  thText: { ...typography.overline, color: colors.actionGreen },
   thRight: { textAlign: 'right' },
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   tableRowEven: { backgroundColor: colors.background },
-  tdText: { fontSize: 12, color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  tdSub: { fontSize: 11, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginTop: 1 },
-  tdRight: { textAlign: 'right' },
+  tdText: { ...typography.caption, color: colors.textPrimary },
+  tdSub: { ...typography.overline, textTransform: 'none', color: colors.textTertiary, marginTop: 1 },
+  // Figures align digit-for-digit down the column.
+  tdRight: { textAlign: 'right', fontVariant: ['tabular-nums'] },
+  // labelSm keeps the 12px cell size while carrying the emphasis weight.
+  tdReceivedFull: { ...typography.labelSm, color: colors.success },
+  tdReceivedPartial: { ...typography.labelSm, color: colors.warning },
 
   // Receiving mode
   receivingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  receivingItemName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  receivingMeta: { fontSize: 11, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, marginTop: 2 },
-  receivingInputWrap: { flexDirection: 'row', alignItems: 'center', marginLeft: spacing.sm },
+  receivingItemName: { ...typography.labelMd, color: colors.textPrimary },
+  receivingMeta: { ...typography.overline, textTransform: 'none', color: colors.textSecondary, marginTop: 2 },
+  receivingInputWrap: { flexDirection: 'row', alignItems: 'center', marginLeft: spacing.xs },
   receivingInput: {
     width: 56,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs + 2,
-    fontSize: 14,
-    fontWeight: '700',
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+    ...typography.h5,
     color: colors.textPrimary,
-    fontFamily: THEME.typography.fontFamily,
     textAlign: 'center',
+    fontVariant: ['tabular-nums'],
   },
-  receivingMaxText: { fontSize: 12, color: colors.textLight, fontFamily: THEME.typography.fontFamily, marginLeft: spacing.xs },
+  receivingMaxText: { ...typography.caption, color: colors.textTertiary, marginLeft: spacing.xxs },
 
   totalsBlock: { marginLeft: 'auto', width: '65%' },
   totalsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xxs,
   },
-  totalsLabel: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
-  totalsLabelBold: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  totalsValue: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, fontFamily: THEME.typography.fontFamily },
-  totalsValueBold: { fontSize: 16, fontWeight: '800' },
-  grandTotalDivider: { height: 1.5, backgroundColor: colors.primary, marginVertical: spacing.xs },
+  totalsLabel: { ...typography.bodySm, color: colors.textSecondary },
+  totalsLabelBold: { ...typography.h5, color: colors.textPrimary },
+  totalsValue: { ...typography.labelMd, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
+  totalsValueBold: { ...typography.h4, fontVariant: ['tabular-nums'] },
+  grandTotalDivider: { height: 1.5, backgroundColor: colors.actionGreen, marginVertical: spacing.xxs },
 
-  notesText: { fontSize: 13, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily, lineHeight: 20 },
+  notesText: { ...typography.bodySm, color: colors.textSecondary },
 
   actionBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm - 2,
-    backgroundColor: colors.white,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    gap: spacing.xs,
-    ...shadows.small,
+    gap: spacing.xxs,
+    ...shadows.xs,
   },
   actionPrimary: { flex: 1.4 },
   actionSecondary: { flex: 1 },
