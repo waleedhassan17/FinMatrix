@@ -12,14 +12,14 @@ import {
   Animated
 } from 'react-native';
 import { THEME } from '../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { setCurrentPage, selectCurrentPage } from './onboardingSlice';
 import { setOnboardingSeen } from '../Auth/authSlice';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 const { width } = Dimensions.get('window');
 

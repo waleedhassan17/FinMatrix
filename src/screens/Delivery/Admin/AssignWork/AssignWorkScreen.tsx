@@ -13,14 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME, PRIORITY_CONFIG } from '../../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectUnassignedDeliveries, selectDeliveryPersonnel, assignSelectedDeliveries } from '../AssignDeliveries/deliverySlice';
 import { selectAssignWorkState, toggleDelivery, setPersonnel, resetAssignWork } from './assignWorkSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 // Priority colours come from THEME.PRIORITY_CONFIG, the same source the
 // driver-facing screens read. The local copies disagreed: `high` was dark

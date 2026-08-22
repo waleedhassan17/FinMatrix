@@ -9,10 +9,10 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../utils/theme';
+import type { SetupStatus } from './adminDashboardSlice';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors } = THEME;
-import type { SetupStatus } from './adminDashboardSlice';
 
 const FONT = THEME.typography.fontFamily;
 

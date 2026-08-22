@@ -28,9 +28,6 @@ import {
   AUTH
 } from '../../../components/auth/AuthUI';
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { typography } = THEME;
 import { isValidPkPhone, normalizePkPhone, PK_PHONE_MESSAGE } from '../../../utils/phone';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -54,6 +51,9 @@ import { dummyDeliveryPersonnel } from '../../../models/deliveryModel';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
 import { createCompanyAPI } from '../../../networks/auth/authNetwork';
 import type { RootStackParamList } from '../../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateCompany'>;
 

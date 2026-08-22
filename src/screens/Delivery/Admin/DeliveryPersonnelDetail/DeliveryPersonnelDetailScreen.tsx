@@ -20,9 +20,6 @@ import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import { THEME, statusStyle } from '../../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import {
   getPersonnelDetailAPI,
   getDeliveriesAPI,
@@ -31,6 +28,9 @@ import {
   resetPersonnelPasswordAPI
 } from '../../../../networks/delivery/deliveryNetwork';
 import type { RootStackParamList } from '../../../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryPersonnelDetail'>;
 

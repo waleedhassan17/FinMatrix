@@ -104,7 +104,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
               <View style={styles.infoRowLeft}>
-                <View style={[styles.infoRowIcon, { backgroundColor: '#F0FDF4' }]}>
+                <View style={[styles.infoRowIcon, { backgroundColor: THEME.colors.actionGreenLighter }]}>
                   <Feather name="smartphone" size={16} color="#16A34A" />
                 </View>
                 <View>
@@ -115,7 +115,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             <View style={styles.infoRow}>
               <View style={styles.infoRowLeft}>
-                <View style={[styles.infoRowIcon, { backgroundColor: '#EFF6FF' }]}>
+                <View style={[styles.infoRowIcon, { backgroundColor: THEME.colors.infoLight }]}>
                   <Feather name="at-sign" size={16} color="#2563EB" />
                 </View>
                 <View>
@@ -131,7 +131,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
                 <View>
                   <Text style={styles.infoLabel}>Role</Text>
-                  <Text style={[styles.infoValue, { color: '#00875A' }]}>Delivery</Text>
+                  <Text style={[styles.infoValue, { color: THEME.colors.success }]}>Delivery</Text>
                 </View>
               </View>
             </View>
@@ -287,8 +287,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...THEME.typography.h3,
-    color: '#fff',
-    fontWeight: '700',
+    color: THEME.colors.neutral0,
   },
   headerIcon: {
     width: 40,
@@ -313,15 +312,14 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#fff',
+    backgroundColor: THEME.colors.neutral0,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.4)',
   },
   avatarText: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...THEME.typography.h1,
     color: DP_BRAND.primary,
   },
   avatarImage: {
@@ -336,7 +334,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#fff',
+    backgroundColor: THEME.colors.neutral0,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2.5,
@@ -348,8 +346,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     ...THEME.typography.h3,
-    color: '#fff',
-    fontWeight: '700',
+    color: THEME.colors.neutral0,
     marginBottom: 2,
   },
   userEmail: {
@@ -369,8 +366,7 @@ const styles = StyleSheet.create({
   },
   roleText: {
     ...THEME.typography.labelSm,
-    fontWeight: '600',
-    color: '#fff',
+    color: THEME.colors.neutral0,
   },
 
   scrollView: {
@@ -385,7 +381,6 @@ const styles = StyleSheet.create({
   // Section Title
   sectionTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -436,8 +431,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   infoValue: {
-    ...THEME.typography.bodyMd,
-    fontWeight: '600',
+    ...THEME.typography.labelLg,
     color: THEME.colors.textPrimary,
   },
 
@@ -460,7 +454,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   cardSubtitle: {
@@ -495,11 +488,9 @@ const styles = StyleSheet.create({
   metricValue: {
     ...THEME.typography.h2,
     color: THEME.colors.textPrimary,
-    fontWeight: '700',
   },
   metricLabel: {
     ...THEME.typography.labelSm,
-    fontWeight: '500',
     color: THEME.colors.textSecondary,
     marginTop: 4,
   },
@@ -535,7 +526,6 @@ const styles = StyleSheet.create({
   menuLabel: {
     ...THEME.typography.labelLg,
     color: THEME.colors.textPrimary,
-    fontWeight: '600',
   },
   menuHint: {
     ...THEME.typography.caption,
@@ -571,7 +561,6 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     ...THEME.typography.h4,
-    fontWeight: '600',
     color: THEME.colors.danger,
   },
 
@@ -582,14 +571,13 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...THEME.typography.labelSm,
-    fontWeight: '600',
     color: THEME.colors.textTertiary,
   },
   footerVersion: {
     ...THEME.typography.caption,
     color: THEME.colors.textDisabled,
     marginTop: 2,
-  },
+  }
 });
 
 export default DPProfileScreen;

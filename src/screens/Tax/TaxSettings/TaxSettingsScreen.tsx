@@ -25,9 +25,6 @@ import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchTaxRates,
@@ -49,6 +46,9 @@ import {
 import type { TaxRate, TaxType } from '../../../types';
 import { getStoredCompanyId } from '../../../utils/storageUtils';
 import { getCompanyAPI, updateCompanyAPI } from '../../../networks/auth/authNetwork';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, typography } = THEME;
 import {
   ReportContainer,
   ReportHeader,

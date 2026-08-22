@@ -20,15 +20,15 @@ import { HEADER_NAVY,
 } from '../../../../components/reports/ReportUI';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME, statusStyle } from '../../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { ROUTES } from '../../../../navigations-maps/Base';
 import EmptyState from '../../../../components/shared/EmptyState';
 import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks';
 import { selectDeliveryPersonnel, fetchDeliveryPersonnel } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import type { RootStackParamList } from '../../../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryPersonnelList'>;
 

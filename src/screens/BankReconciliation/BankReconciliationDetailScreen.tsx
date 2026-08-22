@@ -6,9 +6,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, typography } = THEME;
 import { formatCurrency } from '../../utils/formatters';
 import { getReconciliationByIdAPI, deleteReconciliationAPI } from '../../networks/accounting/reconciliationNetwork';
 import { reconciliationSingleSerializer } from '../../serializers/reconciliationSerializer';
@@ -16,6 +13,9 @@ import type { Reconciliation } from '../../models/reconciliationModel';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type Rt = RouteProp<MoreStackParamList, 'BankReconciliationDetail'>;

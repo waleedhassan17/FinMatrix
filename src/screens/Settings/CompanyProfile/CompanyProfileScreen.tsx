@@ -23,9 +23,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectCompanyProfileForm, selectCompanyProfileSaving,
@@ -37,6 +34,9 @@ import { getCompanyAPI } from '../../../networks/auth/authNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HeaderAction, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 

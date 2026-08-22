@@ -8,9 +8,6 @@ import { Feather } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 
 import { THEME } from '../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { typography } = THEME;
 import { formatCurrency } from '../../utils/formatters';
 import {
   getUnreconciledAPI,
@@ -23,6 +20,9 @@ import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField, KpiGrid, LoadingBlock, EmptyBlock, ACCENT } from '../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type Rt = RouteProp<MoreStackParamList, 'BankReconciliation'>;

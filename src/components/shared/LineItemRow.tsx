@@ -16,10 +16,10 @@ import {
   ScrollView,
 } from 'react-native';
 import { THEME } from '../../utils/theme';
+import { formatCurrency } from '../../utils/formatters';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, spacing, radius, shadows } = THEME;
-import { formatCurrency } from '../../utils/formatters';
 
 const TAX_OPTIONS = [
   { label: '0 %', value: '0' },

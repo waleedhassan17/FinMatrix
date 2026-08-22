@@ -12,15 +12,15 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchBudget, selectBudgetState, removeBudget } from './budgetSlice';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, ProgressBar, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 import type { ReportsStackParamList } from '../../navigators/stacks/ReportsStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 
 type Nav = NativeStackNavigationProp<ReportsStackParamList>;
 type Rt = RouteProp<Record<string, { budgetId: string }>, string>;
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between' },
   monthTable: { marginTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.border },
   monthHead: { flexDirection: 'row', paddingVertical: 5 },
-  monthHeadText: { fontWeight: '700', textTransform: 'uppercase' },
+  monthHeadText: { fontWeight: THEME.typography.labelMd.fontWeight, textTransform: 'uppercase' },
   monthRow: { flexDirection: 'row', paddingVertical: 3 },
   monthCell: { flex: 1, ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   monthCellNum: { flex: 1.2, textAlign: 'right', ...THEME.typography.labelSm, color: THEME.colors.textPrimary },

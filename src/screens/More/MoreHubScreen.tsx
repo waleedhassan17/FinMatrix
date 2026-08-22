@@ -5,9 +5,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppSelector } from '../../hooks/useReduxHooks';
 import { selectFeatures, selectUser } from '../Auth/authSlice';
 import { isFeatureVisible } from '../../utils/featureGates';
@@ -17,6 +14,9 @@ import { selectUnassignedDeliveries } from '../Delivery/Admin/AssignDeliveries/d
 import NotificationBadge from '../../components/shared/NotificationBadge';
 import { ReportContainer, ReportHeader, HEADER_NAVY } from '../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
@@ -224,12 +224,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-    title: {
-      ...THEME.typography.h2,
-      fontSize: 22,
-      fontWeight: '700',
-      color: colors.textPrimary,
-    },
+    title: { ...THEME.typography.h2, color: colors.textPrimary },
   scrollContent: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,

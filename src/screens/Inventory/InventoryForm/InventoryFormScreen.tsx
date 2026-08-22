@@ -20,9 +20,6 @@ import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
@@ -57,6 +54,9 @@ import {
 import { selectAgencies, fetchAgencies } from '../../Agency/AgencyList/agencyListSlice';
 import { isFeatureEnabled } from '../../../utils/featureGates';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type FormRoute = RouteProp<InventoryStackParamList, 'InventoryForm'>;
 type Nav = NativeStackNavigationProp<InventoryStackParamList>;

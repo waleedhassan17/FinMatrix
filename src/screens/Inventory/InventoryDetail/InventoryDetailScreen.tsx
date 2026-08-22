@@ -23,9 +23,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
@@ -48,6 +45,9 @@ import { isFeatureEnabled } from '../../../utils/featureGates';
 import { warehouseAgencies } from '../../../models/agencyModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type DetailRoute = RouteProp<InventoryStackParamList, 'InventoryDetail'>;
 type Nav = NativeStackNavigationProp<InventoryStackParamList>;

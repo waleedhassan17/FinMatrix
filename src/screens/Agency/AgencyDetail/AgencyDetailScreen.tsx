@@ -24,9 +24,6 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAgencies, fetchAgencies } from '../AgencyList/agencyListSlice';
 import {
@@ -40,6 +37,9 @@ import { AGENCY_TYPE_COLORS } from '../../../models/agencyModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 import { getAgencyItemsAPI, addAgencyItemAPI } from '../../../networks/inventory/agencyNetwork';
 import { formatCurrency } from '../../../utils/formatters';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type DetailRoute = RouteProp<MoreStackParamList, 'AgencyDetail'>;
 type Nav = NativeStackNavigationProp<MoreStackParamList>;

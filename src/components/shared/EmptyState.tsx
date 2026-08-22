@@ -2,8 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import CustomButton from '../../Custom-Components/CustomButton';
-import { colors, spacing } from '../../theme';
 import { THEME } from '../../utils/theme';
+
+const { colors, spacing } = THEME;
 
 interface EmptyStateProps {
   title: string;
@@ -24,7 +25,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.iconCircle}>
-        <Feather name={icon} size={34} color={colors.primary} />
+        <Feather name={icon} size={34} color={colors.actionGreen} />
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
@@ -47,32 +48,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl * 2,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.xxl * 2,
   },
   iconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.primary + '12',
+    backgroundColor: colors.actionGreen + '12',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   title: {
     ...THEME.typography.h2,
     color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   message: {
     ...THEME.typography.bodyLg,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   actionWrapper: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
 });
 

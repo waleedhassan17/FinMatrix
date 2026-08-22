@@ -14,9 +14,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { ReportHeader, HeaderAction, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { useSignOut } from '../../../hooks/useSignOut';
 import { selectFeatures } from '../../Auth/authSlice';
@@ -26,6 +23,9 @@ import {
 } from './settingsSlice';
 import type { AppPreferences } from '../../../models/settingsModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
@@ -75,7 +75,6 @@ const ToggleRow: React.FC<ToggleRowProps> = ({ icon, label, value, onChange }) =
     />
   </View>
 );
-
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
   <Text style={s.sectionHeader}>{title}</Text>
@@ -136,7 +135,7 @@ const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) =
             <View style={s.row}>
               <Feather name="activity" size={18} color={P.brand} style={s.rowIcon} />
               <Text style={[s.rowLabel, { flex: 1 }]}>Status</Text>
-              <Text style={[s.rowValue, { color: subColor, fontWeight: '700', textTransform: 'capitalize' }]}>
+              <Text style={[s.rowValue, { color: subColor, fontWeight: THEME.typography.labelMd.fontWeight, textTransform: 'capitalize' }]}>
                 {status?.subscriptionStatus ?? 'active'}
               </Text>
             </View>
@@ -210,7 +209,6 @@ const SettingsScreen: React.FC = () => {
     },
     [dispatch],
   );
-
 
   const handleSave = useCallback(() => {
     dispatch(savePreferences());

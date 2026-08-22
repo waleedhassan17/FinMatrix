@@ -4,14 +4,14 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchEmployees, selectPayrollState } from './payrollSlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 import { ReportContainer, ReportHeader, HeaderIconButton, HeaderAction, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');

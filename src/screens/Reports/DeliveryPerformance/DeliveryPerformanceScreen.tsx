@@ -10,9 +10,6 @@ import { useNavigation } from '@react-navigation/native';
 import { BarChart } from 'react-native-chart-kit';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchDeliveryPerformance,
@@ -21,6 +18,9 @@ import {
 } from './deliveryPerformanceSlice';
 import { getLastNDaysRange } from '../../../models/reportModel';
 import type { DeliveryPerformanceRow } from '../../../models/deliveryPerformanceModel';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import {
   ReportContainer,
   ReportHeader,

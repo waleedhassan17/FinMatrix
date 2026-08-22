@@ -21,9 +21,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { ReportContainer, ReportHeader, HEADER_NAVY, HeaderAction } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -47,6 +44,9 @@ import { warehouseAgencies } from '../../../models/agencyModel';
 import { isFeatureEnabled } from '../../../utils/featureGates';
 import EmptyState from '../../../components/shared/EmptyState';
 import { formatCurrency } from '../../../utils/formatters';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_CARD_WIDTH = (SCREEN_WIDTH - spacing.xl * 2 - spacing.xs) / 2;

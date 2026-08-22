@@ -20,9 +20,6 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAccounts, toggleAccount } from '../COAList/coaListSlice';
@@ -39,6 +36,9 @@ import {
 } from '../../../models/accountTransactionModel';
 import type { AccountType } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type DetailRoute = RouteProp<MoreStackParamList, 'COADetail'>;
 type Nav = NativeStackNavigationProp<MoreStackParamList>;

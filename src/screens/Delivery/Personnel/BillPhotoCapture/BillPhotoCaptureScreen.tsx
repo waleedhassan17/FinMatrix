@@ -10,7 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
+  Platform
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,7 +37,7 @@ import {
   selectBillPhotoNote,
   selectBillPhotoPaidStatus,
   selectBillPhotoReturnedQtys,
-  selectBillPhotoIsSubmitting,
+  selectBillPhotoIsSubmitting
 } from './dpBillPhotoCaptureSlice';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
@@ -180,7 +180,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
       mediaTypes: ['images'],
       quality: 0.8,
       allowsEditing: true,
-      aspect: [3, 4],
+      aspect: [3, 4]
     });
     if (!result.canceled && result.assets[0]?.uri) {
       dispatch(setBillPhoto({ uri: result.assets[0].uri, source: 'camera' }));
@@ -193,7 +193,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
       mediaTypes: ['images'],
       quality: 0.8,
       allowsEditing: true,
-      aspect: [3, 4],
+      aspect: [3, 4]
     });
     if (!result.canceled && result.assets[0]?.uri) {
       dispatch(setBillPhoto({ uri: result.assets[0].uri, source: 'gallery' }));
@@ -264,7 +264,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
             beforeQty: line.dispatched,
             deliveredQty: line.deliveredQty,
             returnedQty: line.returnedQty,
-          })),
+          }))
         }),
       );
 
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerCenter: { alignItems: 'center' },
-  headerTitle: { ...THEME.typography.h3, fontWeight: '700', color: DP_BRAND.white },
+  headerTitle: { ...THEME.typography.h3, color: DP_BRAND.white },
   headerSubtitle: { ...THEME.typography.caption, color: DP_BRAND.headerTextSecondary, marginTop: 2 },
   headerSpacer: { width: 40 },
 
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: THEME.radius.lg,
-    backgroundColor: THEME.colors.warningLight ?? '#FFF4E5',
+    backgroundColor: THEME.colors.warningLight ?? THEME.colors.warningLighter,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: 4,
   },
-  customerName: { ...THEME.typography.h3, fontWeight: '700', color: THEME.colors.textPrimary },
+  customerName: { ...THEME.typography.h3, color: THEME.colors.textPrimary },
   customerSub: { ...THEME.typography.caption, color: THEME.colors.textSecondary, marginTop: 2 },
 
   instructionCard: {
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     ...THEME.shadows.md,
   },
-  primaryBtnText: { ...THEME.typography.h4, fontWeight: '700', color: THEME.colors.textInverse },
+  primaryBtnText: { ...THEME.typography.h4, color: THEME.colors.textInverse },
   secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     alignSelf: 'stretch',
   },
-  secondaryBtnText: { ...THEME.typography.h4, fontWeight: '600', color: DP_BRAND.primary },
+  secondaryBtnText: { ...THEME.typography.h4, color: DP_BRAND.primary },
 
   previewCard: {
     backgroundColor: THEME.colors.surface,
@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.neutral50,
   },
   secondaryAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  secondaryActionText: { ...THEME.typography.bodyMd, fontWeight: '600' },
+  secondaryActionText: { ...THEME.typography.labelLg },
 
   fieldGroup: { marginBottom: 14 },
   fieldLabel: {
@@ -848,7 +848,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: THEME.colors.warningLight ?? '#FFF4E5',
+    backgroundColor: THEME.colors.warningLight ?? THEME.colors.warningLighter,
     borderRadius: THEME.radius.lg,
     padding: 12,
     marginBottom: 12,
@@ -871,7 +871,7 @@ const styles = StyleSheet.create({
     ...THEME.shadows.md,
   },
   submitBtnDisabled: { backgroundColor: THEME.colors.neutral300, shadowOpacity: 0, elevation: 0 },
-  submitBtnText: { ...THEME.typography.h4, fontWeight: '700', color: THEME.colors.textInverse },
+  submitBtnText: { ...THEME.typography.h4, color: THEME.colors.textInverse },
   footnote: {
     ...THEME.typography.caption,
     color: THEME.colors.textTertiary,
@@ -909,13 +909,13 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.lg,
     ...THEME.shadows.sm,
   },
-  emptyButtonText: { ...THEME.typography.labelLg, color: THEME.colors.textInverse },
+  emptyButtonText: { ...THEME.typography.labelLg, color: THEME.colors.textInverse }
 });
 
 const paidStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 10
   },
   option: {
     flex: 1,
@@ -927,31 +927,30 @@ const paidStyles = StyleSheet.create({
     borderColor: THEME.colors.border,
     borderRadius: THEME.radius.lg,
     paddingVertical: 14,
-    paddingHorizontal: 8,
+    paddingHorizontal: 8
   },
   optionPaid: {
     backgroundColor: THEME.colors.success,
-    borderColor: THEME.colors.success,
+    borderColor: THEME.colors.success
   },
   optionUnpaid: {
     backgroundColor: THEME.colors.warning,
-    borderColor: THEME.colors.warning,
+    borderColor: THEME.colors.warning
   },
   optionText: {
     ...THEME.typography.labelLg,
-    fontWeight: '800',
     letterSpacing: 0.5,
-    marginTop: 4,
+    marginTop: 4
   },
   optionHint: {
     ...THEME.typography.caption,
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.textSecondary
   },
   note: {
     ...THEME.typography.caption,
     color: THEME.colors.textTertiary,
     marginTop: 8,
-    lineHeight: 16,
+    lineHeight: 16
   },
   prepaidPanel: {
     flexDirection: 'row',
@@ -960,7 +959,7 @@ const paidStyles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: `${THEME.colors.success}55`,
     borderRadius: THEME.radius.lg,
-    padding: 14,
+    padding: 14
   },
   prepaidIcon: {
     width: 34,
@@ -968,19 +967,18 @@ const paidStyles = StyleSheet.create({
     borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: THEME.colors.surface
   },
   prepaidTitle: {
     ...THEME.typography.labelLg,
-    fontWeight: '800',
     letterSpacing: 0.3,
-    color: THEME.colors.success,
+    color: THEME.colors.success
   },
   prepaidBody: {
     ...THEME.typography.caption,
     color: THEME.colors.textSecondary,
     marginTop: 3,
-    lineHeight: 17,
+    lineHeight: 17
   },
 });
 
@@ -1006,14 +1004,13 @@ const successStyles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: THEME.colors.successLight ?? '#E8F5E9',
+    backgroundColor: THEME.colors.successLight ?? THEME.colors.primaryLighter,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
   },
   title: {
     ...THEME.typography.h2,
-    fontWeight: '700',
     color: THEME.colors.success,
     marginBottom: 8,
     textAlign: 'center',
@@ -1055,7 +1052,6 @@ const successStyles = StyleSheet.create({
   },
   continueBtnText: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textInverse,
   },
   backBtn: {
@@ -1063,10 +1059,9 @@ const successStyles = StyleSheet.create({
     marginTop: 8,
   },
   backBtnText: {
-    ...THEME.typography.bodyMd,
-    fontWeight: '600',
+    ...THEME.typography.labelLg,
     color: THEME.colors.textTertiary,
-  },
+  }
 });
 
 export default BillPhotoCaptureScreen;

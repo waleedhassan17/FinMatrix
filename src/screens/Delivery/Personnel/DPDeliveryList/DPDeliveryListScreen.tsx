@@ -376,7 +376,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     flex: 1,
     color: THEME.colors.textPrimary,
   },
@@ -388,8 +387,8 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.full,
   },
   sectionCountText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '700',
+    ...THEME.typography.labelMd,
+    
   },
   sectionContent: {
     padding: 12,
@@ -432,7 +431,6 @@ const styles = StyleSheet.create({
   },
   customerName: {
     ...THEME.typography.h5,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   priorityBadge: {
@@ -442,7 +440,6 @@ const styles = StyleSheet.create({
   },
   priorityBadgeText: {
     ...THEME.typography.overline,
-    fontSize: 9,
     letterSpacing: 0.5,
   },
   referenceNo: {
@@ -464,7 +461,7 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: {
     ...THEME.typography.labelSm,
-    fontWeight: '600',
+    
   },
   deliveryCardBody: {
     paddingHorizontal: 14,
@@ -516,8 +513,7 @@ const styles = StyleSheet.create({
     borderTopColor: THEME.colors.borderLight,
   },
   viewDetailsText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
+    ...THEME.typography.labelMd,
     color: DP_BRAND.primary,
   },
   arrowCircle: {
@@ -538,10 +534,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   viewAllText: {
-    ...THEME.typography.bodySm,
-    fontWeight: '600',
+    ...THEME.typography.labelMd,
     color: DP_BRAND.primary,
-  },
+  }
 });
 
 export default DPDeliveryListScreen;

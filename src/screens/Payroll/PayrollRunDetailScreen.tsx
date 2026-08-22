@@ -14,9 +14,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchPayrollRun, selectPayrollState, processRun, removeRun } from './payrollSlice';
 import { formatCurrency } from '../../utils/formatters';
@@ -24,6 +21,9 @@ import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, Badge, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 import { viewPayslipPdf, downloadPayslipPdf, sharePayslipPdf, type PayslipRef, type PayslipActionResult } from '../../utils/payslipPdf';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type Rt = RouteProp<Record<string, { payrollRunId: string }>, string>;

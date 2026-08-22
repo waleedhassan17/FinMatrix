@@ -21,9 +21,6 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAgencies } from '../AgencyList/agencyListSlice';
 import {
@@ -48,6 +45,9 @@ import {
 } from './agencyInventorySyncSlice';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type SyncRoute = RouteProp<MoreStackParamList, 'AgencyInventorySync'>;
 type Nav = NativeStackNavigationProp<MoreStackParamList>;

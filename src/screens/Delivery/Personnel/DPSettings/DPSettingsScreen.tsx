@@ -9,7 +9,7 @@ import {
   Platform,
   ScrollView,
   StatusBar,
-  ActivityIndicator,
+  ActivityIndicator
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -387,14 +387,14 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   cardIcon: {
-    fontSize: THEME.typography.h2.fontSize,
+    ...THEME.typography.h2,
+    
   },
   cardHeaderText: {
     flex: 1,
   },
   cardTitle: {
     ...THEME.typography.h4,
-    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   cardSubtitle: {
@@ -432,7 +432,8 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   settingIcon: {
-    fontSize: THEME.typography.h3.fontSize,
+    ...THEME.typography.h3,
+    
   },
   settingInfo: {
     flex: 1,
@@ -477,7 +478,8 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   actionIcon: {
-    fontSize: THEME.typography.h3.fontSize,
+    ...THEME.typography.h3,
+    
   },
   actionLabel: {
     ...THEME.typography.labelLg,
@@ -539,7 +541,6 @@ const styles = StyleSheet.create({
   },
   appInfoLogoText: {
     ...THEME.typography.h3,
-    fontWeight: '700',
     color: THEME.colors.textInverse,
   },
   appInfoName: {
@@ -552,11 +553,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   appInfoCopyright: {
-    ...THEME.typography.labelSm,
-    fontWeight: '400',
+    ...THEME.typography.caption,
     color: THEME.colors.textDisabled,
     marginTop: 8,
-  },
+  }
 });
 
 export default DPSettingsScreen;

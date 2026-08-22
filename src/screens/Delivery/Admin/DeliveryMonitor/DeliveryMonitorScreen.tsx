@@ -17,9 +17,6 @@ import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import type { DashboardStackParamList } from '../../../../navigators/stacks/DashboardStack';
 import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks';
 import { selectDeliveries, selectDeliveryPersonnel } from '../AssignDeliveries/deliverySlice';
@@ -32,6 +29,9 @@ import {
   type MonitorSortBy
 } from './deliveryMonitorSlice';
 import { getDeliveryMapDataAPI } from '../../../../networks/delivery/deliveryNetwork';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<DashboardStackParamList, 'DeliveryMonitor'>;
 
@@ -187,7 +187,6 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
     unassigned: deliveries.filter(d => d.status === 'unassigned').length
   }), [deliveries]);
 
-
   // ── List (filtered + sorted) ──────────────────────────────────────────────
   const filteredList = useMemo(() => {
     const list = filterStatus === 'all'
@@ -202,7 +201,6 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
         return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
   }, [deliveries, filterStatus, sortBy]);
-
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

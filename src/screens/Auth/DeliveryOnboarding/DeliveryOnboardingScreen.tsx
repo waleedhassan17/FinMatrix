@@ -13,12 +13,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch } from '../../../hooks/useReduxHooks';
 import { setDeliveryOnboardingSeen } from '../authSlice';
 import type { RootStackParamList } from '../../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryOnboarding'>;
 

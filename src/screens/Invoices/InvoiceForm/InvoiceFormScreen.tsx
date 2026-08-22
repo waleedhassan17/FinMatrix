@@ -26,9 +26,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import dayjs from 'dayjs';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 const PANEL = THEME.form.summaryPanel;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
@@ -68,6 +65,9 @@ import {
 import { formatCurrency } from '../../../utils/formatters';
 import type { DiscountType, InvoiceStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'InvoiceForm'>;

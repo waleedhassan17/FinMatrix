@@ -9,9 +9,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { ROUTES } from '../../navigations-maps/Base';
 import { useAppDispatch } from '../../hooks/useReduxHooks';
 import { setRole } from './roleSelectionSlice';
@@ -19,6 +16,9 @@ import { setSelectedRole } from '../Auth/authSlice';
 import type { UserRole } from '../../types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 /* ── Brand Colors ───────────────────────────────────── */
 const BRAND = {

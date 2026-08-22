@@ -23,9 +23,6 @@ import type { RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   loadTaxPaymentDeps,
@@ -42,6 +39,9 @@ import {
 } from './taxPaymentSlice';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 import type { TaxRate } from '../../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 import {
   ReportContainer,
   ReportHeader,

@@ -34,9 +34,6 @@ import { Feather } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { typography } = THEME;
 import { useAppDispatch } from '../../../hooks/useReduxHooks';
 import { saveJournalEntry } from '../journalEntrySlice';
 import { getAccountsAPI } from '../../../networks/accounting/coaNetwork';
@@ -45,6 +42,9 @@ import { formatCurrency } from '../../../utils/formatters';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import Disclosure from '../../../components/shared/Disclosure';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import {
   ReportContainer,
   ReportHeader,

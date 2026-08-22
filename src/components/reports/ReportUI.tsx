@@ -35,19 +35,21 @@ export type { AccountGroup } from './reportFormat';
 
 const T = THEME;
 
-// Shared navy header gradient (matches the company dashboard hero).
+// Shared navy header gradient (matches the company dashboard hero). These
+// three are a token DEFINITION, not a usage -- the one place the header
+// navy is written down. Exempt from the no-raw-hex check for that reason.
 export const HEADER_NAVY = ['#0E1726', '#16243B', '#1C2F4C'] as const;
 
 // Curated accent palette for KPI tiles / chart series — used everywhere
 // so a "blue metric" looks the same on every screen.
 export const ACCENT = {
   brand: T.colors.primary, // emerald — primary brand
-  blue: '#2563EB',
+  blue: T.colors.info,
   violet: T.colors.secondary,
   amber: T.colors.warning,
   red: T.colors.danger,
   green: T.colors.success,
-  teal: '#0F766E',
+  teal: T.colors.primary,
 };
 
 export const CHART_SERIES = [
@@ -80,7 +82,7 @@ export const BackButton: React.FC<{ onPress: () => void; dark?: boolean }> = ({ 
     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     style={S.backBtn}
   >
-    <Feather name="arrow-left" size={24} color={dark ? T.colors.textPrimary : '#FFFFFF'} />
+    <Feather name="arrow-left" size={24} color={dark ? T.colors.textPrimary : T.colors.neutral0} />
   </TouchableOpacity>
 );
 
@@ -112,7 +114,7 @@ export const HeaderIconButton: React.FC<{ icon: keyof typeof Feather.glyphMap; o
   onPress,
 }) => (
   <TouchableOpacity style={S.headerBtn} activeOpacity={0.7} onPress={onPress}>
-    <Feather name={icon} size={16} color="#FFFFFF" />
+    <Feather name={icon} size={16} color={T.colors.neutral0} />
   </TouchableOpacity>
 );
 
@@ -135,7 +137,7 @@ export const HeaderAction: React.FC<{
     onPress={onPress}
     disabled={disabled}
   >
-    <Feather name={icon} size={THEME.form.addPill.iconSize} color="#FFFFFF" />
+    <Feather name={icon} size={THEME.form.addPill.iconSize} color={T.colors.neutral0} />
     <Text style={S.headerActionText}>{label}</Text>
   </TouchableOpacity>
 );
@@ -446,7 +448,7 @@ export const DateField: React.FC<{
                 onPress={() => setViewMonth(viewMonth.subtract(1, 'month'))}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Feather name="chevron-left" size={20} color={prevDisabled ? 'rgba(255,255,255,0.3)' : '#FFFFFF'} />
+                <Feather name="chevron-left" size={20} color={prevDisabled ? 'rgba(255,255,255,0.3)' : T.colors.neutral0} />
               </TouchableOpacity>
               <Text style={S.calMonth}>{viewMonth.format('MMMM YYYY')}</Text>
               <TouchableOpacity
@@ -455,7 +457,7 @@ export const DateField: React.FC<{
                 onPress={() => setViewMonth(viewMonth.add(1, 'month'))}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Feather name="chevron-right" size={20} color={nextDisabled ? 'rgba(255,255,255,0.3)' : '#FFFFFF'} />
+                <Feather name="chevron-right" size={20} color={nextDisabled ? 'rgba(255,255,255,0.3)' : T.colors.neutral0} />
               </TouchableOpacity>
             </LinearGradient>
 
@@ -680,7 +682,7 @@ const S = StyleSheet.create({
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   backBtn: { marginRight: 4, padding: 2 },
-  headerTitle: { ...T.typography.h2, color: '#FFFFFF' },
+  headerTitle: { ...T.typography.h2, color: T.colors.neutral0 },
   headerSub: { ...T.typography.bodySm, color: 'rgba(255,255,255,0.62)', marginTop: 2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerBtn: {
@@ -706,7 +708,7 @@ const S = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily,
     fontSize: THEME.form.addPill.fontSize,
     fontWeight: THEME.form.addPill.fontWeight,
-    color: '#FFFFFF',
+    color: T.colors.neutral0,
   },
 
   // Card
@@ -786,7 +788,7 @@ const S = StyleSheet.create({
   },
   summaryLabel: { ...T.typography.bodyMd, color: T.colors.textPrimary, flex: 1, marginRight: 12 },
   summaryValue: { ...T.typography.bodyMd, color: T.colors.textPrimary },
-  bold: { fontWeight: '700' },
+  bold: { fontWeight: T.typography.h3.fontWeight },
   hr: { height: StyleSheet.hairlineWidth, backgroundColor: T.colors.border, marginVertical: T.spacing.xs },
 
   // Table
@@ -818,20 +820,8 @@ const S = StyleSheet.create({
 
   // Statement primitives
   titleBlock: { alignItems: 'center', gap: 2 },
-  titleCompany: {
-    ...T.typography.h3,
-    fontSize: 16,
-    fontWeight: '800',
-    color: T.colors.textPrimary,
-    textAlign: 'center',
-  },
-  titleReport: {
-    ...T.typography.bodyMd,
-    fontSize: 14,
-    fontWeight: '700',
-    color: T.colors.textPrimary,
-    textAlign: 'center',
-  },
+  titleCompany: { ...T.typography.h4, color: T.colors.textPrimary, textAlign: 'center' },
+  titleReport: { ...T.typography.h5, color: T.colors.textPrimary, textAlign: 'center' },
   titlePeriod: { ...T.typography.bodySm, color: T.colors.textSecondary, textAlign: 'center' },
   titleBasis: {
     ...T.typography.caption,
@@ -855,7 +845,7 @@ const S = StyleSheet.create({
   },
   stLabel: { ...T.typography.bodySm, color: T.colors.textPrimary, flex: 1 },
   stAmount: { ...T.typography.bodySm, color: T.colors.textPrimary, width: 118, textAlign: 'right' },
-  stEmphasis: { fontWeight: '800' },
+  stEmphasis: { fontWeight: T.typography.h1.fontWeight },
   stItalic: { fontStyle: 'italic', color: T.colors.textSecondary },
 
   // Progress
@@ -921,7 +911,7 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   calNavDisabled: { backgroundColor: 'rgba(255,255,255,0.04)' },
-  calMonth: { ...T.typography.h4, color: '#FFFFFF' },
+  calMonth: { ...T.typography.h4, color: T.colors.neutral0 },
   calBody: { paddingHorizontal: T.spacing.sm, paddingTop: T.spacing.sm },
   calWeekRow: { flexDirection: 'row', paddingBottom: 6 },
   calWeekday: {
@@ -949,7 +939,7 @@ const S = StyleSheet.create({
   calDaySel: { backgroundColor: T.colors.primary },
   calDayToday: { borderWidth: 1, borderColor: T.colors.primary },
   calDayText: { ...T.typography.bodyMd, color: T.colors.textPrimary },
-  calDayTextSel: { color: '#FFFFFF', fontWeight: '700' },
+  calDayTextSel: { color: T.colors.neutral0, fontWeight: T.typography.h3.fontWeight },
   calDayTextDisabled: { color: T.colors.textTertiary, opacity: 0.4 },
   calFooter: {
     flexDirection: 'row',
@@ -961,7 +951,7 @@ const S = StyleSheet.create({
     borderTopColor: T.colors.borderLight,
   },
   calCancel: { ...T.typography.labelLg, color: T.colors.textTertiary },
-  calToday: { ...T.typography.labelLg, color: T.colors.primary, fontWeight: '700' },
+  calToday: { ...T.typography.labelLg, color: T.colors.primary, fontWeight: T.typography.h3.fontWeight },
 
   // States
   stateBlock: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 10 },

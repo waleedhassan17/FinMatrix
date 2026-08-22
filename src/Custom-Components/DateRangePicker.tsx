@@ -12,8 +12,10 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import dayjs from 'dayjs';
-import { colors, spacing, borderRadius } from '../theme';
 import { THEME } from '../utils/theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, spacing, radius, typography } = THEME;
 
 interface DatePreset {
   label: string;
@@ -140,50 +142,50 @@ const styles = StyleSheet.create({
   },
   dateButton: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.neutral0,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm + 2,
-    padding: spacing.sm + 4,
+    borderRadius: radius.sm + 2,
+    padding: spacing.xs + 4,
   },
   dateLabel: {
-    ...THEME.typography.caption,
+    ...typography.caption,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
   },
   dateValueRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   calendarIcon: {
-    fontSize: 16,
-    marginRight: spacing.xs + 2,
+    ...typography.h4,
+    marginRight: spacing.xxs + 2,
   },
   dateValue: {
-    ...THEME.typography.bodySm,
+    ...typography.bodySm,
     color: colors.textPrimary,
   },
   separator: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     marginTop: spacing.md,
   },
   separatorText: {
-    fontSize: 18,
-    color: colors.textLight,
+    ...typography.h3,
+    color: colors.textTertiary,
   },
   presetsRow: {
-    marginTop: spacing.sm + 4,
+    marginTop: spacing.xs + 4,
   },
   presetChip: {
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.xs + 2,
-    backgroundColor: colors.primary + '12',
+    paddingHorizontal: spacing.xs + 4,
+    paddingVertical: spacing.xxs + 2,
+    backgroundColor: colors.actionGreen + '12',
     borderRadius: 16,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   presetText: {
-    ...THEME.typography.caption,
-    color: colors.primary,
+    ...typography.caption,
+    color: colors.actionGreen,
   },
   iosOverlay: {
     flex: 1,
@@ -191,9 +193,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   iosPickerContainer: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
+    backgroundColor: colors.neutral0,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
   },
   iosPickerHeader: {
     flexDirection: 'row',
@@ -203,8 +205,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   iosDoneText: {
-    ...THEME.typography.labelLg,
-    color: colors.primary,
+    ...typography.labelLg,
+    color: colors.actionGreen,
   },
 });
 

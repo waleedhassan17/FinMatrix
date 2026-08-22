@@ -12,9 +12,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchTaxLiability,
@@ -27,6 +24,9 @@ import {
 } from './taxLiabilitySlice';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 import type { TaxLiabilityRow } from '../../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, typography } = THEME;
 import {
   ReportContainer,
   ReportHeader,

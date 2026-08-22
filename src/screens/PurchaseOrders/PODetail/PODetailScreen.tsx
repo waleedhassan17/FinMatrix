@@ -44,8 +44,6 @@ import {
   LoadingBlock,
   ErrorBlock,
 } from '../../../components/reports/ReportUI';
-
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchPODetail,
@@ -70,6 +68,8 @@ import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
+
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type DetailRoute = RouteProp<TransactionsStackParamList, 'PODetail'>;

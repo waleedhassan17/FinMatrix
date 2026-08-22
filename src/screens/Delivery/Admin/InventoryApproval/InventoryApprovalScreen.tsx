@@ -15,9 +15,6 @@ import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME } from '../../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import {
@@ -37,6 +34,9 @@ import { clearShadowInventoryForRequest } from '../../Admin/AssignDeliveries/del
 import type { InventoryUpdateRequest } from '../../../../models/deliveryModel';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import { downloadBillPhoto } from '../../../../networks/delivery/deliveryNetwork';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'InventoryApproval'>;
 type ModalMode = 'approve' | 'reject' | 'undo' | null;

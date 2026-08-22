@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     fontFamily: THEME.typography.fontFamily,
     fontSize: THEME.form.addPill.fontSize,
     fontWeight: THEME.form.addPill.fontWeight,
-    color: '#FFFFFF',
+    color: THEME.colors.neutral0,
   },
   sectionHeader: {
     flexDirection: 'row',

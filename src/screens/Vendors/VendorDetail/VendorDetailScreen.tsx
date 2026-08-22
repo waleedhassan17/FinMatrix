@@ -20,9 +20,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectVendors, upsertVendor } from '../VendorList/vendorListSlice';
 import { selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
@@ -53,6 +50,9 @@ import { shareVendorStatementPdf } from '../../../utils/statementPdf';
 import { useCompanyInfo } from '../../../utils/companyInfo';
 import type { PaymentTerms, Vendor } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type DetailRoute = RouteProp<MoreStackParamList, 'VendorDetail'>;

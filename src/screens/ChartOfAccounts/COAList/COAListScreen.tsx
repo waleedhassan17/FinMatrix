@@ -23,9 +23,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchAccounts,
@@ -40,6 +37,9 @@ import {
 import type { COAFilter } from './coaListSlice';
 import { blockSystemDeactivation, isSystemAccount } from '../../../utils/systemAccounts';
 import type { Account, AccountType } from '../../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 import {
   ReportContainer,
   ReportHeader,

@@ -15,7 +15,6 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
-import { colors } from '../../theme';
 import type { RootStackParamList } from '../../types';
 
 import BaseNavigator from '../../navigators/BaseNavigator';
@@ -41,6 +40,10 @@ import { resetSignInForm } from '../../screens/Auth/SignIn/signInSlice';
 import { resetSignUpForm } from '../../screens/Auth/SignUp/signUpSlice';
 import { resetForgotPasswordForm } from '../../screens/Auth/ForgotPassword/forgotPasswordSlice';
 import { resetVerificationForm } from '../../screens/Auth/EmailVerification/emailVerificationSlice';
+import { THEME } from '../../theme';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 
 // ─── Deep linking (Stage 1) ──────────────────────────
 // finmatrix://verify-email?token=...  → Email verification screen
@@ -178,7 +181,7 @@ export const AppContainer: React.FC = () => {
         ) : (
           // Session restore still in flight after the splash finished.
           <View style={styles.loading}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.actionGreen} />
           </View>
         )}
         {showSplash && (
@@ -198,7 +201,7 @@ export const AppContainer: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.neutral50,
   },
   loading: {
     flex: 1,

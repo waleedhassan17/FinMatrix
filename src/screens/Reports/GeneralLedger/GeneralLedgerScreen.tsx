@@ -5,9 +5,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchGeneralLedger, selectGeneralLedgerState, setLedgerAccount, setLedgerRange
@@ -15,6 +12,9 @@ import {
 import { formatCurrency } from '../../../utils/formatters';
 import type { LedgerEntry } from '../../../models/generalLedgerModel';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { typography } = THEME;
 import {
   ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, DateField, Badge,
   LoadingBlock, ErrorBlock, EmptyBlock, ACCENT, reportContentStyle, amountColWidth,

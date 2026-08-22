@@ -33,11 +33,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontWeight: '700',
+    fontWeight: THEME.typography.labelMd.fontWeight,
     fontFamily: THEME.typography.fontFamily,
   },
   titleFin: {
-    color: colors.success ?? '#00875A',
+    color: colors.success,
   },
   titleMatrix: {
     color: colors.primary,

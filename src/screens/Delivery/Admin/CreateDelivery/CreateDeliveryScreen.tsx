@@ -17,9 +17,6 @@ import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { THEME } from '../../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { selectCustomers, fetchCustomers } from '../../../Customers/CustomerList/customerListSlice';
 import { selectInventoryItems, fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryListSlice';
@@ -37,6 +34,9 @@ import {
   selectCreateDeliveryDraft
 } from './createDeliverySlice';
 import { createDelivery } from '../AssignDeliveries/deliverySlice';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 

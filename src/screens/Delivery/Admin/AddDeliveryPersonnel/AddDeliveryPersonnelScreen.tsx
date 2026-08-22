@@ -21,14 +21,14 @@ import CustomInput from '../../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import { THEME } from '../../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { selectActiveCompany, addDeliveryPersonnel, addMember } from '../../../Auth/companySlice';
 import { registerAdminCreatedPersonnel } from '../../../../networks/auth/authNetwork';
 import type { DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import type { RootStackParamList } from '../../../../types';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddDeliveryPersonnel'>;
 

@@ -21,9 +21,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectCustomerFormState,
@@ -47,6 +44,9 @@ import CustomButton from '../../../Custom-Components/CustomButton';
 import { validateCustomer, PAYMENT_TERMS_OPTIONS } from '../../../models/customerModel';
 import { customerToFormData, formDataToCustomerPayload } from '../../../serializers/customerSerializer';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type FormRoute = RouteProp<MoreStackParamList, 'CustomerForm'>;

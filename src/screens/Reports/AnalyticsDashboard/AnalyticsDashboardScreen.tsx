@@ -13,13 +13,13 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 
 import { THEME } from '../../../utils/theme';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors } = THEME;
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { fetchAnalyticsDashboard, selectAnalyticsDashboardState } from './analyticsDashboardSlice';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import { formatCurrency } from '../../../utils/formatters';
+
+// Design-system tokens (see src/theme/theme.ts).
+const { colors } = THEME;
 import {
   ReportContainer,
   ReportHeader,
@@ -401,7 +401,8 @@ const TrendLineChart: React.FC<{
       fillShadowGradientToOpacity: 0.02,
       propsForBackgroundLines: { stroke: THEME.colors.borderLight, strokeDasharray: '4 7', strokeWidth: 1 },
       propsForDots: { r: '4', strokeWidth: '2', stroke: color, fill: THEME.colors.surface },
-      propsForLabels: { fontSize: 11 }
+      // react-native-chart-kit config, not a RN style: it takes a raw number.
+      propsForLabels: { fontSize: THEME.typography.overline.fontSize }
     }}
     style={styles.chart}
     onDataPointClick={onPointPress ? ({ index, value }) => onPointPress(index, value) : undefined}
