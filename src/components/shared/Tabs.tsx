@@ -26,7 +26,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME as T } from '../../theme';
 
-const { colors, spacing, radius, shadows, typography } = T;
+const { colors, spacing, radius, typography } = T;
 
 export type TabItem<V extends string> = {
   label: string;
@@ -50,7 +50,9 @@ const countLabel = (label: string, count?: number): string =>
  *   • The edges fade while there is more row in that direction, so the row
  *     reads as scrollable instead of clipped.
  *   • A tab with nothing behind it is dimmed, so an empty filter is visible
- *     before it is tapped rather than after.
+ *     before it is tapped rather than after — but only while some other tab
+ *     has results, since dimming every tab on an empty list reads as a broken
+ *     row rather than an empty one.
  */
 export function FilterTabs<V extends string>({
   tabs,
@@ -98,6 +100,7 @@ export function FilterTabs<V extends string>({
   // 4px of slack so a fade does not flicker at the very end of a scroll.
   const moreLeft = offset > 4;
   const moreRight = content - viewport - offset > 4;
+  const anyResults = tabs.some(t => (t.count ?? 0) > 0);
 
   return (
     <View style={[s.filterBar, style]}>
@@ -114,11 +117,22 @@ export function FilterTabs<V extends string>({
       >
         {tabs.map(tab => {
           const isActive = active === tab.value;
-          const isEmpty = tab.count === 0 && !isActive;
+          // Muting an empty filter only reads as "nothing here" when there is
+          // a populated tab beside it to contrast against. On an empty list
+          // every count is zero, and muting all of them makes the whole row
+          // look disabled instead.
+          const isEmpty = !isActive && anyResults && tab.count === 0;
+          // A "0" badge is noise: the label already sits in a row where the
+          // populated filters carry numbers, so absence reads as zero.
+          const showCount = tab.count !== undefined && tab.count > 0;
           return (
             <Pressable
               key={tab.value}
               onLayout={measure(tab.value)}
+              // The pill is deliberately shorter than 44pt so the row reads as
+              // a filter strip rather than a button bar; hitSlop restores the
+              // touch target without the visual weight.
+              hitSlop={{ top: 6, bottom: 6 }}
               style={({ pressed }) => [
                 s.pill,
                 isActive && s.pillActive,
@@ -133,13 +147,9 @@ export function FilterTabs<V extends string>({
               <Text style={[s.pillText, isActive && s.pillTextActive, isEmpty && s.textEmpty]}>
                 {tab.label}
               </Text>
-              {tab.count !== undefined ? (
-                <View style={[s.badge, isActive && s.badgeActive, isEmpty && s.badgeEmpty]}>
-                  <Text
-                    style={[s.badgeText, isActive && s.badgeTextActive, isEmpty && s.textEmpty]}
-                  >
-                    {tab.count}
-                  </Text>
+              {showCount ? (
+                <View style={[s.badge, isActive && s.badgeActive]}>
+                  <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{tab.count}</Text>
                 </View>
               ) : null}
             </Pressable>
@@ -172,58 +182,63 @@ const s = StyleSheet.create({
   // ── FilterTabs ──
   // Fixed-height bar so the row keeps a constant vertical slot and never
   // shifts between "has results" / "empty filter" list states.
-  filterBar: { height: 52, justifyContent: 'center' },
+  filterBar: { height: 48, justifyContent: 'center' },
   filterScroll: { flexGrow: 0, flexShrink: 0 },
-  filterRow: { paddingHorizontal: spacing.xl, alignItems: 'center', gap: spacing.xs },
+  filterRow: {
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.xs,
+    // The last pill clears the screen edge instead of being sheared by it.
+    paddingRight: spacing.xxl,
+  },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    // 44pt minimum touch target; the 52pt bar has room for it.
-    minHeight: 44,
+    minHeight: 34,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xxs + 2,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  // Ink, not brand green. The screen's one green belongs to the "New" button —
+  // a green tab beside it made two competing primary marks and read as a
+  // second call to action rather than a selection. Slate carries the selection
+  // just as clearly and echoes the navy header above it.
   pillActive: {
-    backgroundColor: colors.actionGreen,
-    borderColor: colors.actionGreen,
-    // The selected pill lifts off the row so it reads as selected even in
-    // peripheral vision, where the colour alone is easy to miss.
-    ...shadows.sm,
-    shadowColor: colors.actionGreen,
+    backgroundColor: colors.neutral900,
+    borderColor: colors.neutral900,
   },
-  // A filter with nothing behind it, muted so it reads as empty before it is
-  // tapped. Still fully tappable — it is information, not a disabled state.
-  pillEmpty: { backgroundColor: colors.background, borderColor: colors.borderLight },
+  // A filter with nothing behind it. Muted in the text and border only — the
+  // surface stays white so the pill still reads as a control rather than
+  // dropping out of the row.
+  pillEmpty: { borderColor: colors.borderLight },
   pillPressed: { backgroundColor: colors.neutral100, borderColor: colors.neutral300 },
   pillText: { ...typography.labelMd, color: colors.textSecondary },
   pillTextActive: { color: colors.neutral0 },
   textEmpty: { color: colors.textTertiary },
 
-  // ── Count badge ──
+  // ── Count badge, shown only for a non-zero count ──
   badge: {
-    marginLeft: spacing.xs,
-    backgroundColor: colors.background,
+    marginLeft: spacing.xxs + 2,
+    backgroundColor: colors.neutral100,
     borderRadius: radius.full,
-    paddingHorizontal: spacing.xxs + 2,
+    paddingHorizontal: spacing.xxs + 1,
     paddingVertical: 1,
-    minWidth: 22,
+    minWidth: 20,
     alignItems: 'center',
   },
-  // Solid white on the accent pill: a translucent chip left white digits at
-  // roughly 2.4:1 against the green behind them.
-  badgeActive: { backgroundColor: colors.neutral0 },
-  badgeEmpty: { backgroundColor: 'transparent' },
+  // A white wash over slate lands around #2B3542 — white digits on it clear
+  // 11:1, where the old translucent chip over green managed roughly 2.4:1.
+  badgeActive: { backgroundColor: 'rgba(255, 255, 255, 0.18)' },
   // letterSpacing zeroed for digits (same treatment as ReportUI's kpiDelta).
   badgeText: { ...typography.labelSm, letterSpacing: 0, color: colors.textSecondary },
-  badgeTextActive: { color: colors.actionGreen },
+  badgeTextActive: { color: colors.neutral0 },
 
   // ── Edge fades, shown only while there is more row that way ──
-  fade: { position: 'absolute', top: 0, bottom: 0, width: spacing.xl },
+  fade: { position: 'absolute', top: 0, bottom: 0, width: spacing.lg },
   fadeLeft: { left: 0 },
   fadeRight: { right: 0 },
 });

@@ -4,7 +4,8 @@
 jest.mock('expo-linear-gradient', () => ({ LinearGradient: 'LinearGradient' }));
 
 import React from 'react';
-import { ScrollView, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
+import { THEME } from '../../../theme';
 import renderer, { act } from 'react-test-renderer';
 import { FilterTabs, type TabItem } from '../Tabs';
 
@@ -154,5 +155,57 @@ describe('FilterTabs without counts', () => {
     expect(tabs[0].props.accessibilityLabel).toBe('All');
     // The badge is the only Text beyond the label itself.
     expect(tree.root.findAllByType(Text).filter(t => typeof t.props.children === 'number')).toHaveLength(0);
+  });
+});
+
+describe('FilterTabs counts', () => {
+  const withCounts = (counts: number[]) =>
+    counts.map((count, i) => ({ label: `T${i}`, value: `t${i}`, count })) as TabItem<string>[];
+
+  const badges = (tree: renderer.ReactTestRenderer) =>
+    tree.root.findAllByType(Text).filter(t => typeof t.props.children === 'number');
+
+  const renderCounts = (counts: number[], active = 't0') => {
+    let tree!: renderer.ReactTestRenderer;
+    act(() => {
+      tree = renderer.create(
+        <FilterTabs tabs={withCounts(counts)} active={active} onChange={() => {}} />,
+      );
+    });
+    return tree;
+  };
+
+  it('shows a badge only for a non-zero count', () => {
+    const tree = renderCounts([4, 0, 7]);
+    // A "0" badge is noise — the two populated filters carry the information.
+    expect(badges(tree).map(b => b.props.children)).toEqual([4, 7]);
+  });
+
+  it('still announces zero to a screen reader, where there is no visual row to compare against', () => {
+    const tree = renderCounts([4, 0, 7]);
+    expect(tabNodes(tree)[1].props.accessibilityLabel).toBe('T1, 0 items');
+  });
+
+  it('mutes an empty tab when a populated one sits beside it', () => {
+    const tree = renderCounts([4, 0, 7]);
+    const flat = (n: number) =>
+      StyleSheet.flatten(tabNodes(tree)[n].props.style({ pressed: false }));
+    expect(flat(1).borderColor).toBe(THEME.colors.borderLight);
+    expect(flat(2).borderColor).toBe(THEME.colors.border);
+  });
+
+  it('mutes nothing when every tab is empty, so the row does not read as disabled', () => {
+    // The empty-list case: muting all of them made the whole row look broken.
+    const tree = renderCounts([0, 0, 0]);
+    const borders = tabNodes(tree)
+      .slice(1)
+      .map(t => StyleSheet.flatten(t.props.style({ pressed: false })).borderColor);
+    expect(borders).toEqual([THEME.colors.border, THEME.colors.border]);
+  });
+
+  it('keeps the selected tab on ink, not on the brand green the New button owns', () => {
+    const tree = renderCounts([4, 0, 7], 't2');
+    const flat = StyleSheet.flatten(tabNodes(tree)[2].props.style({ pressed: false }));
+    expect(flat.backgroundColor).toBe(THEME.colors.neutral900);
   });
 });
