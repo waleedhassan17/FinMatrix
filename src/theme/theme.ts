@@ -166,6 +166,34 @@ const fontFamily = Platform.select({
   default: 'System',
 })!;
 
+/**
+ * ROLE MAP — which token a given piece of UI takes.
+ *
+ * This is the reference the consistency passes work from. A style should name
+ * a role, never a size and weight: `...typography.labelMd`, not
+ * `fontSize: 13, fontWeight: '600'`.
+ *
+ *   Screen title (navy header)     h2 · colors.neutral0
+ *   Screen subtitle                bodySm · white @ 62%
+ *   Section header                 form.sectionTitle (11px, uppercase, tracked)
+ *   Card / row primary             labelLg · textPrimary
+ *   Card / row secondary           bodySm · textSecondary
+ *   KPI or stat value              h2 (h3 where space is tight)
+ *   KPI or stat label              caption · textSecondary
+ *   Money — row                    labelLg, right-aligned, tabular-nums
+ *   Money — total                  h4, right-aligned, tabular-nums
+ *   Status badge                   labelSm + statusStyle(status)
+ *   Table head                     overline · textSecondary
+ *   Table cell                     caption · textPrimary
+ *   Field label                    labelMd · textSecondary
+ *   Input / selected value         bodyMd · textPrimary
+ *   Helper, hint, caption          caption · textTertiary
+ *   Button label                   labelLg
+ *
+ * When a hardcoded pair has no exact role, take the nearest: the scale uses
+ * 600/700 where hand-written styles often reach for 700/800, so some text
+ * renders one weight lighter. That is the intended outcome of adopting it.
+ */
 const typography = {
   fontFamily,
 
@@ -334,6 +362,63 @@ export const THEME = {
 } as const;
 
 export type Theme = typeof THEME;
+
+// ───────────────────────────────────────────────
+// 6b. Status colours — one resolver for the whole app
+// ───────────────────────────────────────────────
+/**
+ * Resolves any status word to a foreground/background pair.
+ *
+ * Every domain in the app names its states differently — an invoice is `paid`,
+ * a company is `active`, a payment is `approved` — but they mean the same six
+ * things, and before this they were coloured by whichever palette the screen
+ * happened to define. The SuperAdmin console alone carried five copies of an
+ * Atlassian status map.
+ *
+ * Boundary with STATUS_CONFIG below: that map is the delivery domain's own
+ * vocabulary and adds a label and an icon this cannot. Its colours are already
+ * theme tokens, so the two agree on tone without one having to call the other.
+ * Use STATUS_CONFIG where a delivery needs its icon; use this everywhere else.
+ */
+const STATUS_TIER = {
+  // Inert or terminated — no attention wanted.
+  neutral: { fg: colors.neutral500, bg: colors.neutral100 },
+  // Live, awaiting the other party.
+  info: { fg: colors.info, bg: colors.infoLight },
+  // In progress, or waiting on someone here.
+  warning: { fg: colors.warning, bg: colors.warningLighter },
+  // The happy terminal state.
+  success: { fg: colors.success, bg: colors.successLighter },
+  // Needs attention now.
+  danger: { fg: colors.danger, bg: colors.dangerLighter },
+  // Moved on into another document or state.
+  moved: { fg: colors.secondary, bg: colors.secondaryLight },
+} as const;
+
+const STATUS_TIER_OF: Record<string, keyof typeof STATUS_TIER> = {
+  // ── neutral ──
+  draft: 'neutral', void: 'neutral', cancelled: 'neutral', inactive: 'neutral',
+  unassigned: 'neutral', archived: 'neutral', none: 'neutral',
+  // ── info ──
+  open: 'info', sent: 'info', submitted: 'info', new: 'info',
+  // ── warning ──
+  partial: 'warning', partially_received: 'warning', refunded: 'warning',
+  expired: 'warning', pending: 'warning', pending_approval: 'warning',
+  processing: 'warning', trial: 'warning', unpaid: 'warning',
+  // ── success ──
+  paid: 'success', fully_received: 'success', received: 'success',
+  approved: 'success', applied: 'success', fulfilled: 'success',
+  accepted: 'success', posted: 'success', active: 'success',
+  delivered: 'success', completed: 'success', verified: 'success',
+  // ── danger ──
+  overdue: 'danger', declined: 'danger', rejected: 'danger', failed: 'danger',
+  suspended: 'danger', blocked: 'danger',
+  // ── moved on ──
+  closed: 'moved', invoiced: 'moved', converted: 'moved', returned: 'moved',
+};
+
+export const statusStyle = (status: string): { fg: string; bg: string } =>
+  STATUS_TIER[STATUS_TIER_OF[status] ?? 'neutral'];
 
 // ───────────────────────────────────────────────
 // 7. Delivery status configuration

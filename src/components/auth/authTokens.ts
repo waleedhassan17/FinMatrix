@@ -17,12 +17,13 @@
 // The header is the anchor and always sits flush to the top. The footer is
 // pinned so the primary action is reachable without scrolling on long forms.
 
-import { Platform } from 'react-native';
-
-const fontFamily = Platform.select({ android: 'Roboto', default: 'System' })!;
+import { THEME } from '../../theme';
 
 export const AUTH = {
-  font: fontFamily,
+  // The auth flow has its own colour world (see below) but shares the app's
+  // typeface. Redefining Platform.select() here meant a brand font would have
+  // had to be set in two places and would silently have missed this flow.
+  font: THEME.typography.fontFamily,
 
   // ── Header ──
   // ONE flat dark navy across every auth screen. No gradient, no decorative
