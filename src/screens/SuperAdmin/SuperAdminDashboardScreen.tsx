@@ -27,7 +27,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { selectUser } from '../Auth/authSlice';
 import { useSignOut } from '../../hooks/useSignOut';
-import { THEME, statusStyle } from '../../theme';
+import { THEME } from '../../theme';
+import { AdminScreenHeader, KpiStatCard, DataTableRow } from '../../components/admin/AdminUI';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, spacing, radius, shadows, typography } = THEME;
@@ -41,38 +42,6 @@ import {
 const { width: SCREEN_W } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_W * 0.78;
 const STATUS_H = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
-
-// ── Stat Card (clean surface style) ──────────────────
-const StatCard: React.FC<{
-  label: string;
-  value: number | string;
-  subtitle?: string;
-  icon: string;
-  delay?: number;
-}> = ({ label, value, subtitle, icon, delay = 0 }) => {
-  const scale = useRef(new Animated.Value(0.85)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: 1, tension: 55, friction: 8, delay, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 1, duration: 300, delay, useNativeDriver: true }),
-    ]).start();
-  }, [delay]);
-
-  return (
-    <Animated.View style={[S.statWrap, { opacity, transform: [{ scale }] }]}>
-      <View style={S.statCard}>
-        <View style={S.statIconBox}>
-          <Feather name={icon as any} size={16} color={colors.primary} />
-        </View>
-        <Text style={S.statValue}>{value}</Text>
-        <Text style={S.statLabel}>{label}</Text>
-        {subtitle ? <Text style={S.statSub}>{subtitle}</Text> : null}
-      </View>
-    </Animated.View>
-  );
-};
 
 // ── Sidebar Drawer ────────────────────────────────────
 const SidebarDrawer: React.FC<{
@@ -158,28 +127,6 @@ const SidebarDrawer: React.FC<{
   );
 };
 
-// ── Registration Item ─────────────────────────────────
-const RegistrationItem: React.FC<{
-  item: { id: string; name: string; industry: string | null; status: string; createdAt: string };
-  onPress: () => void;
-}> = ({ item, onPress }) => {
-  const cfg = statusStyle(item.status);
-  return (
-    <TouchableOpacity style={S.regItem} onPress={onPress} activeOpacity={0.7}>
-      <View style={S.regAvatar}>
-        <Text style={S.regAvatarText}>{item.name.slice(0, 2).toUpperCase()}</Text>
-      </View>
-      <View style={S.regMeta}>
-        <Text style={S.regName} numberOfLines={1}>{item.name}</Text>
-        <Text style={S.regIndustry}>{item.industry ?? 'General'}</Text>
-      </View>
-      <View style={[S.regBadge, { backgroundColor: cfg.bg }]}>
-        <Text style={[S.regBadgeText, { color: cfg.fg }]}>{item.status}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
 // ═══════════════════════════════════════════════════════
 // MAIN SCREEN
 // ═══════════════════════════════════════════════════════
@@ -225,23 +172,22 @@ const SuperAdminDashboardScreen: React.FC = () => {
     <SafeAreaView style={S.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
-      {/* Header */}
-      <View style={S.header}>
-        <TouchableOpacity onPress={() => setDrawerOpen(true)} style={S.menuBtn} activeOpacity={0.7}>
-          <Feather name="menu" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={S.headerCenter}>
-          <Text style={S.headerTitle}>FinMatrix Admin</Text>
-          <Text style={S.headerSub}>Platform Control Panel</Text>
-        </View>
-        <View style={S.headerAvatar}>
+      <AdminScreenHeader
+        title="FinMatrix Admin"
+        subtitle="Platform Control Panel"
+        left={
+          <TouchableOpacity onPress={() => setDrawerOpen(true)} style={S.menuBtn} activeOpacity={0.7}>
+            <Feather name="menu" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+        }
+        right={
           <LinearGradient colors={[colors.primary, colors.primaryDark]} style={S.avatarGrad}>
             <Text style={S.avatarText}>
               {displayName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
             </Text>
           </LinearGradient>
-        </View>
-      </View>
+        }
+      />
 
       <ScrollView
         contentContainerStyle={[S.content, { paddingBottom: insets.bottom + 20 }]}
@@ -284,26 +230,26 @@ const SuperAdminDashboardScreen: React.FC = () => {
             {/* Stats Grid */}
             <Text style={S.sectionTitle}>Platform Overview</Text>
             <View style={S.statsGrid}>
-              <StatCard
+              <KpiStatCard
                 label="Total Companies"
                 value={stats.companies.total}
                 icon="briefcase"
                 delay={0}
               />
-              <StatCard
+              <KpiStatCard
                 label="Pending Review"
                 value={stats.companies.pending}
                 subtitle="Awaiting approval"
                 icon="clock"
                 delay={80}
               />
-              <StatCard
+              <KpiStatCard
                 label="Active Companies"
                 value={stats.companies.active}
                 icon="check-circle"
                 delay={160}
               />
-              <StatCard
+              <KpiStatCard
                 label="Active Subs"
                 value={stats.subscriptions.activeSubscriptions}
                 subtitle={`of ${stats.subscriptions.totalSubscriptions} total`}
@@ -402,13 +348,16 @@ const SuperAdminDashboardScreen: React.FC = () => {
                 </View>
                 <View style={S.card}>
                   {stats.recentRegistrations.map((item, idx) => (
-                    <RegistrationItem
+                    <DataTableRow
                       key={item.id}
-                      item={item}
+                      initials={item.name}
+                      title={item.name}
+                      meta={item.industry ?? 'General'}
+                      status={item.status}
                       onPress={() =>
                         navigation.navigate('Companies' as any)
                       }
-                    />
+                      />
                   ))}
                 </View>
               </>
@@ -433,21 +382,7 @@ const SuperAdminDashboardScreen: React.FC = () => {
 
 const S = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.sm,
-  },
   menuBtn: { padding: spacing.xxs },
-  headerCenter: { flex: 1 },
-  headerTitle: { ...typography.h4, color: colors.textPrimary },
-  headerSub: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
-  headerAvatar: {},
   avatarGrad: {
     width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
@@ -491,24 +426,6 @@ const S = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 10,
   },
-  statWrap: { width: (SCREEN_W - 42) / 2 },
-  statCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: spacing.md,
-    minHeight: 110,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statIconBox: {
-    width: 32, height: 32, borderRadius: radius.sm,
-    backgroundColor: colors.primaryLighter,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 10,
-  },
-  statValue: { ...typography.h1, color: colors.textPrimary },
-  statLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 3 },
-  statSub: { ...typography.overline, color: colors.textTertiary, marginTop: 2 },
 
   quickStatsBar: {
     flexDirection: 'row',
@@ -551,24 +468,6 @@ const S = StyleSheet.create({
     backgroundColor: colors.surface, borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
   },
-  regItem: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: spacing.sm, gap: 10,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  regAvatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: colors.primaryLighter,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  regAvatarText: { ...typography.h5, color: colors.primary },
-  regMeta: { flex: 1 },
-  regName: { ...typography.h5, color: colors.textPrimary },
-  regIndustry: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  regBadge: {
-    paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: radius.md,
-  },
-  regBadgeText: { ...typography.overline, textTransform: 'capitalize' },
 
   // Drawer
   drawerOverlay: { flex: 1, flexDirection: 'row' },

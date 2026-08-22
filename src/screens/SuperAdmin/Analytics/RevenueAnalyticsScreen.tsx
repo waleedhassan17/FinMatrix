@@ -23,6 +23,7 @@ import { Feather } from '@expo/vector-icons';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { THEME, statusStyle } from '../../../theme';
+import { AdminScreenHeader } from '../../../components/admin/AdminUI';
 import { CHART_SERIES } from '../../../components/reports/ReportUI';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -333,16 +334,16 @@ const RevenueAnalyticsScreen: React.FC = () => {
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
-      <View style={S.header}>
-        <View>
-          <Text style={S.headerTitle}>Revenue Analytics</Text>
-          <Text style={S.headerSub}>Platform financial overview</Text>
-        </View>
-        <View style={[S.headerBadge, { backgroundColor: colors.successLighter }]}>
-          <View style={S.liveIndicator} />
-          <Text style={S.headerBadgeText}>Live</Text>
-        </View>
-      </View>
+      <AdminScreenHeader
+        title="Revenue Analytics"
+        subtitle="Platform financial overview"
+        right={
+          <View style={[S.headerBadge, { backgroundColor: colors.successLighter }]}>
+            <View style={S.liveIndicator} />
+            <Text style={S.headerBadgeText}>Live</Text>
+          </View>
+        }
+      />
 
       {loading ? (
         <View style={S.loaderWrap}>
@@ -535,8 +536,6 @@ const S = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerTitle: { ...typography.h4, color: colors.textPrimary },
-  headerSub: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
   headerBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
@@ -672,24 +671,8 @@ const S = StyleSheet.create({
   coPlan: { ...typography.overline, color: colors.textSecondary, marginTop: 1 },
   coRight: { alignItems: 'flex-end', gap: spacing.xxs },
   coRevenue: { ...typography.bodySm, color: colors.textPrimary },
-  coBadge: {
-    backgroundColor: colors.dangerLighter, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5,
-  },
-  coBadgeText: { ...typography.overline, color: colors.danger, textTransform: 'capitalize' },
 
   // Forecast
-  forecastCard: {
-    borderRadius: 14, padding: spacing.md,
-    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
-  },
-  forecastIcon: {
-    width: 40, height: 40, borderRadius: radius.md,
-    backgroundColor: 'rgba(99,102,241,0.12)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  forecastContent: { flex: 1 },
-  forecastTitle: { ...typography.labelMd, color: colors.primary },
-  forecastSub: { ...typography.caption, color: colors.primary, lineHeight: 18, marginTop: 3 },
 });
 
 export default RevenueAnalyticsScreen;

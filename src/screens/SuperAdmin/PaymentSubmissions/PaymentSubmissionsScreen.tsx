@@ -27,6 +27,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { THEME, statusStyle } from '../../../theme';
+import { AdminScreenHeader } from '../../../components/admin/AdminUI';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, spacing, radius, shadows, typography } = THEME;
@@ -153,10 +154,10 @@ const PaymentSubmissionsScreen: React.FC = () => {
     <SafeAreaView style={[S.safe, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
       <View style={S.body}>
-        <LinearGradient colors={HEADER_NAVY} style={S.header}>
-          <Text style={S.headerTitle}>Payment Verification</Text>
-          <Text style={S.headerSub}>Review manual bank-transfer submissions</Text>
-        </LinearGradient>
+        <AdminScreenHeader
+          title="Payment Verification"
+          subtitle="Review manual bank-transfer submissions"
+        />
 
         <View style={S.filterRow}>
           {FILTERS.map((f) => {
@@ -361,12 +362,6 @@ const S = StyleSheet.create({
   safe: { flex: 1 },
   body: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
-    paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.md,
-    borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
-  },
-  headerTitle: { ...typography.h3, color: colors.neutral0 },
-  headerSub: { ...typography.bodySm, color: 'rgba(255,255,255,0.7)', marginTop: spacing.xxs },
 
   filterRow: { flexDirection: 'row', gap: spacing.xs, padding: spacing.sm },
   filterChip: {

@@ -25,6 +25,7 @@ import { selectUser } from '../../Auth/authSlice';
 import { authForgotPassword } from '../../../networks/auth/authNetwork';
 import { NOTIFICATION_ICON_NAME } from '../../../components/shared/NotificationIcon';
 import { THEME, statusStyle } from '../../../theme';
+import { AdminScreenHeader } from '../../../components/admin/AdminUI';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, spacing, radius, shadows, typography } = THEME;
@@ -157,10 +158,7 @@ const AdminSettingsScreen: React.FC = () => {
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
-      <View style={S.header}>
-        <Text style={S.headerTitle}>Settings</Text>
-        <Text style={S.headerSub}>Platform configuration</Text>
-      </View>
+      <AdminScreenHeader title="Settings" subtitle="Platform configuration" />
 
       <ScrollView
         contentContainerStyle={[S.content, { paddingBottom: insets.bottom + 24 }]}
@@ -282,16 +280,6 @@ const AdminSettingsScreen: React.FC = () => {
 const S = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
 
-  header: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerTitle: { ...typography.h4, color: colors.textPrimary },
-  headerSub: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
-
   content: { padding: spacing.md, gap: spacing.md },
 
   // Profile card
@@ -319,11 +307,6 @@ const S = StyleSheet.create({
     paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: radius.sm,
   },
   profileRoleText: { ...typography.overline, color: colors.neutral0 },
-  profileEditBtn: {
-    width: 34, height: 34, borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-  },
 
   // Status bar
   statusBar: {

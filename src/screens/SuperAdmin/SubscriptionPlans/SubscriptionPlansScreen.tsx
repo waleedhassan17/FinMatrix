@@ -18,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { THEME, statusStyle } from '../../../theme';
+import { AdminScreenHeader } from '../../../components/admin/AdminUI';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, spacing, radius, shadows, typography } = THEME;
@@ -242,19 +243,19 @@ const SubscriptionPlansScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={S.container} edges={['top']}>
-      <View style={S.header}>
-        <TouchableOpacity onPress={() => (navigation as any).goBack()} style={S.backBtn}>
-          <Feather name="arrow-left" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={S.headerCenter}>
-          <Text style={S.headerTitle}>Subscription Plans</Text>
-          <Text style={S.headerSub}>
-            {WAREHOUSE_ONLY_BUILD
-              ? 'Six warehouse plans · 3 / 5 / 10 delivery personnel · PKR · defined in server config'
-              : 'Six plans · two per business type · PKR · defined in server config'}
-          </Text>
-        </View>
-      </View>
+      <AdminScreenHeader
+        title="Subscription Plans"
+        subtitle={
+          WAREHOUSE_ONLY_BUILD
+            ? 'Six warehouse plans · 3 / 5 / 10 delivery personnel · PKR · defined in server config'
+            : 'Six plans · two per business type · PKR · defined in server config'
+        }
+        left={
+          <TouchableOpacity onPress={() => (navigation as any).goBack()} style={S.backBtn}>
+            <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        }
+      />
 
       {isLoading ? (
         <View style={S.centered}>
@@ -289,17 +290,7 @@ const SubscriptionPlansScreen: React.FC = () => {
 
 const S = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm,
-  },
   backBtn: { padding: spacing.xxs },
-  headerCenter: { flex: 1 },
-  headerTitle: { ...typography.h4, color: colors.textPrimary },
-  headerSub: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
-  addBtn: { borderRadius: 20, overflow: 'hidden' },
-  addBtnGrad: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   loadingText: { ...typography.bodySm, color: colors.textSecondary },
@@ -324,11 +315,6 @@ const S = StyleSheet.create({
   },
   planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   planName: { ...typography.h3, color: colors.neutral0 },
-  inactiveBadge: {
-    paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  inactiveBadgeText: { ...typography.overline, color: colors.neutral0 },
   statusBadge: {
     paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.25)',
@@ -339,10 +325,8 @@ const S = StyleSheet.create({
   planPriceRow: {
     flexDirection: 'row', alignItems: 'flex-end', marginTop: 14, gap: 6,
   },
-  planPriceLabel: { ...typography.overline, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
   planPrice: { ...typography.h2, color: colors.neutral0 },
   planPriceFreq: { ...typography.bodySm, color: 'rgba(255,255,255,0.75)', marginBottom: 3 },
-  planPriceDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.3)' },
   planCountRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm,
@@ -356,90 +340,9 @@ const S = StyleSheet.create({
   featuresList: { gap: 5, marginBottom: spacing.sm },
   featureItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   featureText: { ...typography.caption, color: colors.textPrimary },
-  moreFeatures: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
-  planActions: {
-    flexDirection: 'row', gap: 10, borderTopWidth: 1,
-    borderTopColor: colors.border, paddingTop: spacing.sm,
-  },
-  editBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 5, paddingVertical: spacing.xs, borderRadius: radius.sm,
-    backgroundColor: colors.primaryLighter, borderWidth: 1, borderColor: colors.primaryLight,
-  },
-  editBtnText: { ...typography.labelMd, color: colors.primary },
-  deleteBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 5, paddingVertical: spacing.xs, borderRadius: radius.sm,
-    backgroundColor: colors.dangerLighter, borderWidth: 1, borderColor: colors.dangerLight,
-  },
-  deleteBtnText: { ...typography.labelMd, color: colors.danger },
-
-  empty: { alignItems: 'center', paddingTop: 80, gap: spacing.xs },
-  emptyTitle: { ...typography.h3, color: colors.textPrimary },
-  emptyText: { ...typography.bodySm, color: colors.textSecondary },
-  emptyCreateBtn: {
-    marginTop: spacing.xs, paddingHorizontal: spacing.xl, paddingVertical: 10,
-    backgroundColor: colors.primary, borderRadius: radius.md,
-  },
-  emptyCreateText: { color: colors.neutral0, ...typography.labelMd },
 
   // Form Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  formModal: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    maxHeight: '90%', overflow: 'hidden',
-  },
-  formModalHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: spacing.md,
-  },
-  formModalTitle: { ...typography.h4, color: colors.neutral0 },
-  formModalClose: { padding: spacing.xxs },
-  formContent: { padding: spacing.md, maxHeight: 450 },
-  formFooter: {
-    flexDirection: 'row', padding: spacing.md, gap: 10,
-    borderTopWidth: 1, borderTopColor: colors.border,
-  },
-  cancelBtn: {
-    flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md,
-    backgroundColor: colors.neutral100, alignItems: 'center',
-  },
-  cancelBtnText: { ...typography.h5, color: colors.textSecondary },
-  saveBtn: {
-    flex: 2, paddingVertical: spacing.sm, borderRadius: radius.md,
-    backgroundColor: colors.primary, alignItems: 'center',
-  },
-  saveBtnText: { ...typography.h5, color: colors.neutral0 },
 
-  formField: { marginBottom: 14 },
-  formLabel: { ...typography.labelSm, color: colors.textPrimary, marginBottom: 6 },
-  formInput: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
-    padding: spacing.sm, ...typography.bodySm, color: colors.textPrimary, backgroundColor: colors.neutral25,
-  },
-  formInputMulti: { minHeight: 80, textAlignVertical: 'top' },
-  formRow: { flexDirection: 'row', gap: 10 },
-  formHalf: { flex: 1 },
-
-  featuresLabel: { ...typography.labelSm, color: colors.textPrimary, marginBottom: spacing.xs },
-  featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
-  featureChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: radius.xl, backgroundColor: colors.neutral100,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  featureChipActive: { backgroundColor: colors.primaryLighter, borderColor: colors.primaryLight },
-  featureChipText: { ...typography.caption, color: colors.textSecondary },
-  featureChipTextActive: { color: colors.primary, fontWeight: typography.labelLg.fontWeight },
-
-  activeRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: spacing.xs,
-    paddingVertical: spacing.xs,
-  },
-  activeLabel: { ...typography.h5, color: colors.textPrimary },
 });
 
 export default SubscriptionPlansScreen;

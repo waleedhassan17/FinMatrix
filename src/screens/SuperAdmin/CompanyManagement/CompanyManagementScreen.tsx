@@ -26,6 +26,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { THEME, statusStyle } from '../../../theme';
+import { AdminScreenHeader } from '../../../components/admin/AdminUI';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, spacing, radius, shadows, typography } = THEME;
@@ -462,22 +463,24 @@ const CompanyManagementScreen: React.FC = () => {
   return (
     <SafeAreaView style={S.container} edges={['top']}>
       {/* Header */}
-      <View style={S.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={S.backBtn}>
-          <Feather name="arrow-left" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={S.headerCenter}>
-          <Text style={S.headerTitle}>Companies</Text>
-          <Text style={S.headerSub}>{total} total registered</Text>
-        </View>
-        <TouchableOpacity
-          onPress={onRefresh}
-          style={S.refreshBtn}
-          disabled={status === 'loading'}
-        >
-          <Feather name="refresh-cw" size={18} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
+      <AdminScreenHeader
+        title="Companies"
+        subtitle={`${total} total registered`}
+        left={
+          <TouchableOpacity onPress={() => navigation.goBack()} style={S.backBtn}>
+            <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        }
+        right={
+          <TouchableOpacity
+            onPress={onRefresh}
+            style={S.refreshBtn}
+            disabled={status === 'loading'}
+          >
+            <Feather name="refresh-cw" size={18} color={colors.primary} />
+          </TouchableOpacity>
+        }
+      />
 
       {/* Filter Chips */}
       <View style={S.filtersRow}>
@@ -545,15 +548,7 @@ const CompanyManagementScreen: React.FC = () => {
 
 const S = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm,
-  },
   backBtn: { padding: spacing.xxs },
-  headerCenter: { flex: 1 },
-  headerTitle: { ...typography.h4, color: colors.textPrimary },
-  headerSub: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
   refreshBtn: { padding: 6 },
 
   filtersRow: {
