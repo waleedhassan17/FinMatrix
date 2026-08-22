@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   lineMain: { flex: 1 },
   del: { paddingTop: 28, paddingHorizontal: 4 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  bold: { ...THEME.typography.bodyMd, fontWeight: '800', color: THEME.colors.textPrimary },
+  bold: { ...THEME.typography.labelLg, color: THEME.colors.textPrimary },
 });
 
 export default VendorCreditFormScreen;

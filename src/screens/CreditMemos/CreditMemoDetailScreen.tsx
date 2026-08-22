@@ -138,16 +138,16 @@ const Info: React.FC<{ label: string; value: string; strong?: boolean }> = ({ la
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  total: { ...THEME.typography.bodyLg, color: THEME.colors.textPrimary, fontWeight: '800' },
+  total: { ...THEME.typography.h4, color: THEME.colors.textPrimary },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   infoLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
-  infoValue: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
-  bold: { ...THEME.typography.bodyMd, fontWeight: '800' },
+  infoValue: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
+  bold: { ...THEME.typography.labelLg },
   lineRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   invRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
-  lineDesc: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '600' },
+  lineDesc: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   lineMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
-  lineTotal: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary, fontWeight: '700' },
+  lineTotal: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   actions: { gap: 10 },
 });
 

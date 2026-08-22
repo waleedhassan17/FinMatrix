@@ -16,7 +16,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 
-import { colors, spacing, borderRadius, shadows } from '../../../theme';
 import { THEME } from '../../../utils/theme';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import CustomButton from '../../../Custom-Components/CustomButton';
@@ -25,6 +24,8 @@ import type { TransactionsStackParamList } from '../../../navigators/stacks/Tran
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type ScreenRoute = RouteProp<TransactionsStackParamList, 'PaymentSuccess'>;
+
+const { colors, spacing, radius, shadows } = THEME;
 
 const METHOD_LABEL: Record<string, string> = {
   cash: 'Cash',
@@ -97,7 +98,7 @@ const PaymentSuccessScreen: React.FC = () => {
           )}
         </View>
 
-        <View style={{ height: spacing.xl }} />
+        <View style={{ height: spacing.xxl }} />
       </ScrollView>
 
       <View style={styles.actions}>
@@ -151,52 +152,46 @@ const Row: React.FC<{ label: string; value: string }> = ({ label, value }) => (
 export default PaymentSuccessScreen;
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.md, paddingBottom: spacing.xl },
-  hero: { alignItems: 'center', paddingVertical: spacing.xl },
+  content: { padding: spacing.md, paddingBottom: spacing.xxl },
+  hero: { alignItems: 'center', paddingVertical: spacing.xxl },
   tick: {
     width: 64, height: 64, borderRadius: 32,
     backgroundColor: colors.success,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  amount: { ...THEME.typography.h1, color: colors.textPrimary, fontWeight: '800' },
+  amount: { ...THEME.typography.h1, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
   creditSplit: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 4 },
   heroSub: { ...THEME.typography.bodyMd, color: colors.textSecondary, marginTop: 2 },
 
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: borderRadius.md,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.small,
+    ...shadows.xs,
   },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   rowLabel: { ...THEME.typography.bodySm, color: colors.textSecondary },
-  rowValue: { ...THEME.typography.bodySm, color: colors.textPrimary, fontWeight: '600' },
-  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
+  rowValue: { ...THEME.typography.labelMd, color: colors.textPrimary },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
   postedNote: { ...THEME.typography.caption, color: colors.textSecondary, lineHeight: 17 },
 
-  sectionTitle: {
-    ...THEME.typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    marginBottom: spacing.xs,
-  },
+  sectionTitle: { ...THEME.form.sectionTitle, marginBottom: spacing.xs },
   billRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
-  billRowBordered: { borderTopWidth: 1, borderTopColor: colors.borderLight ?? colors.border },
-  billNumber: { ...THEME.typography.bodyMd, fontWeight: '600', color: colors.textPrimary },
+  billRowBordered: { borderTopWidth: 1, borderTopColor: colors.borderLight },
+  billNumber: { ...THEME.typography.labelLg, color: colors.textPrimary },
   billRemaining: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 1 },
-  billApplied: { ...THEME.typography.bodyMd, fontWeight: '700', color: colors.success },
-  settledNote: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: spacing.sm },
+  billApplied: { ...THEME.typography.labelLg, color: colors.success, fontVariant: ['tabular-nums'] },
+  settledNote: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
 
   actions: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     padding: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.surface,
   },
   actionSecondary: { flex: 1 },
   actionPrimary: { flex: 1.4 },

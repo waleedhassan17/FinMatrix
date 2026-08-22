@@ -565,7 +565,7 @@ const sStyles = StyleSheet.create({
     width: SCREEN_W * 0.82, backgroundColor: colors.neutral0,
     borderRadius: 24, paddingVertical: 36, paddingHorizontal: 28,
     alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 12 },
+    shadowColor: colors.neutral900, shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25, shadowRadius: 24, elevation: 20,
   },
   checkCircle: {
