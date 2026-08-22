@@ -44,6 +44,7 @@ import {
   ReportContainer,
   ReportHeader,
   Badge,
+  EmptyBlock,
   LoadingBlock,
   ErrorBlock,
 } from '../../../components/reports/ReportUI';
@@ -349,9 +350,7 @@ const InvoiceDetailScreen: React.FC = () => {
         {/* ── Payment History ─────────────────────── */}
         <Text style={styles.outerSectionTitle}>Payment History</Text>
         {payments.length === 0 ? (
-          <View style={styles.emptyPayments}>
-            <Text style={styles.emptyPaymentsText}>No payments recorded yet</Text>
-          </View>
+          <EmptyBlock icon="credit-card" title="No payments recorded yet" />
         ) : (
           payments.map((pmt: Payment) => (
             <View key={pmt.id} style={styles.paymentCard}>
@@ -626,17 +625,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.xs,
   },
-  emptyPayments: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.md,
-    alignItems: 'center',
-    ...shadows.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  emptyPaymentsText: { ...typography.bodySm, color: colors.textTertiary },
 
   paymentCard: {
     backgroundColor: colors.surface,
