@@ -603,7 +603,14 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
                   {request.reviewedAt ? new Date(request.reviewedAt).toLocaleString() : '-'}
                 </Text>
                 {!!request.reviewerComment && <Text style={styles.reviewComment}>{request.reviewerComment}</Text>}
-                {request.status === 'approved' && (
+                {request.status === 'approved' && request.reversalCreditMemoId ? (
+                  // Already reversed. Offering the button again would let a
+                  // second credit memo debit Sales twice for one sale — every
+                  // entry balanced, so nothing downstream would notice.
+                  <Text style={styles.reversedNote}>
+                    Reversed by a credit memo. Nothing further to do here.
+                  </Text>
+                ) : request.status === 'approved' && (
                   <View style={styles.undoBtnWrap}>
                     {/* A delivery that posted a sale is reversed with a credit
                         memo, not unwound — corrections reverse rather than
@@ -1022,6 +1029,11 @@ const styles = StyleSheet.create({
   reviewInfoBox: { backgroundColor: colors.background, borderRadius: radius.sm, padding: spacing.xs },
   reviewInfoText: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: 4 },
   reviewComment: { ...THEME.typography.bodyMd, color: colors.textPrimary, marginBottom: spacing.xs },
+  reversedNote: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
   undoBtnWrap: { marginTop: spacing.xs, alignSelf: 'flex-start' },
 
   emptyState: {

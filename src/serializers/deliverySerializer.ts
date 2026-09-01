@@ -187,6 +187,7 @@ export const mapInventoryUpdateRequest = (
   reviewedAt: raw.reviewedAt,
   reviewedBy: raw.reviewedBy,
   reviewerRole: raw.reviewerRole ?? null,
+  reversalCreditMemoId: (raw as any).reversalCreditMemoId ?? null,
   reviewerComment: raw.reviewerComment,
   paidStatus: (raw as any).paidStatus === 'paid' ? 'paid' : 'unpaid',
   prepaid: Boolean((raw as any).prepaid),

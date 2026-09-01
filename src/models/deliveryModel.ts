@@ -160,6 +160,12 @@ export interface InventoryUpdateRequest {
    * column existed.
    */
   reviewerRole?: string | null;
+  /**
+   * The credit memo that reversed this delivery, once one has. Present means
+   * the reversal already happened — the screen shows it instead of offering
+   * the action again.
+   */
+  reversalCreditMemoId?: string | null;
   reviewNotes?: string;
   reviewerComment?: string;
   /** Rider's PAID / NOT PAID flag — decides Cash vs A/R at approval (phase1.md). */

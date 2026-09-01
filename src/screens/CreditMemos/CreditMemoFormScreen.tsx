@@ -141,10 +141,19 @@ const CreditMemoFormScreen: React.FC = () => {
         // in the same action — otherwise the invoice keeps showing a balance
         // beside a floating credit and the customer appears to owe money they
         // do not. The server applies only what the invoice can absorb.
-        ...(reversal?.originalInvoiceId
+        ...(reversal
           ? {
-              originalInvoiceId: reversal.originalInvoiceId,
-              applyToInvoiceId: reversal.originalInvoiceId,
+              originalInvoiceId: reversal.originalInvoiceId ?? undefined,
+              // A credit sale still owes money, so the credit clears the
+              // invoice. A prepaid one has nothing left to settle, so the
+              // money goes back out as cash — without this the credit would
+              // leave accounts receivable negative until somebody raised a
+              // separate refund.
+              ...(reversal.settlement === 'apply_to_invoice'
+                ? { applyToInvoiceId: reversal.originalInvoiceId ?? undefined }
+                : { refundRemainderToCash: true }),
+              // Recorded on the delivery so it cannot be reversed twice.
+              reversesDeliveryRequestId: reversal.deliveryRequestId,
             }
           : {}),
         lines: valid.map(l => ({
@@ -187,11 +196,12 @@ const CreditMemoFormScreen: React.FC = () => {
                 ? 'The owner approves this before anything is credited.'
                 : 'This credits the customer and settles the invoice.'}
               {' '}
-              {Number(reversal.invoiceBalance) > 0
-                ? 'The invoice will be settled by this credit.'
-                // A prepaid delivery has nothing left to settle, so the credit
-                // is left available rather than silently doing nothing.
-                : 'That invoice is already paid, so the credit stays available to refund.'}
+              {reversal.settlement === 'apply_to_invoice'
+                ? `This settles invoice ${reversal.invoiceNumber ?? ''}.`
+                // Prepaid or collected at the door: the customer has the goods
+                // and the business has their money, so reversing means giving
+                // it back.
+                : 'That invoice is already paid, so this refunds the customer in cash.'}
             </Text>
             <Text style={styles.reversalBody}>
               Remove or reduce a line if the customer kept part of the delivery.

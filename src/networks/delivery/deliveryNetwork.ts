@@ -444,6 +444,14 @@ export interface DeliveryCreditMemoDraft {
   invoiceNumber: string | null;
   /** Zero when the delivery was prepaid or already collected. */
   invoiceBalance: string;
+  /**
+   * How the credit settles. A credit sale still owes money, so it clears the
+   * invoice; a prepaid or doorstep-collected delivery has nothing left to
+   * settle, so the money goes back out as cash rather than leaving accounts
+   * receivable negative.
+   */
+  settlement: 'apply_to_invoice' | 'refund_cash';
+  settlementAmount: string;
   date: string;
   reason: string;
   lines: Array<{
