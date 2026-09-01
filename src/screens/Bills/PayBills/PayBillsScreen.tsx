@@ -60,6 +60,8 @@ import { DateField, ReportHeader, HEADER_NAVY, LoadingBlock } from '../../../com
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
+import Toast from 'react-native-toast-message';
+import { useCapability } from '../../../hooks/useCapability';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -255,6 +257,10 @@ const PayBillsScreen: React.FC = () => {
     ]);
   }, [pickImage, pickDocument]);
 
+  // Cash leaving the bank: staff send it to the owner, who approves before
+  // any money moves.
+  const payCap = useCapability('bill.pay');
+
   const handleSave = useCallback(async () => {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -269,8 +275,23 @@ const PayBillsScreen: React.FC = () => {
 
     try {
       const reference = form.reference || generatePaymentNumber();
-      await dispatch(savePayment({ paymentNumber: reference, allocations })).unwrap();
+      const saved: any = await dispatch(
+        savePayment({ paymentNumber: reference, allocations }),
+      ).unwrap();
       await dispatch(fetchBills());
+
+      // Paying a bill is the cash-out moment, so staff file a request instead.
+      // No money has moved, so the payment RECEIPT below would be a lie — and
+      // worse, it reads as proof the supplier was paid.
+      if (saved?.data?.pending ?? saved?.pending) {
+        Toast.show({
+          type: 'success',
+          text1: 'Sent to the owner for approval',
+          text2: 'The bill stays unpaid until they approve the payment.',
+        });
+        navigation.goBack();
+        return;
+      }
 
       // `replace`, not `navigate`: the receipt takes this screen's place so
       // Back cannot return to a filled-in form and post the payment twice.
@@ -660,7 +681,11 @@ const PayBillsScreen: React.FC = () => {
                   returns before calling the API — so there is nothing to
                   evidence and demanding a receipt would just block it. */}
               <PrimaryButton
-                title={form.isSaving ? 'Recording…' : 'Record Payment'}
+                title={
+                  form.isSaving
+                    ? 'Recording…'
+                    : payCap.submitLabel('Record Payment')
+                }
                 onPress={handleSave}
                 isLoading={form.isSaving}
                 disabled={form.isSaving || (needsProof && !proof.id)}

@@ -246,6 +246,19 @@ const POFormScreen: React.FC = () => {
         if (saved) dispatch(upsertPurchaseOrder(saved));
         await dispatch(fetchPurchaseOrders());
 
+        // Staff get a pending request back instead of a PO. Nothing exists
+        // yet — a PO posts nothing either way, which is exactly why gating it
+        // is safe — so navigating to a PODetail that has no row would 404.
+        if ((saved as any)?.pending) {
+          Toast.show({
+            type: 'success',
+            text1: 'Sent to the owner for approval',
+            text2: 'The purchase order is created once they approve it.',
+          });
+          navigation.goBack();
+          return;
+        }
+
         // The PO number comes back from the server — the form never had one.
         const ref = saved?.poNumber ?? 'The purchase order';
         if (sendFailed) {
