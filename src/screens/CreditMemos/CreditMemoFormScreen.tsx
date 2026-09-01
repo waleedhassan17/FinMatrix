@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -10,6 +10,11 @@ import { fetchCustomers, selectCustomers } from '../Customers/CustomerList/custo
 import { selectInventoryItems, fetchInventoryItems } from '../Inventory/InventoryList/inventoryListSlice';
 import { selectFeatures } from '../Auth/authSlice';
 import { createCreditMemoAPI } from '../../networks/sales/creditMemoNetwork';
+import {
+  fetchCreditMemoDraft,
+  type DeliveryCreditMemoDraft,
+} from '../../networks/delivery/deliveryNetwork';
+import { useCapability } from '../../hooks/useCapability';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
@@ -20,13 +25,18 @@ import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
+type FormRoute = RouteProp<TransactionsStackParamList, 'CreditMemoForm'>;
 interface LineDraft { itemId: string; description: string; quantity: string; unitPrice: string; taxRate: string; }
 const blankLine = (): LineDraft => ({ itemId: '', description: '', quantity: '1', unitPrice: '0', taxRate: '0' });
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
 const CreditMemoFormScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<FormRoute>();
   const dispatch = useAppDispatch();
+  // Reversing an approved delivery: the form arrives pre-filled from the
+  // delivery's own figures rather than making somebody re-key them.
+  const fromDeliveryRequestId = route.params?.fromDeliveryRequestId;
   const customers = useAppSelector(selectCustomers);
   const inventory = useAppSelector(selectInventoryItems);
 
@@ -35,8 +45,12 @@ const CreditMemoFormScreen: React.FC = () => {
   const [reason, setReason] = useState('');
   const [lines, setLines] = useState<LineDraft[]>([blankLine()]);
   const [saving, setSaving] = useState(false);
+  const [reversal, setReversal] = useState<DeliveryCreditMemoDraft | null>(null);
+  const [loadingDraft, setLoadingDraft] = useState(!!fromDeliveryRequestId);
 
   const features = useAppSelector(selectFeatures);
+  // Staff prepare the reversal; the owner approves it before anything posts.
+  const memoCap = useCapability('creditMemo.manage');
 
   useEffect(() => {
     dispatch(fetchCustomers());
@@ -47,6 +61,50 @@ const CreditMemoFormScreen: React.FC = () => {
       dispatch(fetchInventoryItems());
     }
   }, [dispatch, features?.inventory]);
+
+  // Seed the form from the delivery being reversed. Fetched by id so the draft
+  // is always current — a serialised payload sitting in a navigation param
+  // could be minutes old by the time somebody submits it.
+  useEffect(() => {
+    if (!fromDeliveryRequestId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const draft = await fetchCreditMemoDraft(fromDeliveryRequestId);
+        if (cancelled) return;
+        setReversal(draft);
+        setCustomerId(draft.customerId);
+        setDate(draft.date);
+        setReason(draft.reason);
+        setLines(
+          draft.lines.length
+            ? draft.lines.map(l => ({
+                itemId: l.itemId,
+                description: l.description,
+                quantity: l.quantity,
+                unitPrice: l.unitPrice,
+                taxRate: l.taxRate,
+              }))
+            : [blankLine()],
+        );
+      } catch (e: any) {
+        if (cancelled) return;
+        // The server refuses a delivery that never posted a sale. Say why and
+        // go back rather than leaving a blank form that looks ready to use.
+        Toast.show({
+          type: 'error',
+          text1: 'Cannot reverse this delivery',
+          text2: e?.message ?? 'Please try again.',
+        });
+        navigation.goBack();
+      } finally {
+        if (!cancelled) setLoadingDraft(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fromDeliveryRequestId, navigation]);
 
   // Linking an inventory item restocks the returned quantity and reverses its
   // cost out of COGS on the backend. Auto-fills description + price.
@@ -77,13 +135,34 @@ const CreditMemoFormScreen: React.FC = () => {
     if (valid.length === 0) { Toast.show({ type: 'error', text1: 'No items', text2: 'Add at least one credited item.' }); return; }
     setSaving(true);
     try {
-      await createCreditMemoAPI({
+      const res: any = await createCreditMemoAPI({
         customerId, date, reason: reason || undefined,
+        // Tie the credit to the invoice it reverses, and settle that invoice
+        // in the same action — otherwise the invoice keeps showing a balance
+        // beside a floating credit and the customer appears to owe money they
+        // do not. The server applies only what the invoice can absorb.
+        ...(reversal?.originalInvoiceId
+          ? {
+              originalInvoiceId: reversal.originalInvoiceId,
+              applyToInvoiceId: reversal.originalInvoiceId,
+            }
+          : {}),
         lines: valid.map(l => ({
           description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, taxRate: l.taxRate,
           ...(l.itemId ? { itemId: l.itemId } : {}),
         })),
       });
+
+      // Staff get a pending request, not a credit memo. Nothing has reversed
+      // yet, and saying otherwise would have them believe the customer had
+      // been credited.
+      if (res?.data?.pending ?? res?.pending) {
+        Toast.show({
+          type: 'success',
+          text1: 'Sent to the owner for approval',
+          text2: 'Nothing is credited until they approve it.',
+        });
+      }
       navigation.goBack();
     } catch (e: any) { Toast.show({ type: 'error', text1: 'Save failed', text2: e?.message ?? 'Could not save credit memo' }); }
     finally { setSaving(false); }
@@ -91,11 +170,52 @@ const CreditMemoFormScreen: React.FC = () => {
 
   return (
     <ReportContainer>
-      <ReportHeader title="New Credit Memo" subtitle="Customer credit / return" onBack={() => navigation.goBack()} />
+      <ReportHeader
+        title={reversal ? 'Reverse Delivery' : 'New Credit Memo'}
+        subtitle={reversal ? 'Credit the customer back' : 'Customer credit / return'}
+        onBack={() => navigation.goBack()}
+      />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {!!reversal && (
+          <View style={styles.reversalBanner}>
+            <Text style={styles.reversalTitle}>
+              Reversing delivery {reversal.deliveryReference ?? ''}
+              {reversal.invoiceNumber ? ` · invoice ${reversal.invoiceNumber}` : ''}
+            </Text>
+            <Text style={styles.reversalBody}>
+              {memoCap.needsApproval
+                ? 'The owner approves this before anything is credited.'
+                : 'This credits the customer and settles the invoice.'}
+              {' '}
+              {Number(reversal.invoiceBalance) > 0
+                ? 'The invoice will be settled by this credit.'
+                // A prepaid delivery has nothing left to settle, so the credit
+                // is left available rather than silently doing nothing.
+                : 'That invoice is already paid, so the credit stays available to refund.'}
+            </Text>
+            <Text style={styles.reversalBody}>
+              Remove or reduce a line if the customer kept part of the delivery.
+            </Text>
+          </View>
+        )}
         <Card>
-          <CustomDropdown label="Customer" placeholder="Select customer"
-            options={customers.map((c: any) => ({ label: c.name, value: c.id }))} value={customerId} onChange={setCustomerId} />
+          {reversal ? (
+            // Read-only rather than a disabled dropdown: a credit can only
+            // settle its own customer's invoice, and the server enforces it —
+            // offering the choice would only let someone pick a value that
+            // gets rejected.
+            <View style={styles.lockedField}>
+              <Text style={styles.lockedLabel}>Customer</Text>
+              <Text style={styles.lockedValue}>
+                {reversal.customerName ??
+                  customers.find((c: any) => c.id === customerId)?.name ??
+                  'Customer on the delivery'}
+              </Text>
+            </View>
+          ) : (
+            <CustomDropdown label="Customer" placeholder="Select customer"
+              options={customers.map((c: any) => ({ label: c.name, value: c.id }))} value={customerId} onChange={setCustomerId} />
+          )}
           <DateField label="Date" value={date} onChangeText={setDate} />
           <CustomInput label="Reason" value={reason} onChangeText={setReason} placeholder="e.g. returned goods" />
         </Card>
@@ -128,7 +248,15 @@ const CreditMemoFormScreen: React.FC = () => {
           <Row label="Total Credit" value={rs(totals.total)} strong />
         </Card>
 
-        <CustomButton title="Issue Credit Memo" onPress={save} isLoading={saving} fullWidth />
+        <CustomButton
+          title={memoCap.submitLabel(reversal ? 'Reverse Delivery' : 'Issue Credit Memo')}
+          onPress={save}
+          // Submitting before the draft lands would post a blank memo against
+          // the delivery it is meant to reverse.
+          isLoading={saving || loadingDraft}
+          disabled={saving || loadingDraft}
+          fullWidth
+        />
         <View style={{ height: 24 }} />
       </ScrollView>
     </ReportContainer>
@@ -143,6 +271,25 @@ const Row: React.FC<{ label: string; value: string; strong?: boolean }> = ({ lab
 );
 
 const styles = StyleSheet.create({
+  reversalBanner: {
+    backgroundColor: THEME.colors.warningLighter,
+    borderRadius: THEME.radius.md,
+    padding: THEME.spacing.md,
+    marginBottom: THEME.spacing.md,
+  },
+  reversalTitle: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
+  reversalBody: {
+    ...THEME.typography.bodySm,
+    color: THEME.colors.textSecondary,
+    marginTop: 4,
+  },
+  lockedField: { marginBottom: THEME.spacing.md },
+  lockedLabel: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
+  lockedValue: {
+    ...THEME.typography.bodyMd,
+    color: THEME.colors.textPrimary,
+    marginTop: 4,
+  },
   content: { padding: 16, gap: 14 },
   lineWrap: { gap: 6, marginBottom: 6 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },

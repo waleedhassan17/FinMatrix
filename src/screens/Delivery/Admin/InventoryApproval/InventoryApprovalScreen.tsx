@@ -72,6 +72,14 @@ const statusColor = (status: InventoryUpdateRequest['status']) => {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isSyncedRequest = (id: string) => UUID_RE.test(id);
 
+/**
+ * True once approval has posted the sale (Dr Cash-or-A/R / Cr Sales,
+ * Dr COGS / Cr Goods in Transit). Those are reversed with a credit memo;
+ * legacy deliveries, which never posted one, keep the old stock-only undo.
+ */
+const isLedgerCommitted = (request: InventoryUpdateRequest): boolean =>
+  request.ledgerStatus === 'committed';
+
 const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [isPullRefreshing, setIsPullRefreshing] = React.useState(false);
@@ -275,6 +283,29 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
    * ledger-committed, in which case the honest route is a credit memo (which
    * staff can also request). That message is surfaced rather than swallowed.
    */
+  /**
+   * Once a delivery has posted its sale, the correction is a credit memo —
+   * which is what undoApproval has always said, without doing anything about
+   * it. The form arrives pre-filled from the delivery's own figures.
+   */
+  const openReversal = (request: InventoryUpdateRequest) => {
+    if (!isSyncedRequest(request.id)) {
+      Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again.");
+      return;
+    }
+    // The credit memo form lives in the Transactions tab, and this screen is
+    // registered in the More tab of BOTH navigators — so the hop goes through
+    // the parent tab navigator. Typed locally rather than cast to `never`,
+    // which would hide a genuine mistake in the route name or params.
+    const tabs = (navigation.getParent() ?? navigation) as unknown as {
+      navigate: (name: string, params?: Record<string, unknown>) => void;
+    };
+    tabs.navigate('TransactionsStack', {
+      screen: 'CreditMemoForm',
+      params: { fromDeliveryRequestId: request.id },
+    });
+  };
+
   const requestUndo = (request: InventoryUpdateRequest) => {
     setTargetRequest(request);
     setUndoReason('');
@@ -574,9 +605,24 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
                 {!!request.reviewerComment && <Text style={styles.reviewComment}>{request.reviewerComment}</Text>}
                 {request.status === 'approved' && (
                   <View style={styles.undoBtnWrap}>
+                    {/* A delivery that posted a sale is reversed with a credit
+                        memo, not unwound — corrections reverse rather than
+                        delete. Same route for both roles; what differs is only
+                        whether submitting posts or asks. A legacy delivery
+                        never recognised revenue, so it keeps the old undo. */}
                     <CustomButton
-                      title={isOwner ? 'Undo Approval' : 'Request undo'}
-                      onPress={() => promptUndo(request)}
+                      title={
+                        isLedgerCommitted(request)
+                          ? 'Reverse with credit memo'
+                          : isOwner
+                            ? 'Undo Approval'
+                            : 'Request undo'
+                      }
+                      onPress={() =>
+                        isLedgerCommitted(request)
+                          ? openReversal(request)
+                          : promptUndo(request)
+                      }
                       variant="danger"
                       size="sm"
                     />
