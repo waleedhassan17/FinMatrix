@@ -104,11 +104,20 @@ describe('RevenueTrendCard — the chart is the calendar, not the data', () => {
     expect(drawnText(render(null))).toContain('Revenue history unavailable');
   });
 
-  it('puts the only month on the right and leaves the rest as empty stubs', () => {
+  it('puts the only month in ITS slot and leaves the rest as empty stubs', () => {
     const cols = columns(render(ONE_MONTH));
-    // Disabled === no data. Four quiet months, then the one that earned.
+    // Disabled === no data. Four quiet months, and the one that earned.
     expect(cols.filter(c => c.props.accessibilityState.disabled)).toHaveLength(WINDOW_MONTHS - 1);
-    expect(cols[WINDOW_MONTHS - 1].props.accessibilityState.disabled).toBe(false);
+
+    // Found by LABEL, not by index. The window is the five months ending
+    // today, so where 'Aug 26' sits depends on when the suite runs: it was the
+    // rightmost slot through August 2026 and moved along on 1 September, which
+    // is what used to break this test every month. The component was right the
+    // whole time — a series that ends before the current month is the normal
+    // case, since this month has usually earned nothing yet.
+    const earned = cols.filter(c => !c.props.accessibilityState.disabled);
+    expect(earned).toHaveLength(1);
+    expect(earned[0].props.accessibilityLabel).toContain('Aug');
   });
 
   it('labels every slot, including the months with nothing in them', () => {
