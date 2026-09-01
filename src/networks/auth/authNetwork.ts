@@ -75,11 +75,14 @@ export const authLogin = async ({
   signInInfo: SignInPayload;
 }) => {
   try {
+    // `identifier` accepts a username OR an email. `email` is still sent so a
+    // server that predates the username login keeps working.
+    const identifier = signInInfo.email.trim();
     const response = await api.post('/auth/signin', {
-      email: signInInfo.email.trim(),
+      identifier,
+      email: identifier,
       password: signInInfo.password,
     });
-    console.log('[authLogin] response.data:', JSON.stringify(response.data, null, 2));
     const responseData = response.data?.data ?? response.data;
     const { user: backendUser, tokens, companyId, companyStatus, companyType, features } = responseData;
     if (!tokens?.accessToken) {
@@ -117,7 +120,13 @@ export const authLogin = async ({
   }
 };
 
-// ─── Delivery Login (email-based, same endpoint) ─────
+// ─── Username login (staff and delivery riders) ──────
+//
+// Owner-created accounts sign in with a username, never an email: the owner
+// creates them and hands the credentials over, so there is no inbox involved.
+// Same endpoint and same response shape as the owner's email login — the
+// SERVER decides the role from the account, so the tab the user picked on the
+// sign-in screen sets expectations but never authority.
 
 export const authDeliveryLogin = async ({
   signInInfo,
@@ -125,14 +134,15 @@ export const authDeliveryLogin = async ({
   signInInfo: DeliverySignInPayload;
 }) => {
   try {
-    // Backend uses email-based login for delivery too
+    const identifier = signInInfo.username.trim();
     const response = await api.post('/auth/signin', {
-      email: signInInfo.username.trim(),
+      identifier,
+      email: identifier,
       password: signInInfo.password,
     });
-    console.log('[authDeliveryLogin] response.data:', JSON.stringify(response.data, null, 2));
     const responseData = response.data?.data ?? response.data;
-    const { user: backendUser, tokens, companyId } = responseData;
+    const { user: backendUser, tokens, companyId, companyStatus, companyType, features } =
+      responseData;
     if (!tokens?.accessToken) {
       throw new Error('Login succeeded but no token received. Please try again.');
     }
@@ -140,7 +150,10 @@ export const authDeliveryLogin = async ({
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
-    const user = mapUser(backendUser);
+    // Staff need companyStatus/companyType/features exactly as an owner does —
+    // they mount a company navigator and their tier gates the same rows. The
+    // rider path never used them, which is why they were dropped here.
+    const user = mapUser(backendUser, companyStatus, { companyType, features });
     return { data: user };
   } catch (e: any) {
     console.warn('[authDeliveryLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);

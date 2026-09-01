@@ -20,6 +20,7 @@ import type { RootStackParamList } from '../../types';
 import BaseNavigator from '../../navigators/BaseNavigator';
 import AdminTabNavigator from '../../navigators/AdminTabNavigator';
 import DeliveryTabNavigator from '../../navigators/DeliveryTabNavigator';
+import StaffTabNavigator from '../../navigators/StaffTabNavigator';
 import SuperAdminNavigator from '../../navigators/SuperAdminNavigator';
 import SmallBusinessNavigator from '../../navigators/tiers/SmallBusinessNavigator';
 import LargeOrgNavigator from '../../navigators/tiers/LargeOrgNavigator';
@@ -133,6 +134,15 @@ export const AppContainer: React.FC = () => {
     }
     if (user.role === 'delivery') {
       return <DeliveryTabNavigator key="delivery" />;
+    }
+    // Staff belong to a company like an owner does, but they get their own
+    // navigator rather than the owner's with items hidden — StaffMoreStack
+    // simply does not register Settings, User management, Chart of Accounts or
+    // the approvals inbox, so those screens are unreachable rather than merely
+    // invisible. Placed before the tier block because the role decides the app,
+    // and the company's tier only decides what is inside it.
+    if (user.role === 'staff') {
+      return <StaffTabNavigator key="staff" />;
     }
 
     const companyStatus = user.companyStatus ?? null;

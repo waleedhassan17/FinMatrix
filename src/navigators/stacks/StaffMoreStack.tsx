@@ -1,23 +1,13 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — MoreStack (dumb mapper over navigations-maps/More)
+// FinMatrix — StaffMoreStack (dumb mapper over navigations-maps/StaffMore)
 // ═══════════════════════════════════════════════════════
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { MORE_ROUTES } from '../../navigations-maps/More';
+import { STAFF_MORE_ROUTES } from '../../navigations-maps/StaffMore';
 
-export type MoreStackParamList = {
-  MoreHub: undefined;
-  EmployeeList: undefined;
-  EmployeeForm: { employeeId?: string } | undefined;
-  PayrollRunList: undefined;
-  PayrollRunDetail: { payrollRunId: string };
-  COAList: undefined;
-  COAForm: { accountId?: string } | undefined;
-  COADetail: { accountId: string };
-  AgencyList: undefined;
-  AgencyDetail: { agencyId: string };
-  AgencyForm: { agencyId?: string } | undefined;
-  AgencyInventorySync: { agencyId: string };
+export type StaffMoreStackParamList = {
+  StaffMoreHub: undefined;
+  MyRequests: undefined;
   CustomerList: undefined;
   CustomerDetail: { customerId: string };
   CustomerForm: { customerId?: string } | undefined;
@@ -36,24 +26,15 @@ export type MoreStackParamList = {
   BankReconciliationList: undefined;
   BankReconciliation: { accountId: string; accountName: string };
   BankReconciliationDetail: { reconciliationId: string };
-  TaxSettings: undefined;
   TaxLiability: undefined;
-  TaxPayment: { taxRateId?: string } | undefined;
-  Settings: undefined;
-  CompanyProfile: undefined;
-  UserManagement: undefined;
-  StaffApprovals: undefined;
-  CompanySwitcher: undefined;
   GlobalSearch: undefined;
-  RenewSubscription: { mode?: 'renew' | 'change' } | undefined;
-  SubscriptionPay: { plan: 'standard' | 'pro'; mode?: 'renew' | 'change' };
 };
 
 const Stack = createNativeStackNavigator();
 
-const MoreStack: React.FC = () => (
-  <Stack.Navigator id="MoreStack" screenOptions={{ headerShown: false }}>
-    {MORE_ROUTES.map(route => (
+const StaffMoreStack: React.FC = () => (
+  <Stack.Navigator id="StaffMoreStack" screenOptions={{ headerShown: false }}>
+    {STAFF_MORE_ROUTES.map(route => (
       <Stack.Screen
         key={route.title}
         name={route.title}
@@ -64,4 +45,4 @@ const MoreStack: React.FC = () => (
   </Stack.Navigator>
 );
 
-export default MoreStack;
+export default StaffMoreStack;

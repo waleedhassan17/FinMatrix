@@ -51,6 +51,7 @@ import { assignWorkSlice } from '../screens/Delivery/Admin/AssignWork/assignWork
 import { deliveryMonitorSlice } from '../screens/Delivery/Admin/DeliveryMonitor/deliveryMonitorSlice';
 import { adminDeliveryDetailSlice } from '../screens/Delivery/Admin/AdminDeliveryDetail/adminDeliveryDetailSlice';
 import { inventoryApprovalSlice } from '../screens/Delivery/Admin/InventoryApproval/inventoryApprovalSlice';
+import { approvalsSlice } from '../screens/Approvals/approvalsSlice';
 import { adminDashboardSlice } from '../screens/HomeScreen/adminDashboardSlice';
 import { superAdminSlice } from '../screens/SuperAdmin/superAdminSlice';
 import { coaListSlice } from '../screens/ChartOfAccounts/COAList/coaListSlice';
@@ -163,6 +164,8 @@ const rootReducer = combineReducers({
   deliveryMonitor: deliveryMonitorSlice.reducer,
   adminDeliveryDetail: adminDeliveryDetailSlice.reducer,
   inventoryApproval: inventoryApprovalSlice.reducer,
+  // Staff requests awaiting the owner: the inbox and "My requests" share it.
+  approvals: approvalsSlice.reducer,
   delivery: deliverySlice.reducer,
   adminDashboard: adminDashboardSlice.reducer,
   superAdmin: superAdminSlice.reducer,

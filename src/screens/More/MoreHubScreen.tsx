@@ -1,16 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../utils/theme';
-import { useAppSelector } from '../../hooks/useReduxHooks';
+import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { selectFeatures, selectUser } from '../Auth/authSlice';
 import { isFeatureVisible } from '../../utils/featureGates';
 import { selectCustomers } from '../Customers/CustomerList/customerListSlice';
 import { selectVendors } from '../Vendors/VendorList/vendorListSlice';
 import { selectUnassignedDeliveries } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
+import {
+  fetchPendingCount,
+  selectPendingApprovalCount,
+} from '../Approvals/approvalsSlice';
 import NotificationBadge from '../../components/shared/NotificationBadge';
 import { ReportContainer, ReportHeader, HEADER_NAVY } from '../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
@@ -136,6 +140,26 @@ const SECTIONS: MoreSection[] = [
     ]
   },
   {
+    title: 'TEAM',
+    rows: [
+      {
+        key: 'approvals', icon: 'check-square', iconBg: IC.amberBg, iconColor: IC.amber,
+        label: 'Staff approvals',
+        subtitle: 'Decide what your staff have sent you',
+        badgeSelector: 'approvals',
+        onPress: nav => nav.navigate('StaffApprovals'),
+        feature: 'multiUser',
+      },
+      {
+        key: 'users', icon: 'user-check', iconBg: IC.indigoBg, iconColor: IC.indigo,
+        label: 'User management',
+        subtitle: 'Add staff, set roles & share logins',
+        onPress: nav => nav.navigate('UserManagement'),
+        feature: 'multiUser',
+      },
+    ]
+  },
+  {
     title: 'SYSTEM',
     rows: [
       {
@@ -165,12 +189,23 @@ const MoreHubScreen: React.FC = () => {
   const customerCount = useAppSelector(selectCustomers).length;
   const vendorCount = useAppSelector(selectVendors).length;
   const pendingDeliveries = useAppSelector(selectUnassignedDeliveries).length;
+  const pendingApprovals = useAppSelector(selectPendingApprovalCount);
+
+  // Refresh the badge whenever the hub comes back into view, so a request that
+  // arrived while the owner was elsewhere shows up without a manual reload.
+  const dispatch = useAppDispatch();
+  useFocusEffect(
+    React.useCallback(() => {
+      dispatch(fetchPendingCount());
+    }, [dispatch]),
+  );
 
   const getBadge = (key: string): number => {
     switch (key) {
       case 'customers': return customerCount;
       case 'vendors': return vendorCount;
       case 'delivery': return pendingDeliveries;
+      case 'approvals': return pendingApprovals;
       default: return 0;
     }
   };

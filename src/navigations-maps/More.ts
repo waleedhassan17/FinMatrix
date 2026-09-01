@@ -42,6 +42,7 @@ import TaxPaymentScreen from '../screens/Tax/TaxPayment/TaxPaymentScreen';
 import SettingsScreen from '../screens/Settings/SettingsMain/SettingsScreen';
 import CompanyProfileScreen from '../screens/Settings/CompanyProfile/CompanyProfileScreen';
 import UserManagementScreen from '../screens/Settings/UserManagement/UserManagementScreen';
+import StaffApprovalsScreen from '../screens/Approvals/StaffApprovalsScreen';
 import CompanySwitcherScreen from '../screens/Settings/CompanySwitcher/CompanySwitcherScreen';
 import GlobalSearchScreen from '../screens/GlobalSearch/GlobalSearchScreen';
 import RenewSubscriptionScreen from '../screens/Subscription/RenewSubscriptionScreen';
@@ -84,6 +85,7 @@ export const MoreRouteNames = {
   Settings: 'Settings',
   CompanyProfile: 'CompanyProfile',
   UserManagement: 'UserManagement',
+  StaffApprovals: 'StaffApprovals',
   CompanySwitcher: 'CompanySwitcher',
   GlobalSearch: 'GlobalSearch',
   RenewSubscription: 'RenewSubscription',
@@ -136,6 +138,7 @@ export const MORE_ROUTES: IRoute[] = [
   { title: MoreRouteNames.Settings, component: SettingsScreen },
   { title: MoreRouteNames.CompanyProfile, component: CompanyProfileScreen },
   { title: MoreRouteNames.UserManagement, component: UserManagementScreen },
+  { title: MoreRouteNames.StaffApprovals, component: StaffApprovalsScreen },
   { title: MoreRouteNames.CompanySwitcher, component: CompanySwitcherScreen },
   { title: MoreRouteNames.GlobalSearch, component: GlobalSearchScreen },
   { title: MoreRouteNames.RenewSubscription, component: RenewSubscriptionScreen },
