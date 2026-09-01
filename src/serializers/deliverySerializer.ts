@@ -186,6 +186,7 @@ export const mapInventoryUpdateRequest = (
   shadowStatus: raw.shadowStatus ?? 'pending',
   reviewedAt: raw.reviewedAt,
   reviewedBy: raw.reviewedBy,
+  reviewerRole: raw.reviewerRole ?? null,
   reviewerComment: raw.reviewerComment,
   paidStatus: (raw as any).paidStatus === 'paid' ? 'paid' : 'unpaid',
   prepaid: Boolean((raw as any).prepaid),

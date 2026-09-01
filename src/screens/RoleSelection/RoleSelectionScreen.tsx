@@ -148,15 +148,19 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => handleRoleSelect('admin')}
           />
 
+          {/* One card for both owner-created roles. Staff and riders are
+              created BY a company — they never sign themselves up — and both
+              sign in with a username and password handed to them, so they
+              share an entry point and pick their portal on the next screen. */}
           <RoleCard
-            letter="D"
+            letter="U"
             letterBg={BRAND.blueLight}
             letterColor={BRAND.blue}
             accentColor={BRAND.blue}
-            title="Delivery Personnel"
-            subtitle="Delivery Operations"
-            description="View and manage assigned deliveries, capture customer signatures, update delivery status, and sync inventory records."
-            onPress={() => handleRoleSelect('delivery')}
+            title="User"
+            subtitle="Staff & Delivery Personnel"
+            description="Sign in with the username and password your company gave you. Staff run day-to-day sales and warehouse work; riders manage their assigned deliveries."
+            onPress={() => handleRoleSelect('staff')}
           />
         </View>
 

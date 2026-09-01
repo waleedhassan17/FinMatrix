@@ -23,6 +23,10 @@
 // StaffApprovals screen above.
 
 import type { IRoute } from './types';
+import {
+  StaffMoreRouteNames,
+  type StaffMoreRouteName,
+} from './staffMoreRouteNames';
 import { isFeatureEnabled } from '../utils/featureGates';
 import StaffMoreHubScreen from '../screens/More/StaffMoreHubScreen';
 import CustomerListScreen from '../screens/Customers/CustomerList/CustomerListScreen';
@@ -47,35 +51,14 @@ import TaxLiabilityScreen from '../screens/Tax/TaxLiability/TaxLiabilityScreen';
 import GlobalSearchScreen from '../screens/GlobalSearch/GlobalSearchScreen';
 import MyRequestsScreen from '../screens/Approvals/MyRequestsScreen';
 
-export const StaffMoreRouteNames = {
-  StaffMoreHub: 'StaffMoreHub',
-  MyRequests: 'MyRequests',
-  CustomerList: 'CustomerList',
-  CustomerDetail: 'CustomerDetail',
-  CustomerForm: 'CustomerForm',
-  VendorList: 'VendorList',
-  VendorDetail: 'VendorDetail',
-  VendorForm: 'VendorForm',
-  AssignDeliveries: 'AssignDeliveries',
-  CreateDelivery: 'CreateDelivery',
-  AssignWork: 'AssignWork',
-  DeliveryMonitor: 'DeliveryMonitor',
-  AdminDeliveryDetail: 'AdminDeliveryDetail',
-  InventoryApproval: 'InventoryApproval',
-  DeliveryPersonnelList: 'DeliveryPersonnelList',
-  AddDeliveryPersonnel: 'AddDeliveryPersonnel',
-  DeliveryPersonnelDetail: 'DeliveryPersonnelDetail',
-  BankReconciliationList: 'BankReconciliationList',
-  BankReconciliation: 'BankReconciliation',
-  BankReconciliationDetail: 'BankReconciliationDetail',
-  TaxLiability: 'TaxLiability',
-  GlobalSearch: 'GlobalSearch',
-} as const;
+/**
+ * Each entry pairs an allow-listed NAME with its screen. `title` is typed as
+ * StaffMoreRouteName, so registering a route that is not on the allow-list in
+ * staffMoreRouteNames.ts is a compile error rather than a silent leak.
+ */
+type StaffRoute = IRoute & { title: StaffMoreRouteName };
 
-export type StaffMoreRouteName =
-  typeof StaffMoreRouteNames[keyof typeof StaffMoreRouteNames];
-
-export const STAFF_MORE_ROUTES: IRoute[] = [
+export const STAFF_MORE_ROUTES: StaffRoute[] = [
   { title: StaffMoreRouteNames.StaffMoreHub, component: StaffMoreHubScreen },
   { title: StaffMoreRouteNames.MyRequests, component: MyRequestsScreen },
 
@@ -109,3 +92,6 @@ export const STAFF_MORE_ROUTES: IRoute[] = [
   { title: StaffMoreRouteNames.TaxLiability, component: TaxLiabilityScreen },
   { title: StaffMoreRouteNames.GlobalSearch, component: GlobalSearchScreen },
 ];
+
+export { StaffMoreRouteNames };
+export type { StaffMoreRouteName };

@@ -237,6 +237,11 @@ const appReducer: typeof rootReducer = (state, action) => {
 const persistConfig = {
   key: 'finmatrix-root',
   storage: AsyncStorage,
+  // DO NOT add `userManagement` here. It holds the one-time reveal of a
+  // password the owner just issued to a staff member or rider, and persisting
+  // it would write plaintext credentials into AsyncStorage — where they would
+  // outlive the screen, the session, and any reason to keep them. The same
+  // goes for `approvals`, which is server state with nothing worth caching.
   whitelist: ['auth', 'company', 'inventoryApproval', 'createCompany'],
   stateReconciler: autoMergeLevel2 as any,
 };
