@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   TextInput,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -66,6 +67,7 @@ const ROLE_STYLE: Record<'admin' | 'staff', { bg: string; fg: string; label: str
  * Accounts are deactivated, never deleted: the ledger references them.
  */
 const UserManagementScreen: React.FC = () => {
+  const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(selectUser);
   const users = useAppSelector(selectUsers);
@@ -167,6 +169,7 @@ const UserManagementScreen: React.FC = () => {
       <ReportHeader
         title="User management"
         subtitle="Your owners and staff"
+        onBack={() => navigation.goBack()}
       />
 
       <FlatList

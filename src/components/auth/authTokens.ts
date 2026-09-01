@@ -51,8 +51,15 @@ export const AUTH = {
     400: '#94A3B8', // placeholder / muted
   },
 
-  line: '#E5E9EF',
-  lineStrong: '#D3DAE3',
+  // Same hairline as THEME.colors.border — kept as a literal because this file
+  // defines the auth palette and must not import the app theme. These two were
+  // '#E5E9EF' and '#E4E9EF': indistinguishable, and both too light to see.
+  line: '#D3DAE3',
+  // One step darker again, because `line` moved down to what this used to be.
+  // Left equal, a filled OTP box and a radio ring would have become
+  // indistinguishable from an empty one — the emphasis these carry IS the
+  // difference between the two tokens.
+  lineStrong: '#C1CAD5',
 
   // ── Brand ──
   brand: '#0E9F6E',

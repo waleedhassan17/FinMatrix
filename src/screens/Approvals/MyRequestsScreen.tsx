@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../utils/theme';
 import { Alert } from '../../utils/alert';
@@ -38,6 +38,7 @@ const FILTERS: Array<{ key: ApprovalFilter; label: string }> = [
  * while it is still pending.
  */
 const MyRequestsScreen: React.FC = () => {
+  const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const requests = useAppSelector(selectApprovals);
   const filter = useAppSelector(selectApprovalFilter);
@@ -88,6 +89,7 @@ const MyRequestsScreen: React.FC = () => {
       <ReportHeader
         title="My requests"
         subtitle="Things you have asked the owner to approve"
+        onBack={() => navigation.goBack()}
       />
 
       <View style={styles.filterRow}>

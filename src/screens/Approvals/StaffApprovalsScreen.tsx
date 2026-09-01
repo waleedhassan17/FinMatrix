@@ -104,6 +104,7 @@ const StaffApprovalsScreen: React.FC = () => {
       <ReportHeader
         title="Staff approvals"
         subtitle="Requests waiting on your decision"
+        onBack={() => navigation.goBack()}
       />
 
       <View style={styles.tabRow}>

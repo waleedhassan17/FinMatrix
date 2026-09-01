@@ -132,7 +132,12 @@ const colors = {
   // Surfaces
   background: '#F4F6F9', // app canvas — faint cool tint, not pure white
   surface: '#FFFFFF', // cards / sheets
-  border: '#E4E9EF', // standard hairline
+  // Standard hairline. Dark enough to actually read as an edge — the previous
+  // #E4E9EF sat one shade off borderLight below, so an outline and an internal
+  // divider were nearly the same weight and cards relied on shadow alone to
+  // separate. AUTH.line (components/auth/authTokens.ts) carries the same value
+  // so the sign-in flow and the app agree.
+  border: '#D3DAE3',
   borderLight: '#EEF2F6', // subtle internal dividers
   overlay: 'rgba(15, 23, 42, 0.55)', // modal scrim
 
