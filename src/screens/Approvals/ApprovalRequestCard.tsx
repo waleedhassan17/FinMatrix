@@ -14,11 +14,12 @@ const STATUS_STYLE: Record<
   string,
   { bg: string; fg: string; label: string; icon: keyof typeof Feather.glyphMap }
 > = {
-  // 'approving' is a transient claim the server holds mid-dispatch; showing it
-  // as anything other than pending would make a row flicker into a state the
-  // reader cannot act on.
   pending: { bg: colors.warningLighter, fg: colors.warning, label: 'Awaiting owner', icon: 'clock' },
-  approving: { bg: colors.warningLighter, fg: colors.warning, label: 'Awaiting owner', icon: 'clock' },
+  // A decision that was interrupted mid-post. The work MAY already have gone
+  // through, so this must not read as an ordinary pending row — showing it as
+  // "Awaiting" invited the owner to tap Approve again on something that might
+  // already be done.
+  approving: { bg: colors.dangerLighter, fg: colors.danger, label: 'Interrupted', icon: 'alert-triangle' },
   approved: { bg: colors.successLighter, fg: colors.success, label: 'Approved', icon: 'check-circle' },
   rejected: { bg: colors.dangerLighter, fg: colors.danger, label: 'Rejected', icon: 'x-circle' },
   cancelled: { bg: colors.neutral100, fg: colors.textSecondary, label: 'Withdrawn', icon: 'slash' },
@@ -69,6 +70,18 @@ export const ApprovalRequestCard: React.FC<{
         <View style={styles.reasonBox}>
           <Text style={styles.reasonLabel}>Reason given</Text>
           <Text style={styles.reasonText}>{request.reason}</Text>
+        </View>
+      )}
+
+      {request.status === 'approving' && (
+        <View style={[styles.reasonBox, styles.errorBox]}>
+          <Text style={[styles.reasonLabel, { color: colors.danger }]}>
+            Interrupted while posting
+          </Text>
+          <Text style={styles.reasonText}>
+            This may already have posted. Check the ledger for the entry before
+            deciding it again.
+          </Text>
         </View>
       )}
 

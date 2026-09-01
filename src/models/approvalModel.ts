@@ -72,5 +72,17 @@ export const APPROVAL_TYPE_EFFECTS: Record<ApprovalType, string> = {
   delivery_undo: 'Reverses a delivery that was already approved.',
 };
 
+/**
+ * Awaiting a decision and safe to act on.
+ *
+ * `approving` is deliberately NOT included. It means a decision was
+ * interrupted mid-post, so the work may already have gone through — offering
+ * Approve there invites a second attempt at something that may already be
+ * done. The server refuses it with APPROVAL_INTERRUPTED either way.
+ */
 export const isPendingApproval = (r: ApprovalRequest): boolean =>
-  r.status === 'pending' || r.status === 'approving';
+  r.status === 'pending';
+
+/** Stranded mid-post by a crash. Needs a human to check the ledger. */
+export const isInterruptedApproval = (r: ApprovalRequest): boolean =>
+  r.status === 'approving';
