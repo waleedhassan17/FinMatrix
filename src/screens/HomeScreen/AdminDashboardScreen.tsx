@@ -596,7 +596,13 @@ const s = StyleSheet.create({
   headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 11 },
   headerTextBlock: { flex: 1 },
-  companyName: { ...THEME.typography.h3, color: colors.neutral0, letterSpacing: -0.2, fontFamily: FONT },
+  // h2, the same role ReportHeader gives its title, so the dashboard heading
+  // matches Transactions / Reports / Inventory / More. It was h3 — 19px against
+  // their 22 — which made the one screen without a back arrow also the one with
+  // a smaller title. The letterSpacing override is dropped with it: h2 carries
+  // its own (-0.3), and repeating a different value here is what let the two
+  // drift apart.
+  companyName: { ...THEME.typography.h2, color: colors.neutral0, fontFamily: FONT },
   headerMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
   statusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
