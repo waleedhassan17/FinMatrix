@@ -44,11 +44,8 @@ import InventoryApprovalScreen from '../screens/Delivery/Admin/InventoryApproval
 import DeliveryPersonnelListScreen from '../screens/Delivery/Admin/DeliveryPersonnelList/DeliveryPersonnelListScreen';
 import AddDeliveryPersonnelScreen from '../screens/Delivery/Admin/AddDeliveryPersonnel/AddDeliveryPersonnelScreen';
 import DeliveryPersonnelDetailScreen from '../screens/Delivery/Admin/DeliveryPersonnelDetail/DeliveryPersonnelDetailScreen';
-import BankReconciliationListScreen from '../screens/BankReconciliation/BankReconciliationListScreen';
-import BankReconciliationScreen from '../screens/BankReconciliation/BankReconciliationScreen';
-import BankReconciliationDetailScreen from '../screens/BankReconciliation/BankReconciliationDetailScreen';
 import TaxLiabilityScreen from '../screens/Tax/TaxLiability/TaxLiabilityScreen';
-import GlobalSearchScreen from '../screens/GlobalSearch/GlobalSearchScreen';
+import StaffSettingsScreen from '../screens/Settings/StaffSettings/StaffSettingsScreen';
 import MyRequestsScreen from '../screens/Approvals/MyRequestsScreen';
 
 /**
@@ -58,7 +55,12 @@ import MyRequestsScreen from '../screens/Approvals/MyRequestsScreen';
  */
 type StaffRoute = IRoute & { title: StaffMoreRouteName };
 
-export const STAFF_MORE_ROUTES: StaffRoute[] = [
+/**
+ * Split into two `as const` tuples rather than one array so the titles survive
+ * as literal types — that is what makes the exhaustiveness check below
+ * possible. STAFF_MORE_ROUTES recombines them exactly as before.
+ */
+const CORE_ROUTES = [
   { title: StaffMoreRouteNames.StaffMoreHub, component: StaffMoreHubScreen },
   { title: StaffMoreRouteNames.MyRequests, component: MyRequestsScreen },
 
@@ -70,27 +72,46 @@ export const STAFF_MORE_ROUTES: StaffRoute[] = [
   { title: StaffMoreRouteNames.VendorDetail, component: VendorDetailScreen },
   { title: StaffMoreRouteNames.VendorForm, component: VendorFormScreen },
 
-  // Delivery — the staff working set, including signing off completions.
-  ...(isFeatureEnabled('delivery')
-    ? [
-        { title: StaffMoreRouteNames.AssignDeliveries, component: AssignDeliveriesScreen },
-        { title: StaffMoreRouteNames.CreateDelivery, component: CreateDeliveryScreen },
-        { title: StaffMoreRouteNames.AssignWork, component: AssignWorkScreen },
-        { title: StaffMoreRouteNames.DeliveryMonitor, component: DeliveryMonitorScreen },
-        { title: StaffMoreRouteNames.AdminDeliveryDetail, component: AdminDeliveryDetailScreen },
-        { title: StaffMoreRouteNames.InventoryApproval, component: InventoryApprovalScreen },
-        { title: StaffMoreRouteNames.DeliveryPersonnelList, component: DeliveryPersonnelListScreen },
-        { title: StaffMoreRouteNames.AddDeliveryPersonnel, component: AddDeliveryPersonnelScreen },
-        { title: StaffMoreRouteNames.DeliveryPersonnelDetail, component: DeliveryPersonnelDetailScreen },
-      ]
-    : []),
-
   // Read-only reference
-  { title: StaffMoreRouteNames.BankReconciliationList, component: BankReconciliationListScreen },
-  { title: StaffMoreRouteNames.BankReconciliation, component: BankReconciliationScreen },
-  { title: StaffMoreRouteNames.BankReconciliationDetail, component: BankReconciliationDetailScreen },
   { title: StaffMoreRouteNames.TaxLiability, component: TaxLiabilityScreen },
-  { title: StaffMoreRouteNames.GlobalSearch, component: GlobalSearchScreen },
+
+  // Staff's own account: who they are signed in as, and sign out.
+  { title: StaffMoreRouteNames.StaffSettings, component: StaffSettingsScreen },
+] as const;
+
+/** Delivery — the staff working set, including signing off completions. */
+const DELIVERY_ROUTES = [
+  { title: StaffMoreRouteNames.AssignDeliveries, component: AssignDeliveriesScreen },
+  { title: StaffMoreRouteNames.CreateDelivery, component: CreateDeliveryScreen },
+  { title: StaffMoreRouteNames.AssignWork, component: AssignWorkScreen },
+  { title: StaffMoreRouteNames.DeliveryMonitor, component: DeliveryMonitorScreen },
+  { title: StaffMoreRouteNames.AdminDeliveryDetail, component: AdminDeliveryDetailScreen },
+  { title: StaffMoreRouteNames.InventoryApproval, component: InventoryApprovalScreen },
+  { title: StaffMoreRouteNames.DeliveryPersonnelList, component: DeliveryPersonnelListScreen },
+  { title: StaffMoreRouteNames.AddDeliveryPersonnel, component: AddDeliveryPersonnelScreen },
+  { title: StaffMoreRouteNames.DeliveryPersonnelDetail, component: DeliveryPersonnelDetailScreen },
+] as const;
+
+type RegisteredRoute =
+  | (typeof CORE_ROUTES)[number]['title']
+  | (typeof DELIVERY_ROUTES)[number]['title'];
+
+// The allow-list type stops an EXTRA route being registered; this stops one
+// going MISSING. A name on the allow-list with no screen behind it makes
+// navigate() a silent no-op — the hub row is there, the tap does nothing —
+// which is the same class of quiet failure the allow-list exists to prevent.
+// Widen `Unregistered` beyond never and the assignment below stops compiling.
+// The failure type is a labelled tuple rather than `never` so the compiler
+// error names the route that is missing.
+type Unregistered = Exclude<StaffMoreRouteName, RegisteredRoute>;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _everyAllowedRouteIsRegistered: Unregistered extends never
+  ? true
+  : ['staff routes on the allow-list with no screen registered:', Unregistered] = true;
+
+export const STAFF_MORE_ROUTES: StaffRoute[] = [
+  ...CORE_ROUTES,
+  ...(isFeatureEnabled('delivery') ? DELIVERY_ROUTES : []),
 ];
 
 export { StaffMoreRouteNames };

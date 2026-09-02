@@ -154,14 +154,22 @@ const SECTIONS: StaffSection[] = [
         subtitle: 'What is owed this period',
         route: 'TaxLiability',
       },
+    ],
+  },
+  {
+    title: 'ACCOUNT',
+    rows: [
+      // Replaces the Search row, which duplicated the search icon already in
+      // the dashboard header. This is also the only way a staff member can
+      // sign out -- before it there was none anywhere in their surface.
       {
-        key: 'search',
-        icon: 'search',
+        key: 'settings',
+        icon: 'settings',
         iconBg: IC.gray.bg,
         iconColor: IC.gray.fg,
-        label: 'Search',
-        subtitle: 'Find an invoice, customer or item',
-        route: 'GlobalSearch',
+        label: 'Settings',
+        subtitle: 'Your account and sign out',
+        route: 'StaffSettings',
       },
     ],
   },

@@ -23,11 +23,8 @@ export type StaffMoreStackParamList = {
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;
   DeliveryPersonnelDetail: { userId: string };
-  BankReconciliationList: undefined;
-  BankReconciliation: { accountId: string; accountName: string };
-  BankReconciliationDetail: { reconciliationId: string };
   TaxLiability: undefined;
-  GlobalSearch: undefined;
+  StaffSettings: undefined;
 };
 
 const Stack = createNativeStackNavigator();

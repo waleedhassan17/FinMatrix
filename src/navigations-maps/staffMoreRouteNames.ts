@@ -19,6 +19,12 @@
 //   COAList · COAForm · COADetail
 //   StaffApprovals            (the OWNER's inbox)
 //   EmployeeList · Payroll*
+//   BankReconciliation*       (segregation of duties: staff record the
+//                              receipts and payments this control checks)
+//
+// GlobalSearch is off this list too, but for a product reason rather than a
+// governance one: it was a duplicate. Staff still reach search from the search
+// icon on the dashboard header, which is registered in DashboardStack.
 //
 // InventoryApproval IS on the list: signing off a rider's delivery is a staff
 // action (Table B row 4), and it is not the owner's approvals inbox.
@@ -41,11 +47,11 @@ export const StaffMoreRouteNames = {
   DeliveryPersonnelList: 'DeliveryPersonnelList',
   AddDeliveryPersonnel: 'AddDeliveryPersonnel',
   DeliveryPersonnelDetail: 'DeliveryPersonnelDetail',
-  BankReconciliationList: 'BankReconciliationList',
-  BankReconciliation: 'BankReconciliation',
-  BankReconciliationDetail: 'BankReconciliationDetail',
   TaxLiability: 'TaxLiability',
-  GlobalSearch: 'GlobalSearch',
+  // Staff's own settings: who they are signed in as, and sign out. NOT the
+  // owner's 'Settings', which is on the forbidden list -- that one carries the
+  // plan, company profile and company switcher.
+  StaffSettings: 'StaffSettings',
 } as const;
 
 export type StaffMoreRouteName =
@@ -75,4 +81,12 @@ export const STAFF_FORBIDDEN_ROUTES = [
   'EmployeeForm',
   'PayrollRunList',
   'PayrollRunDetail',
+  // Bank reconciliation is the control that checks the value-in work staff
+  // themselves record -- receipts, bills, payments. One role doing both the
+  // recording and the reconciling defeats segregation of duties, so it is the
+  // owner's. The server enforces it with 403; this keeps a deep link from
+  // reaching a screen the API will refuse anyway.
+  'BankReconciliationList',
+  'BankReconciliation',
+  'BankReconciliationDetail',
 ] as const;

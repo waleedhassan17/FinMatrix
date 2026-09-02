@@ -68,6 +68,15 @@ describe('staff route allow-list', () => {
       }
     });
 
+    /**
+     * Staff had no sign-out anywhere in their surface — they could sign in and
+     * not get back out. It lives behind StaffSettings, so losing that route
+     * strands them again, silently. Hence an assertion rather than trust.
+     */
+    it('their own settings, which is where sign-out lives', () => {
+      expect(STAFF_MORE_ROUTE_NAMES).toContain(StaffMoreRouteNames.StaffSettings);
+    });
+
     it('customers and vendors', () => {
       for (const route of [
         StaffMoreRouteNames.CustomerList,
