@@ -50,7 +50,7 @@ import { isFeatureVisible } from '../../utils/featureGates';
 import { ReportContainer } from '../../components/reports/ReportUI';
 import { C, FONT, card } from './dashboardTheme';
 import RevenueTrendCard, { BAR_AREA, WINDOW_MONTHS } from './RevenueTrendCard';
-import { THEME } from '../../theme';
+import { THEME, HEADER_RADIUS } from '../../theme';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors } = THEME;
@@ -242,7 +242,6 @@ const AdminDashboardScreen: React.FC = () => {
 
       {/* ── Header ───────────────────────────────────── */}
       <LinearGradient colors={C.navy} style={s.header}>
-        <View style={[s.headerSheen, { pointerEvents: 'none' }]} />
 
         <View style={s.headerTopRow}>
           <View style={s.headerLeft}>
@@ -599,18 +598,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 22,
-    borderBottomLeftRadius: 22,
-    borderBottomRightRadius: 22,
+    borderBottomLeftRadius: HEADER_RADIUS,
+    borderBottomRightRadius: HEADER_RADIUS,
     overflow: 'hidden',
-  },
-  headerSheen: {
-    position: 'absolute',
-    right: -60,
-    top: -70,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.035)',
   },
   headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 11 },

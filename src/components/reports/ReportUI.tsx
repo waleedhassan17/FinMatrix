@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { THEME } from '../../utils/theme';
-import { HEADER_NAVY } from '../../theme';
+import { HEADER_NAVY, HEADER_RADIUS } from '../../theme';
 import { useAppSelector } from '../../hooks/useReduxHooks';
 import { selectActiveCompany } from '../../screens/Auth/companySlice';
 import { DEFAULT_COMPANY } from '../../utils/invoicePdf';
@@ -95,8 +95,6 @@ export const ReportHeader: React.FC<{
 }> = ({ title, subtitle, onBack, right }) => (
   <LinearGradient colors={HEADER_NAVY} style={S.header}>
     <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
-    {/* pointerEvents lives in style — the prop is deprecated on react-native-web */}
-    <View style={[S.headerSheen, { pointerEvents: 'none' }]} />
     <View style={S.headerRow}>
       {onBack ? <BackButton onPress={onBack} /> : null}
       <View style={{ flex: 1 }}>
@@ -667,18 +665,10 @@ const S = StyleSheet.create({
     paddingHorizontal: T.spacing.md,
     paddingTop: T.spacing.sm + 2,
     paddingBottom: T.spacing.md + 2,
-    borderBottomLeftRadius: 22,
-    borderBottomRightRadius: 22,
+    // Same corner as the auth header (AUTH.header.radius).
+    borderBottomLeftRadius: HEADER_RADIUS,
+    borderBottomRightRadius: HEADER_RADIUS,
     overflow: 'hidden',
-  },
-  headerSheen: {
-    position: 'absolute',
-    right: -60,
-    top: -70,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.035)',
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   backBtn: { marginRight: 4, padding: 2 },

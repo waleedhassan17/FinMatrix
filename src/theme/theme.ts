@@ -420,6 +420,13 @@ export type Theme = typeof THEME;
  * are the same value, so it paints flat.
  */
 export const HEADER_BG = '#111D28';
+
+/**
+ * The header's bottom corner. Matches AUTH.header.radius, so a sign-in header
+ * and an app header are the same shape as well as the same colour — they were
+ * 26 and 22, which reads as sloppy rather than as a choice.
+ */
+export const HEADER_RADIUS = 26;
 export const HEADER_NAVY = [HEADER_BG, HEADER_BG] as const;
 
 // ───────────────────────────────────────────────
