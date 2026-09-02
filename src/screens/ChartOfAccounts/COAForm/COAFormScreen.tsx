@@ -196,8 +196,13 @@ const COAFormScreen: React.FC = () => {
         Toast.show({ type: 'success', text1: 'Success', text2: 'Account created successfully.' });
       }
       navigation.goBack();
-    } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Something went wrong. Please try again.' });
+    } catch (e: any) {
+      // The network layer extracts the server's message; surface it.
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: e?.message || 'Something went wrong. Please try again.',
+      });
     } finally {
       dispatch(setIsSaving(false));
     }

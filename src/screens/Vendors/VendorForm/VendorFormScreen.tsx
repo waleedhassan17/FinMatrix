@@ -128,8 +128,13 @@ const VendorFormScreen: React.FC = () => {
           text2: `${form.name} has been ${isEditing ? 'updated' : 'created'} successfully. Now available for Bills & POs.`
         });
         navigation.goBack();
-    } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save vendor. Please try again.' });
+    } catch (e: any) {
+      // The network layer extracts the server's message; surface it.
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: e?.message || 'Failed to save vendor. Please try again.',
+      });
     }
   }, [form, isEditing, dispatch, navigation]);
 

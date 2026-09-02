@@ -261,8 +261,17 @@ const InvoiceFormScreen: React.FC = () => {
             text2: `${form.invoiceNumber} has been ${isEditing ? 'updated' : 'created'} as ${saveStatus}.`,
           });
           navigation.goBack();
-      } catch {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save invoice. Please try again.' });
+      } catch (e: any) {
+        // Show what the server actually said. createInvoiceAPI already runs
+        // extractErrorMessage and throws the real reason -- a bare `catch {}`
+        // discarded it and replaced every cause with "please try again", so an
+        // insufficient-stock COGS posting, a closed period and a dropped
+        // connection were indistinguishable to the person trying to invoice.
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: e?.message || 'Failed to save invoice. Please try again.',
+        });
       } finally {
         dispatch(setIsSaving(false));
       }
