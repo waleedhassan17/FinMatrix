@@ -62,11 +62,20 @@ export const AUTH = {
   lineStrong: '#C1CAD5',
 
   // ── Brand ──
-  brand: '#0E9F6E',
-  brandDark: '#0B8557',
+  // The UI accent on LIGHT grounds — the sign-in button, links, checkmarks.
+  // Navy, matching THEME.colors.primary, because the app behind this flow is
+  // navy: a green Sign In button handing off to a navy dashboard read as two
+  // different products.
+  brand: '#1F4E79',
+  brandDark: '#163A5C',
+  mint: '#EAF0F6',
+  mintBorder: '#C7D8E8',
+
+  // The accent on the DARK header — the "Fin" wordmark, the portal pill's dot,
+  // the progress segments. Deliberately left green: it is the WORDMARK, not a
+  // control, and navy on a #111D28 header would be invisible. If the logo
+  // should move to the navy family too, this is the one line to change.
   brandDot: '#10B981',
-  mint: '#E7F7F0',
-  mintBorder: '#BCE6D2',
 
   // ── Status tints ──
   status: {

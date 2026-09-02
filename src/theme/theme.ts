@@ -404,7 +404,23 @@ export type Theme = typeof THEME;
  * a component so a module can use the colour without importing the component
  * that happens to render it.
  */
-export const HEADER_NAVY = ['#0E1726', '#16243B', '#1C2F4C'] as const;
+/**
+ * THE header colour — one flat dark navy, identical to the auth header
+ * (AUTH.header.bg in components/auth/authTokens.ts).
+ *
+ * This used to be a three-stop gradient ('#0E1726' → '#1C2F4C') that visibly
+ * lightened toward the bottom, so an app header and a sign-in header were
+ * plainly different surfaces on the same device. The auth palette had already
+ * reasoned its way to the answer: "a single colour is what makes the flow read
+ * as one product, and the header's job is to frame the title, not to be looked
+ * at."
+ *
+ * Still an array so `LinearGradient colors={HEADER_NAVY}` and the many
+ * `HEADER_NAVY[0]` safe-area backgrounds keep working untouched; both stops
+ * are the same value, so it paints flat.
+ */
+export const HEADER_BG = '#111D28';
+export const HEADER_NAVY = [HEADER_BG, HEADER_BG] as const;
 
 // ───────────────────────────────────────────────
 // 6b. Status colours — one resolver for the whole app
