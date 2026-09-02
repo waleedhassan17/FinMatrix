@@ -1,8 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Inventory approvals
+// ═══════════════════════════════════════════════════════
+// The review queue where a rider's delivery becomes a posted sale. That makes
+// it the highest-consequence screen in the delivery flow, so it is framed like
+// every other one: the navy ReportHeader, the house card, and the shared
+// loading / error / empty blocks.
+//
+// It used to build its own white header bar, render the request list twice
+// (once as cards, again as "Approved" / "Rejected" summary cards beneath), and
+// show "Nothing waiting for review" while the first fetch was still in flight.
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  FlatList,
   Image,
   Modal,
-  ScrollView,
   RefreshControl,
   StyleSheet,
   Text,
@@ -10,11 +22,22 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Alert } from '../../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { THEME } from '../../../../utils/theme';
+import { THEME, statusStyle } from '../../../../utils/theme';
+import { formatCurrency, formatDateTime } from '../../../../utils/formatters';
+import {
+  ReportContainer,
+  ReportHeader,
+  Divider,
+  LoadingBlock,
+  ErrorBlock,
+  EmptyBlock,
+} from '../../../../components/reports/ReportUI';
+import { FilterTabs, type TabItem } from '../../../../components/shared/Tabs';
+import Disclosure from '../../../../components/shared/Disclosure';
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import {
@@ -23,11 +46,11 @@ import {
   selectInventoryApprovalAuditTrail,
   selectPendingApprovalCount,
   setInventoryApprovalFilter,
-  setRequestStatus,
   fetchApprovalRequests,
   approveRequestAsync,
   rejectRequestAsync,
-  undoApprovalAsync
+  undoApprovalAsync,
+  type InventoryApprovalFilter
 } from './inventoryApprovalSlice';
 import { fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryListSlice';
 import { clearShadowInventoryForRequest } from '../../Admin/AssignDeliveries/deliverySlice';
@@ -43,6 +66,9 @@ const { colors, radius, shadows, spacing, typography } = THEME;
 type Props = NativeStackScreenProps<MoreStackParamList, 'InventoryApproval'>;
 type ModalMode = 'approve' | 'reject' | 'undo' | 'undo-request' | null;
 
+/** The server refuses a review note shorter than this, so the button waits for it. */
+const MIN_REASON = 5;
+
 /**
  * "{reference} · {name}" with the separator dropped when a side is missing.
  * Older requests carry neither, and the raw template rendered them as a lone
@@ -53,18 +79,17 @@ const summaryLabel = (reference?: string | null, personnel?: string | null): str
   return parts.length ? parts.join(' · ') : 'Unnamed request';
 };
 
-const FILTERS: Array<{ key: 'pending' | 'approved' | 'rejected' | 'all'; label: string }> = [
+const FILTERS: Array<{ key: InventoryApprovalFilter; label: string }> = [
   { key: 'pending', label: 'Pending' },
   { key: 'approved', label: 'Approved' },
   { key: 'rejected', label: 'Rejected' },
   { key: 'all', label: 'All' },
 ];
 
-const statusColor = (status: InventoryUpdateRequest['status']) => {
-  if (status === 'approved') return colors.success;
-  if (status === 'rejected') return colors.danger;
-  return colors.warning;
-};
+/** "Pending", not "PENDING" — a shout for a state the colour already carries. */
+const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const initials = (name?: string | null) => (name || '—').slice(0, 2).toUpperCase();
 
 // The review/undo backend endpoints require a real UUID. Guard against
 // non-synced / legacy requests so the user gets a clear message instead of a
@@ -80,25 +105,84 @@ const isSyncedRequest = (id: string) => UUID_RE.test(id);
 const isLedgerCommitted = (request: InventoryUpdateRequest): boolean =>
   request.ledgerStatus === 'committed';
 
+/**
+ * What approving this delivery does, in the order it matters: WHAT MOVED, WHAT
+ * THE MONEY DOES, WHERE IT POSTS.
+ *
+ * This copy used to be concatenated into an OS alert with blank lines between
+ * the paragraphs. It is the same wording; the confirm modal gives it the
+ * hierarchy the alert could not — the amount as a figure, the posting note in
+ * its own box.
+ */
+const approvalSummary = (request: InventoryUpdateRequest) => {
+  const amount = Number(request.saleAmount ?? '0');
+  const delivered = (request.changes ?? []).reduce((n, c) => n + c.deliveredQty, 0);
+  const returned = (request.changes ?? []).reduce((n, c) => n + c.returnedQty, 0);
+
+  return {
+    amount,
+    stockLine: returned > 0
+      ? `${delivered} delivered · ${returned} returned to stock`
+      : `${delivered} delivered`,
+    moneyLine: request.prepaid
+      ? 'The customer already paid at dispatch, so no new sale is recorded.'
+      : request.paidStatus === 'paid'
+        ? `The rider collected ${formatCurrency(amount)} in cash.`
+        : `${formatCurrency(amount)} will be invoiced on credit and sit in Accounts Receivable until the customer pays.`,
+    postingLine: request.prepaid
+      ? 'Approving moves the stock cost out of Goods in Transit into Cost of Goods Sold.'
+      : request.paidStatus === 'paid'
+        ? 'Approving records the sale into Cash and moves the stock cost out of Goods in Transit into Cost of Goods Sold.'
+        : 'Approving raises the invoice and moves the stock cost out of Goods in Transit into Cost of Goods Sold.',
+  };
+};
+
 const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  const [isPullRefreshing, setIsPullRefreshing] = React.useState(false);
-  const handlePullRefresh = React.useCallback(async () => {
+  const insets = useSafeAreaInsets();
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  // The slice carries no loading or error state — three other surfaces select
+  // from it, so the flags live here rather than reshaping it. Without them the
+  // screen rendered "Nothing waiting for review" until the first fetch landed:
+  // a false negative on every cold open.
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    // The error clears on SUCCESS rather than optimistically at the top: this
+    // runs from the mount effect too, and setting state before the first await
+    // would be a synchronous render-phase write. It also stops a failing retry
+    // from flashing the list empty between the clear and the next failure.
+    try {
+      await dispatch(fetchApprovalRequests()).unwrap();
+      setLoadError(null);
+    } catch (e: any) {
+      setLoadError(e?.message ?? 'Could not load approval requests.');
+    } finally {
+      setInitialLoading(false);
+    }
+  }, [dispatch]);
+
+  const handlePullRefresh = useCallback(async () => {
     setIsPullRefreshing(true);
     try {
-      await dispatch(fetchApprovalRequests());
+      await load();
     } finally {
       setIsPullRefreshing(false);
     }
-  }, [dispatch]);
+  }, [load]);
+
   const requests = useAppSelector(selectInventoryApprovalRequests);
   const activeFilter = useAppSelector(selectInventoryApprovalFilter);
   const pendingCount = useAppSelector(selectPendingApprovalCount);
   const auditTrail = useAppSelector(selectInventoryApprovalAuditTrail);
 
   useEffect(() => {
-    dispatch(fetchApprovalRequests());
-  }, [dispatch]);
+    // `void` the promise rather than calling load() bare: the effect must not
+    // be treated as returning a cleanup function, and nothing here writes
+    // state until the fetch settles.
+    void load();
+  }, [load]);
 
   // The stored billPhotoUri is NOT a public CDN link — storage.service composes
   // it as <API_URL>/api/v1/inventory-update-requests/<id>/bill-photo, a route
@@ -110,7 +194,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const [photoUris, setPhotoUris] = useState<Record<string, string>>({});
   const [photoErrors, setPhotoErrors] = useState<Record<string, boolean>>({});
 
-  const resolvePhoto = React.useCallback(async (request: InventoryUpdateRequest) => {
+  const resolvePhoto = useCallback(async (request: InventoryUpdateRequest) => {
     const raw = request.proof?.billPhotoUri;
     if (!raw) return;
     // Already local (rider's own capture) or inline — nothing to fetch.
@@ -137,7 +221,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
    * write, and the `!photoErrors[r.id]` guard could never stop it because the
    * value it had just written was `false`, which passes that test.
    */
-  const attemptedPhotos = React.useRef<Set<string>>(new Set());
+  const attemptedPhotos = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     requests.forEach(r => {
@@ -165,24 +249,18 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     return requests.filter(r => r.status === activeFilter);
   }, [requests, activeFilter]);
 
-  const approvedRequests = useMemo(() => requests.filter(r => r.status === 'approved'), [requests]);
-  const rejectedRequests = useMemo(() => requests.filter(r => r.status === 'rejected'), [requests]);
-
-  const openApproveModal = (request: InventoryUpdateRequest) => {
-    setTargetRequest(request);
-    setModalMode('approve');
-  };
-
-  const openRejectModal = (request: InventoryUpdateRequest) => {
-    setTargetRequest(request);
-    setRejectComment('');
-    setModalMode('reject');
-  };
-
-  const openUndoModal = (request: InventoryUpdateRequest) => {
-    setTargetRequest(request);
-    setModalMode('undo');
-  };
+  // Counts ride on the tabs, which is where a filter count belongs. They used
+  // to be absent here entirely, with a single "Pending N" badge stranded in the
+  // header competing with the title.
+  const tabs: TabItem<InventoryApprovalFilter>[] = useMemo(() => {
+    const countOf = (key: InventoryApprovalFilter) =>
+      key === 'all' ? requests.length : requests.filter(r => r.status === key).length;
+    return FILTERS.map(f => ({
+      label: f.label,
+      value: f.key,
+      count: f.key === 'pending' ? pendingCount : countOf(f.key),
+    }));
+  }, [requests, pendingCount]);
 
   const closeModal = () => {
     setModalMode(null);
@@ -219,44 +297,18 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // Native confirmation — reliable on every platform/architecture (avoids the
-  // RN <Modal> not presenting under the New Architecture).
+  /**
+   * Open the confirm modal, not an OS alert.
+   *
+   * Approve and Undo used to confirm through Alert.alert while Reject used an
+   * in-app modal — two confirmation languages on the same row of buttons, and
+   * on web the alert degrades to a bare browser confirm box. The modals below
+   * already existed; they were simply never opened.
+   */
   const promptApprove = (request: InventoryUpdateRequest) => {
     if (!isSyncedRequest(request.id)) { Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again."); return; }
-    // Plain language, in the order it matters: WHO, WHAT MOVED, WHAT THE MONEY
-    // DOES. The old copy led with a delivery reference, called a sale an "item
-    // update", used "COGS" unglossed, and understated the posting — approval
-    // also raises an invoice, records the payment and releases Goods in
-    // Transit, none of which "plus COGS" conveys.
-    const amount = Number(request.saleAmount ?? '0');
-    const rs = (n: number) => `Rs ${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
-    const delivered = (request.changes ?? []).reduce((n, c) => n + c.deliveredQty, 0);
-    const returned = (request.changes ?? []).reduce((n, c) => n + c.returnedQty, 0);
-
-    const moneyLine = request.prepaid
-      ? 'The customer already paid at dispatch, so no new sale is recorded.'
-      : request.paidStatus === 'paid'
-        ? `The rider collected ${rs(amount)} in cash.`
-        : `${rs(amount)} will be invoiced on credit and sit in Accounts Receivable until the customer pays.`;
-
-    const postingLine = request.prepaid
-      ? 'Approving moves the stock cost out of Goods in Transit into Cost of Goods Sold.'
-      : request.paidStatus === 'paid'
-        ? 'Approving records the sale into Cash and moves the stock cost out of Goods in Transit into Cost of Goods Sold.'
-        : 'Approving raises the invoice and moves the stock cost out of Goods in Transit into Cost of Goods Sold.';
-
-    const stockLine = returned > 0
-      ? `${delivered} delivered · ${returned} returned to stock`
-      : `${delivered} delivered`;
-
-    Alert.alert(
-      `Approve delivery — ${request.customerName || 'this customer'}`,
-      `${stockLine}\n\n${moneyLine}\n\n${postingLine}\n\nThis posts to your books and can only be undone, not edited.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Approve', onPress: () => doApprove(request) },
-      ],
-    );
+    setTargetRequest(request);
+    setModalMode('approve');
   };
 
   const confirmApprove = async () => {
@@ -274,15 +326,6 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  /**
-   * Staff ask; the owner decides.
-   *
-   * The reason is not decoration — the owner is being asked to reverse
-   * recognised revenue and has nothing else to judge the request on. The
-   * server refuses without one, and refuses ANY undo once the delivery is
-   * ledger-committed, in which case the honest route is a credit memo (which
-   * staff can also request). That message is surfaced rather than swallowed.
-   */
   /**
    * Once a delivery has posted its sale, the correction is a credit memo —
    * which is what undoApproval has always said, without doing anything about
@@ -312,8 +355,17 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     setModalMode('undo-request');
   };
 
+  /**
+   * Staff ask; the owner decides.
+   *
+   * The reason is not decoration — the owner is being asked to reverse
+   * recognised revenue and has nothing else to judge the request on. The
+   * server refuses without one, and refuses ANY undo once the delivery is
+   * ledger-committed, in which case the honest route is a credit memo (which
+   * staff can also request). That message is surfaced rather than swallowed.
+   */
   const submitUndoRequest = async () => {
-    if (!targetRequest || undoReason.trim().length < 5) return;
+    if (!targetRequest || undoReason.trim().length < MIN_REASON) return;
     try {
       await requestDeliveryUndo(targetRequest.id, undoReason.trim());
       closeModal();
@@ -329,18 +381,11 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // Native confirmation for undo (reliable on all platforms/architectures).
   const promptUndo = (request: InventoryUpdateRequest) => {
     if (!isSyncedRequest(request.id)) { Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again."); return; }
     if (!isOwner) { requestUndo(request); return; }
-    Alert.alert(
-      'Undo approval',
-      `Reverse the approval for ${request.deliveryReference || 'this delivery'}? Inventory will be restored and the request returns to Pending for re-review.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Undo', style: 'destructive', onPress: () => doUndo(request) },
-      ],
-    );
+    setTargetRequest(request);
+    setModalMode('undo');
   };
 
   const confirmUndo = async () => {
@@ -382,338 +427,354 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const confirmReject = async () => {
-    if (!targetRequest) return;
-    // The server rejects a reason under 5 characters; catch it here so the
-    // admin is not bounced by a validation error after the fact.
-    if (rejectComment.trim().length < 5) {
-      Alert.alert(
-        'Reason required',
-        'Say why this delivery is being rejected — the rider sees this, and it becomes the audit note on the record.',
-      );
-      return;
-    }
+    // The Reject button is disabled below this length, so reaching here with a
+    // short reason would take a race — guard anyway rather than let the server
+    // bounce the admin with a validation error after the fact.
+    if (!targetRequest || rejectComment.trim().length < MIN_REASON) return;
     await doReject(targetRequest, rejectComment);
   };
 
-  const renderChangeRows = (request: InventoryUpdateRequest) => {
-    return (request.changes ?? []).map(change => {
+  /**
+   * One block per item rather than a five-column grid.
+   *
+   * The grid gave each number column about 57px inside a card on a 360dp
+   * phone, so "Delivered" and "Returned" clipped their own headers. Stacked,
+   * the name gets the full width and the figures read as a sentence.
+   */
+  const renderChangeRows = (request: InventoryUpdateRequest) =>
+    (request.changes ?? []).map(change => {
       // beforeQty is WAREHOUSE stock, and the dispatched units already left it
       // when the delivery was assigned (they sit in Goods in Transit). Only the
       // returns come back; subtracting `delivered` here counted the outflow twice.
       const afterQty = change.beforeQty + change.returnedQty;
-      const isChanged = change.beforeQty !== afterQty || change.deliveredQty > 0 || change.returnedQty > 0;
 
       return (
-        <View key={`${request.id}_${change.itemId}`} style={[styles.tableRow, isChanged && styles.tableRowChanged]}>
-          <Text style={[styles.tableCell, styles.colItem]} numberOfLines={2}>{change.itemName}</Text>
-          <Text style={[styles.tableCell, styles.colSmall]}>{change.beforeQty}</Text>
-          <Text style={[styles.tableCell, styles.colSmall]}>{change.deliveredQty}</Text>
-          <Text style={[styles.tableCell, styles.colSmall]}>{change.returnedQty}</Text>
-          <Text style={[styles.tableCell, styles.colSmall]}>{afterQty}</Text>
+        <View key={`${request.id}_${change.itemId}`} style={styles.itemRow}>
+          <Text style={styles.itemName} numberOfLines={2}>{change.itemName}</Text>
+          <Text style={styles.itemFigures}>
+            <Text style={styles.itemFigureMuted}>{change.beforeQty} in stock</Text>
+            <Text style={styles.itemFigureMuted}> · </Text>
+            <Text style={styles.itemFigureStrong}>{change.deliveredQty} delivered</Text>
+            {change.returnedQty > 0 && (
+              <>
+                <Text style={styles.itemFigureMuted}> · </Text>
+                <Text style={styles.itemFigureStrong}>{change.returnedQty} returned</Text>
+              </>
+            )}
+            <Text style={styles.itemFigureMuted}>{`  →  ${afterQty}`}</Text>
+          </Text>
         </View>
       );
     });
+
+  const renderRequest = ({ item: request }: { item: InventoryUpdateRequest }) => {
+    const tone = statusStyle(request.status);
+    const paidTone = request.paidStatus === 'paid' ? colors.success : colors.warning;
+
+    return (
+      <View style={styles.card}>
+        {/* ── Who ─────────────────────────────────────── */}
+        <View style={styles.cardTopRow}>
+          <View style={styles.personBlock}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials(request.personnelName)}</Text>
+            </View>
+            <View style={styles.personMeta}>
+              <Text style={styles.personName} numberOfLines={1}>{request.personnelName}</Text>
+              <Text style={styles.personSub} numberOfLines={1}>
+                {summaryLabel(request.deliveryReference, request.routeLabel)}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: tone.bg }]}>
+            <Text style={[styles.statusText, { color: tone.fg }]}>{titleCase(request.status)}</Text>
+          </View>
+        </View>
+
+        <Divider style={styles.cardRule} />
+
+        {/* ── What it is worth ────────────────────────── */}
+        {/* phase1.md: the rider's PAID/NOT PAID flag + the sale the approval will post */}
+        <View style={styles.ledgerStrip}>
+          <View style={[styles.paidBadge, { backgroundColor: paidTone + '1A' }]}>
+            <Feather
+              name={request.paidStatus === 'paid' ? 'check-circle' : 'clock'}
+              size={13}
+              color={paidTone}
+            />
+            <Text style={[styles.paidBadgeText, { color: paidTone }]}>
+              {request.prepaid ? 'PRE-PAID' : request.paidStatus === 'paid' ? 'PAID' : 'NOT PAID'}
+            </Text>
+          </View>
+          <View style={styles.ledgerMeta}>
+            {!!request.customerName && (
+              <Text style={styles.ledgerCustomer} numberOfLines={1}>{request.customerName}</Text>
+            )}
+            <Text style={styles.ledgerAmount}>
+              {formatCurrency(Number(request.saleAmount ?? '0'))}
+            </Text>
+          </View>
+        </View>
+        {request.status === 'pending' && (
+          <Text style={styles.ledgerHint}>
+            {request.prepaid
+              ? 'Pre-paid sale — approval posts COGS and relieves Goods in Transit.'
+              : request.paidStatus === 'paid'
+                ? 'Approving invoices this delivery and records the cash the rider collected.'
+                : 'Approving invoices this delivery on credit — it will age in A/R until payment.'}
+          </Text>
+        )}
+
+        <Divider style={styles.cardRule} />
+
+        {/* ── What moved ──────────────────────────────── */}
+        <Text style={styles.blockLabel}>ITEMS</Text>
+        {renderChangeRows(request)}
+
+        {request.proof?.billPhotoUri ? (
+          <View style={styles.billPhotoRow}>
+            <TouchableOpacity
+              onPress={() => {
+                if (photoUris[request.id]) setPhotoFullscreen(photoUris[request.id]);
+                else resolvePhoto(request);
+              }}
+              activeOpacity={0.85}
+              style={styles.billPhotoThumbWrap}
+              accessibilityRole="button"
+              accessibilityLabel={photoUris[request.id] ? 'View signed bill photo' : 'Load signed bill photo'}
+            >
+              {photoUris[request.id] ? (
+                <>
+                  <Image
+                    source={{ uri: photoUris[request.id] }}
+                    style={styles.billPhotoThumb}
+                    resizeMode="cover"
+                    onError={() => setPhotoErrors(prev => ({ ...prev, [request.id]: true }))}
+                  />
+                  <View style={styles.billPhotoBadge}>
+                    <Text style={styles.billPhotoBadgeText}>Tap to view</Text>
+                  </View>
+                </>
+              ) : (
+                // Never a silent black box again: say which state we are in.
+                <View style={styles.billPhotoPending}>
+                  <Feather
+                    name={photoErrors[request.id] ? 'alert-circle' : 'image'}
+                    size={18}
+                    color={photoErrors[request.id] ? colors.danger : colors.textSecondary}
+                  />
+                  <Text style={styles.billPhotoPendingText}>
+                    {photoErrors[request.id] ? 'Tap to retry' : 'Loading…'}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <View style={styles.billPhotoMeta}>
+              <Text style={styles.billPhotoLabel}>Signed bill photo</Text>
+              <Text style={styles.billPhotoSub}>Signed by {request.proof.signedBy || 'customer'}</Text>
+              <TouchableOpacity
+                style={styles.proofBtn}
+                onPress={() => setProofFor(request)}
+                accessibilityRole="button"
+                accessibilityLabel="View full proof details"
+              >
+                <Feather name="file-text" size={13} color={colors.primary} />
+                <Text style={styles.proofBtnText}>Full proof</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.proofBtn, styles.proofBtnStandalone]}
+            onPress={() => setProofFor(request)}
+            accessibilityRole="button"
+            accessibilityLabel="View delivery proof"
+          >
+            <Feather name="file-text" size={13} color={colors.primary} />
+            <Text style={styles.proofBtnText}>View delivery proof</Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.metaRow}>
+          {/* "Shadow" is our word for the rider's van stock, not the reviewer's. */}
+          <Text style={styles.metaText}>Rider&apos;s stock: {request.shadowStatus}</Text>
+          <Text style={styles.metaText}>{formatDateTime(request.submittedAt)}</Text>
+        </View>
+
+        {request.status === 'pending' && (
+          <View style={styles.actionRow}>
+            <View style={styles.actionBtn}>
+              <CustomButton title="Approve" onPress={() => promptApprove(request)} fullWidth />
+            </View>
+            <View style={styles.actionBtn}>
+              <CustomButton title="Reject" onPress={() => promptReject(request)} variant="danger" fullWidth />
+            </View>
+          </View>
+        )}
+
+        {request.status !== 'pending' && (
+          <View style={styles.reviewInfoBox}>
+            {/* Which AUTHORITY signed this off, not just who. Staff and
+                the owner can both approve a delivery, and the two are
+                worth telling apart when reading back the history. */}
+            <Text style={styles.reviewInfoText}>
+              {request.reviewerRole === 'staff'
+                ? 'Staff approved'
+                : request.reviewerRole === 'admin'
+                  ? 'Owner approved'
+                  : 'Reviewed'}
+              {' · '}
+              {request.reviewedBy ?? '—'}
+              {' · '}
+              {request.reviewedAt ? formatDateTime(request.reviewedAt) : '—'}
+            </Text>
+            {!!request.reviewerComment && <Text style={styles.reviewComment}>{request.reviewerComment}</Text>}
+            {request.status === 'approved' && request.reversalCreditMemoId ? (
+              // Already reversed. Offering the button again would let a
+              // second credit memo debit Sales twice for one sale — every
+              // entry balanced, so nothing downstream would notice.
+              <Text style={styles.reversedNote}>
+                Reversed by a credit memo. Nothing further to do here.
+              </Text>
+            ) : request.status === 'approved' && (
+              <View style={styles.undoBtnWrap}>
+                {/* A delivery that posted a sale is reversed with a credit
+                    memo, not unwound — corrections reverse rather than
+                    delete. Same route for both roles; what differs is only
+                    whether submitting posts or asks. A legacy delivery
+                    never recognised revenue, so it keeps the old undo. */}
+                <CustomButton
+                  title={
+                    isLedgerCommitted(request)
+                      ? 'Reverse with credit memo'
+                      : isOwner
+                        ? 'Undo approval'
+                        : 'Request undo'
+                  }
+                  onPress={() =>
+                    isLedgerCommitted(request)
+                      ? openReversal(request)
+                      : promptUndo(request)
+                  }
+                  variant="danger"
+                  size="sm"
+                />
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    );
   };
 
+  /**
+   * The audit trail is queue-wide, so it renders under every filter — it used
+   * to appear only on "All", alongside two summary cards that re-listed the
+   * requests already on screen above them. Collapsed: it is history, not work.
+   */
+  const auditSection = (
+    <Disclosure
+      title="Audit trail"
+      subtitle={auditTrail.length ? `${auditTrail.length} entries` : 'No entries yet'}
+      icon="clock"
+      defaultOpen={false}
+    >
+      {auditTrail.length === 0 ? (
+        <Text style={styles.summaryEmpty}>No audit entries yet.</Text>
+      ) : (
+        auditTrail.map(a => (
+          <View key={a.id} style={styles.summaryRow}>
+            {/* Resolve the request to its delivery reference. Printing
+                requestId put a raw UUID in the audit list. */}
+            <Text style={styles.summaryMain}>
+              {titleCase(a.action)} ·{' '}
+              {requests.find(r => r.id === a.requestId)?.deliveryReference ?? 'request'}
+            </Text>
+            <Text style={styles.summaryMeta}>{a.details}</Text>
+          </View>
+        ))
+      )}
+    </Disclosure>
+  );
+
+  const approve = targetRequest ? approvalSummary(targetRequest) : null;
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={24} color={colors.actionGreen} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.title}>Inventory Approvals</Text>
-          <Text style={styles.subtitle}>Delivery update review queue</Text>
-        </View>
-        <View style={styles.pendingBadge}>
-          <Text style={styles.pendingBadgeLabel}>Pending</Text>
-          <Text style={styles.pendingBadgeCount}>{pendingCount}</Text>
-        </View>
-      </View>
+    <ReportContainer>
+      <ReportHeader
+        title="Inventory approvals"
+        subtitle="Delivery updates waiting for review"
+        onBack={() => navigation.goBack()}
+      />
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isPullRefreshing}
-            onRefresh={handlePullRefresh}
-            tintColor={THEME.colors.primary}
-          />
-        }
-      >
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {FILTERS.map(filter => {
-            const active = activeFilter === filter.key;
-            return (
-              <TouchableOpacity
-                key={filter.key}
-                style={[styles.filterChip, active && styles.filterChipActive]}
-                onPress={() => dispatch(setInventoryApprovalFilter(filter.key))}
-              >
-                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{filter.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+      {/* Outside the list, so switching filters never means scrolling back up. */}
+      <FilterTabs<InventoryApprovalFilter>
+        tabs={tabs}
+        active={activeFilter}
+        onChange={value => dispatch(setInventoryApprovalFilter(value))}
+      />
 
-        {visibleRequests.map(request => (
-          <View key={request.id} style={styles.card}>
-            <View style={styles.cardTopRow}>
-              <View style={styles.personBlock}>
-                <View style={styles.avatar}><Text style={styles.avatarText}>{(request.personnelName || '—').slice(0, 2).toUpperCase()}</Text></View>
-                <View style={styles.personMeta}>
-                  <Text style={styles.personName}>{request.personnelName}</Text>
-                  <Text style={styles.personSub}>{request.deliveryReference} · {request.routeLabel}</Text>
-                </View>
-              </View>
-              <View style={[styles.statusBadge, { backgroundColor: statusColor(request.status) + '20' }]}>
-                <Text style={[styles.statusText, { color: statusColor(request.status) }]}>{request.status.toUpperCase()}</Text>
-              </View>
-            </View>
-
-            {/* phase1.md: the rider's PAID/NOT PAID flag + the sale the approval will post */}
-            <View style={styles.ledgerStrip}>
-              <View
-                style={[
-                  styles.paidBadge,
-                  { backgroundColor: (request.paidStatus === 'paid' ? colors.success : colors.warning) + '1A' },
-                ]}
-              >
-                <Feather
-                  name={request.paidStatus === 'paid' ? 'check-circle' : 'clock'}
-                  size={13}
-                  color={request.paidStatus === 'paid' ? colors.success : colors.warning}
-                />
-                <Text
-                  style={[
-                    styles.paidBadgeText,
-                    { color: request.paidStatus === 'paid' ? colors.success : colors.warning },
-                  ]}
-                >
-                  {request.prepaid ? 'PRE-PAID' : request.paidStatus === 'paid' ? 'PAID' : 'NOT PAID'}
-                </Text>
-              </View>
-              <View style={styles.ledgerMeta}>
-                {!!request.customerName && (
-                  <Text style={styles.ledgerCustomer} numberOfLines={1}>
-                    {request.customerName}
-                  </Text>
-                )}
-                <Text style={styles.ledgerAmount}>Rs {Number(request.saleAmount ?? '0').toLocaleString()}</Text>
-              </View>
-            </View>
-            {request.status === 'pending' && (
-              <Text style={styles.ledgerHint}>
-                {request.prepaid
-                  ? 'Pre-paid sale — approval posts COGS and relieves Goods in Transit.'
-                  : request.paidStatus === 'paid'
-                    ? 'Approving invoices this delivery and records the cash the rider collected.'
-                    : 'Approving invoices this delivery on credit — it will age in A/R until payment.'}
-              </Text>
-            )}
-
-            <View style={styles.tableWrap}>
-              <View style={styles.tableHead}>
-                <Text style={[styles.tableHeadCell, styles.colItem]}>Item</Text>
-                <Text style={[styles.tableHeadCell, styles.colSmall]}>Before</Text>
-                <Text style={[styles.tableHeadCell, styles.colSmall]}>Delivered</Text>
-                <Text style={[styles.tableHeadCell, styles.colSmall]}>Returned</Text>
-                <Text style={[styles.tableHeadCell, styles.colSmall]}>After</Text>
-              </View>
-              {renderChangeRows(request)}
-            </View>
-
-            {request.proof?.billPhotoUri ? (
-              <View style={styles.billPhotoRow}>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (photoUris[request.id]) setPhotoFullscreen(photoUris[request.id]);
-                    else resolvePhoto(request);
-                  }}
-                  activeOpacity={0.85}
-                  style={styles.billPhotoThumbWrap}
-                >
-                  {photoUris[request.id] ? (
-                    <>
-                      <Image
-                        source={{ uri: photoUris[request.id] }}
-                        style={styles.billPhotoThumb}
-                        resizeMode="cover"
-                        onError={() => setPhotoErrors(prev => ({ ...prev, [request.id]: true }))}
-                      />
-                      <View style={styles.billPhotoBadge}>
-                        <Text style={styles.billPhotoBadgeText}>Tap to view</Text>
-                      </View>
-                    </>
-                  ) : (
-                    // Never a silent black box again: say which state we are in.
-                    <View style={styles.billPhotoPending}>
-                      <Feather
-                        name={photoErrors[request.id] ? 'alert-circle' : 'image'}
-                        size={18}
-                        color={photoErrors[request.id] ? colors.danger : colors.textSecondary}
-                      />
-                      <Text style={styles.billPhotoPendingText}>
-                        {photoErrors[request.id] ? 'Tap to retry' : 'Loading…'}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                <View style={styles.billPhotoMeta}>
-                  <Text style={styles.billPhotoLabel}>Signed bill photo</Text>
-                  <Text style={styles.billPhotoSub}>Signed by {request.proof.signedBy || 'customer'}</Text>
-                  <TouchableOpacity onPress={() => setProofFor(request)}>
-                    <Text style={styles.proofLink}>View full proof details</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+      {initialLoading ? (
+        <LoadingBlock label="Loading approvals…" />
+      ) : loadError && requests.length === 0 ? (
+        <ErrorBlock message={loadError} onRetry={load} />
+      ) : (
+        <FlatList
+          data={visibleRequests}
+          keyExtractor={r => r.id}
+          renderItem={renderRequest}
+          style={styles.list}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isPullRefreshing}
+              onRefresh={handlePullRefresh}
+              tintColor={colors.primary}
+            />
+          }
+          ListEmptyComponent={
+            // An empty Pending queue is good news; an empty filter is not.
+            activeFilter === 'pending' ? (
+              <EmptyBlock
+                icon="check-circle"
+                title="Nothing waiting for review"
+                hint="Riders' delivery updates appear here for approval."
+              />
             ) : (
-              <TouchableOpacity style={styles.proofBtn} onPress={() => setProofFor(request)}>
-                <Text style={styles.proofBtnText}>View Delivery Proof</Text>
-              </TouchableOpacity>
-            )}
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaText}>Shadow: {request.shadowStatus}</Text>
-              <Text style={styles.metaText}>Submitted: {new Date(request.submittedAt).toLocaleString()}</Text>
-            </View>
-
-            {request.status === 'pending' && (
-              <View style={styles.actionRow}>
-                <View style={styles.actionBtn}><CustomButton title="Approve" onPress={() => promptApprove(request)} fullWidth /></View>
-                <View style={styles.actionBtn}><CustomButton title="Reject" onPress={() => promptReject(request)} variant="danger" fullWidth /></View>
-              </View>
-            )}
-
-            {request.status !== 'pending' && (
-              <View style={styles.reviewInfoBox}>
-                {/* Which AUTHORITY signed this off, not just who. Staff and
-                    the owner can both approve a delivery, and the two are
-                    worth telling apart when reading back the history. */}
-                <Text style={styles.reviewInfoText}>
-                  {request.reviewerRole === 'staff'
-                    ? 'Staff approved'
-                    : request.reviewerRole === 'admin'
-                      ? 'Owner approved'
-                      : 'Reviewed'}
-                  {' · '}
-                  {request.reviewedBy ?? '—'}
-                  {' · '}
-                  {request.reviewedAt ? new Date(request.reviewedAt).toLocaleString() : '-'}
-                </Text>
-                {!!request.reviewerComment && <Text style={styles.reviewComment}>{request.reviewerComment}</Text>}
-                {request.status === 'approved' && request.reversalCreditMemoId ? (
-                  // Already reversed. Offering the button again would let a
-                  // second credit memo debit Sales twice for one sale — every
-                  // entry balanced, so nothing downstream would notice.
-                  <Text style={styles.reversedNote}>
-                    Reversed by a credit memo. Nothing further to do here.
-                  </Text>
-                ) : request.status === 'approved' && (
-                  <View style={styles.undoBtnWrap}>
-                    {/* A delivery that posted a sale is reversed with a credit
-                        memo, not unwound — corrections reverse rather than
-                        delete. Same route for both roles; what differs is only
-                        whether submitting posts or asks. A legacy delivery
-                        never recognised revenue, so it keeps the old undo. */}
-                    <CustomButton
-                      title={
-                        isLedgerCommitted(request)
-                          ? 'Reverse with credit memo'
-                          : isOwner
-                            ? 'Undo Approval'
-                            : 'Request undo'
-                      }
-                      onPress={() =>
-                        isLedgerCommitted(request)
-                          ? openReversal(request)
-                          : promptUndo(request)
-                      }
-                      variant="danger"
-                      size="sm"
-                    />
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-        ))}
-
-        {visibleRequests.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>
-              {activeFilter === 'pending'
-                ? 'Nothing waiting for review'
-                : activeFilter === 'all'
-                  ? 'No requests yet'
-                  : `No ${activeFilter} requests`}
-            </Text>
-            <Text style={styles.emptySub}>
-              {activeFilter === 'pending'
-                ? 'Riders\u2019 delivery updates appear here for approval.'
-                : 'Switch the filter above to see other requests.'}
-            </Text>
-          </View>
-        )}
-
-        {/* Summaries describe the whole queue, so they belong to the
-            unfiltered view. Rendering them while a filter was active is
-            what put "No requests found" directly above a full list. */}
-        {activeFilter === 'all' && (
-        <>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Approved</Text>
-          {approvedRequests.map(r => (
-            <View key={r.id} style={styles.summaryRow}>
-              <Text style={styles.summaryMain}>{summaryLabel(r.deliveryReference, r.personnelName)}</Text>
-              <Text style={styles.summaryMeta}>Shadow synced · {r.reviewedAt ? new Date(r.reviewedAt).toLocaleString() : '-'}</Text>
-            </View>
-          ))}
-          {approvedRequests.length === 0 && <Text style={styles.summaryEmpty}>No approved requests yet.</Text>}
-        </View>
-
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Rejected</Text>
-          {rejectedRequests.map(r => (
-            <View key={r.id} style={styles.summaryRow}>
-              <Text style={styles.summaryMain}>{summaryLabel(r.deliveryReference, r.personnelName)}</Text>
-              <Text style={styles.summaryMeta}>Reason: {r.reviewerComment ?? 'No notes provided'}</Text>
-            </View>
-          ))}
-          {rejectedRequests.length === 0 && <Text style={styles.summaryEmpty}>No rejected requests yet.</Text>}
-        </View>
-
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Audit Trail</Text>
-          {auditTrail.map(a => (
-            <View key={a.id} style={styles.summaryRow}>
-              {/* Resolve the request to its delivery reference. Printing
-                  requestId put a raw UUID in the audit list. */}
-              <Text style={styles.summaryMain}>
-                {a.action.toUpperCase()} ·{' '}
-                {requests.find(r => r.id === a.requestId)?.deliveryReference ?? 'request'}
-              </Text>
-              <Text style={styles.summaryMeta}>{a.details}</Text>
-            </View>
-          ))}
-          {auditTrail.length === 0 && <Text style={styles.summaryEmpty}>No audit entries yet.</Text>}
-        </View>
-        </>
-        )}
-      </ScrollView>
+              <EmptyBlock
+                icon="search"
+                title={activeFilter === 'all' ? 'No requests yet' : `No ${activeFilter} requests`}
+                hint="Switch the filter above to see other requests."
+              />
+            )
+          }
+          ListFooterComponent={<View style={styles.footer}>{auditSection}</View>}
+        />
+      )}
 
       <Modal visible={modalMode === 'approve' && !!targetRequest} transparent statusBarTranslucent animationType="fade" onRequestClose={closeModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Approve Inventory Changes</Text>
-            <Text style={styles.modalSub}>Confirm these changes will update real inventory quantities.</Text>
-            {(targetRequest?.changes ?? []).map(c => {
-              const afterQty = c.beforeQty + c.returnedQty;
-              return (
-                <Text key={c.itemId} style={styles.modalLine}>{c.itemName}: {c.beforeQty} + {c.returnedQty} returned = {afterQty}</Text>
-              );
-            })}
+            <Text style={styles.modalTitle}>
+              Approve delivery — {targetRequest?.customerName || 'this customer'}
+            </Text>
+
+            {!!approve && (
+              <>
+                <Text style={styles.modalAmount}>{formatCurrency(approve.amount)}</Text>
+                <Text style={styles.modalSub}>{approve.moneyLine}</Text>
+                <Text style={styles.modalStock}>{approve.stockLine}</Text>
+                <View style={styles.noteBox}>
+                  <Feather name="info" size={13} color={colors.textSecondary} />
+                  <Text style={styles.noteText}>{approve.postingLine}</Text>
+                </View>
+                <Text style={styles.modalWarn}>
+                  This posts to your books and can only be undone, not edited.
+                </Text>
+              </>
+            )}
+
             <View style={styles.modalActionRow}>
               <View style={styles.modalBtn}><CustomButton title="Cancel" onPress={closeModal} variant="secondary" fullWidth /></View>
               <View style={styles.modalBtn}><CustomButton title="Approve" onPress={confirmApprove} fullWidth /></View>
@@ -740,9 +801,24 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
               multiline
               style={styles.commentInput}
             />
+            {/* Disabled until the reason is usable, rather than an alert after
+                the tap — the rider reads this, and it becomes the audit note. */}
+            <Text style={styles.inputHint}>
+              {rejectComment.trim().length < MIN_REASON
+                ? 'Say why — the rider sees this, and it becomes the audit note.'
+                : ' '}
+            </Text>
             <View style={styles.modalActionRow}>
               <View style={styles.modalBtn}><CustomButton title="Cancel" onPress={closeModal} variant="secondary" fullWidth /></View>
-              <View style={styles.modalBtn}><CustomButton title="Reject" onPress={confirmReject} variant="danger" fullWidth /></View>
+              <View style={styles.modalBtn}>
+                <CustomButton
+                  title="Reject"
+                  onPress={confirmReject}
+                  disabled={rejectComment.trim().length < MIN_REASON}
+                  variant="danger"
+                  fullWidth
+                />
+              </View>
             </View>
           </View>
         </View>
@@ -754,9 +830,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
       <Modal visible={modalMode === 'undo-request' && !!targetRequest} transparent statusBarTranslucent animationType="fade" onRequestClose={closeModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              Ask the owner to undo this
-            </Text>
+            <Text style={styles.modalTitle}>Ask the owner to undo this</Text>
             <Text style={styles.modalSub}>
               Undoing reverses revenue that has already posted, so the owner
               decides. Tell them what happened — they see this reason.
@@ -775,7 +849,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
                 <CustomButton
                   title="Send request"
                   onPress={submitUndoRequest}
-                  disabled={undoReason.trim().length < 5}
+                  disabled={undoReason.trim().length < MIN_REASON}
                   fullWidth
                 />
               </View>
@@ -787,11 +861,16 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
       <Modal visible={!!proofFor} transparent statusBarTranslucent animationType="fade" onRequestClose={() => setProofFor(null)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Delivery Proof</Text>
-            <Text style={styles.modalLine}>Signed by: {proofFor?.proof?.signedBy}</Text>
-            <Text style={styles.modalLine}>Verification: {proofFor?.proof?.verificationMethod}</Text>
-            <Text style={styles.modalLine}>Verified by: {proofFor?.proof?.verifiedBy}</Text>
-            <Text style={styles.modalLine}>Verified at: {proofFor ? new Date(proofFor.proof.verifiedAt).toLocaleString() : '-'}</Text>
+            <Text style={styles.modalTitle}>Delivery proof</Text>
+            <View style={styles.proofGrid}>
+              <ProofRow label="Signed by" value={proofFor?.proof?.signedBy} />
+              <ProofRow label="Verification" value={proofFor?.proof?.verificationMethod} />
+              <ProofRow label="Verified by" value={proofFor?.proof?.verifiedBy} />
+              <ProofRow
+                label="Verified at"
+                value={proofFor?.proof?.verifiedAt ? formatDateTime(proofFor.proof.verifiedAt) : undefined}
+              />
+            </View>
             {proofFor?.proof?.billPhotoUri ? (
               <TouchableOpacity
                 onPress={() => {
@@ -800,6 +879,8 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
                 }}
                 activeOpacity={0.85}
                 style={styles.proofPhotoTouchable}
+                accessibilityRole="button"
+                accessibilityLabel="View signed bill photo full screen"
               >
                 {photoUris[proofFor.id] ? (
                   <Image
@@ -823,10 +904,11 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
               </TouchableOpacity>
             ) : (
               !!proofFor?.proof?.signatureBase64 && (
-                <Text style={styles.modalLine} numberOfLines={1}>Signature: {proofFor?.proof?.signatureBase64}</Text>
+                <ProofRow label="Signature" value={proofFor?.proof?.signatureBase64} />
               )
             )}
-            <CustomButton title="Close" onPress={() => setProofFor(null)} fullWidth />
+            {/* A dismiss is not the primary action on the screen. */}
+            <CustomButton title="Close" onPress={() => setProofFor(null)} variant="secondary" fullWidth />
           </View>
         </View>
       </Modal>
@@ -834,20 +916,20 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
       <Modal visible={modalMode === 'undo' && !!targetRequest} transparent statusBarTranslucent animationType="fade" onRequestClose={closeModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Undo Approval</Text>
+            <Text style={styles.modalTitle}>Undo approval</Text>
             <Text style={styles.modalSub}>
-              This will reverse all inventory changes made by this approval. The request will be marked as rejected and inventory quantities will be restored.
+              This reverses the inventory changes this approval made. The request returns to
+              Pending for re-review and the stock goes back where it was.
             </Text>
-            <Text style={styles.modalLine}>Delivery: {targetRequest?.deliveryReference}</Text>
-            <Text style={styles.modalLine}>Personnel: {targetRequest?.personnelName}</Text>
-            {targetRequest?.changes.map(c => {
-              const appliedQty = c.beforeQty + c.returnedQty;
-              return (
-                <Text key={c.itemId} style={styles.modalLine}>
-                  {c.itemName}: {appliedQty} → {c.beforeQty} (restored)
-                </Text>
-              );
-            })}
+            <View style={styles.proofGrid}>
+              <ProofRow label="Delivery" value={targetRequest?.deliveryReference} />
+              <ProofRow label="Rider" value={targetRequest?.personnelName} />
+            </View>
+            {(targetRequest?.changes ?? []).map(c => (
+              <Text key={c.itemId} style={styles.modalStock}>
+                {c.itemName}: {c.beforeQty + c.returnedQty} → {c.beforeQty} (restored)
+              </Text>
+            ))}
             <View style={styles.modalActionRow}>
               <View style={styles.modalBtn}><CustomButton title="Cancel" onPress={closeModal} variant="secondary" fullWidth /></View>
               <View style={styles.modalBtn}><CustomButton title="Undo" onPress={confirmUndo} variant="danger" fullWidth /></View>
@@ -859,9 +941,11 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
       <Modal visible={!!photoFullscreen} transparent statusBarTranslucent animationType="fade" onRequestClose={() => setPhotoFullscreen(null)}>
         <View style={styles.fullscreenBackdrop}>
           <TouchableOpacity
-            style={styles.fullscreenClose}
+            style={[styles.fullscreenClose, { top: insets.top + spacing.xs }]}
             onPress={() => setPhotoFullscreen(null)}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Close photo"
           >
             <Feather name="x" size={22} color={colors.neutral0} />
           </TouchableOpacity>
@@ -874,81 +958,56 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
           )}
         </View>
       </Modal>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
+/** Label + value line, used by the proof and undo modals. */
+const ProofRow: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
+  <View style={styles.proofRow}>
+    <Text style={styles.proofRowLabel}>{label}</Text>
+    <Text style={styles.proofRowValue} numberOfLines={1}>{value || '—'}</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  backBtn: { padding: spacing.xxs },
-  backText: { ...THEME.typography.displaySm, color: colors.actionGreen },
-  headerCenter: { flex: 1, marginHorizontal: spacing.xs },
-  title: { ...THEME.typography.h3, color: colors.textPrimary },
-  subtitle: { ...THEME.typography.caption, color: colors.textSecondary },
-  pendingBadge: {
-    minWidth: 72,
-    paddingVertical: spacing.xxs,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.sm,
-    backgroundColor: colors.warning + '20',
-    alignItems: 'center',
-  },
-  pendingBadgeLabel: { ...THEME.typography.caption, color: colors.warning, fontWeight: typography.labelLg.fontWeight },
-  pendingBadgeCount: { ...THEME.typography.bodyLg, color: colors.warning, fontWeight: typography.labelLg.fontWeight },
+  list: { flex: 1 },
+  content: { padding: spacing.md, paddingTop: spacing.xs, paddingBottom: spacing.xxl, flexGrow: 1 },
+  footer: { marginTop: spacing.xs },
 
-  content: { padding: spacing.md, paddingBottom: spacing.xxl },
-  filterRow: { gap: spacing.xxs, marginBottom: spacing.md },
-  filterChip: {
-    paddingVertical: spacing.xxs,
-    paddingHorizontal: spacing.md,
-    borderRadius: 18,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterChipActive: { backgroundColor: colors.actionGreen, borderColor: colors.actionGreen },
-  filterChipText: { ...THEME.typography.bodyMd, color: colors.textSecondary, fontWeight: typography.labelLg.fontWeight },
-  filterChipTextActive: { color: colors.surface },
-
+  // The app's card: radius.lg, a hairline border and the one shared elevation.
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.sm,
+    ...shadows.card,
   },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
+  cardRule: { marginVertical: spacing.sm },
+  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.xs },
   personBlock: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  // Navy, not violet: on this card colour carries status and nothing else.
   avatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.secondary + '20',
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: { ...THEME.typography.bodyMd, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
+  avatarText: { ...typography.labelMd, color: colors.primary },
   personMeta: { marginLeft: spacing.xs, flex: 1 },
-  personName: { ...THEME.typography.bodyLg, color: colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
-  personSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
-  statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.sm },
-  statusText: { ...THEME.typography.caption, fontWeight: typography.labelLg.fontWeight },
+  personName: { ...typography.labelLg, color: colors.textPrimary },
+  personSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.full },
+  statusText: { ...typography.labelSm },
 
   ledgerStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.xxs,
     gap: spacing.xs,
   },
   paidBadge: {
@@ -957,41 +1016,52 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 999,
+    borderRadius: radius.full,
   },
   paidBadgeText: { ...typography.labelSm, letterSpacing: 0.4 },
   ledgerMeta: { flex: 1, alignItems: 'flex-end' },
   ledgerCustomer: { ...typography.labelSm, color: colors.textSecondary },
-  ledgerAmount: { ...typography.bodyMd, color: colors.textPrimary },
-  ledgerHint: { ...typography.overline, color: colors.textTertiary, marginBottom: spacing.xs, lineHeight: 15 },
-  tableWrap: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, overflow: 'hidden', marginBottom: spacing.xs },
-  tableHead: { flexDirection: 'row', backgroundColor: colors.background },
-  tableHeadCell: { ...THEME.typography.caption, color: colors.textSecondary,  paddingVertical: 8, paddingHorizontal: 6 },
-  tableRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border },
-  tableRowChanged: { backgroundColor: colors.actionGreenLighter },
-  tableCell: { ...THEME.typography.caption, color: colors.textPrimary, paddingVertical: 8, paddingHorizontal: 6 },
-  colItem: { flex: 2.3 },
-  colSmall: { flex: 1, textAlign: 'center' },
+  // The amount is what the approval is worth, so it is the card's one figure.
+  ledgerAmount: {
+    ...typography.h4,
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+    marginTop: 1,
+  },
+  ledgerHint: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xs, lineHeight: 16 },
+
+  blockLabel: { ...typography.overline, color: colors.textTertiary, marginBottom: spacing.xs },
+  itemRow: { marginBottom: spacing.xs },
+  itemName: { ...typography.labelMd, color: colors.textPrimary },
+  itemFigures: { marginTop: 1 },
+  itemFigureMuted: { ...typography.bodySm, color: colors.textTertiary },
+  itemFigureStrong: { ...typography.labelSm, color: colors.textSecondary },
 
   proofBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'flex-start',
+    gap: 5,
     paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xxs,
-    borderRadius: radius.sm,
-    backgroundColor: colors.secondary + '1A',
-    marginBottom: spacing.xs,
+    paddingVertical: spacing.xxs + 2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginTop: spacing.xxs,
   },
-  proofBtnText: { ...THEME.typography.caption, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
+  proofBtnStandalone: { marginTop: spacing.xs },
+  proofBtnText: { ...typography.labelSm, color: colors.primary },
   billPhotoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
+    gap: spacing.sm,
+    marginTop: spacing.xs,
     padding: spacing.xs,
-    backgroundColor: colors.background,
-    borderRadius: radius.sm,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
   },
   billPhotoThumbWrap: { width: 72, height: 96, borderRadius: radius.sm, overflow: 'hidden', backgroundColor: colors.neutral900 },
   billPhotoThumb: { width: '100%', height: '100%' },
@@ -999,93 +1069,106 @@ const styles = StyleSheet.create({
     width: '100%', height: '100%',
     alignItems: 'center', justifyContent: 'center',
     gap: 4, padding: 6,
-    backgroundColor: colors.backgroundAlt ?? colors.neutral100,
+    backgroundColor: colors.backgroundAlt,
   },
-  billPhotoPendingText: {
-    ...THEME.typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    ...typography.overline,
-  },
-  billPhotoBadge: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 2, backgroundColor: 'rgba(0,0,0,0.55)' },
-  billPhotoBadgeText: { ...THEME.typography.caption, color: colors.neutral0, textAlign: 'center', ...typography.overline },
+  billPhotoPendingText: { ...typography.overline, color: colors.textSecondary, textAlign: 'center' },
+  billPhotoBadge: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 2, backgroundColor: colors.overlay },
+  billPhotoBadgeText: { ...typography.overline, color: colors.neutral0, textAlign: 'center' },
   billPhotoMeta: { flex: 1 },
-  billPhotoLabel: { ...THEME.typography.bodyMd, color: colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
-  billPhotoSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
-  proofLink: { ...typography.labelSm, color: colors.secondary, marginTop: 6 },
-  proofPhotoTouchable: { width: '100%', aspectRatio: 3 / 4, borderRadius: radius.sm, overflow: 'hidden', backgroundColor: colors.neutral900, marginBottom: spacing.xs },
+  billPhotoLabel: { ...typography.labelMd, color: colors.textPrimary },
+  billPhotoSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  proofPhotoTouchable: { width: '100%', aspectRatio: 3 / 4, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.neutral900, marginBottom: spacing.sm },
   proofPhoto: { width: '100%', height: '100%' },
-  fullscreenBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  // A lightbox wants an opaque ground, not a scrim: the solid ink token reads
+  // as "the photo, full screen" where the old 'rgba(0,0,0,0.92)' was a raw
+  // colour approximating it. The close chip is one step lighter so it stays
+  // visible over a dark photograph.
+  fullscreenBackdrop: { flex: 1, backgroundColor: colors.neutral900, justifyContent: 'center', alignItems: 'center' },
   fullscreenImage: { width: '100%', height: '100%' },
-  fullscreenClose: { position: 'absolute', top: 50, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', zIndex: 5 },
-  fullscreenCloseText: { color: colors.neutral0, ...typography.h2, fontWeight: typography.labelLg.fontWeight },
+  fullscreenClose: {
+    position: 'absolute',
+    right: spacing.md,
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.neutral800,
+    borderWidth: 1,
+    borderColor: colors.neutral700,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+  },
 
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs, gap: spacing.xs },
-  metaText: { ...THEME.typography.caption, color: colors.textSecondary },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm, gap: spacing.xs },
+  metaText: { ...typography.caption, color: colors.textTertiary },
 
-  actionRow: { flexDirection: 'row', gap: spacing.xs },
+  actionRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm },
   actionBtn: { flex: 1 },
 
-  reviewInfoBox: { backgroundColor: colors.background, borderRadius: radius.sm, padding: spacing.xs },
-  reviewInfoText: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: 4 },
-  reviewComment: { ...THEME.typography.bodyMd, color: colors.textPrimary, marginBottom: spacing.xs },
-  reversedNote: {
-    ...typography.bodySm,
-    color: colors.textSecondary,
+  reviewInfoBox: {
+    backgroundColor: colors.neutral50,
+    borderRadius: radius.md,
+    padding: spacing.sm,
     marginTop: spacing.sm,
   },
-  undoBtnWrap: { marginTop: spacing.xs, alignSelf: 'flex-start' },
+  reviewInfoText: { ...typography.caption, color: colors.textSecondary },
+  reviewComment: { ...typography.bodySm, color: colors.textPrimary, marginTop: spacing.xxs },
+  reversedNote: { ...typography.bodySm, color: colors.textSecondary, marginTop: spacing.xs },
+  undoBtnWrap: { marginTop: spacing.sm, alignSelf: 'flex-start' },
 
-  emptyState: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.xl,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  emptyTitle: { ...THEME.typography.h3, color: colors.textPrimary },
-  emptySub: { ...THEME.typography.bodyMd, color: colors.textSecondary, marginTop: 4 },
-
-  summaryCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadows.xs,
-  },
-  summaryTitle: { ...typography.h4, color: colors.textPrimary, marginBottom: spacing.xs },
   summaryRow: { marginBottom: spacing.xs },
-  summaryMain: { ...THEME.typography.bodyMd, color: colors.textPrimary, fontWeight: typography.labelLg.fontWeight },
-  summaryMeta: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
-  summaryEmpty: { ...THEME.typography.caption, color: colors.textSecondary },
+  summaryMain: { ...typography.labelMd, color: colors.textPrimary },
+  summaryMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  summaryEmpty: { ...typography.caption, color: colors.textSecondary },
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
-    padding: spacing.xl,
+    padding: spacing.lg,
   },
   modalCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.md,
+    padding: spacing.lg,
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
   },
-  modalTitle: { ...THEME.typography.h3, color: colors.textPrimary, marginBottom: spacing.xxs },
-  modalSub: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: spacing.xs },
-  modalLine: { ...THEME.typography.bodyMd, color: colors.textPrimary, marginBottom: spacing.xxs },
-  modalActionRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs },
+  modalTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.xs },
+  modalAmount: { ...typography.h2, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
+  modalSub: { ...typography.bodySm, color: colors.textSecondary, marginBottom: spacing.xs },
+  modalStock: { ...typography.labelMd, color: colors.textPrimary, marginBottom: spacing.xxs },
+  modalWarn: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xs },
+  noteBox: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    backgroundColor: colors.neutral50,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  noteText: { ...typography.caption, color: colors.textSecondary, flex: 1, lineHeight: 17 },
+
+  proofGrid: { marginBottom: spacing.sm },
+  proofRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm, paddingVertical: 5 },
+  proofRowLabel: { ...typography.caption, color: colors.textSecondary },
+  proofRowValue: { ...typography.labelSm, color: colors.textPrimary, flex: 1, textAlign: 'right' },
+
+  modalActionRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.md },
   modalBtn: { flex: 1 },
   commentInput: {
+    ...typography.bodyMd,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     minHeight: 90,
     textAlignVertical: 'top',
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  }
+  },
+  inputHint: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xxs, minHeight: 16 },
 });
 
 export default InventoryApprovalScreen;
