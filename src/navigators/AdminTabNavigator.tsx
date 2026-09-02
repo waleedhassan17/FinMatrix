@@ -14,7 +14,11 @@ import MoreStack from './stacks/MoreStack';
 
 // ── Design Tokens ──
 const ACTIVE = THEME.colors.actionGreen;
-const INACTIVE = THEME.colors.textTertiary;
+// textSecondary, not textTertiary: #94A3B8 on white is around 2.8:1, under the
+// 4.5:1 needed for text this size, and a tab label is a navigation control
+// rather than a hint. #475569 clears it and still reads as unselected beside
+// the navy active state.
+const INACTIVE = THEME.colors.textSecondary;
 const TAB_HEIGHT = 72;
 
 type IconName = React.ComponentProps<typeof Feather>['name'];

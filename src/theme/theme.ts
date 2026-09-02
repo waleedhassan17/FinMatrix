@@ -258,6 +258,19 @@ const radius = {
 // 5. Elevation (soft, layered, cool)
 // ───────────────────────────────────────────────
 const shadows = {
+  /**
+   * THE card elevation. One subtle shadow, used everywhere a surface lifts off
+   * the canvas — the scale below still exists for older screens, but nothing
+   * needs a 28 or 38px blur, and stacking several depths is most of what makes
+   * an interface look synthetic.
+   */
+  card: {
+    shadowColor: '#101828',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   xs: {
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 1 },

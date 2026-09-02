@@ -43,14 +43,12 @@ export const FONT = THEME.typography.fontFamily;
 /** The card surface every block on the dashboard is drawn on. */
 export const card = {
   backgroundColor: C.surface,
-  borderRadius: T.radius.xl,
+  // 12, not 16: the card radius for the whole app. A hairline border does the
+  // separating, so the shadow only has to lift the surface a little.
+  borderRadius: T.radius.lg,
   borderWidth: 1,
   borderColor: C.line,
-  shadowColor: T.colors.neutral900,
-  shadowOpacity: 0.04,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 1,
+  ...T.shadows.card,
 } as const;
 
 // ── Compact currency (mirrors slice formatter) ────────
