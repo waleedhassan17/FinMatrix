@@ -36,7 +36,8 @@ import DeliveryPersonnelDetailScreen from '../screens/Delivery/Admin/DeliveryPer
 import BankReconciliationListScreen from '../screens/BankReconciliation/BankReconciliationListScreen';
 import BankReconciliationScreen from '../screens/BankReconciliation/BankReconciliationScreen';
 import BankReconciliationDetailScreen from '../screens/BankReconciliation/BankReconciliationDetailScreen';
-import TaxSettingsScreen from '../screens/Tax/TaxSettings/TaxSettingsScreen';
+// SHELVED (Tax Management) — uncomment with the More hub row.
+// import TaxSettingsScreen from '../screens/Tax/TaxSettings/TaxSettingsScreen';
 import TaxLiabilityScreen from '../screens/Tax/TaxLiability/TaxLiabilityScreen';
 import TaxPaymentScreen from '../screens/Tax/TaxPayment/TaxPaymentScreen';
 import SettingsScreen from '../screens/Settings/SettingsMain/SettingsScreen';
@@ -79,7 +80,8 @@ export const MoreRouteNames = {
   BankReconciliationList: 'BankReconciliationList',
   BankReconciliation: 'BankReconciliation',
   BankReconciliationDetail: 'BankReconciliationDetail',
-  TaxSettings: 'TaxSettings',
+  // SHELVED (Tax Management)
+  // TaxSettings: 'TaxSettings',
   TaxLiability: 'TaxLiability',
   TaxPayment: 'TaxPayment',
   Settings: 'Settings',
@@ -132,7 +134,8 @@ export const MORE_ROUTES: IRoute[] = [
   { title: MoreRouteNames.BankReconciliationList, component: BankReconciliationListScreen },
   { title: MoreRouteNames.BankReconciliation, component: BankReconciliationScreen },
   { title: MoreRouteNames.BankReconciliationDetail, component: BankReconciliationDetailScreen },
-  { title: MoreRouteNames.TaxSettings, component: TaxSettingsScreen },
+  // SHELVED (Tax Management)
+  // { title: MoreRouteNames.TaxSettings, component: TaxSettingsScreen },
   { title: MoreRouteNames.TaxLiability, component: TaxLiabilityScreen },
   { title: MoreRouteNames.TaxPayment, component: TaxPaymentScreen },
   { title: MoreRouteNames.Settings, component: SettingsScreen },

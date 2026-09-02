@@ -104,11 +104,29 @@ const SECTIONS: MoreSection[] = [
   {
     title: 'MONEY',
     rows: [
+      // ── Tax Management: SHELVED for this release ──────────────────────
+      // Commented out rather than deleted -- uncomment this row and the
+      // TaxSettings registrations in navigations-maps/More.ts, Dashboard.ts,
+      // tierRoutes.tsx and the SetupChecklist step to bring it back.
+      //
+      // Note while shelved: TaxSettingsScreen is the ONLY place in the app
+      // that reads or writes company.salesTaxRegistered, so that flag is
+      // frozen at its current value. It drives whether input tax on bills is
+      // reclaimed to 1300 Sales Tax Recoverable.
+      // {
+      //   key: 'tax', icon: 'percent', iconBg: IC.amberBg, iconColor: IC.amber,
+      //   label: 'Tax Management',
+      //   subtitle: 'Tax rates, liability report & payments',
+      //   onPress: nav => nav.navigate('TaxSettings'),
+      // },
+      // Tax Management was the owner's only route into tax, and the books
+      // carry real unremitted sales tax on 2300. Without this row the OWNER
+      // could not see or settle a liability that staff can still see.
       {
-        key: 'tax', icon: 'percent', iconBg: IC.amberBg, iconColor: IC.amber,
-        label: 'Tax Management',
-        subtitle: 'Tax rates, liability report & payments',
-        onPress: nav => nav.navigate('TaxSettings'),
+        key: 'taxLiability', icon: 'percent', iconBg: IC.amberBg, iconColor: IC.amber,
+        label: 'Tax liability',
+        subtitle: 'What is owed this period, and record a payment',
+        onPress: nav => nav.navigate('TaxLiability'),
       },
     ]
   },

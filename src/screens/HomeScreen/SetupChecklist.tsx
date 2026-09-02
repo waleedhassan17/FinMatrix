@@ -42,8 +42,8 @@ export interface SetupStep {
     | 'COAList'
     | 'InventoryForm'
     | 'CustomerForm'
-    | 'VendorForm'
-    | 'TaxSettings';
+    | 'VendorForm';
+  // | 'TaxSettings'   ← SHELVED, restore with the step below
   optional?: boolean;
   /** Tier gate, checked with isFeatureVisible before the row renders. */
   feature?: string;
@@ -90,13 +90,16 @@ export const SETUP_STEPS: SetupStep[] = [
     icon: 'truck',
     screen: 'VendorForm'
   },
-  {
-    key: 'taxRates',
-    label: 'Set Tax rates',
-    hint: 'Configure the sales tax you charge',
-    icon: 'percent',
-    screen: 'TaxSettings'
-  },
+  // SHELVED (Tax Management). Uncomment together with 'TaxSettings' in the
+  // screen union above and the route registrations in navigations-maps —
+  // a step whose destination is not registered is a tap that does nothing.
+  // {
+  //   key: 'taxRates',
+  //   label: 'Set Tax rates',
+  //   hint: 'Configure the sales tax you charge',
+  //   icon: 'percent',
+  //   screen: 'TaxSettings'
+  // },
 ];
 
 interface Props {

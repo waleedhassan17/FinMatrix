@@ -36,7 +36,8 @@ import COAFormScreen from '../screens/ChartOfAccounts/COAForm/COAFormScreen';
 import COADetailScreen from '../screens/ChartOfAccounts/COADetail/COADetailScreen';
 import CustomerFormScreen from '../screens/Customers/CustomerForm/CustomerFormScreen';
 import VendorFormScreen from '../screens/Vendors/VendorForm/VendorFormScreen';
-import TaxSettingsScreen from '../screens/Tax/TaxSettings/TaxSettingsScreen';
+// SHELVED (Tax Management) — uncomment with the checklist step in SetupChecklist.
+// import TaxSettingsScreen from '../screens/Tax/TaxSettings/TaxSettingsScreen';
 import InventoryFormScreen from '../screens/Inventory/InventoryForm/InventoryFormScreen';
 import GeneralJournalFormScreen from '../screens/GeneralJournal/GeneralJournalFormScreen';
 import OpeningBalanceScreen from '../screens/GeneralJournal/OpeningBalance/OpeningBalanceScreen';
@@ -106,7 +107,8 @@ export const DashboardRouteNames = {
   InventoryForm: 'InventoryForm',
   CustomerForm: 'CustomerForm',
   VendorForm: 'VendorForm',
-  TaxSettings: 'TaxSettings',
+  // SHELVED (Tax Management)
+  // TaxSettings: 'TaxSettings',
   // dashboard drill-downs
   AnalyticsDashboard: 'AnalyticsDashboard',
   InvoiceDetail: 'InvoiceDetail',
@@ -145,7 +147,8 @@ export const DASHBOARD_ROUTES: IRoute[] = [
   { title: DashboardRouteNames.InventoryForm, component: InventoryFormScreen },
   { title: DashboardRouteNames.CustomerForm, component: CustomerFormScreen },
   { title: DashboardRouteNames.VendorForm, component: VendorFormScreen },
-  { title: DashboardRouteNames.TaxSettings, component: TaxSettingsScreen },
+  // SHELVED (Tax Management)
+  // { title: DashboardRouteNames.TaxSettings, component: TaxSettingsScreen },
   { title: DashboardRouteNames.AnalyticsDashboard, component: AnalyticsDashboardScreen },
   // recent-transaction drill-down — see the import block above
   { title: DashboardRouteNames.InvoiceDetail, component: InvoiceDetailScreen },

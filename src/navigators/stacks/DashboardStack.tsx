@@ -28,7 +28,10 @@ export type DashboardStackParamList = {
   InventoryForm: { itemId?: string } | undefined;
   CustomerForm: { customerId?: string } | undefined;
   VendorForm: { vendorId?: string } | undefined;
-  TaxSettings: undefined;
+  // SHELVED (Tax Management). Commented with the registration: leaving the
+  // param declared would let navigate('TaxSettings') compile against a route
+  // that no longer exists, which fails silently rather than at build time.
+  // TaxSettings: undefined;
   // Revenue "View all" — mounted here so it does not strand Analytics on top
   // of the Reports tab.
   AnalyticsDashboard: undefined;

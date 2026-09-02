@@ -62,7 +62,8 @@ import CustomerFormScreen from '../../screens/Customers/CustomerForm/CustomerFor
 import VendorListScreen from '../../screens/Vendors/VendorList/VendorListScreen';
 import VendorDetailScreen from '../../screens/Vendors/VendorDetail/VendorDetailScreen';
 import VendorFormScreen from '../../screens/Vendors/VendorForm/VendorFormScreen';
-import TaxSettingsScreen from '../../screens/Tax/TaxSettings/TaxSettingsScreen';
+// SHELVED (Tax Management)
+// import TaxSettingsScreen from '../../screens/Tax/TaxSettings/TaxSettingsScreen';
 import TaxLiabilityScreen from '../../screens/Tax/TaxLiability/TaxLiabilityScreen';
 import TaxPaymentScreen from '../../screens/Tax/TaxPayment/TaxPaymentScreen';
 import SettingsScreen from '../../screens/Settings/SettingsMain/SettingsScreen';
@@ -116,7 +117,8 @@ export const SB_DASHBOARD_ROUTES: TierRoute[] = [
   { name: 'COADetail', component: COADetailScreen },
   { name: 'CustomerForm', component: CustomerFormScreen },
   { name: 'VendorForm', component: VendorFormScreen },
-  { name: 'TaxSettings', component: TaxSettingsScreen },
+  // SHELVED (Tax Management)
+  // { name: 'TaxSettings', component: TaxSettingsScreen },
 ];
 
 export const SB_TRANSACTIONS_ROUTES: TierRoute[] = [
@@ -169,7 +171,8 @@ export const SB_MORE_ROUTES: TierRoute[] = [
   { name: 'BankReconciliationList', component: BankReconciliationListScreen },
   { name: 'BankReconciliation', component: BankReconciliationScreen },
   { name: 'BankReconciliationDetail', component: BankReconciliationDetailScreen },
-  { name: 'TaxSettings', component: TaxSettingsScreen },
+  // SHELVED (Tax Management)
+  // { name: 'TaxSettings', component: TaxSettingsScreen },
   { name: 'TaxLiability', component: TaxLiabilityScreen },
   { name: 'TaxPayment', component: TaxPaymentScreen },
   { name: 'Settings', component: SettingsScreen },

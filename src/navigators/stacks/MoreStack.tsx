@@ -36,7 +36,10 @@ export type MoreStackParamList = {
   BankReconciliationList: undefined;
   BankReconciliation: { accountId: string; accountName: string };
   BankReconciliationDetail: { reconciliationId: string };
-  TaxSettings: undefined;
+  // SHELVED (Tax Management). Commented with the registration: leaving the
+  // param declared would let navigate('TaxSettings') compile against a route
+  // that no longer exists, which fails silently rather than at build time.
+  // TaxSettings: undefined;
   TaxLiability: undefined;
   TaxPayment: { taxRateId?: string } | undefined;
   Settings: undefined;
