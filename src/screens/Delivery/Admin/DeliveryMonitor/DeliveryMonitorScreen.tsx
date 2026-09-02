@@ -19,7 +19,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import type { DashboardStackParamList } from '../../../../navigators/stacks/DashboardStack';
 import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks';
-import { selectDeliveries, selectDeliveryPersonnel } from '../AssignDeliveries/deliverySlice';
+import {
+  selectDeliveries,
+  selectDeliveryPersonnel,
+  fetchDeliveries,
+  fetchDeliveryPersonnel,
+} from '../AssignDeliveries/deliverySlice';
 import {
   selectMonitorFilter,
   selectMonitorSort,
@@ -170,12 +175,19 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
+    // fetchMapData only loads the GPS pins. Every number and row on this
+    // screen comes from the Redux delivery list, which nothing here was
+    // asking for -- so opened from anywhere other than Delivery Management
+    // (which happens to fetch it) the monitor showed an empty board while
+    // deliveries were in fact running.
+    dispatch(fetchDeliveries());
+    dispatch(fetchDeliveryPersonnel());
     fetchMapData();
     refreshTimerRef.current = setInterval(() => fetchMapData(true), 30_000);
     return () => {
       if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
     };
-  }, [fetchMapData]);
+  }, [fetchMapData, dispatch]);
 
   // ── Compute stats from Redux deliveries ────────────────────────────────────
   const stats = useMemo(() => ({

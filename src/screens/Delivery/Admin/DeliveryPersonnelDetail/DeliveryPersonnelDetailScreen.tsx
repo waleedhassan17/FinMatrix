@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  StatusBar,
   ScrollView,
   ActivityIndicator,
   Linking,
@@ -14,7 +13,7 @@ import {
   Share
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ReportContainer, ReportHeader } from '../../../../components/reports/ReportUI';
 import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -171,27 +170,27 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
 
   if (loadState === 'loading' && !person) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ScreenHeader onBack={() => navigation.goBack()} />
+      <ReportContainer>
+        <ReportHeader title="Personnel Details" onBack={() => navigation.goBack()} />
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={colors.actionGreen} />
           <Text style={styles.emptyText}>Loading rider…</Text>
         </View>
-      </SafeAreaView>
+      </ReportContainer>
     );
   }
 
   if (!person) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ScreenHeader onBack={() => navigation.goBack()} />
+      <ReportContainer>
+        <ReportHeader title="Personnel Details" onBack={() => navigation.goBack()} />
         <View style={styles.centerContent}>
           <Feather name="user-x" size={40} color={colors.textTertiary} />
           <Text style={styles.emptyText}>{loadError || 'Personnel not found'}</Text>
           <CustomButton title="Retry" onPress={fetchAll} variant="primary" size="md" />
           <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="secondary" size="md" />
         </View>
-      </SafeAreaView>
+      </ReportContainer>
     );
   }
 
@@ -203,6 +202,8 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
     ? colors.success
     : STATUS_COLORS[person.status] || colors.neutral400;
 
+  // Whether there is anything to compute a rate or a rating FROM.
+  const hasHistory = person.totalDeliveries > 0;
   const activeDeliveries = deliveries.filter(d => ACTIVE_STATUSES.includes(d.status));
   const completedDeliveries = deliveries.filter(d => !ACTIVE_STATUSES.includes(d.status) && d.status !== 'unassigned');
 
@@ -287,9 +288,12 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <ScreenHeader onBack={() => navigation.goBack()} />
+    <ReportContainer>
+      <ReportHeader
+        title="Personnel Details"
+        subtitle={person.displayName}
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -355,12 +359,19 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
               <Text style={styles.metricNumber}>{person.totalDeliveries}</Text>
               <Text style={styles.metricLabel}>Total</Text>
             </View>
+            {/* A rider with no completed deliveries has no on-time rate and no
+                rating -- 100% and 5.0 were a zero denominator and a default
+                being read as measurements. */}
             <View style={styles.metricItem}>
-              <Text style={styles.metricNumber}>{person.onTimeRate.toFixed(0)}%</Text>
+              <Text style={styles.metricNumber}>
+                {hasHistory ? `${person.onTimeRate.toFixed(0)}%` : '—'}
+              </Text>
               <Text style={styles.metricLabel}>On-Time</Text>
             </View>
             <View style={styles.metricItem}>
-              <Text style={styles.metricNumber}>{person.rating.toFixed(1)}</Text>
+              <Text style={styles.metricNumber}>
+                {hasHistory ? person.rating.toFixed(1) : '—'}
+              </Text>
               <Text style={styles.metricLabel}>Rating</Text>
             </View>
             <View style={styles.metricItem}>
@@ -369,13 +380,21 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
             </View>
           </View>
           <View style={styles.progressWrapper}>
-            <Text style={styles.progressLabel}>On-Time Rate</Text>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, {
-                width: `${Math.min(person.onTimeRate, 100)}%`,
-                backgroundColor: person.onTimeRate >= 90 ? colors.success : person.onTimeRate >= 70 ? colors.warning : colors.danger
-              }]} />
-            </View>
+            {hasHistory ? (
+              <>
+                <Text style={styles.progressLabel}>On-Time Rate</Text>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, {
+                    width: `${Math.min(person.onTimeRate, 100)}%`,
+                    backgroundColor: person.onTimeRate >= 90 ? colors.success : person.onTimeRate >= 70 ? colors.warning : colors.danger
+                  }]} />
+                </View>
+              </>
+            ) : (
+              // A full green bar for a rider who has delivered nothing reads as
+              // a perfect record rather than an absent one.
+              <Text style={styles.progressLabel}>No completed deliveries yet</Text>
+            )}
           </View>
         </View>
 
@@ -448,23 +467,22 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
         <View style={styles.actionsCard}>
           <Text style={styles.sectionTitle}>Actions</Text>
           <View style={styles.actionsGrid}>
+            {/* No "Monitor Deliveries" here. It opened the GLOBAL monitor
+                rather than this rider's, and their Current and Recent
+                deliveries are listed directly above these buttons -- so it
+                was both redundant and pointing somewhere else. Three actions
+                also gives the labels room to sit on one or two clean lines
+                instead of breaking mid-word. */}
             {[
               {
-                label: 'Monitor Deliveries',
-                icon: 'activity' as const,
-                onPress: () => (navigation as any).navigate('DeliveryMonitor'),
-                color: colors.info,
-                disabled: false
-              },
-              {
-                label: person.isAvailable ? 'Set Unavailable' : 'Set Available',
+                label: person.isAvailable ? 'Set unavailable' : 'Set available',
                 icon: (person.isAvailable ? 'pause-circle' : 'play-circle') as 'pause-circle' | 'play-circle',
                 onPress: handleToggleAvailability,
                 color: colors.secondary,
                 disabled: isActing || isDeactivated
               },
               {
-                label: 'Reset Password',
+                label: 'Reset password',
                 icon: 'key' as const,
                 onPress: () => setConfirm('reset'),
                 color: colors.actionGreen,
@@ -495,7 +513,10 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
                 <View style={[styles.actionIconCircle, { backgroundColor: action.color + '0A' }]}>
                   <Feather name={action.icon} size={16} color={action.color} />
                 </View>
-                <Text style={[styles.actionLabel, action.color === colors.danger && { color: colors.danger }]}>
+                <Text
+                  style={[styles.actionLabel, action.color === colors.danger && { color: colors.danger }]}
+                  numberOfLines={2}
+                >
                   {action.label}
                 </Text>
               </TouchableOpacity>
@@ -565,22 +586,14 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
-const ScreenHeader: React.FC<{ onBack: () => void }> = ({ onBack }) => (
-  <View style={styles.header}>
-    <TouchableOpacity onPress={onBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-      <View style={styles.backIconContainer}>
-        <Feather name="arrow-left" size={20} color={colors.textPrimary} />
-      </View>
-    </TouchableOpacity>
-    <Text style={styles.headerTitle}>Personnel Details</Text>
-    <View style={styles.headerSpacer} />
-  </View>
-);
-
+// The local ScreenHeader that used to live here -- a white bar with a circled
+// back button -- was the only header of its kind in the delivery flow; the
+// personnel list one tap away uses the app's navy header. ReportHeader is that
+// header.
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, gap: spacing.md },
@@ -620,9 +633,12 @@ const styles = StyleSheet.create({
   profileStatusDot: { width: 8, height: 8, borderRadius: 4 },
   profileStatusText: { ...typography.labelLg },
 
+  // The app's card: radius.lg and the one shared elevation, rather than a
+  // locally-invented radius.lg + 2 with no shadow.
   sectionCard: {
-    backgroundColor: colors.surface, borderRadius: radius.lg + 2, padding: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
     marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
+    ...shadows.card,
   },
   sectionTitle: {
     ...typography.h3,
@@ -676,8 +692,9 @@ const styles = StyleSheet.create({
   deliveryStatusText: { ...typography.labelSm },
 
   actionsCard: {
-    backgroundColor: colors.surface, borderRadius: radius.lg + 2, padding: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
     borderWidth: 1, borderColor: colors.border,
+    ...shadows.card,
   },
   actionsGrid: { flexDirection: 'row', gap: spacing.xs },
   actionBtn: {
@@ -687,8 +704,13 @@ const styles = StyleSheet.create({
   actionIconCircle: {
     width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xxs,
   },
+  // minHeight is two lines, so a one-line and a two-line label leave their
+  // tiles the same height. The labels themselves were also shortened -- four
+  // tiles in this row left each too narrow and React Native broke inside the
+  // words ("Set Unavaila ble").
   actionLabel: {
-    ...typography.caption, color: colors.textPrimary,  textAlign: 'center',
+    ...typography.caption, color: colors.textPrimary, textAlign: 'center',
+    minHeight: 30,
   },
   deactivatedNote: {
     ...typography.caption,

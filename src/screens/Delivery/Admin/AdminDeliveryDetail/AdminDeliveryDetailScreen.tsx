@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Modal,
   TextInput,
@@ -8,7 +9,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Linking,
-  StatusBar
+  StatusBar,
+  ActivityIndicator
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
@@ -24,7 +26,8 @@ import {
   reassignDelivery,
   cancelDelivery,
   deleteDelivery,
-  fetchDeliveries
+  fetchDeliveries,
+  fetchDeliveryPersonnel
 } from '../AssignDeliveries/deliverySlice';
 import {
   selectDetailUIState,
@@ -81,6 +84,25 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const uiState = useAppSelector(selectDetailUIState);
 
   const delivery = deliveries.find(d => d.id === deliveryId);
+
+  // This screen had no effect of any kind: it read the delivery out of the
+  // shared list and never asked for it. Opened without some OTHER screen
+  // having fetched first -- which the dashboard route makes easy -- it
+  // reported a delivery that exists as "not found".
+  //
+  // `loaded` separates the two states the old code collapsed into one. Until
+  // the fetch settles we are looking, not failing.
+  const [loaded, setLoaded] = useState(deliveries.length > 0);
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      Promise.all([
+        dispatch(fetchDeliveries()),
+        dispatch(fetchDeliveryPersonnel()),
+      ]).finally(() => { if (alive) setLoaded(true); });
+      return () => { alive = false; };
+    }, [dispatch]),
+  );
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [manualAddress, setManualAddress] = useState('');
   const [manualLat, setManualLat] = useState('');
@@ -122,7 +144,11 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={{ width: 36 }} />
           </View>
           <View style={styles.center}>
-            <Text style={styles.placeholderNote}>Delivery not found</Text>
+            {loaded ? (
+              <Text style={styles.placeholderNote}>Delivery not found</Text>
+            ) : (
+              <ActivityIndicator size="large" color={colors.neutral0} />
+            )}
           </View>
         </View>
       </SafeAreaView>

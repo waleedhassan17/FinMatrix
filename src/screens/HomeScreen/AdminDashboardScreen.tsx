@@ -372,9 +372,14 @@ const AdminDashboardScreen: React.FC = () => {
               </View>
             </Section>
 
-            {/* ── Deliveries (warehouse tier only) ───── */}
+            {/* ── Deliveries (warehouse tier only) ─────
+                The card summarises deliveries — pending, in transit,
+                delivered, assigned — so "View all" opens the delivery monitor,
+                which shows every one of them under that same breakdown. It
+                used to open the team roster, which is people. The roster is
+                still one tap away under More. */}
             {showDelivery && (
-              <Section title="Deliveries" action="View all" onAction={() => navigation.navigate('DeliveryPersonnelList')}>
+              <Section title="Deliveries" action="View all" onAction={() => navigation.navigate('DeliveryMonitor')}>
                 <DeliveryProgressCard delivery={delivery} completedPct={completedPct} />
               </Section>
             )}

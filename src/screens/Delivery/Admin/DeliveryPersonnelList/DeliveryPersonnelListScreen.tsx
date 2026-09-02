@@ -53,6 +53,20 @@ const TAB_COLORS: Record<FilterKey, string> = {
   on_leave: colors.neutral400
 };
 
+/**
+ * Has anyone actually configured a capacity for this rider?
+ *
+ * maxLoad 0 means "not set", not "can carry nothing". It was being divided by:
+ * `(0 / 0) * 100` is NaN, which fails both `< 50` and `<= 80` and fell through
+ * to the danger colour, so every rider without a configured capacity was drawn
+ * as critically overloaded with a full red bar. The same comparison
+ * (`currentLoad < maxLoad`) also silently kept them out of the Available count.
+ *
+ * Module scope on purpose: the stats useMemo below calls this during render,
+ * which a const declared inside the component would not yet have initialised.
+ */
+const hasCapacity = (max: number) => max > 0;
+
 const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [isPullRefreshing, setIsPullRefreshing] = React.useState(false);
@@ -106,7 +120,10 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
 
   const getEffectiveStatus = (p: DummyDeliveryPerson): string => {
     if (p.status === 'on_leave' || p.status === 'inactive') return 'on_leave';
-    if (p.isAvailable && p.currentLoad < p.maxLoad) return 'available';
+    // `currentLoad < maxLoad` is false when maxLoad is 0, so a rider with no
+    // capacity configured could never be shown as available. Capacity only
+    // disqualifies them when a capacity actually exists.
+    if (p.isAvailable && (!hasCapacity(p.maxLoad) || p.currentLoad < p.maxLoad)) return 'available';
     return 'busy';
   };
 
@@ -131,7 +148,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
     const active = allPersonnel.filter(p => p.status === 'active').length;
     const onLeave = allPersonnel.filter(p => p.status === 'on_leave').length;
     const available = allPersonnel.filter(
-      p => p.isAvailable && p.status === 'active' && p.currentLoad < p.maxLoad,
+      p => p.isAvailable && p.status === 'active' && (!hasCapacity(p.maxLoad) || p.currentLoad < p.maxLoad),
     ).length;
     return { total, active, onLeave, available };
   }, [allPersonnel]);
@@ -140,6 +157,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
     name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   const getLoadColor = (current: number, max: number) => {
+    if (!hasCapacity(max)) return colors.border;
     const pct = (current / max) * 100;
     if (pct < 50) return colors.success;
     if (pct <= 80) return colors.warning;
@@ -150,7 +168,11 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
     const status = getEffectiveStatus(item);
     const statusColor = STATUS_COLORS[status] || colors.textTertiary;
     const loadColor = getLoadColor(item.currentLoad, item.maxLoad);
-    const loadPct = Math.min((item.currentLoad / item.maxLoad) * 100, 100);
+    // 0 with no capacity, not NaN% -- an empty track reads as "not set",
+    // where a NaN width rendered as a full bar.
+    const loadPct = hasCapacity(item.maxLoad)
+      ? Math.min((item.currentLoad / item.maxLoad) * 100, 100)
+      : 0;
 
     return (
       <TouchableOpacity
