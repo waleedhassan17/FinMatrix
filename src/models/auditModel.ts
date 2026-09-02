@@ -43,13 +43,12 @@ export interface SearchResult {
   routeParams: Record<string, string>;
 }
 
-export const MODULE_COLORS: Record<SearchModule, { bg: string; fg: string }> = {
-  Customers: { bg: '#EFF6FF', fg: '#2563EB' },
-  Invoices: { bg: '#FEF3C7', fg: '#FF8B00' },
-  Bills: { bg: '#F3E8FF', fg: '#7C3AED' },
-  Inventory: { bg: '#ECFDF5', fg: '#059669' },
-  Vendors: { bg: '#FEE2E2', fg: '#DE350B' },
-};
+// How a module is drawn belongs to the screen, not here: see MODULE_ICONS in
+// GlobalSearchScreen. This file used to carry a MODULE_COLORS map of five raw
+// hex pairs — colour written down where the design-token gate cannot see it
+// (it scans src/screens, src/components, src/Custom-Components and
+// src/navigators), which is how one of them stayed the emerald the brand moved
+// off long after the rest of the app went navy.
 
 // ── Raw `/search` payload ─────────────────────────────
 // The endpoint answers `{ query, results: { customers, vendors, invoices,

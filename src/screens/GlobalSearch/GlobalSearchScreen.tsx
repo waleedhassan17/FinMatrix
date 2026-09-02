@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  TextInput, SectionList, ActivityIndicator
+  TextInput, SectionList, ActivityIndicator, StatusBar
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
-import { THEME } from '../../utils/theme';
+import { THEME, HEADER_NAVY, HEADER_RADIUS } from '../../theme';
+import { ReportContainer, BackButton } from '../../components/reports/ReportUI';
+import EmptyState from '../../components/shared/EmptyState';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
   selectSearchQuery, selectSearchResults, selectIsSearching, selectSearchError, selectRecentSearches,
@@ -17,19 +19,32 @@ import {
 import { selectFeatures, selectUser } from '../Auth/authSlice';
 import { isFeatureVisible } from '../../utils/featureGates';
 import type { SearchResult, SearchModule } from '../../models/auditModel';
-import { MODULE_COLORS, SEARCH_MODULES } from '../../models/auditModel';
+import { SEARCH_MODULES } from '../../models/auditModel';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
+const { colors, radius, spacing } = THEME;
 
-const P = {
-  brand: THEME.colors.actionGreen,
-  brandLight: THEME.colors.actionGreenLighter,
-  pageBg: THEME.colors.neutral50,
-  card: THEME.colors.neutral0,
-  text: THEME.colors.neutral800,
-  sub: THEME.colors.neutral400,
-  divider: THEME.colors.neutral200
+/**
+ * What each module looks like in a result row.
+ *
+ * This replaces MODULE_COLORS, which lived in `auditModel.ts` and gave every
+ * module its own hex — five raw literals in a model file, one of them the
+ * emerald the brand moved off. Two things were wrong with it: presentation in
+ * a model is out of reach of the design-token gate (it scans screens,
+ * components and navigators, not models), and a colour per module is a
+ * distinction the layout already makes — every row sits under a heading naming
+ * its module, so the dot repeated what the header said.
+ *
+ * Icons carry the same information without a fifth colour on screen, and reuse
+ * the vocabulary already used for these entities on the dashboard tiles and
+ * the More hub rows.
+ */
+const MODULE_ICONS: Record<SearchModule, keyof typeof Feather.glyphMap> = {
+  Invoices: 'file-text',
+  Bills: 'file-plus',
+  Customers: 'users',
+  Vendors: 'truck',
+  Inventory: 'package',
 };
 
 type SearchNav = NavigationProp<Record<string, object | undefined>>;
@@ -128,265 +143,280 @@ const GlobalSearchScreen: React.FC = () => {
   const hasQuery = query.trim().length >= MIN_QUERY_LENGTH;
   const resultCount = sections.reduce((n, sec) => n + sec.data.length, 0);
 
-  return (
-    <SafeAreaView style={s.safe} edges={['top']}>
-      {/* Search Bar */}
-      <View style={s.searchBar}>
-        <TouchableOpacity onPress={() => nav.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Feather name="arrow-left" size={22} color={P.text} />
-        </TouchableOpacity>
-        <View style={s.inputWrap}>
-          <Feather name="search" size={16} color={P.sub} />
-          <TextInput
-            ref={inputRef}
-            style={s.input}
-            placeholder={searchPlaceholder}
-            placeholderTextColor={P.sub}
-            value={query}
-            onChangeText={handleChangeText}
-            returnKeyType="search"
-            autoCorrect={false}
-          />
-          {query.length > 0 && (
+  const recentBlock = (
+    <View style={s.recentSection}>
+      <View style={s.recentHeader}>
+        <Text style={s.sectionTitle}>Recent searches</Text>
+        {recentSearches.length > 0 && (
+          <TouchableOpacity
+            onPress={handleClearRecents}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={s.clearAllText}>Clear all</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {recentSearches.length === 0 ? (
+        <Text style={s.recentEmptyText}>
+          {query.length > 0
+            ? `Keep typing — searches start at ${MIN_QUERY_LENGTH} characters.`
+            : 'No recent searches'}
+        </Text>
+      ) : (
+        recentSearches.map((term, i) => (
+          <View
+            key={term}
+            style={[
+              s.row,
+              i === 0 && s.rowFirst,
+              i === recentSearches.length - 1 ? s.rowLast : s.rowDivider,
+            ]}
+          >
+            <TouchableOpacity style={s.recentTap} onPress={() => handleRecentTap(term)}>
+              <Feather name="clock" size={16} color={colors.textTertiary} />
+              <Text style={s.rowTitle} numberOfLines={1}>{term}</Text>
+            </TouchableOpacity>
             <TouchableOpacity
-              onPress={handleClear}
+              onPress={() => handleRemoveRecent(term)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
-              accessibilityLabel="Clear search"
+              accessibilityLabel={`Remove ${term} from recent searches`}
             >
-              <Feather name="x" size={16} color={P.sub} />
+              <Feather name="x" size={16} color={colors.textTertiary} />
             </TouchableOpacity>
-          )}
-        </View>
-      </View>
+          </View>
+        ))
+      )}
+    </View>
+  );
 
-      {/* Recent searches — shown until the query is long enough to search */}
-      {!hasQuery && (
-        <View style={s.recentSection}>
-          <View style={s.recentHeader}>
-            <Text style={s.recentTitle}>Recent Searches</Text>
-            {recentSearches.length > 0 && (
+  return (
+    <ReportContainer>
+      {/* The app header, built from the shared tokens rather than through
+          ReportHeader: that component's shape is a title with an optional
+          subtitle, and a search field is not a title. The identity that has to
+          match is the gradient, the corner and the back button — all of which
+          are the shared ones, and all of which headerTokens.test.ts guards. */}
+      <LinearGradient colors={HEADER_NAVY} style={s.header}>
+        <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
+        <View style={s.headerRow}>
+          <BackButton onPress={() => nav.goBack()} />
+          <View style={s.field}>
+            <Feather name="search" size={16} color={FIELD_MUTED} />
+            <TextInput
+              ref={inputRef}
+              style={s.input}
+              placeholder={searchPlaceholder}
+              placeholderTextColor={FIELD_MUTED}
+              value={query}
+              onChangeText={handleChangeText}
+              returnKeyType="search"
+              autoCorrect={false}
+              selectionColor={colors.neutral0}
+            />
+            {query.length > 0 && (
               <TouchableOpacity
-                onPress={handleClearRecents}
+                onPress={handleClear}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
               >
-                <Text style={s.clearAllText}>Clear all</Text>
+                <Feather name="x" size={16} color={FIELD_MUTED} />
               </TouchableOpacity>
             )}
           </View>
-          {recentSearches.length === 0 ? (
-            <Text style={s.recentEmptyText}>
-              {query.length > 0
-                ? `Keep typing — searches start at ${MIN_QUERY_LENGTH} characters.`
-                : 'No recent searches'}
-            </Text>
-          ) : (
-            recentSearches.map(term => (
-              <View key={term} style={s.recentRow}>
-                <TouchableOpacity style={s.recentTap} onPress={() => handleRecentTap(term)}>
-                  <Feather name="clock" size={14} color={P.sub} />
-                  <Text style={s.recentText} numberOfLines={1}>{term}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleRemoveRecent(term)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Feather name="x" size={14} color={P.sub} />
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
         </View>
-      )}
+      </LinearGradient>
 
-      {/* Results — a failed search reads differently from an empty one, and
-          a refresh keeps the results already on screen rather than blanking. */}
-      {hasQuery && (
-        searchError && !searching ? (
-          <View style={s.stateWrap}>
-            <Feather name="alert-circle" size={36} color={P.divider} />
-            <Text style={s.stateTitle}>Search unavailable</Text>
-            <Text style={s.stateText}>{searchError}</Text>
-            <TouchableOpacity style={s.retryBtn} activeOpacity={0.8} onPress={handleRetry}>
-              <Feather name="refresh-cw" size={14} color={P.card} />
-              <Text style={s.retryText}>Try again</Text>
-            </TouchableOpacity>
-          </View>
-        ) : searching && resultCount === 0 ? (
-          <View style={s.loadingWrap}>
-            <ActivityIndicator size="small" color={P.brand} />
-          </View>
-        ) : (
-          <SectionList
-            sections={sections}
-            keyExtractor={item => item.id}
-            contentContainerStyle={s.list}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            stickySectionHeadersEnabled={false}
-            ListHeaderComponent={
+      {/* A failed search reads differently from an empty one, and a refresh
+          keeps the results already on screen rather than blanking. */}
+      {hasQuery && searchError && !searching ? (
+        <View style={s.stateWrap}>
+          <EmptyState
+            icon="alert-circle"
+            title="Search unavailable"
+            message={searchError}
+            actionLabel="Try again"
+            onAction={handleRetry}
+          />
+        </View>
+      ) : (
+        /* One list for both states — results when there is a query, recent
+           searches in the header when there is not. Recents used to be a
+           plain View above the list, so with the keyboard up the last of the
+           eight the slice keeps could not be reached. */
+        <SectionList
+          sections={hasQuery ? sections : []}
+          keyExtractor={item => item.id}
+          style={s.list}
+          contentContainerStyle={s.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          stickySectionHeadersEnabled={false}
+          ListHeaderComponent={
+            hasQuery ? (
               resultCount > 0 ? (
                 <Text style={s.resultCount}>
                   {resultCount} {resultCount === 1 ? 'result' : 'results'}
                   {searching ? ' · updating…' : ''}
                 </Text>
               ) : null
-            }
-            renderSectionHeader={({ section }) => {
-              const mc = MODULE_COLORS[section.title as SearchModule];
-              return (
-                <View style={s.sectionHeader}>
-                  <View style={[s.moduleBadge, { backgroundColor: mc?.bg ?? P.pageBg }]}>
-                    <Text style={[s.moduleBadgeText, { color: mc?.fg ?? P.sub }]}>{section.title}</Text>
-                  </View>
-                  <Text style={s.sectionCount}>{section.data.length}</Text>
-                </View>
-              );
-            }}
-            renderItem={({ item }) => {
-              const mc = MODULE_COLORS[item.module];
-              return (
-                <TouchableOpacity
-                  style={s.resultCard}
-                  activeOpacity={0.6}
-                  onPress={() => handleTapResult(item)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${item.module}: ${item.title}. ${item.subtitle}`}
-                >
-                  <View style={[s.resultDot, { backgroundColor: mc?.fg ?? P.sub }]} />
-                  <View style={s.resultContent}>
-                    <Text style={s.resultTitle} numberOfLines={1}>{item.title}</Text>
-                    {!!item.subtitle && <Text style={s.resultSub} numberOfLines={1}>{item.subtitle}</Text>}
-                  </View>
-                  <Feather name="chevron-right" size={16} color={P.sub} />
-                </TouchableOpacity>
-              );
-            }}
-            ListEmptyComponent={
-              <View style={s.stateWrap}>
-                <Feather name="search" size={40} color={P.divider} />
-                <Text style={s.stateText}>No results for “{query.trim()}”</Text>
+            ) : (
+              recentBlock
+            )
+          }
+          renderSectionHeader={({ section }) => (
+            <View style={s.sectionHeader}>
+              <Text style={s.sectionTitle}>{section.title}</Text>
+              <Text style={s.sectionCount}>{section.data.length}</Text>
+            </View>
+          )}
+          renderItem={({ item, index, section }) => (
+            <TouchableOpacity
+              style={[
+                s.row,
+                index === 0 && s.rowFirst,
+                index === section.data.length - 1 ? s.rowLast : s.rowDivider,
+              ]}
+              activeOpacity={0.6}
+              onPress={() => handleTapResult(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.module}: ${item.title}. ${item.subtitle}`}
+            >
+              <Feather name={MODULE_ICONS[item.module]} size={17} color={colors.primary} />
+              <View style={s.rowContent}>
+                <Text style={s.rowTitle} numberOfLines={1}>{item.title}</Text>
+                {!!item.subtitle && <Text style={s.rowSub} numberOfLines={1}>{item.subtitle}</Text>}
               </View>
-            }
-          />
-        )
+              <Feather name="chevron-right" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            !hasQuery ? null : searching ? (
+              <View style={s.loadingWrap}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : (
+              <View style={s.stateWrap}>
+                <EmptyState
+                  icon="search"
+                  title="No results"
+                  message={`Nothing matched “${query.trim()}”. Try a name, a number or part of one.`}
+                />
+              </View>
+            )
+          }
+        />
       )}
-
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
 export default GlobalSearchScreen;
 
+// The field sits on the navy header, so its glyphs and placeholder are a white
+// alpha rather than a text token — the same treatment as the header's icon
+// buttons and the dashboard's date pill.
+const FIELD_MUTED = 'rgba(255,255,255,0.55)';
+
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: P.pageBg },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // Header — same padding, corner and gradient as ReportHeader.
+  header: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: P.card,
-    borderBottomWidth: 1,
-    borderBottomColor: P.divider,
-    gap: 10,
+    paddingTop: spacing.sm + 2,
+    paddingBottom: spacing.md + 2,
+    borderBottomLeftRadius: HEADER_RADIUS,
+    borderBottomRightRadius: HEADER_RADIUS,
   },
-  inputWrap: {
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  field: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: P.pageBg,
-    borderRadius: radius.sm,
-    paddingHorizontal: 10,
-    height: 40,
     gap: 8,
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   input: {
     flex: 1,
-    ...THEME.typography.h4,
-    color: P.text,
+    ...THEME.typography.bodyMd,
+    color: colors.neutral0,
     padding: 0,
   },
+
+  // Body
+  list: { flex: 1, backgroundColor: colors.background },
+  // flexGrow so the empty state has a full-height box to centre itself in —
+  // EmptyState is `flex: 1, justifyContent: 'center'`, which collapses to its
+  // own content height inside a content container that only wraps.
+  listContent: { padding: spacing.md, paddingBottom: spacing.xxl, flexGrow: 1 },
+  resultCount: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: spacing.xs },
   loadingWrap: { paddingVertical: spacing.xl, alignItems: 'center' },
-  recentSection: { padding: spacing.md },
+  stateWrap: { flex: 1, backgroundColor: colors.background },
+
+  // Section heading — the shape the dashboard uses: a label and a count, no
+  // badge and no colour. The heading names the module; the rows beneath it do
+  // not need to repeat that in a second channel.
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  sectionTitle: { ...THEME.typography.labelLg, color: colors.textPrimary, letterSpacing: -0.2 },
+  sectionCount: { ...THEME.typography.caption, color: colors.textTertiary, fontVariant: ['tabular-nums'] },
+
+  // Rows, grouped into one card per section.
+  //
+  // They used to be separate mini-cards with their own shadow and a 6px gap,
+  // which made a list of five hits read as five unrelated objects. This is the
+  // pattern the dashboard's recent-transactions card and the approval lists
+  // already use: one surface, hairline dividers, rounded at the ends only.
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 13,
+    backgroundColor: colors.surface,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: colors.border,
+  },
+  rowFirst: {
+    borderTopWidth: 1,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+  },
+  rowLast: {
+    borderBottomWidth: 1,
+    borderBottomLeftRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+  },
+  // Sits after `row` in the style array, so this bottom colour wins over the
+  // all-sides `borderColor` above.
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  rowContent: { flex: 1 },
+  rowTitle: { ...THEME.typography.labelMd, color: colors.textPrimary },
+  rowSub: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: 2 },
+
+  // Recent searches
+  recentSection: { paddingBottom: spacing.xs },
   recentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
-  recentTitle: {
-    ...THEME.typography.labelMd,
-    
-    color: P.sub,
-    letterSpacing: 0.5,
-  },
-  clearAllText: {
-    ...THEME.typography.labelMd,
-    
-    color: P.brand,
-  },
-  recentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: P.divider,
-  },
-  recentTap: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  recentText: { ...THEME.typography.bodyMd, color: P.text },
+  clearAllText: { ...THEME.typography.labelSm, color: colors.primary },
+  recentTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   recentEmptyText: {
     ...THEME.typography.bodyMd,
-    color: P.sub,
+    color: colors.textSecondary,
     paddingVertical: 10,
   },
-  list: { padding: spacing.md, paddingBottom: spacing.xxl },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.md,
-    marginBottom: spacing.xxs,
-  },
-  moduleBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  moduleBadgeText: { ...THEME.typography.labelMd, fontWeight: typography.labelLg.fontWeight },
-  sectionCount: { ...THEME.typography.caption, color: P.sub },
-  resultCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: P.card,
-    borderRadius: radius.sm,
-    padding: spacing.md,
-    marginBottom: 6,
-    ...shadows.xs,
-  },
-  resultDot: { width: 8, height: 8, borderRadius: 4, marginRight: 12 },
-  resultContent: { flex: 1 },
-  resultTitle: { ...THEME.typography.h4, color: P.text },
-  resultSub: { ...THEME.typography.caption, color: P.sub, marginTop: 2 },
-  resultCount: { ...THEME.typography.caption, color: P.sub, marginBottom: spacing.xxs },
-  stateWrap: { alignItems: 'center', marginTop: 80, paddingHorizontal: spacing.xl },
-  stateTitle: { ...THEME.typography.h4, color: P.text, marginTop: spacing.xs },
-  stateText: { ...THEME.typography.bodyMd, color: P.sub, marginTop: spacing.xxs, textAlign: 'center' },
-  retryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: P.brand,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    borderRadius: radius.sm,
-    marginTop: spacing.md,
-  },
-  retryText: { ...THEME.typography.labelMd,  color: P.card }
 });
