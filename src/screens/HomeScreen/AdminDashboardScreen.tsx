@@ -57,6 +57,10 @@ const { colors } = THEME;
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
 
+/** How many recent transactions the dashboard shows. The rest are behind
+ *  "View all", which is the whole point of that action. */
+const RECENT_TX_LIMIT = 4;
+
 const todayLabel = (): string =>
   new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
@@ -234,6 +238,33 @@ const AdminDashboardScreen: React.FC = () => {
   const openAlerts = alerts.length;
   const booksClear = openAlerts === 0;
 
+  // Four, not the eight the slice holds. This was the longest block on the
+  // dashboard and pushed Revenue and everything under it off-screen. Capped
+  // here rather than in the serializer: how much of the feed the dashboard
+  // chooses to show is a presentation decision, and the data stays whole for
+  // anything else reading it. It also gives "View all" something to be for.
+  const recentTransactions = useMemo(
+    () => transactions.slice(0, RECENT_TX_LIMIT),
+    [transactions],
+  );
+
+  // A row links to its own document. `kind` comes from the API through the
+  // serializer; anything this build cannot open returns undefined and the row
+  // renders inert rather than routing on a guess.
+  const openTransaction = useCallback(
+    (tx: RecentTransaction) => {
+      const nav = navigation as NativeStackNavigationProp<Record<string, object>>;
+      if (tx.kind === 'invoice') {
+        return () => nav.navigate('TransactionsStack', { screen: 'InvoiceDetail', params: { invoiceId: tx.id } });
+      }
+      if (tx.kind === 'bill') {
+        return () => nav.navigate('TransactionsStack', { screen: 'BillDetail', params: { billId: tx.id } });
+      }
+      return undefined;
+    },
+    [navigation],
+  );
+
   return (
     <ReportContainer>
       <StatusBar barStyle="light-content" backgroundColor={C.navy[0]} />
@@ -383,21 +414,30 @@ const AdminDashboardScreen: React.FC = () => {
               title="Revenue"
               caption={revenueTrend && revenueTrend.length > 0 ? `Last ${WINDOW_MONTHS} months` : undefined}
               action="View all"
-              onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('ReportsStack', { screen: 'AnalyticsDashboard' })}
+              onAction={() => navigation.navigate('AnalyticsDashboard')}
             >
               <RevenueTrendCard points={revenueTrend} />
             </Section>
 
             {/* ── Recent transactions ────────────────── */}
+            {/* "View all" goes to the Transactions hub, not InvoiceList. This
+                card mixes invoices and bills, so a link to the invoice list
+                could not contain half of what it sits under. The hub lists
+                both, along with the other document types. */}
             <Section
               title="Recent transactions"
               action={transactions.length > 0 ? 'View all' : undefined}
-              onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceList' })}
+              onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'TransactionsHub' })}
             >
               {transactions.length > 0 ? (
                 <View style={s.txCard}>
-                  {transactions.map((tx, i) => (
-                    <TransactionRow key={tx.id} tx={tx} isLast={i === transactions.length - 1} />
+                  {recentTransactions.map((tx, i) => (
+                    <TransactionRow
+                      key={tx.id}
+                      tx={tx}
+                      isLast={i === recentTransactions.length - 1}
+                      onPress={openTransaction(tx)}
+                    />
                   ))}
                 </View>
               ) : (
@@ -586,11 +626,27 @@ const InventoryCard: React.FC<{ count: number; onPress?: () => void }> = ({ coun
 );
 
 // ── Transaction row ───────────────────────────────────
-const TransactionRow: React.FC<{ tx: RecentTransaction; isLast: boolean }> = ({ tx, isLast }) => {
+// The label comes from `kind`, not from the arrow direction. `onPress` is
+// omitted for a document type this build cannot open, and the row then renders
+// as plain text rather than as a link to nowhere.
+const TransactionRow: React.FC<{
+  tx: RecentTransaction;
+  isLast: boolean;
+  onPress?: () => void;
+}> = ({ tx, isLast, onPress }) => {
   const isIncome = tx.type === 'income';
   const tone = isIncome ? C.pos : C.neg;
+  const label = tx.kind === 'invoice' ? 'Invoice' : tx.kind === 'bill' ? 'Bill' : '';
+
   return (
-    <View style={[s.txRow, !isLast && s.txDivider]}>
+    <TouchableOpacity
+      style={[s.txRow, !isLast && s.txDivider]}
+      onPress={onPress}
+      disabled={!onPress}
+      activeOpacity={0.6}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? `${tx.description}, ${tx.amount}` : undefined}
+    >
       <View style={[s.txIcon, { backgroundColor: isIncome ? TINT.pos : TINT.neg }]}>
         <Feather name={isIncome ? 'arrow-down-left' : 'arrow-up-right'} size={14} color={tone} />
       </View>
@@ -600,9 +656,10 @@ const TransactionRow: React.FC<{ tx: RecentTransaction; isLast: boolean }> = ({ 
       </View>
       <View style={s.txRight}>
         <Text style={[s.txAmount, { color: tone }]}>{isIncome ? '+' : '−'} {tx.amount}</Text>
-        <Text style={s.txType}>{isIncome ? 'Invoice' : 'Bill'}</Text>
+        {!!label && <Text style={s.txType}>{label}</Text>}
       </View>
-    </View>
+      {onPress && <Feather name="chevron-right" size={16} color={C.ink3} />}
+    </TouchableOpacity>
   );
 };
 

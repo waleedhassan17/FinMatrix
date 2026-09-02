@@ -128,13 +128,29 @@ export function dashboardStatsSerializer(data: AdminDashboardData): DashboardSta
 }
 
 export function recentTransactionsSerializer(data: AdminDashboardData): RecentTransaction[] {
-  return data.recentTransactions.map(t => ({
-    id: t.id,
-    type: t.type === 'invoice' ? 'income' : 'expense',
-    description: t.type === 'invoice' ? `Invoice ${t.description}` : `Bill ${t.description}`,
-    date: formatDate(t.date),
-    amount: fmtCurrency(t.amount),
-  }));
+  return data.recentTransactions.map(t => {
+    // Narrowed explicitly rather than folded into the income/expense flag.
+    // That flag maps anything-not-an-invoice to 'expense', so a credit memo or
+    // a payment appearing in this feed would have rendered as a Bill — and,
+    // now that rows are links, would have opened BillDetail with an id that is
+    // not a bill's. An unrecognised type stays visible and stays inert.
+    const kind: RecentTransaction['kind'] =
+      t.type === 'invoice' ? 'invoice' : t.type === 'bill' ? 'bill' : 'unknown';
+
+    const label =
+      kind === 'invoice' ? `Invoice ${t.description}`
+      : kind === 'bill' ? `Bill ${t.description}`
+      : t.description;
+
+    return {
+      id: t.id,
+      type: t.type === 'invoice' ? ('income' as const) : ('expense' as const),
+      kind,
+      description: label,
+      date: formatDate(t.date),
+      amount: fmtCurrency(t.amount),
+    };
+  });
 }
 
 // Keep "assigned" and "pending" as distinct buckets so the
