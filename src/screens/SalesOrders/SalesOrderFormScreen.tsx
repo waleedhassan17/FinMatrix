@@ -148,7 +148,8 @@ const SalesOrderFormScreen: React.FC = () => {
               onUnitPriceChange={v => updateLine(i, { unitPrice: v })}
               onTaxRateChange={v => updateLine(i, { taxRate: v })}
               onDelete={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
-              canDelete={lines.length > 1} />
+              // Removable down to zero; save refuses an empty document.
+              canDelete />
           ))}
           <AddButton label="Add Item" onPress={() => setLines(prev => [...prev, blankLine()])} />
         </SectionCard>
