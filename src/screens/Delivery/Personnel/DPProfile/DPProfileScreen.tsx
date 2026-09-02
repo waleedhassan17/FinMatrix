@@ -62,7 +62,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>My Profile</Text>
           <TouchableOpacity style={styles.headerIcon} activeOpacity={0.7}>
-            <NotificationIcon size={20} color="#fff" />
+            <NotificationIcon size={20} color={THEME.colors.neutral0} />
           </TouchableOpacity>
         </View>
 
@@ -85,7 +85,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.userName}>{displayName}</Text>
             <Text style={styles.userEmail}>{user?.email ?? 'delivery@finmatrix.pk'}</Text>
             <View style={styles.roleBadge}>
-              <Feather name="truck" size={10} color="#fff" />
+              <Feather name="truck" size={10} color={THEME.colors.neutral0} />
               <Text style={styles.roleText}>Delivery Personnel</Text>
             </View>
           </View>
@@ -105,7 +105,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.infoRow}>
               <View style={styles.infoRowLeft}>
                 <View style={[styles.infoRowIcon, { backgroundColor: THEME.colors.actionGreenLighter }]}>
-                  <Feather name="smartphone" size={16} color="#16A34A" />
+                  <Feather name="smartphone" size={16} color={THEME.colors.success} />
                 </View>
                 <View>
                   <Text style={styles.infoLabel}>Phone Number</Text>
@@ -116,7 +116,7 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.infoRow}>
               <View style={styles.infoRowLeft}>
                 <View style={[styles.infoRowIcon, { backgroundColor: THEME.colors.infoLight }]}>
-                  <Feather name="at-sign" size={16} color="#2563EB" />
+                  <Feather name="at-sign" size={16} color={THEME.colors.info} />
                 </View>
                 <View>
                   <Text style={styles.infoLabel}>Username</Text>

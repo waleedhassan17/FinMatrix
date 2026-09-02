@@ -7,7 +7,7 @@
 // screen rather than surfacing as a generic error.
 
 import React, { useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TouchableOpacity, Animated } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { ROUTES } from '../../../navigations-maps/Base';
@@ -68,8 +68,17 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   // refs lint rule forbids, and the value is create-once either way.
   const shakeAnim = useMemo(() => new Animated.Value(0), []);
 
-  const isDelivery = role === 'delivery';
-  const roleLabel = isDelivery ? 'Delivery Portal' : 'Business Portal';
+  // Owner-created accounts — staff and riders — both sign in with a username
+  // and a password their company handed them, against the same endpoint. The
+  // tab below only sets expectations and wording: the SERVER decides the
+  // actual role from the account, so picking the wrong tab still signs the
+  // user into the right app.
+  const isUserPortal = role === 'delivery' || role === 'staff';
+  const [portalTab, setPortalTab] = React.useState<'staff' | 'delivery'>(
+    role === 'delivery' ? 'delivery' : 'staff',
+  );
+  const isDelivery = isUserPortal;
+  const roleLabel = isUserPortal ? 'User Portal' : 'Business Portal';
 
   // A short nudge on validation failure — the one motion in the flow, and it
   // carries meaning rather than decorating the entrance.
@@ -165,6 +174,36 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
           <AuthNotice tone="error" title="Authentication failed" message={signInError} />
         ) : null}
 
+        {isUserPortal ? (
+          <View style={s.portalTabs}>
+            {(
+              [
+                { key: 'staff' as const, label: 'Staff' },
+                { key: 'delivery' as const, label: 'Delivery Personnel' },
+              ]
+            ).map(t => (
+              <TouchableOpacity
+                key={t.key}
+                style={[
+                  s.portalTab,
+                  portalTab === t.key && s.portalTabActive,
+                ]}
+                onPress={() => setPortalTab(t.key)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    s.portalTabText,
+                    portalTab === t.key && s.portalTabTextActive,
+                  ]}
+                >
+                  {t.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
+
         {isDelivery ? (
           <AuthField
             label="Username"
@@ -249,6 +288,28 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
 };
 
 const s = StyleSheet.create({
+  // Which portal the user is signing into. Cosmetic: the server resolves the
+  // real role from the account either way.
+  portalTabs: {
+    flexDirection: 'row',
+    gap: AUTH.space.sm,
+    marginBottom: AUTH.space.lg,
+  },
+  portalTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: AUTH.space.md,
+    borderRadius: AUTH.radius.md,
+    borderWidth: 1,
+    borderColor: AUTH.line,
+    backgroundColor: AUTH.surface,
+  },
+  portalTabActive: {
+    borderColor: AUTH.mintBorder,
+    backgroundColor: AUTH.mint,
+  },
+  portalTabText: { ...THEME.typography.labelMd, color: AUTH.ink[500] },
+  portalTabTextActive: { color: AUTH.brandDark },
   optRow: {
     flexDirection: 'row',
     alignItems: 'center',

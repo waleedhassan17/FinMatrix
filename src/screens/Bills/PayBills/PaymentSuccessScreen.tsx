@@ -47,7 +47,7 @@ const PaymentSuccessScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <View style={styles.tick}>
-            <Feather name="check" size={30} color="#FFFFFF" />
+            <Feather name="check" size={30} color={THEME.colors.neutral0} />
           </View>
           <Text style={styles.amount}>{formatCurrency(amount + creditApplied, 'Rs ')}</Text>
           <Text style={styles.heroSub}>settled with {vendorName}</Text>

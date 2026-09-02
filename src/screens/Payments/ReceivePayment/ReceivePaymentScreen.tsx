@@ -441,7 +441,7 @@ const ReceivePaymentScreen: React.FC = () => {
             <View style={sStyles.divider} />
             <TouchableOpacity style={sStyles.btn} onPress={handleSuccessDismiss} activeOpacity={0.8}>
               <LinearGradient colors={[colors.actionGreen, colors.actionGreenDark]} style={sStyles.btnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                <Feather name="arrow-left" size={16} color="#FFF" />
+                <Feather name="arrow-left" size={16} color={THEME.colors.neutral0} />
                 <Text style={sStyles.btnText}>Back to Invoice</Text>
               </LinearGradient>
             </TouchableOpacity>

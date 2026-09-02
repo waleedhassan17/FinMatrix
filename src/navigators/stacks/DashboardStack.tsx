@@ -28,6 +28,12 @@ export type DashboardStackParamList = {
   CustomerForm: { customerId?: string } | undefined;
   VendorForm: { vendorId?: string } | undefined;
   TaxSettings: undefined;
+  // Dashboard quick actions — mounted here so back returns to the dashboard
+  // instead of popping into the Transactions tab's history.
+  InvoiceForm: { invoiceId?: string; customerId?: string } | undefined;
+  SalesOrderForm: { salesOrderId?: string } | undefined;
+  POForm: { poId?: string; prefillItemId?: string } | undefined;
+  BillForm: { billId?: string; vendorId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator();

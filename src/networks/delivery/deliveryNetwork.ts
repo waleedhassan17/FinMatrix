@@ -424,3 +424,54 @@ export const downloadBillPhoto = async (requestId: string): Promise<string> => {
   }
   return result.uri;
 };
+
+/**
+ * The credit memo that would reverse an approved delivery, filled in from the
+ * delivery's own figures.
+ *
+ * Fetched by id rather than passed through a navigation param so the draft
+ * cannot go stale in a back-stack entry, and so a deep link into the form
+ * works. Reading it posts nothing — both roles may ask; what differs is what
+ * happens when the form is submitted.
+ */
+export interface DeliveryCreditMemoDraft {
+  deliveryRequestId: string;
+  deliveryId: string;
+  deliveryReference: string | null;
+  customerId: string;
+  customerName: string | null;
+  originalInvoiceId: string | null;
+  invoiceNumber: string | null;
+  /** Zero when the delivery was prepaid or already collected. */
+  invoiceBalance: string;
+  /**
+   * How the credit settles. A credit sale still owes money, so it clears the
+   * invoice; a prepaid or doorstep-collected delivery has nothing left to
+   * settle, so the money goes back out as cash rather than leaving accounts
+   * receivable negative.
+   */
+  settlement: 'apply_to_invoice' | 'refund_cash';
+  settlementAmount: string;
+  date: string;
+  reason: string;
+  lines: Array<{
+    itemId: string;
+    description: string;
+    quantity: string;
+    unitPrice: string;
+    taxRate: string;
+  }>;
+}
+
+export const fetchCreditMemoDraft = async (
+  requestId: string,
+): Promise<DeliveryCreditMemoDraft> => {
+  try {
+    const response = await api.get(
+      `/inventory-update-requests/${requestId}/credit-memo-draft`,
+    );
+    return response.data?.data ?? response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};

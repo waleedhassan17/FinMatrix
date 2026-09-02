@@ -34,12 +34,14 @@ import { clearShadowInventoryForRequest } from '../../Admin/AssignDeliveries/del
 import type { InventoryUpdateRequest } from '../../../../models/deliveryModel';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import { downloadBillPhoto } from '../../../../networks/delivery/deliveryNetwork';
+import { requestDeliveryUndo } from '../../../../networks/approvals/approvalsNetwork';
+import { useIsOwner } from '../../../../hooks/useCapability';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'InventoryApproval'>;
-type ModalMode = 'approve' | 'reject' | 'undo' | null;
+type ModalMode = 'approve' | 'reject' | 'undo' | 'undo-request' | null;
 
 /**
  * "{reference} · {name}" with the separator dropped when a side is missing.
@@ -69,6 +71,14 @@ const statusColor = (status: InventoryUpdateRequest['status']) => {
 // cryptic "uuid is expected / request not found" error.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isSyncedRequest = (id: string) => UUID_RE.test(id);
+
+/**
+ * True once approval has posted the sale (Dr Cash-or-A/R / Cr Sales,
+ * Dr COGS / Cr Goods in Transit). Those are reversed with a credit memo;
+ * legacy deliveries, which never posted one, keep the old stock-only undo.
+ */
+const isLedgerCommitted = (request: InventoryUpdateRequest): boolean =>
+  request.ledgerStatus === 'committed';
 
 const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
@@ -143,6 +153,10 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const [proofFor, setProofFor] = useState<InventoryUpdateRequest | null>(null);
   const [photoFullscreen, setPhotoFullscreen] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
+  const [undoReason, setUndoReason] = useState('');
+  // Undo reverses recognised revenue, so only the owner does it directly.
+  // Staff see the same button, but it files a request carrying a reason.
+  const isOwner = useIsOwner();
   const [targetRequest, setTargetRequest] = useState<InventoryUpdateRequest | null>(null);
   const [rejectComment, setRejectComment] = useState('');
 
@@ -174,6 +188,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     setModalMode(null);
     setTargetRequest(null);
     setRejectComment('');
+    setUndoReason('');
   };
 
   // Core approve logic — takes the request directly so it works from the modal
@@ -259,9 +274,65 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  /**
+   * Staff ask; the owner decides.
+   *
+   * The reason is not decoration — the owner is being asked to reverse
+   * recognised revenue and has nothing else to judge the request on. The
+   * server refuses without one, and refuses ANY undo once the delivery is
+   * ledger-committed, in which case the honest route is a credit memo (which
+   * staff can also request). That message is surfaced rather than swallowed.
+   */
+  /**
+   * Once a delivery has posted its sale, the correction is a credit memo —
+   * which is what undoApproval has always said, without doing anything about
+   * it. The form arrives pre-filled from the delivery's own figures.
+   */
+  const openReversal = (request: InventoryUpdateRequest) => {
+    if (!isSyncedRequest(request.id)) {
+      Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again.");
+      return;
+    }
+    // The credit memo form lives in the Transactions tab, and this screen is
+    // registered in the More tab of BOTH navigators — so the hop goes through
+    // the parent tab navigator. Typed locally rather than cast to `never`,
+    // which would hide a genuine mistake in the route name or params.
+    const tabs = (navigation.getParent() ?? navigation) as unknown as {
+      navigate: (name: string, params?: Record<string, unknown>) => void;
+    };
+    tabs.navigate('TransactionsStack', {
+      screen: 'CreditMemoForm',
+      params: { fromDeliveryRequestId: request.id },
+    });
+  };
+
+  const requestUndo = (request: InventoryUpdateRequest) => {
+    setTargetRequest(request);
+    setUndoReason('');
+    setModalMode('undo-request');
+  };
+
+  const submitUndoRequest = async () => {
+    if (!targetRequest || undoReason.trim().length < 5) return;
+    try {
+      await requestDeliveryUndo(targetRequest.id, undoReason.trim());
+      closeModal();
+      Alert.alert(
+        'Sent to the owner',
+        'They will see your reason and decide. Track it under My requests.',
+      );
+    } catch (e: any) {
+      // The server refuses an undo outright once the delivery is
+      // ledger-committed, and says so — surface that rather than a generic
+      // failure, because the message names the alternative (a credit memo).
+      Alert.alert('Could not send', e?.message ?? 'Failed to send the request.');
+    }
+  };
+
   // Native confirmation for undo (reliable on all platforms/architectures).
   const promptUndo = (request: InventoryUpdateRequest) => {
     if (!isSyncedRequest(request.id)) { Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again."); return; }
+    if (!isOwner) { requestUndo(request); return; }
     Alert.alert(
       'Undo approval',
       `Reverse the approval for ${request.deliveryReference || 'this delivery'}? Inventory will be restored and the request returns to Pending for re-review.`,
@@ -367,7 +438,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
           <RefreshControl
             refreshing={isPullRefreshing}
             onRefresh={handlePullRefresh}
-            tintColor="#059669"
+            tintColor={THEME.colors.primary}
           />
         }
       >
@@ -517,13 +588,48 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
             {request.status !== 'pending' && (
               <View style={styles.reviewInfoBox}>
-                <Text style={styles.reviewInfoText}>Reviewed by {request.reviewedBy ?? 'Admin'} · {request.reviewedAt ? new Date(request.reviewedAt).toLocaleString() : '-'}</Text>
+                {/* Which AUTHORITY signed this off, not just who. Staff and
+                    the owner can both approve a delivery, and the two are
+                    worth telling apart when reading back the history. */}
+                <Text style={styles.reviewInfoText}>
+                  {request.reviewerRole === 'staff'
+                    ? 'Staff approved'
+                    : request.reviewerRole === 'admin'
+                      ? 'Owner approved'
+                      : 'Reviewed'}
+                  {' · '}
+                  {request.reviewedBy ?? '—'}
+                  {' · '}
+                  {request.reviewedAt ? new Date(request.reviewedAt).toLocaleString() : '-'}
+                </Text>
                 {!!request.reviewerComment && <Text style={styles.reviewComment}>{request.reviewerComment}</Text>}
-                {request.status === 'approved' && (
+                {request.status === 'approved' && request.reversalCreditMemoId ? (
+                  // Already reversed. Offering the button again would let a
+                  // second credit memo debit Sales twice for one sale — every
+                  // entry balanced, so nothing downstream would notice.
+                  <Text style={styles.reversedNote}>
+                    Reversed by a credit memo. Nothing further to do here.
+                  </Text>
+                ) : request.status === 'approved' && (
                   <View style={styles.undoBtnWrap}>
+                    {/* A delivery that posted a sale is reversed with a credit
+                        memo, not unwound — corrections reverse rather than
+                        delete. Same route for both roles; what differs is only
+                        whether submitting posts or asks. A legacy delivery
+                        never recognised revenue, so it keeps the old undo. */}
                     <CustomButton
-                      title="Undo Approval"
-                      onPress={() => promptUndo(request)}
+                      title={
+                        isLedgerCommitted(request)
+                          ? 'Reverse with credit memo'
+                          : isOwner
+                            ? 'Undo Approval'
+                            : 'Request undo'
+                      }
+                      onPress={() =>
+                        isLedgerCommitted(request)
+                          ? openReversal(request)
+                          : promptUndo(request)
+                      }
                       variant="danger"
                       size="sm"
                     />
@@ -637,6 +743,42 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.modalActionRow}>
               <View style={styles.modalBtn}><CustomButton title="Cancel" onPress={closeModal} variant="secondary" fullWidth /></View>
               <View style={styles.modalBtn}><CustomButton title="Reject" onPress={confirmReject} variant="danger" fullWidth /></View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Staff asking the owner to reverse an approved delivery. A modal
+          rather than Alert.prompt: that is iOS-only in React Native and would
+          silently do nothing on Android. */}
+      <Modal visible={modalMode === 'undo-request' && !!targetRequest} transparent statusBarTranslucent animationType="fade" onRequestClose={closeModal}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              Ask the owner to undo this
+            </Text>
+            <Text style={styles.modalSub}>
+              Undoing reverses revenue that has already posted, so the owner
+              decides. Tell them what happened — they see this reason.
+            </Text>
+            <TextInput
+              value={undoReason}
+              onChangeText={setUndoReason}
+              placeholder="Why should this be undone?"
+              placeholderTextColor={colors.textTertiary}
+              multiline
+              style={styles.commentInput}
+            />
+            <View style={styles.modalActionRow}>
+              <View style={styles.modalBtn}><CustomButton title="Cancel" onPress={closeModal} variant="secondary" fullWidth /></View>
+              <View style={styles.modalBtn}>
+                <CustomButton
+                  title="Send request"
+                  onPress={submitUndoRequest}
+                  disabled={undoReason.trim().length < 5}
+                  fullWidth
+                />
+              </View>
             </View>
           </View>
         </View>
@@ -887,6 +1029,11 @@ const styles = StyleSheet.create({
   reviewInfoBox: { backgroundColor: colors.background, borderRadius: radius.sm, padding: spacing.xs },
   reviewInfoText: { ...THEME.typography.caption, color: colors.textSecondary, marginBottom: 4 },
   reviewComment: { ...THEME.typography.bodyMd, color: colors.textPrimary, marginBottom: spacing.xs },
+  reversedNote: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
   undoBtnWrap: { marginTop: spacing.xs, alignSelf: 'flex-start' },
 
   emptyState: {

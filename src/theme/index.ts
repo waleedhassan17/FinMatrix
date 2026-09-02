@@ -13,9 +13,15 @@
 
 export * from './theme';
 
+// LEGACY palette. Still imported by ~20 files, CustomButton among them, which
+// is why the accent has to move here too — changing only theme.ts would have
+// left every primary button green.
+//
+// Prefer THEME.colors (./theme) in new code; these values are kept in step
+// with it deliberately, not independently.
 export const colors = {
-  primary: '#059669',
-  primaryLight: '#ECFDF5',
+  primary: '#1F4E79',
+  primaryLight: '#EAF0F6',
   secondary: '#6554C0',
   secondaryLight: '#EAE6FF',
   success: '#00875A',
@@ -36,7 +42,7 @@ export const colors = {
   textTertiary: '#8993A4',
   textLight: '#8993A4',
   textDisabled: '#B3BAC5',
-  border: '#DFE1E6',
+  border: '#D3DAE3', // in step with THEME.colors.border
   borderLight: '#EBECF0',
   white: '#FFFFFF',
   overlay: 'rgba(9, 30, 66, 0.54)',

@@ -3,7 +3,12 @@
 // ═══════════════════════════════════════════════════════
 
 // ─── Enums & Unions ───────────────────────────────────
-export type UserRole = 'admin' | 'delivery' | 'super_admin';
+/**
+ * `staff` is a company role like `admin`: it comes from the user's membership
+ * of the company, not from the platform. `delivery` is the rider portal and
+ * `super_admin` the platform console.
+ */
+export type UserRole = 'admin' | 'staff' | 'delivery' | 'super_admin';
 export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
 export type AccountSubType =
   | 'current_asset'

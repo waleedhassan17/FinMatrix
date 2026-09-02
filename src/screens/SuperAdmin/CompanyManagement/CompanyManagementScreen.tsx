@@ -199,13 +199,13 @@ const ReviewModal: React.FC<{
                   onPress={() => setAction('approve')}
                 >
                   <View style={[S.actionOptionIcon, { backgroundColor: colors.successLighter }]}>
-                    <Feather name="check-circle" size={20} color="#16A34A" />
+                    <Feather name="check-circle" size={20} color={THEME.colors.success} />
                   </View>
                   <View style={S.actionOptionInfo}>
                     <Text style={S.actionOptionTitle}>{norm === 'rejected' ? 'Re-approve Company' : 'Approve Company'}</Text>
                     <Text style={S.actionOptionDesc}>Grant full access; the owner can log in immediately</Text>
                   </View>
-                  {action === 'approve' && <Feather name="check" size={18} color="#6366F1" />}
+                  {action === 'approve' && <Feather name="check" size={18} color={THEME.colors.secondary} />}
                 </TouchableOpacity>
               )}
 
@@ -216,13 +216,13 @@ const ReviewModal: React.FC<{
                   onPress={() => setAction('reject')}
                 >
                   <View style={[S.actionOptionIcon, { backgroundColor: colors.dangerLighter }]}>
-                    <Feather name="x-circle" size={20} color="#DC2626" />
+                    <Feather name="x-circle" size={20} color={THEME.colors.danger} />
                   </View>
                   <View style={S.actionOptionInfo}>
                     <Text style={S.actionOptionTitle}>Reject Application</Text>
                     <Text style={S.actionOptionDesc}>Deny access with a reason</Text>
                   </View>
-                  {action === 'reject' && <Feather name="check" size={18} color="#6366F1" />}
+                  {action === 'reject' && <Feather name="check" size={18} color={THEME.colors.secondary} />}
                 </TouchableOpacity>
               )}
 
@@ -233,13 +233,13 @@ const ReviewModal: React.FC<{
                   onPress={() => setAction('deactivate')}
                 >
                   <View style={[S.actionOptionIcon, { backgroundColor: colors.warningLighter }]}>
-                    <Feather name="pause-circle" size={20} color="#D97706" />
+                    <Feather name="pause-circle" size={20} color={THEME.colors.warning} />
                   </View>
                   <View style={S.actionOptionInfo}>
                     <Text style={S.actionOptionTitle}>Deactivate Company</Text>
                     <Text style={S.actionOptionDesc}>Revoke access; users are blocked at login</Text>
                   </View>
-                  {action === 'deactivate' && <Feather name="check" size={18} color="#6366F1" />}
+                  {action === 'deactivate' && <Feather name="check" size={18} color={THEME.colors.secondary} />}
                 </TouchableOpacity>
               )}
 
@@ -250,13 +250,13 @@ const ReviewModal: React.FC<{
                   onPress={() => setAction('reactivate')}
                 >
                   <View style={[S.actionOptionIcon, { backgroundColor: colors.successLighter }]}>
-                    <Feather name="play-circle" size={20} color="#16A34A" />
+                    <Feather name="play-circle" size={20} color={THEME.colors.success} />
                   </View>
                   <View style={S.actionOptionInfo}>
                     <Text style={S.actionOptionTitle}>Reactivate Company</Text>
                     <Text style={S.actionOptionDesc}>Restore access; users can log in again</Text>
                   </View>
-                  {action === 'reactivate' && <Feather name="check" size={18} color="#6366F1" />}
+                  {action === 'reactivate' && <Feather name="check" size={18} color={THEME.colors.secondary} />}
                 </TouchableOpacity>
               )}
 
@@ -503,7 +503,7 @@ const CompanyManagementScreen: React.FC = () => {
         </View>
       ) : error ? (
         <View style={S.centered}>
-          <Feather name="alert-circle" size={32} color="#EF4444" />
+          <Feather name="alert-circle" size={32} color={THEME.colors.danger} />
           <Text style={S.errorText}>{error}</Text>
           <TouchableOpacity style={S.retryBtn} onPress={onRefresh}>
             <Text style={S.retryText}>Retry</Text>

@@ -152,6 +152,20 @@ export interface InventoryUpdateRequest {
   proof?: DeliveryProof;
   reviewedAt?: string;
   reviewedBy?: string;
+  /**
+   * Which authority signed the delivery off — 'admin' or 'staff'. Both may
+   * approve (Table B row 4), and the server snapshots the role at the time so
+   * the badge reflects the authority that actually approved, not whatever the
+   * reviewer's role happens to be now. Null on rows approved before the
+   * column existed.
+   */
+  reviewerRole?: string | null;
+  /**
+   * The credit memo that reversed this delivery, once one has. Present means
+   * the reversal already happened — the screen shows it instead of offering
+   * the action again.
+   */
+  reversalCreditMemoId?: string | null;
   reviewNotes?: string;
   reviewerComment?: string;
   /** Rider's PAID / NOT PAID flag — decides Cash vs A/R at approval (phase1.md). */

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { colors, spacing, borderRadius } from '../theme';
 import { THEME } from '../utils/theme';
+import { Feather } from '@expo/vector-icons';
 
 interface CustomInputProps extends Omit<TextInputProps, 'style'> {
   label: string;
@@ -43,7 +44,10 @@ const CustomInput: React.FC<CustomInputProps> = ({
 
   const getBorderColor = () => {
     if (error) return colors.danger;
-    if (isFocused) return colors.secondary;
+    // Focus follows the ACTION colour. It was `secondary` (violet), which is
+    // the category colour — decoration in a place that should signal where the
+    // keyboard is going.
+    if (isFocused) return colors.primary;
     return colors.border;
   };
 
@@ -83,7 +87,14 @@ const CustomInput: React.FC<CustomInputProps> = ({
           <TouchableOpacity
             style={styles.rightIcon}
             onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
-            <Text style={styles.eyeIcon}>{isPasswordVisible ? '👁️' : '🔒'}</Text>
+            {/* Feather, not an emoji: 👁️/🔒 rendered at the system emoji font
+                on every form in the app, and a padlock is the wrong metaphor
+                for "reveal" anyway — the control toggles visibility. */}
+            <Feather
+              name={isPasswordVisible ? 'eye-off' : 'eye'}
+              size={18}
+              color={THEME.colors.textTertiary}
+            />
           </TouchableOpacity>
         )}
         {rightIcon && !secureTextEntry && (
@@ -152,9 +163,6 @@ const styles = StyleSheet.create({
   },
   rightIcon: {
     marginLeft: spacing.sm,
-  },
-  eyeIcon: {
-    fontSize: THEME.typography.h3.fontSize,
   },
   errorText: {
     ...THEME.typography.caption,

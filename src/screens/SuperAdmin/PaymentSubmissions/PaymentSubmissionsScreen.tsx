@@ -331,7 +331,7 @@ const PaymentSubmissionsScreen: React.FC = () => {
             <TextInput
               style={S.modalInput}
               placeholder="e.g. Screenshot unclear / amount mismatch"
-              placeholderTextColor="#8993A4"
+              placeholderTextColor={THEME.colors.textTertiary}
               value={rejectReason}
               onChangeText={setRejectReason}
               multiline

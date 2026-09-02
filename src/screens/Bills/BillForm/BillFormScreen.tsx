@@ -55,6 +55,7 @@ import {
   SecondaryButton,
 } from '../../../components/form/FormUI';
 import CustomButton from '../../../Custom-Components/CustomButton';
+import TaxField from '../../../components/form/TaxField';
 import { formatCurrency } from '../../../utils/formatters';
 import type { BillStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -64,13 +65,6 @@ const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'BillForm'>;
-
-const TAX_OPTIONS = [
-  { label: '0 %', value: '0' },
-  { label: '5 %', value: '5' },
-  { label: '10 %', value: '10' },
-  { label: '17 %', value: '17' },
-];
 
 // ═══════════════════════════════════════════════════════
 // COMPONENT
@@ -274,10 +268,12 @@ const BillFormScreen: React.FC = () => {
                 keyboardType="decimal-pad"
               />
             </View>
+            {/* TaxField, not CustomDropdown. The dropdown brought its own
+                label role, its own 48px field and a bottom margin, so beside
+                the hand-built Amount column the two shared neither a top nor a
+                bottom edge. This is the same control the invoice lines use. */}
             <View style={{ flex: 1 }}>
-              <CustomDropdown
-                label="Tax"
-                options={TAX_OPTIONS}
+              <TaxField
                 value={line.taxRate}
                 onChange={v => dispatch(updateBillLine({ id: line.id, field: 'taxRate', value: v }))}
               />
@@ -448,7 +444,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral100 },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
 
-  scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xxl },
+  // paddingTop 0 — FormSectionHeader's marginTop supplies it (see FormUI).
+  scrollContent: { paddingHorizontal: spacing.md, paddingTop: 0, paddingBottom: spacing.xxl },
 
   sectionCard: {
     flexDirection: 'row', backgroundColor: colors.neutral0, borderRadius: radius.lg,

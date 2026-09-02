@@ -162,7 +162,7 @@ const PlanCard: React.FC<{
             <View style={S.featuresList}>
               {plan.features.slice(0, 4).map((f, i) => (
                 <View key={i} style={S.featureItem}>
-                  <Feather name="check" size={12} color="#10B981" />
+                  <Feather name="check" size={12} color={THEME.colors.success} />
                   <Text style={S.featureText}>{f}</Text>
                 </View>
               ))}

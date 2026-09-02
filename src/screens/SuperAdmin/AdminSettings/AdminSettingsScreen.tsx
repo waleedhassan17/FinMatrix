@@ -212,18 +212,18 @@ const AdminSettingsScreen: React.FC = () => {
 
         {/* Platform (read-only status) */}
         <Section title="Platform">
-          <SettingRow icon="database" iconColor="#10B981" label="Database" value="PostgreSQL" />
-          <SettingRow icon="server" iconColor="#8B5CF6" label="API Endpoint" value="Heroku" />
+          <SettingRow icon="database" iconColor={THEME.colors.success} label="Database" value="PostgreSQL" />
+          <SettingRow icon="server" iconColor={THEME.colors.secondary} label="API Endpoint" value="Heroku" />
           {/* No backend yet → clearly disabled rather than a fake toggle. */}
-          <SettingRow icon="tool" iconColor="#F59E0B" label="Maintenance Mode" disabled />
-          <SettingRow icon="key" iconColor="#F59E0B" label="API Keys" disabled isLast />
+          <SettingRow icon="tool" iconColor={THEME.colors.warning} label="Maintenance Mode" disabled />
+          <SettingRow icon="key" iconColor={THEME.colors.warning} label="API Keys" disabled isLast />
         </Section>
 
         {/* Notifications (locally persisted preferences) */}
         <Section title="Notifications">
           <SettingRow
             icon="mail"
-            iconColor="#3B82F6"
+            iconColor={THEME.colors.info}
             label="Email Alerts"
             toggle
             toggleValue={emailAlerts}
@@ -231,7 +231,7 @@ const AdminSettingsScreen: React.FC = () => {
           />
           <SettingRow
             icon={NOTIFICATION_ICON_NAME}
-            iconColor="#8B5CF6"
+            iconColor={THEME.colors.secondary}
             label="Push Notifications"
             toggle
             toggleValue={pushAlerts}

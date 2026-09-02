@@ -51,15 +51,31 @@ export const AUTH = {
     400: '#94A3B8', // placeholder / muted
   },
 
-  line: '#E5E9EF',
-  lineStrong: '#D3DAE3',
+  // Same hairline as THEME.colors.border — kept as a literal because this file
+  // defines the auth palette and must not import the app theme. These two were
+  // '#E5E9EF' and '#E4E9EF': indistinguishable, and both too light to see.
+  line: '#D3DAE3',
+  // One step darker again, because `line` moved down to what this used to be.
+  // Left equal, a filled OTP box and a radio ring would have become
+  // indistinguishable from an empty one — the emphasis these carry IS the
+  // difference between the two tokens.
+  lineStrong: '#C1CAD5',
 
   // ── Brand ──
-  brand: '#0E9F6E',
-  brandDark: '#0B8557',
+  // The UI accent on LIGHT grounds — the sign-in button, links, checkmarks.
+  // Navy, matching THEME.colors.primary, because the app behind this flow is
+  // navy: a green Sign In button handing off to a navy dashboard read as two
+  // different products.
+  brand: '#1F4E79',
+  brandDark: '#163A5C',
+  mint: '#EAF0F6',
+  mintBorder: '#C7D8E8',
+
+  // The accent on the DARK header — the "Fin" wordmark, the portal pill's dot,
+  // the progress segments. Deliberately left green: it is the WORDMARK, not a
+  // control, and navy on a #111D28 header would be invisible. If the logo
+  // should move to the navy family too, this is the one line to change.
   brandDot: '#10B981',
-  mint: '#E7F7F0',
-  mintBorder: '#BCE6D2',
 
   // ── Status tints ──
   status: {

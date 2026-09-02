@@ -42,6 +42,7 @@ export type MoreStackParamList = {
   Settings: undefined;
   CompanyProfile: undefined;
   UserManagement: undefined;
+  StaffApprovals: undefined;
   CompanySwitcher: undefined;
   GlobalSearch: undefined;
   RenewSubscription: { mode?: 'renew' | 'change' } | undefined;

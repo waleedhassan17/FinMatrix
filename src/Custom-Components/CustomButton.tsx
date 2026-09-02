@@ -98,7 +98,9 @@ const CustomButton: React.FC<CustomButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: borderRadius.md,
+    // Controls sit at 8; 12 is the card radius. A button as round as the card
+    // it sits on reads as a pill rather than a control.
+    borderRadius: borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
@@ -123,10 +125,13 @@ const styles = StyleSheet.create({
   variant_primary: {
     backgroundColor: colors.primary,
   },
+  // A neutral outline, not a second accent. Two navy-bordered buttons side by
+  // side compete for the same attention; the primary should be the only thing
+  // on screen wearing the brand colour.
   variant_secondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   variant_text: {
     backgroundColor: 'transparent',

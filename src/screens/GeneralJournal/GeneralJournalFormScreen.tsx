@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
+import { useCapability } from '../../hooks/useCapability';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
@@ -31,6 +32,8 @@ const GeneralJournalFormScreen: React.FC = () => {
   const [lines, setLines] = useState<LineDraft[]>([blankLine(), blankLine()]);
   const [accountOptions, setAccountOptions] = useState<{ label: string; value: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  // Posting a manual journal is gated: staff file a request, the owner posts.
+  const journalCap = useCapability('journal.post');
 
   useEffect(() => {
     (async () => {
@@ -80,8 +83,20 @@ const GeneralJournalFormScreen: React.FC = () => {
       }))
     }));
     setSaving(false);
-    if (r.meta.requestStatus === 'fulfilled') navigation.goBack();
-    else Toast.show({ type: 'error', text1: 'Save failed', text2: r.error?.message ?? 'Could not save journal entry' });
+    if (r.meta.requestStatus === 'fulfilled') {
+      // Staff get a pending request rather than an entry: a manual journal
+      // writes the ledger directly, so the owner approves it first.
+      if (r.payload?.data?.pending ?? r.payload?.pending) {
+        Toast.show({
+          type: 'success',
+          text1: 'Sent to the owner for approval',
+          text2: 'The entry posts once they approve it.',
+        });
+      }
+      navigation.goBack();
+      return;
+    }
+    Toast.show({ type: 'error', text1: 'Save failed', text2: r.error?.message ?? 'Could not save journal entry' });
   };
 
   return (
@@ -119,7 +134,7 @@ const GeneralJournalFormScreen: React.FC = () => {
           <Row label={balanced ? 'Balanced' : 'Difference'} value={balanced ? '✓' : rs(Math.abs(totals.diff))} strong accent={balanced ? THEME.colors.success : THEME.colors.danger} />
         </Card>
 
-        <CustomButton title="Save & Post" onPress={() => submit('posted')} isLoading={saving} disabled={!balanced} fullWidth />
+        <CustomButton title={journalCap.submitLabel('Save & Post')} onPress={() => submit('posted')} isLoading={saving} disabled={!balanced} fullWidth />
         <CustomButton title="Save as Draft" variant="secondary" onPress={() => submit('draft')} isLoading={saving} fullWidth />
         <View style={{ height: 24 }} />
       </ScrollView>

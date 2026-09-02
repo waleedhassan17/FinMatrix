@@ -246,6 +246,19 @@ const POFormScreen: React.FC = () => {
         if (saved) dispatch(upsertPurchaseOrder(saved));
         await dispatch(fetchPurchaseOrders());
 
+        // Staff get a pending request back instead of a PO. Nothing exists
+        // yet — a PO posts nothing either way, which is exactly why gating it
+        // is safe — so navigating to a PODetail that has no row would 404.
+        if ((saved as any)?.pending) {
+          Toast.show({
+            type: 'success',
+            text1: 'Sent to the owner for approval',
+            text2: 'The purchase order is created once they approve it.',
+          });
+          navigation.goBack();
+          return;
+        }
+
         // The PO number comes back from the server — the form never had one.
         const ref = saved?.poNumber ?? 'The purchase order';
         if (sendFailed) {
@@ -263,7 +276,14 @@ const POFormScreen: React.FC = () => {
             text2: `${ref} has been ${isEditing ? 'updated' : 'created'} ${saveStatus === 'sent' ? 'and sent to vendor' : 'as draft'}.`,
           });
         }
-        if (saved?.id) navigation.replace('PODetail', { poId: saved.id });
+        // This form is mounted in two navigators: TransactionsStack, where
+        // PODetail sits beside it, and DashboardStack, where the quick-action
+        // tile opens it and PODetail is not registered. Asking the navigator
+        // what it knows about keeps one behaviour per place without a prop
+        // that callers could forget to pass: from Transactions you land on the
+        // PO you just made, from the dashboard you go back to the dashboard.
+        const canOpenDetail = navigation.getState().routeNames.includes('PODetail');
+        if (saved?.id && canOpenDetail) navigation.replace('PODetail', { poId: saved.id });
         else navigation.goBack();
       } catch (e: any) {
         Toast.show({
@@ -518,7 +538,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral100 },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
 
-  scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xxl },
+  // paddingTop 0 — FormSectionHeader's marginTop supplies it (see FormUI).
+  scrollContent: { paddingHorizontal: spacing.md, paddingTop: 0, paddingBottom: spacing.xxl },
 
   sectionCard: {
     flexDirection: 'row', backgroundColor: colors.neutral0, borderRadius: radius.lg,

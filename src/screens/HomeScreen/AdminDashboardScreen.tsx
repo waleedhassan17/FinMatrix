@@ -48,21 +48,14 @@ import type {
 } from '../../models/dashboardModel';
 import { isFeatureVisible } from '../../utils/featureGates';
 import { ReportContainer } from '../../components/reports/ReportUI';
-import { C, FONT, card } from './dashboardTheme';
-import RevenueTrendCard, { BAR_AREA, WINDOW_MONTHS } from './RevenueTrendCard';
-import { THEME } from '../../theme';
+import { C, FONT, TINT, card } from './dashboardTheme';
+import RevenueTrendCard, { WINDOW_MONTHS } from './RevenueTrendCard';
+import { THEME, HEADER_RADIUS } from '../../theme';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors } = THEME;
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
-
-const greeting = (): string => {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-};
 
 const todayLabel = (): string =>
   new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -117,7 +110,6 @@ const AdminDashboardScreen: React.FC = () => {
   const features = useAppSelector(selectFeatures);
   const showDelivery = isFeatureVisible('delivery', features, user?.companyType);
   const showInventory = isFeatureVisible('inventory', features, user?.companyType);
-  const showAgencies = isFeatureVisible('agencies', features, user?.companyType);
   const alerts = useAppSelector(selectDashboardAlerts);
   const isRefreshing = useAppSelector(selectIsRefreshing);
   const status = useAppSelector(selectDashboardStatus);
@@ -224,7 +216,6 @@ const AdminDashboardScreen: React.FC = () => {
   }, [dispatch]);
 
   const isInitialLoading = status === 'loading' && stats.length === 0;
-  const firstName = user?.displayName?.split(' ')[0] ?? 'Admin';
   const companyLabel = company?.name ?? 'FinMatrix';
 
   // formatted stat lookup by id (formatting stays in the slice)
@@ -236,27 +227,50 @@ const AdminDashboardScreen: React.FC = () => {
   const completedPct =
     delivery.total > 0 ? Math.round((delivery.delivered / delivery.total) * 100) : 0;
 
+  // The header pill used to read "Books up to date" unconditionally — a green
+  // claim about the books that was rendered even with a red alert banner
+  // directly beneath it saying otherwise. It now reports what the dashboard
+  // already knows. Same selector the banners use, so the two cannot disagree.
+  const openAlerts = alerts.length;
+  const booksClear = openAlerts === 0;
+
   return (
     <ReportContainer>
       <StatusBar barStyle="light-content" backgroundColor={C.navy[0]} />
 
       {/* ── Header ───────────────────────────────────── */}
       <LinearGradient colors={C.navy} style={s.header}>
-        <View style={[s.headerSheen, { pointerEvents: 'none' }]} />
 
         <View style={s.headerTopRow}>
           <View style={s.headerLeft}>
             <View style={s.headerTextBlock}>
-              <Text style={s.greetingText}>{greeting()}, {firstName}</Text>
               <Text style={s.companyName} numberOfLines={1}>{companyLabel}</Text>
             </View>
           </View>
+          {/* Global search lives here rather than in the action grid. It is not
+              a "create something" action, and the owner's More hub has no
+              Search row — so with the grid trimmed to four documents this is
+              the only way in. */}
+          <TouchableOpacity
+            style={s.headerIconBtn}
+            onPress={() => navigation.navigate('GlobalSearch')}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Search"
+          >
+            <Feather name="search" size={19} color={colors.neutral0} />
+          </TouchableOpacity>
         </View>
 
         <View style={s.headerMetaRow}>
-          <View style={s.statusPill}>
-            <View style={s.statusDot} />
-            <Text style={s.statusPillText}>Books up to date</Text>
+          <View style={[s.statusPill, !booksClear && s.statusPillWarn]}>
+            <View style={[s.statusDot, !booksClear && s.statusDotWarn]} />
+            <Text style={[s.statusPillText, !booksClear && s.statusPillTextWarn]}>
+              {booksClear
+                ? 'Books up to date'
+                : `${openAlerts} ${openAlerts === 1 ? 'item needs' : 'items need'} attention`}
+            </Text>
           </View>
           <View style={s.datePill}>
             <Feather name="calendar" size={11} color="rgba(255,255,255,0.82)" />
@@ -292,87 +306,112 @@ const AdminDashboardScreen: React.FC = () => {
               />
             )}
 
+            {/* Section order is deliberate and runs money → operations →
+                do something → history: what is owed and owing, then the two
+                things a warehouse day actually turns on (deliveries, stock),
+                then the documents you would raise about them, and only then
+                the trend and the log. Revenue sits below the fold on purpose —
+                it is a review figure, not something acted on. */}
+
             {/* ── Receivables / Payables ─────────────── */}
-            <SectionHeader title="Financials" caption={asOfLabel(rawData?.period?.endDate)} />
-            <View style={s.statRow}>
-              <StatCard
-                icon="arrow-down-left"
-                tint={C.info}
-                value={statById.ar?.value ?? 'Rs 0'}
-                label="Receivables"
-                sub="Due from customers"
-                onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceList' })}
-              />
-              <StatCard
-                icon="arrow-up-right"
-                tint={C.warn}
-                value={statById.ap?.value ?? 'Rs 0'}
-                label="Payables"
-                sub="Owed to suppliers"
-                onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'BillList' })}
-              />
-            </View>
+            <Section title="Financials" caption={asOfLabel(rawData?.period?.endDate)}>
+              <View style={s.statRow}>
+                <StatCard
+                  icon="arrow-down-left"
+                  tint={C.info}
+                  tintBg={TINT.info}
+                  value={statById.ar?.value ?? 'Rs 0'}
+                  label="Receivables"
+                  sub="Due from customers"
+                  onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceList' })}
+                />
+                <StatCard
+                  icon="arrow-up-right"
+                  tint={C.warn}
+                  tintBg={TINT.warn}
+                  value={statById.ap?.value ?? 'Rs 0'}
+                  label="Payables"
+                  sub="Owed to suppliers"
+                  onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'BillList' })}
+                />
+              </View>
+            </Section>
+
+            {/* ── Deliveries (warehouse tier only) ───── */}
+            {showDelivery && (
+              <Section title="Deliveries" action="View all" onAction={() => navigation.navigate('DeliveryPersonnelList')}>
+                <DeliveryProgressCard delivery={delivery} completedPct={completedPct} />
+              </Section>
+            )}
+
+            {/* ── Inventory (inventory-enabled tiers) ── */}
+            {showInventory && (
+              <Section
+                title="Inventory"
+                action="View all"
+                onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })}
+              >
+                <InventoryCard count={rawData?.inventoryItems ?? 0} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })} />
+              </Section>
+            )}
+
+            {/* ── Quick actions ──────────────────────────
+                Four documents, in the order the two cycles run: sell
+                (invoice, sales order) then buy (purchase order, bill). Every
+                tile opens a blank form — this grid creates, it does not
+                navigate. Inventory, Deliveries and Agencies used to sit here
+                as well, but each already has its own card or a More row, so
+                they were shortcuts to places one tap away. */}
+            <Section title="Quick actions">
+              <View style={s.actionsGrid}>
+                <View style={s.actionsRow}>
+                  <ActionTile icon="file-text" label="New invoice" onPress={() => navigation.navigate('InvoiceForm')} />
+                  <ActionTile icon="clipboard" label="New sales order" onPress={() => navigation.navigate('SalesOrderForm')} />
+                </View>
+                <View style={s.actionsRow}>
+                  <ActionTile icon="shopping-cart" label="New purchase order" onPress={() => navigation.navigate('POForm')} />
+                  <ActionTile icon="file-plus" label="New bill" onPress={() => navigation.navigate('BillForm')} />
+                </View>
+              </View>
+            </Section>
 
             {/* ── Revenue trend (live analytics series) ─
                 The window is fixed, so the caption states it. It used to count
                 the points the API returned, which read "Last 1 months" for a
                 company in its first month. */}
-            <SectionHeader
+            <Section
               title="Revenue"
               caption={revenueTrend && revenueTrend.length > 0 ? `Last ${WINDOW_MONTHS} months` : undefined}
               action="View all"
               onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('ReportsStack', { screen: 'AnalyticsDashboard' })}
-            />
-            <RevenueTrendCard points={revenueTrend} />
-
-            {/* ── Deliveries (warehouse tier only) ───── */}
-            {showDelivery && (
-              <>
-                <SectionHeader title="Deliveries" action="View all" onAction={() => navigation.navigate('DeliveryPersonnelList')} />
-                <DeliveryProgressCard delivery={delivery} completedPct={completedPct} />
-              </>
-            )}
-
-            {/* ── Quick actions ──────────────────────── */}
-            <SectionHeader title="Quick actions" />
-            <View style={s.actionsGrid}>
-              <ActionTile icon="file-text" label="New invoice" color={C.brand} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceForm' })} />
-              <ActionTile icon="file-plus" label="New bill" color={C.info} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'BillForm' })} />
-              {showInventory && <ActionTile icon="package" label="Inventory" color={C.teal} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })} />}
-              {showDelivery && <ActionTile icon="truck" label="Deliveries" color={C.indigo} onPress={() => navigation.navigate('DeliveryPersonnelList')} />}
-              {showAgencies && <ActionTile icon="map-pin" label="Agencies" color={C.warn} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('MoreStack', { screen: 'AgencyList' })} />}
-              <ActionTile icon="search" label="Search" color={C.slate} onPress={() => navigation.navigate('GlobalSearch')} />
-            </View>
-
-            {/* ── Inventory (inventory-enabled tiers) ── */}
-            {showInventory && (
-              <>
-                <SectionHeader title="Inventory" action="View all" onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })} />
-                <InventoryCard count={rawData?.inventoryItems ?? 0} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InventoryStack', { screen: 'InventoryList' })} />
-              </>
-            )}
+            >
+              <RevenueTrendCard points={revenueTrend} />
+            </Section>
 
             {/* ── Recent transactions ────────────────── */}
-            <SectionHeader title="Recent transactions" action={transactions.length > 0 ? 'View all' : undefined} onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceList' })} />
-            {transactions.length > 0 ? (
-              <View style={s.txCard}>
-                {transactions.map((tx, i) => (
-                  <TransactionRow key={tx.id} tx={tx} isLast={i === transactions.length - 1} />
-                ))}
-              </View>
-            ) : (
-              <TouchableOpacity style={s.emptyCard} activeOpacity={0.85} onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceForm' })}>
-                <View style={s.emptyIconBg}>
-                  <Feather name="inbox" size={20} color={C.brand} />
+            <Section
+              title="Recent transactions"
+              action={transactions.length > 0 ? 'View all' : undefined}
+              onAction={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceList' })}
+            >
+              {transactions.length > 0 ? (
+                <View style={s.txCard}>
+                  {transactions.map((tx, i) => (
+                    <TransactionRow key={tx.id} tx={tx} isLast={i === transactions.length - 1} />
+                  ))}
                 </View>
-                <Text style={s.emptyTitle}>No activity yet</Text>
-                <Text style={s.emptySub}>Create your first invoice or bill to start tracking transactions here.</Text>
-                <View style={s.emptyCta}>
-                  <Feather name="plus" size={13} color={C.brand} />
-                  <Text style={s.emptyCtaText}>New invoice</Text>
-                </View>
-              </TouchableOpacity>
-            )}
+              ) : (
+                <TouchableOpacity style={s.emptyCard} activeOpacity={0.85} onPress={() => navigation.navigate('InvoiceForm')}>
+                  <Feather name="inbox" size={22} color={C.ink3} style={s.emptyIcon} />
+                  <Text style={s.emptyTitle}>No activity yet</Text>
+                  <Text style={s.emptySub}>Create your first invoice or bill to start tracking transactions here.</Text>
+                  <View style={s.emptyCta}>
+                    <Feather name="plus" size={13} color={C.brand} />
+                    <Text style={s.emptyCtaText}>New invoice</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </Section>
 
             <View style={{ height: 28 }} />
           </>
@@ -386,9 +425,14 @@ const AdminDashboardScreen: React.FC = () => {
 // SUB-COMPONENTS
 // ═════════════════════════════════════════════════════
 
-const SectionHeader: React.FC<{ title: string; caption?: string; action?: string; onAction?: () => void }> = ({
-  title, caption, action, onAction
-}) => (
+interface SectionProps {
+  title: string;
+  caption?: string;
+  action?: string;
+  onAction?: () => void;
+}
+
+const SectionHeader: React.FC<SectionProps> = ({ title, caption, action, onAction }) => (
   <View style={s.sectionHeader}>
     <View style={s.sectionTitleWrap}>
       <Text style={s.sectionTitle}>{title}</Text>
@@ -402,18 +446,41 @@ const SectionHeader: React.FC<{ title: string; caption?: string; action?: string
   </View>
 );
 
+/**
+ * A heading and the content it labels, as one block.
+ *
+ * Every section used to be loose siblings of the ScrollView — a header, then a
+ * card, sometimes wrapped in a fragment — held apart by one `gap` with the
+ * header pulling itself back up by a negative margin. That spaced a heading
+ * from its own card almost exactly as far as from the section above it, so the
+ * screen read as one continuous stream, and any reorder meant moving two or
+ * three nodes and hoping the spacing followed.
+ *
+ * Binding them means the gap inside a section (10) can be tighter than the gap
+ * between sections (22) — proximity is what makes a heading look like it
+ * belongs to what is under it — and a reorder moves one block.
+ */
+const Section: React.FC<SectionProps & { children: React.ReactNode }> = ({ children, ...header }) => (
+  <View style={s.section}>
+    <SectionHeader {...header} />
+    {children}
+  </View>
+);
+
 // ── AR / AP stat card ─────────────────────────────────
 const StatCard: React.FC<{
   icon: string;
+  /** The glyph colour. `tintBg` is its matching chip surface (see TINT). */
   tint: string;
+  tintBg: string;
   value: string;
   label: string;
   sub: string;
   onPress?: () => void;
-}> = ({ icon, tint, value, label, sub, onPress }) => (
+}> = ({ icon, tint, tintBg, value, label, sub, onPress }) => (
   <TouchableOpacity style={s.statCard} activeOpacity={0.8} onPress={onPress}>
     <View style={s.statTopRow}>
-      <View style={[s.statIcon, { backgroundColor: tint + '14' }]}>
+      <View style={[s.statIcon, { backgroundColor: tintBg }]}>
         <Feather name={icon as keyof typeof Feather.glyphMap} size={15} color={tint} />
       </View>
       <Feather name="chevron-right" size={16} color={C.ink3} />
@@ -476,30 +543,44 @@ const DeliveryProgressCard: React.FC<{ delivery: DeliveryOverviewData; completed
 };
 
 // ── Action tile ───────────────────────────────────────
-const ActionTile: React.FC<{ icon: string; label: string; color: string; onPress: () => void }> = ({
-  icon, label, color, onPress
+// No colour prop, and no chip behind the glyph. The six tiles each carried a
+// different hue — brand, blue, teal, indigo, amber, slate — which made a
+// rainbow out of things that rank the same. Replacing that with one tinted
+// square just traded a rainbow for a row of grey boxes: the card already has a
+// surface and a border, so a second filled shape inside it is one frame too
+// many. The icon sits on the card. Colour is kept where it carries a fact
+// (delivery status, money in vs out, alert severity).
+const ActionTile: React.FC<{ icon: string; label: string; onPress: () => void }> = ({
+  icon, label, onPress
 }) => (
-  <TouchableOpacity style={s.actionTile} onPress={onPress} activeOpacity={0.75}>
-    <View style={[s.actionIconWrap, { backgroundColor: color + '14' }]}>
-      <Feather name={icon as keyof typeof Feather.glyphMap} size={19} color={color} />
-    </View>
-    <Text style={s.actionLabel}>{label}</Text>
+  <TouchableOpacity
+    style={s.actionTile}
+    onPress={onPress}
+    activeOpacity={0.75}
+    accessibilityRole="button"
+    accessibilityLabel={label}
+  >
+    <Feather name={icon as keyof typeof Feather.glyphMap} size={22} color={C.brand} />
+    <Text style={s.actionLabel} numberOfLines={2}>{label}</Text>
   </TouchableOpacity>
 );
 
 // ── Inventory card ────────────────────────────────────
+// The badge shows only in the case worth acting on. It used to read "Tracked"
+// whenever the count was above zero — a green badge next to a number, saying
+// what the number already said.
 const InventoryCard: React.FC<{ count: number; onPress?: () => void }> = ({ count, onPress }) => (
   <TouchableOpacity style={s.invCard} onPress={onPress} activeOpacity={0.8}>
-    <View style={[s.invIcon, { backgroundColor: C.teal + '14' }]}>
-      <Feather name="package" size={19} color={C.teal} />
-    </View>
+    <Feather name="package" size={22} color={C.brand} />
     <View style={{ flex: 1 }}>
       <Text style={s.invCount}>{count}</Text>
       <Text style={s.mutedSm}>Items in stock</Text>
     </View>
-    <View style={[s.invBadge, { backgroundColor: count > 0 ? C.pos + '14' : C.warn + '14' }]}>
-      <Text style={[s.invBadgeText, { color: count > 0 ? C.pos : C.warn }]}>{count > 0 ? 'Tracked' : 'Empty'}</Text>
-    </View>
+    {count === 0 && (
+      <View style={s.invBadge}>
+        <Text style={s.invBadgeText}>Empty</Text>
+      </View>
+    )}
     <Feather name="chevron-right" size={18} color={C.ink3} />
   </TouchableOpacity>
 );
@@ -510,7 +591,7 @@ const TransactionRow: React.FC<{ tx: RecentTransaction; isLast: boolean }> = ({ 
   const tone = isIncome ? C.pos : C.neg;
   return (
     <View style={[s.txRow, !isLast && s.txDivider]}>
-      <View style={[s.txIcon, { backgroundColor: tone + '14' }]}>
+      <View style={[s.txIcon, { backgroundColor: isIncome ? TINT.pos : TINT.neg }]}>
         <Feather name={isIncome ? 'arrow-down-left' : 'arrow-up-right'} size={14} color={tone} />
       </View>
       <View style={{ flex: 1 }}>
@@ -528,12 +609,12 @@ const TransactionRow: React.FC<{ tx: RecentTransaction; isLast: boolean }> = ({ 
 // ── Alert banner ──────────────────────────────────────
 const AlertBanner: React.FC<{ alert: DashboardAlert }> = ({ alert }) => {
   const cfg = {
-    red: { tint: C.neg, icon: 'alert-circle' },
-    amber: { tint: C.warn, icon: 'alert-triangle' },
-    blue: { tint: C.info, icon: 'info' }
+    red: { tint: C.neg, bg: TINT.neg, icon: 'alert-circle' },
+    amber: { tint: C.warn, bg: TINT.warn, icon: 'alert-triangle' },
+    blue: { tint: C.info, bg: TINT.info, icon: 'info' }
   }[alert.severity];
   return (
-    <View style={[s.alertBanner, { backgroundColor: cfg.tint + '12', borderLeftColor: cfg.tint }]}>
+    <View style={[s.alertBanner, { backgroundColor: cfg.bg, borderLeftColor: cfg.tint }]}>
       <Feather name={cfg.icon as keyof typeof Feather.glyphMap} size={14} color={cfg.tint} />
       <Text style={[s.alertText, { color: C.ink }]}>{alert.message}</Text>
     </View>
@@ -552,38 +633,59 @@ const Skel: React.FC<{ w: number | string; h: number; r?: number; style?: Record
   return <Animated.View style={[animatedStyle, style]} />;
 };
 
+/**
+ * The first three sections, drawn at the sizes the real ones occupy.
+ *
+ * It mirrors the running order deliberately: a placeholder that settles into a
+ * different arrangement than it drew is worse than none, because the content
+ * appears to jump. So this tracks the order above — stats, the delivery card,
+ * the four-tile grid — and stops there rather than guessing at what is below
+ * the fold.
+ */
 const DashboardSkeleton: React.FC = () => (
-  <View>
-    <View style={[s.sectionHeader, { marginBottom: 10 }]}><Skel w={130} h={15} r={5} /></View>
-    <View style={s.statRow}>
-      {[0, 1].map(i => (
-        <View key={i} style={[s.statCard, { gap: 8 }]}>
-          <Skel w={34} h={34} r={11} />
-          <Skel w={'70%'} h={20} r={6} style={{ marginTop: 6 }} />
-          <Skel w={'55%'} h={10} r={4} />
-        </View>
-      ))}
-    </View>
-    <View style={[s.sectionHeader, { marginTop: 18, marginBottom: 10 }]}><Skel w={90} h={15} r={5} /></View>
-    {/* Same surface as the real card, and the same number of bars — the
-        placeholder should not settle into a chart of a different width. */}
-    <View style={[s.card, { gap: 10 }]}>
-      <Skel w={'45%'} h={26} r={7} />
-      <Skel w={'35%'} h={10} r={4} />
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: BAR_AREA, marginTop: 8 }}>
-        {[34, 58, 44, 78, BAR_AREA].slice(0, WINDOW_MONTHS).map((h, i) => (
-          <View key={i} style={{ flex: 1 }}><Skel w={'100%'} h={h} r={4} /></View>
+  <View style={{ gap: 22 }}>
+    <View style={s.section}>
+      <View style={s.sectionHeader}><Skel w={130} h={15} r={5} /></View>
+      <View style={s.statRow}>
+        {[0, 1].map(i => (
+          <View key={i} style={[s.statCard, { gap: 8 }]}>
+            <Skel w={34} h={34} r={11} />
+            <Skel w={'70%'} h={20} r={6} style={{ marginTop: 6 }} />
+            <Skel w={'55%'} h={10} r={4} />
+          </View>
         ))}
       </View>
     </View>
-    <View style={[s.sectionHeader, { marginTop: 18, marginBottom: 10 }]}><Skel w={100} h={15} r={5} /></View>
-    <View style={[s.actionsGrid]}>
-      {[0, 1, 2, 3, 4, 5].map(i => (
-        <View key={i} style={[s.actionTile, { gap: 8 }]}>
-          <Skel w={48} h={48} r={15} />
-          <Skel w={'70%'} h={10} r={4} />
+
+    <View style={s.section}>
+      <View style={s.sectionHeader}><Skel w={96} h={15} r={5} /></View>
+      {/* Same surface as the delivery card, and the same three blocks: the
+          completion figure, the segmented track, the four status chips. */}
+      <View style={[s.card, { gap: 12 }]}>
+        <Skel w={'42%'} h={28} r={7} />
+        <Skel w={'100%'} h={9} r={5} />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {[0, 1, 2, 3].map(i => (
+            <View key={i} style={{ flex: 1 }}><Skel w={'100%'} h={46} r={12} /></View>
+          ))}
         </View>
-      ))}
+      </View>
+    </View>
+
+    <View style={s.section}>
+      <View style={s.sectionHeader}><Skel w={100} h={15} r={5} /></View>
+      <View style={s.actionsGrid}>
+        {[0, 1].map(row => (
+          <View key={row} style={s.actionsRow}>
+            {[0, 1].map(i => (
+              <View key={i} style={s.actionTile}>
+                <Skel w={22} h={22} r={5} />
+                <Skel w={'70%'} h={10} r={4} style={{ marginTop: 6 }} />
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
     </View>
   </View>
 );
@@ -592,31 +694,32 @@ const DashboardSkeleton: React.FC = () => (
 // STYLES
 // ═════════════════════════════════════════════════════
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.canvas },
-
   // Header
   header: {
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 22,
-    borderBottomLeftRadius: 22,
-    borderBottomRightRadius: 22,
+    borderBottomLeftRadius: HEADER_RADIUS,
+    borderBottomRightRadius: HEADER_RADIUS,
     overflow: 'hidden',
-  },
-  headerSheen: {
-    position: 'absolute',
-    right: -60,
-    top: -70,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.035)',
   },
   headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 11 },
   headerTextBlock: { flex: 1 },
-  companyName: { ...THEME.typography.h3, color: colors.neutral0, letterSpacing: -0.2, fontFamily: FONT },
-  greetingText: { ...THEME.typography.caption, color: 'rgba(255,255,255,0.62)', marginBottom: 1, fontFamily: FONT },
+  // h2, the same role ReportHeader gives its title, so the dashboard heading
+  // matches Transactions / Reports / Inventory / More. It was h3 — 19px against
+  // their 22 — which made the one screen without a back arrow also the one with
+  // a smaller title. The letterSpacing override is dropped with it: h2 carries
+  // its own (-0.3), and repeating a different value here is what let the two
+  // drift apart.
+  companyName: { ...THEME.typography.h2, color: colors.neutral0, fontFamily: FONT },
+  // 38px square: the 44pt minimum target is met by the hitSlop, so the visible
+  // button can stay small enough not to compete with the company name.
+  headerIconBtn: {
+    width: 38, height: 38, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+  },
   headerMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
   statusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -624,8 +727,17 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(16,185,129,0.28)',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
   },
+  // Amber when something is open. Written as rgba rather than a token because
+  // these sit on the navy header, where a solid tint would read as a block of
+  // colour rather than a wash — the same reason the date pill is a white alpha.
+  statusPillWarn: {
+    backgroundColor: 'rgba(245,158,11,0.16)',
+    borderColor: 'rgba(245,158,11,0.32)',
+  },
   statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: THEME.colors.success },
+  statusDotWarn: { backgroundColor: THEME.colors.warning },
   statusPillText: { ...THEME.typography.overline, color: colors.successLight, fontFamily: FONT },
+  statusPillTextWarn: { color: colors.warningLight },
   datePill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(255,255,255,0.10)',
@@ -634,13 +746,17 @@ const s = StyleSheet.create({
   datePillText: { ...THEME.typography.overline, color: 'rgba(255,255,255,0.88)', fontFamily: FONT },
 
   // Body
-  body: { paddingTop: 16, paddingBottom: 28, gap: 16 },
+  // 22 between sections against 10 inside one (see `section`). The two numbers
+  // are what separate the blocks; when they were 16 and 10 the whole screen
+  // read as a single list.
+  body: { paddingTop: 16, paddingBottom: 28, gap: 22 },
   alertsWrap: { paddingHorizontal: 16, gap: 8 },
 
-  // Section header
+  // Section
+  section: { gap: 10 },
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, marginBottom: -6,
+    paddingHorizontal: 16,
   },
   sectionTitleWrap: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   sectionTitle: { ...THEME.typography.labelLg, color: C.ink, letterSpacing: -0.2, fontFamily: FONT },
@@ -673,18 +789,27 @@ const s = StyleSheet.create({
   chipDot: { width: 6, height: 6, borderRadius: 3 },
   chipLabel: { ...THEME.typography.overline, color: C.ink2, fontFamily: FONT },
 
-  // Quick actions
-  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
-  actionTile: { ...card, flex: 1, minWidth: '30%', padding: 14, alignItems: 'center', gap: 8 },
-  actionIconWrap: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  actionLabel: { ...THEME.typography.overline, color: C.ink, textAlign: 'center', fontFamily: FONT },
+  // Quick actions — a 2 × 2 grid, as two explicit rows of two.
+  //
+  // Not a wrapping row with a percentage basis. That was the first attempt and
+  // it laid all four out side by side: a percentage flex-basis needs a
+  // definite main-size on the parent to resolve against, and nested inside the
+  // ScrollView's content container it does not get one — so it fell back to
+  // auto and nothing ever wrapped. Two rows of `flex: 1` is the same shape
+  // `statRow` above already uses for the AR/AP pair, needs no percentage, and
+  // cannot wrap wrongly because there is nothing to wrap.
+  actionsGrid: { paddingHorizontal: 16, gap: 12 },
+  actionsRow: { flexDirection: 'row', gap: 12 },
+  actionTile: { ...card, flex: 1, paddingVertical: 18, paddingHorizontal: 12, alignItems: 'center', gap: 10 },
+  // minHeight is two lines of overline (2 × 14), so "New invoice" on one line
+  // and "New purchase order" on two still make tiles of equal height.
+  actionLabel: { ...THEME.typography.overline, color: C.ink, textAlign: 'center', fontFamily: FONT, minHeight: 28 },
 
   // Inventory
   invCard: { ...card, marginHorizontal: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  invIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   invCount: { ...THEME.typography.displaySm, color: C.ink, fontFamily: FONT, lineHeight: 28, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
-  invBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  invBadgeText: { ...THEME.typography.overline, fontFamily: FONT },
+  invBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: TINT.warn },
+  invBadgeText: { ...THEME.typography.overline, fontFamily: FONT, color: C.warn },
 
   // Transactions
   txCard: { ...card, marginHorizontal: 16, padding: 0, overflow: 'hidden' },
@@ -699,10 +824,10 @@ const s = StyleSheet.create({
 
   // Empty
   emptyCard: { ...card, marginHorizontal: 16, paddingVertical: 26, paddingHorizontal: 16, alignItems: 'center', gap: 6, borderStyle: 'dashed', borderColor: C.line },
-  emptyIconBg: { width: 44, height: 44, borderRadius: 14, backgroundColor: C.brand + '12', alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  emptyIcon: { marginBottom: 4 },
   emptyTitle: { ...THEME.typography.h5, color: C.ink, fontFamily: FONT },
   emptySub: { ...THEME.typography.caption, color: C.ink3, textAlign: 'center', fontFamily: FONT, lineHeight: 17 },
-  emptyCta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 9, backgroundColor: C.brand + '12' },
+  emptyCta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 9, backgroundColor: TINT.brand },
   emptyCtaText: { ...THEME.typography.labelSm, color: C.brand, fontFamily: FONT },
 
   // Alerts

@@ -162,7 +162,7 @@ const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) =
             <View style={s.divider} />
             {awaitingApproval && (
               <View style={s.awaitCard}>
-                <Feather name="clock" size={18} color="#B54708" />
+                <Feather name="clock" size={18} color={THEME.colors.warning} />
                 <View style={{ flex: 1 }}>
                   <Text style={s.awaitTitle}>Bill submitted successfully</Text>
                   <Text style={s.awaitText}>

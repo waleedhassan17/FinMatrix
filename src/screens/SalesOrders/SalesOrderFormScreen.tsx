@@ -23,7 +23,12 @@ type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'SalesOrderForm'>;
 
 interface LineDraft { description: string; quantity: string; unitPrice: string; taxRate: string; }
-const blankLine = (): LineDraft => ({ description: '', quantity: '1', unitPrice: '0', taxRate: '0' });
+// Blank, not '1' and '0'. Those read as figures somebody entered, and a rate
+// of 0 sitting in the field is exactly the value you do not want saved by
+// accident. Empty shows LineItemRow's grey placeholders instead, and `save`
+// below refuses a line that still has no quantity or rate. Matches the invoice
+// and purchase-order forms, which already do this.
+const blankLine = (): LineDraft => ({ description: '', quantity: '', unitPrice: '', taxRate: '0' });
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -85,11 +90,17 @@ const SalesOrderFormScreen: React.FC = () => {
     if (!customerId) { Toast.show({ type: 'error', text1: 'Missing customer', text2: 'Please select a customer.' }); return; }
     const valid = lines.filter(l => l.description.trim());
     if (valid.length === 0) { Toast.show({ type: 'error', text1: 'No items', text2: 'Add at least one line item.' }); return; }
+    // The fields start empty now, so a line can reach here described but not
+    // priced. Caught before the request rather than posted as an empty string.
+    if (valid.some(l => !(parseFloat(l.quantity) > 0) || !(parseFloat(l.unitPrice) > 0))) {
+      Toast.show({ type: 'error', text1: 'Incomplete line', text2: 'Every item needs a quantity and a rate.' });
+      return;
+    }
     const payload = {
       customerId, orderDate, expectedDate: expectedDate || undefined,
       discountType, discountValue,
       notes: notes || undefined,
-      lines: valid.map(l => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, taxRate: l.taxRate })),
+      lines: valid.map(l => ({ description: l.description, quantity: l.quantity || '0', unitPrice: l.unitPrice || '0', taxRate: l.taxRate })),
     };
     setSaving(true);
     try {

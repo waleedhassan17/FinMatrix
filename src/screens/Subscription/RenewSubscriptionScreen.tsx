@@ -214,7 +214,7 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
         )}
         {rejected && !awaiting && (
           <View style={[S.banner, { backgroundColor: colors.dangerLighter, borderColor: colors.dangerLight }]}>
-            <Feather name="alert-circle" size={16} color="#B91C1C" />
+            <Feather name="alert-circle" size={16} color={THEME.colors.danger} />
             <Text style={[S.bannerText, { color: THEME.colors.dangerHover }]}>
               Your last payment could not be verified
               {status?.lastSubmission?.rejectionReason

@@ -88,7 +88,7 @@ export const AddButton: React.FC<{
     disabled={disabled}
     activeOpacity={0.7}
   >
-    <Feather name="plus" size={THEME.form.addPill.iconSize} color="#FFFFFF" />
+    <Feather name="plus" size={THEME.form.addPill.iconSize} color={THEME.colors.neutral0} />
     <Text style={styles.addPillText}>{label}</Text>
   </TouchableOpacity>
 );
@@ -135,10 +135,21 @@ const styles = StyleSheet.create({
     fontWeight: THEME.form.addPill.fontWeight,
     color: THEME.colors.neutral0,
   },
+  // marginTop as well as marginBottom: the header had space under it but none
+  // above, so it sat flush against the card belonging to the section before
+  // it. That is invisible on a title alone, but these headers carry an Add
+  // pill on the right which is nearly three times the title's height — so the
+  // pill came within a couple of pixels of the card above it.
+  //
+  // The three forms using this carried the same value as scrollContent
+  // paddingTop and now start at 0; the first header's own margin supplies it,
+  // so the top of each form is unchanged and only the gap between sections
+  // grows.
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: THEME.spacing.md,
     marginBottom: THEME.spacing.sm,
   },
   sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },

@@ -1,360 +1,582 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
+  Modal,
   TouchableOpacity,
-  Modal
+  TextInput,
 } from 'react-native';
-import { Alert } from '../../../utils/alert';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Clipboard from 'expo-clipboard';
+import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser } from '../../Auth/authSlice';
-import {
-  selectUsers, selectUserMgmtLoading, selectInviteModal,
-  selectInviteEmail, selectInviteRole, selectIsInviting,
-  fetchUsers, openInviteModal, closeInviteModal,
-  setInviteEmail, setInviteRole, inviteUser,
-  changeUserRole, deleteUser
-} from './userManagementSlice';
-import type { CompanyMember } from '../../Auth/companySlice';
-import CustomInput from '../../../Custom-Components/CustomInput';
+import { ReportContainer, ReportHeader } from '../../../components/reports/ReportUI';
+import EmptyState from '../../../components/shared/EmptyState';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
+import {
+  addUser,
+  changeUserRole,
+  closeAddUser,
+  dismissIssued,
+  dismissRevealed,
+  fetchUsers,
+  openAddUser,
+  regeneratePassword,
+  resetUserPassword,
+  revealCredential,
+  selectBusyUserId,
+  selectFormName,
+  selectFormOpen,
+  selectFormPassword,
+  selectFormRole,
+  selectFormUsername,
+  selectIsSaving,
+  selectIssuedCredentials,
+  selectRevealedCredential,
+  selectUserMgmtError,
+  selectUserMgmtLoading,
+  selectUsers,
+  setFormName,
+  setFormPassword,
+  setFormRole,
+  setFormUsername,
+  setUserActive,
+} from './userManagementSlice';
+import type { CompanyUser } from '../../../networks/settings/settingsNetwork';
 
-// Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
 
-type Nav = NativeStackNavigationProp<MoreStackParamList>;
-
-const P = {
-  brand: colors.actionGreen,
-  brandLight: colors.actionGreenLighter,
-  pageBg: colors.neutral50,
-  card: colors.neutral0,
-  text: colors.neutral800,
-  sub: colors.neutral400,
-  divider: colors.neutral200,
-  admin: colors.info,
-  adminBg: colors.infoLight,
-  delivery: colors.actionGreen,
-  deliveryBg: colors.actionGreenLighter,
-  danger: colors.danger
+const ROLE_STYLE: Record<'admin' | 'staff', { bg: string; fg: string; label: string }> = {
+  admin: { bg: colors.infoLight, fg: colors.info, label: 'Owner' },
+  staff: { bg: colors.actionGreenLighter, fg: colors.actionGreen, label: 'Staff' },
 };
 
-const ROLE_COLORS: Record<string, { bg: string; fg: string }> = {
-  admin: { bg: P.adminBg, fg: P.admin },
-  delivery: { bg: P.deliveryBg, fg: P.delivery }
-};
-
+/**
+ * The owner's team screen.
+ *
+ * Staff sign in with a USERNAME and a password the owner sets here and hands
+ * over — there is no invite email. That makes the owner the custodian of the
+ * credential, so this screen can also show it again ("Show login") and re-issue
+ * it ("Reset password") when somebody forgets. Both are audited server-side.
+ *
+ * Accounts are deactivated, never deleted: the ledger references them.
+ */
 const UserManagementScreen: React.FC = () => {
-  const nav = useNavigation<Nav>();
+  const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(selectUser);
   const users = useAppSelector(selectUsers);
   const loading = useAppSelector(selectUserMgmtLoading);
-  const showModal = useAppSelector(selectInviteModal);
-  const email = useAppSelector(selectInviteEmail);
-  const role = useAppSelector(selectInviteRole);
-  const inviting = useAppSelector(selectIsInviting);
+  const error = useAppSelector(selectUserMgmtError);
+  const busyUserId = useAppSelector(selectBusyUserId);
 
-  useEffect(() => { dispatch(fetchUsers()); }, [dispatch]);
+  const formOpen = useAppSelector(selectFormOpen);
+  const name = useAppSelector(selectFormName);
+  const username = useAppSelector(selectFormUsername);
+  const password = useAppSelector(selectFormPassword);
+  const role = useAppSelector(selectFormRole);
+  const saving = useAppSelector(selectIsSaving);
 
-  const isOwnUser = useCallback(
-    (u: CompanyMember) => currentUser?.uid === u.userId,
+  const issued = useAppSelector(selectIssuedCredentials);
+  const revealed = useAppSelector(selectRevealedCredential);
+
+  useEffect(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (error) Alert.alert('Could not do that', error);
+  }, [error]);
+
+  const isSelf = useCallback(
+    (u: CompanyUser) => currentUser?.uid === u.id,
     [currentUser],
   );
 
-  const handleRoleToggle = useCallback(
-    (u: CompanyMember) => {
-      if (isOwnUser(u)) {
-        Alert.alert('Restricted', 'You cannot change your own role.');
-        return;
-      }
-      const newRole = u.role === 'admin' ? 'delivery' : 'admin';
-      dispatch(changeUserRole({ userId: u.userId, role: newRole }));
-    },
-    [dispatch, isOwnUser],
-  );
+  const copy = async (text: string, label: string) => {
+    await Clipboard.setStringAsync(text);
+    Alert.alert('Copied', `${label} copied to the clipboard.`);
+  };
 
-  const handleDelete = useCallback(
-    (u: CompanyMember) => {
-      if (isOwnUser(u)) {
-        Alert.alert('Restricted', 'You cannot remove yourself.');
-        return;
-      }
-      Alert.alert('Remove User', `Remove ${u.displayName}?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => { dispatch(deleteUser(u.userId)); } },
-      ]);
-    },
-    [dispatch, isOwnUser],
-  );
-
-  const handleInvite = useCallback(() => {
-    if (!email.trim() || !email.includes('@')) {
-      Alert.alert('Validation', 'Enter a valid email address.');
+  const toggleRole = (u: CompanyUser) => {
+    if (isSelf(u)) {
+      Alert.alert('Not allowed', 'You cannot change your own role.');
       return;
     }
-    dispatch(inviteUser());
-  }, [dispatch, email]);
-
-  const renderUser = ({ item }: { item: CompanyMember }) => {
-    const colour = ROLE_COLORS[item.role] ?? ROLE_COLORS.admin;
-    const own = isOwnUser(item);
-    return (
-      <View style={s.userCard}>
-        <View style={s.avatar}>
-          <Text style={s.avatarText}>
-            {item.displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-          </Text>
-        </View>
-        <View style={s.userInfo}>
-          <View style={s.nameRow}>
-            <Text style={s.userName}>{item.displayName}</Text>
-            {own && <Text style={s.youBadge}>You</Text>}
-          </View>
-          <Text style={s.userEmail}>{item.email}</Text>
-          <View style={s.metaRow}>
-            <TouchableOpacity
-              style={[s.roleBadge, { backgroundColor: colour.bg }]}
-              activeOpacity={own ? 1 : 0.6}
-              onPress={() => handleRoleToggle(item)}
-            >
-              <Text style={[s.roleText, { color: colour.fg }]}>
-                {item.role.charAt(0).toUpperCase() + item.role.slice(1)}
-              </Text>
-              {!own && <Feather name="repeat" size={11} color={colour.fg} style={{ marginLeft: 4 }} />}
-            </TouchableOpacity>
-            {!own && (
-              <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Feather name="trash-2" size={16} color={P.danger} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
+    const next = u.role === 'admin' ? 'staff' : 'admin';
+    Alert.alert(
+      next === 'admin' ? 'Make this person an owner?' : 'Make this person staff?',
+      next === 'admin'
+        ? `${u.name} will be able to approve requests, manage users and close the books.`
+        : `${u.name} will no longer approve requests or manage users.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Change role',
+          onPress: () => dispatch(changeUserRole({ userId: u.id, role: next })),
+        },
+      ],
     );
   };
 
+  const toggleActive = (u: CompanyUser) => {
+    if (isSelf(u)) {
+      Alert.alert('Not allowed', 'You cannot deactivate your own account.');
+      return;
+    }
+    const activating = u.status !== 'active';
+    Alert.alert(
+      activating ? 'Reactivate this account?' : 'Deactivate this account?',
+      activating
+        ? `${u.name} will be able to sign in again.`
+        : `${u.name} will be signed out and cannot sign in. Their history is kept.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: activating ? 'Reactivate' : 'Deactivate',
+          style: activating ? 'default' : 'destructive',
+          onPress: () =>
+            dispatch(setUserActive({ userId: u.id, isActive: activating })),
+        },
+      ],
+    );
+  };
+
+  const confirmReset = (u: CompanyUser) => {
+    Alert.alert(
+      'Issue a new password?',
+      `${u.name}'s current password stops working immediately. You will see the new one to pass on.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset password',
+          onPress: () => dispatch(resetUserPassword({ userId: u.id, name: u.name })),
+        },
+      ],
+    );
+  };
+
+  const canSubmit =
+    name.trim().length > 0 && username.trim().length >= 3 && password.length >= 8;
+
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => nav.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Feather name="arrow-left" size={22} color={P.text} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>User Management</Text>
-        <TouchableOpacity onPress={() => { dispatch(openInviteModal()); }}>
-          <Feather name="user-plus" size={20} color={P.brand} />
-        </TouchableOpacity>
-      </View>
+    <ReportContainer>
+      <ReportHeader
+        title="User management"
+        subtitle="Your owners and staff"
+        onBack={() => navigation.goBack()}
+      />
 
       <FlatList
         data={users}
-        keyExtractor={i => i.userId}
-        renderItem={renderUser}
-        contentContainerStyle={s.list}
-        showsVerticalScrollIndicator={false}
+        keyExtractor={u => u.id}
+        contentContainerStyle={styles.list}
+        refreshing={loading}
+        onRefresh={() => dispatch(fetchUsers())}
         ListEmptyComponent={
-          loading ? (
-            <Text style={s.empty}>Loading…</Text>
-          ) : (
-            <Text style={s.empty}>No users found</Text>
+          loading ? null : (
+            <EmptyState
+              icon="users"
+              title="Just you so far"
+              message="Add a staff member so they can run day-to-day work without your password."
+            />
           )
         }
+        renderItem={({ item }) => {
+          const roleStyle = ROLE_STYLE[item.role];
+          const inactive = item.status !== 'active';
+          const busy = busyUserId === item.id;
+          return (
+            <View style={[styles.card, inactive && styles.cardInactive]}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardIdentity}>
+                  <Text style={styles.cardName}>{item.name}</Text>
+                  <Text style={styles.cardHandle}>
+                    {item.username ? `@${item.username}` : item.email ?? '—'}
+                  </Text>
+                </View>
+                <View style={[styles.rolePill, { backgroundColor: roleStyle.bg }]}>
+                  <Text style={[styles.rolePillText, { color: roleStyle.fg }]}>
+                    {roleStyle.label}
+                  </Text>
+                </View>
+              </View>
+
+              {inactive && (
+                <Text style={styles.inactiveNote}>
+                  Deactivated — cannot sign in. History kept.
+                </Text>
+              )}
+
+              <View style={styles.cardActions}>
+                {/* The owner is the custodian of this credential: staff have no
+                    self-service reset, so this is how a forgotten login is
+                    recovered. Both actions are audited server-side. */}
+                {!!item.username && (
+                  <TouchableOpacity
+                    style={styles.cardAction}
+                    disabled={busy}
+                    onPress={() => dispatch(revealCredential(item.id))}
+                  >
+                    <Feather name="eye" size={14} color={colors.textSecondary} />
+                    <Text style={styles.cardActionText}>Show login</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.cardAction}
+                  disabled={busy}
+                  onPress={() => confirmReset(item)}
+                >
+                  <Feather name="key" size={14} color={colors.textSecondary} />
+                  <Text style={styles.cardActionText}>Reset password</Text>
+                </TouchableOpacity>
+                {!isSelf(item) && (
+                  <>
+                    <TouchableOpacity
+                      style={styles.cardAction}
+                      disabled={busy}
+                      onPress={() => toggleRole(item)}
+                    >
+                      <Feather name="repeat" size={14} color={colors.textSecondary} />
+                      <Text style={styles.cardActionText}>
+                        Make {item.role === 'admin' ? 'staff' : 'owner'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.cardAction}
+                      disabled={busy}
+                      onPress={() => toggleActive(item)}
+                    >
+                      <Feather
+                        name={inactive ? 'user-check' : 'user-x'}
+                        size={14}
+                        color={inactive ? colors.success : colors.danger}
+                      />
+                      <Text
+                        style={[
+                          styles.cardActionText,
+                          { color: inactive ? colors.success : colors.danger },
+                        ]}
+                      >
+                        {inactive ? 'Reactivate' : 'Deactivate'}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </View>
+          );
+        }}
       />
 
-      {/* Invite Modal */}
-      <Modal visible={showModal} transparent animationType="slide">
-        <View style={s.overlay}>
-          <View style={s.modal}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Invite User</Text>
-              <TouchableOpacity onPress={() => { dispatch(closeInviteModal()); }}>
-                <Feather name="x" size={20} color={P.text} />
+      <View style={styles.footer}>
+        <CustomButton title="Add a user" onPress={() => dispatch(openAddUser())} />
+      </View>
+
+      {/* ── Add user ─────────────────────────────────────────────────────── */}
+      <Modal
+        visible={formOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => dispatch(closeAddUser())}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Add a user</Text>
+            <Text style={styles.modalSubtitle}>
+              They sign in with this username and password. Write them down —
+              you can show them again later from this screen.
+            </Text>
+
+            <Text style={styles.fieldLabel}>Full name</Text>
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={t => dispatch(setFormName(t))}
+              placeholder="Ayesha Khan"
+              placeholderTextColor={colors.textTertiary}
+            />
+
+            <Text style={styles.fieldLabel}>Username</Text>
+            <TextInput
+              style={styles.input}
+              value={username}
+              onChangeText={t => dispatch(setFormUsername(t))}
+              placeholder="warehouse.ayesha"
+              placeholderTextColor={colors.textTertiary}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <Text style={styles.fieldLabel}>Password</Text>
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                value={password}
+                onChangeText={t => dispatch(setFormPassword(t))}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                style={styles.regenerate}
+                onPress={() => dispatch(regeneratePassword())}
+              >
+                <Feather name="refresh-cw" size={16} color={colors.actionGreen} />
               </TouchableOpacity>
             </View>
 
-            <CustomInput
-              label="Email Address"
-              value={email}
-              onChangeText={v => { dispatch(setInviteEmail(v)); }}
-              placeholder="user@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <Text style={s.roleSelectLabel}>Role</Text>
-            <View style={s.roleRow}>
-              {(['admin', 'delivery'] as const).map(r => {
-                const sel = role === r;
-                return (
-                  <TouchableOpacity
-                    key={r}
-                    style={[s.roleOption, sel && { backgroundColor: P.brandLight, borderColor: P.brand }]}
-                    onPress={() => { dispatch(setInviteRole(r)); }}
+            <Text style={styles.fieldLabel}>Role</Text>
+            <View style={styles.roleRow}>
+              {(['staff', 'admin'] as const).map(r => (
+                <TouchableOpacity
+                  key={r}
+                  style={[styles.roleOption, role === r && styles.roleOptionActive]}
+                  onPress={() => dispatch(setFormRole(r))}
+                >
+                  <Text
+                    style={[
+                      styles.roleOptionText,
+                      role === r && styles.roleOptionTextActive,
+                    ]}
                   >
-                    <Feather
-                      name={r === 'admin' ? 'shield' : 'truck'}
-                      size={16}
-                      color={sel ? P.brand : P.sub}
-                    />
-                    <Text style={[s.roleOptText, sel && { color: P.brand, fontWeight: typography.labelLg.fontWeight }]}>
-                      {r.charAt(0).toUpperCase() + r.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                    {ROLE_STYLE[r].label}
+                  </Text>
+                  <Text style={styles.roleOptionHint}>
+                    {r === 'staff'
+                      ? 'Runs day-to-day work. Money out needs your approval.'
+                      : 'Full access, including approving and managing users.'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
-            <CustomButton
-              title={inviting ? 'Sending…' : 'Send Invite'}
-              onPress={handleInvite}
-              disabled={inviting}
-            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => dispatch(closeAddUser())}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirm, !canSubmit && styles.modalConfirmDisabled]}
+                disabled={!canSubmit || saving}
+                onPress={() => dispatch(addUser())}
+              >
+                <Text style={styles.modalConfirmText}>
+                  {saving ? 'Adding…' : 'Add user'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+      {/* ── Credentials to hand over ─────────────────────────────────────── */}
+      <Modal
+        visible={!!issued || !!revealed}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          dispatch(dismissIssued());
+          dispatch(dismissRevealed());
+        }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Sign-in details</Text>
+            <Text style={styles.modalSubtitle}>
+              {issued
+                ? `Give these to ${issued.name ?? 'them'}. You can show them again from this screen.`
+                : 'Read these out to the account holder.'}
+            </Text>
+
+            <CredentialRow
+              label="Username"
+              value={(issued?.username ?? revealed?.username) || '—'}
+              onCopy={copy}
+            />
+            <CredentialRow
+              label="Password"
+              value={issued?.password ?? revealed?.password ?? null}
+              onCopy={copy}
+              fallback="Not stored — use Reset password to issue a new one."
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalConfirm}
+                onPress={() => {
+                  dispatch(dismissIssued());
+                  dispatch(dismissRevealed());
+                }}
+              >
+                <Text style={styles.modalConfirmText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ReportContainer>
   );
 };
 
-export default UserManagementScreen;
+const CredentialRow: React.FC<{
+  label: string;
+  value: string | null;
+  fallback?: string;
+  onCopy: (text: string, label: string) => void;
+}> = ({ label, value, fallback, onCopy }) => (
+  <View style={styles.credentialRow}>
+    <Text style={styles.fieldLabel}>{label}</Text>
+    {value ? (
+      <TouchableOpacity
+        style={styles.credentialValue}
+        onPress={() => onCopy(value, label)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.credentialText}>{value}</Text>
+        <Feather name="copy" size={16} color={colors.actionGreen} />
+      </TouchableOpacity>
+    ) : (
+      <Text style={styles.credentialMissing}>{fallback ?? '—'}</Text>
+    )}
+  </View>
+);
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: P.pageBg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    backgroundColor: P.card,
-    borderBottomWidth: 1,
-    borderBottomColor: P.divider,
-  },
-  headerTitle: {
-    ...typography.h3,
-    color: P.text,
-  },
-  list: { padding: spacing.md, paddingBottom: spacing.xxl },
-  empty: {
-    ...typography.bodySm,
-    textAlign: 'center',
-    marginTop: 60,
-    color: P.sub,
-  },
-  userCard: {
-    flexDirection: 'row',
-    backgroundColor: P.card,
+const styles = StyleSheet.create({
+  list: { padding: spacing.md, backgroundColor: colors.background, flexGrow: 1 },
+  card: {
+    backgroundColor: colors.neutral0,
     borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.xs,
-    ...shadows.sm,
+    marginBottom: spacing.sm,
+    ...shadows.xs,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: P.brandLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+  cardInactive: { opacity: 0.6 },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start' },
+  cardIdentity: { flex: 1 },
+  cardName: { ...typography.labelMd, color: colors.textPrimary },
+  cardHandle: { ...typography.bodySm, color: colors.textSecondary, marginTop: 2 },
+  rolePill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.full,
   },
-  avatarText: {
-    ...typography.labelLg,
-    color: P.brand,
-  },
-  userInfo: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center' },
-  userName: {
-    ...typography.labelLg,
-    color: P.text,
-  },
-  youBadge: {
-    ...typography.overline,
-    color: P.brand,
-    backgroundColor: P.brandLight,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    marginLeft: 8,
-    overflow: 'hidden',
-  },
-  userEmail: {
+  rolePillText: { ...typography.labelSm },
+  inactiveNote: {
     ...typography.bodySm,
-    color: P.sub,
-    marginTop: 2,
+    color: colors.danger,
+    marginTop: spacing.xs,
   },
-  metaRow: {
+  cardActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+  cardAction: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  cardActionText: { ...typography.labelSm, color: colors.textSecondary },
+  footer: {
+    padding: spacing.md,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  roleText: {
-    ...typography.labelSm,
-    
-  },
-  overlay: {
+  modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    padding: spacing.lg,
   },
-  modal: {
-    backgroundColor: P.card,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: spacing.xl,
-    paddingBottom: 40,
+  modalCard: {
+    backgroundColor: colors.neutral0,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  modalTitle: { ...typography.displaySm, color: colors.textPrimary },
+  modalSubtitle: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    marginTop: 4,
     marginBottom: spacing.md,
   },
-  modalTitle: {
-    ...typography.h3,
-    color: P.text,
+  fieldLabel: {
+    ...typography.labelSm,
+    color: colors.textSecondary,
+    marginBottom: 4,
+    marginTop: spacing.sm,
   },
-  roleSelectLabel: {
-    ...typography.h5,
-    color: P.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
+  input: {
+    ...typography.bodyMd,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
   },
-  roleRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.xl,
+  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  passwordInput: { flex: 1 },
+  regenerate: {
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.actionGreenLighter,
   },
+  roleRow: { gap: spacing.sm },
   roleOption: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+  },
+  roleOptionActive: {
+    borderColor: colors.actionGreen,
+    backgroundColor: colors.actionGreenLighter,
+  },
+  roleOptionText: { ...typography.labelMd, color: colors.textPrimary },
+  roleOptionTextActive: { color: colors.actionGreen },
+  roleOptionHint: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  modalActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  modalCancel: {
     flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalCancelText: { ...typography.labelMd, color: colors.textSecondary },
+  modalConfirm: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.actionGreen,
+  },
+  modalConfirmDisabled: { opacity: 0.4 },
+  modalConfirmText: { ...typography.labelMd, color: colors.neutral0 },
+  credentialRow: { marginBottom: spacing.xs },
+  credentialValue: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: radius.sm,
-    borderWidth: 1.5,
-    borderColor: P.divider,
-    gap: 6,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    backgroundColor: colors.neutral50,
   },
-  roleOptText: {
-    ...typography.bodySm,
-    color: P.sub,
-  }
+  credentialText: { ...typography.bodyMd, color: colors.textPrimary },
+  credentialMissing: { ...typography.bodySm, color: colors.textSecondary },
 });
+
+export default UserManagementScreen;

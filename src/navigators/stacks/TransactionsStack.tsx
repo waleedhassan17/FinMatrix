@@ -17,7 +17,18 @@ export type TransactionsStackParamList = {
   SalesOrderForm: { salesOrderId?: string } | undefined;
   SalesOrderDetail: { salesOrderId: string };
   CreditMemoList: undefined;
-  CreditMemoForm: { creditMemoId?: string } | undefined;
+  CreditMemoForm:
+    | {
+        creditMemoId?: string;
+        /**
+         * Reversing an approved delivery: the form fetches the draft by this
+         * id and pre-fills the customer, invoice and delivered lines. Passed
+         * as an ID rather than a payload so it cannot go stale in the back
+         * stack, and so a deep link works.
+         */
+        fromDeliveryRequestId?: string;
+      }
+    | undefined;
   CreditMemoDetail: { creditMemoId: string };
   VendorCreditList: undefined;
   VendorCreditForm: { vendorCreditId?: string } | undefined;

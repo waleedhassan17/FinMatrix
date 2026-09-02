@@ -51,6 +51,7 @@ import { assignWorkSlice } from '../screens/Delivery/Admin/AssignWork/assignWork
 import { deliveryMonitorSlice } from '../screens/Delivery/Admin/DeliveryMonitor/deliveryMonitorSlice';
 import { adminDeliveryDetailSlice } from '../screens/Delivery/Admin/AdminDeliveryDetail/adminDeliveryDetailSlice';
 import { inventoryApprovalSlice } from '../screens/Delivery/Admin/InventoryApproval/inventoryApprovalSlice';
+import { approvalsSlice } from '../screens/Approvals/approvalsSlice';
 import { adminDashboardSlice } from '../screens/HomeScreen/adminDashboardSlice';
 import { superAdminSlice } from '../screens/SuperAdmin/superAdminSlice';
 import { coaListSlice } from '../screens/ChartOfAccounts/COAList/coaListSlice';
@@ -163,6 +164,8 @@ const rootReducer = combineReducers({
   deliveryMonitor: deliveryMonitorSlice.reducer,
   adminDeliveryDetail: adminDeliveryDetailSlice.reducer,
   inventoryApproval: inventoryApprovalSlice.reducer,
+  // Staff requests awaiting the owner: the inbox and "My requests" share it.
+  approvals: approvalsSlice.reducer,
   delivery: deliverySlice.reducer,
   adminDashboard: adminDashboardSlice.reducer,
   superAdmin: superAdminSlice.reducer,
@@ -234,6 +237,11 @@ const appReducer: typeof rootReducer = (state, action) => {
 const persistConfig = {
   key: 'finmatrix-root',
   storage: AsyncStorage,
+  // DO NOT add `userManagement` here. It holds the one-time reveal of a
+  // password the owner just issued to a staff member or rider, and persisting
+  // it would write plaintext credentials into AsyncStorage — where they would
+  // outlive the screen, the session, and any reason to keep them. The same
+  // goes for `approvals`, which is server state with nothing worth caching.
   whitelist: ['auth', 'company', 'inventoryApproval', 'createCompany'],
   stateReconciler: autoMergeLevel2 as any,
 };

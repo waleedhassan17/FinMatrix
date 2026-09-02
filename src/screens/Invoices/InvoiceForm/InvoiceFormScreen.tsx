@@ -360,19 +360,25 @@ const InvoiceFormScreen: React.FC = () => {
             <Text style={styles.lineError}>{form.errors.lines}</Text>
           )}
 
+          {/* The inventory picker goes through LineItemRow's topSlot so it is
+              drawn inside the line's card. It used to be a sibling, which put
+              the control that decides what the line IS on the bare canvas
+              above the card holding everything else about that line. */}
           {form.lines.map((line, idx) => (
-            <View key={line.id} style={styles.lineItemPicker}>
-              <CustomDropdown
-                label="Inventory Item (optional)"
-                options={itemOptions}
-                value={line.itemId}
-                onChange={v => handleSelectItem(line.id, v)}
-                placeholder="Link an inventory item…"
-                searchable
-              />
-              <LineItemRow
-                index={idx}
-                description={line.description}
+            <LineItemRow
+              key={line.id}
+              index={idx}
+              topSlot={
+                <CustomDropdown
+                  label="Inventory item (optional)"
+                  options={itemOptions}
+                  value={line.itemId}
+                  onChange={v => handleSelectItem(line.id, v)}
+                  placeholder="Link an inventory item…"
+                  searchable
+                />
+              }
+              description={line.description}
               quantity={line.quantity}
               unitPrice={line.unitPrice}
               taxRate={line.taxRate}
@@ -381,10 +387,9 @@ const InvoiceFormScreen: React.FC = () => {
               onQuantityChange={v => dispatch(updateLine({ id: line.id, field: 'quantity', value: v }))}
               onUnitPriceChange={v => dispatch(updateLine({ id: line.id, field: 'unitPrice', value: v }))}
               onTaxRateChange={v => dispatch(updateLine({ id: line.id, field: 'taxRate', value: v }))}
-                onDelete={() => dispatch(removeLine(line.id))}
-                canDelete={form.lines.length > 1}
-              />
-            </View>
+              onDelete={() => dispatch(removeLine(line.id))}
+              canDelete={form.lines.length > 1}
+            />
           ))}
 
           {/* ── Section: Discount ────────────────────── */}
@@ -511,7 +516,10 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    // 0: FormSectionHeader's own marginTop provides this now, so the first
+    // section sits exactly where it always did and the later ones gain the
+    // gap they were missing.
+    paddingTop: 0,
     paddingBottom: spacing.xxl,
   },
 
@@ -540,9 +548,6 @@ const styles = StyleSheet.create({
   lineError: {
     ...typography.caption,
     color: colors.danger,
-    marginBottom: spacing.xs,
-  },
-  lineItemPicker: {
     marginBottom: spacing.xs,
   },
 

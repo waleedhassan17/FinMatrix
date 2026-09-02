@@ -303,7 +303,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
           ) : (
             <View style={styles.noPinBanner}>
-              <Feather name="map-pin" size={16} color="#B45309" />
+              <Feather name="map-pin" size={16} color={THEME.colors.warning} />
               <Text style={styles.noPinText}>
                 The address could not be located on the map automatically. Riders will
                 navigate by the address text until a pin is set.
@@ -641,7 +641,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               value={manualAddress}
               onChangeText={setManualAddress}
               placeholder="Street, area, city"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={THEME.colors.textTertiary}
               multiline
             />
             <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -652,7 +652,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   value={manualLat}
                   onChangeText={setManualLat}
                   placeholder="31.5204"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={THEME.colors.textTertiary}
                   keyboardType="numbers-and-punctuation"
                 />
               </View>
@@ -663,7 +663,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   value={manualLng}
                   onChangeText={setManualLng}
                   placeholder="74.3587"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={THEME.colors.textTertiary}
                   keyboardType="numbers-and-punctuation"
                 />
               </View>

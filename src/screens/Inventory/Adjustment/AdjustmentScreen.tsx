@@ -32,6 +32,7 @@ import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
+import { useCapability } from '../../../hooks/useCapability';
 import {
   ADJUSTMENT_REASONS,
   previewAdjustmentPosting,
@@ -137,6 +138,11 @@ const AdjustmentScreen: React.FC = () => {
   const isValid = Object.keys(errors).length === 0;
 
   // ── Save ────────────────────────────────────────
+  // Adjustments are gated: an owner posts immediately, staff file a request
+  // the owner approves. Same endpoint either way — this only decides what the
+  // screen SAYS, so it can never disagree with what actually happened.
+  const adjustCap = useCapability('inventory.adjust');
+
   const postAdjustment = useCallback(async () => {
     setIsSaving(true);
     try {
@@ -152,7 +158,21 @@ const AdjustmentScreen: React.FC = () => {
       // The response envelope nests everything under `data`, so the adjustment
       // is at data.adjustment — reading result.adjustment straight off the top
       // always came back undefined.
-      const adjustment = result?.data?.adjustment ?? result?.adjustment;
+      const payload = result?.data ?? result;
+      const adjustment = payload?.adjustment ?? result?.adjustment;
+
+      // Staff get a pending request back rather than a posted adjustment. Say
+      // so plainly: nothing has moved yet, and claiming otherwise would have
+      // them walk away believing the stock was corrected.
+      if (payload?.pending) {
+        Toast.show({
+          type: 'success',
+          text1: 'Sent to the owner for approval',
+          text2: `${selectedItem!.name} stays at ${currentQty} until they approve.`,
+        });
+        navigation.goBack();
+        return;
+      }
 
       Toast.show({
         type: 'success',
@@ -183,17 +203,27 @@ const AdjustmentScreen: React.FC = () => {
     if (posting.postsNothing) {
       Alert.alert(
         'No journal entry will post',
-        `${selectedItem!.name} has no unit cost, so this adjustment has no value to record. The quantity will move but the Inventory account will not change.\n\nGive the item a unit cost first if you want the books to follow the stock.`,
+        `${selectedItem!.name} has no unit cost, so this adjustment has no value to record. ` +
+          (adjustCap.needsApproval
+            // Nothing moves for staff until the owner approves, so promising
+            // that "the quantity will move" would be wrong for them.
+            ? 'If the owner approves it, the quantity will move but the Inventory account will not change.'
+            : 'The quantity will move but the Inventory account will not change.') +
+          '\n\nGive the item a unit cost first if you want the books to follow the stock.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Adjust Anyway', style: 'destructive', onPress: postAdjustment },
+          {
+            text: adjustCap.needsApproval ? 'Send Anyway' : 'Adjust Anyway',
+            style: 'destructive',
+            onPress: postAdjustment,
+          },
         ],
       );
       return;
     }
 
     postAdjustment();
-  }, [isValid, posting, selectedItem, postAdjustment]);
+  }, [isValid, posting, selectedItem, postAdjustment, adjustCap.needsApproval]);
 
   // ── Item / mode changes reset the entry ─────────
   const handleItemChange = useCallback((id: string) => {
@@ -389,7 +419,7 @@ const AdjustmentScreen: React.FC = () => {
           </View>
           <View style={styles.footerPrimary}>
             <CustomButton
-              title="Post Adjustment"
+              title={adjustCap.submitLabel('Post Adjustment')}
               onPress={handleSave}
               variant="primary"
               size="md"
