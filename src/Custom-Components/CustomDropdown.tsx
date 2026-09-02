@@ -57,7 +57,9 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
   const getBorderColor = () => {
     if (error) return colors.danger;
-    if (isOpen) return colors.secondary;
+    // Matches CustomInput: an open control signals with the ACTION colour, not
+    // the violet category colour.
+    if (isOpen) return colors.primary;
     return colors.border;
   };
 

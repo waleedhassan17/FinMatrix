@@ -42,7 +42,7 @@ export const colors = {
   textTertiary: '#8993A4',
   textLight: '#8993A4',
   textDisabled: '#B3BAC5',
-  border: '#DFE1E6',
+  border: '#D3DAE3', // in step with THEME.colors.border
   borderLight: '#EBECF0',
   white: '#FFFFFF',
   overlay: 'rgba(9, 30, 66, 0.54)',
