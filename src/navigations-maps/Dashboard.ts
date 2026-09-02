@@ -51,6 +51,14 @@ import OpeningBalanceScreen from '../screens/GeneralJournal/OpeningBalance/Openi
 // The same closure rule applies: all four only call goBack(). POForm also has
 // a replace('PODetail') on save, which it guards by checking the navigator it
 // is actually in — see POFormScreen.
+// Revenue's "View all". Registered here for the same reason as the forms
+// below, with one extra consequence: navigate('ReportsStack', { screen:
+// 'AnalyticsDashboard' }) did not just make back go to the wrong place, it
+// left Analytics sitting on top of the REPORTS TAB. Tapping Reports afterwards
+// opened Analytics instead of the reports hub, permanently, because a tab
+// restores whatever its stack was last showing. The screen only calls
+// goBack(), so it is safe to mount here.
+import AnalyticsDashboardScreen from '../screens/Reports/AnalyticsDashboard/AnalyticsDashboardScreen';
 import InvoiceFormScreen from '../screens/Invoices/InvoiceForm/InvoiceFormScreen';
 import SalesOrderFormScreen from '../screens/SalesOrders/SalesOrderFormScreen';
 import POFormScreen from '../screens/PurchaseOrders/POForm/POFormScreen';
@@ -78,6 +86,8 @@ export const DashboardRouteNames = {
   CustomerForm: 'CustomerForm',
   VendorForm: 'VendorForm',
   TaxSettings: 'TaxSettings',
+  // dashboard drill-downs
+  AnalyticsDashboard: 'AnalyticsDashboard',
   // dashboard quick actions
   InvoiceForm: 'InvoiceForm',
   SalesOrderForm: 'SalesOrderForm',
@@ -109,6 +119,7 @@ export const DASHBOARD_ROUTES: IRoute[] = [
   { title: DashboardRouteNames.CustomerForm, component: CustomerFormScreen },
   { title: DashboardRouteNames.VendorForm, component: VendorFormScreen },
   { title: DashboardRouteNames.TaxSettings, component: TaxSettingsScreen },
+  { title: DashboardRouteNames.AnalyticsDashboard, component: AnalyticsDashboardScreen },
   // quick actions — see the import block above
   { title: DashboardRouteNames.InvoiceForm, component: InvoiceFormScreen },
   { title: DashboardRouteNames.SalesOrderForm, component: SalesOrderFormScreen },

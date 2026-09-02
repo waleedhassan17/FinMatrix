@@ -28,6 +28,9 @@ export type DashboardStackParamList = {
   CustomerForm: { customerId?: string } | undefined;
   VendorForm: { vendorId?: string } | undefined;
   TaxSettings: undefined;
+  // Revenue "View all" — mounted here so it does not strand Analytics on top
+  // of the Reports tab.
+  AnalyticsDashboard: undefined;
   // Dashboard quick actions — mounted here so back returns to the dashboard
   // instead of popping into the Transactions tab's history.
   InvoiceForm: { invoiceId?: string; customerId?: string } | undefined;

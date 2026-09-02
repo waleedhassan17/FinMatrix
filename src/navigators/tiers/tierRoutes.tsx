@@ -95,6 +95,15 @@ export interface TierRoute {
 export const SB_DASHBOARD_ROUTES: TierRoute[] = [
   { name: 'AdminDashboard', component: AdminDashboardScreen },
   { name: 'GlobalSearch', component: GlobalSearchScreen },
+  // Revenue's "View all". These tiers name their navigators SBReportsStack /
+  // LOReportsStack, so the old navigate('ReportsStack', { screen:
+  // 'AnalyticsDashboard' }) named a navigator that does not exist here and was
+  // dropped without an error — the action simply did nothing. The screen is in
+  // SB_REPORTS_ROUTES below, so it was reachable from Reports, just not from
+  // the dashboard. Mounted here for the same reason as in
+  // navigations-maps/Dashboard: back returns to the dashboard, and the Reports
+  // tab is left where the user put it.
+  { name: 'AnalyticsDashboard', component: AnalyticsDashboardScreen },
   // First-run setup checklist destinations, mounted here as well as in their
   // own stacks so each step's back arrow returns to the dashboard rather than
   // stacking on another tab's history. Mirrors navigations-maps/Dashboard.
