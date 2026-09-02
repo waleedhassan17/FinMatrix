@@ -30,7 +30,6 @@
 
 import { Alert, Linking, Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
-import * as Clipboard from 'expo-clipboard';
 
 import type { Customer, Invoice } from '../types';
 import { formatCurrency, formatDate } from './formatters';
@@ -113,59 +112,16 @@ export function sanitizePhoneForWhatsApp(phone?: string): string | null {
 // Main share flow — "Send via WhatsApp"
 // ═══════════════════════════════════════════════════════
 
-/**
- * Generates the invoice PDF and opens the platform share
- * sheet, biased towards WhatsApp. Also copies the default
- * message to the clipboard so the user can paste it after
- * picking the recipient inside WhatsApp.
+/*
+ * `shareInvoiceViaWhatsApp` used to live here. It was a copy of
+ * `shareInvoicePdf` with a different dialogTitle and a clipboard write: same
+ * PDF, same Sharing.shareAsync, same OS sheet. It never opened WhatsApp.
+ *
+ * It was removed with the button that called it, because the caller recorded
+ * the send as channel 'whatsapp' whichever app the user actually picked in
+ * that sheet -- an invoice could read "sent via WhatsApp" after being emailed.
+ * The real deep link is `openWhatsAppChat` below.
  */
-export async function shareInvoiceViaWhatsApp({
-  invoice,
-  customer,
-  company,
-}: ShareInvoiceOptions): Promise<ShareInvoiceResult> {
-  // 1. Make sure the device can share at all.
-  const available = await Sharing.isAvailableAsync();
-  if (!available) {
-    const msg = 'Sharing is not available on this device.';
-    Alert.alert('Cannot share', msg);
-    return { shared: false, pdfUri: '', filename: '', reason: msg };
-  }
-
-  // 2. Render PDF.
-  let pdfUri = '';
-  let filename = '';
-  try {
-    const result = await generateInvoicePdf({ invoice, customer, company });
-    pdfUri = result.uri;
-    filename = result.filename;
-  } catch (err: any) {
-    const msg = err?.message || 'Failed to generate invoice PDF.';
-    Alert.alert('PDF error', msg);
-    return { shared: false, pdfUri: '', filename: '', reason: msg };
-  }
-
-  // 3. Copy a polite message to the clipboard so it can be
-  //    pasted as the WhatsApp caption (WhatsApp on Android
-  //    supports a caption when sharing a document; iOS does
-  //    not, but pasting still works).
-  const message = buildInvoiceMessage(invoice, customer, company);
-  try { await Clipboard.setStringAsync(message); } catch { /* noop */ }
-
-  // 4. Open share-sheet. `dialogTitle` shows on Android; on
-  //    iOS we rely on the activity sheet's own chrome.
-  try {
-    await Sharing.shareAsync(pdfUri, {
-      mimeType: 'application/pdf',
-      UTI: 'com.adobe.pdf',
-      dialogTitle: `Send ${invoice.invoiceNumber} via WhatsApp`,
-    });
-    return { shared: true, pdfUri, filename };
-  } catch (err: any) {
-    const msg = err?.message || 'Share cancelled.';
-    return { shared: false, pdfUri, filename, reason: msg };
-  }
-}
 
 // ═══════════════════════════════════════════════════════
 // Optional: "Open WhatsApp chat" deep-link (no attachment)

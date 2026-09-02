@@ -51,7 +51,6 @@ import {
 import { txnStatusColor } from '../../../components/transactions/txnStatus';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import {
-  shareInvoiceViaWhatsApp,
   shareInvoicePdf,
   openWhatsAppChat,
   sanitizePhoneForWhatsApp,
@@ -163,17 +162,6 @@ const InvoiceDetailScreen: React.FC = () => {
     },
     [dispatch, invoice],
   );
-
-  const handleSendViaWhatsApp = useCallback(async () => {
-    if (!invoice) return;
-    const result = await shareInvoiceViaWhatsApp({ invoice, customer, company: companyInfo });
-    if (result.shared) {
-      await markAsSentOnBackend(
-        'whatsapp',
-        sanitizePhoneForWhatsApp(customer?.phone) || undefined,
-      );
-    }
-  }, [invoice, customer, markAsSentOnBackend]);
 
   const handleSharePdf = useCallback(async () => {
     if (!invoice) return;
@@ -391,19 +379,10 @@ const InvoiceDetailScreen: React.FC = () => {
                 fullWidth
               />
             </View>
-            <View style={styles.actionShare}>
-              <CustomButton
-                title="Share PDF"
-                onPress={handleSharePdf}
-                variant="text"
-                size="sm"
-                fullWidth
-              />
-            </View>
             <View style={styles.actionPrimary}>
               <CustomButton
-                title={isSending ? 'Sending…' : 'WhatsApp'}
-                onPress={handleSendViaWhatsApp}
+                title={isSending ? 'Sending…' : 'Share'}
+                onPress={handleSharePdf}
                 variant="primary"
                 size="sm"
                 fullWidth
@@ -418,22 +397,26 @@ const InvoiceDetailScreen: React.FC = () => {
           <>
             <View style={styles.actionShare}>
               <CustomButton
-                title="Share PDF"
+                title="Share"
                 onPress={handleSharePdf}
                 variant="text"
                 size="sm"
                 fullWidth
               />
             </View>
-            <View style={styles.actionSecondary}>
-              <CustomButton
-                title={customerHasWhatsApp ? 'Remind' : 'WhatsApp'}
-                onPress={customerHasWhatsApp ? handleOpenWhatsAppChat : handleSendViaWhatsApp}
-                variant="secondary"
-                size="sm"
-                fullWidth
-              />
-            </View>
+            {/* Only when it genuinely opens the customer's chat. The old
+                fallback here was a second Share PDF wearing a WhatsApp label. */}
+            {customerHasWhatsApp && (
+              <View style={styles.actionSecondary}>
+                <CustomButton
+                  title="Remind"
+                  onPress={handleOpenWhatsAppChat}
+                  variant="secondary"
+                  size="sm"
+                  fullWidth
+                />
+              </View>
+            )}
             <View style={styles.actionPrimary}>
               <CustomButton
                 title="Record Payment"
@@ -456,22 +439,26 @@ const InvoiceDetailScreen: React.FC = () => {
           <>
             <View style={styles.actionShare}>
               <CustomButton
-                title="Share PDF"
+                title="Share"
                 onPress={handleSharePdf}
                 variant="text"
                 size="sm"
                 fullWidth
               />
             </View>
-            <View style={styles.actionSecondary}>
-              <CustomButton
-                title={customerHasWhatsApp ? 'Remind' : 'WhatsApp'}
-                onPress={customerHasWhatsApp ? handleOpenWhatsAppChat : handleSendViaWhatsApp}
-                variant="secondary"
-                size="sm"
-                fullWidth
-              />
-            </View>
+            {/* Only when it genuinely opens the customer's chat. The old
+                fallback here was a second Share PDF wearing a WhatsApp label. */}
+            {customerHasWhatsApp && (
+              <View style={styles.actionSecondary}>
+                <CustomButton
+                  title="Remind"
+                  onPress={handleOpenWhatsAppChat}
+                  variant="secondary"
+                  size="sm"
+                  fullWidth
+                />
+              </View>
+            )}
             <View style={styles.actionPrimary}>
               <CustomButton
                 title="Record Payment"
@@ -494,7 +481,7 @@ const InvoiceDetailScreen: React.FC = () => {
           <>
             <View style={styles.actionSecondary}>
               <CustomButton
-                title="Share PDF"
+                title="Share"
                 onPress={handleSharePdf}
                 variant="secondary"
                 size="sm"
