@@ -57,13 +57,6 @@ const { colors } = THEME;
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
 
-const greeting = (): string => {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-};
-
 const todayLabel = (): string =>
   new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
@@ -224,7 +217,6 @@ const AdminDashboardScreen: React.FC = () => {
   }, [dispatch]);
 
   const isInitialLoading = status === 'loading' && stats.length === 0;
-  const firstName = user?.displayName?.split(' ')[0] ?? 'Admin';
   const companyLabel = company?.name ?? 'FinMatrix';
 
   // formatted stat lookup by id (formatting stays in the slice)
@@ -246,7 +238,6 @@ const AdminDashboardScreen: React.FC = () => {
         <View style={s.headerTopRow}>
           <View style={s.headerLeft}>
             <View style={s.headerTextBlock}>
-              <Text style={s.greetingText}>{greeting()}, {firstName}</Text>
               <Text style={s.companyName} numberOfLines={1}>{companyLabel}</Text>
             </View>
           </View>
@@ -606,7 +597,6 @@ const s = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 11 },
   headerTextBlock: { flex: 1 },
   companyName: { ...THEME.typography.h3, color: colors.neutral0, letterSpacing: -0.2, fontFamily: FONT },
-  greetingText: { ...THEME.typography.caption, color: 'rgba(255,255,255,0.62)', marginBottom: 1, fontFamily: FONT },
   headerMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
   statusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
