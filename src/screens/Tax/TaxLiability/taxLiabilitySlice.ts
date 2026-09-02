@@ -29,7 +29,27 @@ const initialState: TaxLiabilityState = {
   totalCollected: 0,
   totalPaid: 0,
   totalNet: 0,
-  range: { from: '2026-01-01', to: '2026-03-31' },
+  /**
+   * Blank, not a date literal.
+   *
+   * This was hardcoded to 2026-01-01 → 2026-03-31. Every tax movement in a
+   * company that started trading in July fell outside it, so the screen opened
+   * reporting Rs 0 against a real Rs 57,989.10 of collected-but-unremitted
+   * sales tax — and read as a broken feature rather than a stale constant.
+   *
+   * `getTaxLiabilityAPI` omits a blank param and `tax.service.getLiability`
+   * already defaults startDate to 1970-01-01 and endDate to today, so an empty
+   * range asks for the whole history through today. That is what this screen
+   * promises: "Net Due" and "Outstanding tax liability" describe a balance
+   * owed, not a slice of one period.
+   *
+   * Deliberately not "current month" or "current year" either. Unremitted tax
+   * accumulates on 2300 until it is paid over, so ANY fixed window can hide
+   * part of a real liability — a one-year default would be the same mistake in
+   * a smaller size. Show everything by default; let the user narrow to a
+   * filing period with the date fields.
+   */
+  range: { from: '', to: '' },
   isLoading: false,
   error: '',
 };

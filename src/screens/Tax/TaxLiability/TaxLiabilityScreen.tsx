@@ -79,8 +79,21 @@ const TaxLiabilityScreen: React.FC = () => {
         {/* Date range */}
         <Card>
           <View style={styles.rangeRow}>
-            <DateField label="From" value={range.from} onChangeText={v => dispatch(setRange({ from: v, to: range.to }))} />
-            <DateField label="To" value={range.to} onChangeText={v => dispatch(setRange({ from: range.from, to: v }))} />
+            {/* Blank means the full history through today — see the note on
+                initialState.range. The placeholders say so, otherwise an empty
+                date field reads as something the user forgot to fill in. */}
+            <DateField
+              label="From"
+              value={range.from}
+              placeholder="All time"
+              onChangeText={v => dispatch(setRange({ from: v, to: range.to }))}
+            />
+            <DateField
+              label="To"
+              value={range.to}
+              placeholder="Today"
+              onChangeText={v => dispatch(setRange({ from: range.from, to: v }))}
+            />
           </View>
           <TouchableOpacity style={styles.calcBtn} onPress={handleCalculate} activeOpacity={0.85}>
             <Feather name="refresh-cw" size={14} color={colors.neutral0} />

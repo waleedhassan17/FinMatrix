@@ -190,13 +190,18 @@ const TaxPaymentScreen: React.FC = () => {
 
             <View style={styles.divider} />
 
-            <FieldLabel label="Amount (Rs)" required />
-            <View style={styles.amountRow}>
-              <View style={styles.currencyPrefix}>
-                <Text style={styles.currencyText}>Rs</Text>
-              </View>
+            {/* One bordered container with the currency inside it, the same
+                shape as the Reference field below. It used to be two boxes
+                glued together -- a tinted prefix with a GREEN border (a
+                leftover from the old brand) butted against a grey-bordered
+                input, with the radii zeroed to hide the seam. Two borders that
+                do not match cannot be hidden that way, which is what made it
+                look unfinished. */}
+            <FieldLabel label="Amount" required />
+            <View style={styles.amountField}>
+              <Text style={styles.currencyText}>Rs</Text>
               <TextInput
-                style={[styles.fieldInput, styles.amountInput]}
+                style={styles.amountInput}
                 placeholder="0.00"
                 placeholderTextColor={THEME.colors.textTertiary}
                 keyboardType="decimal-pad"
@@ -207,8 +212,13 @@ const TaxPaymentScreen: React.FC = () => {
 
             <View style={styles.divider} />
 
+            {/* FieldLabel, not DateField's own label prop: FieldLabel draws
+                the required asterisk in danger red, while a label passed as
+                "Payment Date *" renders the asterisk in the ordinary label
+                colour -- so this one field's marker did not match the two
+                above it. */}
+            <FieldLabel label="Payment Date" required />
             <DateField
-              label="Payment Date *"
               value={form.date}
               onChangeText={v => dispatch(setFormField({ date: v }))}
             />
@@ -343,21 +353,26 @@ const styles = StyleSheet.create({
     ...THEME.typography.bodyMd,
     color: THEME.colors.textPrimary,
   },
-  amountRow: { flexDirection: 'row', alignItems: 'center' },
-  currencyPrefix: {
-    backgroundColor: THEME.colors.primaryLight,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.successLight,
-    borderRightWidth: 0,
-    borderTopLeftRadius: THEME.radius.md,
-    borderBottomLeftRadius: THEME.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+  // The amount is what this screen is for, so it is the one field drawn at
+  // figure size: h3, tabular so digits line up as they are typed.
+  amountField: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: THEME.colors.neutral50,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.radius.md,
+    paddingHorizontal: 12,
   },
-  currencyText: { ...THEME.typography.labelLg, color: THEME.colors.primary },
-  amountInput: { flex: 1, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
+  currencyText: { ...THEME.typography.labelLg, color: THEME.colors.textSecondary },
+  amountInput: {
+    flex: 1,
+    paddingVertical: 11,
+    ...THEME.typography.h3,
+    color: THEME.colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
   inputWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
