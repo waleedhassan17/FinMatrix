@@ -276,7 +276,7 @@ const AssignDeliveriesScreen: React.FC = () => {
           <RefreshControl
             refreshing={isPullRefreshing}
             onRefresh={handlePullRefresh}
-            tintColor="#059669"
+            tintColor={THEME.colors.primary}
           />
         }
       >

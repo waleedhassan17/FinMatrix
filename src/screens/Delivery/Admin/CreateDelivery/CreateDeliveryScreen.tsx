@@ -335,7 +335,7 @@ const CreateDeliveryScreen: React.FC = () => {
             </SectionCard>
 
             {/* Delivery details */}
-            <SectionCard icon="sliders" title="Delivery Details" accent="#6366F1">
+            <SectionCard icon="sliders" title="Delivery Details" accent={THEME.colors.secondary}>
               <Text style={styles.fieldLabel}>Priority</Text>
               <View style={styles.segment}>
                 {PRIORITIES.map(p => {

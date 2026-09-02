@@ -39,7 +39,11 @@ const RULES = [
   { re: /fontSize:\s*\d/g, msg: 'hardcoded fontSize — use a typography role' },
   { re: /fontWeight:\s*'\d00'/g, msg: "hardcoded fontWeight — use a role, or typography.<role>.fontWeight" },
   { re: /fontFamily:\s*'[^']+'/g, msg: 'hardcoded fontFamily — use typography.fontFamily' },
+  // Both quote styles. Matching only single quotes let every JSX attribute
+  // through — `iconColor="#8B5CF6"` sailed past this gate, which is exactly how
+  // the neon violets reached the SuperAdmin screens and stayed there.
   { re: /'#[0-9A-Fa-f]{3,8}'/g, msg: 'hardcoded colour — use a colour token' },
+  { re: /"#[0-9A-Fa-f]{3,8}"/g, msg: 'hardcoded colour — use a colour token' },
 ];
 
 function walk(dir, out = []) {

@@ -321,7 +321,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
           <RefreshControl
             refreshing={isPullRefreshing}
             onRefresh={handlePullRefresh}
-            tintColor="#059669"
+            tintColor={THEME.colors.primary}
           />
         }
         data={filteredPersonnel}

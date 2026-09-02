@@ -88,7 +88,7 @@ export const AddButton: React.FC<{
     disabled={disabled}
     activeOpacity={0.7}
   >
-    <Feather name="plus" size={THEME.form.addPill.iconSize} color="#FFFFFF" />
+    <Feather name="plus" size={THEME.form.addPill.iconSize} color={THEME.colors.neutral0} />
     <Text style={styles.addPillText}>{label}</Text>
   </TouchableOpacity>
 );

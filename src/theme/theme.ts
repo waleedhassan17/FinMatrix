@@ -45,10 +45,17 @@ const palette = {
   violet600: '#7C3AED',
   violetLight: '#EFE9FD',
 
-  // Emerald — the app's create/confirm action colour. Off the slate/teal
-  // ramp, but load-bearing: it paints every "New"/"Add" pill (THEME.form.
-  // addPill) and the form section dots across ~28 screens. Named here so
-  // those specs stop carrying a magic hex; the rendered colour is unchanged.
+  // Navy — the app's action colour. Deep and quiet rather than bright: it
+  // paints every primary button, "New"/"Add" pill and form section dot, and it
+  // sits in the same family as HEADER_NAVY so a button no longer competes with
+  // the header above it.
+  navy600: '#1F4E79',
+  navy700: '#163A5C',
+  navyTint: '#EAF0F6',
+
+  // Emerald — no longer the brand accent, but still the SUCCESS green: a paid
+  // invoice, a delivery in transit, a strong password. Kept so meaning stays
+  // green while the brand moved to navy.
   emerald600: '#059669',
   emerald700: '#047857',
   emeraldLighter: '#ECFDF5',
@@ -81,21 +88,29 @@ const palette = {
 // 2. Semantic colour tokens
 // ───────────────────────────────────────────────
 const colors = {
-  // Brand / primary
-  primary: palette.teal700,
-  primaryLight: palette.tealLight,
-  primaryLighter: palette.tealLighter,
-  primaryDark: palette.tealDark,
+  // ── ONE action colour ───────────────────────────────────────────────
+  // This used to be two. `primary` was brand teal (~150 call sites) and
+  // `actionGreen` was a separate emerald (~270), and the comment here said
+  // "Both are live in the UI today" — which is why the app looked like two
+  // products stitched together: a teal header beside a green button.
+  //
+  // Both names now resolve to the same navy, so every accent in the app
+  // agrees. The old names are kept as aliases rather than renamed across ~420
+  // call sites: renaming them in a visual pass would bury the actual change
+  // in diff noise. `actionGreen` no longer means green — `success` is what
+  // carries that meaning now.
+  primary: palette.navy600,
+  primaryDark: palette.navy700,
+  primaryLight: palette.navyTint,
+  primaryLighter: palette.navyTint,
+  primaryTint: palette.navyTint,
+  actionGreen: palette.navy600,
+  actionGreenDark: palette.navy700,
+  actionGreenLighter: palette.navyTint,
 
-  // Secondary
+  // Secondary — a category colour for non-state grouping, never decoration.
   secondary: palette.violet600,
   secondaryLight: palette.violetLight,
-
-  // Create/confirm action green (see palette.emerald600) — distinct from
-  // `primary`, which is brand teal. Both are live in the UI today.
-  actionGreen: palette.emerald600,
-  actionGreenDark: palette.emerald700,
-  actionGreenLighter: palette.emeraldLighter,
 
   // Success
   success: palette.green600,
@@ -132,12 +147,14 @@ const colors = {
   // Surfaces
   background: '#F4F6F9', // app canvas — faint cool tint, not pure white
   surface: '#FFFFFF', // cards / sheets
+  surface2: '#F9FAFB', // recessed rows inside a card
   // Standard hairline. Dark enough to actually read as an edge — the previous
   // #E4E9EF sat one shade off borderLight below, so an outline and an internal
   // divider were nearly the same weight and cards relied on shadow alone to
   // separate. AUTH.line (components/auth/authTokens.ts) carries the same value
   // so the sign-in flow and the app agree.
   border: '#D3DAE3',
+  borderStrong: '#C1CAD5', // emphasised edge — a selected or filled control
   borderLight: '#EEF2F6', // subtle internal dividers
   overlay: 'rgba(15, 23, 42, 0.55)', // modal scrim
 

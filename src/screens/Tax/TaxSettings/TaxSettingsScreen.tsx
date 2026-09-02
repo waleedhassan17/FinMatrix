@@ -232,7 +232,7 @@ const TaxSettingsScreen: React.FC = () => {
             <RefreshControl
               refreshing={isPullRefreshing}
               onRefresh={handlePullRefresh}
-              tintColor="#059669"
+              tintColor={THEME.colors.primary}
             />
           }
           data={rates}
