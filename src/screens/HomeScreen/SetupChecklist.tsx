@@ -29,8 +29,21 @@ export interface SetupStep {
    * dashboard, so each is ALSO registered in DashboardStack and pushed there.
    * That keeps the flow self-contained: the back arrow returns to the
    * dashboard instead of surfacing inside another tab's history.
+   *
+   * Named rather than `string`: the dashboard stack now also carries screens
+   * that REQUIRE params (an invoice detail needs an invoiceId), and
+   * `navigate(someString as keyof ParamList)` cannot be sound once that is
+   * true — it would compile while sending a screen no id at all. Listing the
+   * destinations keeps the cast unnecessary and makes an unregistered one a
+   * compile error rather than a tap that does nothing.
    */
-  screen: string;
+  screen:
+    | 'OpeningBalance'
+    | 'COAList'
+    | 'InventoryForm'
+    | 'CustomerForm'
+    | 'VendorForm'
+    | 'TaxSettings';
   optional?: boolean;
   /** Tier gate, checked with isFeatureVisible before the row renders. */
   feature?: string;

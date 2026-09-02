@@ -4,6 +4,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DASHBOARD_ROUTES } from '../../navigations-maps/Dashboard';
+import type { TransactionsStackParamList } from './TransactionsStack';
 
 export type DashboardStackParamList = {
   AdminDashboard: undefined;
@@ -31,6 +32,16 @@ export type DashboardStackParamList = {
   // Revenue "View all" — mounted here so it does not strand Analytics on top
   // of the Reports tab.
   AnalyticsDashboard: undefined;
+  // Opening a document from Recent transactions, and the closed set of screens
+  // those documents can reach. Params are taken from TransactionsStackParamList
+  // by reference rather than retyped, so the two registrations of the same
+  // screen cannot drift into disagreeing about what it accepts.
+  InvoiceDetail: TransactionsStackParamList['InvoiceDetail'];
+  BillDetail: TransactionsStackParamList['BillDetail'];
+  BillList: TransactionsStackParamList['BillList'];
+  ReceivePayment: TransactionsStackParamList['ReceivePayment'];
+  PayBills: TransactionsStackParamList['PayBills'];
+  PaymentSuccess: TransactionsStackParamList['PaymentSuccess'];
   // Dashboard quick actions — mounted here so back returns to the dashboard
   // instead of popping into the Transactions tab's history.
   InvoiceForm: { invoiceId?: string; customerId?: string } | undefined;

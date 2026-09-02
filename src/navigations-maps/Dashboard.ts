@@ -59,6 +59,27 @@ import OpeningBalanceScreen from '../screens/GeneralJournal/OpeningBalance/Openi
 // restores whatever its stack was last showing. The screen only calls
 // goBack(), so it is safe to mount here.
 import AnalyticsDashboardScreen from '../screens/Reports/AnalyticsDashboard/AnalyticsDashboardScreen';
+// ── Opening a document from Recent transactions ──
+// Same reason as everything above, and the same symptom the Reports tab had:
+// navigate('TransactionsStack', { screen: 'InvoiceDetail' }) left that invoice
+// sitting on the TRANSACTIONS tab, so tapping Transactions afterwards opened
+// the document instead of the hub.
+//
+// The closure was checked before duplicating, and it is bounded:
+//   InvoiceDetail  -> InvoiceForm*, ReceivePayment
+//   BillDetail     -> BillForm*,    PayBills
+//   ReceivePayment -> goBack only
+//   PayBills       -> PaymentSuccess, BillForm*
+//   PaymentSuccess -> PayBills, BillDetail, BillList
+//   BillList       -> BillDetail, BillForm*        (* already registered here)
+// Nothing reaches outside that set, so no screen here can navigate somewhere
+// this stack does not know about.
+import InvoiceDetailScreen from '../screens/Invoices/InvoiceDetail/InvoiceDetailScreen';
+import BillDetailScreen from '../screens/Bills/BillDetail/BillDetailScreen';
+import BillListScreen from '../screens/Bills/BillList/BillListScreen';
+import ReceivePaymentScreen from '../screens/Payments/ReceivePayment/ReceivePaymentScreen';
+import PayBillsScreen from '../screens/Bills/PayBills/PayBillsScreen';
+import PaymentSuccessScreen from '../screens/Bills/PayBills/PaymentSuccessScreen';
 import InvoiceFormScreen from '../screens/Invoices/InvoiceForm/InvoiceFormScreen';
 import SalesOrderFormScreen from '../screens/SalesOrders/SalesOrderFormScreen';
 import POFormScreen from '../screens/PurchaseOrders/POForm/POFormScreen';
@@ -88,6 +109,12 @@ export const DashboardRouteNames = {
   TaxSettings: 'TaxSettings',
   // dashboard drill-downs
   AnalyticsDashboard: 'AnalyticsDashboard',
+  InvoiceDetail: 'InvoiceDetail',
+  BillDetail: 'BillDetail',
+  BillList: 'BillList',
+  ReceivePayment: 'ReceivePayment',
+  PayBills: 'PayBills',
+  PaymentSuccess: 'PaymentSuccess',
   // dashboard quick actions
   InvoiceForm: 'InvoiceForm',
   SalesOrderForm: 'SalesOrderForm',
@@ -120,6 +147,13 @@ export const DASHBOARD_ROUTES: IRoute[] = [
   { title: DashboardRouteNames.VendorForm, component: VendorFormScreen },
   { title: DashboardRouteNames.TaxSettings, component: TaxSettingsScreen },
   { title: DashboardRouteNames.AnalyticsDashboard, component: AnalyticsDashboardScreen },
+  // recent-transaction drill-down — see the import block above
+  { title: DashboardRouteNames.InvoiceDetail, component: InvoiceDetailScreen },
+  { title: DashboardRouteNames.BillDetail, component: BillDetailScreen },
+  { title: DashboardRouteNames.BillList, component: BillListScreen },
+  { title: DashboardRouteNames.ReceivePayment, component: ReceivePaymentScreen },
+  { title: DashboardRouteNames.PayBills, component: PayBillsScreen },
+  { title: DashboardRouteNames.PaymentSuccess, component: PaymentSuccessScreen },
   // quick actions — see the import block above
   { title: DashboardRouteNames.InvoiceForm, component: InvoiceFormScreen },
   { title: DashboardRouteNames.SalesOrderForm, component: SalesOrderFormScreen },

@@ -153,7 +153,7 @@ const AdminDashboardScreen: React.FC = () => {
   // Chart of Accounts rather than the dashboard.
   const goToSetupStep = useCallback(
     (step: SetupStep) => {
-      navigation.navigate(step.screen as keyof DashboardStackParamList);
+      navigation.navigate(step.screen);
     },
     [navigation],
   );
@@ -251,14 +251,18 @@ const AdminDashboardScreen: React.FC = () => {
   // A row links to its own document. `kind` comes from the API through the
   // serializer; anything this build cannot open returns undefined and the row
   // renders inert rather than routing on a guess.
+  //
+  // Opened on THIS stack, not by jumping into TransactionsStack. Jumping left
+  // the document on the Transactions tab, so tapping that tab afterwards
+  // reopened it instead of showing the hub — the same thing the Revenue link
+  // was doing to the Reports tab.
   const openTransaction = useCallback(
     (tx: RecentTransaction) => {
-      const nav = navigation as NativeStackNavigationProp<Record<string, object>>;
       if (tx.kind === 'invoice') {
-        return () => nav.navigate('TransactionsStack', { screen: 'InvoiceDetail', params: { invoiceId: tx.id } });
+        return () => navigation.navigate('InvoiceDetail', { invoiceId: tx.id });
       }
       if (tx.kind === 'bill') {
-        return () => nav.navigate('TransactionsStack', { screen: 'BillDetail', params: { billId: tx.id } });
+        return () => navigation.navigate('BillDetail', { billId: tx.id });
       }
       return undefined;
     },
