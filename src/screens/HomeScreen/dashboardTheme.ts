@@ -32,11 +32,28 @@ export const C = {
   warn: T.colors.warning,
   info: T.colors.info,
   indigo: T.colors.secondary,
-  teal: T.colors.primary,
   slate: T.colors.textSecondary,
   bar: T.colors.neutral300, // quiet slate for past months in the revenue chart
   navy: HEADER_NAVY,
 };
+
+// ── Tint surfaces ─────────────────────────────────────
+// The quiet background an icon chip or a badge sits on, keyed by the same
+// names as the ink above, so a chip and the glyph inside it are always the
+// same family.
+//
+// These replace `C.pos + '14'`. Concatenating an alpha suffix onto a hex token
+// looked economical but was wrong twice over: the token gate cannot see a
+// colour assembled at runtime, and one fixed alpha reads as a different weight
+// against every hue -- 8% amber all but disappears where 8% navy is clearly
+// there. The theme already ships a tuned tint for each, so use it.
+export const TINT = {
+  brand: T.colors.primaryTint,
+  pos: T.colors.successLighter,
+  neg: T.colors.dangerLighter,
+  warn: T.colors.warningLighter,
+  info: T.colors.infoLight,
+} as const;
 
 export const FONT = THEME.typography.fontFamily;
 
