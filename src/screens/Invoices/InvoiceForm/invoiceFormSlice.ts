@@ -6,6 +6,8 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { DiscountType, InvoiceStatus } from '../../../types';
+import { getInvoiceByIdAPI } from '../../../networks/sales/invoiceNetwork';
+import { invoiceSingleSerializer } from '../../../serializers/invoiceSerializer';
 
 // ── Line item (form representation — string values for inputs) ──
 export interface FormLineItem {
@@ -176,34 +178,50 @@ export const invoiceFormSlice = createAppSlice({
       recalc(state);
     }),
 
-    // ── Load for edit ─────────────────────────────
-    loadInvoiceForEdit: create.reducer(
-      (state, action: PayloadAction<{
-        invoiceNumber: string;
-        customerId: string;
-        customerName: string;
-        issueDate: string;
-        dueDate: string;
-        status: InvoiceStatus;
-        notes: string;
-        lines: FormLineItem[];
-        discountType: DiscountType;
-        discountValue: string;
-      }>) => {
-        const d = action.payload;
-        state.invoiceNumber = d.invoiceNumber;
-        state.customerId = d.customerId;
-        state.customerName = d.customerName;
-        state.issueDate = d.issueDate;
-        state.dueDate = d.dueDate;
-        state.status = d.status;
-        state.notes = d.notes;
-        state.lines = d.lines;
-        state.discountType = d.discountType;
-        state.discountValue = d.discountValue;
-        state.errors = {};
-        state.isSaving = false;
-        recalc(state);
+    /**
+     * Load an invoice for editing from the API, by id.
+     *
+     * The screen used to hydrate by finding the invoice in the LIST slice.
+     * List rows come through `invoiceListSerializer`, which maps lines as
+     * `Array.isArray(raw.lines) ? … : []` — so when the list endpoint returns
+     * summary rows, every row carries `lines: []`. The header fields exist on
+     * a list row and filled in correctly, the lines did not and came through
+     * empty, and saving from that form would have written the invoice back
+     * with no items at all.
+     *
+     * It also meant editing was only possible after the list had loaded, which
+     * is not true of every route that reaches this screen.
+     *
+     * Same shape as `fetchBillForEdit` and `fetchPOForEdit`; this form was the
+     * only one of the three still reading from a list.
+     */
+    fetchInvoiceForEdit: create.asyncThunk(
+      async (id: string) => getInvoiceByIdAPI(id),
+      {
+        fulfilled: (state, action: PayloadAction<unknown>) => {
+          const inv = invoiceSingleSerializer(action.payload);
+          if (!inv) return;
+          state.invoiceNumber = inv.invoiceNumber;
+          state.customerId = inv.customerId;
+          state.customerName = inv.customerName;
+          state.issueDate = inv.issueDate.slice(0, 10);
+          state.dueDate = inv.dueDate.slice(0, 10);
+          state.status = inv.status;
+          state.notes = inv.notes;
+          state.lines = inv.lines.map(l => ({
+            id: l.id,
+            itemId: l.itemId ?? '',
+            description: l.description,
+            quantity: String(l.quantity),
+            unitPrice: String(l.unitPrice),
+            taxRate: String(l.taxRate),
+          }));
+          state.discountType = inv.discountType;
+          state.discountValue = String(inv.discountValue);
+          state.errors = {};
+          state.isSaving = false;
+          recalc(state);
+        },
       },
     ),
 
@@ -230,7 +248,7 @@ export const {
   updateLine,
   setLineItem,
   calculateTotals,
-  loadInvoiceForEdit,
+  fetchInvoiceForEdit,
   resetInvoiceForm,
 } = invoiceFormSlice.actions;
 

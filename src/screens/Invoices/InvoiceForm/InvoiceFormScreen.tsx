@@ -39,7 +39,7 @@ import {
   updateLine,
   setLineItem,
   calculateTotals,
-  loadInvoiceForEdit,
+  fetchInvoiceForEdit,
   resetInvoiceForm,
   type FormLineItem,
 } from './invoiceFormSlice';
@@ -152,31 +152,14 @@ const InvoiceFormScreen: React.FC = () => {
     if (hydratedRef.current) return;
     hydratedRef.current = true;
 
-    if (isEditing) {
-      const inv = invoices.find(i => i.id === editingId);
-      if (inv) {
-        dispatch(
-          loadInvoiceForEdit({
-            invoiceNumber: inv.invoiceNumber,
-            customerId: inv.customerId,
-            customerName: inv.customerName,
-            issueDate: inv.issueDate.slice(0, 10),
-            dueDate: inv.dueDate.slice(0, 10),
-            status: inv.status,
-            notes: inv.notes,
-            lines: inv.lines.map(l => ({
-              id: l.id,
-              itemId: l.itemId ?? '',
-              description: l.description,
-              quantity: String(l.quantity),
-              unitPrice: String(l.unitPrice),
-              taxRate: String(l.taxRate),
-            })),
-            discountType: inv.discountType,
-            discountValue: String(inv.discountValue),
-          }),
-        );
-      }
+    if (isEditing && editingId) {
+      // Fetched by id, not looked up in the list slice. A list row carries
+      // `lines: []` whenever the list endpoint returns summary rows, so the
+      // header hydrated while the items silently did not — and saving from
+      // that form would have written the invoice back empty. It also made
+      // editing depend on the list having been loaded first, which is not true
+      // of every route that reaches this screen.
+      dispatch(fetchInvoiceForEdit(editingId));
     } else {
       dispatch(setField({ key: 'invoiceNumber', value: generateInvoiceNumber() }));
       dispatch(setField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
@@ -388,7 +371,11 @@ const InvoiceFormScreen: React.FC = () => {
               onUnitPriceChange={v => dispatch(updateLine({ id: line.id, field: 'unitPrice', value: v }))}
               onTaxRateChange={v => dispatch(updateLine({ id: line.id, field: 'taxRate', value: v }))}
               onDelete={() => dispatch(removeLine(line.id))}
-              canDelete={form.lines.length > 1}
+              // Any line can go, including the last. `length > 1` meant a row
+              // added by mistake was stuck there for good. Deleting them all is
+              // caught at save -- validate() returns 'At least one line item is
+              // required' -- which says what is wrong, unlike a dead control.
+              canDelete
             />
           ))}
 
