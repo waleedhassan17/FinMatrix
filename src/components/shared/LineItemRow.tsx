@@ -4,29 +4,22 @@
 // Auto-calculates line amount = qty × unitPrice.
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Modal,
-  FlatList,
   ScrollView,
 } from 'react-native';
-import { THEME } from '../../utils/theme';
+import { Feather } from '@expo/vector-icons';
+import { THEME } from '../../theme';
 import { formatCurrency } from '../../utils/formatters';
+import TaxField, { FIELD_HEIGHT } from '../form/TaxField';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, spacing, radius, shadows } = THEME;
-
-const TAX_OPTIONS = [
-  { label: '0 %', value: '0' },
-  { label: '5 %', value: '5' },
-  { label: '10 %', value: '10' },
-  { label: '17 %', value: '17' },
-];
+const { colors, spacing, radius } = THEME;
 
 export interface LineItemRowProps {
   description: string;
@@ -41,6 +34,15 @@ export interface LineItemRowProps {
   onDelete: () => void;
   canDelete: boolean;
   index: number;
+  /**
+   * Rendered inside the card, under the "Item N" header.
+   *
+   * The invoice form has an inventory picker per line. It used to sit beside
+   * this component rather than in it, so the control that chooses what the
+   * line IS floated on the bare canvas above the card holding everything else
+   * about that line.
+   */
+  topSlot?: React.ReactNode;
 }
 
 const LineItemRow: React.FC<LineItemRowProps> = ({
@@ -56,9 +58,8 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
   onDelete,
   canDelete,
   index,
+  topSlot,
 }) => {
-  const [taxPickerOpen, setTaxPickerOpen] = useState(false);
-
   const sanitizeNumeric = useCallback(
     (v: string, cb: (s: string) => void) => {
       cb(v.replace(/[^0-9.]/g, ''));
@@ -66,15 +67,21 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
     [],
   );
 
-  const taxLabel =
-    TAX_OPTIONS.find(o => o.value === taxRate)?.label ?? `${taxRate} %`;
-
   // Ledger rule: the complete number must always be visible at full size.
   // Static minimums aren't enough for big figures, so each column GROWS
   // with its own value (~9px per digit at bodyMd + field padding) and the
   // row pans horizontally when the grown columns exceed the screen width.
-  const qtyWidth = Math.max(84, quantity.length * 9 + 30);
-  const rateWidth = Math.max(132, unitPrice.length * 9 + 30);
+  //
+  // The floors are sized against the NARROWEST container this row lives in,
+  // which is the sales-order form: 360 screen − 32 page − 32 SectionCard body
+  // − 20 this card's padding = 276dp. The old floors (84 / 132 / 96 plus two
+  // 8px gaps = 328) blew past that by 52dp, so the row silently scrolled and
+  // the tax column's right border sat off-screen — it read as a field with one
+  // side missing. 58 + 80 + 74 + 16 = 228 fits there and still fits a 320dp
+  // screen. Columns are flex:1, so on any wider card they expand to fill it
+  // and nothing looks narrower than before.
+  const qtyWidth = Math.max(58, quantity.length * 9 + 30);
+  const rateWidth = Math.max(80, unitPrice.length * 9 + 30);
 
   return (
     <View style={styles.container}>
@@ -82,11 +89,18 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
       <View style={styles.headerRow}>
         <Text style={styles.lineLabel}>Item {index + 1}</Text>
         {canDelete && (
-          <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
-            <Text style={styles.deleteBtnText}>✕</Text>
+          <TouchableOpacity
+            style={styles.deleteBtn}
+            onPress={onDelete}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove item ${index + 1}`}
+          >
+            <Feather name="x" size={14} color={colors.danger} />
           </TouchableOpacity>
         )}
       </View>
+
+      {topSlot}
 
       {/* Description */}
       <TextInput
@@ -133,15 +147,7 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
             />
           </View>
           <View style={[styles.numericField, styles.colTax]}>
-            <Text style={styles.fieldLabel}>Tax</Text>
-            <TouchableOpacity
-              style={styles.taxTrigger}
-              onPress={() => setTaxPickerOpen(true)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.taxTriggerText}>{taxLabel}</Text>
-              <Text style={styles.taxChevron}>▾</Text>
-            </TouchableOpacity>
+            <TaxField value={taxRate} onChange={onTaxRateChange} />
           </View>
         </View>
       </ScrollView>
@@ -152,54 +158,6 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
         <Text style={styles.amountValue}>{formatCurrency(lineAmount, 'Rs ')}</Text>
       </View>
 
-      {/* Tax picker modal — lightweight, scoped to this row */}
-      <Modal
-        visible={taxPickerOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setTaxPickerOpen(false)}
-      >
-        <TouchableOpacity
-          style={styles.taxOverlay}
-          activeOpacity={1}
-          onPress={() => setTaxPickerOpen(false)}
-        >
-          <View style={styles.taxModal}>
-            <View style={styles.taxModalHeader}>
-              <Text style={styles.taxModalTitle}>Select Tax Rate</Text>
-              <TouchableOpacity onPress={() => setTaxPickerOpen(false)}>
-                <Text style={styles.taxModalClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={TAX_OPTIONS}
-              keyExtractor={o => o.value}
-              renderItem={({ item }) => {
-                const selected = item.value === taxRate;
-                return (
-                  <TouchableOpacity
-                    style={[styles.taxOption, selected && styles.taxOptionSelected]}
-                    onPress={() => {
-                      onTaxRateChange(item.value);
-                      setTaxPickerOpen(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.taxOptionText,
-                        selected && styles.taxOptionTextSelected,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                    {selected && <Text style={styles.taxOptionCheck}>✓</Text>}
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 };
@@ -231,10 +189,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  deleteBtnText: {
-    ...THEME.typography.labelMd,
-    color: colors.danger,
-  },
   descInput: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -252,44 +206,26 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   numericField: { flex: 1 },
-  colTax: { minWidth: 96 },
+  colTax: { minWidth: 74 },
   fieldLabel: {
     ...THEME.typography.labelSm,
     color: colors.textSecondary,
     marginBottom: spacing.xxs,
   },
+  // FIELD_HEIGHT, not vertical padding: the tax control beside these is a View
+  // wrapping a Text, and Android does not measure that the same as a TextInput
+  // given identical padding. Pinning both to one number is what actually puts
+  // the three columns on a shared baseline.
   numericInput: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.sm,
+    height: FIELD_HEIGHT,
     paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
+    paddingVertical: 0,
     ...THEME.typography.bodyMd,
     color: colors.textPrimary,
     textAlign: 'right',
-  },
-  // Tax trigger mirrors numericInput exactly — same height,
-  // padding, border, and typography — so the three columns
-  // sit on a perfectly aligned row.
-  taxTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surface,
-  },
-  taxTriggerText: {
-    ...THEME.typography.bodyMd,
-    color: colors.textPrimary,
-  },
-  taxChevron: {
-    ...THEME.typography.caption,
-    color: colors.textSecondary,
-    marginLeft: spacing.xxs,
   },
   amountRow: {
     flexDirection: 'row',
@@ -314,52 +250,6 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
 
-  // Tax picker modal
-  taxOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  taxModal: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    maxHeight: '60%',
-    ...shadows.md,
-  },
-  taxModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  taxModalTitle: { ...THEME.typography.h4, color: colors.textPrimary },
-  taxModalClose: {
-    ...THEME.typography.h3,
-    color: colors.textSecondary,
-    paddingHorizontal: spacing.xxs,
-  },
-  taxOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs + 4,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  taxOptionSelected: { backgroundColor: colors.actionGreen + '10' },
-  taxOptionText: { ...THEME.typography.bodyLg, color: colors.textPrimary },
-  taxOptionTextSelected: {
-    color: colors.actionGreen,
-    fontWeight: THEME.typography.labelLg.fontWeight,
-  },
-  taxOptionCheck: {
-    ...THEME.typography.h3,
-    color: colors.actionGreen,
-  },
 });
 
 export default React.memo(LineItemRow);

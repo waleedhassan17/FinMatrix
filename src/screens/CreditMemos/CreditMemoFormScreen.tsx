@@ -27,7 +27,9 @@ import type { TransactionsStackParamList } from '../../navigators/stacks/Transac
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'CreditMemoForm'>;
 interface LineDraft { itemId: string; description: string; quantity: string; unitPrice: string; taxRate: string; }
-const blankLine = (): LineDraft => ({ itemId: '', description: '', quantity: '1', unitPrice: '0', taxRate: '0' });
+// Blank rather than '1' / '0' — see the note in SalesOrderFormScreen. Lines
+// pre-filled from a delivery reversal carry real figures and are unaffected.
+const blankLine = (): LineDraft => ({ itemId: '', description: '', quantity: '', unitPrice: '', taxRate: '0' });
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
 const CreditMemoFormScreen: React.FC = () => {
@@ -133,6 +135,12 @@ const CreditMemoFormScreen: React.FC = () => {
     if (!customerId) { Toast.show({ type: 'error', text1: 'Missing customer', text2: 'Please select a customer.' }); return; }
     const valid = lines.filter(l => l.description.trim());
     if (valid.length === 0) { Toast.show({ type: 'error', text1: 'No items', text2: 'Add at least one credited item.' }); return; }
+    // The fields start empty now — refuse a described but unpriced line rather
+    // than posting an empty string as the quantity.
+    if (valid.some(l => !(parseFloat(l.quantity) > 0) || !(parseFloat(l.unitPrice) > 0))) {
+      Toast.show({ type: 'error', text1: 'Incomplete line', text2: 'Every item needs a quantity and a rate.' });
+      return;
+    }
     setSaving(true);
     try {
       const res: any = await createCreditMemoAPI({
@@ -157,7 +165,7 @@ const CreditMemoFormScreen: React.FC = () => {
             }
           : {}),
         lines: valid.map(l => ({
-          description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, taxRate: l.taxRate,
+          description: l.description, quantity: l.quantity || '0', unitPrice: l.unitPrice || '0', taxRate: l.taxRate,
           ...(l.itemId ? { itemId: l.itemId } : {}),
         })),
       });

@@ -23,7 +23,9 @@ type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'EstimateForm'>;
 
 interface LineDraft { description: string; quantity: string; unitPrice: string; taxRate: string; }
-const blankLine = (): LineDraft => ({ description: '', quantity: '1', unitPrice: '0', taxRate: '0' });
+// Blank rather than '1' / '0' — see the note in SalesOrderFormScreen; the
+// same defaults were prefilling this form's Qty and Rate as if entered.
+const blankLine = (): LineDraft => ({ description: '', quantity: '', unitPrice: '', taxRate: '0' });
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -83,11 +85,17 @@ const EstimateFormScreen: React.FC = () => {
     if (!customerId) { Toast.show({ type: 'error', text1: 'Missing customer', text2: 'Please select a customer.' }); return; }
     const valid = lines.filter(l => l.description.trim());
     if (valid.length === 0) { Toast.show({ type: 'error', text1: 'No items', text2: 'Add at least one line item.' }); return; }
+    // The fields start empty now — refuse a described but unpriced line rather
+    // than posting an empty string as the quantity.
+    if (valid.some(l => !(parseFloat(l.quantity) > 0) || !(parseFloat(l.unitPrice) > 0))) {
+      Toast.show({ type: 'error', text1: 'Incomplete line', text2: 'Every item needs a quantity and a rate.' });
+      return;
+    }
     const payload = {
       customerId, estimateDate, expiryDate: expiryDate || undefined,
       discountType, discountValue, status: 'sent',
       notes: notes || undefined,
-      lines: valid.map(l => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, taxRate: l.taxRate })),
+      lines: valid.map(l => ({ description: l.description, quantity: l.quantity || '0', unitPrice: l.unitPrice || '0', taxRate: l.taxRate })),
     };
     setSaving(true);
     try {

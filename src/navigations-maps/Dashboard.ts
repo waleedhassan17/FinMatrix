@@ -41,6 +41,21 @@ import InventoryFormScreen from '../screens/Inventory/InventoryForm/InventoryFor
 import GeneralJournalFormScreen from '../screens/GeneralJournal/GeneralJournalFormScreen';
 import OpeningBalanceScreen from '../screens/GeneralJournal/OpeningBalance/OpeningBalanceScreen';
 
+// ── Dashboard quick-action destinations ──
+// Registered here for exactly the reason described above, and the reason the
+// checklist screens are: navigate('TransactionsStack', { screen: 'InvoiceForm' })
+// pushes the form onto the TRANSACTIONS tab's existing history. Open "New
+// invoice", leave via the tab bar, then open "New sales order", and back from
+// it lands on the invoice form rather than the dashboard it was launched from.
+//
+// The same closure rule applies: all four only call goBack(). POForm also has
+// a replace('PODetail') on save, which it guards by checking the navigator it
+// is actually in — see POFormScreen.
+import InvoiceFormScreen from '../screens/Invoices/InvoiceForm/InvoiceFormScreen';
+import SalesOrderFormScreen from '../screens/SalesOrders/SalesOrderFormScreen';
+import POFormScreen from '../screens/PurchaseOrders/POForm/POFormScreen';
+import BillFormScreen from '../screens/Bills/BillForm/BillFormScreen';
+
 export const DashboardRouteNames = {
   AdminDashboard: 'AdminDashboard',
   DeliveryPersonnelList: 'DeliveryPersonnelList',
@@ -63,6 +78,11 @@ export const DashboardRouteNames = {
   CustomerForm: 'CustomerForm',
   VendorForm: 'VendorForm',
   TaxSettings: 'TaxSettings',
+  // dashboard quick actions
+  InvoiceForm: 'InvoiceForm',
+  SalesOrderForm: 'SalesOrderForm',
+  POForm: 'POForm',
+  BillForm: 'BillForm',
 } as const;
 
 export type DashboardRouteName = typeof DashboardRouteNames[keyof typeof DashboardRouteNames];
@@ -89,4 +109,9 @@ export const DASHBOARD_ROUTES: IRoute[] = [
   { title: DashboardRouteNames.CustomerForm, component: CustomerFormScreen },
   { title: DashboardRouteNames.VendorForm, component: VendorFormScreen },
   { title: DashboardRouteNames.TaxSettings, component: TaxSettingsScreen },
+  // quick actions — see the import block above
+  { title: DashboardRouteNames.InvoiceForm, component: InvoiceFormScreen },
+  { title: DashboardRouteNames.SalesOrderForm, component: SalesOrderFormScreen },
+  { title: DashboardRouteNames.POForm, component: POFormScreen },
+  { title: DashboardRouteNames.BillForm, component: BillFormScreen },
 ];
