@@ -6,17 +6,30 @@
 // and only their own to staff. There is no client-side filtering to get wrong.
 
 import { api, extractErrorMessage } from '../network/apiHelpers';
-import type { ApprovalRequest, ApprovalStatus } from '../../models/approvalModel';
+import type {
+  ApprovalRequest,
+  ApprovalStatus,
+  ApprovalType,
+} from '../../models/approvalModel';
 
 export type ApprovalFilter = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'all';
 
 const unwrap = <T>(res: { data?: any }): T => res.data?.data ?? res.data;
 
+/**
+ * `type` narrows the list to one kind of request, for screens that want to
+ * show their own pending work in context — the PO list showing the POs a staff
+ * member has asked for, say. Omit it for the inbox and My Requests, which want
+ * everything. The server validates it against its own APPROVAL_TYPES.
+ */
 export const fetchApprovals = async (
   status: ApprovalFilter = 'pending',
+  type?: ApprovalType,
 ): Promise<ApprovalRequest[]> => {
   try {
-    const response = await api.get('/approvals', { params: { status } });
+    const response = await api.get('/approvals', {
+      params: type ? { status, type } : { status },
+    });
     const body = unwrap<{ data?: ApprovalRequest[] } | ApprovalRequest[]>(response);
     return Array.isArray(body) ? body : (body?.data ?? []);
   } catch (e: any) {

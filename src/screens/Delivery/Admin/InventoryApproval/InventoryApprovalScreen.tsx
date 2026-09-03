@@ -58,7 +58,7 @@ import type { InventoryUpdateRequest } from '../../../../models/deliveryModel';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import { downloadBillPhoto } from '../../../../networks/delivery/deliveryNetwork';
 import { requestDeliveryUndo } from '../../../../networks/approvals/approvalsNetwork';
-import { useIsOwner } from '../../../../hooks/useCapability';
+import { useCapability, useIsOwner } from '../../../../hooks/useCapability';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -241,6 +241,10 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   // Undo reverses recognised revenue, so only the owner does it directly.
   // Staff see the same button, but it files a request carrying a reason.
   const isOwner = useIsOwner();
+  // Signing off recognises the sale, so it is the owner's alone. Staff still
+  // see the queue and still reject from it — only Approve is withheld, and the
+  // server refuses it too (403 on both doors into the same method).
+  const approveCap = useCapability('delivery.approveCompletion');
   const [targetRequest, setTargetRequest] = useState<InventoryUpdateRequest | null>(null);
   const [rejectComment, setRejectComment] = useState('');
 
@@ -603,9 +607,25 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
         {request.status === 'pending' && (
           <View style={styles.actionRow}>
-            <View style={styles.actionBtn}>
-              <CustomButton title="Approve" onPress={() => promptApprove(request)} fullWidth />
-            </View>
+            {/* Approving posts the sale, so staff do not get the button — and
+                would get a 403 if they did. State, not a disabled control:
+                a greyed-out Approve reads as "try again later", which is
+                wrong. Someone else signs this off. */}
+            {approveCap.allowed ? (
+              <View style={styles.actionBtn}>
+                <CustomButton title="Approve" onPress={() => promptApprove(request)} fullWidth />
+              </View>
+            ) : (
+              <View style={styles.actionBtn}>
+                <View style={styles.waitingBadge}>
+                  <Feather name="clock" size={13} color={colors.warning} />
+                  <Text style={styles.waitingBadgeText}>Waiting for Admin Approval</Text>
+                </View>
+              </View>
+            )}
+            {/* Rejecting stays with staff: no sale was recognised, so there is
+                nothing to correct, and waiting would strand the stock in
+                transit. */}
             <View style={styles.actionBtn}>
               <CustomButton title="Reject" onPress={() => promptReject(request)} variant="danger" fullWidth />
             </View>
@@ -614,9 +634,10 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
         {request.status !== 'pending' && (
           <View style={styles.reviewInfoBox}>
-            {/* Which AUTHORITY signed this off, not just who. Staff and
-                the owner can both approve a delivery, and the two are
-                worth telling apart when reading back the history. */}
+            {/* Which AUTHORITY signed this off, not just who. Approving is the
+                owner's now, but rejecting is not, and older rows were approved
+                by staff back when that was allowed — so the distinction still
+                has to survive in the history. */}
             <Text style={styles.reviewInfoText}>
               {request.reviewerRole === 'staff'
                 ? 'Staff approved'
@@ -1104,6 +1125,25 @@ const styles = StyleSheet.create({
 
   actionRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm },
   actionBtn: { flex: 1 },
+
+  // Sits where Approve sits for the owner, and has to read as state rather
+  // than as a button someone forgot to enable — hence the tinted pill and no
+  // press affordance. Height tracks the Reject button beside it.
+  waitingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.warning + '1A',
+  },
+  waitingBadgeText: {
+    ...typography.labelSm,
+    color: colors.warning,
+    textAlign: 'center',
+  },
 
   reviewInfoBox: {
     backgroundColor: colors.neutral50,

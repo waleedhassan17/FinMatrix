@@ -42,7 +42,7 @@ describe('capabilities — Table A', () => {
       'vendor.manage',
       'delivery.create',
       'delivery.assign',
-      'delivery.approveCompletion',
+      'delivery.rejectCompletion',
       'personnel.manage',
       'stock.receive',
       'inventory.manageItems',
@@ -60,9 +60,31 @@ describe('capabilities — Table A', () => {
       expect(needsApproval('staff', 'delivery.assign')).toBe(false);
     });
 
-    it('signing off a rider delivery is direct even though revenue posts', () => {
-      // Table B row 4: staff or admin.
-      expect(capabilityFor('staff', 'delivery.approveCompletion')).toBe('direct');
+    it('signing off a rider delivery is the OWNER\'S, but rejecting one is not', () => {
+      // The pair that is easiest to get wrong, because they sit side by side
+      // on the same screen and go through the same service method.
+      //
+      // Approving recognises the sale — Dr A/R / Cr Sales, then Dr COGS / Cr
+      // Goods in Transit — so it is the owner's signature. Rejecting posts no
+      // revenue at all; it puts the stock back and reverses Goods in Transit,
+      // so staff keep it and a failed delivery is not stranded in transit
+      // until the owner next logs in.
+      expect(capabilityFor('staff', 'delivery.approveCompletion')).toBe(false);
+      expect(capabilityFor('admin', 'delivery.approveCompletion')).toBe('direct');
+      expect(capabilityFor('staff', 'delivery.rejectCompletion')).toBe('direct');
+
+      // Refused outright, not queued: there is no request path for signing off
+      // a delivery — the owner does it in their own inbox.
+      expect(needsApproval('staff', 'delivery.approveCompletion')).toBe(false);
+    });
+
+    it('approving a delivery is withheld from staff without being governance', () => {
+      // GOVERNANCE_CAPABILITIES is the set staff never reach AT ALL. Staff
+      // very much still reach the delivery queue — they submit to it, watch it
+      // and reject from it — so this capability is deliberately false without
+      // being listed there. Guards the tempting "tidy-up" of merging the two.
+      expect(can('staff', 'delivery.approveCompletion')).toBe(false);
+      expect(GOVERNANCE_CAPABILITIES).not.toContain('delivery.approveCompletion');
     });
   });
 

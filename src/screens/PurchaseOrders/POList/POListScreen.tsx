@@ -15,9 +15,11 @@ import {
   FlatList,
   TextInput,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
@@ -49,6 +51,9 @@ import { PO_STATUS_COLORS, PO_STATUS_LABELS, formatPODate } from '../../../model
 import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrder } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
+import { useCapability } from '../../../hooks/useCapability';
+import { fetchApprovals } from '../../../networks/approvals/approvalsNetwork';
+import type { ApprovalRequest } from '../../../models/approvalModel';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -81,20 +86,48 @@ const POListScreen: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    dispatch(fetchPurchaseOrders());
-  }, [dispatch]);
+  // A staff member's PO does not exist until the owner approves it, so it is
+  // absent from this list entirely — which reads as "my request vanished".
+  // Showing the pending requests above the list closes that gap without
+  // faking a PO row: these are requests, and they say so.
+  //
+  // Only for roles whose POs actually go through approval. An owner's never
+  // do, and GET /approvals would hand them the whole company inbox.
+  const poCap = useCapability('purchaseOrder.create');
+  const showsPending = poCap.needsApproval;
+  const [pendingRequests, setPendingRequests] = useState<ApprovalRequest[]>([]);
 
-  // Re-fetch whenever filter/search changes
+  const loadPending = useCallback(async () => {
+    if (!showsPending) return;
+    try {
+      setPendingRequests(await fetchApprovals('pending', 'po'));
+    } catch {
+      // A supplementary strip is not worth an error state — the POs below are
+      // the screen's job, and My Requests is the authoritative view.
+      setPendingRequests([]);
+    }
+  }, [showsPending]);
+
+  // Re-fetch whenever filter/search changes. Also covers the first load.
   useEffect(() => {
     dispatch(fetchPurchaseOrders());
   }, [statusFilter, searchQuery, dispatch]);
 
+  // On focus, not just on mount: the owner approves elsewhere, and coming back
+  // to this screen is exactly when the real PO should appear and the pending
+  // row drop off. Without this the list was stale until a manual pull.
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(fetchPurchaseOrders());
+      void loadPending();
+    }, [dispatch, loadPending]),
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await dispatch(fetchPurchaseOrders());
+    await Promise.all([dispatch(fetchPurchaseOrders()), loadPending()]);
     setRefreshing(false);
-  }, [dispatch]);
+  }, [dispatch, loadPending]);
 
   const TABS: TabItem<POStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
@@ -138,6 +171,54 @@ const POListScreen: React.FC = () => {
     [navigation],
   );
 
+  /**
+   * The requests waiting on the owner, above the real POs.
+   *
+   * Read-only on purpose: there is no PO to open yet, so tapping goes to My
+   * Requests — the one screen that owns request status, including a rejection
+   * and its reason. Rendering an editable-looking PO row here would promise
+   * something that does not exist.
+   */
+  const openMyRequests = useCallback(() => {
+    // This screen sits in the Transactions tab; My Requests is in the staff
+    // More tab, so the hop goes through the parent tab navigator (same pattern
+    // as the delivery reversal hand-off).
+    const tabs = (navigation.getParent() ?? navigation) as unknown as {
+      navigate: (name: string, params?: Record<string, unknown>) => void;
+    };
+    tabs.navigate('StaffMoreStack', { screen: 'MyRequests' });
+  }, [navigation]);
+
+  const PendingSection = useMemo(() => {
+    if (!showsPending || pendingRequests.length === 0) return null;
+    return (
+      <View style={styles.pendingBlock}>
+        <Text style={styles.pendingHeading}>
+          Waiting for approval · {pendingRequests.length}
+        </Text>
+        {pendingRequests.map(req => (
+          <TouchableOpacity
+            key={req.id}
+            style={styles.pendingRow}
+            onPress={openMyRequests}
+            activeOpacity={0.7}
+          >
+            <Feather name="clock" size={15} color={colors.warning} />
+            <View style={styles.pendingBody}>
+              <Text style={styles.pendingSummary} numberOfLines={2}>
+                {req.summary}
+              </Text>
+              <Text style={styles.pendingMeta}>
+                Sent to the owner · not a purchase order yet
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.textTertiary} />
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  }, [showsPending, pendingRequests, openMyRequests]);
+
   // Only the FIRST load takes over the screen; background re-fetches must
   // never hide the FlatList (that used to leave a stuck spinner over no data).
   const initialLoading = isLoading && items.length === 0 && !refreshing;
@@ -176,6 +257,12 @@ const POListScreen: React.FC = () => {
           </View>
         </View>
       )}
+
+      {/* ── Waiting on the owner ────────────────────────────────────────────
+          Above the list and outside `showChrome` on purpose: a staff member's
+          very first PO is a pending request with no PO behind it, which is
+          exactly the first-run state — the one time this strip matters most. */}
+      {PendingSection}
 
       {/* ── Search ──────────────────────────────── */}
       {searchOpen && showChrome && (
@@ -277,6 +364,33 @@ const styles = StyleSheet.create({
 
   list: { flex: 1 },
   listContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxxxl + spacing.xxl },
+
+  // Deliberately lighter than a TxnCard: these are not purchase orders, and
+  // should not compete with the real ones below.
+  pendingBlock: {
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.xs,
+  },
+  pendingHeading: {
+    ...typography.overline,
+    color: colors.textTertiary,
+    marginBottom: spacing.xs,
+  },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.warning + '0F',
+    borderWidth: 1,
+    borderColor: colors.warning + '33',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xxs,
+  },
+  pendingBody: { flex: 1 },
+  pendingSummary: { ...typography.labelMd, color: colors.textPrimary },
+  pendingMeta: { ...typography.caption, color: colors.textTertiary, marginTop: 1 },
 });
 
 export default POListScreen;

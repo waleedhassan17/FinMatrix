@@ -29,6 +29,7 @@ export type Capability =
   | 'delivery.create'
   | 'delivery.assign'
   | 'delivery.approveCompletion'
+  | 'delivery.rejectCompletion'
   | 'personnel.manage'
   | 'stock.receive'
   | 'inventory.manageItems'
@@ -66,9 +67,10 @@ const STAFF_CAPABILITIES: Record<Capability, CapabilityOutcome> = {
   // Posts Dr Goods in Transit / Cr Inventory at cost. The one ledger-moving
   // action staff take with no approval at all — deliberately NOT a request.
   'delivery.assign': 'direct',
-  // Table B row 4: signing off a rider's delivery is the day-to-day close of
-  // one, not a correction, even though revenue posts here.
-  'delivery.approveCompletion': 'direct',
+  // Table B row 6: a failed delivery goes back on the shelf. No sale was ever
+  // recognised, so there is nothing to correct and nobody to ask — and gating
+  // it would strand the stock in transit until the owner next logged in.
+  'delivery.rejectCompletion': 'direct',
   'personnel.manage': 'direct',
   'stock.receive': 'direct',
   'inventory.manageItems': 'direct',
@@ -83,6 +85,16 @@ const STAFF_CAPABILITIES: Record<Capability, CapabilityOutcome> = {
   'purchaseOrder.create': 'request',
   // Reverses recognised revenue: staff ask, with a reason.
   'delivery.undo': 'request',
+
+  // Signing off a rider's delivery recognises the sale: Dr A/R / Cr Sales,
+  // then Dr COGS / Cr Goods in Transit. The largest ledger event in the
+  // product, so it is the owner's signature — staff see the pending request
+  // and a "Waiting for Admin Approval" badge where Approve used to be.
+  //
+  // Not filed under GOVERNANCE_CAPABILITIES on purpose: those are surfaces
+  // staff never reach at all, and staff very much still reach this queue —
+  // they submit to it, watch it, and reject from it.
+  'delivery.approveCompletion': false,
 
   // Governance — the owner's alone, and a 403 at the server for staff.
   'approvals.decide': false,
