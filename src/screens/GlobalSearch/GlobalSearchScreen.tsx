@@ -96,7 +96,13 @@ const GlobalSearchScreen: React.FC = () => {
     // reproduce the search the user actually ran.
     const term = query.trim();
     if (term.length >= MIN_QUERY_LENGTH) dispatch(addRecentSearch(term));
-    nav.navigate(item.stack, { screen: item.routeName, params: item.routeParams });
+    // initial: false so the owning stack builds its real initial state (its
+    // hub or list) beneath the result. Without it the stack initialises as
+    // [InvoiceDetail] alone, back has nothing to pop and falls through to the
+    // tab navigator's 'firstRoute' default — the Dashboard — and the record is
+    // left stranded on that tab. Every result type is a detail screen, never a
+    // stack's initial route, so the flag is safe for all of them.
+    nav.navigate(item.stack, { screen: item.routeName, params: item.routeParams, initial: false });
   }, [dispatch, nav, query]);
 
   const handleRecentTap = useCallback((term: string) => {

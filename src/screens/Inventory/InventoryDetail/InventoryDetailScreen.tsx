@@ -29,18 +29,27 @@ import {
   setOpeningStock,
   toggleInventoryItem
 } from '../InventoryList/inventoryListSlice';
-import { selectUser } from '../../Auth/authSlice';
 import {
   selectInventoryDetailTab,
   selectInventoryDetailMovements,
   selectInventoryDetailStatus,
   selectInventoryDetailError,
+  selectInventoryDetailPOs,
+  selectInventoryDetailPendingPOs,
+  selectInventoryDetailPOStatus,
+  selectInventoryDetailPOError,
+  selectInventoryDetailPOTruncated,
   setActiveTab,
   resetInventoryDetail,
-  fetchItemMovements
+  fetchItemMovements,
+  fetchItemPurchaseOrders,
+  PO_FETCH_LIMIT
 } from './inventoryDetailSlice';
 import type { InventoryDetailTab } from './inventoryDetailSlice';
 import { movementLabel } from '../../../models/inventoryModel';
+import { PO_STATUS_COLORS, PO_STATUS_LABELS } from '../../../models/purchaseOrderModel';
+import { useCapability } from '../../../hooks/useCapability';
+import type { PurchaseOrderStatus } from '../../../types';
 import { isFeatureEnabled } from '../../../utils/featureGates';
 import { warehouseAgencies } from '../../../models/agencyModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
@@ -57,6 +66,20 @@ const getStockStatusLabel = (qty: number, reorder: number) => {
   if (qty <= 0) return { label: 'Out of Stock', color: colors.danger };
   if (qty <= reorder) return { label: 'Low Stock', color: colors.warning };
   return { label: 'In Stock', color: colors.success };
+};
+
+// PO_STATUS_LABELS is the canonical vocabulary, but "Partially Received" and
+// "Fully Received" are list-screen widths — in a badge sharing a row with a PO
+// number, a vendor and a quantity they squeeze the number to an ellipsis. Only
+// the two long ones are shortened; the colours stay canonical.
+//
+// These render uppercased: styles.poStatusText spreads typography.overline,
+// which carries textTransform. The casing here is the source string, not what
+// the badge shows.
+const shortPOStatus = (status: PurchaseOrderStatus) => {
+  if (status === 'partially_received') return 'Partial';
+  if (status === 'fully_received') return 'Received';
+  return PO_STATUS_LABELS[status] ?? status;
 };
 
 // Keyed to the movement types the API actually emits. This used to switch on
@@ -88,12 +111,19 @@ const InventoryDetailScreen: React.FC = () => {
   const movements = useAppSelector(selectInventoryDetailMovements);
   const movementsStatus = useAppSelector(selectInventoryDetailStatus);
   const movementsError = useAppSelector(selectInventoryDetailError);
-  const user = useAppSelector(selectUser);
+  const purchaseOrders = useAppSelector(selectInventoryDetailPOs);
+  const pendingPORequests = useAppSelector(selectInventoryDetailPendingPOs);
+  const poStatus = useAppSelector(selectInventoryDetailPOStatus);
+  const poError = useAppSelector(selectInventoryDetailPOError);
+  const poTruncated = useAppSelector(selectInventoryDetailPOTruncated);
+  // Whether the tab currently has anything to show. A re-fetch keeps these on
+  // screen rather than collapsing the card to a spinner.
+  const hasPORows = purchaseOrders.length > 0 || pendingPORequests.length > 0;
 
-  // Creating a purchase order is admin-only on the server, while reading
-  // inventory is admin+staff — so a staff user would reach the PO form and
-  // only discover the 403 on save.
-  const canCreatePO = user?.role === 'admin';
+  // Staff may raise a purchase order — it files a request the owner approves,
+  // rather than the 403 this screen used to assume (see utils/capabilities.ts).
+  // The label says which of the two tapping will do.
+  const poCap = useCapability('purchaseOrder.create');
 
   const itemId = route.params.itemId;
 
@@ -101,15 +131,18 @@ const InventoryDetailScreen: React.FC = () => {
     return () => { dispatch(resetInventoryDetail()); };
   }, [dispatch]);
 
-  const loadMovements = useCallback(() => {
-    if (itemId) dispatch(fetchItemMovements(itemId));
-  }, [dispatch, itemId]);
+  const loadDetailData = useCallback(() => {
+    if (!itemId) return;
+    dispatch(fetchItemMovements(itemId));
+    dispatch(fetchItemPurchaseOrders({ itemId, includePending: poCap.needsApproval }));
+  }, [dispatch, itemId, poCap.needsApproval]);
 
-  // On focus, not on mount. The movement list lives in one shared slice, so
-  // opening a second item overwrites it and unmounting that item clears it —
-  // coming back to this one would otherwise show an empty table. Refetching
-  // on focus also picks up an adjustment or count just posted from here.
-  useFocusEffect(loadMovements);
+  // On focus, not on mount. Both lists live in one shared slice, so opening a
+  // second item overwrites them and unmounting that item clears them — coming
+  // back to this one would otherwise show an empty table. Refetching on focus
+  // also picks up an adjustment just posted from here, and the PO (or the
+  // request for one) just raised from the button below.
+  useFocusEffect(loadDetailData);
 
   const agencyName = useMemo(() => {
     if (!item?.sourceAgencyId) return null;
@@ -175,16 +208,39 @@ const InventoryDetailScreen: React.FC = () => {
     if (item) navigation.navigate('Adjustment', { itemId: item.itemId });
   }, [item, navigation]);
 
-  // POForm lives in the Transactions stack, so this crosses tabs — same idiom
-  // as VendorDetailScreen's "Create Bill".
+  // POForm is registered in THIS stack (see navigations-maps/Inventory), not
+  // reached by hopping to the Transactions tab: raising a PO starts here and
+  // has to come back here. The old cross-tab navigate left the form stranded on
+  // the Transactions tab and sent back to the Dashboard.
   const handleCreatePO = useCallback(() => {
     if (!item) return;
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
-      .navigate('TransactionsStack', {
-        screen: 'POForm',
-        params: { prefillItemId: item.itemId }
-      });
+    navigation.navigate('POForm', { prefillItemId: item.itemId });
   }, [item, navigation]);
+
+  // PODetail stays a cross-tab hop — unlike POForm it is a document owned by
+  // the Transactions tab, and it reaches BillDetail/BillList, which this stack
+  // does not have.
+  //
+  // `initial: false` is load-bearing: without it React Navigation builds the
+  // target stack as [PODetail] alone, so back has nothing to pop and falls
+  // through to the tab navigator's 'firstRoute' default — the Dashboard. The
+  // flag makes it build the real initial state (TransactionsHub) underneath,
+  // and the nested params still ride along on the navigate it dispatches.
+  const handleOpenPO = useCallback((poId: string) => {
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
+      .navigate('TransactionsStack', { screen: 'PODetail', params: { poId }, initial: false });
+  }, [navigation]);
+
+  // A pending request is not a purchase order and has nothing to open, so it
+  // goes where the PO list's pending strip goes. My Requests is in the staff
+  // More tab, so the hop goes through the parent tab navigator — same as
+  // POListScreen.openMyRequests.
+  const handleOpenMyRequests = useCallback(() => {
+    const tabs = (navigation.getParent() ?? navigation) as unknown as {
+      navigate: (name: string, params?: Record<string, unknown>) => void;
+    };
+    tabs.navigate('StaffMoreStack', { screen: 'MyRequests', initial: false });
+  }, [navigation]);
 
   const handleToggle = useCallback(() => {
     if (!item) return;
@@ -256,6 +312,7 @@ const InventoryDetailScreen: React.FC = () => {
   const TABS: { key: InventoryDetailTab; label: string }[] = [
     { key: 'stock', label: 'Stock Info' },
     { key: 'transactions', label: 'Transactions' },
+    { key: 'purchaseOrders', label: 'POs' },
   ];
 
   // ═════════════════════════════════════════════════════
@@ -339,10 +396,12 @@ const InventoryDetailScreen: React.FC = () => {
             <Text style={styles.actionBtnIcon}>📊</Text>
             <Text style={styles.actionBtnText}>Adjust</Text>
           </TouchableOpacity>
-          {canCreatePO && (
+          {poCap.allowed && (
             <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={handleCreatePO}>
               <Text style={styles.actionBtnIcon}>📝</Text>
-              <Text style={styles.actionBtnText}>Create PO</Text>
+              <Text style={styles.actionBtnText}>
+                {poCap.needsApproval ? 'Request PO' : 'Create PO'}
+              </Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={handleEdit}>
@@ -423,7 +482,7 @@ const InventoryDetailScreen: React.FC = () => {
                 <Text style={styles.emptyTabText}>
                   {movementsError || 'Could not load stock movements'}
                 </Text>
-                <TouchableOpacity onPress={loadMovements} activeOpacity={0.7} style={styles.retryBtn}>
+                <TouchableOpacity onPress={loadDetailData} activeOpacity={0.7} style={styles.retryBtn}>
                   <Text style={styles.retryBtnText}>Retry</Text>
                 </TouchableOpacity>
               </View>
@@ -463,6 +522,121 @@ const InventoryDetailScreen: React.FC = () => {
                 </Text>
               </View>
             ))}
+          </View>
+        )}
+
+        {activeTab === 'purchaseOrders' && (
+          <View style={styles.txnCard}>
+            {/* Only the FIRST load takes over the tab; a background re-fetch
+                must never replace rows that are already on screen. Coming back
+                from a PO refires the focus effect, and gating the rows on
+                'succeeded' collapsed the card to a lone spinner and jumped the
+                scroll position every time. Same rule as POListScreen. */}
+            {(poStatus === 'loading' || poStatus === 'idle') && !hasPORows && (
+              <View style={styles.emptyTab}>
+                <ActivityIndicator color={colors.actionGreen} />
+              </View>
+            )}
+
+            {poStatus === 'failed' && !hasPORows && (
+              <View style={styles.emptyTab}>
+                <Text style={styles.emptyTabText}>
+                  {poError || 'Could not load purchase orders'}
+                </Text>
+                <TouchableOpacity onPress={loadDetailData} activeOpacity={0.7} style={styles.retryBtn}>
+                  <Text style={styles.retryBtnText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Requests first: this is the staff member's own PO, waiting on
+                the owner. Without it, raising one from this screen and coming
+                back to an empty tab reads as "my request vanished" — the same
+                gap the PO list closes with its pending strip. */}
+            {pendingPORequests.map(req => (
+              <TouchableOpacity
+                key={req.id}
+                style={styles.poRow}
+                activeOpacity={0.7}
+                onPress={handleOpenMyRequests}
+              >
+                <Feather name="clock" size={15} color={colors.warning} style={{ marginRight: spacing.xs }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.poNumber} numberOfLines={1}>
+                    {req.summary || 'Purchase order request'}
+                  </Text>
+                  <Text style={styles.poMeta}>Sent to the owner · not a purchase order yet</Text>
+                </View>
+                <View style={[styles.poStatusBadge, { backgroundColor: colors.warning + '15' }]}>
+                  <Text style={[styles.poStatusText, { color: colors.warning }]}>Pending</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {purchaseOrders.map(po => {
+              // The tab is about THIS item, so the quantity shown is this
+              // item's lines, not the PO total.
+              const lines = po.lines.filter(l => l.itemId === itemId);
+              const ordered = lines.reduce((sum, l) => sum + l.quantity, 0);
+              const received = lines.reduce((sum, l) => sum + l.receivedQuantity, 0);
+              const statusColor = PO_STATUS_COLORS[po.status] ?? colors.textSecondary;
+              return (
+                <TouchableOpacity
+                  key={po.id}
+                  style={styles.poRow}
+                  activeOpacity={0.7}
+                  onPress={() => handleOpenPO(po.id)}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.poNumber} numberOfLines={1}>
+                      {po.poNumber || 'Purchase order'}
+                    </Text>
+                    <Text style={styles.poMeta} numberOfLines={1}>
+                      {[po.vendorName, po.orderDate ? formatDate(po.orderDate) : '']
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </Text>
+                  </View>
+                  <View style={styles.poQtyBlock}>
+                    <Text style={styles.poQty}>{ordered}</Text>
+                    {/* Report receipts whenever there are any — the old test
+                        also required received < ordered, so the count vanished
+                        exactly when the receipt completed. */}
+                    <Text style={styles.poQtyLabel}>
+                      {received > 0 ? `${received} recvd` : 'ordered'}
+                    </Text>
+                  </View>
+                  <View style={[styles.poStatusBadge, { backgroundColor: statusColor + '15' }]}>
+                    <Text style={[styles.poStatusText, { color: statusColor }]} numberOfLines={1}>
+                      {shortPOStatus(po.status)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+
+            {/* Only a settled fetch that found nothing is an empty item —
+                otherwise a slow load flashes "no purchase orders" first. And
+                say so when the answer is only as good as the page we read:
+                claiming "none" to someone checking whether stock is already on
+                order is worse than admitting the list was cut short. */}
+            {poStatus === 'succeeded' && !hasPORows && (
+              <View style={styles.emptyTab}>
+                <Text style={styles.emptyTabText}>
+                  {poTruncated
+                    ? `None in the ${PO_FETCH_LIMIT} most recent purchase orders — there are older ones this screen cannot search.`
+                    : 'No purchase orders for this item'}
+                </Text>
+              </View>
+            )}
+
+            {poStatus === 'succeeded' && hasPORows && poTruncated && (
+              <View style={styles.poTruncatedNote}>
+                <Text style={styles.poTruncatedText}>
+                  Searched the {PO_FETCH_LIMIT} most recent purchase orders. Older ones are not shown.
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -698,6 +872,35 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginRight: spacing.xs,
   },
+  // ── Purchase Orders tab ───────────────────────────
+  poRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  poNumber: { ...typography.labelMd, color: colors.textPrimary },
+  poMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
+  poQtyBlock: { alignItems: 'flex-end', marginHorizontal: spacing.xs },
+  poQty: { ...typography.labelMd, color: colors.textPrimary },
+  poQtyLabel: { ...typography.overline, color: colors.textTertiary },
+  poStatusBadge: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: 8,
+    minWidth: 62,
+    alignItems: 'center',
+  },
+  poStatusText: { ...typography.overline },
+  poTruncatedNote: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.backgroundAlt,
+  },
+  poTruncatedText: { ...typography.caption, color: colors.textTertiary },
+
   emptyTab: {
     padding: spacing.xxl,
     alignItems: 'center',

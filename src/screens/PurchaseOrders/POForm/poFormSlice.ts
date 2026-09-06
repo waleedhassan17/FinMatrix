@@ -226,23 +226,47 @@ export const poFormSlice = createAppSlice({
         const envelope = f.isEditMode && f.editingId
           ? await updatePurchaseOrderAPI(f.editingId, payload)
           : await createPurchaseOrderAPI(payload);
+
+        // Staff get an approval request back, not a purchase order. It has to
+        // be read off the raw envelope: mapPO() builds a fixed PurchaseOrder
+        // shape with no `pending` key, so serializing first drops the flag and
+        // flattens the request into a PO with a blank id — which then sent the
+        // status PATCH below to /purchase-orders//status and had the screen
+        // announce a PO that was never created.
+        //
+        // Both positions are checked, matching the three sibling approval
+        // forms (CreditMemoFormScreen, PayBillsScreen, GeneralJournalFormScreen).
+        // `(envelope?.data ?? envelope)?.pending` is NOT the same test: ?? picks
+        // whichever of the two is merely present, so an envelope shaped
+        // { pending: true, data: {...} } resolves to data, reads undefined, and
+        // falls straight back into the bug this guard exists to stop.
+        if (envelope?.data?.pending ?? envelope?.pending) {
+          return { po: null, pending: true, sendFailed: false };
+        }
+
         const po = purchaseOrderSingleSerializer(envelope);
 
         if (po && saveStatus === 'sent' && po.status !== 'sent') {
           try {
             const sent = purchaseOrderSingleSerializer(await updatePOStatusAPI(po.id, 'sent'));
-            return { po: sent ?? po, sendFailed: false };
+            return { po: sent ?? po, pending: false, sendFailed: false };
           } catch {
-            return { po, sendFailed: true };
+            return { po, pending: false, sendFailed: true };
           }
         }
-        return { po, sendFailed: false };
+        return { po, pending: false, sendFailed: false };
       },
       {
         pending: state => { state.isSaving = true; state.saveError = ''; },
-        fulfilled: (state, action: PayloadAction<{ po: PurchaseOrder | null; sendFailed: boolean }>) => {
+        fulfilled: (
+          state,
+          action: PayloadAction<{ po: PurchaseOrder | null; pending: boolean; sendFailed: boolean }>,
+        ) => {
           state.isSaving = false;
-          if (action.payload.po) {
+          // Nothing to edit on the pending path — no PO exists until the owner
+          // approves, so leaving the form in edit mode would point a later save
+          // at an id that was never issued.
+          if (action.payload.po && !action.payload.pending) {
             state.editingId = action.payload.po.id;
             state.isEditMode = true;
           }

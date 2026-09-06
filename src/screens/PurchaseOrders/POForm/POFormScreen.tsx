@@ -55,6 +55,7 @@ import {
   SecondaryButton,
 } from '../../../components/form/FormUI';
 import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { useCapability } from '../../../hooks/useCapability';
 import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -79,6 +80,10 @@ const POFormScreen: React.FC = () => {
   const vendors = useAppSelector(selectVendors);
   const items = useAppSelector(selectInventoryItems);
   const form = useAppSelector(selectPOFormState);
+  // Staff file a request rather than creating a PO. Draft-vs-send is a
+  // distinction they do not have: the create DTO has no status field, so both
+  // buttons would send the same request and approve into the same draft.
+  const poCap = useCapability('purchaseOrder.create');
   const hydratedRef = React.useRef(false);
   const prefilledRef = React.useRef(false);
 
@@ -242,22 +247,29 @@ const POFormScreen: React.FC = () => {
       try {
         const result: any = await dispatch(savePurchaseOrder(saveStatus));
         if (result.error) throw new Error(result.error.message);
-        const { po: saved, sendFailed } = result.payload ?? {};
-        if (saved) dispatch(upsertPurchaseOrder(saved));
-        await dispatch(fetchPurchaseOrders());
+        const { po: saved, pending, sendFailed } = result.payload ?? {};
 
         // Staff get a pending request back instead of a PO. Nothing exists
         // yet — a PO posts nothing either way, which is exactly why gating it
         // is safe — so navigating to a PODetail that has no row would 404.
-        if ((saved as any)?.pending) {
+        //
+        // Checked before the upsert: `saved` is null here, and pushing it into
+        // the list would put a blank Rs 0 row at the top of the PO list.
+        if (pending) {
           Toast.show({
             type: 'success',
             text1: 'Sent to the owner for approval',
-            text2: 'The purchase order is created once they approve it.',
+            // The create DTO carries no status, so the request replays as a
+            // create and lands as a draft — the owner sends it to the vendor
+            // afterwards. Saying "created" alone reads as "the vendor has it".
+            text2: 'It becomes a draft purchase order once they approve.',
           });
           navigation.goBack();
           return;
         }
+
+        if (saved) dispatch(upsertPurchaseOrder(saved));
+        await dispatch(fetchPurchaseOrders());
 
         // The PO number comes back from the server — the form never had one.
         const ref = saved?.poNumber ?? 'The purchase order';
@@ -509,24 +521,44 @@ const POFormScreen: React.FC = () => {
           </View>
 
           {/* ── Actions ────────────────────────────── */}
-          <View style={styles.btnRow}>
-            <View style={{ flex: 1, marginRight: spacing.xs }}>
-              <SecondaryButton
-                title="Save Draft"
-                onPress={() => handleSave('draft')}
-                disabled={form.isSaving}
-                icon={<Feather name="save" size={16} color={colors.actionGreen} />}
-              />
+          {poCap.needsApproval && !isEditing ? (
+            // One button, because there is only one outcome: the request is
+            // filed either way. 'draft' rather than 'sent' — the status PATCH
+            // has nothing to act on while the PO does not exist yet.
+            //
+            // Creation only. Editing an existing PO is a different action the
+            // capability map does not cover, and collapsing its two buttons
+            // would silently drop the send the user asked for.
+            <View style={styles.btnRow}>
+              <View style={{ flex: 1 }}>
+                <PrimaryButton
+                  title={form.isSaving ? 'Sending…' : poCap.submitLabel('Save & Send')}
+                  onPress={() => handleSave('draft')}
+                  isLoading={form.isSaving}
+                  icon={<Feather name="send" size={16} color={colors.neutral0} />}
+                />
+              </View>
             </View>
-            <View style={{ flex: 1.4 }}>
-              <PrimaryButton
-                title={form.isSaving ? 'Saving…' : isEditing ? 'Update & Send' : 'Save & Send'}
-                onPress={() => handleSave('sent')}
-                isLoading={form.isSaving}
-                icon={<Feather name="send" size={16} color={colors.neutral0} />}
-              />
+          ) : (
+            <View style={styles.btnRow}>
+              <View style={{ flex: 1, marginRight: spacing.xs }}>
+                <SecondaryButton
+                  title="Save Draft"
+                  onPress={() => handleSave('draft')}
+                  disabled={form.isSaving}
+                  icon={<Feather name="save" size={16} color={colors.actionGreen} />}
+                />
+              </View>
+              <View style={{ flex: 1.4 }}>
+                <PrimaryButton
+                  title={form.isSaving ? 'Saving…' : isEditing ? 'Update & Send' : 'Save & Send'}
+                  onPress={() => handleSave('sent')}
+                  isLoading={form.isSaving}
+                  icon={<Feather name="send" size={16} color={colors.neutral0} />}
+                />
+              </View>
             </View>
-          </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

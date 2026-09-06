@@ -186,7 +186,9 @@ const POListScreen: React.FC = () => {
     const tabs = (navigation.getParent() ?? navigation) as unknown as {
       navigate: (name: string, params?: Record<string, unknown>) => void;
     };
-    tabs.navigate('StaffMoreStack', { screen: 'MyRequests' });
+    // initial: false puts StaffMoreHub underneath, so back returns there
+    // instead of finding an empty stack and falling through to the Dashboard.
+    tabs.navigate('StaffMoreStack', { screen: 'MyRequests', initial: false });
   }, [navigation]);
 
   const PendingSection = useMemo(() => {

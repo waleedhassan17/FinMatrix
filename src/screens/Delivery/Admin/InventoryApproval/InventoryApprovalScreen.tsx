@@ -347,9 +347,12 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     const tabs = (navigation.getParent() ?? navigation) as unknown as {
       navigate: (name: string, params?: Record<string, unknown>) => void;
     };
+    // initial: false so TransactionsHub sits underneath — otherwise that stack
+    // initialises as [CreditMemoForm] alone and back leaves for the Dashboard.
     tabs.navigate('TransactionsStack', {
       screen: 'CreditMemoForm',
       params: { fromDeliveryRequestId: request.id },
+      initial: false,
     });
   };
 

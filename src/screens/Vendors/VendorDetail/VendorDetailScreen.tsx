@@ -150,18 +150,24 @@ const VendorDetailScreen: React.FC = () => {
   }
 
   // ── Action handlers ─────────────────────────────
+  // initial: false on both hops. Without it React Navigation initialises the
+  // Transactions stack as [BillForm] with no hub underneath, so back has
+  // nothing to pop and falls through to the tab navigator's 'firstRoute'
+  // default — the Dashboard — while stranding the form on that tab.
   const handleCreateBill = () => {
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
       .navigate('TransactionsStack', {
         screen: 'BillForm',
-        params: { vendorId: vendor.id }
+        params: { vendorId: vendor.id },
+        initial: false
       });
   };
   const handleRecordPayment = () => {
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
       .navigate('TransactionsStack', {
         screen: 'PayBills',
-        params: { vendorId: vendor.id }
+        params: { vendorId: vendor.id },
+        initial: false
       });
   };
   const handleSendStatement = async () => {

@@ -358,7 +358,7 @@ const AdminDashboardScreen: React.FC = () => {
                   value={statById.ar?.value ?? 'Rs 0'}
                   label="Receivables"
                   sub="Due from customers"
-                  onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceList' })}
+                  onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceList', initial: false })}
                 />
                 <StatCard
                   icon="arrow-up-right"
@@ -367,7 +367,7 @@ const AdminDashboardScreen: React.FC = () => {
                   value={statById.ap?.value ?? 'Rs 0'}
                   label="Payables"
                   sub="Owed to suppliers"
-                  onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'BillList' })}
+                  onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'BillList', initial: false })}
                 />
               </View>
             </Section>

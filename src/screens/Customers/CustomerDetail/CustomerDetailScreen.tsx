@@ -168,18 +168,23 @@ const CustomerDetailScreen: React.FC = () => {
       : colors.success;
 
   // ── Action handlers ─────────────────────────────
+  // initial: false on both hops — see VendorDetailScreen. Without it the
+  // Transactions stack initialises as [InvoiceForm] with no hub beneath, and
+  // back lands on the Dashboard rather than returning into that tab.
   const handleCreateInvoice = () => {
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
       .navigate('TransactionsStack', {
         screen: 'InvoiceForm',
-        params: { customerId: customer.id }
+        params: { customerId: customer.id },
+        initial: false
       });
   };
   const handleRecordPayment = () => {
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
       .navigate('TransactionsStack', {
         screen: 'ReceivePayment',
-        params: { customerId: customer.id }
+        params: { customerId: customer.id },
+        initial: false
       });
   };
   const handleSendStatement = async () => {
