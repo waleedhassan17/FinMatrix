@@ -24,6 +24,9 @@ interface CustomDropdownProps {
   placeholder?: string;
   error?: string;
   searchable?: boolean;
+  /** Read-only: shows the selection but will not open the picker. Mirrors
+   *  CustomInput's `disabled`, including its muted styling. */
+  disabled?: boolean;
 }
 
 const CustomDropdown: React.FC<CustomDropdownProps> = ({
@@ -34,6 +37,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   placeholder = 'Select...',
   error,
   searchable = false,
+  disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -82,17 +86,24 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
     <View style={styles.container}>
       <Text style={[styles.label, error && styles.labelError]}>{label}</Text>
       <TouchableOpacity
-        style={[styles.field, { borderColor: getBorderColor() }]}
+        style={[
+          styles.field,
+          { borderColor: getBorderColor() },
+          disabled && styles.fieldDisabled,
+        ]}
         onPress={() => setIsOpen(true)}
+        disabled={disabled}
         activeOpacity={0.7}>
         <Text
           style={[
             styles.fieldText,
             !selectedOption && styles.placeholderText,
+            disabled && styles.fieldTextDisabled,
           ]}>
           {selectedOption ? selectedOption.label : placeholder}
         </Text>
-        <Text style={styles.chevron}>▾</Text>
+        {/* No chevron when disabled: it advertises a picker that will not open. */}
+        {!disabled && <Text style={styles.chevron}>▾</Text>}
       </TouchableOpacity>
       {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -160,10 +171,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     paddingHorizontal: spacing.sm + 4,
   },
+  // Matches CustomInput's inputDisabled / textDisabled, so a read-only form
+  // reads the same whichever control it is built from.
+  fieldDisabled: {
+    backgroundColor: colors.background,
+    opacity: 0.7,
+  },
   fieldText: {
     ...THEME.typography.bodyLg,
     flex: 1,
     color: colors.textPrimary,
+  },
+  fieldTextDisabled: {
+    color: colors.textLight,
   },
   placeholderText: {
     color: colors.textLight,

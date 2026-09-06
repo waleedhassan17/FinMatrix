@@ -3,7 +3,7 @@
 // Premium Enterprise UI
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,7 @@ import {
   removeLine,
   updateLine,
   setLineItem,
+  loadFromRequestPayload,
   resetForm,
   savePurchaseOrder,
   fetchPOForEdit,
@@ -56,8 +57,14 @@ import {
 } from '../../../components/form/FormUI';
 import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import { useCapability } from '../../../hooks/useCapability';
+import { fetchApprovalById } from '../../../networks/approvals/approvalsNetwork';
+import { decideApproval } from '../../Approvals/approvalsSlice';
+import { APPROVAL_TYPE_EFFECTS, isPendingApproval } from '../../../models/approvalModel';
+import type { ApprovalRequest } from '../../../models/approvalModel';
+import RejectReasonModal from '../../Approvals/RejectReasonModal';
 import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
+import type { PurchaseOrderWritePayload } from '../../../networks/purchases/purchaseOrderNetwork';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -76,6 +83,10 @@ const POFormScreen: React.FC = () => {
   const isEditing = !!editingId;
   // Set when arriving from an inventory item's "Create PO" action.
   const prefillItemId = route.params?.prefillItemId;
+  // Set when arriving from the approvals inbox or My Requests: the form shows
+  // a staff request read-only so it can be judged on its contents.
+  const approvalRequestId = route.params?.fromApprovalRequestId;
+  const isReviewing = !!approvalRequestId;
   const pos = useAppSelector(selectPOs);
   const vendors = useAppSelector(selectVendors);
   const items = useAppSelector(selectInventoryItems);
@@ -84,8 +95,19 @@ const POFormScreen: React.FC = () => {
   // distinction they do not have: the create DTO has no status field, so both
   // buttons would send the same request and approve into the same draft.
   const poCap = useCapability('purchaseOrder.create');
+  // Only the owner decides. Staff opening their own request from My Requests
+  // get the identical read-only form with no decision buttons.
+  const decideCap = useCapability('approvals.decide');
   const hydratedRef = React.useRef(false);
   const prefilledRef = React.useRef(false);
+  const requestLoadedRef = React.useRef(false);
+
+  // The request under review. Held locally, not in the form slice: it is
+  // metadata about the decision, not part of the purchase order being drawn.
+  const [request, setRequest] = useState<ApprovalRequest | null>(null);
+  const [loadingRequest, setLoadingRequest] = useState(isReviewing);
+  const [deciding, setDeciding] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
 
   const vendorOptions = useMemo(
     () => vendors.filter(v => v.isActive).map(v => ({ label: v.name, value: v.id })),
@@ -107,7 +129,10 @@ const POFormScreen: React.FC = () => {
     if (hydratedRef.current) return;
     hydratedRef.current = true;
 
-    if (isEditing && editingId) {
+    if (isReviewing) {
+      // Nothing seeded here — the request's own payload is loaded by the
+      // effect below, once vendors and items are available to name its ids.
+    } else if (isEditing && editingId) {
       dispatch(fetchPOForEdit(editingId));
     } else {
       // No PO number is seeded: the server assigns it (PO-2026-0001) and
@@ -120,7 +145,60 @@ const POFormScreen: React.FC = () => {
 
     return () => { dispatch(resetForm()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, editingId, dispatch]);
+  }, [isEditing, editingId, isReviewing, dispatch]);
+
+  // Load the approval request and put its payload back in the form.
+  //
+  // Waits on vendors and items for the same reason the prefill below does: the
+  // payload stores ids only, and a review screen that shows a bare uuid where
+  // the vendor should be is not a review. `cancelled` rather than a ref for the
+  // async part, following CreditMemoFormScreen's reversal loader.
+  useEffect(() => {
+    if (!approvalRequestId || requestLoadedRef.current) return;
+    if (vendors.length === 0 || items.length === 0) return;
+    requestLoadedRef.current = true;
+
+    let cancelled = false;
+    const bail = (text2: string) => {
+      if (cancelled) return;
+      // Never leave a blank form standing in for a request: the owner would
+      // approve against whatever it happened to show.
+      Toast.show({ type: 'error', text1: 'Could not open this request', text2 });
+      navigation.goBack();
+    };
+
+    (async () => {
+      try {
+        const req = await fetchApprovalById(approvalRequestId);
+        if (cancelled) return;
+        if (req?.type !== 'po') {
+          bail('Only purchase order requests can be opened here.');
+          return;
+        }
+        const payload = (req.payload ?? {}) as Partial<PurchaseOrderWritePayload>;
+        if (!Array.isArray(payload.lines) || payload.lines.length === 0) {
+          bail('This request has no line items to show.');
+          return;
+        }
+        setRequest(req);
+        dispatch(
+          loadFromRequestPayload({
+            payload,
+            vendorName: vendors.find(v => v.id === payload.vendorId)?.name ?? '',
+            itemNames: Object.fromEntries(
+              items.map(i => [i.itemId ?? i.id, i.name]),
+            ),
+          }),
+        );
+        setLoadingRequest(false);
+      } catch (e: any) {
+        bail(e?.message || 'Please try again.');
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approvalRequestId, vendors, items, dispatch, navigation]);
 
   // Seed the first line from the item the user pressed "Create PO" on. This
   // has to wait for fetchInventoryItems() above to land — the item's name and
@@ -235,6 +313,82 @@ const POFormScreen: React.FC = () => {
     return errs;
   }, [form]);
 
+  // ── Deciding a request under review ─────────────
+  //
+  // Dispatches the approvals slice thunk rather than the network function so
+  // the inbox behind this screen updates the row in place and drops its badge
+  // count, which that slice already does.
+  const decide = useCallback(
+    async (decision: 'approve' | 'reject', comment?: string) => {
+      if (!request || deciding) return null;
+      setDeciding(true);
+      try {
+        const result: any = await dispatch(
+          decideApproval({ id: request.id, decision, comment }),
+        );
+        if (result.error) throw new Error(result.error.message);
+        return result.payload as ApprovalRequest;
+      } catch (e: any) {
+        Toast.show({
+          type: 'error',
+          text1: decision === 'approve' ? 'Could not approve' : 'Could not reject',
+          text2: e?.message || 'Please try again.',
+        });
+        return null;
+      } finally {
+        setDeciding(false);
+      }
+    },
+    [request, deciding, dispatch],
+  );
+
+  const handleApprove = useCallback(async () => {
+    const decided = await decide('approve');
+    if (!decided) return;
+    Toast.show({
+      type: 'success',
+      text1: 'Request approved',
+      text2: 'The purchase order has been created as a draft.',
+    });
+    navigation.goBack();
+  }, [decide, navigation]);
+
+  // Approving replays the stored payload untouched — there is no endpoint that
+  // accepts an amended one. So editing happens after: the PO lands as a draft,
+  // which posts nothing to the ledger, and this drops the owner straight into
+  // it. `resultId` is the created document, but the field carries no contract
+  // in the model, so a missing one falls back to saying what happened rather
+  // than navigating to poId: undefined.
+  const handleApproveAndEdit = useCallback(async () => {
+    const decided = await decide('approve');
+    if (!decided) return;
+    if (decided.resultId) {
+      navigation.replace('POForm', { poId: decided.resultId });
+      return;
+    }
+    Toast.show({
+      type: 'success',
+      text1: 'Request approved',
+      text2: 'The draft purchase order is in the PO list — open it there to edit.',
+    });
+    navigation.goBack();
+  }, [decide, navigation]);
+
+  const handleReject = useCallback(
+    async (comment: string) => {
+      setRejectOpen(false);
+      const decided = await decide('reject', comment);
+      if (!decided) return;
+      Toast.show({
+        type: 'success',
+        text1: 'Request rejected',
+        text2: 'The requester sees your reason in My requests.',
+      });
+      navigation.goBack();
+    },
+    [decide, navigation],
+  );
+
   const handleSave = useCallback(
     async (saveStatus: PurchaseOrderStatus = 'draft') => {
       const validationErrors = validate();
@@ -314,8 +468,22 @@ const POFormScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
       <ReportHeader
-        title={isEditing ? `Edit ${form.poNumber}` : 'New Purchase Order'}
-        subtitle={isEditing ? 'Update PO details' : 'Order items from a vendor'}
+        title={
+          isReviewing
+            ? 'Review request'
+            : isEditing
+              ? `Edit ${form.poNumber}`
+              : 'New Purchase Order'
+        }
+        subtitle={
+          isReviewing
+            ? request?.requestedBy
+              ? `Raised by ${request.requestedBy}`
+              : 'Raised by a staff member'
+            : isEditing
+              ? 'Update PO details'
+              : 'Order items from a vendor'
+        }
         onBack={() => navigation.goBack()}
       />
 
@@ -325,6 +493,31 @@ const POFormScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {isReviewing && (
+            <View style={styles.reviewBanner}>
+              <Feather name="clock" size={16} color={colors.warning} />
+              <View style={{ flex: 1, marginLeft: spacing.xs }}>
+                <Text style={styles.reviewBannerTitle}>
+                  {loadingRequest ? 'Loading request…' : 'Waiting for your decision'}
+                </Text>
+                <Text style={styles.reviewBannerBody}>
+                  {request?.summary || 'A staff member asked you to approve this purchase order.'}
+                </Text>
+                <Text style={styles.reviewBannerBody}>
+                  {APPROVAL_TYPE_EFFECTS.po}
+                </Text>
+                {!!request?.reason && (
+                  <Text style={styles.reviewBannerBody}>Reason given: {request.reason}</Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Nothing in the form is editable while reviewing: approving replays
+              the payload exactly as submitted, so an edit here would be a lie.
+              Gated at the container because DateField has no disabled prop —
+              the controls that do have one also carry the muted styling. */}
+          <View pointerEvents={isReviewing ? 'none' : 'auto'}>
           {/* ── PO Details ─────────────────────────── */}
           <FormSectionHeader title="PO DETAILS" dotColor={colors.info} />
           <View style={styles.sectionCard}>
@@ -338,6 +531,7 @@ const POFormScreen: React.FC = () => {
                 placeholder="Select vendor…"
                 error={form.errors.vendorId}
                 searchable
+                disabled={isReviewing}
               />
               {/* The server owns this number and ignores anything we send,
                   so it is shown, never typed. */}
@@ -375,7 +569,11 @@ const POFormScreen: React.FC = () => {
           <FormSectionHeader
             title="ITEMS"
             dotColor={colors.secondary}
-            right={<AddButton label="Add Item" onPress={() => dispatch(addLine())} />}
+            right={
+              isReviewing ? undefined : (
+                <AddButton label="Add Item" onPress={() => dispatch(addLine())} />
+              )
+            }
           />
           {!!form.errors.lines && (
             <Text style={styles.lineError}>{form.errors.lines}</Text>
@@ -391,7 +589,7 @@ const POFormScreen: React.FC = () => {
                   </View>
                   <Text style={styles.lineLabel}>Item</Text>
                   {form.lines.length > 1 && (
-                    <TouchableOpacity style={styles.lineDeleteBtn} onPress={() => dispatch(removeLine(line.id))}>
+                    <TouchableOpacity style={styles.lineDeleteBtn} disabled={isReviewing} onPress={() => dispatch(removeLine(line.id))}>
                       <Feather name="trash-2" size={14} color={colors.danger} />
                     </TouchableOpacity>
                   )}
@@ -520,8 +718,52 @@ const POFormScreen: React.FC = () => {
             </View>
           </View>
 
+          </View>
+
           {/* ── Actions ────────────────────────────── */}
-          {poCap.needsApproval && !isEditing ? (
+          {isReviewing ? (
+            // Only the owner decides. Staff reach this same screen from My
+            // Requests to see what they submitted, and get no buttons.
+            decideCap.allowed && request && isPendingApproval(request) ? (
+              <View>
+                <View style={styles.btnRow}>
+                  <View style={{ flex: 1, marginRight: spacing.xs }}>
+                    <SecondaryButton
+                      title="Reject"
+                      onPress={() => setRejectOpen(true)}
+                      disabled={deciding}
+                      icon={<Feather name="x" size={16} color={colors.actionGreen} />}
+                    />
+                  </View>
+                  <View style={{ flex: 1.4 }}>
+                    <PrimaryButton
+                      title={deciding ? 'Approving…' : 'Approve'}
+                      onPress={handleApprove}
+                      isLoading={deciding}
+                      icon={<Feather name="check" size={16} color={colors.neutral0} />}
+                    />
+                  </View>
+                </View>
+                {/* The payload cannot be amended before approval — no endpoint
+                    accepts one. Approving creates a DRAFT PO, which posts
+                    nothing, so edits happen there instead. */}
+                <SecondaryButton
+                  title="Approve & edit the draft"
+                  onPress={handleApproveAndEdit}
+                  disabled={deciding}
+                  icon={<Feather name="edit-2" size={16} color={colors.actionGreen} />}
+                />
+              </View>
+            ) : (
+              <View style={styles.reviewNote}>
+                <Text style={styles.reviewNoteText}>
+                  {request && !isPendingApproval(request)
+                    ? 'This request has already been decided.'
+                    : 'Only the owner can approve or reject a request.'}
+                </Text>
+              </View>
+            )
+          ) : poCap.needsApproval && !isEditing ? (
             // One button, because there is only one outcome: the request is
             // filed either way. 'draft' rather than 'sent' — the status PATCH
             // has nothing to act on while the PO does not exist yet.
@@ -561,6 +803,13 @@ const POFormScreen: React.FC = () => {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <RejectReasonModal
+        visible={rejectOpen}
+        summary={request?.summary}
+        onCancel={() => setRejectOpen(false)}
+        onSubmit={handleReject}
+      />
     </SafeAreaView>
   );
 };
@@ -625,6 +874,32 @@ const styles = StyleSheet.create({
   grandTotalValue: { ...typography.h2, color: colors.neutral0, fontVariant: ['tabular-nums'] },
 
   btnRow: { flexDirection: 'row', marginTop: spacing.xl, marginBottom: spacing.md },
+  reviewBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.warning + '12',
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  reviewBannerTitle: { ...typography.labelMd, color: colors.textPrimary },
+  reviewBannerBody: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  reviewNote: {
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.backgroundAlt,
+  },
+  reviewNoteText: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
 });
 
 export default POFormScreen;

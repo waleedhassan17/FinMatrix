@@ -4,9 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Modal,
   RefreshControl,
-  TextInput,
   TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -17,6 +15,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { ReportContainer, ReportHeader } from '../../components/reports/ReportUI';
 import EmptyState from '../../components/shared/EmptyState';
 import ApprovalRequestCard from './ApprovalRequestCard';
+import RejectReasonModal from './RejectReasonModal';
 import {
   decideApproval,
   fetchApprovals,
@@ -64,7 +63,6 @@ const StaffApprovalsScreen: React.FC = () => {
   const [tab, setTab] = useState<Tab>('requests');
   const [refreshing, setRefreshing] = useState(false);
   const [rejecting, setRejecting] = useState<ApprovalRequest | null>(null);
-  const [comment, setComment] = useState('');
 
   const load = useCallback(
     (f?: ApprovalFilter) => dispatch(fetchApprovals(f)),
@@ -86,8 +84,31 @@ const StaffApprovalsScreen: React.FC = () => {
     }
   }, [load]);
 
-  const submitRejection = () => {
-    if (!rejecting || comment.trim().length < 3) return;
+  /**
+   * Open the request in the form it was filed from, so the decision is made on
+   * the vendor, the dates and the line items rather than on the summary line.
+   *
+   * This screen sits in the owner's More tab and POForm lives in the
+   * Transactions tab, so the hop goes through the parent tab navigator.
+   * `initial: false` puts TransactionsHub underneath — without it that stack
+   * initialises holding only POForm, and back falls through to the Dashboard.
+   */
+  const openRequest = useCallback(
+    (request: ApprovalRequest) => {
+      const tabs = (navigation.getParent() ?? navigation) as unknown as {
+        navigate: (name: string, params?: Record<string, unknown>) => void;
+      };
+      tabs.navigate('TransactionsStack', {
+        screen: 'POForm',
+        params: { fromApprovalRequestId: request.id },
+        initial: false,
+      });
+    },
+    [navigation],
+  );
+
+  const submitRejection = (comment: string) => {
+    if (!rejecting) return;
     dispatch(
       decideApproval({
         id: rejecting.id,
@@ -96,7 +117,6 @@ const StaffApprovalsScreen: React.FC = () => {
       }),
     );
     setRejecting(null);
-    setComment('');
   };
 
   return (
@@ -181,6 +201,10 @@ const StaffApprovalsScreen: React.FC = () => {
             renderItem={({ item }) => (
               <ApprovalRequestCard
                 request={item}
+                // Only purchase orders can be opened in their own form so far.
+                // Passing onPress unconditionally would make every card look
+                // tappable and do nothing.
+                onPress={item.type === 'po' ? () => openRequest(item) : undefined}
                 actions={
                   isPendingApproval(item) ? (
                     <>
@@ -202,10 +226,7 @@ const StaffApprovalsScreen: React.FC = () => {
                       <TouchableOpacity
                         style={[styles.action, styles.reject]}
                         disabled={decidingId === item.id}
-                        onPress={() => {
-                          setRejecting(item);
-                          setComment('');
-                        }}
+                        onPress={() => setRejecting(item)}
                         activeOpacity={0.8}
                       >
                         <Feather name="x" size={14} color={colors.danger} />
@@ -222,46 +243,12 @@ const StaffApprovalsScreen: React.FC = () => {
 
       {/* A rejection must say why: the requester is told, and it is the only
           thing they have to go on when deciding what to do instead. */}
-      <Modal
+      <RejectReasonModal
         visible={!!rejecting}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setRejecting(null)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Why are you rejecting this?</Text>
-            <Text style={styles.modalSubtitle}>{rejecting?.summary}</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={comment}
-              onChangeText={setComment}
-              placeholder="The requester sees this"
-              placeholderTextColor={colors.textTertiary}
-              multiline
-              autoFocus
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancel}
-                onPress={() => setRejecting(null)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modalConfirm,
-                  comment.trim().length < 3 && styles.modalConfirmDisabled,
-                ]}
-                disabled={comment.trim().length < 3}
-                onPress={submitRejection}
-              >
-                <Text style={styles.modalConfirmText}>Reject request</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        summary={rejecting?.summary}
+        onCancel={() => setRejecting(null)}
+        onSubmit={submitRejection}
+      />
     </ReportContainer>
   );
 };
@@ -320,57 +307,6 @@ const styles = StyleSheet.create({
   approveText: { ...typography.labelSm, color: colors.neutral0 },
   reject: { borderWidth: 1, borderColor: colors.danger },
   rejectText: { ...typography.labelSm, color: colors.danger },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
-  modalCard: {
-    backgroundColor: colors.neutral0,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-  },
-  modalTitle: { ...typography.displaySm, color: colors.textPrimary },
-  modalSubtitle: {
-    ...typography.bodySm,
-    color: colors.textSecondary,
-    marginTop: 4,
-    marginBottom: spacing.md,
-  },
-  modalInput: {
-    ...typography.bodyMd,
-    color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.sm,
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  modalCancel: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalCancelText: { ...typography.labelMd, color: colors.textSecondary },
-  modalConfirm: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.danger,
-  },
-  modalConfirmDisabled: { opacity: 0.4 },
-  modalConfirmText: { ...typography.labelMd, color: colors.neutral0 },
 });
 
 export default StaffApprovalsScreen;

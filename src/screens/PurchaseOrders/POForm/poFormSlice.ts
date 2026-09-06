@@ -206,6 +206,55 @@ export const poFormSlice = createAppSlice({
       },
     ),
 
+    /**
+     * Load a staff approval request back into the form so the owner can see
+     * what they are approving.
+     *
+     * Inverts buildSavePayload rather than reusing loadForEdit, which takes a
+     * serialized PurchaseOrder and would be wrong here three times over: the
+     * payload names its quantities orderedQty/unitCost, it carries no line ids
+     * (which every updateLine/removeLine targets and React keys on), and its
+     * optional keys are OMITTED, so `expectedDate.slice(0, 10)` throws.
+     *
+     * `isEditMode` and `editingId` are deliberately left alone. An approval
+     * request has no purchase order behind it yet, so a save from this state
+     * must not become updatePurchaseOrderAPI(undefined, …).
+     *
+     * Names are passed in, not looked up: the reducer cannot reach the vendor
+     * and inventory lists, and the payload only stores ids.
+     */
+    loadFromRequestPayload: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          payload: Partial<PurchaseOrderWritePayload>;
+          vendorName: string;
+          itemNames: Record<string, string>;
+        }>,
+      ) => {
+        const { payload, vendorName, itemNames } = action.payload;
+        state.poNumber = '';
+        state.vendorId = payload.vendorId ?? '';
+        state.vendorName = vendorName;
+        state.orderDate = (payload.orderDate ?? '').slice(0, 10);
+        state.expectedDate = (payload.expectedDate ?? '').slice(0, 10);
+        state.notes = payload.notes ?? '';
+        state.lines = (Array.isArray(payload.lines) ? payload.lines : []).map(l => ({
+          ...freshLine(),
+          itemId: l?.itemId ?? '',
+          itemName: (l?.itemId && itemNames[l.itemId]) || '',
+          description: l?.description ?? '',
+          quantity: String(parseFloat(String(l?.orderedQty ?? '')) || 0),
+          unitPrice: String(parseFloat(String(l?.unitCost ?? '')) || 0),
+        }));
+        // A request with no usable lines cannot be reviewed meaningfully; the
+        // screen checks for this and refuses rather than showing a blank form.
+        if (state.lines.length === 0) state.lines = [freshLine()];
+        state.errors = {};
+        recalc(state);
+      },
+    ),
+
     resetForm: create.reducer(state => {
       Object.assign(state, { ...initialState, lines: [freshLine()] });
     }),
@@ -329,6 +378,7 @@ export const {
   updateLine,
   setLineItem,
   loadForEdit,
+  loadFromRequestPayload,
   resetForm,
   savePurchaseOrder,
   fetchPOForEdit,

@@ -36,6 +36,7 @@ import {
   setVendor,
   setLineItem,
   updateLine,
+  loadFromRequestPayload,
 } from '../poFormSlice';
 
 const createPO = createPurchaseOrderAPI as jest.Mock;
@@ -208,5 +209,118 @@ describe('owner — a real purchase order comes back', () => {
     expect(result.error).toBeDefined();
     expect(store.getState().poForm.saveError).toBe('Vendor is required');
     expect(store.getState().poForm.isSaving).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+// Loading a staff request back into the form, for review
+// ═══════════════════════════════════════════════════════
+// The stored payload is buildSavePayload's output, which does NOT match what
+// the form holds: it names quantities orderedQty/unitCost, carries no line ids,
+// and omits its optional keys entirely. loadForEdit — the reducer that looks
+// like the obvious reuse — would throw on `expectedDate.slice(0, 10)` and set
+// isEditMode with an id that does not exist.
+
+describe('loadFromRequestPayload', () => {
+  const payload = {
+    vendorId: 'vendor-1',
+    orderDate: '2026-02-01',
+    expectedDate: '2026-02-15',
+    notes: 'Urgent',
+    lines: [
+      { description: 'Widget', orderedQty: '3', unitCost: '10', itemId: 'item-A' },
+      { description: 'Gadget', orderedQty: '2', unitCost: '25.5', itemId: 'item-B' },
+    ],
+  };
+  const names = { 'item-A': 'Widget', 'item-B': 'Gadget' };
+
+  const load = (
+    p: object,
+    vendorName = 'Acme',
+    itemNames: Record<string, string> = names,
+  ) => {
+    const store = makeStore();
+    store.dispatch(loadFromRequestPayload({ payload: p as any, vendorName, itemNames }));
+    return store.getState().poForm;
+  };
+
+  it('maps the payload key names onto the form key names', () => {
+    const form = load(payload);
+
+    expect(form.vendorId).toBe('vendor-1');
+    expect(form.vendorName).toBe('Acme');
+    expect(form.orderDate).toBe('2026-02-01');
+    expect(form.expectedDate).toBe('2026-02-15');
+    expect(form.notes).toBe('Urgent');
+    expect(form.lines).toHaveLength(2);
+    expect(form.lines[0]).toMatchObject({
+      itemId: 'item-A',
+      itemName: 'Widget',
+      description: 'Widget',
+      quantity: '3',
+      unitPrice: '10',
+    });
+  });
+
+  it('mints a unique id for every line', () => {
+    const form = load(payload);
+    const ids = form.lines.map(l => l.id);
+
+    // Every updateLine/removeLine targets this id, and React keys on it.
+    expect(ids.every(Boolean)).toBe(true);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('recalculates the totals rather than trusting the payload', () => {
+    const form = load(payload);
+
+    expect(form.lines[0].amount).toBe(30);
+    expect(form.lines[1].amount).toBe(51);
+    expect(form.total).toBe(81);
+  });
+
+  // The exact shape that breaks loadForEdit: @IsOptional() means the writer
+  // omits these keys rather than blanking them.
+  it('survives a payload with every optional key omitted', () => {
+    const form = load({
+      vendorId: 'vendor-1',
+      orderDate: '2026-02-01',
+      lines: [{ description: 'Widget', orderedQty: '1', unitCost: '5' }],
+    });
+
+    expect(form.expectedDate).toBe('');
+    expect(form.notes).toBe('');
+    expect(form.lines[0].itemId).toBe('');
+    expect(form.lines[0].quantity).toBe('1');
+  });
+
+  it('leaves an unknown item id unnamed rather than throwing', () => {
+    const form = load(
+      { vendorId: 'v', orderDate: '2026-02-01', lines: [{ orderedQty: '1', unitCost: '5', itemId: 'gone' }] },
+      'Acme',
+      {},
+    );
+
+    expect(form.lines[0].itemName).toBe('');
+    expect(form.lines[0].itemId).toBe('gone');
+  });
+
+  // The whole point of not reusing loadForEdit: an approval request has no
+  // purchase order behind it, so a later save must stay a CREATE. In edit mode
+  // it would become updatePurchaseOrderAPI(undefined, …).
+  it('does not put the form into edit mode', () => {
+    const form = load(payload);
+
+    expect(form.isEditMode).toBe(false);
+    expect(form.editingId).toBe('');
+    expect(form.poNumber).toBe('');
+  });
+
+  it('never leaves the line list empty', () => {
+    const form = load({ vendorId: 'v', orderDate: '2026-02-01', lines: [] });
+
+    // The screen refuses a request with no lines, but the reducer must not
+    // hand the form an empty array either — every render indexes lines[0].
+    expect(form.lines).toHaveLength(1);
   });
 });

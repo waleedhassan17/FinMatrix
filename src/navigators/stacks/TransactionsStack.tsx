@@ -54,7 +54,15 @@ export type TransactionsStackParamList = {
   POList: undefined;
   // prefillItemId seeds the first line from an inventory item, so "Create PO"
   // on an item detail lands on a form that already knows what to reorder.
-  POForm: { poId?: string; prefillItemId?: string } | undefined;
+  //
+  // fromApprovalRequestId opens a staff request read-only, so the owner can see
+  // the vendor, dates and every line before approving instead of deciding off
+  // the one-line summary. Passed as an ID rather than a payload, for the same
+  // reasons CreditMemoForm's fromDeliveryRequestId is: it cannot go stale in
+  // the back stack, and a deep link works.
+  POForm:
+    | { poId?: string; prefillItemId?: string; fromApprovalRequestId?: string }
+    | undefined;
   PODetail: { poId: string };
   JournalEntryList: undefined;
   JournalEntryForm: { entryId?: string } | undefined;

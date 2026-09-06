@@ -51,6 +51,30 @@ const MyRequestsScreen: React.FC = () => {
     [dispatch],
   );
 
+  /**
+   * See what you actually submitted. Read-only in both directions: this screen
+   * cannot approve anything, and the form it opens shows no decision buttons
+   * for a role without approvals.decide.
+   *
+   * My requests sits in the staff More tab and POForm in the Transactions tab,
+   * so the hop goes through the parent tab navigator with `initial: false` —
+   * otherwise that stack initialises holding only POForm and back falls
+   * through to the Dashboard.
+   */
+  const openRequest = useCallback(
+    (id: string) => {
+      const tabs = (navigation.getParent() ?? navigation) as unknown as {
+        navigate: (name: string, params?: Record<string, unknown>) => void;
+      };
+      tabs.navigate('TransactionsStack', {
+        screen: 'POForm',
+        params: { fromApprovalRequestId: id },
+        initial: false,
+      });
+    },
+    [navigation],
+  );
+
   // Refetch on focus: a request approved by the owner while this screen sat in
   // the background would otherwise still read "awaiting".
   useFocusEffect(
@@ -133,6 +157,9 @@ const MyRequestsScreen: React.FC = () => {
         renderItem={({ item }) => (
           <ApprovalRequestCard
             request={item}
+            // Purchase orders are the only type that can be reopened in its
+            // own form so far; the rest must not look tappable.
+            onPress={item.type === 'po' ? () => openRequest(item.id) : undefined}
             actions={
               isPendingApproval(item) ? (
                 <TouchableOpacity
