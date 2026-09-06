@@ -43,7 +43,13 @@ jobs:
         run: npm run lint
         continue-on-error: true
 
-      # No test files exist yet; --passWithNoTests keeps this honest rather
-      # than green-by-absence once the first spec lands.
+      # A real gate now: 11 suites covering the capability matrix, the staff
+      # route allow-list, the serializers, two redux slices and the cross-tab
+      # navigation invariant. --passWithNoTests is kept only so a checkout that
+      # legitimately has none does not fail here.
+      #
+      # Note the type-check above DOES cover these: the "__tests__" entry in
+      # tsconfig's exclude resolves to ./__tests__ at the repo root, not to the
+      # nested src/**/__tests__ dirs, so a type error in a spec fails the build.
       - name: Unit tests
         run: npx jest --passWithNoTests
