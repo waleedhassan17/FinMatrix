@@ -45,6 +45,7 @@ import {
   ErrorBlock,
 } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
+import { useCapability } from '../../../hooks/useCapability';
 import {
   fetchPODetail,
   updatePOStatus,
@@ -93,6 +94,9 @@ const PODetailScreen: React.FC = () => {
   // detail payload, so both are resolved here from their own lists.
   const inventory = useAppSelector(selectInventoryItems);
   const vendors = useAppSelector(selectVendors);
+  // PATCH /purchase-orders/:id is owner-only at the server, so for staff Edit
+  // is a button that can only 403. Sending and closing are theirs.
+  const editCap = useCapability('purchaseOrder.edit');
 
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -181,7 +185,12 @@ const PODetailScreen: React.FC = () => {
       if (!po) return;
       const result: any = await dispatch(updatePOStatus({ id: po.id, status }));
       if (result.error) {
-        Alert.alert('Error', 'Failed to update purchase order.');
+        // What the server said, not a generic stand-in: this path spent its
+        // life reporting "Failed to update purchase order." for a permission
+        // refusal that arrived here already worded ("You do not have
+        // permission for this action."), which made a role problem look like
+        // an outage. Same shape as handleSaveReceive below.
+        Alert.alert('Error', result.error?.message || 'Failed to update purchase order.');
         return;
       }
       const updated = purchaseOrderSingleSerializer(result.payload);
@@ -543,15 +552,17 @@ const PODetailScreen: React.FC = () => {
             {/* Draft: Edit + Send */}
             {po.status === 'draft' && (
               <>
-                <View style={styles.actionSecondary}>
-                  <CustomButton
-                    title="Edit"
-                    onPress={() => navigation.push('POForm', { poId: po.id })}
-                    variant="secondary"
-                    size="sm"
-                    fullWidth
-                  />
-                </View>
+                {editCap.allowed && (
+                  <View style={styles.actionSecondary}>
+                    <CustomButton
+                      title="Edit"
+                      onPress={() => navigation.push('POForm', { poId: po.id })}
+                      variant="secondary"
+                      size="sm"
+                      fullWidth
+                    />
+                  </View>
+                )}
                 <View style={styles.actionPrimary}>
                   <CustomButton
                     title="Send to Vendor"

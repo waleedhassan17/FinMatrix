@@ -46,6 +46,7 @@ describe('capabilities — Table A', () => {
       'personnel.manage',
       'stock.receive',
       'inventory.manageItems',
+      'purchaseOrder.updateStatus',
     ];
 
     it.each(directForStaff)('%s completes immediately', capability => {
@@ -85,6 +86,28 @@ describe('capabilities — Table A', () => {
       // being listed there. Guards the tempting "tidy-up" of merging the two.
       expect(can('staff', 'delivery.approveCompletion')).toBe(false);
       expect(GOVERNANCE_CAPABILITIES).not.toContain('delivery.approveCompletion');
+    });
+
+    it('staff SEND a purchase order but never rewrite one', () => {
+      // The three PO capabilities are three different answers, and the pair
+      // that is easy to collapse is create/edit. Creating is a request: no PO
+      // exists until the owner approves it. Editing an approved one is refused
+      // outright — it would rewrite the vendor, quantities and costs that
+      // approval signed off, with nobody asked.
+      expect(capabilityFor('staff', 'purchaseOrder.create')).toBe('request');
+      expect(capabilityFor('staff', 'purchaseOrder.edit')).toBe(false);
+
+      // Sending posts nothing, and withholding it stranded an approved PO in
+      // draft: the detail screen only offers Receive Items once it is sent.
+      expect(capabilityFor('staff', 'purchaseOrder.updateStatus')).toBe('direct');
+      expect(capabilityFor('admin', 'purchaseOrder.edit')).toBe('direct');
+
+      // Refused, not queued — there is no request path for editing a PO.
+      expect(needsApproval('staff', 'purchaseOrder.edit')).toBe(false);
+
+      // Not governance: staff reach purchase orders everywhere else, so this
+      // must not be tidied into the set they never see at all.
+      expect(GOVERNANCE_CAPABILITIES).not.toContain('purchaseOrder.edit');
     });
   });
 

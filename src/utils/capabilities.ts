@@ -33,6 +33,7 @@ export type Capability =
   | 'personnel.manage'
   | 'stock.receive'
   | 'inventory.manageItems'
+  | 'purchaseOrder.updateStatus'
   // ── Money out & corrections: needs the owner ────────────────────────────
   | 'inventory.adjust'
   | 'journal.post'
@@ -41,6 +42,7 @@ export type Capability =
   | 'transaction.void'
   | 'bill.pay'
   | 'purchaseOrder.create'
+  | 'purchaseOrder.edit'
   | 'delivery.undo'
   // ── Governance: owner only ──────────────────────────────────────────────
   | 'approvals.decide'
@@ -74,6 +76,11 @@ const STAFF_CAPABILITIES: Record<Capability, CapabilityOutcome> = {
   'personnel.manage': 'direct',
   'stock.receive': 'direct',
   'inventory.manageItems': 'direct',
+  // Send to vendor / close. Posts nothing — the order is a commitment, not a
+  // transaction — and the owner's control point is approving the PO into
+  // existence. Gating it only stranded an approved PO in draft, since
+  // receiving against it requires 'sent'.
+  'purchaseOrder.updateStatus': 'direct',
 
   // Money out and corrections — prepared by staff, approved by the owner.
   'inventory.adjust': 'request',
@@ -95,6 +102,14 @@ const STAFF_CAPABILITIES: Record<Capability, CapabilityOutcome> = {
   // staff never reach at all, and staff very much still reach this queue —
   // they submit to it, watch it, and reject from it.
   'delivery.approveCompletion': false,
+
+  // Rewriting an existing PO — vendor, quantities, costs — is refused outright
+  // rather than queued: the owner already approved this order into existence,
+  // and an edit would undo that signature without asking anyone. Note the pair
+  // this makes with 'purchaseOrder.create' above, which staff very much do
+  // reach, as a request. Not governance for the same reason as the delivery
+  // sign-off: staff are all over purchase orders otherwise.
+  'purchaseOrder.edit': false,
 
   // Governance — the owner's alone, and a 403 at the server for staff.
   'approvals.decide': false,
