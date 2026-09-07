@@ -14,8 +14,14 @@ const toNum = (v: any): number => {
   return isNaN(n) ? 0 : n;
 };
 
-/** Reverse of the slice's `toBackendPaymentMethod`. */
-function toUiPaymentMethod(method: string): PaymentMethod {
+/**
+ * Reverse of the slice's `toBackendPaymentMethod`.
+ *
+ * Exported because reviewing a staff payment request has to run it the same
+ * way: the stored payload holds the API's vocabulary, and an unmapped value
+ * must land on something the dropdown can show rather than leaving it blank.
+ */
+export function toUiPaymentMethod(method: string): PaymentMethod {
   switch (method) {
     case 'check':
       return 'cheque';

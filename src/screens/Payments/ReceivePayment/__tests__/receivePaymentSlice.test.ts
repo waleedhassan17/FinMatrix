@@ -107,3 +107,153 @@ describe('owner — the payment posts', () => {
     expect(body.paymentMethod).toBe('check');
   });
 });
+
+// ═══════════════════════════════════════════════════════
+// Loading a staff request back in, for review
+// ═══════════════════════════════════════════════════════
+// The owner opened a payment request and saw an EMPTY form: no customer,
+// Amount 0, no allocations. The screen fetched the request for its banner and
+// never put the payload anywhere. These pin the reconstruction.
+//
+// It is two-phase on purpose. outstandingRows are built from allInvoices, and
+// fetchAllInvoicesForPayment REBUILDS them (allocated: 0, checked: false) when
+// it lands — so allocations applied before that arrives are silently wiped.
+
+import {
+  loadFromRequestPayload,
+  applyRequestAllocations,
+  fetchAllInvoicesForPayment,
+} from '../receivePaymentSlice';
+
+const payload = {
+  customerId: 'cust-1',
+  paymentDate: '2026-09-07',
+  paymentMethod: 'bank_transfer',
+  amount: '60000.00',
+  reference: 'PAY-000123',
+  memo: 'Cleared by cheque deposit',
+  applications: [{ invoiceId: 'inv-1', amount: '60000.00' }],
+};
+
+/** An invoice list shaped as the serializer leaves it. */
+const invoiceRow = (id: string, total: number, amountPaid = 0) => ({
+  id,
+  invoiceNumber: `INV-${id}`,
+  customerId: 'cust-1',
+  status: 'sent',
+  dueDate: '2026-10-07',
+  total: String(total),
+  amountPaid: String(amountPaid),
+  lines: [] as unknown[],
+});
+
+const withInvoices = (store: ReturnType<typeof makeStore>, rows: object[]) =>
+  store.dispatch({
+    type: fetchAllInvoicesForPayment.fulfilled.type,
+    payload: { invoices: rows.map(r => r as never) },
+  });
+
+describe('loadFromRequestPayload — phase one', () => {
+  const load = (p: object, customerName = 'Acme Ltd') => {
+    const store = makeStore();
+    store.dispatch(loadFromRequestPayload({ payload: p as never, customerName }));
+    return store.getState().receivePayment;
+  };
+
+  it('reconstructs every scalar the staff member entered', () => {
+    const form = load(payload);
+
+    expect(form.customerId).toBe('cust-1');
+    expect(form.customerName).toBe('Acme Ltd');
+    expect(form.paymentDate).toBe('2026-09-07');
+    expect(form.amount).toBe('60000.00');
+    // The payload's `memo` is the form's `notes` — a rename easy to miss.
+    expect(form.notes).toBe('Cleared by cheque deposit');
+  });
+
+  // The mount effect stamps a fresh PAY-xxxxxx; a review must show the number
+  // the staff member actually used, not a new one.
+  it('overwrites the auto-generated reference', () => {
+    expect(load(payload).reference).toBe('PAY-000123');
+  });
+
+  it('maps the API method vocabulary back to the one the form uses', () => {
+    expect(load({ ...payload, paymentMethod: 'check' }).method).toBe('cheque');
+    expect(load({ ...payload, paymentMethod: 'bank_transfer' }).method).toBe('bank_transfer');
+    expect(load({ ...payload, paymentMethod: 'cash' }).method).toBe('cash');
+    // Unmapped must land on something the dropdown can show, never blank.
+    expect(load({ ...payload, paymentMethod: 'crypto' }).method).toBe('online');
+    expect(load({ ...payload, paymentMethod: undefined }).method).toBe('online');
+  });
+
+  it('survives a payload with every optional key omitted', () => {
+    const form = load({ customerId: 'cust-1', paymentDate: '2026-09-07', amount: '10.00' });
+
+    expect(form.reference).toBe('');
+    expect(form.notes).toBe('');
+    expect(form.amount).toBe('10.00');
+  });
+});
+
+describe('applyRequestAllocations — phase two', () => {
+  const loaded = (p: object = payload, rows = [invoiceRow('inv-1', 60000)]) => {
+    const store = makeStore();
+    withInvoices(store, rows);
+    store.dispatch(loadFromRequestPayload({ payload: p as never, customerName: 'Acme Ltd' }));
+    return store;
+  };
+
+  it('puts the allocation on the matching row', () => {
+    const store = loaded();
+    store.dispatch(applyRequestAllocations(payload.applications));
+
+    const row = store.getState().receivePayment.outstandingRows.find(r => r.invoiceId === 'inv-1');
+    expect(row?.allocated).toBe(60000);
+    expect(row?.checked).toBe(true);
+  });
+
+  it('splits across several invoices exactly as submitted', () => {
+    const store = loaded(payload, [invoiceRow('inv-1', 60000), invoiceRow('inv-2', 40000)]);
+    store.dispatch(
+      applyRequestAllocations([
+        { invoiceId: 'inv-1', amount: '25000.00' },
+        { invoiceId: 'inv-2', amount: '15000.00' },
+      ]),
+    );
+
+    const rows = store.getState().receivePayment.outstandingRows;
+    // Not redistributed oldest-first: this is a replay of a split someone chose.
+    expect(rows.find(r => r.invoiceId === 'inv-1')?.allocated).toBe(25000);
+    expect(rows.find(r => r.invoiceId === 'inv-2')?.allocated).toBe(15000);
+  });
+
+  // The invoice may have been paid another way since, or fall outside the page
+  // this screen fetches. The amount still tells the owner what they approve.
+  it('ignores an allocation whose row is gone, without throwing', () => {
+    const store = loaded();
+    expect(() =>
+      store.dispatch(applyRequestAllocations([{ invoiceId: 'vanished', amount: '5.00' }])),
+    ).not.toThrow();
+    expect(store.getState().receivePayment.outstandingRows[0].allocated).toBe(0);
+  });
+
+  it('never allocates more than the invoice still owes', () => {
+    const store = loaded(payload, [invoiceRow('inv-1', 100, 0)]);
+    store.dispatch(applyRequestAllocations([{ invoiceId: 'inv-1', amount: '999.00' }]));
+
+    expect(store.getState().receivePayment.outstandingRows[0].allocated).toBe(100);
+  });
+
+  it('survives malformed applications', () => {
+    const store = loaded();
+    expect(() =>
+      store.dispatch(
+        applyRequestAllocations([
+          { amount: '5.00' },
+          { invoiceId: 'inv-1' },
+          null as never,
+        ]),
+      ),
+    ).not.toThrow();
+  });
+});

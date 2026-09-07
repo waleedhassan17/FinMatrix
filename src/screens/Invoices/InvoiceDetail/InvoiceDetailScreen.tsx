@@ -14,6 +14,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
+import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -225,26 +226,35 @@ const InvoiceDetailScreen: React.FC = () => {
     );
   }
 
-  // The same button in two status branches, so it is built once. Locked while a
-  // request for this invoice is outstanding; it unlocks by itself when the owner
-  // decides, because the request stops coming back as pending.
-  const recordPaymentAction = (
+  // The same action in two status branches, so it is built once.
+  //
+  // A badge rather than a disabled button, following the delivery sign-off:
+  // "State, not a disabled control: a greyed-out Approve reads as 'try again
+  // later', which is wrong. Someone else signs this off." The same is true
+  // here — nothing the staff member does will unlock it, the owner has to
+  // decide. It also fixes the layout: a faded primary kept "Waiting for
+  // approval" on two lines beside Share and Remind, because CustomButton sets
+  // no numberOfLines and the label simply wrapped, growing the whole bar.
+  const recordPaymentAction = paymentAwaitingApproval ? (
+    <View style={styles.actionPrimary}>
+      <View style={styles.waitingBadge}>
+        <Feather name="clock" size={13} color={colors.warning} />
+        <Text style={styles.waitingBadgeText}>Awaiting approval</Text>
+      </View>
+    </View>
+  ) : (
     <View style={styles.actionPrimary}>
       <CustomButton
-        title={paymentAwaitingApproval ? 'Waiting for approval' : 'Record Payment'}
-        onPress={
-          paymentAwaitingApproval
-            ? undefined
-            : () =>
-                navigation.navigate('ReceivePayment', {
-                  customerId: invoice.customerId,
-                  invoiceId: invoice.id,
-                })
+        title="Record Payment"
+        onPress={() =>
+          navigation.navigate('ReceivePayment', {
+            customerId: invoice.customerId,
+            invoiceId: invoice.id,
+          })
         }
         variant="primary"
         size="sm"
         fullWidth
-        disabled={paymentAwaitingApproval}
       />
     </View>
   );
@@ -256,7 +266,7 @@ const InvoiceDetailScreen: React.FC = () => {
     <ReportContainer>
       <ReportHeader
         title={invoice.invoiceNumber}
-        subtitle={invoice.customerName}
+        subtitle={invoice.customerName || customer?.name}
         onBack={() => navigation.goBack()}
       />
 
@@ -309,7 +319,15 @@ const InvoiceDetailScreen: React.FC = () => {
 
           {/* ── Bill To ───────────────────────────── */}
           <Text style={styles.sectionLabel}>Bill To</Text>
-          <Text style={styles.billToName}>{invoice.customerName}</Text>
+          {/* GET /invoices/:id does not carry customerName — only the LIST
+              endpoint decorates rows from its customerNameMap — so this read
+              blank for every invoice, always. The customer is already resolved
+              above for the PDF and the WhatsApp lookup; using it here is the
+              fix, and it works against the deployed backend rather than waiting
+              on a release. Same fallback the forms use. */}
+          <Text style={styles.billToName}>
+            {invoice.customerName || customer?.name || '—'}
+          </Text>
 
           <View style={styles.divider} />
 
@@ -673,6 +691,23 @@ const styles = StyleSheet.create({
     ...shadows.xs,
   },
   actionPrimary: { flex: 1.4 },
+  // Mirrors InventoryApprovalScreen's waitingBadge: warning tint, clock, and
+  // centred text that wraps gracefully rather than distorting the bar.
+  waitingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.warning + '1A',
+  },
+  waitingBadgeText: {
+    ...typography.labelSm,
+    color: colors.warning,
+    textAlign: 'center',
+  },
   actionSecondary: { flex: 1 },
   actionShare: { flex: 1 },
 });

@@ -45,6 +45,8 @@ import {
   setPaymentErrors,
   toggleSaveOverpaymentAsCredit,
   preselectInvoice,
+  loadFromRequestPayload,
+  applyRequestAllocations,
   resetReceivePayment,
   fetchAllInvoicesForPayment,
   savePayment,
@@ -91,6 +93,7 @@ const ReceivePaymentScreen: React.FC = () => {
   const [request, setRequest] = useState<ApprovalRequest | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
+  const allocationsAppliedRef = React.useRef(false);
 
   const form = useAppSelector(selectReceivePaymentState);
   const customers = useAppSelector(selectCustomers);
@@ -119,7 +122,11 @@ const ReceivePaymentScreen: React.FC = () => {
   useEffect(() => {
     if (customers.length === 0) dispatch(fetchCustomers());
     dispatch(fetchAllInvoicesForPayment());
-    dispatch(setPaymentField({ key: 'reference', value: generatePaymentNumber() }));
+    // Not in review mode: the request carries its own reference, and a fresh
+    // PAY-xxxxxx here would be a number the staff member never used.
+    if (!isReviewing) {
+      dispatch(setPaymentField({ key: 'reference', value: generatePaymentNumber() }));
+    }
     return () => { dispatch(resetReceivePayment()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
@@ -225,14 +232,42 @@ const ReceivePaymentScreen: React.FC = () => {
           bail('Only customer payment requests can be opened here.');
           return;
         }
+        const payload = (req.payload ?? {}) as Record<string, any>;
         setRequest(req);
+        dispatch(
+          loadFromRequestPayload({
+            payload,
+            customerName:
+              customers.find(c => c.id === payload.customerId)?.name ?? '',
+          }),
+        );
       } catch (e: any) {
         bail(e?.message || 'Please try again.');
       }
     })();
 
     return () => { cancelled = true; };
-  }, [approvalRequestId, navigation]);
+  }, [approvalRequestId, customers, dispatch, navigation]);
+
+  // Phase two: the allocations, once the rows they attach to exist.
+  //
+  // Separate because outstandingRows are built from allInvoices, and
+  // fetchAllInvoicesForPayment rebuilds them from scratch when it lands — so
+  // anything applied before that arrives is wiped. Chained off the rows
+  // appearing, exactly as the preselectInvoice effect above is.
+  useEffect(() => {
+    if (!request || allocationsAppliedRef.current) return;
+    if (form.outstandingRows.length === 0) return;
+    const applications = (request.payload as { applications?: unknown })?.applications;
+    // Omitted entirely for a pure prepayment — the amount is then the whole
+    // story, and there is nothing to attach.
+    if (!Array.isArray(applications)) {
+      allocationsAppliedRef.current = true;
+      return;
+    }
+    allocationsAppliedRef.current = true;
+    dispatch(applyRequestAllocations(applications as Array<{ invoiceId?: string; amount?: string }>));
+  }, [request, form.outstandingRows.length, dispatch]);
 
   // ── Deciding a request under review ─────────────
   const decide = useCallback(
@@ -345,8 +380,14 @@ const ReceivePaymentScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
       <ReportHeader
-        title={'Receive Payment'}
-        subtitle={'Record an incoming payment'}
+        title={isReviewing ? 'Review request' : 'Receive Payment'}
+        subtitle={
+          isReviewing
+            ? request?.requestedBy
+              ? `Raised by ${request.requestedBy}`
+              : 'Raised by a staff member'
+            : 'Record an incoming payment'
+        }
         onBack={() => navigation.goBack()}
       />
 
@@ -360,16 +401,27 @@ const ReceivePaymentScreen: React.FC = () => {
             <View style={styles.reviewBanner}>
               <Feather name="clock" size={16} color={colors.warning} />
               <View style={{ flex: 1, marginLeft: spacing.xs }}>
-                <Text style={styles.reviewBannerTitle}>Waiting for your decision</Text>
+                <Text style={styles.reviewBannerTitle}>
+                  {request ? 'Waiting for your decision' : 'Loading request…'}
+                </Text>
                 <Text style={styles.reviewBannerBody}>
                   {request?.summary || 'A staff member asked you to record this payment.'}
                 </Text>
                 <Text style={styles.reviewBannerBody}>
                   {APPROVAL_TYPE_EFFECTS.invoice_payment}
                 </Text>
+                {!!request?.reason && (
+                  <Text style={styles.reviewBannerBody}>Reason given: {request.reason}</Text>
+                )}
               </View>
             </View>
           )}
+
+          {/* Nothing is editable while reviewing: approving replays the payload
+              exactly as submitted, so an edit here would be a lie. "Open
+              invoice" is the way to change anything. Gated at the container
+              because DateField and the allocation rows have no disabled prop. */}
+          <View pointerEvents={isReviewing ? 'none' : 'auto'}>
 
           {/* ── Payment Details ─────────────────────── */}
           <View style={styles.sectionLabelRow}>
@@ -550,6 +602,8 @@ const ReceivePaymentScreen: React.FC = () => {
                 multiline
               />
             </View>
+          </View>
+
           </View>
 
           <View style={{ height: spacing.xxl }} />

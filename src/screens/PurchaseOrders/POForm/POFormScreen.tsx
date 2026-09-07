@@ -149,13 +149,15 @@ const POFormScreen: React.FC = () => {
 
   // Load the approval request and put its payload back in the form.
   //
-  // Waits on vendors and items for the same reason the prefill below does: the
-  // payload stores ids only, and a review screen that shows a bare uuid where
-  // the vendor should be is not a review. `cancelled` rather than a ref for the
-  // async part, following CreditMemoFormScreen's reversal loader.
+  // Deliberately NOT gated on vendors and items having arrived. Waiting for a
+  // lookup list means a 403 or an offline device leaves the owner staring at a
+  // blank form with no explanation — and they can approve from it.
+  // CustomDropdown resolves its label from its own options at render, so
+  // setting the id is enough; the names fill in when the lists land.
+  // `cancelled` rather than a ref for the async part, following
+  // CreditMemoFormScreen's reversal loader.
   useEffect(() => {
     if (!approvalRequestId || requestLoadedRef.current) return;
-    if (vendors.length === 0 || items.length === 0) return;
     requestLoadedRef.current = true;
 
     let cancelled = false;

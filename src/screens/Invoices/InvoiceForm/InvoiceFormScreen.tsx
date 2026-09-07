@@ -196,11 +196,15 @@ const InvoiceFormScreen: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, editingId, isReviewing, dispatch]);
 
-  // Load the approval request and put its payload back in the form. Waits on
-  // customers so the review shows a name rather than a uuid.
+  // Load the approval request and put its payload back in the form.
+  //
+  // Deliberately NOT gated on customers having arrived. Waiting for a lookup
+  // list means a company with none yet, a 403, or an offline device leaves the
+  // owner staring at a blank form with no explanation — and they can approve
+  // from it. CustomDropdown resolves its label from its own options at render,
+  // so setting the id is enough; the name fills in when the list lands.
   useEffect(() => {
     if (!approvalRequestId || requestLoadedRef.current) return;
-    if (customers.length === 0) return;
     requestLoadedRef.current = true;
 
     let cancelled = false;

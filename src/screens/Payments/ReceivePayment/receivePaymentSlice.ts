@@ -13,6 +13,7 @@ import type { Invoice, PaymentMethod } from '../../../types';
 import { getInvoicesAPI } from '../../../networks/sales/invoiceNetwork';
 import { createPaymentAPI } from '../../../networks/sales/paymentNetwork';
 import { invoiceListSerializer } from '../../../serializers/invoiceSerializer';
+import { toUiPaymentMethod } from '../../../serializers/paymentSerializer';
 
 /**
  * The UI's payment-method vocabulary differs from the backend's. Map the
@@ -210,6 +211,75 @@ export const receivePaymentSlice = createAppSlice({
       },
     ),
 
+    /**
+     * Load a staff approval request back into the form so the owner can see the
+     * figures they are approving. Phase one: everything that does not depend on
+     * the invoice list.
+     *
+     * Inverts what savePayment builds. Two renames to watch — the payload's
+     * `memo` is the form's `notes`, and `paymentMethod` carries the API's
+     * vocabulary, not the form's. Optional keys are OMITTED by the builder
+     * rather than blanked, so nothing here may assume a field is present; the
+     * auto-generated reference in particular has to be overwritten, not
+     * defaulted around.
+     *
+     * The customer name is passed in: the payload stores an id, and a review
+     * screen showing a bare uuid where the customer should be is not a review.
+     */
+    loadFromRequestPayload: create.reducer(
+      (
+        state,
+        action: PayloadAction<{ payload: Record<string, any>; customerName: string }>,
+      ) => {
+        const { payload, customerName } = action.payload;
+        state.customerId = payload.customerId ?? '';
+        state.customerName = customerName;
+        state.paymentDate = String(payload.paymentDate ?? '').slice(0, 10);
+        state.method = toUiPaymentMethod(String(payload.paymentMethod ?? ''));
+        state.amount = String(payload.amount ?? '');
+        state.reference = payload.reference ?? '';
+        state.notes = payload.memo ?? '';
+        state.errors = {};
+        // Rows come from allInvoices, which may not have arrived yet. Rebuilding
+        // here is harmless when it has; phase two puts the allocations on.
+        if (state.customerId) {
+          state.outstandingRows = buildOutstandingForCustomer(
+            state.allInvoices,
+            state.customerId,
+          );
+        }
+      },
+    ),
+
+    /**
+     * Phase two: put the request's allocations onto the rows, once they exist.
+     *
+     * Separate from the load above because outstandingRows are built from
+     * allInvoices, and fetchAllInvoicesForPayment rebuilds them from scratch
+     * when it lands — so allocations set before that arrives are wiped. The
+     * screen chains this off outstandingRows appearing, the same way
+     * preselectInvoice already does.
+     *
+     * Deliberately does NOT call autoDistribute: this is a replay of a split
+     * somebody already chose, and autoDistribute would redistribute it
+     * oldest-first and zero every row it considers unchecked.
+     */
+    applyRequestAllocations: create.reducer(
+      (state, action: PayloadAction<Array<{ invoiceId?: string; amount?: string }>>) => {
+        for (const app of action.payload) {
+          if (!app?.invoiceId) continue;
+          const row = state.outstandingRows.find(r => r.invoiceId === app.invoiceId);
+          // A row can legitimately be missing — the invoice may have been paid
+          // another way since, or fall outside the page this screen fetches.
+          // The amount above still tells the owner what they are approving.
+          if (!row) continue;
+          const amount = parseFloat(String(app.amount ?? '')) || 0;
+          row.allocated = Math.min(amount, row.balance);
+          row.checked = row.allocated > 0;
+        }
+      },
+    ),
+
     resetReceivePayment: create.reducer(state => {
       Object.assign(state, { ...initialState });
     }),
@@ -323,6 +393,8 @@ export const {
   toggleSaveOverpaymentAsCredit,
   setPaymentErrors,
   preselectInvoice,
+  loadFromRequestPayload,
+  applyRequestAllocations,
   resetReceivePayment,
   fetchAllInvoicesForPayment,
   savePayment,
