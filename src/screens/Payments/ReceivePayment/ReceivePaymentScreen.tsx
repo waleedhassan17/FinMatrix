@@ -18,6 +18,13 @@ import {
   Dimensions,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
+import Toast from 'react-native-toast-message';
+import { useCapability } from '../../../hooks/useCapability';
+import { fetchApprovalById } from '../../../networks/approvals/approvalsNetwork';
+import { decideApproval } from '../../Approvals/approvalsSlice';
+import { APPROVAL_TYPE_EFFECTS, isPendingApproval } from '../../../models/approvalModel';
+import type { ApprovalRequest } from '../../../models/approvalModel';
+import RejectReasonModal from '../../Approvals/RejectReasonModal';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -73,6 +80,17 @@ const ReceivePaymentScreen: React.FC = () => {
 
   const preCustomerId = route.params?.customerId;
   const preInvoiceId = route.params?.invoiceId;
+  // Cash coming IN — the mirror of paying a bill, and gated the same way:
+  // staff prepare it, the owner posts it.
+  const payCap = useCapability('payment.receive');
+  // Set when arriving from the approvals inbox or My Requests.
+  const approvalRequestId = route.params?.fromApprovalRequestId;
+  const isReviewing = !!approvalRequestId;
+  const decideCap = useCapability('approvals.decide');
+  const requestLoadedRef = React.useRef(false);
+  const [request, setRequest] = useState<ApprovalRequest | null>(null);
+  const [deciding, setDeciding] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
 
   const form = useAppSelector(selectReceivePaymentState);
   const customers = useAppSelector(selectCustomers);
@@ -186,6 +204,102 @@ const ReceivePaymentScreen: React.FC = () => {
     });
   }, [successOpacity, navigation]);
 
+  // Load the request so the owner sees the amount, date and method that were
+  // asked for. The form's own fields are populated from it below.
+  useEffect(() => {
+    if (!approvalRequestId || requestLoadedRef.current) return;
+    requestLoadedRef.current = true;
+
+    let cancelled = false;
+    const bail = (text2: string) => {
+      if (cancelled) return;
+      Toast.show({ type: 'error', text1: 'Could not open this request', text2 });
+      navigation.goBack();
+    };
+
+    (async () => {
+      try {
+        const req = await fetchApprovalById(approvalRequestId);
+        if (cancelled) return;
+        if (req?.type !== 'invoice_payment') {
+          bail('Only customer payment requests can be opened here.');
+          return;
+        }
+        setRequest(req);
+      } catch (e: any) {
+        bail(e?.message || 'Please try again.');
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [approvalRequestId, navigation]);
+
+  // ── Deciding a request under review ─────────────
+  const decide = useCallback(
+    async (decision: 'approve' | 'reject', comment?: string) => {
+      if (!request || deciding) return null;
+      setDeciding(true);
+      try {
+        const result: any = await dispatch(
+          decideApproval({ id: request.id, decision, comment }),
+        );
+        if (result.error) throw new Error(result.error.message);
+        return result.payload as ApprovalRequest;
+      } catch (e: any) {
+        Toast.show({
+          type: 'error',
+          text1: decision === 'approve' ? 'Could not approve' : 'Could not reject',
+          text2: e?.message || 'Please try again.',
+        });
+        return null;
+      } finally {
+        setDeciding(false);
+      }
+    },
+    [request, deciding, dispatch],
+  );
+
+  const handleApprove = useCallback(async () => {
+    const decided = await decide('approve');
+    if (!decided) return;
+    await dispatch(fetchInvoices());
+    Toast.show({
+      type: 'success',
+      text1: 'Payment recorded',
+      text2: 'The invoice balance has been updated.',
+    });
+    navigation.goBack();
+  }, [decide, dispatch, navigation]);
+
+  // Approving replays the amount exactly as asked for. To change it, the owner
+  // records the payment themselves on the real screen — this drops them there
+  // with the customer and invoice already selected.
+  const handleOpenInvoice = useCallback(() => {
+    const payload = (request?.payload ?? {}) as Record<string, any>;
+    const invoiceId = Array.isArray(payload.applications)
+      ? payload.applications[0]?.invoiceId
+      : undefined;
+    navigation.replace('ReceivePayment', {
+      customerId: payload.customerId,
+      invoiceId,
+    });
+  }, [request, navigation]);
+
+  const handleReject = useCallback(
+    async (comment: string) => {
+      setRejectOpen(false);
+      const decided = await decide('reject', comment);
+      if (!decided) return;
+      Toast.show({
+        type: 'success',
+        text1: 'Request rejected',
+        text2: 'The requester sees your reason in My requests.',
+      });
+      navigation.goBack();
+    },
+    [decide, navigation],
+  );
+
   const handleSave = useCallback(async () => {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -197,6 +311,20 @@ const ReceivePaymentScreen: React.FC = () => {
     try {
       const result: any = await dispatch(savePayment());
       if (result.error) throw new Error(result.error.message);
+
+      // Staff get an approval request back, and no cash has moved. The
+      // "Payment Recorded!" screen below would not merely be wrong, it reads
+      // as a receipt — proof to a customer that they have paid.
+      if (result.payload?.pending) {
+        Toast.show({
+          type: 'success',
+          text1: 'Sent to the owner for approval',
+          text2: 'The invoice stays unpaid until they approve the payment.',
+        });
+        navigation.goBack();
+        return;
+      }
+
       dispatch(fetchInvoices());
 
       const amt = formatCurrency(paymentAmount, 'Rs ');
@@ -211,7 +339,7 @@ const ReceivePaymentScreen: React.FC = () => {
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to record payment.');
     }
-  }, [dispatch, validate, paymentAmount, overpayment, form.saveOverpaymentAsCredit, form.customerName, animateSuccess]);
+  }, [dispatch, validate, paymentAmount, overpayment, form.saveOverpaymentAsCredit, form.customerName, animateSuccess, navigation]);
 
   // ═════════════════════════════════════════════════════
   return (
@@ -228,6 +356,21 @@ const ReceivePaymentScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {isReviewing && (
+            <View style={styles.reviewBanner}>
+              <Feather name="clock" size={16} color={colors.warning} />
+              <View style={{ flex: 1, marginLeft: spacing.xs }}>
+                <Text style={styles.reviewBannerTitle}>Waiting for your decision</Text>
+                <Text style={styles.reviewBannerBody}>
+                  {request?.summary || 'A staff member asked you to record this payment.'}
+                </Text>
+                <Text style={styles.reviewBannerBody}>
+                  {APPROVAL_TYPE_EFFECTS.invoice_payment}
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* ── Payment Details ─────────────────────── */}
           <View style={styles.sectionLabelRow}>
             <View style={[styles.sectionDot, { backgroundColor: colors.actionGreen }]} />
@@ -414,19 +557,65 @@ const ReceivePaymentScreen: React.FC = () => {
       </KeyboardAvoidingView>
 
       {/* ── Sticky Action Bar ─────────────────────── */}
-      <View style={styles.actionBar}>
-        <View style={{ flex: 1, marginRight: spacing.xs }}>
-          <SecondaryButton title="Cancel" onPress={() => navigation.goBack()} disabled={form.isSaving} />
+      {isReviewing ? (
+        decideCap.allowed && request && isPendingApproval(request) ? (
+          <View style={styles.actionBar}>
+            <View style={{ flex: 1, marginRight: spacing.xs }}>
+              <SecondaryButton
+                title="Reject"
+                onPress={() => setRejectOpen(true)}
+                disabled={deciding}
+              />
+            </View>
+            {/* Approving replays the figures as asked. To change them, record
+                it yourself on the real screen — same destination, prefilled. */}
+            <View style={{ flex: 1, marginRight: spacing.xs }}>
+              <SecondaryButton
+                title="Open invoice"
+                onPress={handleOpenInvoice}
+                disabled={deciding}
+              />
+            </View>
+            <View style={{ flex: 1.2 }}>
+              <PrimaryButton
+                title={deciding ? 'Approving…' : 'Approve'}
+                onPress={handleApprove}
+                isLoading={deciding}
+                icon={<Feather name="check" size={16} color={colors.neutral0} />}
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.actionBar}>
+            <Text style={styles.reviewNoteText}>
+              {request && !isPendingApproval(request)
+                ? 'This request has already been decided.'
+                : 'Only the owner can approve or reject a request.'}
+            </Text>
+          </View>
+        )
+      ) : (
+        <View style={styles.actionBar}>
+          <View style={{ flex: 1, marginRight: spacing.xs }}>
+            <SecondaryButton title="Cancel" onPress={() => navigation.goBack()} disabled={form.isSaving} />
+          </View>
+          <View style={{ flex: 1.4 }}>
+            <PrimaryButton
+              title={form.isSaving ? 'Recording…' : payCap.submitLabel('Record Payment')}
+              onPress={handleSave}
+              isLoading={form.isSaving}
+              icon={<Feather name="check-circle" size={16} color={colors.neutral0} />}
+            />
+          </View>
         </View>
-        <View style={{ flex: 1.4 }}>
-          <PrimaryButton
-            title={form.isSaving ? 'Recording…' : 'Record Payment'}
-            onPress={handleSave}
-            isLoading={form.isSaving}
-            icon={<Feather name="check-circle" size={16} color={colors.neutral0} />}
-          />
-        </View>
-      </View>
+      )}
+
+      <RejectReasonModal
+        visible={rejectOpen}
+        summary={request?.summary}
+        onCancel={() => setRejectOpen(false)}
+        onSubmit={handleReject}
+      />
 
       {/* ── Success Overlay Modal ──────────────────── */}
       <Modal visible={showSuccess} transparent animationType="none" statusBarTranslucent>
@@ -546,6 +735,22 @@ const styles = StyleSheet.create({
   toggleKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.neutral0, ...shadows.xs },
   toggleKnobOn: { transform: [{ translateX: 18 }] },
 
+  reviewBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.warning + '12',
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  reviewBannerTitle: { ...typography.labelMd, color: colors.textPrimary },
+  reviewBannerBody: { ...typography.bodySm, color: colors.textSecondary, marginTop: 2 },
+  reviewNoteText: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    flex: 1,
+  },
   actionBar: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2, backgroundColor: colors.neutral0,

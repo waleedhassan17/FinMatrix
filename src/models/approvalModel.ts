@@ -14,7 +14,23 @@ export type ApprovalType =
   | 'void'
   | 'bill_payment'
   | 'po'
+  | 'invoice'
+  | 'invoice_payment'
   | 'delivery_undo';
+
+/**
+ * The form a request opens in so the owner can judge it on its contents rather
+ * than on the summary line.
+ *
+ * A type absent from this map has no form to show — `void` and `delivery_undo`
+ * are actions on an existing document, not documents — and its card stays
+ * untappable rather than advertising a screen that does not exist.
+ */
+export const APPROVAL_REVIEW_SCREEN: Partial<Record<ApprovalType, string>> = {
+  po: 'POForm',
+  invoice: 'InvoiceForm',
+  invoice_payment: 'ReceivePayment',
+};
 
 /**
  * `approving` is a transient claim held while the server dispatches the
@@ -57,6 +73,8 @@ export const APPROVAL_TYPE_LABELS: Record<ApprovalType, string> = {
   void: 'Void / reversal',
   bill_payment: 'Bill payment',
   po: 'Purchase order',
+  invoice: 'Invoice',
+  invoice_payment: 'Customer payment',
   delivery_undo: 'Undo a delivery',
 };
 
@@ -69,6 +87,8 @@ export const APPROVAL_TYPE_EFFECTS: Record<ApprovalType, string> = {
   void: 'Posts a balancing entry that reverses the original.',
   bill_payment: 'Moves money out of the bank account.',
   po: 'Creates the purchase order. Posts nothing on its own.',
+  invoice: 'Creates the invoice and recognises the sale.',
+  invoice_payment: 'Records money received and clears the invoice balance.',
   delivery_undo: 'Reverses a delivery that was already approved.',
 };
 
@@ -86,3 +106,31 @@ export const isPendingApproval = (r: ApprovalRequest): boolean =>
 /** Stranded mid-post by a crash. Needs a human to check the ledger. */
 export const isInterruptedApproval = (r: ApprovalRequest): boolean =>
   r.status === 'approving';
+
+/**
+ * Does an outstanding customer-payment request cover this invoice?
+ *
+ * Exported and pure so it can be tested directly — it is the part with the
+ * traps, and every one of them fails silently:
+ *
+ *   • `payload` is typed Record<string, unknown>, so nothing may assume a shape;
+ *   • `applications` is OMITTED entirely for a pure prepayment, so it can be
+ *     absent rather than empty;
+ *   • one request can settle several invoices, so it is `.some`, never `[0]`;
+ *   • `approving` counts. isPendingApproval excludes it on purpose — it is a
+ *     transient claim, not a resting state — but a request being dispatched
+ *     right now may already be posting, and re-enabling the button there is how
+ *     a customer gets paid in twice.
+ */
+export const hasOutstandingPaymentFor = (
+  requests: ApprovalRequest[],
+  invoiceId: string,
+): boolean =>
+  requests.some(req => {
+    if (!req || !(isPendingApproval(req) || isInterruptedApproval(req))) return false;
+    const applications = (req.payload as { applications?: unknown })?.applications;
+    return (
+      Array.isArray(applications) &&
+      applications.some(a => (a as { invoiceId?: string })?.invoiceId === invoiceId)
+    );
+  });

@@ -26,7 +26,11 @@ import {
   setApprovalFilter,
 } from './approvalsSlice';
 import type { ApprovalFilter } from '../../networks/approvals/approvalsNetwork';
-import { isPendingApproval, type ApprovalRequest } from '../../models/approvalModel';
+import {
+  APPROVAL_REVIEW_SCREEN,
+  isPendingApproval,
+  type ApprovalRequest,
+} from '../../models/approvalModel';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 
 const { colors, radius, spacing, typography } = THEME;
@@ -88,10 +92,10 @@ const StaffApprovalsScreen: React.FC = () => {
    * Open the request in the form it was filed from, so the decision is made on
    * the vendor, the dates and the line items rather than on the summary line.
    *
-   * This screen sits in the owner's More tab and POForm lives in the
+   * This screen sits in the owner's More tab and the forms live in the
    * Transactions tab, so the hop goes through the parent tab navigator.
    * `initial: false` puts TransactionsHub underneath — without it that stack
-   * initialises holding only POForm, and back falls through to the Dashboard.
+   * initialises holding only the form, and back falls through to the Dashboard.
    */
   const openRequest = useCallback(
     (request: ApprovalRequest) => {
@@ -99,7 +103,7 @@ const StaffApprovalsScreen: React.FC = () => {
         navigate: (name: string, params?: Record<string, unknown>) => void;
       };
       tabs.navigate('TransactionsStack', {
-        screen: 'POForm',
+        screen: APPROVAL_REVIEW_SCREEN[request.type]!,
         params: { fromApprovalRequestId: request.id },
         initial: false,
       });
@@ -201,10 +205,12 @@ const StaffApprovalsScreen: React.FC = () => {
             renderItem={({ item }) => (
               <ApprovalRequestCard
                 request={item}
-                // Only purchase orders can be opened in their own form so far.
-                // Passing onPress unconditionally would make every card look
-                // tappable and do nothing.
-                onPress={item.type === 'po' ? () => openRequest(item) : undefined}
+                // Only the types with a form to open are tappable. Passing
+                // onPress unconditionally would make every card look tappable
+                // and do nothing.
+                onPress={
+                  APPROVAL_REVIEW_SCREEN[item.type] ? () => openRequest(item) : undefined
+                }
                 actions={
                   isPendingApproval(item) ? (
                     <>

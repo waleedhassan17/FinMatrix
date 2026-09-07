@@ -34,10 +34,8 @@ describe('capabilities — Table A', () => {
 
   describe('staff — value in, done directly', () => {
     const directForStaff: Capability[] = [
-      'invoice.create',
       'estimate.create',
       'salesOrder.create',
-      'payment.receive',
       'customer.manage',
       'vendor.manage',
       'delivery.create',
@@ -120,6 +118,11 @@ describe('capabilities — Table A', () => {
       'transaction.void',
       'bill.pay',
       'purchaseOrder.create',
+      // Moved out of the value-in group when the owner took billing and cash
+      // receipts under signature. Quoting them here as well is the point of
+      // transcribing the matrix twice: a silent move breaks this list.
+      'invoice.create',
+      'payment.receive',
       'delivery.undo',
     ];
 
@@ -130,7 +133,7 @@ describe('capabilities — Table A', () => {
       expect(can('staff', capability)).toBe(true);
     });
 
-    it('is exactly the eight gated types, no more and no fewer', () => {
+    it('is exactly the ten gated types, no more and no fewer', () => {
       expect([...STAFF_REQUEST_CAPABILITIES].sort()).toEqual(
         [...requestForStaff].sort(),
       );
@@ -179,9 +182,22 @@ describe('submitLabelFor', () => {
   });
 
   it('leaves direct actions worded normally', () => {
-    expect(submitLabelFor('staff', 'invoice.create', 'Save invoice')).toBe(
-      'Save invoice',
+    // Was invoice.create until that became a request. Estimates are still the
+    // staff's own, which is what makes them the right example here.
+    expect(submitLabelFor('staff', 'estimate.create', 'Save estimate')).toBe(
+      'Save estimate',
     );
     expect(submitLabelFor('admin', 'bill.pay', 'Pay bill')).toBe('Pay bill');
+  });
+
+  it('tells staff that billing and banking now go to the owner too', () => {
+    expect(submitLabelFor('staff', 'invoice.create', 'Save & Send')).toBe(
+      'Send for approval',
+    );
+    expect(submitLabelFor('staff', 'payment.receive', 'Record Payment')).toBe(
+      'Send for approval',
+    );
+    // The owner is still the approver, so nothing of theirs waits.
+    expect(submitLabelFor('admin', 'invoice.create', 'Save & Send')).toBe('Save & Send');
   });
 });

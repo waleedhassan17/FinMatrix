@@ -18,7 +18,11 @@ import {
   setApprovalFilter,
 } from './approvalsSlice';
 import type { ApprovalFilter } from '../../networks/approvals/approvalsNetwork';
-import { isPendingApproval } from '../../models/approvalModel';
+import {
+  APPROVAL_REVIEW_SCREEN,
+  isPendingApproval,
+  type ApprovalRequest,
+} from '../../models/approvalModel';
 
 const { colors, radius, spacing, typography } = THEME;
 
@@ -56,19 +60,19 @@ const MyRequestsScreen: React.FC = () => {
    * cannot approve anything, and the form it opens shows no decision buttons
    * for a role without approvals.decide.
    *
-   * My requests sits in the staff More tab and POForm in the Transactions tab,
-   * so the hop goes through the parent tab navigator with `initial: false` —
-   * otherwise that stack initialises holding only POForm and back falls
+   * My requests sits in the staff More tab and the forms in the Transactions
+   * tab, so the hop goes through the parent tab navigator with `initial: false`
+   * — otherwise that stack initialises holding only the form and back falls
    * through to the Dashboard.
    */
   const openRequest = useCallback(
-    (id: string) => {
+    (request: ApprovalRequest) => {
       const tabs = (navigation.getParent() ?? navigation) as unknown as {
         navigate: (name: string, params?: Record<string, unknown>) => void;
       };
       tabs.navigate('TransactionsStack', {
-        screen: 'POForm',
-        params: { fromApprovalRequestId: id },
+        screen: APPROVAL_REVIEW_SCREEN[request.type]!,
+        params: { fromApprovalRequestId: request.id },
         initial: false,
       });
     },
@@ -157,9 +161,11 @@ const MyRequestsScreen: React.FC = () => {
         renderItem={({ item }) => (
           <ApprovalRequestCard
             request={item}
-            // Purchase orders are the only type that can be reopened in its
-            // own form so far; the rest must not look tappable.
-            onPress={item.type === 'po' ? () => openRequest(item.id) : undefined}
+            // Only the types with a form to reopen are tappable; the rest must
+            // not look it.
+            onPress={
+              APPROVAL_REVIEW_SCREEN[item.type] ? () => openRequest(item) : undefined
+            }
             actions={
               isPendingApproval(item) ? (
                 <TouchableOpacity

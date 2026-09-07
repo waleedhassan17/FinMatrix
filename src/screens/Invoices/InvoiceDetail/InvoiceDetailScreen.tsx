@@ -20,6 +20,8 @@ import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
+import { usePendingApprovals } from '../../../hooks/usePendingApprovals';
+import { hasOutstandingPaymentFor } from '../../../models/approvalModel';
 import {
   fetchInvoiceDetail,
   resetInvoiceDetail,
@@ -101,11 +103,29 @@ const InvoiceDetailScreen: React.FC = () => {
   const [refreshing, setRefreshing] = React.useState(false);
 
   // ── Load data ───────────────────────────────
+  // A staff member cannot record a payment directly: it goes to the owner. Two
+  // things follow. The invoice stays unpaid while the request waits — correctly,
+  // nothing has posted — and Record Payment would otherwise sit here fully
+  // tappable, letting them file the same request over and over for the owner to
+  // untangle.
+  const {
+    requests: paymentRequests,
+    reload: loadPendingPayments,
+  } = usePendingApprovals('invoice_payment', 'payment.receive');
+
+  const paymentAwaitingApproval = useMemo(
+    () => hasOutstandingPaymentFor(paymentRequests, invoiceId),
+    [paymentRequests, invoiceId],
+  );
+
   useEffect(() => {
     dispatch(fetchInvoiceDetail(invoiceId));
     // Customers are needed for the Bill-To block on the PDF
     // and for the WhatsApp phone-number lookup.
     if (customers.length === 0) dispatch(fetchCustomers());
+    // Also here, not only on focus: the listener below skips the first focus by
+    // design, which would leave the button enabled on the very first render.
+    void loadPendingPayments();
     return () => { dispatch(resetInvoiceDetail()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceId, dispatch]);
@@ -119,9 +139,12 @@ const InvoiceDetailScreen: React.FC = () => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (isInitial) { isInitial = false; return; }
       dispatch(fetchInvoiceDetail(invoiceId));
+      // Filing a payment request goBack()s straight onto this screen, so this
+      // is the path that actually locks the button.
+      void loadPendingPayments();
     });
     return unsubscribe;
-  }, [navigation, invoiceId, dispatch]);
+  }, [navigation, invoiceId, dispatch, loadPendingPayments]);
 
   // Resolve the customer record that matches this invoice.
   const customer = useMemo(
@@ -133,9 +156,12 @@ const InvoiceDetailScreen: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await dispatch(fetchInvoiceDetail(invoiceId));
+    await Promise.all([
+      dispatch(fetchInvoiceDetail(invoiceId)),
+      loadPendingPayments(),
+    ]);
     setRefreshing(false);
-  }, [invoiceId, dispatch]);
+  }, [invoiceId, dispatch, loadPendingPayments]);
 
   // ── Derived ─────────────────────────────────────
   const balance = useMemo(
@@ -198,6 +224,30 @@ const InvoiceDetailScreen: React.FC = () => {
       </ReportContainer>
     );
   }
+
+  // The same button in two status branches, so it is built once. Locked while a
+  // request for this invoice is outstanding; it unlocks by itself when the owner
+  // decides, because the request stops coming back as pending.
+  const recordPaymentAction = (
+    <View style={styles.actionPrimary}>
+      <CustomButton
+        title={paymentAwaitingApproval ? 'Waiting for approval' : 'Record Payment'}
+        onPress={
+          paymentAwaitingApproval
+            ? undefined
+            : () =>
+                navigation.navigate('ReceivePayment', {
+                  customerId: invoice.customerId,
+                  invoiceId: invoice.id,
+                })
+        }
+        variant="primary"
+        size="sm"
+        fullWidth
+        disabled={paymentAwaitingApproval}
+      />
+    </View>
+  );
 
   // ═════════════════════════════════════════════════════
   // RENDER
@@ -417,20 +467,7 @@ const InvoiceDetailScreen: React.FC = () => {
                 />
               </View>
             )}
-            <View style={styles.actionPrimary}>
-              <CustomButton
-                title="Record Payment"
-                onPress={() =>
-                  navigation.navigate('ReceivePayment', {
-                    customerId: invoice.customerId,
-                    invoiceId: invoice.id,
-                  })
-                }
-                variant="primary"
-                size="sm"
-                fullWidth
-              />
-            </View>
+            {recordPaymentAction}
           </>
         )}
 
@@ -459,20 +496,7 @@ const InvoiceDetailScreen: React.FC = () => {
                 />
               </View>
             )}
-            <View style={styles.actionPrimary}>
-              <CustomButton
-                title="Record Payment"
-                onPress={() =>
-                  navigation.navigate('ReceivePayment', {
-                    customerId: invoice.customerId,
-                    invoiceId: invoice.id,
-                  })
-                }
-                variant="primary"
-                size="sm"
-                fullWidth
-              />
-            </View>
+            {recordPaymentAction}
           </>
         )}
 

@@ -8,7 +8,12 @@ import { TRANSACTIONS_ROUTES } from '../../navigations-maps/Transactions';
 export type TransactionsStackParamList = {
   TransactionsHub: undefined;
   InvoiceList: undefined;
-  InvoiceForm: { invoiceId?: string; customerId?: string } | undefined;
+  // fromApprovalRequestId opens a staff request read-only, so the owner sees
+  // the customer, dates and every line before approving. An ID, not a payload,
+  // for the same reason CreditMemoForm's fromDeliveryRequestId is one.
+  InvoiceForm:
+    | { invoiceId?: string; customerId?: string; fromApprovalRequestId?: string }
+    | undefined;
   InvoiceDetail: { invoiceId: string };
   EstimateList: undefined;
   EstimateForm: { estimateId?: string } | undefined;
@@ -33,7 +38,9 @@ export type TransactionsStackParamList = {
   VendorCreditList: undefined;
   VendorCreditForm: { vendorCreditId?: string } | undefined;
   VendorCreditDetail: { vendorCreditId: string };
-  ReceivePayment: { customerId?: string; invoiceId?: string } | undefined;
+  ReceivePayment:
+    | { customerId?: string; invoiceId?: string; fromApprovalRequestId?: string }
+    | undefined;
   BillList: undefined;
   BillForm: { billId?: string; vendorId?: string } | undefined;
   BillDetail: { billId: string };

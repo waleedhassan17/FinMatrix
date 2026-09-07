@@ -51,9 +51,7 @@ import { PO_STATUS_COLORS, PO_STATUS_LABELS, formatPODate } from '../../../model
 import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrder } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
-import { useCapability } from '../../../hooks/useCapability';
-import { fetchApprovals } from '../../../networks/approvals/approvalsNetwork';
-import type { ApprovalRequest } from '../../../models/approvalModel';
+import { usePendingApprovals } from '../../../hooks/usePendingApprovals';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -91,22 +89,13 @@ const POListScreen: React.FC = () => {
   // Showing the pending requests above the list closes that gap without
   // faking a PO row: these are requests, and they say so.
   //
-  // Only for roles whose POs actually go through approval. An owner's never
-  // do, and GET /approvals would hand them the whole company inbox.
-  const poCap = useCapability('purchaseOrder.create');
-  const showsPending = poCap.needsApproval;
-  const [pendingRequests, setPendingRequests] = useState<ApprovalRequest[]>([]);
-
-  const loadPending = useCallback(async () => {
-    if (!showsPending) return;
-    try {
-      setPendingRequests(await fetchApprovals('pending', 'po'));
-    } catch {
-      // A supplementary strip is not worth an error state — the POs below are
-      // the screen's job, and My Requests is the authoritative view.
-      setPendingRequests([]);
-    }
-  }, [showsPending]);
+  // The role gate, the fetch and the fail-soft moved into the hook; this was
+  // the first of four copies of them.
+  const {
+    requests: pendingRequests,
+    reload: loadPending,
+    showsPending,
+  } = usePendingApprovals('po', 'purchaseOrder.create');
 
   // Re-fetch whenever filter/search changes. Also covers the first load.
   useEffect(() => {

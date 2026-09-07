@@ -59,10 +59,11 @@ export type CapabilityOutcome = 'direct' | 'request' | false;
  */
 const STAFF_CAPABILITIES: Record<Capability, CapabilityOutcome> = {
   // Value in — staff run the day-to-day, and nothing waits on the owner.
-  'invoice.create': 'direct',
+  // Two exceptions live in the money-out block below: raising an invoice and
+  // banking a customer payment, which the owner asked to sign off. They are
+  // the only value-in rows that ever moved.
   'estimate.create': 'direct',
   'salesOrder.create': 'direct',
-  'payment.receive': 'direct',
   'customer.manage': 'direct',
   'vendor.manage': 'direct',
   'delivery.create': 'direct',
@@ -81,6 +82,15 @@ const STAFF_CAPABILITIES: Record<Capability, CapabilityOutcome> = {
   // existence. Gating it only stranded an approved PO in draft, since
   // receiving against it requires 'sent'.
   'purchaseOrder.updateStatus': 'direct',
+
+  // Billing and cash in — prepared by staff, posted by the owner.
+  // These began in the value-in block above. Raising an invoice recognises
+  // revenue and banking a receipt moves cash, and the owner wanted their
+  // signature on both. The cost is real and was accepted: staff cannot bill a
+  // customer, or clear a balance, until the owner acts.
+  'invoice.create': 'request',
+  // The cash-IN mirror of bill.pay below.
+  'payment.receive': 'request',
 
   // Money out and corrections — prepared by staff, approved by the owner.
   'inventory.adjust': 'request',

@@ -6,7 +6,11 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { DiscountType, InvoiceStatus } from '../../../types';
-import { getInvoiceByIdAPI } from '../../../networks/sales/invoiceNetwork';
+import {
+  createInvoiceAPI,
+  getInvoiceByIdAPI,
+  updateInvoiceAPI,
+} from '../../../networks/sales/invoiceNetwork';
 import { invoiceSingleSerializer } from '../../../serializers/invoiceSerializer';
 
 // ── Line item (form representation — string values for inputs) ──
@@ -102,6 +106,34 @@ function recalc(state: InvoiceFormSliceState) {
   state.discountAmount = Math.round(discAmt * 100) / 100;
   state.total = Math.round((sub + tax - discAmt) * 100) / 100;
 }
+
+/**
+ * Only what CreateInvoiceDto accepts. `invoiceNumber` is deliberately absent:
+ * the form generates one for display, the server assigns the real one and
+ * ignores anything sent, so shipping it would promise a number that changes.
+ *
+ * Moved here from the screen when saving became a thunk — the request body is
+ * also what an approval stores and replays, so it belongs beside the state it
+ * is built from.
+ */
+const buildSavePayload = (state: InvoiceFormSliceState, status: InvoiceStatus) => ({
+  customerId: state.customerId,
+  invoiceDate: state.issueDate,
+  dueDate: state.dueDate,
+  status,
+  discountType: state.discountType,
+  discountValue: state.discountValue || '0',
+  lines: state.lines.map(l => ({
+    description: l.description,
+    quantity: l.quantity || '0',
+    unitPrice: l.unitPrice || '0',
+    taxRate: l.taxRate || '0',
+    // Only send itemId when an inventory item is linked; an empty string
+    // would fail the backend's @IsUUID validation.
+    ...(l.itemId ? { itemId: l.itemId } : {}),
+  })),
+  notes: state.notes,
+});
 
 export const invoiceFormSlice = createAppSlice({
   name: 'invoiceForm',
@@ -225,6 +257,91 @@ export const invoiceFormSlice = createAppSlice({
       },
     ),
 
+    /**
+     * Save (create or update) the invoice.
+     *
+     * The payload used to be assembled in the screen and the response thrown
+     * away. That was survivable while every role posted directly; it is not now
+     * that a staff member's invoice comes back as an approval request instead,
+     * because there was nowhere to notice.
+     */
+    saveInvoice: create.asyncThunk(
+      async (
+        { status, editingId }: { status: InvoiceStatus; editingId?: string },
+        thunkAPI,
+      ) => {
+        const f = (thunkAPI.getState() as { invoiceForm: InvoiceFormSliceState })
+          .invoiceForm;
+        const payload = buildSavePayload(f, status);
+
+        const envelope = editingId
+          ? await updateInvoiceAPI(editingId, payload as any)
+          : await createInvoiceAPI(payload as any);
+
+        // Staff get an approval request back, not an invoice. Read off the raw
+        // envelope, and check BOTH positions — `(envelope?.data ?? envelope)?.pending`
+        // reads as equivalent and is not: ?? picks whichever operand is merely
+        // present, so a truthy `data` wins and its missing `.pending` is
+        // undefined. That exact grouping shipped a bug on the PO form once.
+        if (envelope?.data?.pending ?? envelope?.pending) {
+          return { invoice: null, pending: true };
+        }
+        return { invoice: envelope?.data ?? envelope ?? null, pending: false };
+      },
+      {
+        pending: state => { state.isSaving = true; },
+        fulfilled: state => { state.isSaving = false; },
+        rejected: state => { state.isSaving = false; },
+      },
+    ),
+
+    /**
+     * Load a staff approval request back into the form so the owner can see
+     * what they are approving.
+     *
+     * Inverts buildSavePayload. Line ids are minted fresh — the payload has
+     * none, and every updateLine/removeLine targets one, which is also the
+     * React key. Optional keys are OMITTED by the builder rather than blanked,
+     * so nothing here may assume a field is present.
+     *
+     * The customer name is passed in: the payload stores an id, and a review
+     * screen showing a bare uuid where the customer should be is not a review.
+     */
+    loadFromRequestPayload: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          payload: Record<string, any>;
+          customerName: string;
+        }>,
+      ) => {
+        const { payload, customerName } = action.payload;
+        state.invoiceNumber = '';
+        state.customerId = payload.customerId ?? '';
+        state.customerName = customerName;
+        state.issueDate = String(payload.invoiceDate ?? '').slice(0, 10);
+        state.dueDate = String(payload.dueDate ?? '').slice(0, 10);
+        state.status = (payload.status as InvoiceStatus) ?? 'draft';
+        state.notes = payload.notes ?? '';
+        state.discountType = (payload.discountType as DiscountType) ?? 'percent';
+        state.discountValue = String(payload.discountValue ?? '0');
+        const lines = Array.isArray(payload.lines) ? payload.lines : [];
+        state.lines = lines.map((l: any) => ({
+          ...freshLine(),
+          itemId: l?.itemId ?? '',
+          description: l?.description ?? '',
+          quantity: String(l?.quantity ?? '0'),
+          unitPrice: String(l?.unitPrice ?? '0'),
+          taxRate: String(l?.taxRate ?? '0'),
+        }));
+        // Every render indexes lines[0]; the screen refuses a request with no
+        // lines, but the reducer must not hand the form an empty array either.
+        if (state.lines.length === 0) state.lines = [freshLine()];
+        state.errors = {};
+        recalc(state);
+      },
+    ),
+
     resetInvoiceForm: create.reducer(state => {
       Object.assign(state, { ...initialState, lines: [freshLine()] });
     }),
@@ -249,6 +366,8 @@ export const {
   setLineItem,
   calculateTotals,
   fetchInvoiceForEdit,
+  saveInvoice,
+  loadFromRequestPayload,
   resetInvoiceForm,
 } = invoiceFormSlice.actions;
 

@@ -276,7 +276,16 @@ export const receivePaymentSlice = createAppSlice({
           applications: applications.length > 0 ? applications : undefined,
         });
 
-        return created;
+        // Staff get an approval request back, not a payment. Read the flag off
+        // the raw envelope and check BOTH positions: the network layer returns
+        // response.data un-unwrapped, so it may sit at either depth, and
+        // `(created?.data ?? created)?.pending` is NOT the same test — ?? picks
+        // whichever operand is merely present, so a truthy `data` wins and its
+        // missing `.pending` reads undefined.
+        if (created?.data?.pending ?? created?.pending) {
+          return { payment: null, pending: true };
+        }
+        return { payment: created, pending: false };
       },
       {
         pending: state => {

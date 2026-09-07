@@ -5,7 +5,7 @@
 // Premium Enterprise UI
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -33,13 +33,14 @@ import {
   setField,
   setCustomer,
   setErrors,
-  setIsSaving,
   addLine,
   removeLine,
   updateLine,
   setLineItem,
   calculateTotals,
   fetchInvoiceForEdit,
+  saveInvoice,
+  loadFromRequestPayload,
   resetInvoiceForm,
   type FormLineItem,
 } from './invoiceFormSlice';
@@ -50,7 +51,6 @@ import {
 import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
 import { selectInventoryItems, fetchInventoryItems } from '../../Inventory/InventoryList/inventoryListSlice';
 import { selectFeatures } from '../../Auth/authSlice';
-import { createInvoiceAPI, updateInvoiceAPI } from '../../../networks/sales/invoiceNetwork';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -62,6 +62,12 @@ import {
   PrimaryButton,
   SecondaryButton,
 } from '../../../components/form/FormUI';
+import { useCapability } from '../../../hooks/useCapability';
+import { fetchApprovalById } from '../../../networks/approvals/approvalsNetwork';
+import { decideApproval } from '../../Approvals/approvalsSlice';
+import { APPROVAL_TYPE_EFFECTS, isPendingApproval } from '../../../models/approvalModel';
+import type { ApprovalRequest } from '../../../models/approvalModel';
+import RejectReasonModal from '../../Approvals/RejectReasonModal';
 import { formatCurrency } from '../../../utils/formatters';
 import type { DiscountType, InvoiceStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -88,12 +94,26 @@ const InvoiceFormScreen: React.FC = () => {
 
   const editingId = route.params?.invoiceId;
   const isEditing = !!editingId;
+  // Set when arriving from the approvals inbox or My Requests: the form shows
+  // a staff request read-only so it can be judged on its contents.
+  const approvalRequestId = route.params?.fromApprovalRequestId;
+  const isReviewing = !!approvalRequestId;
   const invoices = useAppSelector(selectInvoices);
   const customers = useAppSelector(selectCustomers);
   const inventory = useAppSelector(selectInventoryItems);
   const features = useAppSelector(selectFeatures);
   const form = useAppSelector(selectInvoiceFormState);
+  // Raising an invoice recognises the sale, so for staff it goes to the owner.
+  const invoiceCap = useCapability('invoice.create');
+  // Only the owner decides. Staff opening their own request from My Requests
+  // get the identical read-only form with no decision buttons.
+  const decideCap = useCapability('approvals.decide');
   const hydratedRef = React.useRef(false);
+  const requestLoadedRef = React.useRef(false);
+
+  const [request, setRequest] = useState<ApprovalRequest | null>(null);
+  const [deciding, setDeciding] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
 
   // ── Inventory item options (optional per line; drives COGS) ──
   const itemOptions = useMemo(
@@ -152,7 +172,10 @@ const InvoiceFormScreen: React.FC = () => {
     if (hydratedRef.current) return;
     hydratedRef.current = true;
 
-    if (isEditing && editingId) {
+    if (isReviewing) {
+      // Nothing seeded — the request's own payload is loaded by the effect
+      // below, once customers are available to name its customerId.
+    } else if (isEditing && editingId) {
       // Fetched by id, not looked up in the list slice. A list row carries
       // `lines: []` whenever the list endpoint returns summary rows, so the
       // header hydrated while the items silently did not — and saving from
@@ -171,7 +194,105 @@ const InvoiceFormScreen: React.FC = () => {
 
     return () => { dispatch(resetInvoiceForm()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, editingId, dispatch]);
+  }, [isEditing, editingId, isReviewing, dispatch]);
+
+  // Load the approval request and put its payload back in the form. Waits on
+  // customers so the review shows a name rather than a uuid.
+  useEffect(() => {
+    if (!approvalRequestId || requestLoadedRef.current) return;
+    if (customers.length === 0) return;
+    requestLoadedRef.current = true;
+
+    let cancelled = false;
+    const bail = (text2: string) => {
+      if (cancelled) return;
+      // Never leave a blank form standing in for a request: the owner would
+      // approve against whatever it happened to show.
+      Toast.show({ type: 'error', text1: 'Could not open this request', text2 });
+      navigation.goBack();
+    };
+
+    (async () => {
+      try {
+        const req = await fetchApprovalById(approvalRequestId);
+        if (cancelled) return;
+        if (req?.type !== 'invoice') {
+          bail('Only invoice requests can be opened here.');
+          return;
+        }
+        const payload = (req.payload ?? {}) as Record<string, any>;
+        if (!Array.isArray(payload.lines) || payload.lines.length === 0) {
+          bail('This request has no line items to show.');
+          return;
+        }
+        setRequest(req);
+        dispatch(
+          loadFromRequestPayload({
+            payload,
+            customerName:
+              customers.find(c => c.id === payload.customerId)?.name ?? '',
+          }),
+        );
+      } catch (e: any) {
+        bail(e?.message || 'Please try again.');
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approvalRequestId, customers, dispatch, navigation]);
+
+  // ── Deciding a request under review ─────────────
+  const decide = useCallback(
+    async (decision: 'approve' | 'reject', comment?: string) => {
+      if (!request || deciding) return null;
+      setDeciding(true);
+      try {
+        const result: any = await dispatch(
+          decideApproval({ id: request.id, decision, comment }),
+        );
+        if (result.error) throw new Error(result.error.message);
+        return result.payload as ApprovalRequest;
+      } catch (e: any) {
+        Toast.show({
+          type: 'error',
+          text1: decision === 'approve' ? 'Could not approve' : 'Could not reject',
+          text2: e?.message || 'Please try again.',
+        });
+        return null;
+      } finally {
+        setDeciding(false);
+      }
+    },
+    [request, deciding, dispatch],
+  );
+
+  const handleApprove = useCallback(async () => {
+    const decided = await decide('approve');
+    if (!decided) return;
+    await dispatch(fetchInvoices());
+    Toast.show({
+      type: 'success',
+      text1: 'Request approved',
+      text2: 'The invoice has been created and the sale posted.',
+    });
+    navigation.goBack();
+  }, [decide, dispatch, navigation]);
+
+  const handleReject = useCallback(
+    async (comment: string) => {
+      setRejectOpen(false);
+      const decided = await decide('reject', comment);
+      if (!decided) return;
+      Toast.show({
+        type: 'success',
+        text1: 'Request rejected',
+        text2: 'The requester sees your reason in My requests.',
+      });
+      navigation.goBack();
+    },
+    [decide, navigation],
+  );
 
   // ── Customer change handler (also sets due date from terms) ──
   const handleCustomerChange = useCallback(
@@ -224,33 +345,26 @@ const InvoiceFormScreen: React.FC = () => {
         return;
       }
 
-      dispatch(setIsSaving(true));
       dispatch(calculateTotals());
 
       try {
-        const payload = {
-          customerId: form.customerId,
-          invoiceDate: form.issueDate,
-          dueDate: form.dueDate,
-          status: saveStatus,
-          discountType: form.discountType,
-          discountValue: form.discountValue || '0',
-          lines: form.lines.map(l => ({
-            description: l.description,
-            quantity: l.quantity || '0',
-            unitPrice: l.unitPrice || '0',
-            taxRate: l.taxRate || '0',
-            // Only send itemId when an inventory item is linked; an empty
-            // string would fail the backend's @IsUUID validation.
-            ...(l.itemId ? { itemId: l.itemId } : {}),
-          })),
-          notes: form.notes,
-        };
+        const result: any = await dispatch(
+          saveInvoice({ status: saveStatus, editingId }),
+        );
+        if (result.error) throw new Error(result.error.message);
 
-        if (isEditing) {
-          await updateInvoiceAPI(editingId!, payload as any);
-        } else {
-          await createInvoiceAPI(payload as any);
+        // Staff get an approval request back, not an invoice. Nothing exists
+        // and nothing has posted, so the success toast below would be a lie —
+        // and the worse kind, because the person would believe the customer
+        // had been billed.
+        if (result.payload?.pending) {
+          Toast.show({
+            type: 'success',
+            text1: 'Sent to the owner for approval',
+            text2: 'The invoice is created, and the sale posts, once they approve.',
+          });
+          navigation.goBack();
+          return;
         }
 
         await dispatch(fetchInvoices());
@@ -272,8 +386,6 @@ const InvoiceFormScreen: React.FC = () => {
           text1: 'Error',
           text2: e?.message || 'Failed to save invoice. Please try again.',
         });
-      } finally {
-        dispatch(setIsSaving(false));
       }
     },
     [form, isEditing, editingId, dispatch, navigation, validate],
@@ -286,8 +398,22 @@ const InvoiceFormScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
       {/* ── Premium Gradient Header ─────────────────── */}
       <ReportHeader
-        title={isEditing ? `Edit ${form.invoiceNumber}` : 'New Invoice'}
-        subtitle={isEditing ? 'Update invoice details' : 'Create a professional invoice'}
+        title={
+          isReviewing
+            ? 'Review request'
+            : isEditing
+              ? `Edit ${form.invoiceNumber}`
+              : 'New Invoice'
+        }
+        subtitle={
+          isReviewing
+            ? request?.requestedBy
+              ? `Raised by ${request.requestedBy}`
+              : 'Raised by a staff member'
+            : isEditing
+              ? 'Update invoice details'
+              : 'Create a professional invoice'
+        }
         onBack={() => navigation.goBack()}
       />
 
@@ -297,6 +423,23 @@ const InvoiceFormScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {isReviewing && (
+            <View style={styles.reviewBanner}>
+              <Feather name="clock" size={16} color={colors.warning} />
+              <View style={{ flex: 1, marginLeft: spacing.xs }}>
+                <Text style={styles.reviewBannerTitle}>Waiting for your decision</Text>
+                <Text style={styles.reviewBannerBody}>
+                  {request?.summary || 'A staff member asked you to approve this invoice.'}
+                </Text>
+                <Text style={styles.reviewBannerBody}>{APPROVAL_TYPE_EFFECTS.invoice}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Nothing is editable while reviewing: approving replays the payload
+              exactly as submitted, so an edit here would be a lie. Gated at the
+              container because DateField and LineItemRow have no disabled prop. */}
+          <View pointerEvents={isReviewing ? 'none' : 'auto'}>
           {/* ── Section: Customer & Dates ────────────── */}
           <FormSectionHeader title="INVOICE DETAILS" dotColor={colors.actionGreen} />
           <View style={styles.sectionCard}>
@@ -476,27 +619,81 @@ const InvoiceFormScreen: React.FC = () => {
             </View>
           </LinearGradient>
 
-          {/* ── Action Buttons ───────────────────────── */}
-          <View style={styles.btnRow}>
-            <View style={{ flex: 1, marginRight: spacing.xs }}>
-              <SecondaryButton
-                title="Save Draft"
-                onPress={() => handleSave('draft')}
-                disabled={form.isSaving}
-                icon={<Feather name="save" size={16} color={colors.actionGreen} />}
-              />
-            </View>
-            <View style={{ flex: 1.4 }}>
-              <PrimaryButton
-                title={form.isSaving ? 'Saving…' : 'Save & Send'}
-                onPress={() => handleSave('sent')}
-                isLoading={form.isSaving}
-                icon={<Feather name="send" size={16} color={colors.neutral0} />}
-              />
-            </View>
           </View>
+
+          {/* ── Action Buttons ───────────────────────── */}
+          {isReviewing ? (
+            decideCap.allowed && request && isPendingApproval(request) ? (
+              <View style={styles.btnRow}>
+                <View style={{ flex: 1, marginRight: spacing.xs }}>
+                  <SecondaryButton
+                    title="Reject"
+                    onPress={() => setRejectOpen(true)}
+                    disabled={deciding}
+                    icon={<Feather name="x" size={16} color={colors.actionGreen} />}
+                  />
+                </View>
+                <View style={{ flex: 1.4 }}>
+                  <PrimaryButton
+                    title={deciding ? 'Approving…' : 'Approve'}
+                    onPress={handleApprove}
+                    isLoading={deciding}
+                    icon={<Feather name="check" size={16} color={colors.neutral0} />}
+                  />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.reviewNote}>
+                <Text style={styles.reviewNoteText}>
+                  {request && !isPendingApproval(request)
+                    ? 'This request has already been decided.'
+                    : 'Only the owner can approve or reject a request.'}
+                </Text>
+              </View>
+            )
+          ) : invoiceCap.needsApproval && !isEditing ? (
+            // One button, because there is only one outcome: the request is
+            // filed either way, and draft-vs-sent is a distinction the owner
+            // makes when they approve, not one staff can act on here.
+            <View style={styles.btnRow}>
+              <View style={{ flex: 1 }}>
+                <PrimaryButton
+                  title={form.isSaving ? 'Sending…' : invoiceCap.submitLabel('Save & Send')}
+                  onPress={() => handleSave('sent')}
+                  isLoading={form.isSaving}
+                  icon={<Feather name="send" size={16} color={colors.neutral0} />}
+                />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.btnRow}>
+              <View style={{ flex: 1, marginRight: spacing.xs }}>
+                <SecondaryButton
+                  title="Save Draft"
+                  onPress={() => handleSave('draft')}
+                  disabled={form.isSaving}
+                  icon={<Feather name="save" size={16} color={colors.actionGreen} />}
+                />
+              </View>
+              <View style={{ flex: 1.4 }}>
+                <PrimaryButton
+                  title={form.isSaving ? 'Saving…' : 'Save & Send'}
+                  onPress={() => handleSave('sent')}
+                  isLoading={form.isSaving}
+                  icon={<Feather name="send" size={16} color={colors.neutral0} />}
+                />
+              </View>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <RejectReasonModal
+        visible={rejectOpen}
+        summary={request?.summary}
+        onCancel={() => setRejectOpen(false)}
+        onSubmit={handleReject}
+      />
     </SafeAreaView>
   );
 };
@@ -579,6 +776,28 @@ const styles = StyleSheet.create({
   grandTotalValue: { ...typography.h2, color: colors.neutral0, fontVariant: ['tabular-nums'] },
 
   // ── Buttons ────────────────────────────────────
+  reviewBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.warning + '12',
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  reviewBannerTitle: { ...typography.labelMd, color: colors.textPrimary },
+  reviewBannerBody: { ...typography.bodySm, color: colors.textSecondary, marginTop: 2 },
+  reviewNote: {
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.backgroundAlt,
+  },
+  reviewNoteText: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   btnRow: {
     flexDirection: 'row',
     marginTop: spacing.xl,

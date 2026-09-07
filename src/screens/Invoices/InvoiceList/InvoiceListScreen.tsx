@@ -11,12 +11,15 @@ import {
   StyleSheet,
   FlatList,
   TextInput,
+  TouchableOpacity,
   RefreshControl,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
+import { usePendingApprovals } from '../../../hooks/usePendingApprovals';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchInvoices,
@@ -73,17 +76,30 @@ const InvoiceListScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const initialLoading = isLoading && invoices.length === 0;
 
+  // A staff member's invoice does not exist until the owner approves it, so it
+  // is absent from this list — which reads as "my request vanished". Same gap
+  // the PO list closes, and the same answer: show the requests, and say plainly
+  // that they are not invoices yet.
+  const {
+    requests: pendingRequests,
+    reload: loadPending,
+    showsPending,
+  } = usePendingApprovals('invoice', 'invoice.create');
+
   useFocusEffect(
     useCallback(() => {
       dispatch(fetchInvoices());
-    }, [dispatch]),
+      // On focus, because coming back here is exactly when a just-approved
+      // request should become a real invoice and drop off the strip.
+      void loadPending();
+    }, [dispatch, loadPending]),
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await dispatch(fetchInvoices());
+    await Promise.all([dispatch(fetchInvoices()), loadPending()]);
     setRefreshing(false);
-  }, [dispatch]);
+  }, [dispatch, loadPending]);
 
   // ── Tab counts ──────────────────────────────────
   const counts = useMemo(() => {
@@ -172,6 +188,47 @@ const InvoiceListScreen: React.FC = () => {
   // clean and professional instead of a cluttered wall of zeros.
   const isFirstRun = !initialLoading && !error && invoices.length === 0;
 
+  const openMyRequests = useCallback(() => {
+    // This screen sits in the Transactions tab; My Requests is in the staff
+    // More tab, so the hop goes through the parent tab navigator. initial:false
+    // puts StaffMoreHub underneath, so back returns there rather than finding
+    // an empty stack and falling through to the Dashboard.
+    const tabs = (navigation.getParent() ?? navigation) as unknown as {
+      navigate: (name: string, params?: Record<string, unknown>) => void;
+    };
+    tabs.navigate('StaffMoreStack', { screen: 'MyRequests', initial: false });
+  }, [navigation]);
+
+  const PendingSection = useMemo(() => {
+    if (!showsPending || pendingRequests.length === 0) return null;
+    return (
+      <View style={styles.pendingBlock}>
+        <Text style={styles.pendingHeading}>
+          Waiting for approval · {pendingRequests.length}
+        </Text>
+        {pendingRequests.map(req => (
+          <TouchableOpacity
+            key={req.id}
+            style={styles.pendingRow}
+            onPress={openMyRequests}
+            activeOpacity={0.7}
+          >
+            <Feather name="clock" size={15} color={colors.warning} />
+            <View style={styles.pendingBody}>
+              <Text style={styles.pendingSummary} numberOfLines={2}>
+                {req.summary}
+              </Text>
+              <Text style={styles.pendingMeta}>
+                Sent to the owner · not an invoice yet
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.textTertiary} />
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  }, [showsPending, pendingRequests, openMyRequests]);
+
   return (
     <ReportContainer>
       <ReportHeader
@@ -206,6 +263,11 @@ const InvoiceListScreen: React.FC = () => {
         </View>
       </View>
       )}
+
+      {/* Outside the isFirstRun gates above on purpose: a staff member's very
+          first invoice is a request with no invoice behind it, so the list is
+          empty exactly when this strip matters most. */}
+      {PendingSection}
 
       {/* Search — hidden during initial load to keep loader centered */}
       {showSearch && !initialLoading && !isFirstRun && (
@@ -312,6 +374,32 @@ const styles = StyleSheet.create({
   // ── List ───────────────────────────────────────
   list: { flex: 1 },
   listContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxl * 3 },
+  // Requests, not invoices — muted so they do not compete with the real rows
+  // below. Mirrors the PO list's strip so the two read as one idea.
+  pendingBlock: {
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.xs,
+  },
+  pendingHeading: {
+    ...typography.overline,
+    color: colors.textTertiary,
+    marginBottom: spacing.xs,
+  },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.warning + '0F',
+    borderWidth: 1,
+    borderColor: colors.warning + '33',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xxs,
+  },
+  pendingBody: { flex: 1 },
+  pendingSummary: { ...typography.labelMd, color: colors.textPrimary },
+  pendingMeta: { ...typography.caption, color: colors.textTertiary, marginTop: 1 },
 });
 
 export default InvoiceListScreen;
