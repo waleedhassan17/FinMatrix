@@ -7,6 +7,9 @@ export type DiscountType = 'percent' | 'amount' | 'none';
 
 export interface SalesOrderLine {
   id?: string;
+  /** Linked inventory item, '' for a free-text/service line. Carried to the
+   *  invoice this becomes, where it drives COGS. */
+  itemId: string;
   description: string;
   quantity: number;
   quantityFulfilled: number;

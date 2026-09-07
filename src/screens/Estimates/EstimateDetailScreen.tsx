@@ -25,6 +25,9 @@ import type { TransactionsStackParamList } from '../../navigators/stacks/Transac
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'EstimateDetail'>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
+/** What the server said about a rejected thunk. These convert thunks throw
+ *  rather than rejectWithValue, so the message is on `error`, not `payload`. */
+const failureText = (r: any) => r?.error?.message ?? 'Please try again.';
 
 const EstimateDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -41,12 +44,20 @@ const EstimateDetailScreen: React.FC = () => {
       { text: 'Convert', onPress: async () => {
         const r: any = await dispatch(convertEstimateInvoice(estimateId));
         if (r.meta.requestStatus === 'fulfilled') Alert.alert('Done', 'Invoice created from estimate.');
+        // Converting POSTS: it raises the invoice, moves stock and books COGS
+        // for any line carrying an inventory item, so it can be refused —
+        // short stock, a closed period. The rejection only reached
+        // state.error, which this screen renders solely when it has no
+        // estimate to show, so a failed conversion was a button that spun and
+        // then did nothing at all.
+        else Alert.alert('Could not convert', failureText(r));
       } },
     ]);
   };
   const doConvertSO = async () => {
     const r: any = await dispatch(convertEstimateSalesOrder(estimateId));
     if (r.meta.requestStatus === 'fulfilled') Alert.alert('Done', 'Sales order created from estimate.');
+    else Alert.alert('Could not convert', failureText(r));
   };
   const doDelete = () => {
     Alert.alert('Delete estimate', 'This cannot be undone.', [

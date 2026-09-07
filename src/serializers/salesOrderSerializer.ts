@@ -8,6 +8,8 @@ const toNum = (v: any): number => {
 
 export const mapSalesOrderLine = (raw: any): SalesOrderLine => ({
   id: raw.id,
+  // '' rather than null so it drops straight into CustomDropdown's `value`.
+  itemId: raw.itemId ?? '',
   description: raw.description ?? '',
   quantity: toNum(raw.quantity),
   quantityFulfilled: toNum(raw.quantityFulfilled),

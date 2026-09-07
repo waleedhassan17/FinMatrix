@@ -25,6 +25,9 @@ import type { TransactionsStackParamList } from '../../navigators/stacks/Transac
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'SalesOrderDetail'>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
+/** What the server said about a rejected thunk. The convert thunk throws
+ *  rather than rejectWithValue, so the message is on `error`, not `payload`. */
+const failureText = (r: any) => r?.error?.message ?? 'Please try again.';
 
 
 const SalesOrderDetailScreen: React.FC = () => {
@@ -46,6 +49,12 @@ const SalesOrderDetailScreen: React.FC = () => {
       { text: 'Create', onPress: async () => {
         const r: any = await dispatch(convertSalesOrderInvoice(salesOrderId));
         if (r.meta.requestStatus === 'fulfilled') Alert.alert('Done', 'Invoice created from sales order.');
+        // Invoicing POSTS: it moves stock and books COGS for any line carrying
+        // an inventory item, so it can be refused — short stock, a closed
+        // period. The rejection only reached state.error, which this screen
+        // renders solely when it has no order to show, so a failed conversion
+        // was a button that spun and then did nothing at all.
+        else Alert.alert('Could not create invoice', failureText(r));
       } },
     ]);
   };

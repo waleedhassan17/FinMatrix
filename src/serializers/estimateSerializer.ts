@@ -11,6 +11,8 @@ const toNum = (v: any): number => {
 
 export const mapEstimateLine = (raw: any): EstimateLine => ({
   id: raw.id,
+  // '' rather than null so it drops straight into CustomDropdown's `value`.
+  itemId: raw.itemId ?? '',
   description: raw.description ?? '',
   quantity: toNum(raw.quantity),
   unitPrice: toNum(raw.unitPrice),

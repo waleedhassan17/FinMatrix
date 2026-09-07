@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
@@ -8,6 +8,8 @@ import type { RouteProp } from '@react-navigation/native';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchCustomers, selectCustomers } from '../Customers/CustomerList/customerListSlice';
+import { fetchInventoryItems, selectInventoryItems } from '../Inventory/InventoryList/inventoryListSlice';
+import { selectFeatures } from '../Auth/authSlice';
 import { getSalesOrderByIdAPI, createSalesOrderAPI, updateSalesOrderAPI } from '../../networks/sales/salesOrderNetwork';
 import { salesOrderSingleSerializer } from '../../serializers/salesOrderSerializer';
 import { formatCurrency } from '../../utils/formatters';
@@ -22,13 +24,13 @@ import type { TransactionsStackParamList } from '../../navigators/stacks/Transac
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'SalesOrderForm'>;
 
-interface LineDraft { description: string; quantity: string; unitPrice: string; taxRate: string; }
+interface LineDraft { itemId: string; description: string; quantity: string; unitPrice: string; taxRate: string; }
 // Blank, not '1' and '0'. Those read as figures somebody entered, and a rate
 // of 0 sitting in the field is exactly the value you do not want saved by
 // accident. Empty shows LineItemRow's grey placeholders instead, and `save`
 // below refuses a line that still has no quantity or rate. Matches the invoice
 // and purchase-order forms, which already do this.
-const blankLine = (): LineDraft => ({ description: '', quantity: '', unitPrice: '', taxRate: '0' });
+const blankLine = (): LineDraft => ({ itemId: '', description: '', quantity: '', unitPrice: '', taxRate: '0' });
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -40,6 +42,8 @@ const SalesOrderFormScreen: React.FC = () => {
   const editingId = route.params?.salesOrderId;
   const dispatch = useAppDispatch();
   const customers = useAppSelector(selectCustomers);
+  const inventory = useAppSelector(selectInventoryItems);
+  const features = useAppSelector(selectFeatures);
 
   const [customerId, setCustomerId] = useState('');
   const [orderDate, setOrderDate] = useState(today());
@@ -50,7 +54,39 @@ const SalesOrderFormScreen: React.FC = () => {
   const [lines, setLines] = useState<LineDraft[]>([blankLine()]);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { dispatch(fetchCustomers()); }, [dispatch]);
+  useEffect(() => {
+    dispatch(fetchCustomers());
+    // Inventory is tier-gated (FinMatrix.md) — skip the fetch entirely for
+    // companies without the feature instead of firing a guaranteed 403.
+    if (features?.inventory !== false) dispatch(fetchInventoryItems());
+  }, [dispatch, features?.inventory]);
+
+  // ── Inventory item options (optional per line; drives COGS once invoiced) ──
+  const itemOptions = useMemo(
+    () => [
+      { label: 'No item (free-text)', value: '' },
+      ...inventory.map(it => ({ label: `${it.sku} — ${it.name}`, value: it.id })),
+    ],
+    [inventory],
+  );
+
+  // Keyed by index, not by id: these lines are local drafts with no stable id
+  // (the list is rendered and updated by position).
+  const handleSelectItem = useCallback(
+    (i: number, itemId: string) => {
+      const it = inventory.find(x => x.id === itemId);
+      setLines(prev => prev.map((l, idx) => (idx === i
+        ? {
+            ...l,
+            itemId,
+            // Picking "No item" clears the link but leaves whatever was typed:
+            // the text and price are the user's, not the item's, from then on.
+            ...(it ? { description: it.name, unitPrice: String(it.sellingPrice) } : {}),
+          }
+        : l)));
+    },
+    [inventory],
+  );
 
   useEffect(() => {
     if (!editingId) return;
@@ -64,6 +100,7 @@ const SalesOrderFormScreen: React.FC = () => {
       setDiscountValue(String(o.discountValue));
       setNotes(o.notes);
       setLines(o.lines.length ? o.lines.map(l => ({
+        itemId: l.itemId ?? '',
         description: l.description, quantity: String(l.quantity), unitPrice: String(l.unitPrice), taxRate: String(l.taxRate),
       })) : [blankLine()]);
     }).catch(() => {});
@@ -100,7 +137,12 @@ const SalesOrderFormScreen: React.FC = () => {
       customerId, orderDate, expectedDate: expectedDate || undefined,
       discountType, discountValue,
       notes: notes || undefined,
-      lines: valid.map(l => ({ description: l.description, quantity: l.quantity || '0', unitPrice: l.unitPrice || '0', taxRate: l.taxRate })),
+      lines: valid.map(l => ({
+        description: l.description, quantity: l.quantity || '0', unitPrice: l.unitPrice || '0', taxRate: l.taxRate,
+        // Only send itemId when an inventory item is linked; an empty string
+        // would fail the backend's @IsUUID validation.
+        ...(l.itemId ? { itemId: l.itemId } : {}),
+      })),
     };
     setSaving(true);
     try {
@@ -141,6 +183,22 @@ const SalesOrderFormScreen: React.FC = () => {
         <SectionCard title="Line Items" icon="list">
           {lines.map((l, i) => (
             <LineItemRow key={i} index={i}
+              // Hidden rather than empty when the company has no inventory:
+              // the fetch above is skipped there, so the dropdown's only entry
+              // would be "No item" — a dead control implying a feature they
+              // have not bought. (Always true on this screen, since sales
+              // orders are warehouse-only, but the two forms are twins and an
+              // asymmetry here would invite a later divergence.)
+              topSlot={features?.inventory !== false ? (
+                <CustomDropdown
+                  label="Inventory item (optional)"
+                  options={itemOptions}
+                  value={l.itemId}
+                  onChange={v => handleSelectItem(i, v)}
+                  placeholder="Link an inventory item…"
+                  searchable
+                />
+              ) : undefined}
               description={l.description} quantity={l.quantity} unitPrice={l.unitPrice} taxRate={l.taxRate}
               lineAmount={(parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0)}
               onDescriptionChange={v => updateLine(i, { description: v })}
