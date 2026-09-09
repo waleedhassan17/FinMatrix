@@ -6,6 +6,8 @@ import { arAgingSerializer } from '../../../serializers/arAgingSerializer';
 import { toIsoDate } from '../../../models/reportModel';
 
 interface ARAgingState {
+  /** True once the user picks their own date — see getDefaultReportRange. */
+  isCustomRange: boolean;
   asOfDate: string;
   report: ARAgingReport | null;
   isLoading: boolean;
@@ -13,6 +15,7 @@ interface ARAgingState {
 }
 
 const initialState: ARAgingState = {
+  isCustomRange: false,
   // LOCAL calendar date — toISOString() is UTC and ages the buckets from
   // yesterday in PKT until 05:00 local.
   asOfDate: toIsoDate(new Date()),
@@ -27,6 +30,17 @@ export const arAgingSlice = createAppSlice({
   reducers: create => ({
     setARAgingAsOfDate: create.reducer((state, action: PayloadAction<string>) => {
       state.asOfDate = action.payload;
+      state.isCustomRange = true;
+    }),
+    /**
+     * Re-seed to today unless the user chose their own date.
+     *
+     * initialState is evaluated once at bundle startup, so without this the
+     * date freezes on the day the app launched and the report silently
+     * stops including anything newer. Screens dispatch this on focus.
+     */
+    refreshARAgingAsOfDate: create.reducer(state => {
+      if (!state.isCustomRange) state.asOfDate = toIsoDate(new Date());
     }),
     fetchARAgingReport: create.asyncThunk(
       async (asOfDate: string) => arAgingSerializer(await getARAgingReportAPI(asOfDate)),
@@ -51,6 +65,6 @@ export const arAgingSlice = createAppSlice({
   },
 });
 
-export const { setARAgingAsOfDate, fetchARAgingReport } = arAgingSlice.actions;
+export const { setARAgingAsOfDate, refreshARAgingAsOfDate, fetchARAgingReport } = arAgingSlice.actions;
 export const selectARAgingState = (rootState: { arAging?: ARAgingState }) =>
   rootState.arAging ?? initialState;

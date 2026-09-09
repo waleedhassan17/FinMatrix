@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
+import dayjs from 'dayjs';
+import React, { useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,14 +9,14 @@ import {
   Dimensions
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { PieChart } from 'react-native-chart-kit';
 
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchDeliveryDailyReport,
-  setDeliveryDailyDate,
+  setDeliveryDailyDate, refreshDeliveryDailyDate,
   selectDeliveryDailyReportState
 } from './deliveryDailyReportSlice';
 import type { DeliveryPersonnelStat } from '../../../models/deliveryDailyReportModel';
@@ -37,11 +38,12 @@ import {
 
 const CHART_WIDTH = Dimensions.get('window').width - THEME.spacing.md * 4;
 
-const shiftDate = (dateStr: string, days: number): string => {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-};
+// The day-back / day-forward arrows. `new Date('YYYY-MM-DD')` parses as UTC
+// midnight while setDate/getDate work in local time, so formatting the result
+// with toISOString() shifted the answer a day in PKT (UTC+5) — the arrows
+// skipped or repeated a day. dayjs stays in local time throughout.
+const shiftDate = (dateStr: string, days: number): string =>
+  dayjs(dateStr).add(days, 'day').format('YYYY-MM-DD');
 
 const formatDateLabel = (dateStr: string): string =>
   new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
@@ -62,6 +64,18 @@ const DeliveryDailyReportScreen: React.FC = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const { report, date, isLoading, error } = useAppSelector(selectDeliveryDailyReportState);
+
+  // Bring the window up to today every time the screen is opened.
+  //
+  // The default is seeded in the slice's initialState, which is evaluated once
+  // at bundle startup — so on a device left running for days it silently keeps
+  // asking for a window that ended when the app launched, and the report looks
+  // like the books stopped. The reducer leaves a range the user chose alone.
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(refreshDeliveryDailyDate());
+    }, [dispatch]),
+  );
 
   useEffect(() => {
     dispatch(fetchDeliveryDailyReport(date));

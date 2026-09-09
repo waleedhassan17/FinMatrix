@@ -11,6 +11,8 @@ import { profitLossSerializer } from '../../../serializers/profitLossSerializer'
 
 interface ProfitLossState {
   range: ReportDateRange;
+  /** True once the user picks their own dates — see getDefaultReportRange. */
+  isCustomRange: boolean;
   comparisonEnabled: boolean;
   report: ProfitLossReport | null;
   isLoading: boolean;
@@ -19,6 +21,7 @@ interface ProfitLossState {
 
 const initialState: ProfitLossState = {
   range: getDefaultReportRange(),
+  isCustomRange: false,
   comparisonEnabled: false,
   report: null,
   isLoading: false,
@@ -31,6 +34,17 @@ export const profitLossSlice = createAppSlice({
   reducers: create => ({
     setProfitLossRange: create.reducer((state, action: PayloadAction<ReportDateRange>) => {
       state.range = action.payload;
+      state.isCustomRange = true;
+    }),
+    /**
+     * Re-seed the window to today unless the user chose their own.
+     *
+     * initialState is evaluated once at bundle startup, so without this the
+     * range freezes on the day the app launched and the report silently
+     * stops including anything newer. Screens dispatch this on focus.
+     */
+    refreshProfitLossRange: create.reducer(state => {
+      if (!state.isCustomRange) state.range = getDefaultReportRange();
     }),
     setProfitLossComparisonEnabled: create.reducer((state, action: PayloadAction<boolean>) => {
       state.comparisonEnabled = action.payload;
@@ -69,6 +83,7 @@ export const profitLossSlice = createAppSlice({
 
 export const {
   setProfitLossRange,
+  refreshProfitLossRange,
   setProfitLossComparisonEnabled,
   fetchProfitLossReport,
 } = profitLossSlice.actions;

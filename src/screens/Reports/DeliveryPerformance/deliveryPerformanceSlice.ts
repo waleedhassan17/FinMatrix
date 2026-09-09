@@ -9,6 +9,8 @@ import { deliveryPerformanceSerializer } from '../../../serializers/deliveryPerf
 interface DeliveryPerformanceState {
   report: DeliveryPerformanceReport | null;
   range: ReportDateRange;
+  /** True once the user picks their own dates — see getDefaultReportRange. */
+  isCustomRange: boolean;
   isLoading: boolean;
   error: string;
 }
@@ -16,6 +18,7 @@ interface DeliveryPerformanceState {
 const initialState: DeliveryPerformanceState = {
   report: null,
   range: getLastNDaysRange(14),
+  isCustomRange: false,
   isLoading: false,
   error: '',
 };
@@ -26,6 +29,17 @@ export const deliveryPerformanceSlice = createAppSlice({
   reducers: create => ({
     setDeliveryPerformanceRange: create.reducer((state, action: PayloadAction<ReportDateRange>) => {
       state.range = action.payload;
+      state.isCustomRange = true;
+    }),
+    /**
+     * Re-seed the window to today unless the user chose their own.
+     *
+     * initialState is evaluated once at bundle startup, so without this the
+     * range freezes on the day the app launched and the report silently
+     * stops including anything newer. Screens dispatch this on focus.
+     */
+    refreshDeliveryPerformanceRange: create.reducer(state => {
+      if (!state.isCustomRange) state.range = getLastNDaysRange(14);
     }),
     fetchDeliveryPerformance: create.asyncThunk(
       async (range: ReportDateRange) => deliveryPerformanceSerializer(await getDeliveryPerformanceAPI(range)),
@@ -50,7 +64,7 @@ export const deliveryPerformanceSlice = createAppSlice({
   },
 });
 
-export const { setDeliveryPerformanceRange, fetchDeliveryPerformance } =
+export const { setDeliveryPerformanceRange, refreshDeliveryPerformanceRange, fetchDeliveryPerformance } =
   deliveryPerformanceSlice.actions;
 
 // Manual selector – RTK's auto-generated slice.selectors can return

@@ -6,18 +6,22 @@ import { balanceSheetSerializer } from '../../../serializers/balanceSheetSeriali
 import { toIsoDate } from '../../../models/reportModel';
 
 interface BalanceSheetState {
+  /** True once the user picks their own date — see getDefaultReportRange. */
+  isCustomRange: boolean;
   asOfDate: string;
   report: BalanceSheetReport | null;
   isLoading: boolean;
   error: string;
 }
 
-// LOCAL calendar date. toISOString() is UTC, so in PKT (UTC+5) it returns
-// yesterday until 05:00 — the sheet would open closed as of the wrong day.
-const today = toIsoDate(new Date());
-
 const initialState: BalanceSheetState = {
-  asOfDate: today,
+  isCustomRange: false,
+  // LOCAL calendar date. toISOString() is UTC, so in PKT (UTC+5) it returns
+  // yesterday until 05:00 — the sheet would open closed as of the wrong day.
+  //
+  // This is still only the value at bundle startup; refreshBalanceSheetAsOfDate
+  // is what keeps it honest once the app has been running for a while.
+  asOfDate: toIsoDate(new Date()),
   report: null,
   isLoading: false,
   error: '',
@@ -29,6 +33,17 @@ export const balanceSheetSlice = createAppSlice({
   reducers: create => ({
     setBalanceSheetAsOfDate: create.reducer((state, action: PayloadAction<string>) => {
       state.asOfDate = action.payload;
+      state.isCustomRange = true;
+    }),
+    /**
+     * Re-seed to today unless the user chose their own date.
+     *
+     * initialState is evaluated once at bundle startup, so without this the
+     * date freezes on the day the app launched and the report silently
+     * stops including anything newer. Screens dispatch this on focus.
+     */
+    refreshBalanceSheetAsOfDate: create.reducer(state => {
+      if (!state.isCustomRange) state.asOfDate = toIsoDate(new Date());
     }),
     fetchBalanceSheetReport: create.asyncThunk(
       async (asOfDate: string) => balanceSheetSerializer(await getBalanceSheetReportAPI(asOfDate)),
@@ -53,6 +68,6 @@ export const balanceSheetSlice = createAppSlice({
   },
 });
 
-export const { setBalanceSheetAsOfDate, fetchBalanceSheetReport } = balanceSheetSlice.actions;
+export const { setBalanceSheetAsOfDate, refreshBalanceSheetAsOfDate, fetchBalanceSheetReport } = balanceSheetSlice.actions;
 export const selectBalanceSheetState = (rootState: { balanceSheet?: BalanceSheetState }) =>
   rootState.balanceSheet ?? initialState;

@@ -65,6 +65,23 @@ export const toIsoDate = (d: Date): string => {
 // transaction recorded so far in the current year (so payments/invoices are
 // visible without changing the filter) and never runs past the current date —
 // matching the QuickBooks "This Year-to-date" default.
+//
+// IMPORTANT — call this when a report is OPENED, never once at module scope.
+//
+// Every report slice used to seed its `initialState` with this, and an
+// `initialState` literal is evaluated once, when the store imports the slice at
+// JS-bundle startup. `endDate` therefore froze at whatever day the app was
+// launched, and nothing recomputed it: no report screen refreshed on focus,
+// there is no pull-to-refresh under src/screens/Reports/, and no AppState
+// listener. Report slices are not persisted either, so the window only reset on
+// a full process kill — signing out and back in restored the SAME stale date,
+// because that is what initialState holds.
+//
+// On a warehouse phone left running for a few days that reads as "the books
+// stopped updating": the screen fetches, spins, and returns real data for a
+// window that ended days ago. Each slice now keeps an `isCustomRange` flag and
+// re-seeds from here on focus while the user has not chosen a range of their
+// own.
 export const getDefaultReportRange = (): ReportDateRange => {
   const today = new Date();
   const start = new Date(today.getFullYear(), 0, 1);

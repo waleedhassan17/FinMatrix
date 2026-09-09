@@ -7,6 +7,8 @@ import { trialBalanceSerializer } from '../../../serializers/trialBalanceSeriali
 
 interface TrialBalanceState {
   range: ReportDateRange;
+  /** True once the user picks their own dates — see getDefaultReportRange. */
+  isCustomRange: boolean;
   report: TrialBalanceReport | null;
   isLoading: boolean;
   error: string;
@@ -14,6 +16,7 @@ interface TrialBalanceState {
 
 const initialState: TrialBalanceState = {
   range: getDefaultReportRange(),
+  isCustomRange: false,
   report: null,
   isLoading: false,
   error: '',
@@ -25,6 +28,17 @@ export const trialBalanceSlice = createAppSlice({
   reducers: create => ({
     setTrialBalanceRange: create.reducer((state, action: PayloadAction<ReportDateRange>) => {
       state.range = action.payload;
+      state.isCustomRange = true;
+    }),
+    /**
+     * Re-seed the window to today unless the user chose their own.
+     *
+     * initialState is evaluated once at bundle startup, so without this the
+     * range freezes on the day the app launched and the report silently
+     * stops including anything newer. Screens dispatch this on focus.
+     */
+    refreshTrialBalanceRange: create.reducer(state => {
+      if (!state.isCustomRange) state.range = getDefaultReportRange();
     }),
     fetchTrialBalanceReport: create.asyncThunk(
       async (range: ReportDateRange) => trialBalanceSerializer(await getTrialBalanceReportAPI(range)),
@@ -49,6 +63,6 @@ export const trialBalanceSlice = createAppSlice({
   },
 });
 
-export const { setTrialBalanceRange, fetchTrialBalanceReport } = trialBalanceSlice.actions;
+export const { setTrialBalanceRange, refreshTrialBalanceRange, fetchTrialBalanceReport } = trialBalanceSlice.actions;
 export const selectTrialBalanceState = (rootState: { trialBalance?: TrialBalanceState }) =>
   rootState.trialBalance ?? initialState;

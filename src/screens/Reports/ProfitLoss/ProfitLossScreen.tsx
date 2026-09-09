@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
@@ -9,7 +9,7 @@ import {
   fetchProfitLossReport,
   selectProfitLossState,
   setProfitLossComparisonEnabled,
-  setProfitLossRange
+  setProfitLossRange, refreshProfitLossRange
 } from './profitLossSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { ProfitLossReport } from '../../../models/profitLossModel';
@@ -68,6 +68,18 @@ const ProfitLossScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectProfitLossState);
   const company = useStatementCompany();
+
+  // Bring the window up to today every time the screen is opened.
+  //
+  // The default is seeded in the slice's initialState, which is evaluated once
+  // at bundle startup — so on a device left running for days it silently keeps
+  // asking for a window that ended when the app launched, and the report looks
+  // like the books stopped. The reducer leaves a range the user chose alone.
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(refreshProfitLossRange());
+    }, [dispatch]),
+  );
 
   useEffect(() => {
     dispatch(fetchProfitLossReport({ range: state.range, comparisonEnabled: state.comparisonEnabled }));

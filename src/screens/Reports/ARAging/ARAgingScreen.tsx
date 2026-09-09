@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { View, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { fetchARAgingReport, selectARAgingState, setARAgingAsOfDate } from './arAgingSlice';
+import { fetchARAgingReport, selectARAgingState, setARAgingAsOfDate, refreshARAgingAsOfDate } from './arAgingSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import {
@@ -35,6 +35,18 @@ const ARAgingScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectARAgingState);
   const company = useStatementCompany();
+
+  // Bring the window up to today every time the screen is opened.
+  //
+  // The default is seeded in the slice's initialState, which is evaluated once
+  // at bundle startup — so on a device left running for days it silently keeps
+  // asking for a window that ended when the app launched, and the report looks
+  // like the books stopped. The reducer leaves a range the user chose alone.
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(refreshARAgingAsOfDate());
+    }, [dispatch]),
+  );
 
   useEffect(() => {
     dispatch(fetchARAgingReport(state.asOfDate));
