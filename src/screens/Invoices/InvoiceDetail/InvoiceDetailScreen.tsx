@@ -66,8 +66,12 @@ type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type DetailRoute = RouteProp<TransactionsStackParamList, 'InvoiceDetail'>;
 const { colors, radius, shadows, spacing, typography } = THEME;
 
+// Deliberately not shared with the list screen's map. There the label sits in
+// a compact pill on every row; here it has a whole header line, so the draft
+// state can say what it actually means — a draft posts no journal entry, so it
+// is in no report until it is posted, and "Draft" alone never conveyed that.
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
-  draft: 'Draft',
+  draft: 'Draft — not posted',
   sent: 'Sent',
   partial: 'Partial',
   paid: 'Paid',
@@ -197,6 +201,41 @@ const InvoiceDetailScreen: React.FC = () => {
       await markAsSentOnBackend('share');
     }
   }, [invoice, customer, markAsSentOnBackend]);
+
+  /**
+   * Post a draft to the books without sharing it.
+   *
+   * A draft posts no journal entry — correct accounting, since a draft is not
+   * a transaction. But the ONLY way to leave that state used to be completing
+   * the OS share sheet: cancel the sheet and the invoice stayed a draft,
+   * absent from the ledger and every report, with no button anywhere that
+   * would post it. Sharing a PDF and recognising revenue are two different
+   * decisions and now have two different buttons.
+   *
+   * Confirms first, because this is the moment the sale enters the books.
+   */
+  const handlePostToBooks = useCallback(() => {
+    if (!invoice) return;
+    Alert.alert(
+      'Post to books?',
+      `Invoice ${invoice.invoiceNumber} will be recorded as sent and posted to the general ledger. This is what makes it show up in your reports.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Post',
+          onPress: async () => {
+            try {
+              await dispatch(sendInvoice({ id: invoice.id, channel: 'share' })).unwrap();
+              dispatch(fetchInvoices());
+            } catch (e: any) {
+              // INVOICE_ZERO_TOTAL lands here with a message naming the fix.
+              Alert.alert('Could not post', e?.message ?? 'Failed to post the invoice.');
+            }
+          },
+        },
+      ],
+    );
+  }, [dispatch, invoice]);
 
   const handleOpenWhatsAppChat = useCallback(async () => {
     if (!invoice) return;
@@ -435,22 +474,35 @@ const InvoiceDetailScreen: React.FC = () => {
 
       {/* ── Action Bar ──────────────────────────────── */}
       <View style={styles.actionBar}>
-        {/* Draft: Edit + primary "Send via WhatsApp" */}
+        {/* Draft: Edit + Share, with Post as the primary action. Posting is
+            what puts the invoice in the ledger, so it gets the primary slot;
+            sharing a PDF is a separate decision and no longer the only route
+            out of draft. */}
         {invoice.status === 'draft' && (
           <>
-            <View style={styles.actionSecondary}>
+            <View style={styles.actionShare}>
               <CustomButton
                 title="Edit"
                 onPress={() => navigation.navigate('InvoiceForm', { invoiceId: invoice.id })}
-                variant="secondary"
+                variant="text"
                 size="sm"
                 fullWidth
               />
             </View>
-            <View style={styles.actionPrimary}>
+            <View style={styles.actionSecondary}>
               <CustomButton
                 title={isSending ? 'Sending…' : 'Share'}
                 onPress={handleSharePdf}
+                variant="secondary"
+                size="sm"
+                fullWidth
+                disabled={isSending}
+              />
+            </View>
+            <View style={styles.actionPrimary}>
+              <CustomButton
+                title={isSending ? 'Posting…' : 'Post'}
+                onPress={handlePostToBooks}
                 variant="primary"
                 size="sm"
                 fullWidth

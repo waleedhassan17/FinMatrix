@@ -23,6 +23,7 @@ import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
+import { titleCase } from '../../components/transactions/TxnListUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import type { Invoice } from '../../types';
 
@@ -86,7 +87,7 @@ const CreditMemoDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
           <View style={styles.headRow}>
-            <Badge label={c.status} color={txnStatusColor(c.status)} dot />
+            <Badge label={titleCase(c.status)} color={txnStatusColor(c.status)} dot />
             <Text style={styles.total}>{rs(c.total)}</Text>
           </View>
           <Info label="Date" value={c.date} />

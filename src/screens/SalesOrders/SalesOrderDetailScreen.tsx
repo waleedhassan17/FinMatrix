@@ -20,6 +20,7 @@ import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, Badge, ProgressBar, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
+import { titleCase } from '../../components/transactions/TxnListUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -78,7 +79,7 @@ const SalesOrderDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
           <View style={styles.headRow}>
-            <Badge label={o.status} color={txnStatusColor(o.status)} dot />
+            <Badge label={titleCase(o.status)} color={txnStatusColor(o.status)} dot />
             <Text style={styles.total}>{rs(o.total)}</Text>
           </View>
           <Info label="Order date" value={o.orderDate} />

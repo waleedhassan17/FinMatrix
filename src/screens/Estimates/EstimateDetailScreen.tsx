@@ -20,6 +20,7 @@ import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
+import { titleCase } from '../../components/transactions/TxnListUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
@@ -79,7 +80,7 @@ const EstimateDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
           <View style={styles.headRow}>
-            <Badge label={e.status} color={txnStatusColor(e.status)} dot />
+            <Badge label={titleCase(e.status)} color={txnStatusColor(e.status)} dot />
             <Text style={styles.total}>{rs(e.total)}</Text>
           </View>
           <Info label="Estimate date" value={e.estimateDate} />
