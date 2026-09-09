@@ -7,6 +7,8 @@ import { generalLedgerSerializer, ledgerAccountsSerializer } from '../../../seri
 
 interface GeneralLedgerState {
   range: ReportDateRange;
+  /** True once the user picks their own dates — see getDefaultReportRange. */
+  isCustomRange: boolean;
   account: string | null;
   ledger: GeneralLedgerReport | null;
   accounts: LedgerAccountsReport | null;
@@ -16,6 +18,7 @@ interface GeneralLedgerState {
 
 const initialState: GeneralLedgerState = {
   range: getDefaultReportRange(),
+  isCustomRange: false,
   account: null,
   ledger: null,
   accounts: null,
@@ -29,6 +32,17 @@ export const generalLedgerSlice = createAppSlice({
   reducers: create => ({
     setLedgerRange: create.reducer((state, action: PayloadAction<ReportDateRange>) => {
       state.range = action.payload;
+      state.isCustomRange = true;
+    }),
+    /**
+     * Re-seed the window to today unless the user chose their own.
+     *
+     * initialState is evaluated once at bundle startup, so without this the
+     * range freezes on the day the app launched and the report silently
+     * stops including anything newer. Screens dispatch this on focus.
+     */
+    refreshLedgerRange: create.reducer(state => {
+      if (!state.isCustomRange) state.range = getDefaultReportRange();
     }),
     setLedgerAccount: create.reducer((state, action: PayloadAction<string | null>) => {
       state.account = action.payload;
@@ -61,6 +75,6 @@ export const generalLedgerSlice = createAppSlice({
   selectors: { selectGeneralLedgerState: state => state },
 });
 
-export const { setLedgerRange, setLedgerAccount, fetchGeneralLedger } = generalLedgerSlice.actions;
+export const { setLedgerRange, refreshLedgerRange, setLedgerAccount, fetchGeneralLedger } = generalLedgerSlice.actions;
 export const selectGeneralLedgerState = (rootState: { generalLedger?: GeneralLedgerState }) =>
   rootState.generalLedger ?? initialState;

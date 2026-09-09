@@ -1,16 +1,17 @@
 import dayjs from 'dayjs';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
-  fetchGeneralLedger, selectGeneralLedgerState, setLedgerAccount, setLedgerRange
+  fetchGeneralLedger, selectGeneralLedgerState, setLedgerAccount, setLedgerRange, refreshLedgerRange
 } from './generalLedgerSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { LedgerEntry } from '../../../models/generalLedgerModel';
+import { visibleLedgerRows } from './ledgerRows';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -28,13 +29,6 @@ const rs = (n: number) => formatCurrency(n, 'Rs ');
 // was recorded, which is what an audit trail needs.
 const fmtLedgerDate = (d: string): string => (d ? dayjs(d).format('MMM D, YYYY') : '—');
 const fmtLedgerTime = (ts: string): string => (ts ? dayjs(ts).format('HH:mm:ss') : '');
-
-/**
- * How many entries the table will draw. Unchanged from before the grouping —
- * the cap applies to the flat list, so the same rows appear, just organised
- * under their account.
- */
-const ROW_CAP = 300;
 
 /**
  * Group entries by account WITHOUT reordering them: accounts appear in the
@@ -64,18 +58,35 @@ const GeneralLedgerScreen: React.FC = () => {
   const state = useAppSelector(selectGeneralLedgerState);
   const company = useStatementCompany();
 
+  // Bring the window up to today every time the screen is opened.
+  //
+  // The default is seeded in the slice's initialState, which is evaluated once
+  // at bundle startup — so on a device left running for days it silently keeps
+  // asking for a window that ended when the app launched, and the report looks
+  // like the books stopped. The reducer leaves a range the user chose alone.
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(refreshLedgerRange());
+    }, [dispatch]),
+  );
+
   useEffect(() => {
     dispatch(fetchGeneralLedger({ range: state.range, account: state.account }));
   }, [dispatch, state.range.startDate, state.range.endDate, state.account]);
 
   const { ledger, accounts } = state;
 
+  // The most recent lines, never the oldest — see ledgerRows.ts for why that
+  // distinction cost a week of apparently missing accounts.
+  const { rows, hiddenCount } = useMemo(
+    () => visibleLedgerRows(ledger ? ledger.entries : []),
+    [ledger],
+  );
+  const groups = useMemo(() => groupByAccount(rows), [rows]);
+
   // Ledger rule: amounts are shown COMPLETE at full size. The Debit/Credit
   // columns are sized to the longest amount in the data; on narrow screens
   // the table pans horizontally instead of shrinking the figures.
-  const rows = useMemo(() => (ledger ? ledger.entries.slice(0, ROW_CAP) : []), [ledger]);
-  const groups = useMemo(() => groupByAccount(rows), [rows]);
-
   const valW = useMemo(() => {
     if (!ledger) return 96;
     const formatted = rows
@@ -145,8 +156,23 @@ const GeneralLedgerScreen: React.FC = () => {
               subtitle={state.account ? `Account ${state.account}` : 'All accounts'}
               icon="list"
             >
-              {ledger.entries.length === 0 && <EmptyBlock title="No ledger activity for this period." />}
-              {ledger.entries.length > 0 && (
+              {rows.length === 0 && <EmptyBlock title="No ledger activity for this period." />}
+
+              {/* Truncation has to announce itself. The old cap cut the newest
+                  rows away in silence, which is indistinguishable from the
+                  ledger having stopped. */}
+              {hiddenCount > 0 && (
+                <View style={styles.truncationNotice}>
+                  <Text style={styles.truncationText}>
+                    Showing the most recent {rows.length.toLocaleString()} of{' '}
+                    {ledger.entries.length.toLocaleString()} lines. Narrow the date range above to
+                    see the {hiddenCount.toLocaleString()} earlier{' '}
+                    {hiddenCount === 1 ? 'line' : 'lines'}.
+                  </Text>
+                </View>
+              )}
+
+              {rows.length > 0 && (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tableScroll}>
                   <View style={styles.table}>
                     <View style={styles.headRow}>
@@ -200,9 +226,15 @@ const GeneralLedgerScreen: React.FC = () => {
                       );
                     })}
 
+                    {/* These come from the server and cover the WHOLE period,
+                        so when rows are capped they deliberately do not foot to
+                        what is above them. Say which it is rather than letting
+                        the mismatch look like an arithmetic error. */}
                     <View style={styles.totalRow}>
                       <Text style={[styles.colDate, styles.totalText]}>Total</Text>
-                      <Text style={[styles.colAcct, styles.totalText]} />
+                      <Text style={[styles.colAcct, styles.totalText]} numberOfLines={1}>
+                        {hiddenCount > 0 ? 'for the whole period, including lines not shown' : ''}
+                      </Text>
                       <Text style={[{ width: valW }, styles.colVal, styles.totalText]}>{rs(ledger.totals.debit)}</Text>
                       <Text style={[{ width: valW }, styles.colVal, styles.totalText]}>{rs(ledger.totals.credit)}</Text>
                       <Text style={[{ width: valW }, styles.colVal, styles.totalText]} />
@@ -226,6 +258,16 @@ const Chip: React.FC<{ label: string; active: boolean; onPress: () => void }> = 
 
 const styles = StyleSheet.create({
   filterRow: { flexDirection: 'row', gap: THEME.spacing.sm },
+  truncationNotice: {
+    backgroundColor: THEME.colors.warning + '14',
+    borderWidth: 1,
+    borderColor: THEME.colors.warning + '33',
+    borderRadius: THEME.radius.md,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+  },
+  truncationText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
   chip: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: 16, backgroundColor: THEME.colors.neutral100, borderWidth: 1, borderColor: THEME.colors.border },
   chipActive: { backgroundColor: THEME.colors.primary + '18', borderColor: THEME.colors.primary },
