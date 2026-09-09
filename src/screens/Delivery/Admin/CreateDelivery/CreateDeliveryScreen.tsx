@@ -153,18 +153,44 @@ const CreateDeliveryScreen: React.FC = () => {
       );
       return;
     }
-    dispatch(
-      addDraftItem({
-        agencyId: item.agencyId ?? '',
-        agencyName: '',
-        itemId: item.id,
-        itemName: item.name,
-        quantity: numericQty,
-        unitPrice: item.sellingPrice ?? 0
-      }),
-    );
-    setItemId('');
-    setQty('1');
+    // The price is COPIED onto the line here and never looked up again — not by
+    // this screen, and not by the server at approval. So an item with no
+    // selling price (selling_price defaults to 0, and the agency add-item form
+    // does not validate it) ships at 0 and invoices for nothing.
+    //
+    // Warn rather than block: a zero-price line beside a priced one is a free
+    // sample going out with a paid order, which is supported and posts fine.
+    // Only a delivery where NOTHING is priced is a real problem, and the server
+    // rejects that at approval with DELIVERY_ITEM_NO_PRICE.
+    const unitPrice = Number(item.sellingPrice) || 0;
+    const commit = () => {
+      dispatch(
+        addDraftItem({
+          agencyId: item.agencyId ?? '',
+          agencyName: '',
+          itemId: item.id,
+          itemName: item.name,
+          quantity: numericQty,
+          unitPrice,
+        }),
+      );
+      setItemId('');
+      setQty('1');
+    };
+
+    if (unitPrice <= 0) {
+      Alert.alert(
+        'No selling price',
+        `${item.name} has no selling price, so it will ship as a free item and add nothing to the invoice.\n\nIf that isn't what you want, set a selling price on the item first.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Add as free item', onPress: commit },
+        ],
+      );
+      return;
+    }
+
+    commit();
   };
 
   const [isCreating, setIsCreating] = useState(false);

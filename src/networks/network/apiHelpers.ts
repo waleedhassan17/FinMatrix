@@ -188,6 +188,58 @@ export const extractErrorMessage = (error: any): string => {
   return error?.message || 'An unexpected error occurred.';
 };
 
+// ─── Error Code Extractor ───────────────────────────
+// The message alone cannot be branched on. Every network function here wraps
+// failures as `new Error(extractErrorMessage(e))`, which flattens the server's
+// `{ error: { code, message } }` down to a string and throws the code away — so
+// a screen that wants to react to a SPECIFIC rejection has nothing to test. The
+// auth module worked around this with its own AuthError class, which is why
+// SignInScreen can route EMAIL_NOT_VERIFIED to the right screen and nothing
+// else in the app can do the same. This is that pattern, generalised.
+export const extractErrorCode = (error: any): string | undefined => {
+  if (axios.isAxiosError(error)) {
+    const data: any = error.response?.data;
+    // NestJS standard is { error: { code } }; some handlers put it at the top.
+    return data?.error?.code ?? data?.code;
+  }
+  return error?.code;
+};
+
+/**
+ * An Error that survives the trip to a screen with its server code intact.
+ *
+ * `code` matters beyond convenience: RTK's `miniSerializeError` copies exactly
+ * name/message/stack/**code** off a thrown error, so a code set here is still
+ * readable after `.unwrap()` on an async thunk. Any other property you attach
+ * is dropped there.
+ */
+export class ApiError extends Error {
+  code?: string;
+  status?: number;
+  constructor(message: string, code?: string, status?: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
+/**
+ * Wrap a caught axios error, keeping both the readable message and the code.
+ * Drop-in replacement for `new Error(extractErrorMessage(e))`.
+ *
+ * Note for anyone combining this with `withNetworkRetry`: that helper decides
+ * "was this a network failure?" by testing `!e.response`, and an ApiError has
+ * no `.response`. Retry on the RAW axios error, then convert — never the other
+ * way round, or every server rejection looks like a dropped connection.
+ */
+export const toApiError = (error: any): ApiError =>
+  new ApiError(
+    extractErrorMessage(error),
+    extractErrorCode(error),
+    axios.isAxiosError(error) ? error.response?.status : undefined,
+  );
+
 // ─── Multipart Upload (fetch, NOT axios) ────────────
 // React Native must set the `multipart/form-data; boundary=...` header itself.
 // Routing FormData through axios with a manually-set Content-Type drops the

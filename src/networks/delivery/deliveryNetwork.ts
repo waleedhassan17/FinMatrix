@@ -7,6 +7,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import {
   api,
   extractErrorMessage,
+  toApiError,
   postMultipart,
   API_BASE_URL,
   getAccessToken,
@@ -257,12 +258,17 @@ export const getInventoryApprovalDetailAPI = async (id: string): Promise<any> =>
   }
 };
 
+// Approving is the moment a delivery becomes a SALE, so it is also the one
+// place the server rejects for reasons the owner can fix (a delivery with no
+// selling price anywhere on it, a zero-total invoice). Those arrive as codes,
+// and a plain Error would flatten them to a string the screen cannot branch on
+// — hence toApiError, which keeps the code readable even after .unwrap().
 export const reviewInventoryApprovalAPI = async (id: string, data: { action: 'approved' | 'rejected'; notes?: string }): Promise<any> => {
   try {
     const response = await api.patch(`/inventory-approvals/${id}/review`, data);
     return response.data;
   } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
+    throw toApiError(e);
   }
 };
 

@@ -297,7 +297,16 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
       closeModal();
       Alert.alert('Approved', 'Delivery changes applied to real inventory and shadow inventory cleared.');
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'Failed to approve request.');
+      // Approving is the moment the sale is recognised, so the server can
+      // refuse for a reason the owner can actually act on. Those come back as
+      // codes; give them a title that names the fix instead of "Error", which
+      // says nothing and leaves the delivery stuck in transit with no clue why.
+      // Anything else keeps the previous behaviour.
+      const title =
+        e?.code === 'DELIVERY_ITEM_NO_PRICE' || e?.code === 'INVOICE_ZERO_TOTAL'
+          ? 'Set a selling price first'
+          : 'Error';
+      Alert.alert(title, e?.message ?? 'Failed to approve request.');
     }
   };
 
