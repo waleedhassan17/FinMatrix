@@ -3,6 +3,7 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { ARAgingReport } from '../../../models/arAgingModel';
 import { getARAgingReportAPI } from '../../../networks/reports/arAgingNetwork';
 import { arAgingSerializer } from '../../../serializers/arAgingSerializer';
+import { toIsoDate } from '../../../models/reportModel';
 
 interface ARAgingState {
   asOfDate: string;
@@ -12,7 +13,9 @@ interface ARAgingState {
 }
 
 const initialState: ARAgingState = {
-  asOfDate: new Date().toISOString().slice(0, 10),
+  // LOCAL calendar date — toISOString() is UTC and ages the buckets from
+  // yesterday in PKT until 05:00 local.
+  asOfDate: toIsoDate(new Date()),
   report: null,
   isLoading: false,
   error: '',

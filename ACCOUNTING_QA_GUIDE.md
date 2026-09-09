@@ -579,18 +579,81 @@ qa/
                           # invoice → payment, credit memo, vendor credit,
                           # inventory adjustment, tax payment, manual JE
   run-qa.sh               # runs the invariants, exits non-zero on any row
+  provision-flow-ctx.ts   # builds a throwaway company for the flow harness
+  flow-e2e.js             # every delivery branch vs the flow diagram
+  diagnose-company.sql    # read-only: why one company's books look empty
+  DIAGNOSIS.md            # how to read the above
 ```
 
 | Command | What it does |
 |---|---|
-| `npm run qa` | Seeds the scenario, then runs the gate |
-| `npm run test:qa` | Gate only |
-| `npm run test:accounting` | corrections + voids + period-close suites |
+| `npm run qa:gate` | **The pre-release gate.** Everything below, in order |
+| `npm run qa` | Seeds the scenario, then runs the invariants |
+| `npm run test:qa` | Invariants only |
+| `npm run qa:provision` | Builds a throwaway company and writes `qa/.flow-ctx.json` |
+| `npm run qa:flow` | Drives every delivery branch and asserts the exact journal lines |
+| `npm run test:accounting` | corrections + voids + period-close + reports-reflect |
 | `npm run test:acceptance` | The general end-to-end suite |
+
+### The one command before a build
+
+```bash
+npm run start:dev                                   # separate shell
+export API_BASE=http://localhost:3000/api/v1
+export DATABASE_URL=postgres://user:pass@localhost:5432/finmatrix
+npm run qa:gate
+```
+
+Green means: every delivery branch posts the lines the diagram names, a posted
+document reaches the General Ledger **and** the reports, the trial balance
+foots and the balance sheet reports `isBalanced: true`.
+
+`API_BASE` and `DATABASE_URL` must name the **same environment** — the harness
+drives the API at one and reads the ledger from the other, and a mismatch shows
+up as a ledger that never moved, which reads like a posting bug and is not one.
+`qa:flow` now checks this before it starts.
+
+`npm run qa:provision` is not optional and did not used to exist: `qa:flow`
+reads a context file naming a company, an admin, a rider, priced stock and the
+chart of accounts. That file used to be committed with one developer's UUIDs in
+it, so the harness could not run anywhere else. It is now generated and
+git-ignored.
 
 `run-qa.sh` reaches Postgres via `DATABASE_URL` when a `psql` client exists and
 falls back to `docker exec` otherwise, so it works both in CI and on a dev
 machine that has the container but no client.
+
+### `test:reports-reflect` — does a posting actually SHOW UP?
+
+Every other suite proves the ledger is *right*. This one proves it is *visible*,
+which is a different claim and the one behind "I delivered stock and nothing
+appeared in Reports". It asserts against what the report endpoints return, not
+against `journal_entry_lines`:
+
+- an invoice posted as `sent` appears in `/ledger`, the P&L and the Trial
+  Balance — asked for **with** a date range and **without one**, because a
+  dateless report that quietly returns zeroes is the failure mode;
+- a draft appears in none of them, and posting it then does;
+- a delivery recognises revenue and COGS at **approval**, and neither at
+  dispatch;
+- an all-unpriced delivery is refused with `DELIVERY_ITEM_NO_PRICE`, and a
+  zero-total invoice with `INVOICE_ZERO_TOTAL` — not with the posting engine's
+  line-shape error, which names a debit and a credit rather than the empty
+  document that caused them.
+
+### Diagnosing a live company
+
+When someone reports missing data, run the read-only diagnostic before changing
+anything — it distinguishes "nothing was posted" from "the report window misses
+the entries" in about thirty seconds:
+
+```bash
+psql "$DATABASE_URL" -v companyId="'<uuid>'" -f qa/diagnose-company.sql
+```
+
+`qa/DIAGNOSIS.md` explains how to read each section. The commonest answer is
+not a bug: deliveries sitting at `ledger_status = 'in_transit'` are dispatched
+but not yet approved, and revenue is recognised at approval.
 
 Both steps run in `.github/workflows/acceptance.yml` after the existing suite.
 Any commit that makes the books stop balancing fails the build — the guarantee

@@ -3,6 +3,7 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { DeliveryDailyReport } from '../../../models/deliveryDailyReportModel';
 import { getDeliveryDailyReportAPI } from '../../../networks/reports/deliveryDailyReportNetwork';
 import { deliveryDailyReportSerializer } from '../../../serializers/deliveryDailyReportSerializer';
+import { toIsoDate } from '../../../models/reportModel';
 
 interface DeliveryDailyReportState {
   report: DeliveryDailyReport | null;
@@ -13,7 +14,11 @@ interface DeliveryDailyReportState {
 
 const initialState: DeliveryDailyReportState = {
   report: null,
-  date: '2026-03-14',
+  // Was a hardcoded '2026-03-14', so the screen opened on a fixed day in the
+  // past and its first fetch reported on that day rather than today — an empty
+  // report that looked like missing data. Every other report slice computes
+  // its default from the clock; this one now does too.
+  date: toIsoDate(new Date()),
   isLoading: false,
   error: '',
 };

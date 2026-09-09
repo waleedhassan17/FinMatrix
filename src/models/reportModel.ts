@@ -50,7 +50,11 @@ export interface ReportHubCategory {
 // Format using LOCAL calendar components. Using `toISOString()` on a Date built
 // from local components shifts the day in positive-UTC zones (e.g. PKT, UTC+5),
 // which would push report ranges a day off.
-const toIsoDate = (d: Date): string => {
+//
+// Exported because the same shift bites any screen that defaults a date: in
+// PKT, `new Date().toISOString().slice(0, 10)` returns YESTERDAY until 05:00
+// local. Reach for this instead of building the string by hand.
+export const toIsoDate = (d: Date): string => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');

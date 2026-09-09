@@ -5,9 +5,10 @@
 import { api, extractErrorMessage } from '../network/apiHelpers';
 import { fetchReport } from '../reports/reportHelpers';
 
-export const getDashboardSummaryAPI = async (params: any = {}): Promise<any> => {
-  return fetchReport('/reports/profit-loss', params);
-};
+// Removed: getDashboardSummaryAPI, which called /reports/profit-loss with
+// `params = {}` — a dateless P&L. Nothing referenced it, and every real report
+// caller sends a range from getDefaultReportRange, so it was a footgun waiting
+// for someone to wire it up rather than a working entry point.
 
 export const getNotificationsAPI = async (params: any = {}): Promise<any> => {
   try {

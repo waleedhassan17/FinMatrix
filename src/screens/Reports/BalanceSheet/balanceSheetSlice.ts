@@ -3,6 +3,7 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { BalanceSheetReport } from '../../../models/balanceSheetModel';
 import { getBalanceSheetReportAPI } from '../../../networks/reports/balanceSheetNetwork';
 import { balanceSheetSerializer } from '../../../serializers/balanceSheetSerializer';
+import { toIsoDate } from '../../../models/reportModel';
 
 interface BalanceSheetState {
   asOfDate: string;
@@ -11,7 +12,9 @@ interface BalanceSheetState {
   error: string;
 }
 
-const today = new Date().toISOString().slice(0, 10);
+// LOCAL calendar date. toISOString() is UTC, so in PKT (UTC+5) it returns
+// yesterday until 05:00 — the sheet would open closed as of the wrong day.
+const today = toIsoDate(new Date());
 
 const initialState: BalanceSheetState = {
   asOfDate: today,
