@@ -126,6 +126,10 @@ const BillFormScreen: React.FC = () => {
       dispatch(fetchBillForEdit(editingId));
     } else {
       dispatch(setBillField({ key: 'billNumber', value: generateBillNumber() }));
+      // Today, read now rather than whenever the bundle started — the slice's
+      // initialState is evaluated once, so a long-running app would post the
+      // launch date as this document's accounting date.
+      dispatch(setBillField({ key: 'issueDate', value: dayjs().format('YYYY-MM-DD') }));
       dispatch(setBillField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
       // Preselect the vendor when launched from a vendor's detail screen.
       const preVendorId = route.params?.vendorId;

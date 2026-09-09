@@ -3,6 +3,7 @@
 // Premium Enterprise UI
 // ═══════════════════════════════════════════════════════
 
+import dayjs from 'dayjs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -138,9 +139,12 @@ const POFormScreen: React.FC = () => {
       // No PO number is seeded: the server assigns it (PO-2026-0001) and
       // ignores anything we send, so anything shown here before saving would
       // be a guess that gets overwritten.
-      const expected = new Date();
-      expected.setDate(expected.getDate() + 14);
-      dispatch(setField({ key: 'expectedDate', value: expected.toISOString().slice(0, 10) }));
+      // Both read now rather than whenever the bundle started: the slice's
+      // initialState is evaluated once, so a long-running app would post the
+      // launch date as the order date. dayjs formats in LOCAL time — the
+      // toISOString() this used reads yesterday in PKT before 05:00.
+      dispatch(setField({ key: 'orderDate', value: dayjs().format('YYYY-MM-DD') }));
+      dispatch(setField({ key: 'expectedDate', value: dayjs().add(14, 'day').format('YYYY-MM-DD') }));
     }
 
     return () => { dispatch(resetForm()); };

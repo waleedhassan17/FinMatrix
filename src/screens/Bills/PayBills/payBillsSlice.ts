@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════════════════════
 
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { toIsoDate } from '../../../models/reportModel';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Bill, BillPayment, BillStatus, PaymentMethod } from '../../../types';
 import {
@@ -85,7 +86,15 @@ export interface PayBillsSliceState {
 const initialState: PayBillsSliceState = {
   vendorId: '',
   vendorName: '',
-  paymentDate: new Date().toISOString().slice(0, 10),
+  // Fresh at every open, not once at bundle startup.
+  //
+  // This was seeded in initialState, which is evaluated a single time when the
+  // store imports the slice. On an app left running for days the form then
+  // opened pre-filled with the launch date and posted it as the ACCOUNTING
+  // date — a wrong date written into the books, not merely displayed. Local
+  // calendar date too: toISOString() is UTC and reads yesterday in PKT before
+  // 05:00.
+  paymentDate: toIsoDate(new Date()),
   method: 'bank_transfer',
   reference: '',
   amount: '',

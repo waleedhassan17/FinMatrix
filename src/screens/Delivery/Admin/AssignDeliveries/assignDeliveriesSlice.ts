@@ -1,4 +1,5 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { toIsoDate } from '../../../../models/reportModel';
 import { createAppSlice } from '@store/createAppSlice';
 
 type AssignTab = 'assign' | 'monitor' | 'approvals';
@@ -11,7 +12,10 @@ export interface AssignDeliveriesSliceState {
   selectedPersonnelId: string;
 }
 
-const today = new Date().toISOString().slice(0, 10);
+// Local calendar date, evaluated at bundle startup. Only the INITIAL value —
+// refreshSelectedDate is what keeps it current on an app left running, and
+// toISOString() would read yesterday in PKT before 05:00.
+const today = toIsoDate(new Date());
 
 const initialState: AssignDeliveriesSliceState = {
   activeTab: 'assign',

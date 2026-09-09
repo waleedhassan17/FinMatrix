@@ -185,6 +185,10 @@ const InvoiceFormScreen: React.FC = () => {
       dispatch(fetchInvoiceForEdit(editingId));
     } else {
       dispatch(setField({ key: 'invoiceNumber', value: generateInvoiceNumber() }));
+      // Today, read now rather than whenever the bundle started — the slice's
+      // initialState is evaluated once, so a long-running app would post the
+      // launch date as this document's accounting date.
+      dispatch(setField({ key: 'issueDate', value: dayjs().format('YYYY-MM-DD') }));
       dispatch(setField({ key: 'dueDate', value: dayjs().add(30, 'day').format('YYYY-MM-DD') }));
       // Preselect the customer when launched from a customer's detail screen.
       if (route.params?.customerId) {

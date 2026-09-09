@@ -3,6 +3,7 @@
 // Premium Enterprise UI
 // ═══════════════════════════════════════════════════════
 
+import dayjs from 'dayjs';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   View,
@@ -122,6 +123,10 @@ const PayBillsScreen: React.FC = () => {
     dispatch(fetchAccounts());
     dispatch(fetchAllBillsForPayment());
     dispatch(setPayBillField({ key: 'reference', value: generatePaymentNumber() }));
+    // Today, read now rather than whenever the bundle started. This one is the
+    // sharpest of the set: paymentDate becomes the accounting date of a posted
+    // cash payment, so a stale value writes money out of the bank on the wrong day.
+    dispatch(setPayBillField({ key: 'paymentDate', value: dayjs().format('YYYY-MM-DD') }));
     return () => { dispatch(resetPayBills()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);

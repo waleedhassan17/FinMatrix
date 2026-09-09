@@ -6,6 +6,7 @@
 // Mirrors GL/Vendor/Credit-Memo slice architecture.
 
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { toIsoDate } from '../../../models/reportModel';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Bill, BillStatus } from '../../../types';
 import {
@@ -58,7 +59,15 @@ const initialState: BillFormSliceState = {
   billNumber: '',
   vendorId: '',
   vendorName: '',
-  issueDate: new Date().toISOString().slice(0, 10),
+  // Fresh at every open, not once at bundle startup.
+  //
+  // This was seeded in initialState, which is evaluated a single time when the
+  // store imports the slice. On an app left running for days the form then
+  // opened pre-filled with the launch date and posted it as the ACCOUNTING
+  // date — a wrong date written into the books, not merely displayed. Local
+  // calendar date too: toISOString() is UTC and reads yesterday in PKT before
+  // 05:00.
+  issueDate: toIsoDate(new Date()),
   dueDate: '',
   status: 'draft',
   notes: '',
