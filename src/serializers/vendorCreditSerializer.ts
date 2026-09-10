@@ -7,7 +7,13 @@ const toNum = (v: any): number => {
 };
 
 const mapLine = (raw: any): VendorCreditLine => ({
-  id: raw.id, description: raw.description ?? '', amount: toNum(raw.amount),
+  id: raw.id,
+  accountId: raw.accountId ?? '',
+  itemId: raw.itemId ?? '',
+  quantity: toNum(raw.quantity),
+  description: raw.description ?? '',
+  amount: toNum(raw.amount),
+  taxRate: toNum(raw.taxRate),
 });
 
 export const mapVendorCredit = (raw: any): VendorCredit => ({
@@ -18,6 +24,12 @@ export const mapVendorCredit = (raw: any): VendorCredit => ({
   date: raw.date ?? '',
   originalBillId: raw.originalBillId ?? null,
   reason: raw.reason ?? '',
+  // subtotal + taxAmount = total. The tax is input tax being reversed out of
+  // Sales Tax Recoverable (1300), so it is real money the supplier owes back,
+  // not a presentational figure — the detail screen has to show all three or
+  // the credit cannot be reconciled to the supplier's own credit note.
+  subtotal: toNum(raw.subtotal),
+  taxAmount: toNum(raw.taxAmount),
   total: toNum(raw.total),
   amountApplied: toNum(raw.amountApplied),
   balance: toNum(raw.balance),

@@ -92,6 +92,11 @@ const VendorCreditDetailScreen: React.FC = () => {
           </View>
           <Info label="Date" value={c.date} />
           {!!c.reason && <Info label="Reason" value={c.reason} />}
+          {/* total = subtotal + taxAmount. The tax is input tax credited back
+              out of Sales Tax Recoverable (1300) — real money the supplier owes,
+              and the half that makes this agree with their own credit note. */}
+          <Info label="Subtotal" value={rs(c.subtotal)} />
+          {c.taxAmount > 0 && <Info label="Input tax reversed" value={rs(c.taxAmount)} />}
           <Info label="Applied" value={rs(c.amountApplied)} />
           <Info label="Available credit" value={rs(c.balance)} strong />
         </Card>
@@ -99,7 +104,14 @@ const VendorCreditDetailScreen: React.FC = () => {
         <SectionCard title="Credit Lines" icon="list">
           {c.lines.map((l, i) => (
             <View key={l.id ?? i} style={styles.lineRow}>
-              <Text style={styles.lineDesc}>{l.description}</Text>
+              <View style={styles.lineMain}>
+                <Text style={styles.lineDesc}>{l.description}</Text>
+                {/* The line amount is NET, so a line carrying tax has to say so
+                    — otherwise the lines visibly fail to add up to the total. */}
+                {!!l.taxRate && l.taxRate > 0 && (
+                  <Text style={styles.lineMeta}>Net of {l.taxRate}% input tax</Text>
+                )}
+              </View>
               <Text style={styles.lineTotal}>{rs(l.amount)}</Text>
             </View>
           ))}
@@ -140,7 +152,8 @@ const styles = StyleSheet.create({
   infoLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
   infoValue: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   bold: { ...THEME.typography.labelLg },
-  lineRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
+  lineRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
+  lineMain: { flex: 1 },
   invRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
   lineDesc: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   lineMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
