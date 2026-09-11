@@ -16,6 +16,14 @@ export const budgetVsActualSerializer = (payload: any): BudgetVsActual | null =>
   const d = payload?.data ?? payload; if (!d || !d.rows) return null;
   return {
     budget: d.budget, totals: { budgeted: toNum(d.totals?.budgeted), actual: toNum(d.totals?.actual), variance: toNum(d.totals?.variance) },
-    rows: d.rows.map((r: any) => ({ accountId: r.accountId, accountCode: r.accountCode, accountName: r.accountName, accountType: r.accountType, budgeted: toNum(r.budgeted), actual: toNum(r.actual), variance: toNum(r.variance), percentUsed: toNum(r.percentUsed) })),
+    rows: d.rows.map((r: any) => ({
+      accountId: r.accountId, accountCode: r.accountCode, accountName: r.accountName, accountType: r.accountType,
+      budgeted: toNum(r.budgeted), actual: toNum(r.actual), variance: toNum(r.variance), percentUsed: toNum(r.percentUsed),
+      // The detail screen's "tap a row for the monthly breakdown" read these,
+      // but they were dropped here, so the breakdown never appeared.
+      months: Array.isArray(r.months)
+        ? r.months.map((m: any) => ({ month: toNum(m.month), budgeted: toNum(m.budgeted), actual: toNum(m.actual), variance: toNum(m.variance) }))
+        : [],
+    })),
   };
 };

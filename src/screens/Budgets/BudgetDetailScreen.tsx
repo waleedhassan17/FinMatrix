@@ -15,6 +15,7 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchBudget, selectBudgetState, removeBudget } from './budgetSlice';
 import { formatCurrency } from '../../utils/formatters';
+import { favourableVariance, isFavourableVariance, splitBudgetTotals, varianceLabel } from '../../utils/budgetMath';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, ProgressBar, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 import type { ReportsStackParamList } from '../../navigators/stacks/ReportsStack';
@@ -46,24 +47,32 @@ const BudgetDetailScreen: React.FC = () => {
   if (error && !b) return <ReportContainer><ReportHeader title="Budget" onBack={() => navigation.goBack()} /><ErrorBlock message={error} onRetry={() => dispatch(fetchBudget(budgetId))} /></ReportContainer>;
   if (!b) return <ReportContainer><ReportHeader title="Budget" onBack={() => navigation.goBack()} /></ReportContainer>;
 
+  // Revenue and spending kept apart: the server's single total adds a sales
+  // target to a rent budget, which is not a figure anyone can act on.
+  const totals = splitBudgetTotals(vsActual?.rows ?? []);
+
   return (
     <ReportContainer>
       <ReportHeader title={b.name} subtitle={`FY ${b.fiscalYear}`} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.content}>
         {vsActual && (
           <KpiGrid items={[
-            { label: 'Budgeted', value: rs(vsActual.totals.budgeted), accent: ACCENT.blue, icon: 'target' },
-            { label: 'Actual', value: rs(vsActual.totals.actual), accent: ACCENT.violet, icon: 'activity' },
-            { label: 'Variance', value: rs(vsActual.totals.variance), accent: vsActual.totals.variance >= 0 ? ACCENT.green : ACCENT.red, icon: 'trending-up' },
+            { label: 'Revenue target', value: rs(totals.revenue.budgeted), accent: ACCENT.blue, icon: 'target' },
+            { label: 'Revenue actual', value: rs(totals.revenue.actual), accent: totals.revenue.actual >= totals.revenue.budgeted ? ACCENT.green : ACCENT.red, icon: 'trending-up' },
+            { label: 'Spending budget', value: rs(totals.spending.budgeted), accent: ACCENT.violet, icon: 'target' },
+            { label: 'Spending actual', value: rs(totals.spending.actual), accent: totals.spending.actual <= totals.spending.budgeted ? ACCENT.green : ACCENT.red, icon: 'activity' },
           ]} />
         )}
 
         <SectionCard title="Budget vs Actual" subtitle="By account — tap a row for the monthly breakdown" icon="bar-chart-2">
           {(vsActual?.rows ?? []).map(r => {
             const pct = r.budgeted > 0 ? Math.min(1, r.actual / r.budgeted) : 0;
-            const over = r.actual > r.budgeted;
+            // Coloured by whether the variance is GOOD, not by whether actual
+            // passed budget: revenue above target is good, spending above
+            // budget is not.
+            const favourable = isFavourableVariance(r);
             const open = expanded === r.accountId;
-            const months: any[] = (r as any).months ?? [];
+            const months = r.months ?? [];
             return (
               <TouchableOpacity
                 key={r.accountId}
@@ -75,8 +84,8 @@ const BudgetDetailScreen: React.FC = () => {
                   <Text style={styles.acctName}>{r.accountCode} {r.accountName}</Text>
                   <Text style={styles.acctVar}>{r.percentUsed}%</Text>
                 </View>
-                <Text style={styles.acctMeta}>{rs(r.actual)} of {rs(r.budgeted)} · var {rs(r.variance)}</Text>
-                <ProgressBar pct={pct} color={over ? ACCENT.red : ACCENT.green} />
+                <Text style={styles.acctMeta}>{rs(r.actual)} of {rs(r.budgeted)} · {varianceLabel(r, rs)}</Text>
+                <ProgressBar pct={pct} color={favourable ? ACCENT.green : ACCENT.red} />
                 {open && months.length > 0 && (
                   <View style={styles.monthTable}>
                     <View style={styles.monthHead}>
@@ -85,14 +94,18 @@ const BudgetDetailScreen: React.FC = () => {
                       <Text style={[styles.monthCellNum, styles.monthHeadText]}>Actual</Text>
                       <Text style={[styles.monthCellNum, styles.monthHeadText]}>Var</Text>
                     </View>
-                    {months.map(m => (
-                      <View key={m.month} style={styles.monthRow}>
-                        <Text style={styles.monthCell}>{MONTH_NAMES[m.month - 1]}</Text>
-                        <Text style={styles.monthCellNum}>{rs(m.budgeted)}</Text>
-                        <Text style={styles.monthCellNum}>{rs(m.actual)}</Text>
-                        <Text style={[styles.monthCellNum, { color: m.variance >= 0 ? ACCENT.green : ACCENT.red }]}>{rs(m.variance)}</Text>
-                      </View>
-                    ))}
+                    {months.map(m => {
+                      // Same reading per month: positive is good for this account's type.
+                      const mv = favourableVariance({ accountType: r.accountType, budgeted: m.budgeted, actual: m.actual });
+                      return (
+                        <View key={m.month} style={styles.monthRow}>
+                          <Text style={styles.monthCell}>{MONTH_NAMES[m.month - 1]}</Text>
+                          <Text style={styles.monthCellNum}>{rs(m.budgeted)}</Text>
+                          <Text style={styles.monthCellNum}>{rs(m.actual)}</Text>
+                          <Text style={[styles.monthCellNum, { color: mv >= 0 ? ACCENT.green : ACCENT.red }]}>{rs(mv)}</Text>
+                        </View>
+                      );
+                    })}
                   </View>
                 )}
               </TouchableOpacity>
@@ -101,7 +114,16 @@ const BudgetDetailScreen: React.FC = () => {
           {!vsActual && <Text style={styles.acctMeta}>Comparison unavailable.</Text>}
         </SectionCard>
 
-        <Card><View style={styles.totalRow}><Text style={styles.bold}>Total Budget</Text><Text style={styles.bold}>{rs(b.totalBudget)}</Text></View></Card>
+        <Card>
+          {vsActual ? (
+            <>
+              <View style={styles.totalRow}><Text style={styles.bold}>Budgeted revenue</Text><Text style={styles.bold}>{rs(totals.revenue.budgeted)}</Text></View>
+              <View style={styles.totalRow}><Text style={styles.bold}>Budgeted spending</Text><Text style={styles.bold}>{rs(totals.spending.budgeted)}</Text></View>
+            </>
+          ) : (
+            <View style={styles.totalRow}><Text style={styles.bold}>Total Budget</Text><Text style={styles.bold}>{rs(b.totalBudget)}</Text></View>
+          )}
+        </Card>
 
         <CustomButton title="Delete Budget" variant="danger" onPress={doDelete} fullWidth />
         <View style={{ height: 24 }} />

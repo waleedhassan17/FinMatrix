@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../utils/theme';
 import { getAccountsAPI } from '../../networks/accounting/coaNetwork';
 import { createBudgetAPI, getBudgetPrefillAPI } from '../../networks/payroll/budgetNetwork';
+import { evenMonthlySpread, isBudgetableAccount } from '../../utils/budgetMath';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
@@ -44,7 +45,7 @@ const BudgetFormScreen: React.FC = () => {
       const data = await getBudgetPrefillAPI(fy);
       const rows: any[] = data?.lines ?? [];
       if (rows.length === 0) {
-        Toast.show({ type: 'error', text1: 'Nothing to pre-fill', text2: `No income/expense activity found in ${fy}.` });
+        Toast.show({ type: 'error', text1: 'Nothing to pre-fill', text2: `No revenue or expense activity found in ${fy}.` });
         return;
       }
       setLines(rows.map(r => ({
@@ -64,7 +65,14 @@ const BudgetFormScreen: React.FC = () => {
   useEffect(() => {
     getAccountsAPI({ limit: 200 } as any).then((res: any) => {
       const arr = res?.data?.accounts ?? res?.data?.data ?? res?.data ?? [];
-      setAccounts((Array.isArray(arr) ? arr : []).map((a: any) => ({ label: `${a.accountNumber} ${a.name}`, value: a.id })));
+      // Revenue and expense accounts only — what the prefill returns and what
+      // Budget vs Actual can read meaningfully. A balance-sheet account has no
+      // "spent this year" to compare against.
+      setAccounts(
+        (Array.isArray(arr) ? arr : [])
+          .filter((a: any) => isBudgetableAccount(String(a.type ?? '')))
+          .map((a: any) => ({ label: `${a.accountNumber} ${a.name}`, value: a.id })),
+      );
     }).catch(() => {});
   }, []);
 
@@ -83,8 +91,9 @@ const BudgetFormScreen: React.FC = () => {
           if (l.months && l.months.length === 12) {
             return { accountId: l.accountId, monthlyAmounts: l.months };
           }
-          const monthly = (parseFloat(l.annual) || 0) / 12;
-          return { accountId: l.accountId, monthlyAmounts: Array.from({ length: 12 }, () => Math.round(monthly * 100) / 100) };
+          // Whole paise with the remainder in December, so the months add back
+          // to the annual amount — rounding each month separately lost paise.
+          return { accountId: l.accountId, monthlyAmounts: evenMonthlySpread(parseFloat(l.annual) || 0) };
         }),
       });
       navigation.goBack();

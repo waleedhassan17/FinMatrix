@@ -18,6 +18,15 @@ export interface Budget {
   lines: BudgetLine[];
 }
 
+export interface BudgetVsActualMonth {
+  /** 1 = January. */
+  month: number;
+  budgeted: number;
+  actual: number;
+  /** As the server sends it: budgeted − actual. */
+  variance: number;
+}
+
 export interface BudgetVsActualRow {
   accountId: string;
   accountCode: string;
@@ -27,6 +36,8 @@ export interface BudgetVsActualRow {
   actual: number;
   variance: number;
   percentUsed: number;
+  /** The monthly breakdown the detail screen expands into. */
+  months: BudgetVsActualMonth[];
 }
 
 export interface BudgetVsActual {
