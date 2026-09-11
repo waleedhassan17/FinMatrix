@@ -65,7 +65,7 @@ const PayrollRunDetailScreen: React.FC = () => {
 
   useFocusEffect(useCallback(() => { dispatch(fetchPayrollRun(payrollRunId)); }, [dispatch, payrollRunId]));
 
-  const process = () => Alert.alert('Process Payroll', 'Post the payroll journal entry and mark as paid?', [
+  const process = () => Alert.alert('Process Payroll', 'Posts one journal entry — Dr Salary Expense (6200), Cr Cash (1000) for net pay, Cr Payroll Liabilities (2310) for deductions — and marks the run paid. It cannot be edited afterwards.', [
     { text: 'Cancel', style: 'cancel' },
     { text: 'Process', onPress: async () => {
       const res: any = await dispatch(processRun(payrollRunId));
@@ -109,7 +109,17 @@ const PayrollRunDetailScreen: React.FC = () => {
 
         <View style={styles.actions}>
           {r.status !== 'paid' && <CustomButton title="Process Payroll" variant="primary" onPress={process} isLoading={isSaving} fullWidth />}
-          {r.status !== 'paid' && <CustomButton title="Delete" variant="danger" onPress={() => { dispatch(removeRun(payrollRunId)); navigation.goBack(); }} fullWidth />}
+          {r.status !== 'paid' && (
+            <CustomButton
+              title="Delete"
+              variant="danger"
+              onPress={() => Alert.alert('Delete draft run', 'Nothing was posted for it, so deleting leaves the books unchanged.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => { dispatch(removeRun(payrollRunId)); navigation.goBack(); } },
+              ])}
+              fullWidth
+            />
+          )}
         </View>
         <View style={{ height: 24 }} />
       </ScrollView>

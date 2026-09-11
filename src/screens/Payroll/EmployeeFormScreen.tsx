@@ -8,6 +8,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { THEME } from '../../utils/theme';
 import { getEmployeeByIdAPI, createEmployeeAPI, updateEmployeeAPI } from '../../networks/payroll/payrollNetwork';
 import { employeeSingleSerializer } from '../../serializers/payrollSerializer';
+import { validateEmployeePay } from '../../utils/payrollMath';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
@@ -46,6 +47,16 @@ const EmployeeFormScreen: React.FC = () => {
 
   const save = async () => {
     if (!firstName.trim() || !lastName.trim()) { Toast.show({ type: 'error', text1: 'Missing name', text2: 'First and last name are required.' }); return; }
+    // The server takes a zero rate and a deduction bigger than the pay — the
+    // latter posts negative net pay against Cash — so check both before saving.
+    const payError = validateEmployeePay({
+      payType,
+      salary: parseFloat(salary) || 0,
+      hourlyRate: parseFloat(hourlyRate) || 0,
+      payFrequency,
+      deduction,
+    });
+    if (payError) { Toast.show({ type: 'error', text1: 'Check the pay details', text2: payError }); return; }
     const payload: any = {
       firstName, lastName, email: email || undefined, department: department || undefined, position: position || undefined,
       payType, salary, hourlyRate, payFrequency, deductionAmount: deduction

@@ -15,6 +15,7 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchPayrollRuns, selectPayrollState, createRun } from './payrollSlice';
 import { formatCurrency } from '../../utils/formatters';
+import { payrollPeriodFor } from '../../utils/payrollMath';
 import CustomButton from '../../Custom-Components/CustomButton';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
 import { ReportContainer, ReportHeader, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
@@ -35,13 +36,14 @@ const PayrollRunListScreen: React.FC = () => {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const runNow = async () => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
-    const payDate = now.toISOString().slice(0, 10);
-    const period = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    // Local calendar dates. toISOString() is UTC, which in PKT made the 1st the
+    // last day of the previous month, and just after midnight dated the
+    // payroll entry the day before. The label is built by hand so it matches
+    // the web console's exactly — the server refuses a second run for a period
+    // already paid by comparing it.
+    const { payPeriod, periodStart, periodEnd, payDate } = payrollPeriodFor(new Date());
     setCreating(true);
-    const r: any = await dispatch(createRun({ payPeriod: period, periodStart: start, periodEnd: end, payDate }));
+    const r: any = await dispatch(createRun({ payPeriod, periodStart, periodEnd, payDate }));
     setCreating(false);
     if (r.meta.requestStatus === 'fulfilled' && r.payload?.data?.id) {
       navigation.navigate('PayrollRunDetail' as any, { payrollRunId: r.payload.data.id });
