@@ -82,26 +82,35 @@ const CompanyProfileScreen: React.FC = () => {
         taxId: company.taxId,
         industry: company.industry,
       }));
-    } else if (user?.companyId) {
-      getCompanyAPI(user.companyId)
-        .then(api => {
-          if (!api?.id) return;
-          dispatch(loadCompanyData({
-            name: api.name ?? '',
-            industry: api.industry ?? '',
-            address: typeof api.address === 'string' ? api.address : api.address?.street ?? '',
-            city: api.address?.city ?? '',
-            state: api.address?.state ?? '',
-            zipCode: api.address?.postalCode ?? '',
-            country: api.address?.country ?? '',
-            phone: api.phone ?? '',
-            email: api.email ?? '',
-            website: api.website ?? '',
-            taxId: api.taxId ?? '',
-          }));
-        })
-        .catch((): void => undefined);
     }
+    if (!user?.companyId) return;
+    // The API is read even when the store has the company: the fiscal year
+    // (fiscalYearStartMonth) is on the company record, and the store copy does
+    // not carry it — so the control opened on a default and saving nothing.
+    getCompanyAPI(user.companyId)
+      .then(api => {
+        if (!api?.id) return;
+        const month = Number(api.fiscalYearStartMonth);
+        dispatch(loadCompanyData({
+          ...(company
+            ? {}
+            : {
+                name: api.name ?? '',
+                industry: api.industry ?? '',
+                address: typeof api.address === 'string' ? api.address : api.address?.street ?? '',
+                city: api.address?.city ?? '',
+                state: api.address?.state ?? '',
+                zipCode: api.address?.postalCode ?? '',
+                country: api.address?.country ?? '',
+                phone: api.phone ?? '',
+                email: api.email ?? '',
+                website: api.website ?? '',
+                taxId: api.taxId ?? '',
+              }),
+          ...(month >= 1 && month <= 12 ? { fiscalYearStart: FISCAL_MONTHS[month - 1] } : {}),
+        }));
+      })
+      .catch((): void => undefined);
   }, [dispatch, company, user?.companyId]);
 
   const update = useCallback(

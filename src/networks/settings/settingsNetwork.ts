@@ -70,9 +70,21 @@ export const savePreferences = async (preferences: any): Promise<any> => {
  * preferences table: the profile silently never saved, so documents fell
  * back to placeholder branding.
  */
+const FISCAL_MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/** The company stores the fiscal year start as a month number (1 = January); the form carries its name. */
+const fiscalMonthNumber = (name?: string): number | undefined => {
+  const i = FISCAL_MONTH_NAMES.indexOf(name ?? '');
+  return i >= 0 ? i + 1 : undefined;
+};
+
 export const saveCompanyProfile = async (
   data: CompanyProfilePayload & {
     city?: string; state?: string; zipCode?: string; country?: string; website?: string;
+    fiscalYearStart?: string;
   },
 ): Promise<any> => {
   const companyId = await getStoredCompanyId();
@@ -87,6 +99,10 @@ export const saveCompanyProfile = async (
     email: clean(data.email),
     website: clean(data.website),
     taxId: clean(data.taxId),
+    // The Company Profile screen has always shown a fiscal-year control, but
+    // nothing sent it — the choice was lost on save. It lives on the company
+    // record, the same field the web console writes.
+    fiscalYearStartMonth: fiscalMonthNumber(data.fiscalYearStart),
   };
   const address = {
     street: clean(data.address),
@@ -238,8 +254,20 @@ export const generatePassword = (): string => {
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const lower = 'abcdefghijkmnpqrstuvwxyz';
   const digits = '23456789';
+  // A password is a secret: draw from the platform's CSPRNG (polyfilled at
+  // startup by react-native-get-random-values), not Math.random, whose output
+  // is predictable. Math.random stays only as a fallback if the polyfill is absent.
+  const randomIndex = (n: number): number => {
+    const cryptoApi = (globalThis as { crypto?: { getRandomValues?: (a: Uint32Array) => Uint32Array } }).crypto;
+    if (cryptoApi?.getRandomValues) {
+      const buf = new Uint32Array(1);
+      cryptoApi.getRandomValues(buf);
+      return buf[0] % n;
+    }
+    return Math.floor(Math.random() * n);
+  };
   const pick = (set: string, n: number) =>
-    Array.from({ length: n }, () => set[Math.floor(Math.random() * set.length)]).join('');
+    Array.from({ length: n }, () => set[randomIndex(set.length)]).join('');
   return `${pick(upper, 1)}${pick(lower, 5)}${pick(digits, 2)}${pick(upper, 1)}${pick(lower, 2)}`;
 };
 
