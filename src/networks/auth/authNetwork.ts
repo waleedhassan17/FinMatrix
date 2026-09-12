@@ -82,6 +82,10 @@ export const authLogin = async ({
       identifier,
       email: identifier,
       password: signInInfo.password,
+      // The Business Portal admits owners (and the platform console) only: a
+      // staff or rider account typed in here is refused with WRONG_PORTAL
+      // before any token is issued.
+      portal: 'admin',
     });
     const responseData = response.data?.data ?? response.data;
     const { user: backendUser, tokens, companyId, companyStatus, companyType, features } = responseData;
@@ -139,6 +143,9 @@ export const authDeliveryLogin = async ({
       identifier,
       email: identifier,
       password: signInInfo.password,
+      // The User Portal admits staff and riders; an owner's email typed in here
+      // is refused with WRONG_PORTAL and pointed at the Business Portal.
+      portal: 'team',
     });
     const responseData = response.data?.data ?? response.data;
     const { user: backendUser, tokens, companyId, companyStatus, companyType, features } =
