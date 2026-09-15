@@ -198,6 +198,9 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
     name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   const isDeactivated = person.status === 'inactive';
+  // Paused by the plan's rider limit (not by the owner). Activating takes a
+  // seat, which the server refuses while every seat is in use.
+  const isPlanLocked = person.status === 'plan_locked';
   const statusColor = person.isAvailable && person.status === 'active'
     ? colors.success
     : STATUS_COLORS[person.status] || colors.neutral400;
@@ -268,8 +271,11 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
       run: () => handleSetStatus('inactive')
     },
     reactivate: {
-      title: 'Reactivate Rider',
-      body: `${person.displayName} will be able to sign in and receive deliveries again. Plan limits apply to active riders.`,
+      title: isPlanLocked ? 'Give Rider a Seat' : 'Reactivate Rider',
+      body: isPlanLocked
+        ? `${person.displayName} was paused because your plan includes fewer active riders than you have. ` +
+          'Activating them takes a seat — if every seat is in use, deactivate another rider first, or upgrade your plan.'
+        : `${person.displayName} will be able to sign in and receive deliveries again. Plan limits apply to active riders.`,
       cta: 'Reactivate',
       danger: false,
       run: () => handleSetStatus('active')
@@ -319,7 +325,9 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
             <Text style={[styles.profileStatusText, { color: statusColor }]}>
               {isDeactivated
                 ? 'Deactivated'
-                : person.status === 'on_leave'
+                : isPlanLocked
+                  ? 'Paused — plan limit'
+                  : person.status === 'on_leave'
                   ? 'On Leave'
                   : person.isAvailable
                     ? 'Available'
@@ -479,7 +487,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
                 icon: (person.isAvailable ? 'pause-circle' : 'play-circle') as 'pause-circle' | 'play-circle',
                 onPress: handleToggleAvailability,
                 color: colors.secondary,
-                disabled: isActing || isDeactivated
+                disabled: isActing || isDeactivated || isPlanLocked
               },
               {
                 label: 'Reset password',
@@ -488,9 +496,9 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
                 color: colors.actionGreen,
                 disabled: isActing
               },
-              isDeactivated
+              isDeactivated || isPlanLocked
                 ? {
-                    label: 'Reactivate',
+                    label: isPlanLocked ? 'Activate' : 'Reactivate',
                     icon: 'user-check' as const,
                     onPress: () => setConfirm('reactivate'),
                     color: colors.success,
@@ -526,6 +534,14 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
             <Text style={styles.deactivatedNote}>
               This rider is deactivated: they cannot sign in or be assigned deliveries. All their
               records are preserved.
+            </Text>
+          )}
+          {isPlanLocked && (
+            <Text style={styles.deactivatedNote}>
+              This rider is paused because your plan includes fewer active riders than your team
+              has. They cannot sign in or be assigned deliveries until they get a seat — upgrade your
+              plan, or deactivate another rider and activate this one. All their records are
+              preserved.
             </Text>
           )}
         </View>

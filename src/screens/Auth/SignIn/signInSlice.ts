@@ -69,6 +69,7 @@ export const signInSlice = createAppSlice({
               email: e.email,
               companyStatus: e.companyStatus,
               rejectionReason: e.rejectionReason,
+              pendingKind: e.pendingKind,
             });
           }
           return rejectWithValue({ message: e?.message ?? 'Sign in failed' });

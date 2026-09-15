@@ -23,9 +23,15 @@ import type { RootStackParamList } from '../../../types';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser, setUser } from '../authSlice';
 import { getPublicPlansAPI, selfSubscribeAPI } from '../../../networks/billing/superAdminNetwork';
-import { submitCompanyAPI } from '../../../networks/auth/authNetwork';
-import { getPlansForTypeAPI, type TierPlanCard } from '../../../networks/billing/billingNetwork';
-import { getStoredCompanyId } from '../../../utils/storageUtils';
+import { authMe, submitCompanyAPI } from '../../../networks/auth/authNetwork';
+import {
+  getBillingStatusAPI,
+  getPlansForTypeAPI,
+  startTrialAPI,
+  type BillingStatus,
+  type TierPlanCard,
+} from '../../../networks/billing/billingNetwork';
+import { getStoredCompanyId, setStoredCompanyId } from '../../../utils/storageUtils';
 import { prefetchBankDetails } from '../../../networks/billing/billingNetwork';
 import {
   AuthHeader,
@@ -297,6 +303,11 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [tierPlans]);
   const [selectedTierKey, setSelectedTierKey] = useState<string | null>(null);
 
+  // Free trial: the request itself (not best-effort — it IS the action), and
+  // the company's billing status so a previous trial outcome can be shown.
+  const [trialBusy, setTrialBusy] = useState(false);
+  const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
+
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -351,6 +362,48 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
       mode: 'signup',
       companyId,
     });
+  };
+
+  /**
+   * Request the 30-day free trial. It does not start anything: the company
+   * moves to "awaiting review", BaseNavigator shows the pending screen, and
+   * the 30 days begin when a super-admin approves.
+   *
+   * Every refusal is shown exactly as the server words it — "already used
+   * with this phone number", "verify your email first" — because a generic
+   * "something went wrong" would leave the owner with no idea what to fix.
+   */
+  const handleStartTrial = async () => {
+    if (trialBusy) return;
+    // Same resolution as handleContinueTier.
+    const companyId =
+      resolvedCompanyId ?? route.params?.companyId ?? user?.companyId ?? '';
+    if (!companyId) {
+      Alert.alert('Company required', 'Set up your company before requesting a free trial.');
+      return;
+    }
+    setTrialBusy(true);
+    try {
+      await startTrialAPI(companyId);
+      // Refresh the session so the gate sees the request. The server reports
+      // `pending` while it is in review, which swaps the navigator straight to
+      // the pending screen — the same path a submitted payment takes.
+      try {
+        const me = await authMe();
+        if (me.data.companyId) await setStoredCompanyId(me.data.companyId);
+        dispatch(
+          setUser({ ...me.data.user, companyId: me.data.companyId ?? me.data.user.companyId ?? companyId }),
+        );
+      } catch {
+        // Refresh failed, but the request is in. Move the gate locally to the
+        // state the server reports for it, so the owner is not left here.
+        if (user) dispatch(setUser({ ...user, companyId, companyStatus: 'pending' }));
+      }
+    } catch (e: any) {
+      Alert.alert('Free trial not available', e?.message ?? 'Please try again.');
+    } finally {
+      setTrialBusy(false);
+    }
   };
 
   const loadPlans = async () => {
@@ -423,8 +476,13 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     // Resolve the stored company id once so the Continue tap is synchronous.
     void getStoredCompanyId().then(setResolvedCompanyId).catch(() => {});
-    if (companyType) loadTierPlans();
-    else loadPlans();
+    if (companyType) {
+      loadTierPlans();
+      // Best-effort: only decides whether to show a past trial decision and
+      // whether the trial card applies at all. The server re-checks everything
+      // when the trial is actually requested.
+      void getBillingStatusAPI().then(setBillingStatus).catch(() => {});
+    } else loadPlans();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -509,6 +567,52 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
               <>
                 {tierStep === 'tier' ? (
                   <>
+                    {billingStatus?.lastSubmission?.kind === 'TRIAL' &&
+                    billingStatus.lastSubmission.status === 'rejected' ? (
+                      <View style={S.trialNotice}>
+                        <Feather name="info" size={14} color={colors.warning} />
+                        <Text style={S.trialNoticeText}>
+                          We couldn’t activate a free trial
+                          {billingStatus.lastSubmission.rejectionReason
+                            ? `: ${billingStatus.lastSubmission.rejectionReason}`
+                            : '.'}{' '}
+                          You can choose a plan below to get started.
+                        </Text>
+                      </View>
+                    ) : null}
+                    {!billingStatus?.isTrial ? (
+                      <View style={S.trialCard}>
+                        <View style={S.trialHead}>
+                          <View style={S.trialIcon}>
+                            <Feather name="gift" size={18} color={DS.primary} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={S.trialTitle}>Try FinMatrix free for 30 days</Text>
+                            <Text style={S.trialBody}>
+                              Every accounting and warehouse feature, with one delivery rider.
+                              Choose a plan whenever you’re ready.
+                            </Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity
+                          style={[S.trialBtn, trialBusy && S.trialBtnBusy]}
+                          onPress={handleStartTrial}
+                          disabled={trialBusy}
+                          accessibilityRole="button"
+                          accessibilityState={{ busy: trialBusy, disabled: trialBusy }}
+                        >
+                          {trialBusy ? (
+                            <ActivityIndicator size="small" color={colors.neutral0} />
+                          ) : (
+                            <Text style={S.trialBtnText}>Start 30-day free trial</Text>
+                          )}
+                        </TouchableOpacity>
+                        <Text style={S.trialFine}>
+                          No credit card required. Your trial is activated after a quick review — usually
+                          within 24 hours.
+                        </Text>
+                      </View>
+                    ) : null}
                     <Text style={S.tierHeading}>
                       How big is your delivery team?
                     </Text>
@@ -594,7 +698,7 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
 
           <Text style={S.legalText}>
             By continuing, you agree to our Terms of Service and Privacy Policy.
-            Plans billed monthly or annually. Cancel anytime.
+            Plans are paid once per term. Nothing renews automatically.
           </Text>
         </View>
       </ScrollView>
@@ -801,6 +905,29 @@ const S = StyleSheet.create({
     flexDirection: 'row', gap: 8, backgroundColor: colors.actionGreenLighter, borderRadius: 10, padding: 12
   },
   tierNoteText: { ...THEME.typography.caption, flex: 1, color: DS.text.sub, lineHeight: 18 },
+
+  trialCard: {
+    backgroundColor: DS.surface, borderRadius: DS.radius.lg, padding: 16, gap: 12,
+    borderWidth: 1.5, borderColor: DS.primary,
+  },
+  trialHead: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  trialIcon: {
+    width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.actionGreenLighter,
+  },
+  trialTitle: { ...THEME.typography.labelLg, color: DS.text.h },
+  trialBody: { ...THEME.typography.bodySm, color: DS.text.sub, marginTop: 2 },
+  trialBtn: {
+    height: 46, borderRadius: DS.radius.md, backgroundColor: DS.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  trialBtnBusy: { opacity: 0.8 },
+  trialBtnText: { ...THEME.typography.labelMd, color: colors.neutral0, fontSize: 15 },
+  trialFine: { ...THEME.typography.caption, color: DS.text.sub, lineHeight: 18, textAlign: 'center' },
+  trialNotice: {
+    flexDirection: 'row', gap: 8, backgroundColor: colors.warningLighter, borderRadius: 10, padding: 12,
+  },
+  trialNoticeText: { ...THEME.typography.caption, flex: 1, color: DS.text.h, lineHeight: 18 },
 
   legalText: {
     ...THEME.typography.overline,

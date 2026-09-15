@@ -15,6 +15,7 @@ import {
 import {
   emitSessionExpired,
   emitCompanyStatusStale,
+  emitRiderSeatLocked,
 } from '../../utils/authEvents';
 
 // ★ BACKEND BASE URL ★
@@ -103,6 +104,11 @@ api.interceptors.response.use(
       const code = body?.error?.code ?? body?.code;
       if (code === 'COMPANY_NOT_ACTIVE') {
         emitCompanyStatusStale();
+      } else if (code === 'RIDER_SEAT_LOCKED') {
+        emitRiderSeatLocked(
+          body?.error?.message ??
+            "Your company's plan doesn't include your rider seat right now. Ask your manager.",
+        );
       }
     }
 

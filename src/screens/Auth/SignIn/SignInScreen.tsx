@@ -124,12 +124,19 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
       ).unwrap();
       dispatch(setUser(user));
     } catch (err) {
-      const e = err as { code?: string; rejectionReason?: string | null };
+      const e = err as {
+        code?: string;
+        rejectionReason?: string | null;
+        pendingKind?: 'trial' | 'payment' | null;
+      };
       // Route the server's gate codes to the screen that explains them.
       if (e?.code === 'EMAIL_NOT_VERIFIED') {
         navigation.navigate('EmailVerification', { email: email.trim() });
       } else if (e?.code === 'COMPANY_PENDING') {
-        navigation.navigate('PendingApproval', { fromLogin: true });
+        navigation.navigate('PendingApproval', {
+          fromLogin: true,
+          pendingKind: e?.pendingKind ?? undefined,
+        });
       } else if (e?.code === 'COMPANY_INACTIVE') {
         navigation.navigate('CompanyRejected', { fromLogin: true, mode: 'inactive' });
       } else if (e?.code === 'COMPANY_REJECTED') {

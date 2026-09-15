@@ -473,6 +473,8 @@ const STATUS_TIER_OF: Record<string, keyof typeof STATUS_TIER> = {
   partial: 'warning', partially_received: 'warning', refunded: 'warning',
   expired: 'warning', pending: 'warning', pending_approval: 'warning',
   processing: 'warning', trial: 'warning', unpaid: 'warning',
+  // A rider the plan no longer covers — paused, data kept, fixable.
+  plan_locked: 'warning',
   // ── success ──
   paid: 'success', fully_received: 'success', received: 'success',
   approved: 'success', applied: 'success', fulfilled: 'success',

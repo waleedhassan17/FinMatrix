@@ -42,3 +42,21 @@ export const setCompanyStatusStaleHandler = (
 export const emitCompanyStatusStale = () => {
   statusStaleHandler?.();
 };
+
+// ─── Rider seat locked (403 RIDER_SEAT_LOCKED) ───────────────────────────
+// Fired when a rider's request is refused because the company's plan no longer
+// covers their seat (the owner downgraded, or the plan was changed while they
+// were signed in). There is nothing a rider can do in the app until a seat is
+// given back, so the handler signs them out and shows the server's message.
+
+type RiderSeatLockedHandler = (message: string) => void;
+
+let riderSeatLockedHandler: RiderSeatLockedHandler | null = null;
+
+export const setRiderSeatLockedHandler = (h: RiderSeatLockedHandler | null) => {
+  riderSeatLockedHandler = h;
+};
+
+export const emitRiderSeatLocked = (message: string) => {
+  riderSeatLockedHandler?.(message);
+};

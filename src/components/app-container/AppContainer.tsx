@@ -11,6 +11,7 @@ import { View, StyleSheet, StatusBar, ActivityIndicator } from 'react-native';
 import {
   NavigationContainer,
   LinkingOptions,
+  createNavigationContainerRef,
 } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -25,6 +26,7 @@ import SuperAdminNavigator from '../../navigators/SuperAdminNavigator';
 import SmallBusinessNavigator from '../../navigators/tiers/SmallBusinessNavigator';
 import LargeOrgNavigator from '../../navigators/tiers/LargeOrgNavigator';
 import SplashOverlay from '../../screens/Splash/SplashScreen';
+import TrialBanner from '../shared/TrialBanner';
 
 import { bootstrapSession, selectIsAppReady } from './appContainerSlice';
 import {
@@ -35,7 +37,9 @@ import {
 import {
   setSessionExpiredHandler,
   setCompanyStatusStaleHandler,
+  setRiderSeatLockedHandler,
 } from '../../utils/authEvents';
+import { clearTokens } from '../../utils/storageUtils';
 import { WAREHOUSE_ONLY_BUILD } from '../../utils/featureGates';
 import { resetSignInForm } from '../../screens/Auth/SignIn/signInSlice';
 import { resetSignUpForm } from '../../screens/Auth/SignUp/signUpSlice';
@@ -45,6 +49,9 @@ import { THEME } from '../../theme';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors } = THEME;
+
+// Lets chrome that sits OUTSIDE the navigators (the trial banner) navigate.
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 // ─── Deep linking (Stage 1) ──────────────────────────
 // finmatrix://verify-email?token=...  → Email verification screen
@@ -110,6 +117,35 @@ export const AppContainer: React.FC = () => {
     return () => setCompanyStatusStaleHandler(null);
   }, [dispatch]);
 
+  // ─── Rider-seat-locked bridge: a rider's request 403'd with
+  // RIDER_SEAT_LOCKED — the company's plan no longer covers their seat. The
+  // rider can do nothing in the app until the owner frees a seat, so sign
+  // them out and say why (the server's message names the fix).
+  useEffect(() => {
+    setRiderSeatLockedHandler(message => {
+      void clearTokens().finally(() => {
+        dispatch(signOut());
+        Toast.show({ type: 'info', text1: 'Signed out', text2: message });
+      });
+    });
+    return () => setRiderSeatLockedHandler(null);
+  }, [dispatch]);
+
+  // One /auth/me re-read when a trialing owner returns to the app, so an
+  // approval or conversion that happened meanwhile is reflected.
+  const refreshSession = React.useCallback(() => {
+    dispatch(bootstrapSession());
+  }, [dispatch]);
+
+  // The trial banner's Subscribe → the plan chooser in the More stack.
+  const openSubscribe = React.useCallback(() => {
+    if (!navigationRef.isReady()) return;
+    (navigationRef.navigate as (...args: unknown[]) => void)('MoreStack', {
+      screen: 'RenewSubscription',
+      params: { mode: 'change' },
+    });
+  }, []);
+
   // ─── Clear auth form slices when user becomes authenticated ──
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -160,7 +196,16 @@ export const AppContainer: React.FC = () => {
       // Restore the three-tier switch by flipping WAREHOUSE_ONLY_BUILD in
       // utils/featureGates.ts and un-commenting the block below.
       if (WAREHOUSE_ONLY_BUILD) {
-        return <AdminTabNavigator key="tier-admin" />;
+        return (
+          <TrialBanner
+            key="tier-admin"
+            subscription={user.subscription}
+            onSubscribe={openSubscribe}
+            onForegroundRefresh={refreshSession}
+          >
+            <AdminTabNavigator />
+          </TrialBanner>
+        );
       }
 
       // ── Three-tier model (FinMatrix.md): small_business / large_org mount
@@ -185,7 +230,7 @@ export const AppContainer: React.FC = () => {
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.container}>
         {isAppReady ? (
-          <NavigationContainer linking={linking}>
+          <NavigationContainer ref={navigationRef} linking={linking}>
             {renderNavigator()}
           </NavigationContainer>
         ) : (

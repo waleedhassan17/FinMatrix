@@ -23,6 +23,7 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
+import { isLapsedTrial } from '../../utils/trial';
 import { useSignOut } from '../../hooks/useSignOut';
 import { bootstrapSession } from '../../components/app-container/appContainerSlice';
 import { THEME } from '../../theme';
@@ -113,7 +114,13 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const awaiting = status?.lastSubmission?.status === 'submitted';
-  const rejected = status?.lastSubmission?.status === 'rejected';
+  // A rejected TRIAL request is not a failed payment; this screen only speaks
+  // about payments.
+  const rejected =
+    status?.lastSubmission?.status === 'rejected' && status.lastSubmission.kind !== 'TRIAL';
+  // Copy only: a company that is (or was) on a free trial has never paid, so
+  // "renew" is the wrong word for it — it is subscribing for the first time.
+  const trial = isLapsedTrial(status);
 
   // While a submission is with the admin, poll so approval lands without the
   // user having to pull-to-refresh (20s is plenty for a manual review flow).
@@ -144,12 +151,24 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
     <AuthLayout
       header={
         <AuthHeader
-          pill={mode === 'renew' ? 'Renew Subscription' : 'Change Plan'}
-          title={mode === 'renew' ? 'Renew your subscription' : 'Choose a plan'}
+          pill={
+            trial
+              ? mode === 'renew' ? 'Free Trial Ended' : 'Subscribe'
+              : mode === 'renew' ? 'Renew Subscription' : 'Change Plan'
+          }
+          title={
+            trial
+              ? mode === 'renew' ? 'Your trial has ended' : 'Choose a plan'
+              : mode === 'renew' ? 'Renew your subscription' : 'Choose a plan'
+          }
           subtitle={
-            mode === 'renew'
-              ? 'Your subscription has expired and your account is paused. Renew to restore full access.'
-              : 'Upgrade or change your plan at any time.'
+            trial
+              ? mode === 'renew'
+                ? 'Subscribe to keep your data active and switch everything back on.'
+                : 'Subscribe any time to add riders and keep going after your trial. Your plan starts as soon as the payment is verified.'
+              : mode === 'renew'
+                ? 'Your subscription has expired and your account is paused. Renew to restore full access.'
+                : 'Upgrade or change your plan at any time.'
           }
           onBack={mode === 'change' ? () => navigation.goBack() : undefined}
         />
@@ -178,8 +197,9 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={S.reassure}>
             <Feather name="shield" size={18} color={DS.primary} />
             <Text style={S.reassureText}>
-              Your data is safe. All your invoices, ledger, inventory and delivery records are
-              intact and will be exactly as you left them after you renew.
+              {trial
+                ? 'Your data is safe. Everything you set up during your trial — invoices, ledger, inventory and delivery records — is intact and will be exactly as you left it once you subscribe.'
+                : 'Your data is safe. All your invoices, ledger, inventory and delivery records are intact and will be exactly as you left them after you renew.'}
             </Text>
           </View>
         )}
@@ -196,7 +216,13 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
             {status.expiryDate && (
               <Text style={S.currentMeta}>
-                {status.subscriptionStatus === 'expired' ? 'Expired on ' : 'Renews / expires on '}
+                {trial
+                  ? status.subscriptionStatus === 'expired' || status.accountStatus === 'inactive'
+                    ? 'Trial ended on '
+                    : 'Trial ends on '
+                  : status.subscriptionStatus === 'expired'
+                    ? 'Expired on '
+                    : 'Renews / expires on '}
                 {new Date(status.expiryDate).toDateString()}
               </Text>
             )}
@@ -225,7 +251,11 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         )}
 
-        <Text style={S.pickHeading}>{mode === 'renew' ? 'Select a plan to renew' : 'Available plans'}</Text>
+        <Text style={S.pickHeading}>
+          {mode === 'renew'
+            ? trial ? 'Select a plan to subscribe' : 'Select a plan to renew'
+            : 'Available plans'}
+        </Text>
         {plans.length === 0 ? (
           <View style={S.banner}>
             <Feather name="wifi-off" size={16} color={DS.text.sub} />

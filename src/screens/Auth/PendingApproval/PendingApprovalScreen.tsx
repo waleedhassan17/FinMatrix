@@ -7,13 +7,24 @@
 //
 // The timeline exists because "awaiting approval" with no other information
 // reads as "stuck". Showing what has already completed makes the wait legible.
+//
+// The same screen serves a FREE TRIAL request, which waits on the same review
+// queue. Its copy is branched rather than a second screen added: the trial
+// promise is "activated within 24 hours" and "your 30 days start then", and
+// neither may be said to someone who paid, nor the payment copy to a trialist.
+// Which one applies comes from the sign-in gate (route param pendingKind) or,
+// with a live session, from /billing/status.
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser, selectSelectedRole } from '../authSlice';
 import { authMe } from '../../../networks/auth/authNetwork';
+import {
+  getBillingStatusAPI,
+  type BillingStatus,
+} from '../../../networks/billing/billingNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
 import { useSignOut } from '../../../hooks/useSignOut';
 import type { UserRole } from '../../../types';
@@ -48,6 +59,27 @@ const PendingApprovalScreen: React.FC = () => {
   const [notice, setNotice] = useState<{ tone: AuthTone; message: string } | null>(
     null,
   );
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+
+  // A signed-in session can ask what is in review; a blocked sign-in cannot
+  // (no token), which is why the gate passes pendingKind along instead.
+  useEffect(() => {
+    if (fromLogin) return;
+    let cancelled = false;
+    getBillingStatusAPI()
+      .then(st => {
+        if (!cancelled) setBilling(st);
+      })
+      .catch(() => {
+        /* copy falls back to the payment wording's neutral parts */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fromLogin]);
+
+  const isTrialRequest =
+    route.params?.pendingKind === 'trial' || billing?.trialPending === true;
 
   const backToSignIn = useCallback(() => {
     navigation.navigate('SignIn', { role });
@@ -69,8 +101,9 @@ const PendingApprovalScreen: React.FC = () => {
         setApproved(true);
         setNotice({
           tone: 'success',
-          message:
-            'Your company has been approved. Sign in again to start using FinMatrix.',
+          message: isTrialRequest
+            ? 'Your free trial is active. Sign in again to start using FinMatrix — your 30 days have begun.'
+            : 'Your company has been approved. Sign in again to start using FinMatrix.',
         });
         return;
       }
@@ -81,14 +114,16 @@ const PendingApprovalScreen: React.FC = () => {
         message:
           status === 'rejected'
             ? 'Your registration was reviewed — see the details on the next screen.'
-            : 'Not approved yet. Your payment is with our team; we will email you as soon as it is verified.'
+            : isTrialRequest
+              ? 'Not activated yet. Your free trial request is with our team — usually within 24 hours. We will email you as soon as it is live.'
+              : 'Not approved yet. Your payment is with our team; we will email you as soon as it is verified.'
       });
     } catch (e: any) {
       setNotice({ tone: 'error', message: e?.message ?? 'Could not refresh status' });
     } finally {
       setChecking(false);
     }
-  }, [dispatch, fromLogin, backToSignIn, signOutNow]);
+  }, [dispatch, fromLogin, backToSignIn, isTrialRequest]);
 
   const handleSignOut = useCallback(() => {
     if (fromLogin) {
@@ -102,9 +137,13 @@ const PendingApprovalScreen: React.FC = () => {
     <AuthLayout
       header={
         <AuthHeader
-          pill="Pending Review"
-          title="Awaiting approval"
-          subtitle="Your company registration is with our review team."
+          pill={isTrialRequest ? 'Free Trial' : 'Pending Review'}
+          title={isTrialRequest ? 'Your free trial is being activated' : 'Awaiting approval'}
+          subtitle={
+            isTrialRequest
+              ? 'Activation usually takes less than 24 hours.'
+              : 'Your company registration is with our review team.'
+          }
           onBack={fromLogin ? backToSignIn : undefined}
         />
       }
@@ -124,7 +163,11 @@ const PendingApprovalScreen: React.FC = () => {
             label: fromLogin ? 'Use a different account' : 'Sign out',
             onPress: handleSignOut,
           }}
-          note="Reviews are usually completed within one business day"
+          note={
+            isTrialRequest
+              ? 'Free trials are usually activated within 24 hours'
+              : 'Reviews are usually completed within one business day'
+          }
         />
       }>
       {notice ? (
@@ -147,25 +190,45 @@ const PendingApprovalScreen: React.FC = () => {
       </View>
 
       <Text style={styles.body}>
-        {`Thanks${user?.displayName ? `, ${user.displayName}` : ''}! Your company registration has been submitted and is being reviewed by our team. You'll get an email as soon as it's approved.`}
+        {isTrialRequest
+          ? `Thanks${user?.displayName ? `, ${user.displayName}` : ''}! We've received your request for a 30-day free trial — every feature, with one delivery rider. Our team activates it within 24 hours, and a confirmation email is on its way. Your 30 days start when the trial is activated, so no time is lost while you wait.`
+          : `Thanks${user?.displayName ? `, ${user.displayName}` : ''}! Your company registration has been submitted and is being reviewed by our team. You'll get an email as soon as it's approved.`}
       </Text>
 
       <AuthTimeline
-        items={[
-          { title: 'Registration submitted', detail: 'Company details received', done: true },
-          {
-            title: 'Payment receipt received',
-            detail: 'Awaiting administrator verification',
-            done: true,
-          },
-          {
-            title: approved ? 'Approved' : 'Administrator review',
-            detail: approved
-              ? 'Sign in again to start using FinMatrix'
-              : 'Usually within one business day',
-            done: approved,
-          },
-        ]}
+        items={
+          isTrialRequest
+            ? [
+                { title: 'Company set up', detail: 'Email verified and company details received', done: true },
+                {
+                  title: 'Free trial requested',
+                  detail: 'All features · 1 delivery rider · 30 days',
+                  done: true,
+                },
+                {
+                  title: approved ? 'Trial active' : 'Activation review',
+                  detail: approved
+                    ? 'Sign in again — your 30 days have started'
+                    : 'Usually within 24 hours',
+                  done: approved,
+                },
+              ]
+            : [
+                { title: 'Registration submitted', detail: 'Company details received', done: true },
+                {
+                  title: 'Payment receipt received',
+                  detail: 'Awaiting administrator verification',
+                  done: true,
+                },
+                {
+                  title: approved ? 'Approved' : 'Administrator review',
+                  detail: approved
+                    ? 'Sign in again to start using FinMatrix'
+                    : 'Usually within one business day',
+                  done: approved,
+                },
+              ]
+        }
       />
     </AuthLayout>
   );

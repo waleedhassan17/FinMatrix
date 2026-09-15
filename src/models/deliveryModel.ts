@@ -104,7 +104,9 @@ export interface DummyDeliveryPerson {
   vehicleNumber: string;
   zones: string[];
   maxLoad: number;
-  status: 'active' | 'inactive' | 'on_delivery' | 'on_leave';
+  // plan_locked: paused by the server because the plan allows fewer active
+  // riders than the company has. Set by the system, cleared by a seat.
+  status: 'active' | 'inactive' | 'on_delivery' | 'on_leave' | 'plan_locked';
   companyId?: string;
   role?: string;
   address?: string;

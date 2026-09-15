@@ -132,6 +132,9 @@ export const mapDeliveryPerson = (
   const status: DummyDeliveryPerson['status'] =
     rawStatus === 'inactive' ? 'inactive'
     : rawStatus === 'on_leave' ? 'on_leave'
+    // Must not fall through to 'active': a rider the plan has paused cannot
+    // sign in or take work, and showing them as active would say otherwise.
+    : rawStatus === 'plan_locked' ? 'plan_locked'
     : rawStatus === 'on_delivery' ? 'on_delivery'
     : 'active';
 

@@ -14,7 +14,16 @@ export type PlanKey =
   | 'large_org_3mo'
   | 'large_org_6mo'
   | 'warehouse_3mo'
-  | 'warehouse_6mo';
+  | 'warehouse_6mo'
+  // Warehouse ladder — the plans on sale.
+  | 'warehouse_starter_6mo'
+  | 'warehouse_starter_1yr'
+  | 'warehouse_growth_6mo'
+  | 'warehouse_growth_1yr'
+  | 'warehouse_scale_6mo'
+  | 'warehouse_scale_1yr'
+  // The admin-approved free trial — granted, never bought.
+  | 'warehouse_trial';
 
 export interface TierPlanCard {
   key: PlanKey;
@@ -29,7 +38,8 @@ export interface TierPlanCard {
   monthlySavingsMinorUnits: number;
   monthlySavingsLabel: string | null;
 }
-export type SubmissionKind = 'NEW' | 'RENEWAL' | 'UPGRADE';
+// TRIAL is a free-trial request in the same review queue: amount 0, no screenshot.
+export type SubmissionKind = 'NEW' | 'RENEWAL' | 'UPGRADE' | 'TRIAL';
 export type SubmissionStatus = 'submitted' | 'approved' | 'rejected';
 
 export interface BillingStatus {
@@ -53,12 +63,35 @@ export interface BillingStatus {
   lastSubmission: {
     id: string;
     plan: PlanKey;
+    planLabel?: string;
     kind: SubmissionKind;
     status: SubmissionStatus;
     amountMinorUnits: number;
     rejectionReason: string | null;
     createdAt: string;
   } | null;
+  // ── Free trial ──
+  /** Permanent history: true from trial approval onward, even after paying. */
+  isTrial: boolean;
+  trialRequestedAt: string | null;
+  trialStartedAt: string | null;
+  /** Set when a real payment was approved after the trial. */
+  trialConvertedAt: string | null;
+  /** Days left while the trial is running and unconverted; otherwise null. */
+  trialDaysRemaining: number | null;
+  /** A trial request is waiting for a super-admin. */
+  trialPending: boolean;
+}
+
+/** POST /companies/start-trial response. */
+export interface StartTrialResult {
+  status: 'pending_approval';
+  submissionId: string;
+  requestedPlanKey: PlanKey;
+  requestedPlanLabel: string;
+  requestedAt: string;
+  estimatedActivationHours: number;
+  billing: BillingStatus;
 }
 
 export interface PlanLimits {
@@ -66,6 +99,8 @@ export interface PlanLimits {
   planLabel: string;
   deliveryPersonnelLimit: number;
   currentCount: number;
+  /** Riders paused because the plan allows fewer than the company has. */
+  lockedCount?: number;
   canAddMore: boolean;
   upgradeLimit: number;
 }
@@ -103,7 +138,16 @@ export interface PaymentSubmissionView {
   rejectionReason: string | null;
   reviewedAt: string | null;
   createdAt: string;
+  /** Who asked (admin queue). A trial row is decided on this, not an amount. */
+  requesterName?: string;
+  requesterEmail?: string;
+  requesterPhone?: string;
+  /** Hours waiting while still submitted; null once decided. */
+  ageHours?: number | null;
 }
+
+/** Queue filter: a specific kind, or every non-trial payment. */
+export type SubmissionKindFilter = SubmissionKind | 'PAYMENT';
 
 export interface RevenueSummary {
   totalMinorUnits: number;

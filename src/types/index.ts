@@ -76,8 +76,26 @@ export interface User {
   companyType?: string | null;
   /** Effective feature flags for the company (server-computed, kill switch applied). */
   features?: Record<string, boolean> | null;
+  /**
+   * Plan + free-trial summary from signin / /auth/me. The trial countdown reads
+   * this, so the shell never needs a billing fetch of its own.
+   */
+  subscription?: SubscriptionSummary | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SubscriptionSummary {
+  plan: string;
+  planLabel: string;
+  /** ISO timestamp; null for a plan that never expires. */
+  expiryDate: string | null;
+  paymentStatus: string;
+  /** Permanent history: true once a trial has been approved, even after paying. */
+  isTrial: boolean;
+  trialStartedAt: string | null;
+  /** Set when a real payment was approved after the trial. */
+  trialConvertedAt: string | null;
 }
 
 // ─── Company ──────────────────────────────────────────
@@ -785,7 +803,7 @@ export type RootStackParamList = {
   CreateCompany: { companyType?: 'small_business' | 'large_org' | 'warehouse' } | undefined;
   JoinCompany: undefined;
   DeliveryOnboarding: undefined;
-  PendingApproval: { fromLogin?: boolean } | undefined;
+  PendingApproval: { fromLogin?: boolean; pendingKind?: 'trial' | 'payment' } | undefined;
   CompanyRejected: { fromLogin?: boolean; mode?: 'rejected' | 'inactive'; reason?: string } | undefined;
   AdminTabs: undefined;
   DeliveryTabs: undefined;

@@ -50,17 +50,24 @@ export class AuthError extends Error {
   email?: string;
   companyStatus?: string | null;
   rejectionReason?: string | null;
+  /** COMPANY_PENDING only: what is in review — a free-trial request or a payment. */
+  pendingKind?: 'trial' | 'payment' | null;
   constructor(
     message: string,
     code?: string,
     email?: string,
-    extra?: { companyStatus?: string | null; rejectionReason?: string | null },
+    extra?: {
+      companyStatus?: string | null;
+      rejectionReason?: string | null;
+      pendingKind?: 'trial' | 'payment' | null;
+    },
   ) {
     super(message);
     this.code = code;
     this.email = email;
     this.companyStatus = extra?.companyStatus ?? null;
     this.rejectionReason = extra?.rejectionReason ?? null;
+    this.pendingKind = extra?.pendingKind ?? null;
   }
 }
 
@@ -88,7 +95,7 @@ export const authLogin = async ({
       portal: 'admin',
     });
     const responseData = response.data?.data ?? response.data;
-    const { user: backendUser, tokens, companyId, companyStatus, companyType, features } = responseData;
+    const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription } = responseData;
     if (!tokens?.accessToken) {
       throw new Error('Login succeeded but no token received. Please try again.');
     }
@@ -97,7 +104,7 @@ export const authLogin = async ({
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
-    const user = mapUser(backendUser, companyStatus, { companyType, features });
+    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription });
     return { data: user };
   } catch (e: any) {
     console.warn('[authLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
@@ -118,6 +125,12 @@ export const authLogin = async ({
       throw new AuthError(err.message ?? 'Sign in is not available yet.', code, err.email, {
         companyStatus: err.companyStatus ?? null,
         rejectionReason: err.rejectionReason ?? null,
+        // The exception filter keeps only `details`, so that is where the
+        // server says whether a trial request or a payment is in review.
+        pendingKind:
+          err.details?.pendingKind === 'trial' || err.details?.pendingKind === 'payment'
+            ? err.details.pendingKind
+            : null,
       });
     }
     throw new Error(extractErrorMessage(e));
@@ -148,7 +161,7 @@ export const authDeliveryLogin = async ({
       portal: 'team',
     });
     const responseData = response.data?.data ?? response.data;
-    const { user: backendUser, tokens, companyId, companyStatus, companyType, features } =
+    const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription } =
       responseData;
     if (!tokens?.accessToken) {
       throw new Error('Login succeeded but no token received. Please try again.');
@@ -160,7 +173,7 @@ export const authDeliveryLogin = async ({
     // Staff need companyStatus/companyType/features exactly as an owner does —
     // they mount a company navigator and their tier gates the same rows. The
     // rider path never used them, which is why they were dropped here.
-    const user = mapUser(backendUser, companyStatus, { companyType, features });
+    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription });
     return { data: user };
   } catch (e: any) {
     console.warn('[authDeliveryLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
@@ -186,12 +199,12 @@ export const authRegister = async ({
       phone: normalizePkPhone(registerInfo.phone),
       role: 'admin',
     });
-    const { user: backendUser, tokens, companyId, companyStatus, companyType, features } = response.data.data;
+    const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription } = response.data.data;
     await setTokens(tokens.accessToken, tokens.refreshToken);
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
-    const user = mapUser(backendUser, companyStatus, { companyType, features });
+    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription });
     return { data: user };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -203,8 +216,8 @@ export const authRegister = async ({
 export const authMe = async () => {
   try {
     const response = await api.get('/auth/me');
-    const { user: backendUser, companies, companyId, companyStatus, companyType, features } = response.data.data;
-    const user = mapUser(backendUser, companyStatus, { companyType, features });
+    const { user: backendUser, companies, companyId, companyStatus, companyType, features, subscription } = response.data.data;
+    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription });
     return { data: { user, companies, companyId } };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));

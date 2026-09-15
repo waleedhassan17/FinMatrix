@@ -119,6 +119,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
   }, [atLimit, limits, navigation]);
 
   const getEffectiveStatus = (p: DummyDeliveryPerson): string => {
+    if (p.status === 'plan_locked') return 'plan_locked';
     if (p.status === 'on_leave' || p.status === 'inactive') return 'on_leave';
     // `currentLoad < maxLoad` is false when maxLoad is 0, so a rider with no
     // capacity configured could never be shown as available. Capacity only
@@ -193,7 +194,11 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
             <View style={[styles.statusBadge, { backgroundColor: statusColor + '12' }]}>
               <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
               <Text style={[styles.statusText, { color: statusColor }]}>
-                {status === 'on_leave' ? 'Leave' : status.charAt(0).toUpperCase() + status.slice(1)}
+                {status === 'on_leave'
+                  ? 'Leave'
+                  : status === 'plan_locked'
+                    ? 'Paused'
+                    : status.charAt(0).toUpperCase() + status.slice(1)}
               </Text>
             </View>
           </View>
@@ -262,8 +267,11 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={[styles.usageText, atLimit && { color: colors.warningHover }]}>
             {limits.currentCount} of {limits.deliveryPersonnelLimit} delivery personnel used
             {atLimit ? ' — plan limit reached' : ''}
+            {limits.lockedCount
+              ? ` · ${limits.lockedCount} paused by your plan limit`
+              : ''}
           </Text>
-          {atLimit && (
+          {(atLimit || !!limits.lockedCount) && (
             <TouchableOpacity
               onPress={() => navigation.navigate('RenewSubscription' as any, { mode: 'change' })}>
               <Text style={styles.usageUpgrade}>Upgrade</Text>

@@ -27,6 +27,8 @@ import type {
   BankDetails,
   PaymentSubmissionView,
   RevenueSummary,
+  StartTrialResult,
+  SubmissionKindFilter,
 } from '../../models/billingModel';
 import {
   billingEnvelopeSerializer,
@@ -43,6 +45,8 @@ export type {
   BankDetails,
   PaymentSubmissionView,
   RevenueSummary,
+  StartTrialResult,
+  SubmissionKindFilter,
 } from '../../models/billingModel';
 
 const unwrap = billingEnvelopeSerializer;
@@ -181,14 +185,34 @@ export const submitPaymentAPI = async (
   return json?.data ?? json;
 };
 
+/**
+ * Request the admin-approved 30-day free trial. This grants nothing on its own:
+ * the company stays pending until a super-admin approves, and the 30 days start
+ * then. The server's refusals (email or phone already used, email not verified,
+ * phone missing) are specific and user-facing, so they are surfaced verbatim.
+ */
+export const startTrialAPI = async (companyId: string): Promise<StartTrialResult> => {
+  try {
+    const res = await api.post('/companies/start-trial', companyId ? { companyId } : {});
+    return unwrap(res);
+  } catch (e) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
 // ─── Super-admin review ───────────────────────────────
 
 export const listPaymentSubmissionsAPI = async (
   status?: SubmissionStatus,
+  filters: { kind?: SubmissionKindFilter; order?: 'asc' | 'desc' } = {},
 ): Promise<PaymentSubmissionView[]> => {
   try {
     const res = await api.get('/admin/payment-submissions', {
-      params: status ? { status } : {},
+      params: {
+        ...(status ? { status } : {}),
+        ...(filters.kind ? { kind: filters.kind } : {}),
+        ...(filters.order ? { order: filters.order } : {}),
+      },
     });
     return submissionListSerializer(res);
   } catch (e) {
@@ -217,12 +241,21 @@ export const approvePaymentSubmissionAPI = async (
   }
 };
 
+/**
+ * Reject a submission. `blockFutureTrials` applies to TRIAL requests only:
+ * false (default) frees the email/phone to ask again; true refuses future
+ * trials for them permanently.
+ */
 export const rejectPaymentSubmissionAPI = async (
   id: string,
   reason: string,
+  blockFutureTrials?: boolean,
 ): Promise<PaymentSubmissionView> => {
   try {
-    const res = await api.patch(`/admin/payment-submissions/${id}/reject`, { reason });
+    const res = await api.patch(`/admin/payment-submissions/${id}/reject`, {
+      reason,
+      ...(blockFutureTrials ? { blockFutureTrials: true } : {}),
+    });
     return unwrap(res);
   } catch (e) {
     throw new Error(extractErrorMessage(e));

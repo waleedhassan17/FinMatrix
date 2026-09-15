@@ -3,6 +3,11 @@
 // Verify manual bank-transfer payments across signup / renewal / upgrade.
 // Each row is labelled NEW / RENEWAL / UPGRADE with plan, amount, screenshot,
 // and Approve / Reject(reason) actions. Approval activates the plan+account.
+//
+// FREE TRIAL requests ride the same queue (kind TRIAL). A trial row has NO
+// amount and NO screenshot — rendering one as "Rs 0" with a screenshot link
+// would be both wrong and alarming — so it shows who asked and how long they
+// have waited instead: the owner was promised activation within 24 hours.
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useState } from 'react';
@@ -39,12 +44,29 @@ import {
   type PaymentSubmissionView,
   type SubmissionStatus,
 } from '../../../networks/billing/billingNetwork';
+import type { SubmissionKindFilter } from '../../../models/billingModel';
+import { TRIAL_REVIEW_WARN_HOURS, waitingLabel } from '../../../utils/trial';
 
 const KIND_COLORS: Record<string, string> = {
   NEW: colors.info,
   RENEWAL: colors.success,
   UPGRADE: colors.secondary,
+  TRIAL: colors.warning,
 };
+
+type KindKey = 'all' | 'payments' | 'trials';
+const KIND_FILTERS: { key: KindKey; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'payments', label: 'Payments' },
+  { key: 'trials', label: 'Trials' },
+];
+const KIND_PARAM: Record<KindKey, SubmissionKindFilter | undefined> = {
+  all: undefined,
+  payments: 'PAYMENT',
+  trials: 'TRIAL',
+};
+
+const isTrial = (s: PaymentSubmissionView | null | undefined) => s?.kind === 'TRIAL';
 
 // RN's Alert is a no-op on react-native-web — fall back to window.alert there
 // so errors are never silently swallowed. Confirmations use real <Modal>s.
@@ -67,6 +89,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 
 const PaymentSubmissionsScreen: React.FC = () => {
   const [filter, setFilter] = useState<FilterKey>('submitted');
+  const [kindFilter, setKindFilter] = useState<KindKey>('all');
   const [rows, setRows] = useState<PaymentSubmissionView[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -78,10 +101,17 @@ const PaymentSubmissionsScreen: React.FC = () => {
   const [rejectTarget, setRejectTarget] = useState<PaymentSubmissionView | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [approveTarget, setApproveTarget] = useState<PaymentSubmissionView | null>(null);
+  // The irreversible variant of a trial rejection asks twice.
+  const [blockConfirm, setBlockConfirm] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const data = await listPaymentSubmissionsAPI(filter === 'all' ? undefined : filter);
+      const data = await listPaymentSubmissionsAPI(filter === 'all' ? undefined : filter, {
+        kind: KIND_PARAM[kindFilter],
+        // The trial queue reads oldest-first: whoever has waited longest for
+        // their promised 24 hours comes first.
+        order: kindFilter === 'trials' ? 'asc' : 'desc',
+      });
       setRows(data);
     } catch (e: any) {
       notify('Could not load submissions', e?.message ?? 'Please try again.');
@@ -89,7 +119,7 @@ const PaymentSubmissionsScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filter]);
+  }, [filter, kindFilter]);
 
   useFocusEffect(
     useCallback(() => {
@@ -131,17 +161,24 @@ const PaymentSubmissionsScreen: React.FC = () => {
     }
   };
 
-  const submitReject = async () => {
+  const closeReject = () => {
+    setRejectTarget(null);
+    setBlockConfirm(false);
+  };
+
+  const submitReject = async (blockFutureTrials = false) => {
     if (!rejectTarget) return;
     if (!rejectReason.trim()) {
+      setBlockConfirm(false);
       notify('Reason required', 'Please provide a reason for rejection.');
       return;
     }
     setBusyId(rejectTarget.id);
     try {
-      await rejectPaymentSubmissionAPI(rejectTarget.id, rejectReason.trim());
+      await rejectPaymentSubmissionAPI(rejectTarget.id, rejectReason.trim(), blockFutureTrials);
       setRejectTarget(null);
       setRejectReason('');
+      setBlockConfirm(false);
       await load();
     } catch (e: any) {
       notify('Reject failed', e?.message ?? 'Please try again.');
@@ -158,6 +195,21 @@ const PaymentSubmissionsScreen: React.FC = () => {
           title="Payment Verification"
           subtitle="Review manual bank-transfer submissions"
         />
+
+        <View style={[S.filterRow, S.kindRow]}>
+          {KIND_FILTERS.map((f) => {
+            const active = kindFilter === f.key;
+            return (
+              <TouchableOpacity
+                key={f.key}
+                style={[S.filterChip, active && S.filterChipActive]}
+                onPress={() => setKindFilter(f.key)}
+              >
+                <Text style={[S.filterText, active && S.filterTextActive]}>{f.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         <View style={S.filterRow}>
           {FILTERS.map((f) => {
@@ -195,7 +247,10 @@ const PaymentSubmissionsScreen: React.FC = () => {
             {rows.length === 0 ? (
               <View style={S.empty}>
                 <Feather name="inbox" size={40} color={colors.textDisabled} />
-                <Text style={S.emptyText}>No {filter === 'all' ? '' : filter} submissions</Text>
+                <Text style={S.emptyText}>
+                  No {filter === 'all' ? '' : filter}{' '}
+                  {kindFilter === 'trials' ? 'trial requests' : 'submissions'}
+                </Text>
               </View>
             ) : (
               rows.map((sub) => (
@@ -216,14 +271,55 @@ const PaymentSubmissionsScreen: React.FC = () => {
                     </View>
                   </View>
 
-                  <View style={S.metaRow}>
-                    <Meta label="Plan" value={sub.planLabel} />
-                    <Meta label="Amount" value={sub.amountLabel} />
-                    <Meta label="Status" value={sub.status} />
-                  </View>
-                  <Text style={S.date}>{new Date(sub.createdAt).toLocaleString()}</Text>
+                  {isTrial(sub) ? (
+                    <>
+                      <View style={S.metaRow}>
+                        <Meta label="Requested" value="Free trial · 30 days" />
+                        <Meta label="Status" value={sub.status} />
+                      </View>
+                      <View style={S.requester}>
+                        <RequesterLine icon="user" value={sub.requesterName} />
+                        <RequesterLine icon="mail" value={sub.requesterEmail} />
+                        <RequesterLine icon="phone" value={sub.requesterPhone} />
+                      </View>
+                      {sub.status === 'submitted' && typeof sub.ageHours === 'number' ? (
+                        <View
+                          style={[
+                            S.waitPill,
+                            sub.ageHours >= TRIAL_REVIEW_WARN_HOURS ? S.waitPillLate : null,
+                          ]}
+                        >
+                          <Feather
+                            name="clock"
+                            size={13}
+                            color={sub.ageHours >= TRIAL_REVIEW_WARN_HOURS ? colors.danger : colors.warning}
+                          />
+                          <Text
+                            style={[
+                              S.waitText,
+                              sub.ageHours >= TRIAL_REVIEW_WARN_HOURS ? S.waitTextLate : null,
+                            ]}
+                          >
+                            Waiting {waitingLabel(sub.ageHours)}
+                            {sub.ageHours >= TRIAL_REVIEW_WARN_HOURS ? ' · promised within 24 h' : ''}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text style={S.date}>{new Date(sub.createdAt).toLocaleString()}</Text>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <View style={S.metaRow}>
+                        <Meta label="Plan" value={sub.planLabel} />
+                        <Meta label="Amount" value={sub.amountLabel} />
+                        <Meta label="Status" value={sub.status} />
+                      </View>
+                      <Text style={S.date}>{new Date(sub.createdAt).toLocaleString()}</Text>
+                    </>
+                  )}
 
-                  {sub.hasScreenshot && (
+                  {!isTrial(sub) && sub.hasScreenshot && (
                     <TouchableOpacity style={S.viewShot} onPress={() => openScreenshot(sub.id)}>
                       <Feather name="image" size={15} color={colors.primary} />
                       <Text style={S.viewShotText}>View transfer screenshot</Text>
@@ -290,11 +386,16 @@ const PaymentSubmissionsScreen: React.FC = () => {
       >
         <View style={S.modalBackdrop}>
           <View style={S.modalCard}>
-            <Text style={S.modalTitle}>Approve payment</Text>
+            <Text style={S.modalTitle}>
+              {isTrial(approveTarget) ? 'Start free trial' : 'Approve payment'}
+            </Text>
             <Text style={S.modalSub}>
-              Activate the {approveTarget?.planLabel} plan for{' '}
-              {approveTarget?.companyName ?? 'this company'}? This restores full access and
-              records {approveTarget?.amountLabel} in platform revenue.
+              {isTrial(approveTarget)
+                ? `Start a 30-day free trial for ${approveTarget?.companyName ?? 'this company'}? ` +
+                  'They get full access with one delivery rider, starting now. No revenue is recorded.'
+                : `Activate the ${approveTarget?.planLabel} plan for ` +
+                  `${approveTarget?.companyName ?? 'this company'}? This restores full access and ` +
+                  `records ${approveTarget?.amountLabel} in platform revenue.`}
             </Text>
             <View style={S.modalActions}>
               <TouchableOpacity
@@ -321,35 +422,123 @@ const PaymentSubmissionsScreen: React.FC = () => {
       </Modal>
 
       {/* Reject reason */}
-      <Modal visible={!!rejectTarget} transparent animationType="fade" onRequestClose={() => setRejectTarget(null)}>
+      <Modal visible={!!rejectTarget} transparent animationType="fade" onRequestClose={closeReject}>
         <View style={S.modalBackdrop}>
           <View style={S.modalCard}>
-            <Text style={S.modalTitle}>Reject payment</Text>
-            <Text style={S.modalSub}>
-              Tell {rejectTarget?.companyName ?? 'the company'} why the payment couldn't be verified.
-            </Text>
-            <TextInput
-              style={S.modalInput}
-              placeholder="e.g. Screenshot unclear / amount mismatch"
-              placeholderTextColor={THEME.colors.textTertiary}
-              value={rejectReason}
-              onChangeText={setRejectReason}
-              multiline
-            />
-            <View style={S.modalActions}>
-              <TouchableOpacity style={[S.btn, S.rejectBtn]} onPress={() => setRejectTarget(null)}>
-                <Text style={S.rejectBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[S.btn, S.approveBtn, { backgroundColor: colors.danger }]} onPress={submitReject}>
-                <Text style={S.approveBtnText}>Confirm reject</Text>
-              </TouchableOpacity>
-            </View>
+            {isTrial(rejectTarget) && blockConfirm ? (
+              // Second step for the irreversible variant — a real Modal body,
+              // not Alert.alert, which does nothing on web.
+              <>
+                <Text style={S.modalTitle}>Block future trials?</Text>
+                <Text style={S.modalSub}>
+                  {rejectTarget?.requesterEmail ?? 'This email'} and{' '}
+                  {rejectTarget?.requesterPhone ?? 'this phone number'} will never be able to start a
+                  free trial again. This cannot be undone from the app. They can still subscribe to a
+                  paid plan.
+                </Text>
+                <View style={S.modalActions}>
+                  <TouchableOpacity
+                    style={[S.btn, S.rejectBtn]}
+                    disabled={busyId === rejectTarget?.id}
+                    onPress={() => setBlockConfirm(false)}
+                  >
+                    <Text style={S.rejectBtnText}>Back</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[S.btn, S.approveBtn, { backgroundColor: colors.danger }]}
+                    disabled={busyId === rejectTarget?.id}
+                    onPress={() => submitReject(true)}
+                  >
+                    {busyId === rejectTarget?.id ? (
+                      <ActivityIndicator size="small" color={colors.neutral0} />
+                    ) : (
+                      <Text style={S.approveBtnText}>Reject & block</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={S.modalTitle}>
+                  {isTrial(rejectTarget) ? 'Reject trial request' : 'Reject payment'}
+                </Text>
+                <Text style={S.modalSub}>
+                  {isTrial(rejectTarget)
+                    ? `Tell ${rejectTarget?.companyName ?? 'the company'} why the trial wasn't activated. ` +
+                      'They can still subscribe to a paid plan.'
+                    : `Tell ${rejectTarget?.companyName ?? 'the company'} why the payment couldn't be verified.`}
+                </Text>
+                <TextInput
+                  style={S.modalInput}
+                  placeholder={
+                    isTrial(rejectTarget)
+                      ? 'e.g. Business details could not be confirmed'
+                      : 'e.g. Screenshot unclear / amount mismatch'
+                  }
+                  placeholderTextColor={THEME.colors.textTertiary}
+                  value={rejectReason}
+                  onChangeText={setRejectReason}
+                  multiline
+                />
+                <View style={S.modalActions}>
+                  <TouchableOpacity style={[S.btn, S.rejectBtn]} onPress={closeReject}>
+                    <Text style={S.rejectBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[S.btn, S.approveBtn, { backgroundColor: colors.danger }]}
+                    disabled={busyId === rejectTarget?.id}
+                    onPress={() => submitReject(false)}
+                  >
+                    {busyId === rejectTarget?.id ? (
+                      <ActivityIndicator size="small" color={colors.neutral0} />
+                    ) : (
+                      <Text style={S.approveBtnText}>
+                        {isTrial(rejectTarget) ? 'Reject' : 'Confirm reject'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                {isTrial(rejectTarget) && (
+                  <TouchableOpacity
+                    style={S.blockLink}
+                    disabled={busyId === rejectTarget?.id}
+                    onPress={() => {
+                      if (!rejectReason.trim()) {
+                        notify('Reason required', 'Please provide a reason for rejection.');
+                        return;
+                      }
+                      setBlockConfirm(true);
+                    }}
+                  >
+                    <Feather name="slash" size={14} color={colors.danger} />
+                    <Text style={S.blockLinkText}>Reject & block future trials</Text>
+                  </TouchableOpacity>
+                )}
+                {isTrial(rejectTarget) && (
+                  <Text style={S.modalHint}>
+                    Reject frees their email and phone to request again. Block refuses them for good.
+                  </Text>
+                )}
+              </>
+            )}
           </View>
         </View>
       </Modal>
     </SafeAreaView>
   );
 };
+
+const RequesterLine: React.FC<{ icon: 'user' | 'mail' | 'phone'; value?: string }> = ({
+  icon,
+  value,
+}) => (
+  <View style={S.requesterLine}>
+    <Feather name={icon} size={13} color={colors.textTertiary} />
+    <Text style={S.requesterText} numberOfLines={1}>
+      {value || '—'}
+    </Text>
+  </View>
+);
 
 const Meta: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <View style={S.meta}>
@@ -364,6 +553,7 @@ const S = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   filterRow: { flexDirection: 'row', gap: spacing.xs, padding: spacing.sm },
+  kindRow: { paddingBottom: 0 },
   filterChip: {
     flex: 1, alignItems: 'center', paddingVertical: spacing.xs, borderRadius: radius.md,
     backgroundColor: colors.neutral0, borderWidth: 1, borderColor: colors.border,
@@ -396,6 +586,18 @@ const S = StyleSheet.create({
   viewShotText: { ...typography.bodySm, color: colors.primary },
   rejReason: { ...typography.labelSm, color: colors.danger, marginTop: 10 },
 
+  requester: { marginTop: 10, gap: 4 },
+  requesterLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  requesterText: { ...typography.bodySm, color: colors.textSecondary, flex: 1 },
+  waitPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 10,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.sm,
+    backgroundColor: colors.warningLighter,
+  },
+  waitPillLate: { backgroundColor: colors.dangerLighter },
+  waitText: { ...typography.labelSm, color: colors.warning },
+  waitTextLate: { color: colors.danger },
+
   actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
   btn: { flex: 1, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   approveBtn: { backgroundColor: colors.success },
@@ -416,6 +618,12 @@ const S = StyleSheet.create({
     padding: spacing.sm, minHeight: 80, textAlignVertical: 'top', color: colors.textPrimary,
   },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: spacing.md },
+  blockLink: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginTop: spacing.sm, paddingVertical: spacing.xs,
+  },
+  blockLinkText: { ...typography.labelMd, color: colors.danger },
+  modalHint: { ...typography.labelSm, color: colors.textTertiary, textAlign: 'center', marginTop: 4 },
 });
 
 export default PaymentSubmissionsScreen;

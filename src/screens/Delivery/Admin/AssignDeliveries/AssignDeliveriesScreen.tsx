@@ -455,7 +455,12 @@ const AssignDeliveriesScreen: React.FC = () => {
             </Text>
 
             <FlatList
-              data={personnel}
+              // Only riders who can take work. The server refuses a rider who
+              // is deactivated, on leave, or paused by the plan's rider limit,
+              // so offering them here would end in an error after the tap.
+              data={personnel.filter(
+                p => p.status !== 'inactive' && p.status !== 'on_leave' && p.status !== 'plan_locked',
+              )}
               keyExtractor={p => p.userId}
               style={styles.modalList}
               ListEmptyComponent={
