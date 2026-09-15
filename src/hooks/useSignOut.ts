@@ -27,6 +27,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useAppDispatch } from './useReduxHooks';
 import { signOut } from '../screens/Auth/authSlice';
 import { authSignOut } from '../networks/auth/authNetwork';
+import { markIntentionalSignOut } from '../utils/authEvents';
 import { Alert } from '../utils/alert';
 
 const CONFIRM_TITLE = 'Sign Out';
@@ -45,6 +46,9 @@ export function useSignOut() {
 
     // Best-effort, non-blocking: token clearing + server revocation happen in
     // the background. authSignOut() never throws.
+    // First: requests still in flight on the old token must not be refreshed
+    // or reported as an expired session (see utils/authEvents).
+    markIntentionalSignOut();
     void authSignOut();
 
     // Synchronous — this is what swaps the navigator to sign-in.

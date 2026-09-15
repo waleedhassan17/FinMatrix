@@ -41,6 +41,21 @@ const CompanyRejectedScreen: React.FC = () => {
   const role: UserRole = selectedRole ?? 'admin';
   const companyId = user?.companyId ?? null;
   const { confirmSignOut } = useSignOut();
+  const isAuthenticated = useAppSelector(s => s.auth.isAuthenticated);
+
+  // As on PendingApproval: in the signed-out stack this screen is only the
+  // hand-off from a blocked sign-in. Restored any other way (the web URL after
+  // signing out, or a reload), send the user to the start of sign-in.
+  useEffect(() => {
+    if (isAuthenticated || fromLogin) return;
+    const id = setTimeout(() => {
+      const names: string[] = navigation.getState?.()?.routeNames ?? [];
+      if (names.includes('RoleSelection')) {
+        navigation.reset({ index: 0, routes: [{ name: 'RoleSelection' }] });
+      }
+    }, 0);
+    return () => clearTimeout(id);
+  }, [isAuthenticated, fromLogin, navigation]);
 
   const [reason, setReason] = useState<string | null>(route.params?.reason ?? null);
   const [resubmitting, setResubmitting] = useState(false);

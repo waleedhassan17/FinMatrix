@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { api, setTokens, setStoredCompanyId, clearTokens, getAccessToken, extractErrorMessage } from '../network/apiHelpers';
+import { clearIntentionalSignOut } from '../../utils/authEvents';
 import { userResponseSerializer } from '../../serializers/authSerializer';
 import { normalizePkPhone } from '../../utils/phone';
 
@@ -101,6 +102,8 @@ export const authLogin = async ({
     }
     // Store tokens
     await setTokens(tokens.accessToken, tokens.refreshToken);
+    // A new session starts: its 401s are real and must be handled.
+    clearIntentionalSignOut();
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
@@ -167,6 +170,8 @@ export const authDeliveryLogin = async ({
       throw new Error('Login succeeded but no token received. Please try again.');
     }
     await setTokens(tokens.accessToken, tokens.refreshToken);
+    // A new session starts: its 401s are real and must be handled.
+    clearIntentionalSignOut();
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
@@ -201,6 +206,8 @@ export const authRegister = async ({
     });
     const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription } = response.data.data;
     await setTokens(tokens.accessToken, tokens.refreshToken);
+    // A new session starts: its 401s are real and must be handled.
+    clearIntentionalSignOut();
     if (companyId) {
       await setStoredCompanyId(companyId);
     }

@@ -16,7 +16,7 @@
 // with a live session, from /billing/status.
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser, selectSelectedRole } from '../authSlice';
@@ -60,11 +60,41 @@ const PendingApprovalScreen: React.FC = () => {
     null,
   );
   const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const isAuthenticated = useAppSelector(s => s.auth.isAuthenticated);
+
+  // This screen is registered in the signed-out stack only as the hand-off
+  // from a blocked sign-in (fromLogin). On web, a reload of /PendingApproval
+  // with no session restores it from the URL anyway — it would show a review
+  // the owner can no longer check, with the wrong copy. Send them to the start
+  // of sign-in. Deferred a tick so the navigator restored from the URL is
+  // ready to handle the reset; only a navigator that has RoleSelection (the
+  // signed-out one) can.
+  useEffect(() => {
+    if (isAuthenticated || fromLogin) return;
+    const id = setTimeout(() => {
+      const names: string[] = navigation.getState?.()?.routeNames ?? [];
+      if (names.includes('RoleSelection')) {
+        navigation.reset({ index: 0, routes: [{ name: 'RoleSelection' }] });
+      }
+    }, 0);
+    return () => clearTimeout(id);
+  }, [isAuthenticated, fromLogin, navigation]);
+
+  // Approved: sign out so the owner signs in again with a token that carries
+  // the company. On web, clear the /PendingApproval URL first — otherwise the
+  // signed-out navigator restores this screen from it instead of opening at
+  // the start of sign-in.
+  const continueToSignIn = useCallback(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '/');
+    }
+    signOutNow();
+  }, [signOutNow]);
 
   // A signed-in session can ask what is in review; a blocked sign-in cannot
   // (no token), which is why the gate passes pendingKind along instead.
   useEffect(() => {
-    if (fromLogin) return;
+    if (fromLogin || !isAuthenticated) return;
     let cancelled = false;
     getBillingStatusAPI()
       .then(st => {
@@ -76,7 +106,7 @@ const PendingApprovalScreen: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [fromLogin]);
+  }, [fromLogin, isAuthenticated]);
 
   const isTrialRequest =
     route.params?.pendingKind === 'trial' || billing?.trialPending === true;
@@ -151,7 +181,7 @@ const PendingApprovalScreen: React.FC = () => {
         <AuthFooterBar
           primary={
             approved
-              ? { label: 'Sign in to continue', onPress: signOutNow }
+              ? { label: 'Sign in to continue', onPress: continueToSignIn }
               : {
                   label: fromLogin ? 'Back to Sign In' : 'Check status',
                   onPress: handleRefresh,

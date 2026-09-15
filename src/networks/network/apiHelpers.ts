@@ -16,6 +16,7 @@ import {
   emitSessionExpired,
   emitCompanyStatusStale,
   emitRiderSeatLocked,
+  isIntentionalSignOut,
 } from '../../utils/authEvents';
 
 // ★ BACKEND BASE URL ★
@@ -110,6 +111,13 @@ api.interceptors.response.use(
             "Your company's plan doesn't include your rider seat right now. Ask your manager.",
         );
       }
+    }
+
+    // The user just signed out on purpose: a 401 on a request still in flight
+    // is expected. Refreshing would fail (its token was revoked), and a late
+    // failure could clear the tokens of a sign-in made moments later.
+    if (error.response?.status === 401 && !isAuthRoute && isIntentionalSignOut()) {
+      return Promise.reject(error);
     }
 
     // Only attempt refresh on 401 and if we haven't already retried

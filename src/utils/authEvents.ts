@@ -18,8 +18,31 @@ export const setSessionExpiredHandler = (h: SessionExpiredHandler | null) => {
 };
 
 export const emitSessionExpired = () => {
+  if (isIntentionalSignOut()) return;
   handler?.();
 };
+
+// ─── Intentional sign-out ────────────────────────────────────────────────
+// Signing out revokes the access AND refresh tokens on the server. A request
+// still in flight on the old token then 401s, its refresh fails, and the user
+// who tapped "Sign out" would be told their "session expired". For a short
+// window after an intentional sign-out such 401s are neither refreshed nor
+// announced. Bounded, so a genuinely expired session later is still reported;
+// a successful sign-in ends it at once.
+
+const INTENTIONAL_SIGN_OUT_WINDOW_MS = 10_000;
+let intentionalSignOutAt = 0;
+
+export const markIntentionalSignOut = () => {
+  intentionalSignOutAt = Date.now();
+};
+
+export const clearIntentionalSignOut = () => {
+  intentionalSignOutAt = 0;
+};
+
+export const isIntentionalSignOut = (): boolean =>
+  intentionalSignOutAt > 0 && Date.now() - intentionalSignOutAt < INTENTIONAL_SIGN_OUT_WINDOW_MS;
 
 // ─── Company-status-stale (403 COMPANY_NOT_ACTIVE) ───────────────────────
 // Fired when a business request is rejected because the company is no longer
