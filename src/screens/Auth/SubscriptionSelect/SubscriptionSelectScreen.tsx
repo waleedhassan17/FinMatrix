@@ -147,16 +147,8 @@ const PlanCard: React.FC<{
 
         {/* Body */}
         <View style={S.planBody}>
-          <View style={S.planMetaRow}>
-            <View style={S.planMeta}>
-              <Feather name="users" size={13} color={DS.text.sub} />
-              <Text style={S.planMetaText}>Up to {plan.maxUsers >= 999 ? 'Unlimited' : plan.maxUsers} users</Text>
-            </View>
-            <View style={S.planMeta}>
-              <Feather name="file-text" size={13} color={DS.text.sub} />
-              <Text style={S.planMetaText}>{plan.maxInvoices == null ? 'Unlimited' : plan.maxInvoices} invoices/mo</Text>
-            </View>
-          </View>
+          {/* No seat or invoice counts: access is by role — owner, staff and
+              delivery personnel — and neither is a limit a buyer chooses. */}
 
           {plan.features && plan.features.length > 0 && (
             <View style={S.featuresList}>
@@ -391,7 +383,9 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
           priceYearly: '6000',
           maxUsers: 10,
           maxInvoices: null,
-          features: ['Everything in Free', 'Priority support', 'Higher limits'],
+          // Named explicitly rather than "Everything in <plan>", which points
+          // at a plan the reader may not be looking at.
+          features: ['Full accounting, invoices & bills', 'Priority support', 'Higher limits'],
           isActive: true,
           sortOrder: 1,
           priceLabel: 'Rs 1,000',
@@ -406,7 +400,7 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
           priceYearly: '8000',
           maxUsers: 999,
           maxInvoices: null,
-          features: ['Everything in Standard', 'Advanced analytics', 'Dedicated support'],
+          features: ['Full accounting, invoices & bills', 'Advanced analytics', 'Dedicated support'],
           isActive: true,
           sortOrder: 2,
           priceLabel: 'Rs 2,000',
@@ -537,7 +531,9 @@ const SubscriptionSelectScreen: React.FC<Props> = ({ navigation, route }) => {
                           features={[
                             `Up to ${rung.limit} active delivery personnel`,
                             `From ${cheapest.monthlyLabel}/month`,
-                            'Unlimited customers, vendors and team members',
+                            // No team-member claim: access is by role
+                            // (owner, staff, delivery personnel), not by seats.
+                            'Unlimited customers and vendors',
                           ]}
                           selected={selectedLimit === rung.limit}
                           onPress={() => {

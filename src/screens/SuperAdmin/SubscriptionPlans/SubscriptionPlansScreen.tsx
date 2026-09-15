@@ -26,6 +26,7 @@ import {
   WAREHOUSE_ONLY_BUILD,
   DEFAULT_COMPANY_TYPE,
 } from '../../../utils/featureGates';
+import { resolvePlanFeatures } from '../../../utils/planFeatures';
 import {
   loadPlans,
   selectPlans,
@@ -111,7 +112,9 @@ const CANONICAL_PLANS: DisplayPlan[] = [
     isFree: false,
     priceLabel: 'Rs 1,000',
     durationLabel: '/ 6 months',
-    features: ['Everything in Free', 'Priority support', 'Higher limits'],
+    // Named explicitly rather than "Everything in <plan>", which points at a
+    // plan the reader may not be looking at.
+    features: ['Full accounting, invoices & bills', 'Priority support', 'Higher limits'],
     maxInvoices: null,
     disabled: true,
   },
@@ -121,7 +124,7 @@ const CANONICAL_PLANS: DisplayPlan[] = [
     isFree: false,
     priceLabel: 'Rs 2,000',
     durationLabel: '/ 3 months',
-    features: ['Everything in Standard', 'Advanced analytics', 'Dedicated support'],
+    features: ['Full accounting, invoices & bills', 'Advanced analytics', 'Dedicated support'],
     maxInvoices: null,
     disabled: true,
   },
@@ -232,7 +235,8 @@ const SubscriptionPlansScreen: React.FC = () => {
       durationLabel: `/month · ${formatDuration(p.durationMonths)}`,
       totalLabel: p.totalLabel,
       companyType: p.companyType,
-      features: p.features ?? [],
+      // Never a line naming a plan that is not on this screen.
+      features: resolvePlanFeatures(p.features),
       deliveryPersonnelLimit: p.deliveryPersonnelLimit,
       maxInvoices: p.maxInvoices,
       disabled: false,
