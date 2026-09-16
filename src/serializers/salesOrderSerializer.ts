@@ -16,6 +16,8 @@ export const mapSalesOrderLine = (raw: any): SalesOrderLine => ({
   unitPrice: toNum(raw.unitPrice),
   taxRate: toNum(raw.taxRate),
   lineTotal: toNum(raw.lineTotal),
+  onHand: raw.stock ? toNum(raw.stock.onHand) : null,
+  backorderQty: toNum(raw.backorderQty),
 });
 
 export const mapSalesOrder = (raw: any): SalesOrder => ({

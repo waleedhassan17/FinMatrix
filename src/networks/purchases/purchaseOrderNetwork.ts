@@ -15,6 +15,9 @@ export interface PurchaseOrderLineWritePayload {
   orderedQty: string;
   unitCost: string;
   taxRate?: string;
+  /** Inventory companies require every line to be classified: 'item' needs
+   *  itemId, 'expense' needs accountId. */
+  lineKind?: 'item' | 'expense';
   /** Omitted entirely for non-inventory lines — '' would fail @IsUUID. */
   itemId?: string;
   accountId?: string;
@@ -83,16 +86,18 @@ export const receivePurchaseOrderAPI = async (
   }
 };
 
-/** Server-side conversion of a received PO into a vendor bill. This is the
+/** Server-side conversion of received goods into a vendor bill. This is the
  *  ONLY correct way to bill a PO: it debits GRNI to clear what the receipt
- *  accrued, rather than debiting Inventory a second time, and it bills
- *  receivedQty x unitCost carrying each line's tax.
+ *  accrued, rather than debiting Inventory a second time, and it bills the
+ *  received-but-not-yet-billed quantity carrying each line's tax. It can be
+ *  called once per receipt; with nothing left to bill it fails NOTHING_TO_BILL.
  *
- *  `billNumber` is required by the DTO but the server assigns its own
- *  reference when it is empty — send '' rather than inventing one. */
+ *  Every field is optional. Leave the dates out and the server uses the
+ *  business date and the vendor's payment terms — the phone's UTC date read
+ *  yesterday in Pakistan before 05:00. Responds `{ po, billId, bill }`. */
 export const convertPOToBillAPI = async (
   id: string,
-  data: { billNumber: string; billDate: string; dueDate: string; defaultAccountId?: string },
+  data: { billNumber?: string; billDate?: string; dueDate?: string; defaultAccountId?: string } = {},
 ): Promise<any> => {
   try {
     const response = await api.post(`/purchase-orders/${id}/create-bill`, data);

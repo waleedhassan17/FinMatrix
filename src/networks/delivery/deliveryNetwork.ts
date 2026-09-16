@@ -13,6 +13,7 @@ import {
   getAccessToken,
   getStoredCompanyId,
 } from '../network/apiHelpers';
+import { creditOverrideBody } from '../../models/creditModel';
 
 // ─── Bad-network resilience ─────────────────────────
 // Retries a request when it failed at the NETWORK level (no HTTP response —
@@ -106,21 +107,27 @@ export const getDeliveriesAPI = async (params: any = {}): Promise<any> => {
   }
 };
 
-export const createDeliveryAPI = async (data: any): Promise<any> => {
+/** Dispatching on credit is checked against the customer's credit limit; the
+ *  refusal keeps its code and breakdown (toApiError) and the owner may retry
+ *  with a reason. */
+export const createDeliveryAPI = async (data: any, overrideReason?: string): Promise<any> => {
   try {
-    const response = await api.post('/deliveries', data);
+    const response = await api.post('/deliveries', { ...data, ...creditOverrideBody(overrideReason) });
     return response.data;
   } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
+    throw toApiError(e);
   }
 };
 
-export const assignDeliveriesAPI = async (data: { deliveryIds: string[]; personnelId: string }): Promise<any> => {
+export const assignDeliveriesAPI = async (
+  data: { deliveryIds: string[]; personnelId: string },
+  overrideReason?: string,
+): Promise<any> => {
   try {
-    const response = await api.post('/deliveries/assign', data);
+    const response = await api.post('/deliveries/assign', { ...data, ...creditOverrideBody(overrideReason) });
     return response.data;
   } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
+    throw toApiError(e);
   }
 };
 

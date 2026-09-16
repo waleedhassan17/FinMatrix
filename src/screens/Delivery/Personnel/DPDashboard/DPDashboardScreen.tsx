@@ -29,6 +29,7 @@ import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { locationService } from '../../../../services/locationService';
 import { togglePersonnelAvailabilityAPI } from '../../../../networks/delivery/deliveryNetwork';
+import { toIsoDate } from '../../../../models/reportModel';
 
 type Nav = NativeStackNavigationProp<DPDashboardStackParamList>;
 
@@ -72,7 +73,7 @@ const DPDashboardScreen: React.FC = () => {
   const scaleAnims = useRef([...Array(4)].map(() => new Animated.Value(0.9))).current;
 
   const me = useMemo(() => personnel.find(p => p.userId === userId), [personnel, userId]);
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = toIsoDate(new Date());
   const myDeliveries = useMemo(() => deliveries.filter(d => d.assignedTo === userId), [deliveries, userId]);
   const todayDeliveries = useMemo(() => myDeliveries.filter(d => d.scheduledDate === todayKey), [myDeliveries, todayKey]);
 

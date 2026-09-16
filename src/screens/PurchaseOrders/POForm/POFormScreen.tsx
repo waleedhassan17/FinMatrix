@@ -57,6 +57,8 @@ import {
   SecondaryButton,
 } from '../../../components/form/FormUI';
 import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
+import TaxField from '../../../components/form/TaxField';
+import { taxRateError } from '../../../models/taxRate';
 import { useCapability } from '../../../hooks/useCapability';
 import { fetchApprovalById } from '../../../networks/approvals/approvalsNetwork';
 import { decideApproval } from '../../Approvals/approvalsSlice';
@@ -316,6 +318,7 @@ const POFormScreen: React.FC = () => {
       l => !l.itemId || !(parseFloat(l.quantity) > 0),
     );
     if (hasEmptyLine) errs.lines = 'All line items must have an item and quantity';
+    else if (form.lines.some(l => taxRateError(l.taxRate))) errs.lines = 'Tax must be a percentage from 0 to 100';
     return errs;
   }, [form]);
 
@@ -632,7 +635,7 @@ const POFormScreen: React.FC = () => {
                       keyboardType="decimal-pad"
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, marginRight: spacing.xs }}>
                     <Text style={styles.fieldLabel}>Unit Price (Rs)</Text>
                     <TextInput
                       style={styles.numericInput}
@@ -643,6 +646,15 @@ const POFormScreen: React.FC = () => {
                       placeholder="0"
                       placeholderTextColor={colors.textTertiary}
                       keyboardType="decimal-pad"
+                    />
+                  </View>
+                  {/* Typed, not picked: purchase tax is whatever the supplier
+                      charged — 0, 10, 12.5, 17 or anything else. */}
+                  <View style={{ width: 88 }}>
+                    <TaxField
+                      mode="manual"
+                      value={line.taxRate}
+                      onChange={v => dispatch(updateLine({ id: line.id, field: 'taxRate', value: v }))}
                     />
                   </View>
                 </View>
@@ -679,9 +691,15 @@ const POFormScreen: React.FC = () => {
                 <View style={styles.lineTotalRow}>
                   <Feather name="arrow-right" size={12} color={colors.actionGreen} />
                   <Text style={styles.lineTotal}>
-                    Line Total: {formatCurrency(line.amount, 'Rs ')}
+                    Line total (excl. tax): {formatCurrency(line.amount, 'Rs ')}
                   </Text>
                 </View>
+                {(parseFloat(line.taxRate) || 0) > 0 && (
+                  <Text style={styles.lineTaxNote}>
+                    Tax {line.taxRate}%: {formatCurrency(Math.round(line.amount * (parseFloat(line.taxRate) || 0)) / 100, 'Rs ')}
+                    {' · '}Incl. tax {formatCurrency(line.amount + Math.round(line.amount * (parseFloat(line.taxRate) || 0)) / 100, 'Rs ')}
+                  </Text>
+                )}
               </View>
             </View>
           ))}
@@ -702,9 +720,13 @@ const POFormScreen: React.FC = () => {
               <Text style={styles.totalsLabel}>Subtotal</Text>
               <Text style={styles.totalsValue}>{formatCurrency(form.subtotal, 'Rs ')}</Text>
             </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Tax</Text>
+              <Text style={styles.totalsValue}>{formatCurrency(form.taxAmount, 'Rs ')}</Text>
+            </View>
             <View style={styles.totalsDivider} />
             <View style={styles.totalsRow}>
-              <Text style={styles.grandTotalLabel}>Total</Text>
+              <Text style={styles.grandTotalLabel}>Total (incl. tax)</Text>
               <Text style={styles.grandTotalValue}>{formatCurrency(form.total, 'Rs ')}</Text>
             </View>
           </LinearGradient>
@@ -866,6 +888,7 @@ const styles = StyleSheet.create({
   costPreview: { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: colors.border },
   costPreviewText: { ...THEME.typography.caption, color: colors.textSecondary, fontFamily: THEME.typography.fontFamily },
   costPreviewAfter: { fontWeight: typography.labelLg.fontWeight },
+  lineTaxNote: { ...typography.caption, color: colors.textSecondary, textAlign: 'right', marginTop: 2 },
   lineTotal: { ...typography.labelMd, color: colors.actionGreen, fontVariant: ['tabular-nums'] },
 
   totalsCard: { borderRadius: radius.lg + 4, padding: spacing.md + 4, marginTop: spacing.xl, ...shadows.md },

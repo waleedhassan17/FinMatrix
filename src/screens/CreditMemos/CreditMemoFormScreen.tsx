@@ -23,6 +23,7 @@ import { AddButton } from '../../components/form/FormUI';
 import LineItemRow from '../../components/shared/LineItemRow';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
+import { toIsoDate } from '../../models/reportModel';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'CreditMemoForm'>;
@@ -43,7 +44,7 @@ const CreditMemoFormScreen: React.FC = () => {
   const inventory = useAppSelector(selectInventoryItems);
 
   const [customerId, setCustomerId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(toIsoDate(new Date()));
   const [reason, setReason] = useState('');
   const [lines, setLines] = useState<LineDraft[]>([blankLine()]);
   const [saving, setSaving] = useState(false);

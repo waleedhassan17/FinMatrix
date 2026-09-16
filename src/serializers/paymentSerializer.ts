@@ -51,9 +51,10 @@ export const mapPayment = (raw: any): Payment => {
   return {
     id: raw?.id ?? '',
     companyId: raw?.companyId ?? '',
-    // Backend has no human payment number — surface the reference, else a
-    // short id-derived label so the UI never shows "undefined".
-    paymentNumber: raw?.reference || (raw?.id ? `PAY-${String(raw.id).slice(0, 8)}` : ''),
+    // Receipts are numbered RCT-YYYY-NNNN by the server. The reference and
+    // id fallbacks only cover responses from before that numbering existed.
+    paymentNumber:
+      raw?.paymentNumber || raw?.reference || (raw?.id ? `PAY-${String(raw.id).slice(0, 8)}` : ''),
     customerId: raw?.customerId ?? '',
     customerName: raw?.customerName ?? '',
     date: raw?.date ?? raw?.paymentDate ?? '',
@@ -61,7 +62,11 @@ export const mapPayment = (raw: any): Payment => {
     reference: raw?.reference ?? '',
     amount,
     allocations: applications,
-    creditAmount: Math.max(0, Math.round((amount - allocated) * 100) / 100),
+    // Held as a customer advance until applied to an invoice.
+    creditAmount:
+      raw?.unapplied != null
+        ? Math.max(0, Math.round(toNum(raw.unapplied) * 100) / 100)
+        : Math.max(0, Math.round((amount - allocated) * 100) / 100),
     notes: raw?.memo ?? raw?.notes ?? '',
     createdBy: raw?.createdBy ?? '',
     createdAt: raw?.createdAt ?? '',
@@ -78,4 +83,26 @@ export function paymentListSerializer(payload: any): Payment[] {
       ? data.data
       : [];
   return raw.map(mapPayment);
+}
+
+/** A receipt still holding money the customer paid in advance. */
+export interface CustomerAdvance {
+  paymentId: string;
+  paymentNumber: string;
+  paymentDate: string;
+  unapplied: number;
+}
+
+/** GET /payments/customer/:id/advances — a bare array or `{ data }`. */
+export function customerAdvancesSerializer(payload: any): CustomerAdvance[] {
+  const data = payload?.data ?? payload;
+  const raw: any[] = Array.isArray(data) ? data : [];
+  return raw
+    .map(r => ({
+      paymentId: r?.paymentId ?? '',
+      paymentNumber: r?.paymentNumber ?? '',
+      paymentDate: r?.paymentDate ?? '',
+      unapplied: Math.round(toNum(r?.unapplied) * 100) / 100,
+    }))
+    .filter(a => a.paymentId && a.unapplied > 0.004);
 }

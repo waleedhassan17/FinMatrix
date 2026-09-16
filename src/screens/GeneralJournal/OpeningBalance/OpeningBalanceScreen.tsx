@@ -42,6 +42,7 @@ import { formatCurrency } from '../../../utils/formatters';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import Disclosure from '../../../components/shared/Disclosure';
+import { toIsoDate } from '../../../models/reportModel';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { typography } = THEME;
@@ -114,7 +115,7 @@ const OpeningBalanceScreen: React.FC = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
 
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(toIsoDate(new Date()));
   const [own, setOwn] = useState<Row[]>([blank()]);
   const [owe, setOwe] = useState<Row[]>([blank()]);
   const [accounts, setAccounts] = useState<AccountOpt[]>([]);

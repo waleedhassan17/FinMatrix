@@ -18,6 +18,7 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks'
 import { selectUnassignedDeliveries, selectDeliveryPersonnel, assignSelectedDeliveries } from '../AssignDeliveries/deliverySlice';
 import { selectAssignWorkState, toggleDelivery, setPersonnel, resetAssignWork } from './assignWorkSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
+import { useCreditLimitPrompt } from '../../../../hooks/useCreditLimitPrompt';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -63,6 +64,7 @@ const pickAutoAssignment = (
 
 const AssignWorkScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
+  const credit = useCreditLimitPrompt();
   const deliveries = useAppSelector(selectUnassignedDeliveries);
   const [busy, setBusy] = useState(false);
   const personnel = useAppSelector(selectDeliveryPersonnel).filter(p => p.status === 'active');
@@ -75,7 +77,7 @@ const AssignWorkScreen: React.FC<Props> = ({ navigation }) => {
 
   const selectedPerson = personnel.find(p => p.userId === assignState.selectedPersonnelId);
 
-  const handleAssign = () => {
+  const handleAssign = (overrideReason?: string) => {
     if (!assignState.selectedDeliveryIds.length || !assignState.selectedPersonnelId) {
       Alert.alert('Missing selection', 'Select deliveries and one personnel before assigning.');
       return;
@@ -88,33 +90,41 @@ const AssignWorkScreen: React.FC<Props> = ({ navigation }) => {
     dispatch(assignSelectedDeliveries({
       deliveryIds: assignState.selectedDeliveryIds,
       personnelId: assignState.selectedPersonnelId,
+      overrideReason,
     }))
       .unwrap()
       .then(() => {
         dispatch(resetAssignWork());
         Alert.alert('Assigned', 'Selected deliveries moved to pending and stock committed to the rider.');
       })
-      .catch((e: any) => Alert.alert('Assign failed', e?.message ?? 'Could not assign the selected deliveries.'))
+      .catch((e: any) => {
+        // Past a customer's credit limit: take an advance, or the owner overrides.
+        if (credit.prompt(e, reason => handleAssign(reason))) return;
+        Alert.alert('Assign failed', e?.message ?? 'Could not assign the selected deliveries.');
+      })
       .finally(() => setBusy(false));
   };
 
   // Auto-assign picks the rider here on the client, then goes through the very
   // same server call as a manual assign. It used to only rewrite Redux and
   // announce success, so the allocation vanished on the next refetch.
-  const handleAutoAssign = () => {
+  const handleAutoAssign = (overrideReason?: string) => {
     const picked = pickAutoAssignment(deliveries, personnel, assignState.selectedDeliveryIds);
     if (!picked) {
       Alert.alert('Nothing to assign', 'No pending delivery matches an available rider in its zone.');
       return;
     }
     setBusy(true);
-    dispatch(assignSelectedDeliveries({ deliveryIds: picked.deliveryIds, personnelId: picked.personnelId }))
+    dispatch(assignSelectedDeliveries({ deliveryIds: picked.deliveryIds, personnelId: picked.personnelId, overrideReason }))
       .unwrap()
       .then(() => {
         dispatch(resetAssignWork());
         Alert.alert('Auto-assigned', `${picked.deliveryIds.length} deliver${picked.deliveryIds.length === 1 ? 'y' : 'ies'} assigned to ${picked.personnelName}.`);
       })
-      .catch((e: any) => Alert.alert('Auto-assign failed', e?.message ?? 'Could not assign.'))
+      .catch((e: any) => {
+        if (credit.prompt(e, reason => handleAutoAssign(reason))) return;
+        Alert.alert('Auto-assign failed', e?.message ?? 'Could not assign.');
+      })
       .finally(() => setBusy(false));
   };
 
@@ -173,14 +183,15 @@ const AssignWorkScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.summary}>Deliveries selected: {selectedDeliveries.length}</Text>
           <Text style={styles.summary}>Personnel selected: {selectedPerson ? selectedPerson.displayName : 'None'}</Text>
           <View style={{ marginTop: spacing.md }}>
-            <CustomButton title="Assign Selected" onPress={handleAssign} fullWidth />
+            <CustomButton title="Assign Selected" onPress={() => handleAssign()} fullWidth />
           </View>
           <View style={{ marginTop: spacing.xs }}>
-            <CustomButton title="Auto-Assign" onPress={handleAutoAssign} variant="secondary" fullWidth />
+            <CustomButton title="Auto-Assign" onPress={() => handleAutoAssign()} variant="secondary" fullWidth />
           </View>
         </View>
       </ScrollView>
       </View>
+      {credit.modal}
     </SafeAreaView>
   );
 };

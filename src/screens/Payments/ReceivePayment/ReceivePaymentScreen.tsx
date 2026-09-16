@@ -52,6 +52,8 @@ import {
   savePayment,
 } from './receivePaymentSlice';
 import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
+import ApplyAdvanceModal from '../../../components/shared/ApplyAdvanceModal';
+import { useCustomerAdvanceTotal } from '../../../hooks/useCustomerAdvanceTotal';
 import { fetchInvoices } from '../../Invoices/InvoiceList/invoiceListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -106,6 +108,11 @@ const ReceivePaymentScreen: React.FC = () => {
   const successOpacity = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(0)).current;
 
+  // Money this customer already paid and has not had applied. Recording new
+  // cash to settle an invoice the advance covers double-counts the receipt.
+  const { total: advanceTotal, reload: reloadAdvances } = useCustomerAdvanceTotal(form.customerId, !isReviewing);
+  const [applyOpen, setApplyOpen] = useState(false);
+
   const customerOptions = useMemo(
     () =>
       customers
@@ -114,19 +121,11 @@ const ReceivePaymentScreen: React.FC = () => {
     [customers],
   );
 
-  const generatePaymentNumber = useCallback(
-    () => `PAY-${String(Date.now()).slice(-6)}`,
-    [],
-  );
-
   useEffect(() => {
     if (customers.length === 0) dispatch(fetchCustomers());
     dispatch(fetchAllInvoicesForPayment());
-    // Not in review mode: the request carries its own reference, and a fresh
-    // PAY-xxxxxx here would be a number the staff member never used.
-    if (!isReviewing) {
-      dispatch(setPaymentField({ key: 'reference', value: generatePaymentNumber() }));
-    }
+    // No invented reference: the server numbers every receipt RCT-YYYY-NNNN.
+    // The reference field is for the customer's own cheque or transfer id.
     return () => { dispatch(resetReceivePayment()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
@@ -183,10 +182,10 @@ const ReceivePaymentScreen: React.FC = () => {
     if (!form.paymentDate) errs.paymentDate = 'Payment date is required';
     if (!form.amount || paymentAmount <= 0) errs.amount = 'Enter a positive amount';
     if (totalAllocated <= 0 && !(overpayment > 0 && form.saveOverpaymentAsCredit)) {
-      errs.allocations = 'Allocate the payment to at least one invoice, or enable "Save as customer credit".';
+      errs.allocations = 'Allocate the payment to at least one invoice, or enable "Keep as customer advance".';
     }
     if (overpayment > 0 && !form.saveOverpaymentAsCredit) {
-      errs.allocations = 'The amount exceeds allocation. Reduce or enable "Save as customer credit".';
+      errs.allocations = 'The amount exceeds allocation. Reduce or enable "Keep as customer advance".';
     }
     return errs;
   }, [form, paymentAmount, totalAllocated, overpayment]);
@@ -365,7 +364,7 @@ const ReceivePaymentScreen: React.FC = () => {
       const amt = formatCurrency(paymentAmount, 'Rs ');
       if (overpayment > 0 && form.saveOverpaymentAsCredit) {
         setSuccessMsg(amt);
-        setSuccessSub(`${formatCurrency(overpayment, 'Rs ')} saved as customer credit`);
+        setSuccessSub(`${formatCurrency(overpayment, 'Rs ')} held as customer advance`);
       } else {
         setSuccessMsg(amt);
         setSuccessSub(`Payment from ${form.customerName} recorded`);
@@ -440,6 +439,22 @@ const ReceivePaymentScreen: React.FC = () => {
                 error={form.errors.customerId}
                 searchable
               />
+              {advanceTotal > 0 && !isReviewing && (
+                <View style={styles.advanceBanner}>
+                  <Feather name="info" size={14} color={colors.warning} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.advanceBannerText}>
+                      {form.customerName} already holds {formatCurrency(advanceTotal, 'Rs ')} in advances.
+                      Apply them instead of recording new cash for the same money.
+                    </Text>
+                    {hasOutstanding && (
+                      <TouchableOpacity onPress={() => setApplyOpen(true)} accessibilityRole="button">
+                        <Text style={styles.advanceBannerLink}>Apply advance to invoices</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              )}
               <View style={styles.rowFields}>
                 <View style={{ flex: 1, marginRight: spacing.xs }}>
                   <DateField
@@ -568,9 +583,9 @@ const ReceivePaymentScreen: React.FC = () => {
                   <SummaryRow label="Unapplied Amount" value={formatCurrency(overpayment, 'Rs ')} valueColor={form.saveOverpaymentAsCredit ? PANEL.caution : PANEL.negative} />
                   <View style={styles.creditToggleRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.creditToggleLabel}>Save as Customer Credit</Text>
+                      <Text style={styles.creditToggleLabel}>Keep as Customer Advance</Text>
                       <Text style={styles.creditToggleHint}>
-                        Keep {formatCurrency(overpayment, 'Rs ')} on file for next purchase.
+                        Hold {formatCurrency(overpayment, 'Rs ')} as an advance and apply it to an invoice later.
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -691,6 +706,18 @@ const ReceivePaymentScreen: React.FC = () => {
           </Animated.View>
         </Animated.View>
       </Modal>
+      <ApplyAdvanceModal
+        visible={applyOpen}
+        customerId={form.customerId}
+        customerName={form.customerName}
+        invoiceId={preInvoiceId}
+        onClose={() => setApplyOpen(false)}
+        onApplied={() => {
+          reloadAdvances();
+          dispatch(fetchAllInvoicesForPayment());
+          dispatch(fetchInvoices());
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -705,6 +732,16 @@ const SummaryRow: React.FC<{ label: string; value: string; valueColor?: string }
 
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
+  advanceBanner: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    padding: spacing.xs,
+    marginBottom: spacing.xs,
+    borderRadius: radius.sm,
+    backgroundColor: colors.warningLight,
+  },
+  advanceBannerText: { ...typography.caption, color: colors.textPrimary },
+  advanceBannerLink: { ...typography.labelSm, color: colors.primary, marginTop: spacing.xxs },
   container: { flex: 1, backgroundColor: colors.neutral100 },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
 

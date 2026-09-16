@@ -39,6 +39,7 @@ import {
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import { updateDeliveryAPI } from '../../../../networks/delivery/deliveryNetwork';
+import { useCreditLimitPrompt } from '../../../../hooks/useCreditLimitPrompt';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -78,6 +79,7 @@ const PRIORITY_COLORS: Record<string, string> = Object.fromEntries(
 const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { deliveryId } = route.params;
   const dispatch = useAppDispatch();
+  const credit = useCreditLimitPrompt();
 
   const deliveries = useAppSelector(selectDeliveries);
   const allPersonnel = useAppSelector(selectDeliveryPersonnel);
@@ -172,7 +174,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // confirmed. They used to dispatch a local-only reducer and alert
   // "successfully" unconditionally, so the success message was never evidence
   // of anything having been saved.
-  const handleReassign = async () => {
+  const handleReassign = async (overrideReason?: string) => {
     if (isSubmitting) return;
     if (!uiState.reassignPersonnelId) {
       Alert.alert('Select Personnel', 'Please select a delivery person to reassign to.');
@@ -181,12 +183,13 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setIsSubmitting(true);
     try {
       await dispatch(
-        reassignDelivery({ deliveryId: delivery.id, personnelId: uiState.reassignPersonnelId }),
+        reassignDelivery({ deliveryId: delivery.id, personnelId: uiState.reassignPersonnelId, overrideReason }),
       ).unwrap();
       await dispatch(fetchDeliveries());
       dispatch(resetDetailUIState());
       Alert.alert('Reassigned', 'Delivery has been reassigned.');
     } catch (err: any) {
+      if (credit.prompt(err, reason => { void handleReassign(reason); })) return;
       Alert.alert('Reassign failed', err?.message || 'Unable to reassign this delivery.');
     } finally {
       setIsSubmitting(false);
@@ -553,7 +556,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 <View style={styles.panelButtons}>
                   <CustomButton
                     title={isSubmitting ? 'Reassigning…' : 'Confirm Reassign'}
-                    onPress={handleReassign}
+                    onPress={() => { void handleReassign(); }}
                     variant="primary"
                     fullWidth
                     disabled={isSubmitting}
@@ -713,6 +716,7 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </Modal>
       </View>
+      {credit.modal}
     </SafeAreaView>
   );
 };

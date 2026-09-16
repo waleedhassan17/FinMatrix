@@ -9,6 +9,7 @@
 import type {
   RawSearchBill,
   RawSearchCustomer,
+  RawSearchDocument,
   RawSearchInventoryItem,
   RawSearchInvoice,
   RawSearchPayload,
@@ -106,6 +107,102 @@ const inventoryResult = (row: RawSearchInventoryItem): SearchResult | null =>
       }
     : null;
 
+const date = (d?: string) => (d ? formatDate(d) : undefined);
+
+const poResult = (row: RawSearchDocument): SearchResult | null =>
+  row?.id
+    ? {
+        id: `Purchase Orders:${row.id}`,
+        module: 'Purchase Orders',
+        title: row.poNumber ?? 'Purchase order',
+        // A draft is a requisition, not yet an order.
+        subtitle: line(row.vendorName, money(row.total), row.status === 'draft' ? 'Requisition' : titleCase(row.status)),
+        stack: 'TransactionsStack',
+        routeName: 'PODetail',
+        routeParams: { poId: row.id },
+      }
+    : null;
+
+const salesOrderResult = (row: RawSearchDocument): SearchResult | null =>
+  row?.id
+    ? {
+        id: `Sales Orders:${row.id}`,
+        module: 'Sales Orders',
+        title: row.orderNumber ?? 'Sales order',
+        subtitle: line(row.customerName, money(row.total), titleCase(row.status)),
+        stack: 'TransactionsStack',
+        routeName: 'SalesOrderDetail',
+        routeParams: { salesOrderId: row.id },
+      }
+    : null;
+
+const estimateResult = (row: RawSearchDocument): SearchResult | null =>
+  row?.id
+    ? {
+        id: `Estimates:${row.id}`,
+        module: 'Estimates',
+        title: row.estimateNumber ?? 'Estimate',
+        subtitle: line(row.customerName, money(row.total), titleCase(row.status)),
+        stack: 'TransactionsStack',
+        routeName: 'EstimateDetail',
+        routeParams: { estimateId: row.id },
+      }
+    : null;
+
+// The app has no receipt screen of its own; a receipt opens its customer,
+// where the payment history and any advance it holds are listed.
+const paymentResult = (row: RawSearchDocument): SearchResult | null =>
+  row?.id && row.customerId
+    ? {
+        id: `Receipts:${row.id}`,
+        module: 'Receipts',
+        title: row.paymentNumber || row.reference || 'Receipt',
+        subtitle: line(row.customerName, money(row.amount), date(row.paymentDate)),
+        stack: 'MoreStack',
+        routeName: 'CustomerDetail',
+        routeParams: { customerId: row.customerId },
+      }
+    : null;
+
+const creditMemoResult = (row: RawSearchDocument): SearchResult | null =>
+  row?.id
+    ? {
+        id: `Credit Memos:${row.id}`,
+        module: 'Credit Memos',
+        title: row.creditMemoNumber ?? 'Credit memo',
+        subtitle: line(row.customerName, money(row.total), titleCase(row.status)),
+        stack: 'TransactionsStack',
+        routeName: 'CreditMemoDetail',
+        routeParams: { creditMemoId: row.id },
+      }
+    : null;
+
+const vendorCreditResult = (row: RawSearchDocument): SearchResult | null =>
+  row?.id
+    ? {
+        id: `Vendor Credits:${row.id}`,
+        module: 'Vendor Credits',
+        title: row.vendorCreditNumber ?? 'Vendor credit',
+        subtitle: line(row.vendorName, money(row.total), titleCase(row.status)),
+        stack: 'TransactionsStack',
+        routeName: 'VendorCreditDetail',
+        routeParams: { vendorCreditId: row.id },
+      }
+    : null;
+
+const journalEntryResult = (row: RawSearchDocument): SearchResult | null =>
+  row?.id
+    ? {
+        id: `Journal Entries:${row.id}`,
+        module: 'Journal Entries',
+        title: row.reference || 'Journal entry',
+        subtitle: line(row.memo, date(row.date), titleCase(row.status)),
+        stack: 'TransactionsStack',
+        routeName: 'JournalEntryDetail',
+        routeParams: { entryId: row.id },
+      }
+    : null;
+
 const isResult = (r: SearchResult | null): r is SearchResult => r !== null;
 
 /** Flattens the bucketed payload in module order (money documents first). */
@@ -116,6 +213,13 @@ export const searchResultsSerializer = (payload: unknown): SearchResult[] => {
   return [
     ...asArray(buckets.invoices).map(invoiceResult),
     ...asArray(buckets.bills).map(billResult),
+    ...asArray(buckets.purchaseOrders).map(poResult),
+    ...asArray(buckets.salesOrders).map(salesOrderResult),
+    ...asArray(buckets.estimates).map(estimateResult),
+    ...asArray(buckets.payments).map(paymentResult),
+    ...asArray(buckets.creditMemos).map(creditMemoResult),
+    ...asArray(buckets.vendorCredits).map(vendorCreditResult),
+    ...asArray(buckets.journalEntries).map(journalEntryResult),
     ...asArray(buckets.customers).map(customerResult),
     ...asArray(buckets.vendors).map(vendorResult),
     ...asArray(buckets.inventory).map(inventoryResult),

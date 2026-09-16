@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
-import React, { useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useMemo, useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -11,7 +11,7 @@ import {
 } from './generalLedgerSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { LedgerEntry } from '../../../models/generalLedgerModel';
-import { visibleLedgerRows } from './ledgerRows';
+import { displayOrder, visibleLedgerRows } from './ledgerRows';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -64,15 +64,39 @@ const GeneralLedgerScreen: React.FC = () => {
   // at bundle startup — so on a device left running for days it silently keeps
   // asking for a window that ended when the app launched, and the report looks
   // like the books stopped. The reducer leaves a range the user chose alone.
+  //
+  // And re-fetch on every focus: postings made elsewhere (a payment, a bill)
+  // while this screen sat in the stack otherwise never appeared — "the ledger
+  // is not updating".
+  const range = state.range;
+  const account = state.account;
+  const reload = useCallback(
+    () => dispatch(fetchGeneralLedger({ range, account })),
+    [dispatch, range, account],
+  );
+  const isFirstFocus = React.useRef(true);
   useFocusEffect(
     useCallback(() => {
       dispatch(refreshLedgerRange());
-    }, [dispatch]),
+      // The effect below loads on mount; later focuses reload here.
+      if (isFirstFocus.current) { isFirstFocus.current = false; return; }
+      void reload();
+    }, [dispatch, reload]),
   );
 
   useEffect(() => {
     dispatch(fetchGeneralLedger({ range: state.range, account: state.account }));
   }, [dispatch, state.range.startDate, state.range.endDate, state.account]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await reload();
+    setRefreshing(false);
+  }, [reload]);
+
+  // Newest first by default: the latest postings are what people check.
+  const [newestFirst, setNewestFirst] = useState(true);
 
   const { ledger, accounts } = state;
 
@@ -83,6 +107,14 @@ const GeneralLedgerScreen: React.FC = () => {
     [ledger],
   );
   const groups = useMemo(() => groupByAccount(rows), [rows]);
+  const openingByCode = useMemo(
+    () => new Map((ledger?.openingBalances ?? []).map(b => [b.accountCode, b.balance])),
+    [ledger],
+  );
+  const closingByCode = useMemo(
+    () => new Map((ledger?.closingBalances ?? []).map(b => [b.accountCode, b.balance])),
+    [ledger],
+  );
 
   // Ledger rule: amounts are shown COMPLETE at full size. The Debit/Credit
   // columns are sized to the longest amount in the data; on narrow screens
@@ -99,7 +131,11 @@ const GeneralLedgerScreen: React.FC = () => {
     <ReportContainer>
       <ReportHeader title="General Ledger" subtitle="Chronological account activity" onBack={() => navigation.goBack()} />
 
-      <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={reportContentStyle}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[THEME.colors.primary]} />}
+      >
         <Card>
           <View style={styles.filterRow}>
             <DateField label="From" value={state.range.startDate}
@@ -158,6 +194,13 @@ const GeneralLedgerScreen: React.FC = () => {
             >
               {rows.length === 0 && <EmptyBlock title="No ledger activity for this period." />}
 
+              {rows.length > 0 && (
+                <View style={styles.chipsRow}>
+                  <Chip label="Newest first" active={newestFirst} onPress={() => setNewestFirst(true)} />
+                  <Chip label="Oldest first" active={!newestFirst} onPress={() => setNewestFirst(false)} />
+                </View>
+              )}
+
               {/* Truncation has to announce itself. The old cap cut the newest
                   rows away in silence, which is indistinguishable from the
                   ledger having stopped. */}
@@ -187,9 +230,20 @@ const GeneralLedgerScreen: React.FC = () => {
                       // Display sums of exactly the rows above them.
                       const debit = group.rows.reduce((t, e) => t + (e.debit || 0), 0);
                       const credit = group.rows.reduce((t, e) => t + (e.credit || 0), 0);
-                      // The API's own balance on the account's last entry — not
-                      // a running balance recomputed on the client.
-                      const closing = group.rows[group.rows.length - 1]?.balance ?? 0;
+                      // The API's own closing balance (or its balance on the
+                      // account's last chronological entry) — never a running
+                      // balance recomputed on the client.
+                      const closing = closingByCode.get(group.code) ?? group.rows[group.rows.length - 1]?.balance ?? 0;
+                      const opening = openingByCode.get(group.code);
+                      const openingRow = opening !== undefined && hiddenCount === 0 ? (
+                        <View style={styles.bodyRow}>
+                          <Text style={[styles.colDate, styles.refText]} />
+                          <Text style={[styles.colAcct, styles.refText]}>Opening balance</Text>
+                          <Text style={[{ width: valW }, styles.colVal, styles.refText]} />
+                          <Text style={[{ width: valW }, styles.colVal, styles.refText]} />
+                          <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{rs(opening)}</Text>
+                        </View>
+                      ) : null;
                       const heading = `${group.code} — ${group.name}`;
                       return (
                         <View key={group.code}>
@@ -197,14 +251,17 @@ const GeneralLedgerScreen: React.FC = () => {
                             <Text style={styles.groupHeadText} numberOfLines={1}>{heading}</Text>
                           </View>
 
-                          {group.rows.map((e, i) => (
+                          {!newestFirst && openingRow}
+                          {displayOrder(group.rows, newestFirst).map((e, i) => (
                             <View key={`${e.sourceId}-${e.accountCode}-${i}`} style={styles.bodyRow}>
                               <View style={styles.colDate}>
                                 <Text style={styles.bodyText}>{fmtLedgerDate(e.date)}</Text>
                                 <Text style={styles.refText}>{fmtLedgerTime(e.postedAt)}</Text>
                               </View>
                               <View style={styles.colAcct}>
-                                <Text style={styles.bodyText} numberOfLines={1}>{e.reference}</Text>
+                                <Text style={styles.bodyText} numberOfLines={1}>
+                                  {e.reference}{e.voided ? '  · Voided' : ''}
+                                </Text>
                                 {!!e.memo && <Text style={styles.refText} numberOfLines={1}>{e.memo}</Text>}
                               </View>
                               <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{e.debit ? rs(e.debit) : '—'}</Text>
@@ -212,6 +269,7 @@ const GeneralLedgerScreen: React.FC = () => {
                               <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{rs(e.balance)}</Text>
                             </View>
                           ))}
+                          {newestFirst && openingRow}
 
                           <View style={styles.groupTotalRow}>
                             <Text style={[styles.colDate, styles.groupTotalText]} />

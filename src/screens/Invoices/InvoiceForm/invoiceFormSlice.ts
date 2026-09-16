@@ -13,6 +13,12 @@ import {
   updateInvoiceAPI,
 } from '../../../networks/sales/invoiceNetwork';
 import { invoiceSingleSerializer } from '../../../serializers/invoiceSerializer';
+import {
+  SERVICE_LINE_VALUE,
+  kindOfStoredLine,
+  salesLineKindPayload,
+  type SalesLineKind,
+} from '../../../models/salesLineModel';
 
 // ── Line item (form representation — string values for inputs) ──
 export interface FormLineItem {
@@ -20,6 +26,9 @@ export interface FormLineItem {
   // Optional inventory item link. When set, the backend posts COGS/Inventory
   // and reduces stock on issue (FinMatrixGuide §3.1).
   itemId: string;
+  /** 'item' when linked, 'service' when explicitly a service / charge, ''
+   *  until chosen. Inventory companies may not save an unchosen line. */
+  lineKind: SalesLineKind | '';
   description: string;
   quantity: string;
   unitPrice: string;
@@ -58,6 +67,7 @@ let nextLineId = 1;
 const freshLine = (): FormLineItem => ({
   id: `line_${nextLineId++}_${Date.now()}`,
   itemId: '',
+  lineKind: '',
   description: '',
   quantity: '',
   unitPrice: '',
@@ -125,7 +135,11 @@ function recalc(state: InvoiceFormSliceState) {
  * also what an approval stores and replays, so it belongs beside the state it
  * is built from.
  */
-const buildSavePayload = (state: InvoiceFormSliceState, status: InvoiceStatus) => ({
+const buildSavePayload = (
+  state: InvoiceFormSliceState,
+  status: InvoiceStatus,
+  inventoryEnabled = true,
+) => ({
   customerId: state.customerId,
   invoiceDate: state.issueDate,
   dueDate: state.dueDate,
@@ -137,9 +151,9 @@ const buildSavePayload = (state: InvoiceFormSliceState, status: InvoiceStatus) =
     quantity: l.quantity || '0',
     unitPrice: l.unitPrice || '0',
     taxRate: l.taxRate || '0',
-    // Only send itemId when an inventory item is linked; an empty string
-    // would fail the backend's @IsUUID validation.
-    ...(l.itemId ? { itemId: l.itemId } : {}),
+    // itemId only when linked (an empty string fails @IsUUID); a line
+    // without one says it is a service / charge.
+    ...salesLineKindPayload(l, inventoryEnabled),
   })),
   notes: state.notes,
 });
@@ -205,8 +219,15 @@ export const invoiceFormSlice = createAppSlice({
         }>,
       ) => {
         const line = state.lines.find(l => l.id === action.payload.id);
+        if (line && action.payload.itemId === SERVICE_LINE_VALUE) {
+          // A service keeps whatever the user typed.
+          line.itemId = '';
+          line.lineKind = 'service';
+          return;
+        }
         if (line) {
           line.itemId = action.payload.itemId;
+          line.lineKind = action.payload.itemId ? 'item' : '';
           if (action.payload.description) line.description = action.payload.description;
           if (action.payload.unitPrice !== undefined) line.unitPrice = action.payload.unitPrice;
           recalc(state);
@@ -252,6 +273,7 @@ export const invoiceFormSlice = createAppSlice({
           state.lines = inv.lines.map(l => ({
             id: l.id,
             itemId: l.itemId ?? '',
+            lineKind: kindOfStoredLine(l.itemId),
             description: l.description,
             quantity: String(l.quantity),
             unitPrice: String(l.unitPrice),
@@ -276,16 +298,40 @@ export const invoiceFormSlice = createAppSlice({
      */
     saveInvoice: create.asyncThunk(
       async (
-        { status, editingId }: { status: InvoiceStatus; editingId?: string },
+        {
+          status,
+          editingId,
+          inventoryEnabled = true,
+          overrideReason,
+        }: {
+          status: InvoiceStatus;
+          editingId?: string;
+          inventoryEnabled?: boolean;
+          /** Owner only: past the customer's credit limit, with a reason. */
+          overrideReason?: string;
+        },
         thunkAPI,
       ) => {
         const f = (thunkAPI.getState() as { invoiceForm: InvoiceFormSliceState })
           .invoiceForm;
-        const payload = buildSavePayload(f, status);
+        const payload = buildSavePayload(f, status, inventoryEnabled);
 
-        const envelope = editingId
-          ? await updateInvoiceAPI(editingId, payload as any)
-          : await createInvoiceAPI(payload as any);
+        let envelope: any;
+        try {
+          envelope = editingId
+            ? await updateInvoiceAPI(editingId, payload as any)
+            : overrideReason
+              ? await createInvoiceAPI(payload as any, overrideReason)
+              : await createInvoiceAPI(payload as any);
+        } catch (e: any) {
+          // rejectWithValue, not a rethrow: RTK keeps only name/message/code of
+          // a thrown error, and the credit-limit refusal needs its breakdown.
+          return thunkAPI.rejectWithValue({
+            message: e?.message ?? 'Failed to save invoice',
+            code: e?.code,
+            details: e?.details,
+          });
+        }
 
         // Staff get an approval request back, not an invoice. Read off the raw
         // envelope, and check BOTH positions — `(envelope?.data ?? envelope)?.pending`
@@ -338,6 +384,10 @@ export const invoiceFormSlice = createAppSlice({
         state.lines = lines.map((l: any) => ({
           ...freshLine(),
           itemId: l?.itemId ?? '',
+          lineKind:
+            l?.lineKind === 'item' || l?.lineKind === 'service'
+              ? l.lineKind
+              : kindOfStoredLine(l?.itemId),
           description: l?.description ?? '',
           quantity: String(l?.quantity ?? '0'),
           unitPrice: String(l?.unitPrice ?? '0'),

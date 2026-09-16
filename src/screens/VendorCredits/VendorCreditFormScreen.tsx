@@ -25,6 +25,7 @@ import { AddButton } from '../../components/form/FormUI';
 import TaxField from '../../components/form/TaxField';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
+import { toIsoDate } from '../../models/reportModel';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 // A line either returns STOCK to the supplier or credits money only.
@@ -62,7 +63,7 @@ const VendorCreditFormScreen: React.FC = () => {
   const creditCap = useCapability('vendorCredit.manage');
 
   const [vendorId, setVendorId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(toIsoDate(new Date()));
   const [reason, setReason] = useState('');
   const [lines, setLines] = useState<LineDraft[]>([blankLine()]);
   const [saving, setSaving] = useState(false);
@@ -237,7 +238,7 @@ const VendorCreditFormScreen: React.FC = () => {
                     />
                   </View>
                   <View style={styles.taxCol}>
-                    <TaxField value={l.taxRate} onChange={v => updateLine(i, { taxRate: v })} />
+                    <TaxField mode="manual" value={l.taxRate} onChange={v => updateLine(i, { taxRate: v })} />
                   </View>
                 </View>
                 {parseFloat(l.taxRate) > 0 && (

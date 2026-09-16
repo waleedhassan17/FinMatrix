@@ -16,6 +16,10 @@ export interface SalesOrderLine {
   unitPrice: number;
   taxRate: number;
   lineTotal: number;
+  /** Live stock for an item line (detail responses only). */
+  onHand?: number | null;
+  /** Ordered but not yet shippable from stock. */
+  backorderQty?: number;
 }
 
 export interface SalesOrder {

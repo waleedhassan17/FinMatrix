@@ -34,6 +34,8 @@ import {
   selectCreateDeliveryDraft
 } from './createDeliverySlice';
 import { createDelivery } from '../AssignDeliveries/deliverySlice';
+import { toIsoDate } from '../../../../models/reportModel';
+import { useCreditLimitPrompt } from '../../../../hooks/useCreditLimitPrompt';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -81,6 +83,7 @@ const SectionCard: React.FC<{
 const CreateDeliveryScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
+  const credit = useCreditLimitPrompt();
   const draft = useAppSelector(selectCreateDeliveryDraft);
   const customers = useAppSelector(selectCustomers);
   const inventory = useAppSelector(selectInventoryItems);
@@ -197,7 +200,7 @@ const CreateDeliveryScreen: React.FC = () => {
   const [prePaid, setPrePaid] = useState(false);
   const canCreate = !!draft.customerId && draft.items.length > 0 && !isCreating;
 
-  const handleCreate = async () => {
+  const handleCreate = async (overrideReason?: string) => {
     if (isCreating) return;
     if (!customer) {
       Alert.alert('Customer required', 'Select a customer first.');
@@ -214,11 +217,12 @@ const CreateDeliveryScreen: React.FC = () => {
           customerId: customer.id,
           customerName: customer.name,
           zone: zoneByCity(customer.shippingAddress?.city ?? ''),
-          scheduledDate: new Date().toISOString().slice(0, 10),
+          scheduledDate: toIsoDate(new Date()),
           priority: draft.priority,
           notes: draft.notes,
           prePaid,
           items: draft.items,
+          overrideReason,
         }),
       ).unwrap();
       dispatch(resetCreateDeliveryDraft());
@@ -231,6 +235,8 @@ const CreateDeliveryScreen: React.FC = () => {
       );
       navigation.goBack();
     } catch (err: any) {
+      // Dispatching on credit past the customer's limit: advance or override.
+      if (credit.prompt(err, reason => { void handleCreate(reason); })) return;
       Alert.alert('Failed to create', err.message || 'Unable to create delivery.');
     } finally {
       setIsCreating(false);
@@ -421,7 +427,7 @@ const CreateDeliveryScreen: React.FC = () => {
           </View>
           <TouchableOpacity
             style={[styles.createBtn, !canCreate && styles.createBtnDisabled]}
-            onPress={handleCreate}
+            onPress={() => { void handleCreate(); }}
             disabled={!canCreate}
             activeOpacity={0.9}
           >
@@ -430,6 +436,7 @@ const CreateDeliveryScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
+      {credit.modal}
     </SafeAreaView>
   );
 };

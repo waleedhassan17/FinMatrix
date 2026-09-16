@@ -257,3 +257,25 @@ describe('applyRequestAllocations — phase two', () => {
     ).not.toThrow();
   });
 });
+
+describe('money not applied to an invoice is held as a customer advance', () => {
+  // With no applications the server AUTO-APPLIES oldest-first. Omitting them
+  // was how "Save as customer credit" ended up doing the opposite.
+  it('asks the server to hold the whole receipt when nothing is allocated', async () => {
+    createPayment.mockResolvedValue({ data: { id: 'pay-1' } });
+    const store = makeStore();
+    seed(store);
+    await store.dispatch(savePayment());
+    const body = createPayment.mock.calls[0][0];
+    expect(body.holdAsAdvance).toBe(true);
+    expect(body.applications).toBeUndefined();
+  });
+
+  it('invents no PAY- reference', async () => {
+    createPayment.mockResolvedValue({ data: { id: 'pay-1' } });
+    const store = makeStore();
+    seed(store);
+    await store.dispatch(savePayment());
+    expect(createPayment.mock.calls[0][0].reference).toBeUndefined();
+  });
+});

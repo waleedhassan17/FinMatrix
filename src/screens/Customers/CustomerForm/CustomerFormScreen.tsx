@@ -330,7 +330,7 @@ const CustomerFormScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Credit & Terms</Text>
           <View style={styles.sectionCard}>
             <CustomInput
-              label="Credit Limit (Rs)"
+              label="Credit Limit (Rs) — 0 means no limit"
               value={form.creditLimit}
               onChangeText={v => updateField('creditLimit', v)}
               placeholder="0.00"

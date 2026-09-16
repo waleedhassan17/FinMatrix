@@ -120,7 +120,7 @@ const POListScreen: React.FC = () => {
 
   const TABS: TabItem<POStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
-    { label: 'Draft', value: 'draft', count: counts.draft },
+    { label: 'Requisitions', value: 'draft', count: counts.draft },
     { label: 'Sent', value: 'sent', count: counts.sent },
     { label: 'Partial', value: 'partially_received', count: counts.partially_received },
     { label: 'Received', value: 'fully_received', count: counts.fully_received },

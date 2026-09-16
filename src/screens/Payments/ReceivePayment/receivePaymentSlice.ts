@@ -14,6 +14,7 @@ import { getInvoicesAPI } from '../../../networks/sales/invoiceNetwork';
 import { createPaymentAPI } from '../../../networks/sales/paymentNetwork';
 import { invoiceListSerializer } from '../../../serializers/invoiceSerializer';
 import { toUiPaymentMethod } from '../../../serializers/paymentSerializer';
+import { toIsoDate } from '../../../models/reportModel';
 
 /**
  * The UI's payment-method vocabulary differs from the backend's. Map the
@@ -54,9 +55,9 @@ export interface ReceivePaymentSliceState {
   reference: string;
   amount: string;
   notes: string;
-  /** When true and there is leftover money, the overpayment
-   *  is stored as a customer credit. When false, the user is
-   *  blocked from saving until the allocations match. */
+  /** When true, money not applied to an invoice is held as a customer
+   *  advance (Customer Advances, a liability) to apply later. When false,
+   *  the user is blocked from saving until the allocations match. */
   saveOverpaymentAsCredit: boolean;
   outstandingRows: OutstandingRow[];
   allInvoices: Invoice[];
@@ -68,7 +69,10 @@ export interface ReceivePaymentSliceState {
 const initialState: ReceivePaymentSliceState = {
   customerId: '',
   customerName: '',
-  paymentDate: new Date().toISOString().slice(0, 10),
+  // Local calendar date: toISOString() is UTC and reads yesterday in PKT
+  // before 05:00. Refreshed again on reset, since initialState is evaluated
+  // once at bundle load.
+  paymentDate: toIsoDate(new Date()),
   method: 'bank_transfer',
   reference: '',
   amount: '',
@@ -281,7 +285,7 @@ export const receivePaymentSlice = createAppSlice({
     ),
 
     resetReceivePayment: create.reducer(state => {
-      Object.assign(state, { ...initialState });
+      Object.assign(state, { ...initialState, paymentDate: toIsoDate(new Date()) });
     }),
 
     // ── Async thunks ────────────────────────────────
@@ -318,8 +322,9 @@ export const receivePaymentSlice = createAppSlice({
      * balance, and posts the double-entry journal — so the client must
      * NOT separately mutate invoices (that would double-count).
      *
-     * Any portion of the payment not allocated to an invoice is retained
-     * by the backend as a customer credit (negative AR balance).
+     * Any portion not allocated to an invoice is held by the backend as a
+     * customer advance (Cr Customer Advances), applied later from the
+     * customer or invoice screen.
      */
     savePayment: create.asyncThunk(
       async (_arg, thunkAPI) => {
@@ -341,9 +346,11 @@ export const receivePaymentSlice = createAppSlice({
           amount: paymentAmount.toFixed(2),
           reference: f.reference || undefined,
           memo: f.notes || undefined,
-          // Omit applications entirely for a pure prepayment/credit so the
-          // backend records the whole amount as a customer credit.
           applications: applications.length > 0 ? applications : undefined,
+          // With no applications the server AUTO-APPLIES oldest-first, so
+          // omitting them alone did the opposite of "save as customer credit".
+          // holdAsAdvance keeps the whole receipt as an advance.
+          ...(applications.length === 0 ? { holdAsAdvance: true } : {}),
         });
 
         // Staff get an approval request back, not a payment. Read the flag off

@@ -12,8 +12,13 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
+import ApplyAdvanceModal from '../../../components/shared/ApplyAdvanceModal';
+import CreditLimitModal from '../../../components/shared/CreditLimitModal';
+import { creditAssessmentFrom, type CreditAssessment } from '../../../models/creditModel';
+import { useCustomerAdvanceTotal } from '../../../hooks/useCustomerAdvanceTotal';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -174,17 +179,32 @@ const InvoiceDetailScreen: React.FC = () => {
     [invoice],
   );
 
+  // Advances the customer already paid. Offered ahead of Record Payment: an
+  // invoice the customer has paid for is settled from the advance, not by
+  // recording the same cash a second time.
+  const invoiceCustomerId = invoice?.customerId;
+  const { total: advanceTotal, reload: loadAdvances } = useCustomerAdvanceTotal(invoiceCustomerId);
+  const [applyOpen, setApplyOpen] = React.useState(false);
+
   // ── Actions ─────────────────────────────────
 
   /** After a successful share we transition the invoice to
    *  "sent" on the backend and refresh the list behind the
    *  scenes so the status badge updates everywhere. */
+  // Posting a draft is a sale, so it is checked against the credit limit.
+  const [creditRefusal, setCreditRefusal] = React.useState<CreditAssessment | null>(null);
+
   const markAsSentOnBackend = useCallback(
     async (channel: 'whatsapp' | 'email' | 'share', toPhone?: string) => {
       if (!invoice) return;
       const action = await dispatch(
         sendInvoice({ id: invoice.id, channel, toPhone }),
       );
+      const refused = creditAssessmentFrom((action as any)?.payload);
+      if (refused) {
+        setCreditRefusal(refused);
+        return;
+      }
       // Keep the list slice in sync without a full re-fetch.
       const payload: any = (action as any)?.payload;
       const updated = payload?.data?.invoice;
@@ -214,6 +234,19 @@ const InvoiceDetailScreen: React.FC = () => {
    *
    * Confirms first, because this is the moment the sale enters the books.
    */
+  const postWithOverride = useCallback(
+    async (overrideReason: string) => {
+      if (!invoice) return;
+      try {
+        await dispatch(sendInvoice({ id: invoice.id, channel: 'share', overrideReason })).unwrap();
+        dispatch(fetchInvoices());
+      } catch (e: any) {
+        Alert.alert('Could not post', e?.message ?? 'Failed to post the invoice.');
+      }
+    },
+    [dispatch, invoice],
+  );
+
   const handlePostToBooks = useCallback(() => {
     if (!invoice) return;
     Alert.alert(
@@ -228,6 +261,11 @@ const InvoiceDetailScreen: React.FC = () => {
               await dispatch(sendInvoice({ id: invoice.id, channel: 'share' })).unwrap();
               dispatch(fetchInvoices());
             } catch (e: any) {
+              const refused = creditAssessmentFrom(e);
+              if (refused) {
+                setCreditRefusal(refused);
+                return;
+              }
               // INVOICE_ZERO_TOTAL lands here with a message naming the fix.
               Alert.alert('Could not post', e?.message ?? 'Failed to post the invoice.');
             }
@@ -316,6 +354,23 @@ const InvoiceDetailScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
         }
       >
+        {advanceTotal > 0 && balance > 0 &&
+          ['sent', 'overdue', 'partial'].includes(invoice.status) &&
+          !paymentAwaitingApproval && (
+          <View style={styles.advanceBanner}>
+            <Feather name="info" size={14} color={colors.warning} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.advanceBannerText}>
+                {invoice.customerName || customer?.name || 'This customer'} holds{' '}
+                {formatCurrency(advanceTotal, 'Rs ')} in advances.
+              </Text>
+              <TouchableOpacity onPress={() => setApplyOpen(true)} accessibilityRole="button">
+                <Text style={styles.advanceBannerLink}>Apply advance to this invoice</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* ── Company Info ────────────────────────── */}
         <View style={styles.invoiceCard}>
           <View style={styles.statusRow}>
@@ -594,6 +649,31 @@ const InvoiceDetailScreen: React.FC = () => {
           </>
         )}
       </View>
+      <CreditLimitModal
+        assessment={creditRefusal}
+        busy={isSending}
+        onClose={() => setCreditRefusal(null)}
+        onOverride={reason => {
+          setCreditRefusal(null);
+          void postWithOverride(reason);
+        }}
+        onRecordAdvance={a => {
+          setCreditRefusal(null);
+          navigation.navigate('ReceivePayment', { customerId: a.customerId });
+        }}
+      />
+      <ApplyAdvanceModal
+        visible={applyOpen}
+        customerId={invoice.customerId}
+        customerName={invoice.customerName || customer?.name}
+        invoiceId={invoice.id}
+        onClose={() => setApplyOpen(false)}
+        onApplied={() => {
+          loadAdvances();
+          void loadPendingPayments();
+          dispatch(fetchInvoiceDetail(invoiceId));
+        }}
+      />
     </ReportContainer>
   );
 };
@@ -628,6 +708,16 @@ const TotalsRow: React.FC<{
 // this is what gets shared as a PDF -- so the structure stays; only the values
 // move onto the design system.
 const styles = StyleSheet.create({
+  advanceBanner: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    padding: spacing.xs,
+    marginBottom: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.warningLight,
+  },
+  advanceBannerText: { ...typography.caption, color: colors.textPrimary },
+  advanceBannerLink: { ...typography.labelSm, color: colors.primary, marginTop: spacing.xxs },
   scrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
 
   // ── Invoice card ───────────────────────────────

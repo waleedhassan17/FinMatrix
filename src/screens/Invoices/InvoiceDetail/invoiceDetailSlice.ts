@@ -70,11 +70,19 @@ export const invoiceDetailSlice = createAppSlice({
     // Marks invoice as sent via WhatsApp / email / generic share.
     // The backend transitions `draft → sent` automatically.
     sendInvoice: create.asyncThunk(
-      async (args: {
-        id: string;
-        channel: 'whatsapp' | 'email' | 'share';
-        toPhone?: string;
-      }) => sendInvoiceAPI(args.id, { channel: args.channel, toPhone: args.toPhone }),
+      async (
+        args: {
+          id: string;
+          channel: 'whatsapp' | 'email' | 'share';
+          toPhone?: string;
+          /** Owner only: past the customer's credit limit, with a reason. */
+          overrideReason?: string;
+        },
+        thunkAPI,
+      ) =>
+        sendInvoiceAPI(args.id, { channel: args.channel, toPhone: args.toPhone }, args.overrideReason).catch(
+          (e: any) => thunkAPI.rejectWithValue({ message: e?.message, code: e?.code, details: e?.details }),
+        ),
       {
         pending: state => {
           state.isSending = true;
@@ -87,7 +95,8 @@ export const invoiceDetailSlice = createAppSlice({
         },
         rejected: (state, action) => {
           state.isSending = false;
-          state.error = action.error?.message ?? 'Failed to record invoice send';
+          state.error =
+            (action.payload as any)?.message ?? action.error?.message ?? 'Failed to record invoice send';
         },
       },
     ),

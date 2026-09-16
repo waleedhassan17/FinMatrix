@@ -114,7 +114,9 @@ export const deliverySlice = createAppSlice({
         /** Sale collected before dispatch → backend posts Invoice + Payment at assignment (phase1.md Stage 1). */
         prePaid?: boolean;
         items: DeliveryItemLine[];
-      }) => {
+        /** Owner only: past the customer's credit limit, with a reason. */
+        overrideReason?: string;
+      }, thunkAPI) => {
         const sanitizedItems = (payload.items || []).map(item => ({
           ...item,
           // The DTO requires orderedQty and the ledger dispatches on it;
@@ -124,8 +126,16 @@ export const deliverySlice = createAppSlice({
           agencyId: (item.agencyId && item.agencyId.length === 36) ? item.agencyId : null,
           agencyName: item.agencyName || null,
         }));
-        const result = await createDeliveryAPI({ ...payload, items: sanitizedItems });
-        return { ...payload, items: sanitizedItems, apiResult: result };
+        const { overrideReason, ...body } = payload;
+        // rejectWithValue keeps the credit-limit breakdown, which a thrown
+        // error loses on the way through RTK.
+        let result: any;
+        try {
+          result = await createDeliveryAPI({ ...body, items: sanitizedItems }, overrideReason);
+        } catch (e: any) {
+          return thunkAPI.rejectWithValue({ message: e?.message, code: e?.code, details: e?.details });
+        }
+        return { ...body, items: sanitizedItems, apiResult: result };
       },
       {
         fulfilled: (state, action) => {
@@ -145,11 +155,19 @@ export const deliverySlice = createAppSlice({
     ),
 
     assignSelectedDeliveries: create.asyncThunk(
-      async (payload: { deliveryIds: string[]; personnelId: string; assignedBy?: string }) => {
-        const result = await assignDeliveriesAPI({
-          deliveryIds: payload.deliveryIds,
-          personnelId: payload.personnelId,
-        });
+      async (
+        payload: { deliveryIds: string[]; personnelId: string; assignedBy?: string; overrideReason?: string },
+        thunkAPI,
+      ) => {
+        let result: any;
+        try {
+          result = await assignDeliveriesAPI(
+            { deliveryIds: payload.deliveryIds, personnelId: payload.personnelId },
+            payload.overrideReason,
+          );
+        } catch (e: any) {
+          return thunkAPI.rejectWithValue({ message: e?.message, code: e?.code, details: e?.details });
+        }
         return { ...payload, apiResult: result };
       },
       {
@@ -298,14 +316,18 @@ export const deliverySlice = createAppSlice({
     ),
 
     reassignDelivery: create.asyncThunk(
-      async (payload: { deliveryId: string; personnelId: string }) => {
+      async (payload: { deliveryId: string; personnelId: string; overrideReason?: string }, thunkAPI) => {
         // The assign endpoint handles reassignment of an already-assigned
         // delivery (it sets personnelId unconditionally, does not re-commit
         // stock) and notifies the new rider, which a bare PATCH does not.
-        await assignDeliveriesAPI({
-          deliveryIds: [payload.deliveryId],
-          personnelId: payload.personnelId,
-        });
+        try {
+          await assignDeliveriesAPI(
+            { deliveryIds: [payload.deliveryId], personnelId: payload.personnelId },
+            payload.overrideReason,
+          );
+        } catch (e: any) {
+          return thunkAPI.rejectWithValue({ message: e?.message, code: e?.code, details: e?.details });
+        }
         return payload;
       },
       {

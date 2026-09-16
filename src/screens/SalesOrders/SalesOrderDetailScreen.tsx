@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,9 @@ import {
   convertSalesOrderInvoice, cancelSalesOrder, removeSalesOrder,
 } from './salesOrderSlice';
 import { formatCurrency } from '../../utils/formatters';
+import CreditLimitModal from '../../components/shared/CreditLimitModal';
+import { creditAssessmentFrom, type CreditAssessment } from '../../models/creditModel';
+
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, Badge, ProgressBar, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
@@ -26,9 +29,9 @@ import type { TransactionsStackParamList } from '../../navigators/stacks/Transac
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'SalesOrderDetail'>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
-/** What the server said about a rejected thunk. The convert thunk throws
- *  rather than rejectWithValue, so the message is on `error`, not `payload`. */
-const failureText = (r: any) => r?.error?.message ?? 'Please try again.';
+/** What the server said about a rejected thunk. These thunks rejectWithValue
+ *  (keeping the code and details), so the message is on `payload`. */
+const failureText = (r: any) => r?.payload?.message ?? r?.error?.message ?? 'Please try again.';
 
 
 const SalesOrderDetailScreen: React.FC = () => {
@@ -40,23 +43,41 @@ const SalesOrderDetailScreen: React.FC = () => {
 
   useFocusEffect(useCallback(() => { dispatch(fetchSalesOrder(salesOrderId)); }, [dispatch, salesOrderId]));
 
-  const markFulfilled = () => {
+  // Shipping and invoicing are checked against the customer's credit limit.
+  // A refusal carries the breakdown; the retry is the same action with the
+  // owner's reason.
+  const [creditRefusal, setCreditRefusal] = useState<{ assessment: CreditAssessment; retry: (reason: string) => void } | null>(null);
+
+  const markFulfilled = async (overrideReason?: string) => {
     if (!o) return;
-    dispatch(fulfillSalesOrder({ id: salesOrderId, lines: o.lines.map(l => ({ lineId: l.id!, quantityFulfilled: String(l.quantity) })) }));
+    const r: any = await dispatch(fulfillSalesOrder({
+      id: salesOrderId,
+      lines: o.lines.map(l => ({ lineId: l.id!, quantityFulfilled: String(l.quantity) })),
+      ...(overrideReason ? { overrideReason } : {}),
+    }));
+    if (r.meta.requestStatus === 'fulfilled') return;
+    const assessment = creditAssessmentFrom(r.payload);
+    if (assessment) { setCreditRefusal({ assessment, retry: reason => { void markFulfilled(reason); } }); return; }
+    // Short stock lands here too: an order cannot ship more than is on hand.
+    Alert.alert('Could not fulfil', failureText(r));
+  };
+  const runConvert = async (overrideReason?: string) => {
+    const r: any = await dispatch(convertSalesOrderInvoice({ id: salesOrderId, overrideReason }));
+    if (r.meta.requestStatus === 'fulfilled') {
+      const pending = r.payload?.pending ?? r.payload?.data?.pending;
+      Alert.alert(pending ? 'Sent for approval' : 'Done', pending ? 'The owner approves before the invoice is raised.' : 'Invoice created from sales order.');
+      return;
+    }
+    const assessment = creditAssessmentFrom(r.payload);
+    if (assessment) { setCreditRefusal({ assessment, retry: reason => { void runConvert(reason); } }); return; }
+    Alert.alert('Could not create invoice', failureText(r));
   };
   const convert = () => {
     Alert.alert('Create Invoice', 'Invoice this sales order?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Create', onPress: async () => {
-        const r: any = await dispatch(convertSalesOrderInvoice(salesOrderId));
-        if (r.meta.requestStatus === 'fulfilled') Alert.alert('Done', 'Invoice created from sales order.');
-        // Invoicing POSTS: it moves stock and books COGS for any line carrying
-        // an inventory item, so it can be refused — short stock, a closed
-        // period. The rejection only reached state.error, which this screen
-        // renders solely when it has no order to show, so a failed conversion
-        // was a button that spun and then did nothing at all.
-        else Alert.alert('Could not create invoice', failureText(r));
-      } },
+      // Invoicing POSTS: it moves stock and books COGS, so it can be refused —
+      // short stock, a closed period, the credit limit. runConvert says why.
+      { text: 'Create', onPress: () => { void runConvert(); } },
     ]);
   };
   const doDelete = () => {
@@ -96,7 +117,13 @@ const SalesOrderDetailScreen: React.FC = () => {
                   <Text style={styles.lineDesc}>{l.description}</Text>
                   <Text style={styles.lineTotal}>{rs(l.lineTotal)}</Text>
                 </View>
-                <Text style={styles.lineMeta}>{l.quantityFulfilled}/{l.quantity} fulfilled · {rs(l.unitPrice)} ea</Text>
+                <Text style={styles.lineMeta}>
+                  {l.quantityFulfilled}/{l.quantity} fulfilled · {rs(l.unitPrice)} ea
+                  {!l.itemId ? ' · service' : l.onHand != null ? ` · on hand ${l.onHand}` : ''}
+                </Text>
+                {(l.backorderQty ?? 0) > 0 && (
+                  <Text style={[styles.lineMeta, { color: THEME.colors.warning }]}>Backorder {l.backorderQty} — ships when stock arrives</Text>
+                )}
                 <ProgressBar pct={pct} color={pct >= 1 ? THEME.colors.success : THEME.colors.warning} />
               </View>
             );
@@ -112,13 +139,20 @@ const SalesOrderDetailScreen: React.FC = () => {
 
         <View style={styles.actions}>
           {o.status === 'open' && <CustomButton title="Edit Sales Order" variant="secondary" onPress={() => navigation.navigate('SalesOrderForm', { salesOrderId })} fullWidth />}
-          {active && o.status !== 'fulfilled' && <CustomButton title="Mark Fully Fulfilled" variant="primary" onPress={markFulfilled} isLoading={isSaving} fullWidth />}
+          {active && o.status !== 'fulfilled' && <CustomButton title="Mark Fully Fulfilled" variant="primary" onPress={() => { void markFulfilled(); }} isLoading={isSaving} fullWidth />}
           {canInvoice && <CustomButton title="Convert to Invoice" variant="primary" onPress={convert} isLoading={isSaving} fullWidth />}
           {active && <CustomButton title="Cancel Order" variant="secondary" onPress={() => dispatch(cancelSalesOrder(salesOrderId))} fullWidth />}
           {active && <CustomButton title="Delete" variant="danger" onPress={doDelete} fullWidth />}
         </View>
         <View style={{ height: 24 }} />
       </ScrollView>
+      <CreditLimitModal
+        assessment={creditRefusal?.assessment ?? null}
+        busy={isSaving}
+        onClose={() => setCreditRefusal(null)}
+        onOverride={reason => { const retry = creditRefusal?.retry; setCreditRefusal(null); retry?.(reason); }}
+        onRecordAdvance={a => { setCreditRefusal(null); navigation.navigate('ReceivePayment', { customerId: a.customerId }); }}
+      />
     </ReportContainer>
   );
 };

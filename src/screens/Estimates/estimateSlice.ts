@@ -74,19 +74,33 @@ export const estimateSlice = createAppSlice({
       { fulfilled: (state, action) => { state.current = estimateSingleSerializer(action.payload); } },
     ),
     convertEstimateInvoice: create.asyncThunk(
-      async (id: string) => convertEstimateToInvoiceAPI(id),
+      async (arg: string | { id: string; overrideReason?: string }, thunkAPI) => {
+        const { id, overrideReason } = typeof arg === 'string' ? { id: arg, overrideReason: undefined } : arg;
+        return convertEstimateToInvoiceAPI(id, undefined, overrideReason).catch((e: any) => thunkAPI.rejectWithValue({ message: e?.message, code: e?.code, details: e?.details }));
+      },
       {
         pending: state => { state.isSaving = true; },
-        fulfilled: (state, action) => { state.isSaving = false; state.current = estimateSingleSerializer({ data: action.payload?.data?.estimate }); },
-        rejected: (state, action) => { state.isSaving = false; state.error = action.error?.message ?? 'Conversion failed'; },
+        fulfilled: (state, action) => {
+          state.isSaving = false;
+          const est = action.payload?.data?.estimate;
+          if (est) state.current = estimateSingleSerializer({ data: est });
+        },
+        rejected: state => { state.isSaving = false; },
       },
     ),
     convertEstimateSalesOrder: create.asyncThunk(
-      async (id: string) => convertEstimateToSalesOrderAPI(id),
+      async (arg: string | { id: string; acceptBackorder?: boolean }, thunkAPI) => {
+        const { id, acceptBackorder } = typeof arg === 'string' ? { id: arg, acceptBackorder: false } : arg;
+        return convertEstimateToSalesOrderAPI(id, { acceptBackorder }).catch((e: any) => thunkAPI.rejectWithValue({ message: e?.message, code: e?.code, details: e?.details }));
+      },
       {
         pending: state => { state.isSaving = true; },
-        fulfilled: (state, action) => { state.isSaving = false; state.current = estimateSingleSerializer({ data: action.payload?.data?.estimate }); },
-        rejected: (state, action) => { state.isSaving = false; state.error = action.error?.message ?? 'Conversion failed'; },
+        fulfilled: (state, action) => {
+          state.isSaving = false;
+          const est = action.payload?.data?.estimate;
+          if (est) state.current = estimateSingleSerializer({ data: est });
+        },
+        rejected: state => { state.isSaving = false; },
       },
     ),
     removeEstimate: create.asyncThunk(

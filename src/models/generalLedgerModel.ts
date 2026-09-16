@@ -14,12 +14,23 @@ export interface LedgerEntry {
   balance: number;
   sourceType: string;
   sourceId: string;
+  /** A voided journal shown beside its reversal, so the account still nets. */
+  voided?: boolean;
+}
+
+export interface LedgerAccountBalance {
+  accountCode: string;
+  accountName: string;
+  balance: number;
 }
 
 export interface GeneralLedgerReport {
   range: ReportDateRange;
   accountCode: string | null;
   entries: LedgerEntry[];
+  /** Balance brought forward from before the range, per account in view. */
+  openingBalances?: LedgerAccountBalance[];
+  closingBalances?: LedgerAccountBalance[];
   totals: { debit: number; credit: number };
 }
 

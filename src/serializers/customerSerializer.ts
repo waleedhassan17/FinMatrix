@@ -59,6 +59,16 @@ export const mapCustomer = (raw: any): Customer => {
     isActive: raw?.isActive ?? true,
     createdAt: raw?.createdAt ?? '',
     updatedAt: raw?.updatedAt ?? '',
+    ...(raw?.credit
+      ? {
+          credit: {
+            limited: raw.credit.limited !== false && toNumber(raw.credit.limit) > 0,
+            exposure: toNumber(raw.credit.exposure ?? raw.credit.used),
+            advances: toNumber(raw.credit.advances),
+            available: raw.credit.available == null ? null : toNumber(raw.credit.available),
+          },
+        }
+      : {}),
   };
 };
 
@@ -160,7 +170,9 @@ export function customerPaymentsSerializer(payload: any): PagedRows<CustomerPaym
   return {
     rows: rows.map((raw: any) => ({
       id: raw?.id ?? '',
-      reference: raw?.reference || `PAY-${String(raw?.id ?? '').slice(0, 8).toUpperCase()}`,
+      // RCT-YYYY-NNNN from the server; the reference is the customer's own
+      // cheque / transfer id and only stands in for receipts numbered before.
+      reference: raw?.paymentNumber || raw?.reference || `PAY-${String(raw?.id ?? '').slice(0, 8).toUpperCase()}`,
       date: raw?.paymentDate ?? raw?.date ?? '',
       amount: toNumber(raw?.amount),
       method: PAYMENT_METHOD_LABELS[String(raw?.paymentMethod ?? '')] ?? 'Other',

@@ -48,19 +48,32 @@ export const salesOrderSlice = createAppSlice({
       },
     ),
     fulfillSalesOrder: create.asyncThunk(
-      async (payload: { id: string; lines: { lineId: string; quantityFulfilled: string }[] }) => fulfillSalesOrderAPI(payload.id, payload.lines),
+      // rejectWithValue keeps the server's code and details: shipping can be
+      // refused for the credit limit (with its breakdown) or short stock.
+      async (
+        payload: { id: string; lines: { lineId: string; quantityFulfilled: string }[]; overrideReason?: string },
+        thunkAPI,
+      ) => fulfillSalesOrderAPI(payload.id, payload.lines, payload.overrideReason).catch((e: any) => thunkAPI.rejectWithValue({ message: e?.message, code: e?.code, details: e?.details })),
       {
         pending: state => { state.isSaving = true; },
-        fulfilled: (state, action) => { state.isSaving = false; state.current = salesOrderSingleSerializer(action.payload); },
-        rejected: (state, action) => { state.isSaving = false; state.error = action.error?.message ?? 'Fulfillment failed'; },
+        fulfilled: (state, action) => { state.isSaving = false; state.current = salesOrderSingleSerializer(action.payload) ?? state.current; },
+        rejected: state => { state.isSaving = false; },
       },
     ),
     convertSalesOrderInvoice: create.asyncThunk(
-      async (id: string) => convertSalesOrderToInvoiceAPI(id),
+      async (arg: string | { id: string; overrideReason?: string }, thunkAPI) => {
+        const { id, overrideReason } = typeof arg === 'string' ? { id: arg, overrideReason: undefined } : arg;
+        return convertSalesOrderToInvoiceAPI(id, undefined, overrideReason).catch((e: any) => thunkAPI.rejectWithValue({ message: e?.message, code: e?.code, details: e?.details }));
+      },
       {
         pending: state => { state.isSaving = true; },
-        fulfilled: (state, action) => { state.isSaving = false; state.current = salesOrderSingleSerializer({ data: action.payload?.data?.salesOrder }); },
-        rejected: (state, action) => { state.isSaving = false; state.error = action.error?.message ?? 'Conversion failed'; },
+        fulfilled: (state, action) => {
+          state.isSaving = false;
+          // Staff get an approval request back and the order is unchanged.
+          const so = action.payload?.data?.salesOrder;
+          if (so) state.current = salesOrderSingleSerializer({ data: so });
+        },
+        rejected: state => { state.isSaving = false; },
       },
     ),
     cancelSalesOrder: create.asyncThunk(

@@ -17,6 +17,7 @@ import { AddButton } from '../../components/form/FormUI';
 import JournalLineRow from '../../components/shared/JournalLineRow';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
+import { toIsoDate } from '../../models/reportModel';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 interface LineDraft { accountId: string; description: string; debit: string; credit: string; }
@@ -27,7 +28,7 @@ const GeneralJournalFormScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
 
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(toIsoDate(new Date()));
   const [memo, setMemo] = useState('');
   const [lines, setLines] = useState<LineDraft[]>([blankLine(), blankLine()]);
   const [accountOptions, setAccountOptions] = useState<{ label: string; value: string }[]>([]);

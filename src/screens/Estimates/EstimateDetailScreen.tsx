@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,9 @@ import {
   convertEstimateInvoice, convertEstimateSalesOrder, removeEstimate,
 } from './estimateSlice';
 import { formatCurrency } from '../../utils/formatters';
+import CreditLimitModal from '../../components/shared/CreditLimitModal';
+import { creditAssessmentFrom, type CreditAssessment } from '../../models/creditModel';
+import { backorderMessage, backorderShortfalls } from '../../models/salesLineModel';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
@@ -26,9 +29,9 @@ import type { TransactionsStackParamList } from '../../navigators/stacks/Transac
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'EstimateDetail'>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
-/** What the server said about a rejected thunk. These convert thunks throw
- *  rather than rejectWithValue, so the message is on `error`, not `payload`. */
-const failureText = (r: any) => r?.error?.message ?? 'Please try again.';
+/** What the server said about a rejected thunk. These convert thunks
+ *  rejectWithValue (keeping code and details), so the message is on `payload`. */
+const failureText = (r: any) => r?.payload?.message ?? r?.error?.message ?? 'Please try again.';
 
 const EstimateDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -39,26 +42,39 @@ const EstimateDetailScreen: React.FC = () => {
 
   useFocusEffect(useCallback(() => { dispatch(fetchEstimate(estimateId)); }, [dispatch, estimateId]));
 
+  const [creditRefusal, setCreditRefusal] = useState<CreditAssessment | null>(null);
+
+  // Converting POSTS: it raises the invoice, moves stock and books COGS, so it
+  // can be refused — short stock, a closed period, the credit limit.
+  const runConvertInvoice = async (overrideReason?: string) => {
+    const r: any = await dispatch(convertEstimateInvoice({ id: estimateId, overrideReason }));
+    if (r.meta.requestStatus === 'fulfilled') {
+      const pending = r.payload?.pending ?? r.payload?.data?.pending;
+      Alert.alert(pending ? 'Sent for approval' : 'Done', pending ? 'The owner approves before the invoice is raised.' : 'Invoice created from estimate.');
+      return;
+    }
+    const assessment = creditAssessmentFrom(r.payload);
+    if (assessment) { setCreditRefusal(assessment); return; }
+    Alert.alert('Could not convert', failureText(r));
+  };
   const doConvertInvoice = () => {
     Alert.alert('Convert to Invoice', 'Create an invoice from this estimate?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Convert', onPress: async () => {
-        const r: any = await dispatch(convertEstimateInvoice(estimateId));
-        if (r.meta.requestStatus === 'fulfilled') Alert.alert('Done', 'Invoice created from estimate.');
-        // Converting POSTS: it raises the invoice, moves stock and books COGS
-        // for any line carrying an inventory item, so it can be refused —
-        // short stock, a closed period. The rejection only reached
-        // state.error, which this screen renders solely when it has no
-        // estimate to show, so a failed conversion was a button that spun and
-        // then did nothing at all.
-        else Alert.alert('Could not convert', failureText(r));
-      } },
+      { text: 'Convert', onPress: () => { void runConvertInvoice(); } },
     ]);
   };
-  const doConvertSO = async () => {
-    const r: any = await dispatch(convertEstimateSalesOrder(estimateId));
-    if (r.meta.requestStatus === 'fulfilled') Alert.alert('Done', 'Sales order created from estimate.');
-    else Alert.alert('Could not convert', failureText(r));
+  const doConvertSO = async (acceptBackorder = false) => {
+    const r: any = await dispatch(convertEstimateSalesOrder({ id: estimateId, acceptBackorder }));
+    if (r.meta.requestStatus === 'fulfilled') { Alert.alert('Done', 'Sales order created from estimate.'); return; }
+    const short = backorderShortfalls(r.payload);
+    if (short && !acceptBackorder) {
+      Alert.alert('Not enough stock', backorderMessage(short), [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Create with backorder', onPress: () => { void doConvertSO(true); } },
+      ]);
+      return;
+    }
+    Alert.alert('Could not convert', failureText(r));
   };
   const doDelete = () => {
     Alert.alert('Delete estimate', 'This cannot be undone.', [
@@ -111,12 +127,19 @@ const EstimateDetailScreen: React.FC = () => {
           {e.status === 'sent' && <CustomButton title="Mark Accepted" variant="primary" onPress={() => dispatch(changeEstimateStatus({ id: estimateId, status: 'accepted' }))} fullWidth />}
           {e.status === 'sent' && <CustomButton title="Mark Declined" variant="secondary" onPress={() => dispatch(changeEstimateStatus({ id: estimateId, status: 'declined' }))} fullWidth />}
           {canConvert && <CustomButton title="Convert to Invoice" variant="primary" onPress={doConvertInvoice} isLoading={isSaving} fullWidth />}
-          {canConvert && <CustomButton title="Convert to Sales Order" variant="secondary" onPress={doConvertSO} isLoading={isSaving} fullWidth />}
+          {canConvert && <CustomButton title="Convert to Sales Order" variant="secondary" onPress={() => { void doConvertSO(); }} isLoading={isSaving} fullWidth />}
           {canEdit && <CustomButton title="Edit" variant="secondary" onPress={() => navigation.navigate('EstimateForm', { estimateId })} fullWidth />}
           {canEdit && <CustomButton title="Delete" variant="danger" onPress={doDelete} fullWidth />}
         </View>
         <View style={{ height: 24 }} />
       </ScrollView>
+      <CreditLimitModal
+        assessment={creditRefusal}
+        busy={isSaving}
+        onClose={() => setCreditRefusal(null)}
+        onOverride={reason => { setCreditRefusal(null); void runConvertInvoice(reason); }}
+        onRecordAdvance={a => { setCreditRefusal(null); navigation.navigate('ReceivePayment', { customerId: a.customerId }); }}
+      />
     </ReportContainer>
   );
 };

@@ -10,6 +10,7 @@ import {
   taxPaymentSingleSerializer,
   taxRateListSerializer,
 } from '../../../serializers/taxSerializer';
+import { toIsoDate } from '../../../models/reportModel';
 
 export interface TaxPaymentForm {
   taxRateId: string;
@@ -31,7 +32,7 @@ export interface TaxPaymentState {
 const buildInitialForm = (): TaxPaymentForm => ({
   taxRateId: '',
   amount: '',
-  date: new Date().toISOString().split('T')[0],
+  date: toIsoDate(new Date()),
   reference: '',
   notes: '',
 });

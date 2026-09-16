@@ -68,6 +68,15 @@ import { decideApproval } from '../../Approvals/approvalsSlice';
 import { APPROVAL_TYPE_EFFECTS, isPendingApproval } from '../../../models/approvalModel';
 import type { ApprovalRequest } from '../../../models/approvalModel';
 import RejectReasonModal from '../../Approvals/RejectReasonModal';
+import CreditLimitModal from '../../../components/shared/CreditLimitModal';
+import { creditAssessmentFrom, type CreditAssessment } from '../../../models/creditModel';
+import {
+  UNCLASSIFIED_LINE_MESSAGE,
+  firstUnclassifiedLine,
+  salesLineOptions,
+  salesLinePickerValue,
+  stockHint,
+} from '../../../models/salesLineModel';
 import { formatCurrency } from '../../../utils/formatters';
 import type { DiscountType, InvoiceStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -115,17 +124,13 @@ const InvoiceFormScreen: React.FC = () => {
   const [deciding, setDeciding] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
 
-  // ── Inventory item options (optional per line; drives COGS) ──
-  const itemOptions = useMemo(
-    () => [
-      { label: 'No item (free-text)', value: '' },
-      ...inventory.map(it => ({
-        label: `${it.sku} — ${it.name}`,
-        value: it.id,
-      })),
-    ],
-    [inventory],
-  );
+  // ── Line picker: a stock item, or explicitly a service / charge ──
+  // A product sold from an inventory company must be a stock item so the sale
+  // moves stock and posts cost of sales; the server refuses a typed line not
+  // marked as a service (LINE_ITEM_REQUIRED).
+  const itemOptions = useMemo(() => salesLineOptions(inventory), [inventory]);
+  const inventoryEnabled = features?.inventory !== false;
+  const [creditRefusal, setCreditRefusal] = useState<{ assessment: CreditAssessment; status: InvoiceStatus } | null>(null);
 
   const handleSelectItem = useCallback(
     (lineId: string, itemId: string) => {
@@ -339,13 +344,16 @@ const InvoiceFormScreen: React.FC = () => {
       l => !l.description.trim() || !(parseFloat(l.quantity) > 0) || !(parseFloat(l.unitPrice) > 0),
     );
     if (hasEmptyLine) errs.lines = 'All line items must have description, quantity, and rate';
+    else if (firstUnclassifiedLine(form.lines, inventoryEnabled) >= 0) {
+      errs.lines = UNCLASSIFIED_LINE_MESSAGE;
+    }
 
     return errs;
-  }, [form]);
+  }, [form, inventoryEnabled]);
 
   // ── Save ────────────────────────────────────────
   const handleSave = useCallback(
-    async (saveStatus: InvoiceStatus = 'draft') => {
+    async (saveStatus: InvoiceStatus = 'draft', overrideReason?: string) => {
       const validationErrors = validate();
       if (Object.keys(validationErrors).length > 0) {
         dispatch(setErrors(validationErrors));
@@ -357,9 +365,22 @@ const InvoiceFormScreen: React.FC = () => {
 
       try {
         const result: any = await dispatch(
-          saveInvoice({ status: saveStatus, editingId }),
+          saveInvoice({
+            status: saveStatus,
+            editingId,
+            inventoryEnabled,
+            ...(overrideReason ? { overrideReason } : {}),
+          }),
         );
-        if (result.error) throw new Error(result.error.message);
+        if (result.error) {
+          // Over the credit limit: offer an advance, or the owner's override.
+          const assessment = creditAssessmentFrom(result.payload);
+          if (assessment) {
+            setCreditRefusal({ assessment, status: saveStatus });
+            return;
+          }
+          throw new Error(result.payload?.message ?? result.error.message);
+        }
 
         // Staff get an approval request back, not an invoice. Nothing exists
         // and nothing has posted, so the success toast below would be a lie —
@@ -396,7 +417,7 @@ const InvoiceFormScreen: React.FC = () => {
         });
       }
     },
-    [form, isEditing, editingId, dispatch, navigation, validate],
+    [form, isEditing, editingId, dispatch, navigation, validate, inventoryEnabled],
   );
 
   // ═════════════════════════════════════════════════════
@@ -512,14 +533,29 @@ const InvoiceFormScreen: React.FC = () => {
               key={line.id}
               index={idx}
               topSlot={
-                <CustomDropdown
-                  label="Inventory item (optional)"
-                  options={itemOptions}
-                  value={line.itemId}
-                  onChange={v => handleSelectItem(line.id, v)}
-                  placeholder="Link an inventory item…"
-                  searchable
-                />
+                features?.inventory !== false ? (
+                  <View>
+                    <CustomDropdown
+                      label="Item or service *"
+                      options={itemOptions}
+                      value={salesLinePickerValue(line)}
+                      onChange={v => handleSelectItem(line.id, v)}
+                      placeholder="Pick a stock item…"
+                      searchable
+                    />
+                    {line.lineKind === 'service' && !line.itemId && (
+                      <Text style={styles.lineHint}>Service / charge — no stock moves</Text>
+                    )}
+                    {(() => {
+                      const h = stockHint(inventory.find(x => x.id === line.itemId), line.quantity);
+                      return h ? (
+                        <Text style={[styles.lineHint, h.short && { color: colors.warning }]}>
+                          {h.short ? `${h.text} — cannot be invoiced until received` : h.text}
+                        </Text>
+                      ) : null;
+                    })()}
+                  </View>
+                ) : undefined
               }
               description={line.description}
               quantity={line.quantity}
@@ -702,6 +738,20 @@ const InvoiceFormScreen: React.FC = () => {
         onCancel={() => setRejectOpen(false)}
         onSubmit={handleReject}
       />
+      <CreditLimitModal
+        assessment={creditRefusal?.assessment ?? null}
+        busy={form.isSaving}
+        onClose={() => setCreditRefusal(null)}
+        onOverride={reason => {
+          const status = creditRefusal?.status ?? 'sent';
+          setCreditRefusal(null);
+          void handleSave(status, reason);
+        }}
+        onRecordAdvance={a => {
+          setCreditRefusal(null);
+          navigation.navigate('ReceivePayment', { customerId: a.customerId });
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -710,6 +760,7 @@ const InvoiceFormScreen: React.FC = () => {
 // STYLES
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
+  lineHint: { ...typography.caption, color: colors.textSecondary, marginTop: -4, marginBottom: 6 },
   container: { flex: 1, backgroundColor: colors.background },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
 

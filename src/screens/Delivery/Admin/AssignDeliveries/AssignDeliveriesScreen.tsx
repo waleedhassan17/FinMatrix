@@ -40,6 +40,7 @@ import {
 } from './deliverySlice';
 import { selectPendingApprovalCount } from '../InventoryApproval/inventoryApprovalSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
+import { useCreditLimitPrompt } from '../../../../hooks/useCreditLimitPrompt';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -66,6 +67,7 @@ const statusLabel = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.
 const AssignDeliveriesScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
+  const credit = useCreditLimitPrompt();
   const [isPullRefreshing, setIsPullRefreshing] = React.useState(false);
   const handlePullRefresh = React.useCallback(async () => {
     setIsPullRefreshing(true);
@@ -192,11 +194,11 @@ const AssignDeliveriesScreen: React.FC = () => {
     );
   };
 
-  const handlePickPersonnel = async (personnelId: string, personnelName: string) => {
+  const handlePickPersonnel = async (personnelId: string, personnelName: string, overrideReason?: string) => {
     setShowPersonnelModal(false);
     try {
       const res = await dispatch(
-        assignSelectedDeliveries({ deliveryIds: selectedDeliveryIds, personnelId }),
+        assignSelectedDeliveries({ deliveryIds: selectedDeliveryIds, personnelId, overrideReason }),
       ).unwrap();
 
       dispatch(clearSelectedDeliveries());
@@ -223,6 +225,8 @@ const AssignDeliveriesScreen: React.FC = () => {
         `${selectedDeliveryIds.length} delivery(ies) assigned to ${personnelName}.${accountingLine}`,
       );
     } catch (err: any) {
+      // Dispatching on credit past the customer's limit: advance or override.
+      if (credit.prompt(err, reason => { void handlePickPersonnel(personnelId, personnelName, reason); })) return;
       Alert.alert('Assignment failed', err.message || 'Unable to assign deliveries.');
     }
   };
@@ -500,6 +504,7 @@ const AssignDeliveriesScreen: React.FC = () => {
         </View>
       </Modal>
       </View>
+      {credit.modal}
     </SafeAreaView>
   );
 };

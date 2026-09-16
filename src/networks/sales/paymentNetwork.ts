@@ -56,3 +56,30 @@ export const getPaymentsByInvoiceAPI = async (invoiceId: string): Promise<any> =
     throw new Error(extractErrorMessage(e));
   }
 };
+
+/** Receipts still holding unapplied money (customer advances). */
+export const getCustomerAdvancesAPI = async (customerId: string): Promise<any> => {
+  try {
+    const response = await api.get(`/payments/customer/${customerId}/advances`);
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+/**
+ * Apply money a receipt holds as an advance to invoices. No cash moves: the
+ * server posts Dr Customer Advances / Cr Accounts Receivable. Staff get an
+ * approval request back (`pending: true`).
+ */
+export const applyPaymentAdvanceAPI = async (
+  paymentId: string,
+  applications: Array<{ invoiceId: string; amount: string }>,
+): Promise<any> => {
+  try {
+    const response = await api.post(`/payments/${paymentId}/apply`, { applications });
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};

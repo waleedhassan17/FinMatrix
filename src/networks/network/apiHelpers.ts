@@ -230,11 +230,16 @@ export const extractErrorCode = (error: any): string | undefined => {
 export class ApiError extends Error {
   code?: string;
   status?: number;
-  constructor(message: string, code?: string, status?: number) {
+  /** The server's structured `error.details` (e.g. a credit-limit breakdown or
+   *  the backorder shortfalls). NOT preserved through RTK `.unwrap()` — read
+   *  it where the network function is awaited directly. */
+  details?: any;
+  constructor(message: string, code?: string, status?: number, details?: any) {
     super(message);
     this.name = 'ApiError';
     this.code = code;
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -252,6 +257,9 @@ export const toApiError = (error: any): ApiError =>
     extractErrorMessage(error),
     extractErrorCode(error),
     axios.isAxiosError(error) ? error.response?.status : undefined,
+    axios.isAxiosError(error)
+      ? (error.response?.data as any)?.error?.details ?? (error.response?.data as any)?.details
+      : undefined,
   );
 
 // ─── Multipart Upload (fetch, NOT axios) ────────────

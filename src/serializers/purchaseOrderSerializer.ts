@@ -43,8 +43,10 @@ const mapPOLine = (raw: Partial<PurchaseOrderApiLineEntity>): PurchaseOrderLine 
   description: raw.description ?? '',
   quantity: toNum(raw.orderedQty),
   unitPrice: toNum(raw.unitCost),
+  taxRate: toNum(raw.taxRate),
   amount: toNum(raw.lineTotal),
   receivedQuantity: toNum(raw.receivedQty),
+  billedQuantity: toNum(raw.billedQty),
 });
 
 export const mapPO = (raw: Partial<PurchaseOrderApiEntity>): PurchaseOrder => ({
@@ -63,6 +65,19 @@ export const mapPO = (raw: Partial<PurchaseOrderApiEntity>): PurchaseOrder => ({
   notes: raw.notes ?? '',
   billId: raw.billId ?? '',
   billNumber: raw.billNumber ?? '',
+  bills: Array.isArray(raw.bills)
+    ? raw.bills.map(b => ({
+        id: b.id ?? '',
+        billNumber: b.billNumber ?? '',
+        billDate: b.billDate ?? '',
+        total: toNum(b.total),
+        balance: toNum(b.balance),
+        status: b.status ?? '',
+      }))
+    : [],
+  receivedValueGross: toNum(raw.receivedValueGross),
+  billedValueGross: toNum(raw.billedValueGross),
+  unbilledValueGross: toNum(raw.unbilledValueGross),
   createdBy: '',
   createdAt: raw.createdAt ?? '',
   updatedAt: raw.updatedAt ?? '',

@@ -42,6 +42,13 @@ const { colors, radius, spacing } = THEME;
 const MODULE_ICONS: Record<SearchModule, keyof typeof Feather.glyphMap> = {
   Invoices: 'file-text',
   Bills: 'file-plus',
+  'Purchase Orders': 'shopping-cart',
+  'Sales Orders': 'clipboard',
+  Estimates: 'file',
+  Receipts: 'dollar-sign',
+  'Credit Memos': 'corner-up-left',
+  'Vendor Credits': 'corner-down-right',
+  'Journal Entries': 'book',
   Customers: 'users',
   Vendors: 'truck',
   Inventory: 'package',

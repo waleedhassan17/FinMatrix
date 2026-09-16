@@ -27,9 +27,36 @@ export interface AuditEntry {
 // ── Global search ─────────────────────────────────────
 // One module per bucket `/search` answers with. Order matters: it is the
 // order the sections appear in, money documents before directories.
-export type SearchModule = 'Invoices' | 'Bills' | 'Customers' | 'Vendors' | 'Inventory';
+export type SearchModule =
+  | 'Invoices'
+  | 'Bills'
+  | 'Purchase Orders'
+  | 'Sales Orders'
+  | 'Estimates'
+  | 'Receipts'
+  | 'Credit Memos'
+  | 'Vendor Credits'
+  | 'Journal Entries'
+  | 'Customers'
+  | 'Vendors'
+  | 'Inventory';
 
-export const SEARCH_MODULES: SearchModule[] = ['Invoices', 'Bills', 'Customers', 'Vendors', 'Inventory'];
+/** Display order. Document numbers share a suffix across types (INV-2026-0027
+ *  and PO-2026-0027), so every type is its own group rather than one list. */
+export const SEARCH_MODULES: SearchModule[] = [
+  'Invoices',
+  'Bills',
+  'Purchase Orders',
+  'Sales Orders',
+  'Estimates',
+  'Receipts',
+  'Credit Memos',
+  'Vendor Credits',
+  'Journal Entries',
+  'Customers',
+  'Vendors',
+  'Inventory',
+];
 
 export interface SearchResult {
   /** Unique across modules — the raw row id alone is not (`Invoices:<uuid>`). */
@@ -71,12 +98,44 @@ export interface RawSearchInventoryItem {
   id?: string; name?: string; sku?: string; category?: string; quantityOnHand?: string | number; unitOfMeasure?: string;
 }
 
+/** The document buckets added with per-type numbering. Party names arrive
+ *  resolved (customerName / vendorName). */
+export interface RawSearchDocument {
+  id?: string;
+  poNumber?: string;
+  orderNumber?: string;
+  estimateNumber?: string;
+  paymentNumber?: string;
+  reference?: string;
+  creditMemoNumber?: string;
+  vendorCreditNumber?: string;
+  memo?: string;
+  customerId?: string;
+  vendorId?: string;
+  customerName?: string;
+  vendorName?: string;
+  orderDate?: string;
+  estimateDate?: string;
+  paymentDate?: string;
+  date?: string;
+  total?: string | number;
+  amount?: string | number;
+  status?: string;
+}
+
 export interface RawSearchResults {
   customers?: RawSearchCustomer[];
   vendors?: RawSearchVendor[];
   invoices?: RawSearchInvoice[];
   bills?: RawSearchBill[];
   inventory?: RawSearchInventoryItem[];
+  purchaseOrders?: RawSearchDocument[];
+  salesOrders?: RawSearchDocument[];
+  estimates?: RawSearchDocument[];
+  payments?: RawSearchDocument[];
+  creditMemos?: RawSearchDocument[];
+  vendorCredits?: RawSearchDocument[];
+  journalEntries?: RawSearchDocument[];
 }
 
 export interface RawSearchPayload {

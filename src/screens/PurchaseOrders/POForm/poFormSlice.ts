@@ -26,6 +26,9 @@ export interface POFormLine {
   description: string;
   quantity: string;
   unitPrice: string;
+  /** Purchase tax %, typed — whatever the supplier charged. */
+  taxRate: string;
+  /** Excluding tax. */
   amount: number;
 }
 
@@ -55,6 +58,7 @@ const freshLine = (): POFormLine => ({
   description: '',
   quantity: '',
   unitPrice: '',
+  taxRate: '0',
   amount: 0,
 });
 
@@ -86,15 +90,19 @@ const initialState: POFormSliceState = {
 
 function recalc(state: POFormSliceState) {
   let sub = 0;
+  let tax = 0;
   state.lines.forEach(l => {
     const qty = parseFloat(l.quantity) || 0;
     const price = parseFloat(l.unitPrice) || 0;
     l.amount = Math.round(qty * price * 100) / 100;
     sub += l.amount;
+    tax += Math.round(l.amount * (parseFloat(l.taxRate) || 0)) / 100;
   });
+  // Tax was hard-coded to 0 here and never sent, so a PO saved from the app
+  // carried no tax and editing a web-created draft silently stripped it.
   state.subtotal = Math.round(sub * 100) / 100;
-  state.taxAmount = 0;
-  state.total = state.subtotal;
+  state.taxAmount = Math.round(tax * 100) / 100;
+  state.total = Math.round((state.subtotal + state.taxAmount) * 100) / 100;
 }
 
 // Save payload builder.
@@ -119,6 +127,8 @@ const buildSavePayload = (state: POFormSliceState): PurchaseOrderWritePayload =>
       description: l.description.trim() || l.itemName || 'Item',
       orderedQty: String(parseFloat(l.quantity) || 0),
       unitCost: String(parseFloat(l.unitPrice) || 0),
+      taxRate: String(parseFloat(l.taxRate) || 0),
+      lineKind: 'item' as const,
       ...(l.itemId ? { itemId: l.itemId } : {}),
     })),
 });
@@ -206,6 +216,7 @@ export const poFormSlice = createAppSlice({
           description: l.description,
           quantity: String(l.quantity),
           unitPrice: String(l.unitPrice),
+          taxRate: String(l.taxRate ?? 0),
           amount: l.amount,
         }));
         state.editingId = po.id;
@@ -255,6 +266,7 @@ export const poFormSlice = createAppSlice({
           description: l?.description ?? '',
           quantity: String(parseFloat(String(l?.orderedQty ?? '')) || 0),
           unitPrice: String(parseFloat(String(l?.unitCost ?? '')) || 0),
+          taxRate: String(parseFloat(String(l?.taxRate ?? '')) || 0),
         }));
         // A request with no usable lines cannot be reviewed meaningfully; the
         // screen checks for this and refuses rather than showing a blank form.
@@ -359,6 +371,7 @@ export const poFormSlice = createAppSlice({
             description: l.description,
             quantity: String(l.quantity),
             unitPrice: String(l.unitPrice),
+            taxRate: String(l.taxRate ?? 0),
             amount: l.amount,
           }));
           state.errors = {};

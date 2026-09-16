@@ -45,6 +45,7 @@ import { statementSerializer, shareStatementPdf } from '../../../utils/statement
 import { useCompanyInfo } from '../../../utils/companyInfo';
 import { mapCustomer } from '../../../serializers/customerSerializer';
 import type { PaymentTerms, Customer } from '../../../types';
+import ApplyAdvanceModal from '../../../components/shared/ApplyAdvanceModal';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -97,6 +98,7 @@ const CustomerDetailScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSharingStatement, setIsSharingStatement] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
 
   useEffect(() => {
     return () => { dispatch(resetCustomerDetail()); };
@@ -158,8 +160,12 @@ const CustomerDetailScreen: React.FC = () => {
   }
 
   // ── Credit usage ────────────────────────────────
+  // Exposure, not the ledger balance: unpaid invoices plus goods shipped on
+  // credit, less advances — the figure a sale is actually checked against.
+  const exposure = customer.credit?.exposure ?? customer.balance;
+  const advancesHeld = customer.credit?.advances ?? 0;
   const creditUsagePercent = customer.creditLimit > 0
-    ? Math.min((customer.balance / customer.creditLimit) * 100, 100)
+    ? Math.max(0, Math.min((exposure / customer.creditLimit) * 100, 100))
     : 0;
   const creditBarColor = creditUsagePercent >= 80
     ? colors.danger
@@ -289,9 +295,26 @@ const CustomerDetailScreen: React.FC = () => {
               </View>
               <View style={styles.creditFooter}>
                 <Text style={styles.creditFooterText}>
-                  {formatCurrency(customer.balance, 'Rs ')} of {formatCurrency(customer.creditLimit, 'Rs ')}
+                  {formatCurrency(exposure, 'Rs ')} of {formatCurrency(customer.creditLimit, 'Rs ')}
+                  {customer.credit?.available != null ? ` · ${formatCurrency(Math.max(0, customer.credit.available), 'Rs ')} available` : ''}
                 </Text>
               </View>
+            </View>
+          )}
+          {customer.creditLimit <= 0 && (
+            <Text style={styles.creditFooterText}>Credit limit: no limit</Text>
+          )}
+
+          {/* Advances: money already paid, waiting to be set against an
+              invoice. Applying it settles invoices without recording new
+              cash — recording the cash again is how a payment gets doubled. */}
+          {advancesHeld > 0 && (
+            <View style={styles.creditSection}>
+              <View style={styles.creditHeader}>
+                <Text style={styles.creditLabel}>Advances held</Text>
+                <Text style={styles.creditPercent}>{formatCurrency(advancesHeld, 'Rs ')}</Text>
+              </View>
+              <CustomButton title="Apply to invoices" variant="secondary" size="sm" onPress={() => setApplyOpen(true)} />
             </View>
           )}
 
@@ -415,6 +438,16 @@ const CustomerDetailScreen: React.FC = () => {
           </ListTabState>
         )}
       </ScrollView>
+      <ApplyAdvanceModal
+        visible={applyOpen}
+        customerId={customer.id}
+        customerName={customer.name}
+        onClose={() => setApplyOpen(false)}
+        onApplied={() => {
+          dispatch(fetchCustomerDetail(customerId));
+          dispatch(fetchCustomerPayments({ customerId }));
+        }}
+      />
     </SafeAreaView>
   );
 };

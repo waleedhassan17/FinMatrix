@@ -20,6 +20,7 @@ import CustomInput from '../../Custom-Components/CustomInput';
 import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField, KpiGrid, LoadingBlock, EmptyBlock, ACCENT } from '../../components/reports/ReportUI';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
+import { toIsoDate } from '../../models/reportModel';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { typography } = THEME;
@@ -28,7 +29,7 @@ type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type Rt = RouteProp<MoreStackParamList, 'BankReconciliation'>;
 
 const rs = (n: number) => formatCurrency(n, 'Rs ');
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => toIsoDate(new Date());
 // Money tolerance mirrors the backend (0.0001) with a little slack for display rounding.
 const isBalanced = (n: number) => Math.abs(n) < 0.005;
 // Save-and-resume: statement header draft is per-device; the cleared TICKS

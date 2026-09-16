@@ -19,12 +19,14 @@ import {
   View,
   Text,
   TouchableOpacity,
+  TextInput,
   StyleSheet,
   Modal,
   FlatList,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../theme';
+import { taxRateError } from '../../models/taxRate';
 
 const { colors, spacing, radius, shadows } = THEME;
 
@@ -50,10 +52,47 @@ interface TaxFieldProps {
   value: string;
   onChange: (v: string) => void;
   label?: string;
+  /**
+   * `picker` (default) chooses from TAX_OPTIONS — the sales side.
+   * `manual` is typed: purchase tax is whatever the supplier charged (0, 10,
+   * 12.5, 17, …), so a fixed list cannot express it.
+   */
+  mode?: 'picker' | 'manual';
 }
 
-const TaxField: React.FC<TaxFieldProps> = ({ value, onChange, label = 'Tax' }) => {
+// Pure, so slices and tests can use it without importing a component.
+export { taxRateError };
+
+/** Keeps digits and a single decimal point. */
+const cleanRate = (raw: string) => {
+  const digits = raw.replace(/[^0-9.]/g, '');
+  const [whole, ...rest] = digits.split('.');
+  return rest.length ? `${whole}.${rest.join('').slice(0, 4)}` : whole;
+};
+
+const TaxField: React.FC<TaxFieldProps> = ({ value, onChange, label = 'Tax', mode = 'picker' }) => {
   const [open, setOpen] = useState(false);
+  if (mode === 'manual') {
+    const error = taxRateError(value);
+    return (
+      <View>
+        <Text style={styles.label}>{label} %</Text>
+        <View style={[styles.trigger, error ? styles.triggerError : null]}>
+          <TextInput
+            style={styles.manualInput}
+            value={value}
+            onChangeText={v => onChange(cleanRate(v))}
+            placeholder="0"
+            placeholderTextColor={colors.textTertiary}
+            keyboardType="decimal-pad"
+            accessibilityLabel={`${label} percent`}
+          />
+          <Text style={styles.suffix}>%</Text>
+        </View>
+        {error && <Text style={styles.errorText}>{error}</Text>}
+      </View>
+    );
+  }
   const current = TAX_OPTIONS.find(o => o.value === value)?.label ?? `${value} %`;
 
   return (
@@ -139,6 +178,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   triggerText: { ...THEME.typography.bodyMd, color: colors.textPrimary },
+  triggerError: { borderColor: colors.danger },
+  manualInput: {
+    flex: 1,
+    height: FIELD_HEIGHT,
+    padding: 0,
+    ...THEME.typography.bodyMd,
+    color: colors.textPrimary,
+  },
+  suffix: { ...THEME.typography.bodyMd, color: colors.textSecondary },
+  errorText: { ...THEME.typography.labelSm, color: colors.danger, marginTop: spacing.xxs },
 
   overlay: {
     flex: 1,

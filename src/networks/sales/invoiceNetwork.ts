@@ -2,7 +2,8 @@
 // FinMatrix — Invoice Network (Production API)
 // ═══════════════════════════════════════════════════════
 
-import { api, extractErrorMessage } from '../network/apiHelpers';
+import { api, extractErrorMessage, toApiError } from '../network/apiHelpers';
+import { creditOverrideBody } from '../../models/creditModel';
 import type { Invoice } from '../../types';
 
 export interface InvoiceQueryParams {
@@ -36,12 +37,14 @@ export const getInvoiceByIdAPI = async (id: string): Promise<any> => {
   }
 };
 
-export const createInvoiceAPI = async (data: Partial<Invoice>): Promise<any> => {
+export const createInvoiceAPI = async (data: Partial<Invoice>, overrideReason?: string): Promise<any> => {
   try {
-    const response = await api.post('/invoices', data);
+    const response = await api.post('/invoices', { ...data, ...creditOverrideBody(overrideReason) });
     return response.data;
   } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
+    // Keeps the code and details: a posted invoice can be refused for the
+    // customer's credit limit or an unclassified line.
+    throw toApiError(e);
   }
 };
 
@@ -63,12 +66,16 @@ export const deleteInvoiceAPI = async (id: string): Promise<any> => {
   }
 };
 
-export const sendInvoiceAPI = async (id: string, meta?: { channel?: string; toPhone?: string }): Promise<any> => {
+export const sendInvoiceAPI = async (
+  id: string,
+  meta?: { channel?: string; toPhone?: string },
+  overrideReason?: string,
+): Promise<any> => {
   try {
-    const response = await api.post(`/invoices/${id}/send`, meta);
+    const response = await api.post(`/invoices/${id}/send`, { ...(meta ?? {}), ...creditOverrideBody(overrideReason) });
     return response.data;
   } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
+    throw toApiError(e);
   }
 };
 

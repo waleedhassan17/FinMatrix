@@ -26,6 +26,7 @@ export interface PurchaseOrderApiLineEntity {
   description: string;
   orderedQty: string;
   receivedQty: string;
+  billedQty?: string;
   unitCost: string;
   taxRate: string;
   lineTotal: string;
@@ -51,6 +52,19 @@ export interface PurchaseOrderApiEntity {
   /** Set by GET /purchase-orders/:id when this PO has been converted. */
   billId?: string | null;
   billNumber?: string | null;
+  /** Every bill raised from this PO (a PO is billed per receipt). */
+  bills?: Array<{
+    id: string;
+    billNumber: string;
+    billDate: string;
+    total: string;
+    balance: string;
+    status: string;
+  }>;
+  /** Tax-inclusive, comparable with `total`. */
+  receivedValueGross?: string;
+  billedValueGross?: string;
+  unbilledValueGross?: string;
 }
 
 // ─── Status vocabulary ───────────────────────────────
@@ -99,7 +113,7 @@ export const formatPODate = (value: string | null | undefined): string =>
   value ? formatDate(value) : '—';
 
 export const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
-  draft: 'Draft',
+  draft: 'Requisition',
   sent: 'Sent',
   partially_received: 'Partially Received',
   fully_received: 'Fully Received',

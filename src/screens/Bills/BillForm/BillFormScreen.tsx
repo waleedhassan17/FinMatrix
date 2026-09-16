@@ -277,7 +277,7 @@ const BillFormScreen: React.FC = () => {
                 the hand-built Amount column the two shared neither a top nor a
                 bottom edge. This is the same control the invoice lines use. */}
             <View style={{ flex: 1 }}>
-              <TaxField
+              <TaxField mode="manual"
                 value={line.taxRate}
                 onChange={v => dispatch(updateBillLine({ id: line.id, field: 'taxRate', value: v }))}
               />

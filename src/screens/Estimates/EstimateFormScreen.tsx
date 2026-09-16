@@ -10,6 +10,18 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchCustomers, selectCustomers } from '../Customers/CustomerList/customerListSlice';
 import { fetchInventoryItems, selectInventoryItems } from '../Inventory/InventoryList/inventoryListSlice';
 import { selectFeatures } from '../Auth/authSlice';
+import { toIsoDate } from '../../models/reportModel';
+import {
+  SERVICE_LINE_VALUE,
+  UNCLASSIFIED_LINE_MESSAGE,
+  firstUnclassifiedLine,
+  kindOfStoredLine,
+  salesLineKindPayload,
+  salesLineOptions,
+  salesLinePickerValue,
+  stockHint,
+  type SalesLineKind,
+} from '../../models/salesLineModel';
 import { getEstimateByIdAPI, createEstimateAPI, updateEstimateAPI } from '../../networks/sales/estimateNetwork';
 import { estimateSingleSerializer } from '../../serializers/estimateSerializer';
 import { formatCurrency } from '../../utils/formatters';
@@ -24,12 +36,13 @@ import type { TransactionsStackParamList } from '../../navigators/stacks/Transac
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'EstimateForm'>;
 
-interface LineDraft { itemId: string; description: string; quantity: string; unitPrice: string; taxRate: string; }
+interface LineDraft { itemId: string; lineKind: SalesLineKind | ''; description: string; quantity: string; unitPrice: string; taxRate: string; }
 // Blank rather than '1' / '0' — see the note in SalesOrderFormScreen; the
 // same defaults were prefilling this form's Qty and Rate as if entered.
-const blankLine = (): LineDraft => ({ itemId: '', description: '', quantity: '', unitPrice: '', taxRate: '0' });
+const blankLine = (): LineDraft => ({ itemId: '', lineKind: '', description: '', quantity: '', unitPrice: '', taxRate: '0' });
 const rs = (n: number) => formatCurrency(n, 'Rs ');
-const today = () => new Date().toISOString().slice(0, 10);
+// Local calendar date: toISOString() is UTC and reads yesterday in PKT before 05:00.
+const today = () => toIsoDate(new Date());
 
 const EstimateFormScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -56,26 +69,28 @@ const EstimateFormScreen: React.FC = () => {
     if (features?.inventory !== false) dispatch(fetchInventoryItems());
   }, [dispatch, features?.inventory]);
 
-  // ── Inventory item options (optional per line; drives COGS once invoiced) ──
-  const itemOptions = useMemo(
-    () => [
-      { label: 'No item (free-text)', value: '' },
-      ...inventory.map(it => ({ label: `${it.sku} — ${it.name}`, value: it.id })),
-    ],
-    [inventory],
-  );
+  // ── Line picker: a stock item, or explicitly a service / charge ──
+  // In an inventory company a product must be a stock item, so selling it
+  // moves stock and posts cost of sales; the server refuses a typed line that
+  // is not marked as a service (LINE_ITEM_REQUIRED).
+  const inventoryEnabled = features?.inventory !== false;
+  const itemOptions = useMemo(() => salesLineOptions(inventory), [inventory]);
 
   // Keyed by index, not by id: these lines are local drafts with no stable id
   // (the list is rendered and updated by position).
   const handleSelectItem = useCallback(
     (i: number, itemId: string) => {
       const it = inventory.find(x => x.id === itemId);
+      if (itemId === SERVICE_LINE_VALUE) {
+        // The text and price stay the user's: a service is described by hand.
+        setLines(prev => prev.map((l, idx) => (idx === i ? { ...l, itemId: '', lineKind: 'service' } : l)));
+        return;
+      }
       setLines(prev => prev.map((l, idx) => (idx === i
         ? {
             ...l,
             itemId,
-            // Picking "No item" clears the link but leaves whatever was typed:
-            // the text and price are the user's, not the item's, from then on.
+            lineKind: itemId ? 'item' : '',
             ...(it ? { description: it.name, unitPrice: String(it.sellingPrice) } : {}),
           }
         : l)));
@@ -96,6 +111,7 @@ const EstimateFormScreen: React.FC = () => {
       setNotes(e.notes);
       setLines(e.lines.length ? e.lines.map(l => ({
         itemId: l.itemId ?? '',
+        lineKind: kindOfStoredLine(l.itemId),
         description: l.description, quantity: String(l.quantity), unitPrice: String(l.unitPrice), taxRate: String(l.taxRate),
       })) : [blankLine()]);
     }).catch(() => {});
@@ -128,15 +144,20 @@ const EstimateFormScreen: React.FC = () => {
       Toast.show({ type: 'error', text1: 'Incomplete line', text2: 'Every item needs a quantity and a rate.' });
       return;
     }
+    const unclassified = firstUnclassifiedLine(valid, inventoryEnabled);
+    if (unclassified >= 0) {
+      Toast.show({ type: 'error', text1: `Line ${unclassified + 1}: item or service?`, text2: UNCLASSIFIED_LINE_MESSAGE });
+      return;
+    }
     const payload = {
       customerId, estimateDate, expiryDate: expiryDate || undefined,
       discountType, discountValue, status: 'sent',
       notes: notes || undefined,
       lines: valid.map(l => ({
         description: l.description, quantity: l.quantity || '0', unitPrice: l.unitPrice || '0', taxRate: l.taxRate,
-        // Only send itemId when an inventory item is linked; an empty string
-        // would fail the backend's @IsUUID validation.
-        ...(l.itemId ? { itemId: l.itemId } : {}),
+        // itemId only when linked (an empty string fails @IsUUID); a line
+        // without one says it is a service.
+        ...salesLineKindPayload(l, inventoryEnabled),
       })),
     };
     setSaving(true);
@@ -183,14 +204,25 @@ const EstimateFormScreen: React.FC = () => {
               // would be "No item" — a dead control implying a feature they
               // have not bought.
               topSlot={features?.inventory !== false ? (
-                <CustomDropdown
-                  label="Inventory item (optional)"
-                  options={itemOptions}
-                  value={l.itemId}
-                  onChange={v => handleSelectItem(i, v)}
-                  placeholder="Link an inventory item…"
-                  searchable
-                />
+                <View>
+                  <CustomDropdown
+                    label="Item or service *"
+                    options={itemOptions}
+                    value={salesLinePickerValue(l)}
+                    onChange={v => handleSelectItem(i, v)}
+                    placeholder="Pick a stock item…"
+                    searchable
+                  />
+                  {l.lineKind === 'service' && !l.itemId && (
+                    <Text style={styles.lineHint}>Service / charge — no stock moves</Text>
+                  )}
+                  {(() => {
+                    const h = stockHint(inventory.find(x => x.id === l.itemId), l.quantity);
+                    return h ? (
+                      <Text style={[styles.lineHint, h.short && styles.lineHintShort]}>{h.text}</Text>
+                    ) : null;
+                  })()}
+                </View>
               ) : undefined}
               description={l.description} quantity={l.quantity} unitPrice={l.unitPrice} taxRate={l.taxRate}
               lineAmount={(parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0)}
@@ -241,6 +273,8 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
   totalLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
   totalValue: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
+  lineHint: { ...THEME.typography.caption, color: THEME.colors.textSecondary, marginTop: -4, marginBottom: 6 },
+  lineHintShort: { color: THEME.colors.warning },
   bold: { ...THEME.typography.labelLg, color: THEME.colors.textPrimary },
 });
 

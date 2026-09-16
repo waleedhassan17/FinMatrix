@@ -66,7 +66,7 @@ import { upsertPurchaseOrder } from '../POList/poListSlice';
 import { PO_STATUS_COLORS, PO_STATUS_LABELS, formatPODate } from '../../../models/purchaseOrderModel';
 import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
 import CustomButton from '../../../Custom-Components/CustomButton';
-import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
@@ -200,8 +200,10 @@ const PODetailScreen: React.FC = () => {
     [po, dispatch],
   );
 
+  // A draft is a purchase requisition: approving it issues the order to the
+  // vendor, and only an issued order can be received or billed.
   const handleSend = useCallback(
-    () => po && transitionStatus('sent', `${po.poNumber} has been sent to ${vendorName}.`),
+    () => po && transitionStatus('sent', `Requisition ${po.poNumber} approved and sent to ${vendorName}.`),
     [po, vendorName, transitionStatus],
   );
 
@@ -262,7 +264,7 @@ const PODetailScreen: React.FC = () => {
         type: 'success',
         text1: 'Items Received',
         text2: allReceived
-          ? 'All items fully received. You can now Convert to Bill.'
+          ? 'All items fully received and added to stock. You can now Convert to Bill.'
           : 'Received quantities have been recorded.',
       });
     }
@@ -272,26 +274,22 @@ const PODetailScreen: React.FC = () => {
 
   // Billing a received PO is DR GRNI / CR AP — it CLEARS the GRNI raised at
   // receipt rather than debiting Inventory a second time. Only the server's
-  // create-bill endpoint posts that entry, and it bills receivedQty x unitCost
-  // carrying each line's tax, so the conversion happens in one call here
-  // instead of opening a blank bill form the user could submit repeatedly.
+  // create-bill endpoint posts that entry. It bills what was received and not
+  // yet billed, tax included, so a PO received in parts is billed once per
+  // receipt.
   const [isConverting, setIsConverting] = React.useState(false);
 
   const handleConvertToBill = useCallback(() => {
     if (!po || isConverting) return;
 
-    const billed = po.lines
-      .filter(l => l.receivedQuantity > 0)
-      .reduce((sum, l) => sum + l.receivedQuantity * l.unitPrice, 0);
-    const billDate = new Date().toISOString().slice(0, 10);
-    const due = new Date();
-    due.setDate(due.getDate() + 30);
-    const dueDate = due.toISOString().slice(0, 10);
+    // The server's own figure, tax included. Computing received × rate here
+    // left the tax out, so the prompt showed less than the bill it created.
+    const unbilled = po.unbilledValueGross;
 
     Alert.alert(
       'Convert to Bill',
-      `Bill ${vendorName} ${formatCurrency(billed, 'Rs ')} for what was received on ${po.poNumber}.\n\n` +
-        `Bill date ${formatDate(billDate)} · Due ${formatDate(dueDate)}\n\n` +
+      `Bill ${vendorName} ${formatCurrency(unbilled, 'Rs ')} (incl. tax) for goods received on ${po.poNumber} and not yet billed.\n\n` +
+        "Dated today, due by the vendor's payment terms.\n\n" +
         'This clears Goods Received Not Invoiced and raises Accounts Payable.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -300,23 +298,22 @@ const PODetailScreen: React.FC = () => {
           onPress: async () => {
             setIsConverting(true);
             try {
-              // billNumber is '' on purpose: the DTO requires the key, and the
-              // server assigns its own reference when it is empty.
-              const envelope = await convertPOToBillAPI(po.id, { billNumber: '', billDate, dueDate });
-              const billId = envelope?.data?.billId ?? envelope?.billId;
+              // No dates: the server defaults the bill date to the business
+              // date and the due date to the vendor's terms. The phone's
+              // toISOString() date is UTC and read yesterday in Pakistan
+              // before 05:00.
+              const envelope = await convertPOToBillAPI(po.id, {});
+              const data = envelope?.data ?? envelope;
+              const billId = data?.billId ?? data?.bill?.id;
               await dispatch(fetchPODetail(po.id));
               await dispatch(fetchBills());
               Toast.show({
                 type: 'success',
-                text1: 'Bill created',
+                text1: data?.bill?.billNumber ? `${data.bill.billNumber} created` : 'Bill created',
                 text2: 'DR Goods Received Not Invoiced · CR Accounts Payable.',
               });
-              // push, not navigate, to say what this is: a drill-down that
-              // must leave the PO underneath it. (In React Navigation 7
-              // navigate() would push here too — it only differs when the
-              // target is already the focused screen, where it merges params
-              // instead. push states the intent and cannot be surprised by
-              // that case.)
+              // push, not navigate: a drill-down that must leave the PO
+              // underneath it.
               if (billId) navigation.push('BillDetail', { billId });
             } catch (e: any) {
               Toast.show({
@@ -359,17 +356,21 @@ const PODetailScreen: React.FC = () => {
       </ReportContainer>
     );
   }
+  const isRequisition = po.status === 'draft';
   const isFullyReceived = po.status === 'fully_received';
   const canReceive = po.status === 'sent' || po.status === 'partially_received';
-  const isBilled = !!po.billId;
+  const isBilled = po.bills.length > 0 || !!po.billId;
+  // Received goods not yet billed, tax included. A PO is billed per receipt,
+  // so this — not "has a bill" — decides whether another bill can be raised.
   const canConvertToBill =
-    !isBilled && (po.status === 'fully_received' || po.status === 'partially_received');
+    po.unbilledValueGross > 0.005 &&
+    (po.status === 'sent' || po.status === 'fully_received' || po.status === 'partially_received');
 
   // ═════════════════════════════════════════════════════
   return (
     <ReportContainer>
       <ReportHeader
-        title={po.poNumber}
+        title={isRequisition ? `Requisition ${po.poNumber}` : po.poNumber}
         subtitle={po.vendorName}
         onBack={() => navigation.goBack()}
       />
@@ -400,11 +401,14 @@ const PODetailScreen: React.FC = () => {
 
           <View style={styles.divider} />
 
-          <Text style={styles.poLabel}>PURCHASE ORDER</Text>
+          {/* A draft has not been issued to the vendor: it is a request to
+              buy, so it is titled as one rather than stamped DRAFT over a
+              purchase order. */}
+          <Text style={styles.poLabel}>{isRequisition ? 'PURCHASE REQUISITION' : 'PURCHASE ORDER'}</Text>
 
           <View style={styles.metaRow}>
             <View style={styles.metaCol}>
-              <Text style={styles.metaKey}>PO #</Text>
+              <Text style={styles.metaKey}>{isRequisition ? 'Requisition #' : 'PO #'}</Text>
               <Text style={styles.metaVal}>{po.poNumber}</Text>
             </View>
             <View style={styles.metaCol}>
@@ -459,9 +463,14 @@ const PODetailScreen: React.FC = () => {
               <View style={styles.tableHeader}>
                 <Text style={[styles.thText, { flex: 2 }]}>Item</Text>
                 <Text style={[styles.thText, styles.thRight, { flex: 0.6 }]}>Qty</Text>
-                <Text style={[styles.thText, styles.thRight, { flex: 0.7 }]}>Recvd</Text>
+                {!isRequisition && (
+                  <Text style={[styles.thText, styles.thRight, { flex: 0.7 }]}>Recvd</Text>
+                )}
                 <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Rate</Text>
                 <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Amount</Text>
+              </View>
+              <View>
+                <Text style={styles.tdSub}>Amounts exclude tax</Text>
               </View>
               {po.lines.map((line, idx) => (
                 <View
@@ -473,19 +482,24 @@ const PODetailScreen: React.FC = () => {
                     {!!line.description && (
                       <Text style={styles.tdSub} numberOfLines={1}>{line.description}</Text>
                     )}
+                    {line.taxRate > 0 && (
+                      <Text style={styles.tdSub}>+ tax {line.taxRate}%</Text>
+                    )}
                   </View>
                   <Text style={[styles.tdText, styles.tdRight, { flex: 0.6 }]}>{line.quantity}</Text>
-                  <Text
-                    style={[
-                      styles.tdText,
-                      styles.tdRight,
-                      { flex: 0.7 },
-                      line.receivedQuantity >= line.quantity && styles.tdReceivedFull,
-                      line.receivedQuantity > 0 && line.receivedQuantity < line.quantity && styles.tdReceivedPartial,
-                    ]}
-                  >
-                    {line.receivedQuantity}
-                  </Text>
+                  {!isRequisition && (
+                    <Text
+                      style={[
+                        styles.tdText,
+                        styles.tdRight,
+                        { flex: 0.7 },
+                        line.receivedQuantity >= line.quantity && styles.tdReceivedFull,
+                        line.receivedQuantity > 0 && line.receivedQuantity < line.quantity && styles.tdReceivedPartial,
+                      ]}
+                    >
+                      {line.receivedQuantity}
+                    </Text>
+                  )}
                   <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>
                     {formatCurrency(line.unitPrice, 'Rs ')}
                   </Text>
@@ -507,7 +521,43 @@ const PODetailScreen: React.FC = () => {
             )}
             <View style={styles.grandTotalDivider} />
             <TotalsRow label="Total" value={formatCurrency(po.total, 'Rs ')} bold />
+            {!isRequisition && (po.receivedValueGross > 0 || isBilled) && (
+              <>
+                <TotalsRow label="Received (incl. tax)" value={formatCurrency(po.receivedValueGross, 'Rs ')} />
+                <TotalsRow label="Billed (incl. tax)" value={formatCurrency(po.billedValueGross, 'Rs ')} />
+                {po.unbilledValueGross > 0.005 && (
+                  <TotalsRow
+                    label="Received, not billed"
+                    value={formatCurrency(po.unbilledValueGross, 'Rs ')}
+                    valueColor={colors.warning}
+                  />
+                )}
+              </>
+            )}
           </View>
+
+          {po.bills.length > 0 && !receivingMode && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.sectionLabel}>Bills</Text>
+              {po.bills.map(b => (
+                <TouchableOpacity
+                  key={b.id}
+                  style={styles.billRow}
+                  onPress={() => navigation.push('BillDetail', { billId: b.id })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open bill ${b.billNumber}`}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.tdText}>{b.billNumber}</Text>
+                    <Text style={styles.tdSub}>{formatPODate(b.billDate)} · {b.status}</Text>
+                  </View>
+                  <Text style={[styles.tdText, styles.tdRight]}>{formatCurrency(b.total, 'Rs ')}</Text>
+                  <Feather name="chevron-right" size={14} color={colors.textTertiary} />
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
 
           {!!po.notes && !receivingMode && (
             <>
@@ -565,7 +615,7 @@ const PODetailScreen: React.FC = () => {
                 )}
                 <View style={styles.actionPrimary}>
                   <CustomButton
-                    title="Send to Vendor"
+                    title="Approve & Send"
                     onPress={handleSend}
                     variant="primary"
                     size="sm"
@@ -583,8 +633,8 @@ const PODetailScreen: React.FC = () => {
                 {(canConvertToBill || isBilled) && (
                   <View style={styles.actionSecondary}>
                     <CustomButton
-                      title={isBilled ? 'View Bill' : 'To Bill'}
-                      onPress={isBilled ? handleViewBill : handleConvertToBill}
+                      title={canConvertToBill ? 'To Bill' : 'View Bill'}
+                      onPress={canConvertToBill ? handleConvertToBill : handleViewBill}
                       variant="secondary"
                       size="sm"
                       fullWidth
@@ -630,8 +680,8 @@ const PODetailScreen: React.FC = () => {
                 </View>
                 <View style={styles.actionPrimary}>
                   <CustomButton
-                    title={isBilled ? `View ${po.billNumber || 'Bill'}` : 'Convert to Bill'}
-                    onPress={isBilled ? handleViewBill : handleConvertToBill}
+                    title={canConvertToBill ? 'Convert to Bill' : `View ${po.billNumber || 'Bill'}`}
+                    onPress={canConvertToBill ? handleConvertToBill : handleViewBill}
                     variant="primary"
                     size="sm"
                     fullWidth
@@ -790,6 +840,15 @@ const styles = StyleSheet.create({
   totalsValue: { ...typography.labelMd, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
   totalsValueBold: { ...typography.h4, fontVariant: ['tabular-nums'] },
   grandTotalDivider: { height: 1.5, backgroundColor: colors.actionGreen, marginVertical: spacing.xxs },
+
+  billRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
 
   notesText: { ...typography.bodySm, color: colors.textSecondary },
 

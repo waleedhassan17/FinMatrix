@@ -1,4 +1,4 @@
-import { visibleLedgerRows, ROW_CAP } from '../ledgerRows';
+import { displayOrder, visibleLedgerRows, ROW_CAP } from '../ledgerRows';
 import type { LedgerEntry } from '../../../../models/generalLedgerModel';
 
 /**
@@ -89,5 +89,14 @@ describe('visibleLedgerRows', () => {
     const entries = ledgerOf(ROW_CAP + 7);
     const { rows, hiddenCount } = visibleLedgerRows(entries);
     expect(rows.length + hiddenCount).toBe(entries.length);
+  });
+});
+
+describe('displayOrder', () => {
+  it('shows the newest posting first without disturbing the chronological rows', () => {
+    const rows = [entry('2026-09-01', 'JE-1'), entry('2026-09-02', 'JE-2')];
+    expect(displayOrder(rows, true).map(r => r.reference)).toEqual(['JE-2', 'JE-1']);
+    expect(rows.map(r => r.reference)).toEqual(['JE-1', 'JE-2']);
+    expect(displayOrder(rows, false)).toBe(rows);
   });
 });

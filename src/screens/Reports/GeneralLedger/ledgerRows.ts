@@ -41,3 +41,13 @@ export const visibleLedgerRows = (
   if (entries.length <= cap) return { rows: entries, hiddenCount: 0 };
   return { rows: entries.slice(-cap), hiddenCount: entries.length - cap };
 };
+
+/**
+ * A group's rows in the order they are drawn. The ledger arrives oldest-first
+ * and every running balance is computed in that order on the server; showing
+ * newest first only flips the presentation, so the latest postings sit at the
+ * top where people look for them. Returns a copy — the chronological array is
+ * what the closing balance is read from.
+ */
+export const displayOrder = <T,>(rows: T[], newestFirst: boolean): T[] =>
+  newestFirst ? [...rows].reverse() : rows;

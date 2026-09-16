@@ -198,6 +198,19 @@ export interface Customer {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Detail responses only: what the credit limit is checked against. */
+  credit?: CustomerCredit;
+}
+
+export interface CustomerCredit {
+  /** False when the limit is 0 — no limit. */
+  limited: boolean;
+  /** Open invoices + shipped on credit − advances − credit memos. */
+  exposure: number;
+  /** Money paid in advance and not yet applied to an invoice. */
+  advances: number;
+  /** null when there is no limit. */
+  available: number | null;
 }
 
 // ─── Vendor ───────────────────────────────────────────
@@ -385,8 +398,20 @@ export interface PurchaseOrderLine {
   description: string;
   quantity: number;
   unitPrice: number;
+  /** Tax %; `amount` excludes it. */
+  taxRate: number;
   amount: number;
   receivedQuantity: number;
+  billedQuantity: number;
+}
+
+export interface PurchaseOrderBillRef {
+  id: string;
+  billNumber: string;
+  billDate: string;
+  total: number;
+  balance: number;
+  status: string;
 }
 
 export interface PurchaseOrder {
@@ -403,9 +428,15 @@ export interface PurchaseOrder {
   taxAmount: number;
   total: number;
   notes: string;
-  /** Non-empty once converted to a bill — a PO can back at most one. */
+  /** The latest bill raised from this PO; empty until the first. */
   billId: string;
   billNumber: string;
+  /** Every bill raised from this PO — goods are billed per receipt. */
+  bills: PurchaseOrderBillRef[];
+  /** Tax-inclusive values, comparable with `total`. */
+  receivedValueGross: number;
+  billedValueGross: number;
+  unbilledValueGross: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
