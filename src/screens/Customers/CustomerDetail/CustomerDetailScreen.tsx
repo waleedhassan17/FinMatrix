@@ -424,6 +424,9 @@ const CustomerDetailScreen: React.FC = () => {
                     </Text>
                   </View>
                   <Text style={styles.listCardDetail}>Method: {pay.method}</Text>
+                  {pay.applied.map(line => (
+                    <Text key={line} style={styles.listCardDetail}>{line}</Text>
+                  ))}
                 </View>
               ))}
               {paymentsTab.page < paymentsTab.totalPages && (

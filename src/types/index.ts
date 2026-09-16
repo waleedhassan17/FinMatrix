@@ -278,6 +278,8 @@ export interface PaymentAllocation {
   invoiceId: string;
   invoiceNumber: string;
   amount: number;
+  /** What is still owing on the invoice now; null when the server did not say. */
+  invoiceBalance?: number | null;
 }
 
 export interface Payment {

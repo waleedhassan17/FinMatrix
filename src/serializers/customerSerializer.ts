@@ -8,6 +8,7 @@
 import type { Customer, PaymentTerms } from '../types';
 import type { CustomerFormData } from '../models/customerModel';
 import { PAYMENT_TERMS_TO_API, paymentTermsFromApi } from '../models/customerModel';
+import { formatCurrency } from '../utils/formatters';
 
 // ─── Serialized outputs for the slice ────────────────
 
@@ -123,6 +124,8 @@ export interface CustomerPaymentRow {
   date: string;
   amount: number;
   method: string;
+  /** e.g. "INV-2026-0052: Rs 758.00 · Rs 6,823.60 still owing" per invoice. */
+  applied: string[];
 }
 
 interface PagedRows<T> {
@@ -176,6 +179,13 @@ export function customerPaymentsSerializer(payload: any): PagedRows<CustomerPaym
       date: raw?.paymentDate ?? raw?.date ?? '',
       amount: toNumber(raw?.amount),
       method: PAYMENT_METHOD_LABELS[String(raw?.paymentMethod ?? '')] ?? 'Other',
+      // A part-payment leaves the rest in receivables; each line says how much.
+      applied: (Array.isArray(raw?.applications) ? raw.applications : []).map((a: any) => {
+        const head = `${a?.invoiceNumber || 'Invoice'}: ${formatCurrency(toNumber(a?.amountApplied), 'Rs ')}`;
+        if (a?.invoiceBalance == null) return head;
+        const left = toNumber(a.invoiceBalance);
+        return left > 0.005 ? `${head} · ${formatCurrency(left, 'Rs ')} still owing` : `${head} · settled`;
+      }),
     })),
     page: pagination.page ?? 1,
     totalPages: pagination.totalPages ?? 1,

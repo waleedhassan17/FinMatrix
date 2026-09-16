@@ -9,6 +9,7 @@ jest.mock('../../networks/reports/reportHelpers', () => ({
 
 import { searchResultsSerializer } from '../globalSearchSerializer';
 import { customerAdvancesSerializer, mapPayment } from '../paymentSerializer';
+import { customerPaymentsSerializer } from '../customerSerializer';
 
 describe('global search', () => {
   it('groups an invoice and a purchase order with the same suffix separately', () => {
@@ -55,5 +56,23 @@ describe('receipts and advances', () => {
         ],
       }),
     ).toEqual([{ paymentId: 'a', paymentNumber: 'RCT-1', paymentDate: '2026-09-01', unapplied: 106050 }]);
+  });
+});
+
+describe('customer payment rows', () => {
+  it('say what a part-payment applied and what is still owing', () => {
+    const { rows } = customerPaymentsSerializer({
+      data: [
+        {
+          id: 'p1',
+          paymentNumber: 'RCT-2026-0040',
+          amount: '758',
+          paymentMethod: 'cash',
+          applications: [{ invoiceNumber: 'INV-2026-0052', amountApplied: '758', invoiceBalance: '6823.6' }],
+        },
+      ],
+    });
+    expect(rows[0].reference).toBe('RCT-2026-0040');
+    expect(rows[0].applied).toEqual([expect.stringMatching(/INV-2026-0052: Rs\s?758\.00 · Rs\s?6,823\.60 still owing/)]);
   });
 });

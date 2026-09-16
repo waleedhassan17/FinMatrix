@@ -42,6 +42,7 @@ export const mapPayment = (raw: any): Payment => {
         invoiceId: a.invoiceId ?? '',
         invoiceNumber: a.invoiceNumber ?? '',
         amount: toNum(a.amountApplied ?? a.amount),
+        invoiceBalance: a.invoiceBalance == null ? null : toNum(a.invoiceBalance),
       }))
     : [];
 

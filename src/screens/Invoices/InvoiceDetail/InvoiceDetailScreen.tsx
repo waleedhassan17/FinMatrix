@@ -519,6 +519,18 @@ const InvoiceDetailScreen: React.FC = () => {
               {!!pmt.reference && (
                 <Text style={styles.paymentRef}>Ref: {pmt.reference}</Text>
               )}
+              {pmt.allocations
+                .filter(a => a.invoiceId === invoice.id)
+                .map(a => (
+                  <Text key={a.invoiceId} style={styles.paymentRef}>
+                    Applied {formatCurrency(a.amount, 'Rs ')}
+                    {a.invoiceBalance != null
+                      ? a.invoiceBalance > 0.005
+                        ? ` · ${formatCurrency(a.invoiceBalance, 'Rs ')} still owing`
+                        : ' · invoice settled'
+                      : ''}
+                  </Text>
+                ))}
             </View>
           ))
         )}
