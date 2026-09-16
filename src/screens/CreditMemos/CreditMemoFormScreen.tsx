@@ -24,6 +24,7 @@ import LineItemRow from '../../components/shared/LineItemRow';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import { toIsoDate } from '../../models/reportModel';
+import { lineTaxError } from '../../models/taxRate';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'CreditMemoForm'>;
@@ -140,6 +141,11 @@ const CreditMemoFormScreen: React.FC = () => {
     // than posting an empty string as the quantity.
     if (valid.some(l => !(parseFloat(l.quantity) > 0) || !(parseFloat(l.unitPrice) > 0))) {
       Toast.show({ type: 'error', text1: 'Incomplete line', text2: 'Every item needs a quantity and a rate.' });
+      return;
+    }
+    const taxError = lineTaxError(lines);
+    if (taxError) {
+      Toast.show({ type: 'error', text1: 'Check the tax %', text2: taxError });
       return;
     }
     setSaving(true);

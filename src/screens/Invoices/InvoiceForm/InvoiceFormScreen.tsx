@@ -70,6 +70,7 @@ import type { ApprovalRequest } from '../../../models/approvalModel';
 import RejectReasonModal from '../../Approvals/RejectReasonModal';
 import CreditLimitModal from '../../../components/shared/CreditLimitModal';
 import { creditAssessmentFrom, type CreditAssessment } from '../../../models/creditModel';
+import { lineTaxError } from '../../../models/taxRate';
 import {
   UNCLASSIFIED_LINE_MESSAGE,
   firstUnclassifiedLine,
@@ -343,9 +344,12 @@ const InvoiceFormScreen: React.FC = () => {
     const hasEmptyLine = form.lines.some(
       l => !l.description.trim() || !(parseFloat(l.quantity) > 0) || !(parseFloat(l.unitPrice) > 0),
     );
+    const taxError = lineTaxError(form.lines);
     if (hasEmptyLine) errs.lines = 'All line items must have description, quantity, and rate';
     else if (firstUnclassifiedLine(form.lines, inventoryEnabled) >= 0) {
       errs.lines = UNCLASSIFIED_LINE_MESSAGE;
+    } else if (taxError) {
+      errs.lines = taxError;
     }
 
     return errs;

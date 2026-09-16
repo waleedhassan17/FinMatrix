@@ -58,7 +58,7 @@ import {
 } from '../../../components/form/FormUI';
 import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import TaxField from '../../../components/form/TaxField';
-import { taxRateError } from '../../../models/taxRate';
+import { lineTaxError } from '../../../models/taxRate';
 import { useCapability } from '../../../hooks/useCapability';
 import { fetchApprovalById } from '../../../networks/approvals/approvalsNetwork';
 import { decideApproval } from '../../Approvals/approvalsSlice';
@@ -317,8 +317,9 @@ const POFormScreen: React.FC = () => {
     const hasEmptyLine = form.lines.some(
       l => !l.itemId || !(parseFloat(l.quantity) > 0),
     );
+    const taxError = lineTaxError(form.lines);
     if (hasEmptyLine) errs.lines = 'All line items must have an item and quantity';
-    else if (form.lines.some(l => taxRateError(l.taxRate))) errs.lines = 'Tax must be a percentage from 0 to 100';
+    else if (taxError) errs.lines = taxError;
     return errs;
   }, [form]);
 
@@ -648,11 +649,8 @@ const POFormScreen: React.FC = () => {
                       keyboardType="decimal-pad"
                     />
                   </View>
-                  {/* Typed, not picked: purchase tax is whatever the supplier
-                      charged — 0, 10, 12.5, 17 or anything else. */}
                   <View style={{ width: 88 }}>
                     <TaxField
-                      mode="manual"
                       value={line.taxRate}
                       onChange={v => dispatch(updateLine({ id: line.id, field: 'taxRate', value: v }))}
                     />

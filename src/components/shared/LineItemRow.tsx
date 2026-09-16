@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Reusable Line Item Row Component
-// Used in Invoice / Credit Memo / Estimate / SO / PO forms.
+// Used in Invoice / Credit Memo / Estimate / Sales Order forms.
 // Auto-calculates line amount = qty × unitPrice.
 // ═══════════════════════════════════════════════════════
 

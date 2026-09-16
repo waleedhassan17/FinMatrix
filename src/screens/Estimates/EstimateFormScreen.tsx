@@ -11,6 +11,7 @@ import { fetchCustomers, selectCustomers } from '../Customers/CustomerList/custo
 import { fetchInventoryItems, selectInventoryItems } from '../Inventory/InventoryList/inventoryListSlice';
 import { selectFeatures } from '../Auth/authSlice';
 import { toIsoDate } from '../../models/reportModel';
+import { lineTaxError } from '../../models/taxRate';
 import {
   SERVICE_LINE_VALUE,
   UNCLASSIFIED_LINE_MESSAGE,
@@ -142,6 +143,11 @@ const EstimateFormScreen: React.FC = () => {
     // than posting an empty string as the quantity.
     if (valid.some(l => !(parseFloat(l.quantity) > 0) || !(parseFloat(l.unitPrice) > 0))) {
       Toast.show({ type: 'error', text1: 'Incomplete line', text2: 'Every item needs a quantity and a rate.' });
+      return;
+    }
+    const taxError = lineTaxError(lines);
+    if (taxError) {
+      Toast.show({ type: 'error', text1: 'Check the tax %', text2: taxError });
       return;
     }
     const unclassified = firstUnclassifiedLine(valid, inventoryEnabled);

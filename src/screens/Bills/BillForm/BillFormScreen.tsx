@@ -56,6 +56,7 @@ import {
 } from '../../../components/form/FormUI';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import TaxField from '../../../components/form/TaxField';
+import { lineTaxError } from '../../../models/taxRate';
 import { formatCurrency } from '../../../utils/formatters';
 import type { BillStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
@@ -181,7 +182,9 @@ const BillFormScreen: React.FC = () => {
     const hasEmptyLine = form.lines.some(
       l => !l.accountId || !(parseFloat(l.amount) > 0),
     );
+    const taxError = lineTaxError(form.lines);
     if (hasEmptyLine) errs.lines = 'All line items must have an account and amount';
+    else if (taxError) errs.lines = taxError;
 
     return errs;
   }, [form]);
@@ -277,7 +280,7 @@ const BillFormScreen: React.FC = () => {
                 the hand-built Amount column the two shared neither a top nor a
                 bottom edge. This is the same control the invoice lines use. */}
             <View style={{ flex: 1 }}>
-              <TaxField mode="manual"
+              <TaxField
                 value={line.taxRate}
                 onChange={v => dispatch(updateBillLine({ id: line.id, field: 'taxRate', value: v }))}
               />

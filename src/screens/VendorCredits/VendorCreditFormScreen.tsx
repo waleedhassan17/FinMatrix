@@ -26,6 +26,7 @@ import TaxField from '../../components/form/TaxField';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import { toIsoDate } from '../../models/reportModel';
+import { lineTaxError } from '../../models/taxRate';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 // A line either returns STOCK to the supplier or credits money only.
@@ -155,6 +156,12 @@ const VendorCreditFormScreen: React.FC = () => {
       return;
     }
 
+    const taxError = lineTaxError(lines);
+    if (taxError) {
+      Toast.show({ type: 'error', text1: 'Check the tax %', text2: taxError });
+      return;
+    }
+
     setSaving(true);
     try {
       const res: any = await createVendorCreditAPI({
@@ -238,7 +245,7 @@ const VendorCreditFormScreen: React.FC = () => {
                     />
                   </View>
                   <View style={styles.taxCol}>
-                    <TaxField mode="manual" value={l.taxRate} onChange={v => updateLine(i, { taxRate: v })} />
+                    <TaxField value={l.taxRate} onChange={v => updateLine(i, { taxRate: v })} />
                   </View>
                 </View>
                 {parseFloat(l.taxRate) > 0 && (
