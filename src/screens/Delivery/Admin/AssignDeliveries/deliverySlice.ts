@@ -111,8 +111,14 @@ export const deliverySlice = createAppSlice({
         scheduledDate: string;
         priority: DeliveryPriority;
         notes?: string;
-        /** Sale collected before dispatch → backend posts Invoice + Payment at assignment (phase1.md Stage 1). */
+        /** The customer paid the whole order before dispatch. */
         prePaid?: boolean;
+        /**
+         * Paid before dispatch, in part. Recorded as a receipt held in Customer
+         * Advances; the rider collects only the rest. Staff: the server files
+         * the delivery for the owner instead of creating it.
+         */
+        advanceAmount?: string;
         items: DeliveryItemLine[];
         /** Owner only: past the customer's credit limit, with a reason. */
         overrideReason?: string;
@@ -147,7 +153,9 @@ export const deliverySlice = createAppSlice({
           // disappear on the next refetch. A create that returns nothing
           // usable is a failure, not a delivery.
           const backendDelivery = apiResult?.data?.delivery ?? apiResult?.data;
-          if (backendDelivery?.id) {
+          // A staff member's advance delivery comes back as a pending approval:
+          // nothing exists yet, so there is nothing to list.
+          if (backendDelivery?.id && !backendDelivery?.pending) {
             state.deliveries.unshift(mapDelivery(backendDelivery));
           }
         },

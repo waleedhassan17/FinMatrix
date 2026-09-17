@@ -9,6 +9,8 @@
 
 // ─── Type Definitions ────────────────────────────────
 
+import type { DeliveryPaidStatus } from '../utils/deliveryCollection';
+
 // Mirrors the backend DeliveryStatus enum exactly. 'cancelled' was missing,
 // which is why the admin cancel action wrote 'failed' — a different terminal
 // state that the server distinguishes and that routes the delivery into the
@@ -30,6 +32,8 @@ export interface DeliveryItemLine {
   deliveredQty?: number;
   returnedQty?: number;
   unitPrice: number;
+  /** Sales tax %, frozen on the line. Needed to show the rider the amount due. */
+  taxRate?: number;
 }
 
 export interface StatusHistoryEntry {
@@ -83,14 +87,19 @@ export interface DeliveryRecord {
   billPhotoCapturedAt?: string;
   billSignedBy?: string;
   /**
-   * Sale was collected before dispatch. The rider must NOT ask for money on
-   * these, so the bill step hides its PAID / NOT PAID choice — see
-   * BillPhotoCaptureScreen. The backend has always sent this; it simply was
-   * not mapped, which is why that choice used to appear on pre-paid jobs.
+   * Paid for in full before dispatch. The rider must NOT ask for money on
+   * these, so the bill step shows "Already paid" instead of a choice — see
+   * BillPhotoCaptureScreen.
    */
   prepaid?: boolean;
-  /** Rider's cash-collected flag. Forced to 'paid' at dispatch when prepaid. */
-  paidStatus?: 'paid' | 'unpaid';
+  /** Paid before dispatch, fully or in part. The rider collects only the rest. */
+  advanceAmount?: number;
+  /** The receipt holding the advance. */
+  advancePaymentId?: string | null;
+  /** Cash taken at the door: the rider's figure, final once approved. */
+  amountCollected?: number | null;
+  /** PAID / PART PAID / NOT PAID. Follows the invoice once approved. */
+  paidStatus?: DeliveryPaidStatus;
   [key: string]: any;
 }
 
@@ -170,10 +179,20 @@ export interface InventoryUpdateRequest {
   reversalCreditMemoId?: string | null;
   reviewNotes?: string;
   reviewerComment?: string;
-  /** Rider's PAID / NOT PAID flag — decides Cash vs A/R at approval (phase1.md). */
-  paidStatus?: 'paid' | 'unpaid';
-  /** Sale was collected before dispatch (invoiced at assignment). */
+  /** PAID / PART PAID / NOT PAID — the rider's answer until approval. */
+  paidStatus?: DeliveryPaidStatus;
+  /** Paid for in full before dispatch. */
   prepaid?: boolean;
+  /** Paid before dispatch (fully or in part), as decimal strings from here down. */
+  advanceAmount?: string;
+  /** The part of the advance this sale uses. */
+  advanceApplied?: string;
+  /** What the advance leaves for the door. */
+  amountDue?: string;
+  /** Cash the rider collected — their figure until approval. */
+  amountCollected?: string;
+  /** Left for Accounts Receivable. */
+  balanceDue?: string;
   /** 'none' | 'in_transit' | 'committed' | 'returned' */
   ledgerStatus?: string;
   customerId?: string;

@@ -15,6 +15,7 @@ import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { THEME } from '../../../../utils/theme';
+import { formatCurrency } from '../../../../utils/formatters';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { Feather } from '@expo/vector-icons';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
@@ -302,6 +303,20 @@ const CustomerConfirmScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={styles.prepaidBannerTitle}>Pre-paid order</Text>
               <Text style={styles.prepaidBannerBody}>
                 Already settled — do not collect cash.
+              </Text>
+            </View>
+          </View>
+        ) : (delivery.advanceAmount ?? 0) > 0 ? (
+          // Part paid before dispatch: the rider collects only the balance,
+          // and asking for the full order would charge the customer twice.
+          <View style={styles.prepaidBanner}>
+            <Feather name="info" size={18} color={THEME.colors.success} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.prepaidBannerTitle}>
+                {formatCurrency(delivery.advanceAmount ?? 0)} paid in advance
+              </Text>
+              <Text style={styles.prepaidBannerBody}>
+                Collect only the balance — the bill photo step shows the exact amount.
               </Text>
             </View>
           </View>

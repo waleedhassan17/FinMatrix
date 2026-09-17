@@ -41,4 +41,17 @@ describe('mapDelivery — payment fields', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deliberately off-contract
     expect(mapDelivery({ ...base, paidStatus: 'weird' as any }).paidStatus).toBeUndefined();
   });
+  it('carries a part advance, the cash collected and PARTIAL', () => {
+    const d = mapDelivery({ ...base, paidStatus: 'partial', advanceAmount: '300.0000', amountCollected: '150.0000' });
+    expect(d.paidStatus).toBe('partial');
+    expect(d.advanceAmount).toBe(300);
+    expect(d.amountCollected).toBe(150);
+    expect(mapDelivery(base).advanceAmount).toBe(0);
+    expect(mapDelivery(base).amountCollected).toBeNull();
+  });
+
+  it('keeps each line tax rate so the rider sees the right amount to collect', () => {
+    const d = mapDelivery({ ...base, items: [{ itemId: 'i1', orderedQty: '2', unitPrice: '150', taxRate: '10' }] });
+    expect(d.items[0].taxRate).toBe(10);
+  });
 });

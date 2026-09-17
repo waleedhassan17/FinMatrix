@@ -36,6 +36,16 @@ import {
 import { createDelivery } from '../AssignDeliveries/deliverySlice';
 import { toIsoDate } from '../../../../models/reportModel';
 import { useCreditLimitPrompt } from '../../../../hooks/useCreditLimitPrompt';
+import { useIsOwner } from '../../../../hooks/useCapability';
+import { formatCurrency } from '../../../../utils/formatters';
+
+/** What the customer has paid when the delivery is created. */
+type AdvanceMode = 'none' | 'full' | 'part';
+const ADVANCE_CHOICES: { value: AdvanceMode; title: string; sub: string }[] = [
+  { value: 'none', title: 'Not paid yet', sub: 'The rider records at the door whether the customer paid all, part or none of it.' },
+  { value: 'full', title: 'Paid in full', sub: 'The customer paid for the whole order before dispatch. The rider collects nothing.' },
+  { value: 'part', title: 'Paid in part', sub: 'The customer paid some of it up front. The rider collects the rest.' },
+];
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -84,6 +94,7 @@ const CreateDeliveryScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
   const credit = useCreditLimitPrompt();
+  const isOwner = useIsOwner();
   const draft = useAppSelector(selectCreateDeliveryDraft);
   const customers = useAppSelector(selectCustomers);
   const inventory = useAppSelector(selectInventoryItems);
@@ -197,8 +208,13 @@ const CreateDeliveryScreen: React.FC = () => {
   };
 
   const [isCreating, setIsCreating] = useState(false);
-  const [prePaid, setPrePaid] = useState(false);
+  const [advanceMode, setAdvanceMode] = useState<AdvanceMode>('none');
+  const [advanceText, setAdvanceText] = useState('');
   const canCreate = !!draft.customerId && draft.items.length > 0 && !isCreating;
+  // An advance is cash received. The owner records it with the delivery; a
+  // staff member's delivery goes to the owner for approval instead.
+  const asRequest = !isOwner && advanceMode !== 'none';
+  const advanceValue = advanceMode === 'full' ? totals.value : Number(advanceText.replace(/[,\s]/g, '')) || 0;
 
   const handleCreate = async (overrideReason?: string) => {
     if (isCreating) return;
@@ -210,9 +226,20 @@ const CreateDeliveryScreen: React.FC = () => {
       Alert.alert('Items required', 'Add at least one delivery item.');
       return;
     }
+    if (advanceMode === 'part') {
+      const raw = advanceText.replace(/[,\s]/g, '');
+      if (!/^\d+(\.\d{1,2})?$/.test(raw) || Number(raw) <= 0) {
+        Alert.alert('Amount paid', 'Enter the amount the customer paid up front, above 0.');
+        return;
+      }
+      if (Number(raw) >= totals.value) {
+        Alert.alert('Amount paid', 'That is the whole order — choose “Paid in full” instead.');
+        return;
+      }
+    }
     setIsCreating(true);
     try {
-      await dispatch(
+      const created: any = await dispatch(
         createDelivery({
           customerId: customer.id,
           customerName: customer.name,
@@ -220,19 +247,31 @@ const CreateDeliveryScreen: React.FC = () => {
           scheduledDate: toIsoDate(new Date()),
           priority: draft.priority,
           notes: draft.notes,
-          prePaid,
+          prePaid: advanceMode === 'full' ? true : undefined,
+          advanceAmount: advanceMode === 'part' ? advanceText.replace(/[,\s]/g, '') : undefined,
           items: draft.items,
           overrideReason,
         }),
       ).unwrap();
       dispatch(resetCreateDeliveryDraft());
-      setPrePaid(false);
-      Alert.alert(
-        'Delivery created',
-        prePaid
-          ? 'The delivery is ready to assign. On assignment the stock moves to Goods in Transit and, because it is pre-paid, the invoice and cash payment are recorded immediately.'
-          : 'The delivery is ready to assign. On assignment a Sales Order is created (non-posting) and the stock moves to Goods in Transit — revenue posts only after you approve the completed delivery.',
-      );
+      const mode = advanceMode;
+      setAdvanceMode('none');
+      setAdvanceText('');
+      if (created?.apiResult?.data?.pending) {
+        Alert.alert(
+          'Sent to the owner',
+          'Recording money received needs the owner. The delivery and its advance receipt are created when they approve it.',
+        );
+      } else {
+        Alert.alert(
+          'Delivery created',
+          mode === 'none'
+            ? 'The delivery is ready to assign. On assignment a Sales Order is created (non-posting) and the stock moves to Goods in Transit — revenue posts only after you approve the completed delivery.'
+            : `${formatCurrency(advanceValue)} is recorded as a cash receipt, held in Customer Advances until the delivery is approved. ${
+                mode === 'full' ? 'The rider will not collect anything.' : 'The rider collects only the balance.'
+              } On assignment the stock moves to Goods in Transit; revenue posts when you approve the completed delivery.`,
+        );
+      }
       navigation.goBack();
     } catch (err: any) {
       // Dispatching on credit past the customer's limit: advance or override.
@@ -395,24 +434,45 @@ const CreateDeliveryScreen: React.FC = () => {
                 multiline
               />
 
-              {/* phase1.md Stage 1: pre-paid sale option */}
+              {/* What the customer has paid before dispatch. */}
               <View style={{ height: spacing.xs }} />
-              <TouchableOpacity
-                style={[styles.prepaidRow, prePaid && styles.prepaidRowActive]}
-                onPress={() => setPrePaid(v => !v)}
-                activeOpacity={0.85}
-              >
-                <View style={[styles.prepaidCheck, prePaid && styles.prepaidCheckActive]}>
-                  {prePaid && <Feather name="check" size={14} color={colors.neutral0} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.prepaidTitle}>Pre-paid sale</Text>
-                  <Text style={styles.prepaidSub}>
-                    Customer already paid. Assigning this delivery will record an invoice and
-                    the cash payment immediately instead of a sales order.
-                  </Text>
-                </View>
-              </TouchableOpacity>
+              {ADVANCE_CHOICES.map(choice => {
+                const active = advanceMode === choice.value;
+                return (
+                  <TouchableOpacity
+                    key={choice.value}
+                    style={[styles.prepaidRow, active && styles.prepaidRowActive, { marginBottom: spacing.xxs }]}
+                    onPress={() => setAdvanceMode(choice.value)}
+                    activeOpacity={0.85}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <View style={[styles.prepaidCheck, active && styles.prepaidCheckActive]}>
+                      {active && <Feather name="check" size={14} color={colors.neutral0} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.prepaidTitle}>{choice.title}</Text>
+                      <Text style={styles.prepaidSub}>{choice.sub}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+              {advanceMode === 'part' && (
+                <CustomInput
+                  label="Amount paid up front"
+                  value={advanceText}
+                  onChangeText={t => setAdvanceText(t.replace(/[^0-9.]/g, ''))}
+                  placeholder={`Less than ${money(totals.value)}`}
+                  keyboardType="decimal-pad"
+                />
+              )}
+              {advanceMode !== 'none' && (
+                <Text style={styles.prepaidSub}>
+                  {isOwner
+                    ? `${formatCurrency(advanceValue)} is recorded as a cash receipt when you create the delivery.`
+                    : 'Recording money received needs the owner, so this delivery is sent to them for approval. Nothing is created until they approve it.'}
+                </Text>
+              )}
             </SectionCard>
 
             <View style={{ height: spacing.xxl * 2 }} />
@@ -432,7 +492,9 @@ const CreateDeliveryScreen: React.FC = () => {
             activeOpacity={0.9}
           >
             <Feather name="check" size={18} color={colors.neutral0} />
-            <Text style={styles.createBtnText}>{isCreating ? 'Creating…' : 'Create Delivery'}</Text>
+            <Text style={styles.createBtnText}>
+              {isCreating ? (asRequest ? 'Sending…' : 'Creating…') : asRequest ? 'Send for Approval' : 'Create Delivery'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

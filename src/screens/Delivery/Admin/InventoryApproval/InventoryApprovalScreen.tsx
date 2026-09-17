@@ -55,6 +55,7 @@ import {
 import { fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryListSlice';
 import { clearShadowInventoryForRequest } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { InventoryUpdateRequest } from '../../../../models/deliveryModel';
+import { PAID_STATUS_LABELS, type DeliveryPaidStatus } from '../../../../utils/deliveryCollection';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import { downloadBillPhoto } from '../../../../networks/delivery/deliveryNetwork';
 import { requestDeliveryUndo } from '../../../../networks/approvals/approvalsNetwork';
@@ -114,27 +115,45 @@ const isLedgerCommitted = (request: InventoryUpdateRequest): boolean =>
  * hierarchy the alert could not — the amount as a figure, the posting note in
  * its own box.
  */
-const approvalSummary = (request: InventoryUpdateRequest) => {
+const approvalSummary = (request: InventoryUpdateRequest, cashCounted?: number) => {
   const amount = Number(request.saleAmount ?? '0');
   const delivered = (request.changes ?? []).reduce((n, c) => n + c.deliveredQty, 0);
   const returned = (request.changes ?? []).reduce((n, c) => n + c.returnedQty, 0);
+  const settled = settlementOf(request, cashCounted);
+
+  const parts: string[] = [];
+  if (settled.advance > 0) parts.push(`${formatCurrency(settled.advance)} was paid in advance`);
+  if (settled.cash > 0) parts.push(`the rider collected ${formatCurrency(settled.cash)} in cash`);
+  const paidLine = parts.length ? `${parts.join(' and ')}.` : 'Nothing has been paid yet.';
 
   return {
     amount,
+    settled,
     stockLine: returned > 0
       ? `${delivered} delivered · ${returned} returned to stock`
       : `${delivered} delivered`,
-    moneyLine: request.prepaid
-      ? 'The customer already paid at dispatch, so no new sale is recorded.'
-      : request.paidStatus === 'paid'
-        ? `The rider collected ${formatCurrency(amount)} in cash.`
-        : `${formatCurrency(amount)} will be invoiced on credit and sit in Accounts Receivable until the customer pays.`,
-    postingLine: request.prepaid
-      ? 'Approving moves the stock cost out of Goods in Transit into Cost of Goods Sold.'
-      : request.paidStatus === 'paid'
-        ? 'Approving records the sale into Cash and moves the stock cost out of Goods in Transit into Cost of Goods Sold.'
-        : 'Approving raises the invoice and moves the stock cost out of Goods in Transit into Cost of Goods Sold.',
+    moneyLine:
+      settled.onAccount > 0
+        ? `${paidLine.charAt(0).toUpperCase()}${paidLine.slice(1)} ${formatCurrency(settled.onAccount)} will sit in Accounts Receivable until the customer pays.`
+        : `${paidLine.charAt(0).toUpperCase()}${paidLine.slice(1)} Nothing is left to collect.`,
+    postingLine:
+      'Approving raises the invoice, applies what was paid (advance from Customer Advances, cash into Cash) and moves the stock cost out of Goods in Transit into Cost of Goods Sold.',
   };
+};
+
+/**
+ * How a request's sale is settled: the advance, then cash, then Accounts
+ * Receivable. `cashCounted` replaces the rider's figure with the owner's count.
+ * Worked in paisa; the server recomputes and is the authority.
+ */
+const settlementOf = (request: InventoryUpdateRequest, cashCounted?: number) => {
+  const p = (v: unknown) => Math.round((Number(v) || 0) * 100);
+  const due = p(request.amountDue ?? request.saleAmount);
+  const advance = p(request.advanceApplied);
+  const cash = Math.min(Math.max(p(cashCounted ?? request.amountCollected), 0), due);
+  const onAccount = due - cash;
+  const status: DeliveryPaidStatus = onAccount <= 0 ? 'paid' : cash > 0 || advance > 0 ? 'partial' : 'unpaid';
+  return { advance: advance / 100, cash: cash / 100, onAccount: onAccount / 100, due: due / 100, status };
 };
 
 const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
@@ -247,6 +266,8 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const approveCap = useCapability('delivery.approveCompletion');
   const [targetRequest, setTargetRequest] = useState<InventoryUpdateRequest | null>(null);
   const [rejectComment, setRejectComment] = useState('');
+  // The owner's count of the cash the rider handed in; starts at the rider's figure.
+  const [cashText, setCashText] = useState('');
 
   const visibleRequests = useMemo(() => {
     if (activeFilter === 'all') return requests;
@@ -275,11 +296,16 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
   // Core approve logic — takes the request directly so it works from the modal
   // OR the native confirmation dialog.
-  const doApprove = async (request: InventoryUpdateRequest) => {
+  const doApprove = async (request: InventoryUpdateRequest, cashCounted?: number) => {
     const changes = request.changes ?? [];
+    const riderFigure = Number(request.amountCollected ?? '0') || 0;
+    const amountCollected =
+      cashCounted !== undefined && Math.abs(cashCounted - riderFigure) > 0.005
+        ? cashCounted.toFixed(2)
+        : undefined;
     try {
       await dispatch(
-        approveRequestAsync({ requestId: request.id, reviewedBy: 'Admin' }),
+        approveRequestAsync({ requestId: request.id, reviewedBy: 'Admin', amountCollected }),
       ).unwrap();
 
       // The server already moved the stock: approving posts COGS, relieves
@@ -305,7 +331,9 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
       const title =
         e?.code === 'DELIVERY_ITEM_NO_PRICE' || e?.code === 'INVOICE_ZERO_TOTAL'
           ? 'Set a selling price first'
-          : 'Error';
+          : e?.code === 'COLLECTED_OUT_OF_RANGE'
+            ? 'Check the cash counted'
+            : 'Error';
       Alert.alert(title, e?.message ?? 'Failed to approve request.');
     }
   };
@@ -321,12 +349,26 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const promptApprove = (request: InventoryUpdateRequest) => {
     if (!isSyncedRequest(request.id)) { Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again."); return; }
     setTargetRequest(request);
+    setCashText((Number(request.amountCollected ?? '0') || 0).toFixed(2));
     setModalMode('approve');
   };
 
+  const approveDue = targetRequest ? settlementOf(targetRequest).due : 0;
+  const cashCountError = (() => {
+    if (!targetRequest || approveDue <= 0) return undefined;
+    const v = cashText.replace(/[,\s]/g, '');
+    if (!/^\d+(\.\d{1,2})?$/.test(v)) return 'Enter the cash handed in (0 if none).';
+    if (Math.round(Number(v) * 100) > Math.round(approveDue * 100)) {
+      return `No more than the ${formatCurrency(approveDue)} due.`;
+    }
+    return undefined;
+  })();
+  const cashCounted =
+    targetRequest && approveDue > 0 && !cashCountError ? Number(cashText.replace(/[,\s]/g, '')) : undefined;
+
   const confirmApprove = async () => {
-    if (!targetRequest) return;
-    await doApprove(targetRequest);
+    if (!targetRequest || cashCountError) return;
+    await doApprove(targetRequest, cashCounted);
   };
 
   const doUndo = async (request: InventoryUpdateRequest) => {
@@ -485,7 +527,8 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderRequest = ({ item: request }: { item: InventoryUpdateRequest }) => {
     const tone = statusStyle(request.status);
-    const paidTone = request.paidStatus === 'paid' ? colors.success : colors.warning;
+    const paidTone =
+      request.paidStatus === 'paid' ? colors.success : request.paidStatus === 'partial' ? colors.info : colors.warning;
 
     return (
       <View style={styles.card}>
@@ -519,7 +562,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
               color={paidTone}
             />
             <Text style={[styles.paidBadgeText, { color: paidTone }]}>
-              {request.prepaid ? 'PRE-PAID' : request.paidStatus === 'paid' ? 'PAID' : 'NOT PAID'}
+              {request.prepaid ? 'PRE-PAID' : PAID_STATUS_LABELS[request.paidStatus ?? 'unpaid']}
             </Text>
           </View>
           <View style={styles.ledgerMeta}>
@@ -533,11 +576,15 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
         </View>
         {request.status === 'pending' && (
           <Text style={styles.ledgerHint}>
-            {request.prepaid
-              ? 'Pre-paid sale — approval posts COGS and relieves Goods in Transit.'
-              : request.paidStatus === 'paid'
-                ? 'Approving invoices this delivery and records the cash the rider collected.'
-                : 'Approving invoices this delivery on credit — it will age in A/R until payment.'}
+            {(() => {
+              const x = settlementOf(request);
+              if (request.prepaid && x.due <= 0) return 'Pre-paid — approving applies the advance; the rider collected nothing.';
+              const bits: string[] = [];
+              if (x.advance > 0) bits.push(`${formatCurrency(x.advance)} advance`);
+              if (x.cash > 0) bits.push(`${formatCurrency(x.cash)} cash from the rider`);
+              if (x.onAccount > 0) bits.push(`${formatCurrency(x.onAccount)} to A/R`);
+              return `Approving invoices this delivery: ${bits.join(' · ') || 'nothing to settle'}.`;
+            })()}
           </Text>
         )}
 
@@ -730,7 +777,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
     </Disclosure>
   );
 
-  const approve = targetRequest ? approvalSummary(targetRequest) : null;
+  const approve = targetRequest ? approvalSummary(targetRequest, cashCounted) : null;
 
   return (
     <ReportContainer>
@@ -798,6 +845,29 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.modalAmount}>{formatCurrency(approve.amount)}</Text>
                 <Text style={styles.modalSub}>{approve.moneyLine}</Text>
                 <Text style={styles.modalStock}>{approve.stockLine}</Text>
+                {approve.settled.due > 0 ? (
+                  <>
+                    <Text style={styles.modalStock}>Cash handed in by the rider</Text>
+                    <TextInput
+                      value={cashText}
+                      onChangeText={t => setCashText(t.replace(/[^0-9.]/g, ''))}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={colors.textTertiary}
+                      style={[styles.commentInput, { minHeight: 0 }]}
+                    />
+                    <Text style={styles.inputHint}>
+                      {cashCountError ??
+                        `${formatCurrency(approve.settled.due)} was due at the door; the rider reported ${formatCurrency(
+                          Number(targetRequest?.amountCollected ?? '0') || 0,
+                        )}. Change it if your count differs — both are kept.`}
+                    </Text>
+                  </>
+                ) : null}
+                <Text style={styles.modalStock}>
+                  Recorded as {PAID_STATUS_LABELS[approve.settled.status]}
+                  {approve.settled.onAccount > 0 ? ` · ${formatCurrency(approve.settled.onAccount)} on account` : ''}
+                </Text>
                 <View style={styles.noteBox}>
                   <Feather name="info" size={13} color={colors.textSecondary} />
                   <Text style={styles.noteText}>{approve.postingLine}</Text>
@@ -810,7 +880,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
 
             <View style={styles.modalActionRow}>
               <View style={styles.modalBtn}><CustomButton title="Cancel" onPress={closeModal} variant="secondary" fullWidth /></View>
-              <View style={styles.modalBtn}><CustomButton title="Approve" onPress={confirmApprove} fullWidth /></View>
+              <View style={styles.modalBtn}><CustomButton title="Approve" onPress={confirmApprove} disabled={!!cashCountError} fullWidth /></View>
             </View>
           </View>
         </View>

@@ -16,7 +16,8 @@ export type ApprovalType =
   | 'po'
   | 'invoice'
   | 'invoice_payment'
-  | 'delivery_undo';
+  | 'delivery_undo'
+  | 'delivery_advance';
 
 /**
  * The form a request opens in so the owner can judge it on its contents rather
@@ -76,6 +77,7 @@ export const APPROVAL_TYPE_LABELS: Record<ApprovalType, string> = {
   invoice: 'Invoice',
   invoice_payment: 'Customer payment',
   delivery_undo: 'Undo a delivery',
+  delivery_advance: 'Delivery with advance',
 };
 
 /** One line explaining what approving will actually do to the books. */
@@ -90,6 +92,8 @@ export const APPROVAL_TYPE_EFFECTS: Record<ApprovalType, string> = {
   invoice: 'Creates the invoice and recognises the sale.',
   invoice_payment: 'Records money received and clears the invoice balance.',
   delivery_undo: 'Reverses a delivery that was already approved.',
+  delivery_advance:
+    'Creates the delivery and records the advance as a cash receipt, held in Customer Advances until the delivery is approved.',
 };
 
 /**

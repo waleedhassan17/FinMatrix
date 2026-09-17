@@ -18,7 +18,8 @@ export interface BillPhotoChange {
   returnedQty: number;
 }
 
-export type DeliveryPaidStatus = 'paid' | 'unpaid';
+export type { DeliveryPaidStatus } from '../utils/deliveryCollection';
+import type { DeliveryPaidStatus } from '../utils/deliveryCollection';
 
 export interface SubmitBillPhotoPayload {
   deliveryId: string;
@@ -32,11 +33,13 @@ export interface SubmitBillPhotoPayload {
   /** Customer name written on the bill. */
   signedBy: string;
   /**
-   * PAID: cash collected at the doorstep. NOT PAID: on credit.
-   * Posts nothing by itself — it decides whether the admin's approval
-   * debits Cash or Accounts Receivable.
+   * PAID: the amount due collected. PARTIAL: some of it (amountCollected).
+   * NOT PAID: on account. Posts nothing by itself — approval records the cash.
+   * Always PAID when nothing is due (prepaid).
    */
   paidStatus: DeliveryPaidStatus;
+  /** Cash received, required for PARTIAL. */
+  amountCollected?: string;
   changes: BillPhotoChange[];
   note?: string;
 }
@@ -47,6 +50,10 @@ export interface SubmitBillPhotoResult {
   deliveryId: string;
   photoUrl: string;
   uploadedAt: string;
+  /** How the server settled the rider's answer. */
+  paidStatus?: DeliveryPaidStatus;
+  amountCollected?: string | null;
+  amountDue?: string | null;
 }
 
 export type SubmitBillPhotoResponse = ApiEnvelope<SubmitBillPhotoResult>;

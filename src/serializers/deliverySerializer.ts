@@ -17,6 +17,7 @@ import type {
   ShadowInventoryRecord,
   ShadowInventoryChange,
 } from '../models/deliveryModel';
+import type { DeliveryPaidStatus } from '../utils/deliveryCollection';
 import type {
   DeliveryApiEntity,
   DeliveryPersonApiEntity,
@@ -65,6 +66,7 @@ const mapItemLine = (
   deliveredQty: raw.deliveredQty !== undefined ? toNum(raw.deliveredQty, 0) : undefined,
   returnedQty: raw.returnedQty !== undefined ? toNum(raw.returnedQty, 0) : undefined,
   unitPrice: toNum(raw.unitPrice, 0),
+  taxRate: toNum(raw.taxRate, 0),
 });
 
 const mapStatusHistory = (
@@ -77,8 +79,8 @@ const mapStatusHistory = (
 });
 
 /** Faithful pass-through; anything unrecognised (incl. null) stays undefined. */
-const mapPaidStatus = (v: unknown): 'paid' | 'unpaid' | undefined =>
-  v === 'paid' || v === 'unpaid' ? v : undefined;
+const mapPaidStatus = (v: unknown): DeliveryPaidStatus | undefined =>
+  v === 'paid' || v === 'partial' || v === 'unpaid' ? v : undefined;
 
 export const mapDelivery = (
   raw: Partial<DeliveryApiEntity> & Record<string, any>,
@@ -121,6 +123,12 @@ export const mapDelivery = (
   // tell a pre-paid job from a cash one and always asked for payment.
   prepaid: Boolean(raw.prepaid ?? raw.pre_paid),
   paidStatus: mapPaidStatus(raw.paidStatus ?? raw.paid_status),
+  advanceAmount: toNum(raw.advanceAmount ?? raw.advance_amount, 0),
+  advancePaymentId: raw.advancePaymentId ?? raw.advance_payment_id ?? null,
+  amountCollected:
+    raw.amountCollected === null || raw.amountCollected === undefined
+      ? null
+      : toNum(raw.amountCollected, 0),
 });
 
 
@@ -192,8 +200,13 @@ export const mapInventoryUpdateRequest = (
   reviewerRole: raw.reviewerRole ?? null,
   reversalCreditMemoId: (raw as any).reversalCreditMemoId ?? null,
   reviewerComment: raw.reviewerComment,
-  paidStatus: (raw as any).paidStatus === 'paid' ? 'paid' : 'unpaid',
+  paidStatus: mapPaidStatus((raw as any).paidStatus) ?? 'unpaid',
   prepaid: Boolean((raw as any).prepaid),
+  advanceAmount: (raw as any).advanceAmount ?? '0',
+  advanceApplied: (raw as any).advanceApplied ?? '0',
+  amountDue: (raw as any).amountDue ?? (raw as any).saleAmount ?? '0',
+  amountCollected: (raw as any).amountCollected ?? '0',
+  balanceDue: (raw as any).balanceDue ?? '0',
   ledgerStatus: (raw as any).ledgerStatus ?? 'none',
   customerId: (raw as any).customerId ?? '',
   customerName: (raw as any).customerName ?? '',

@@ -29,6 +29,7 @@ import {
   setSignedBy,
   setNote,
   setPaidStatus,
+  setAmountCollected,
   setReturnedQty,
   submitBillPhoto,
   selectBillPhotoUri,
@@ -36,10 +37,13 @@ import {
   selectBillPhotoSignedBy,
   selectBillPhotoNote,
   selectBillPhotoPaidStatus,
+  selectBillPhotoAmountCollected,
   selectBillPhotoReturnedQtys,
   selectBillPhotoIsSubmitting
 } from './dpBillPhotoCaptureSlice';
 import { THEME } from '../../../../utils/theme';
+import { formatCurrency } from '../../../../utils/formatters';
+import { doorAmounts, partialAmountError } from '../../../../utils/deliveryCollection';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'BillPhotoCapture'>;
@@ -57,6 +61,7 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
   const signedBy = useAppSelector(selectBillPhotoSignedBy);
   const note = useAppSelector(selectBillPhotoNote);
   const paidStatus = useAppSelector(selectBillPhotoPaidStatus);
+  const amountCollectedText = useAppSelector(selectBillPhotoAmountCollected);
   const returnedQtys = useAppSelector(selectBillPhotoReturnedQtys);
   const isSubmitting = useAppSelector(selectBillPhotoIsSubmitting);
 
@@ -74,20 +79,10 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
     [approvalRequests, deliveryId],
   );
 
-  // Paid before dispatch: the rider collects a signature, never money.
-  const isPrepaid = Boolean(delivery?.prepaid);
-
-  /**
-   * The payment status this submission will carry.
-   *
-   * Pre-paid deliveries are settled already and show no PAID / NOT PAID
-   * choice, so `paidStatus` stays null for them forever. Everything that asks
-   * "do we have an answer yet?" — the submit guard, the button's disabled
-   * state, the payload — must read THIS, not the raw state, or the button
-   * stays greyed out on a form the rider has completed. Deriving it once
-   * keeps those three in agreement.
-   */
-  const effectivePaidStatus = isPrepaid ? 'paid' : paidStatus;
+  // A delivery can't be both "loading" and missing its showSuccess state:
+  // hooks must run in the same order on every render, so this lives above
+  // the early return below.
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Per-line delivered/returned split. The rider enters what came BACK; what
   // was delivered is the remainder. Every line used to be hard-coded to
@@ -113,6 +108,33 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [delivery?.items, returnedQtys]);
 
   const invalidLine = lines.find(l => !l.valid);
+
+  /**
+   * What is left to collect for the goods the customer is keeping, after any
+   * advance. Recomputed as returns are typed, because a returned unit is not
+   * paid for. When nothing is due — prepaid in full, or a short delivery the
+   * advance still covers — the rider is not asked about payment at all.
+   */
+  const door = doorAmounts(
+    lines.map(l => {
+      const item = delivery?.items?.find(i => i.itemId === l.itemId);
+      return { deliveredQty: l.deliveredQty, unitPrice: item?.unitPrice ?? 0, taxRate: item?.taxRate ?? 0 };
+    }),
+    { advanceAmount: delivery?.advanceAmount, prepaid: delivery?.prepaid },
+  );
+  const hasAdvance = door.advanceApplied > 0;
+
+  /**
+   * The payment status this submission will carry.
+   *
+   * With nothing due there is no choice on screen, so `paidStatus` stays null.
+   * Everything that asks "do we have an answer yet?" — the submit guard, the
+   * button's disabled state, the payload — must read THIS, not the raw state,
+   * or the button stays greyed out on a form the rider has completed.
+   */
+  const effectivePaidStatus = door.nothingDue ? 'paid' : paidStatus;
+  const partialError =
+    effectivePaidStatus === 'partial' ? partialAmountError(amountCollectedText, door.amountDue) : undefined;
   const totalReturned = lines.reduce((sum, l) => sum + l.returnedQty, 0);
   const totalDispatched = lines.reduce((sum, l) => sum + l.dispatched, 0);
   // Nothing accepted at all. The admin should REJECT this rather than approve
@@ -216,13 +238,17 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert('Customer name required', 'Enter the name printed on the signed bill.');
       return;
     }
-    // Pre-paid deliveries never ask the question, so there is nothing to
-    // require. They submit 'paid', matching what Stage 1 already recorded.
+    // With nothing due the question is never asked, so there is nothing to
+    // require: the submission carries 'paid', and the server agrees.
     if (!effectivePaidStatus) {
       Alert.alert(
         'Payment status required',
-        'Select whether the customer PAID (cash collected) or NOT PAID (on credit) before submitting.',
+        `Select whether the customer PAID the ${formatCurrency(door.amountDue)}, paid PART of it, or has NOT PAID.`,
       );
+      return;
+    }
+    if (partialError) {
+      Alert.alert('Check the amount received', partialError);
       return;
     }
     if (!delivery.assignedTo) {
@@ -252,6 +278,8 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           source: photoSource ?? 'camera',
           signedBy: signedBy.trim(),
           paidStatus: effectivePaidStatus,
+          amountCollected:
+            effectivePaidStatus === 'partial' ? amountCollectedText.replace(/[,\s]/g, '') : undefined,
           note: note.trim() || undefined,
           // deliveredQty is the field with ledger effect: on approval the
           // backend derives returned as (dispatched - delivered), invoices
@@ -280,7 +308,6 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const itemsCount = delivery.items?.length ?? 0;
-  const [showSuccess, setShowSuccess] = useState(false);
 
   if (showSuccess) {
     return (
@@ -447,11 +474,11 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
             />
           </View>
 
-          {/* Pre-paid orders are already settled, so asking the rider to
-              choose PAID / NOT PAID invites them to demand money at the door —
-              and the answer is ignored anyway: approval branches on `prepaid`
-              before it ever reads this. Tell them instead of asking. */}
-          {isPrepaid ? (
+          {/* Nothing left to pay (prepaid, or covered by the advance): tell the
+              rider not to collect, rather than ask a question whose answer
+              could only be wrong. Otherwise: how much to collect, and what
+              the customer actually paid. */}
+          {door.nothingDue ? (
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Payment</Text>
               <View style={paidStyles.prepaidPanel}>
@@ -461,9 +488,10 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
                 <View style={{ flex: 1 }}>
                   <Text style={paidStyles.prepaidTitle}>Already paid</Text>
                   <Text style={paidStyles.prepaidBody}>
-                    This is a pre-paid order — the customer paid before dispatch.
-                    Do not collect any cash. Just get the bill signed and
-                    photographed as usual.
+                    {delivery.prepaid
+                      ? 'This is a pre-paid order — the customer paid before dispatch.'
+                      : `The customer paid ${formatCurrency(door.advanceApplied)} in advance, which covers what they are keeping.`}{' '}
+                    Do not collect any cash. Just get the bill signed and photographed as usual.
                   </Text>
                 </View>
               </View>
@@ -471,67 +499,75 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           ) : (
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Payment collected?</Text>
-            <View style={paidStyles.row}>
-              <TouchableOpacity
-                style={[paidStyles.option, paidStatus === 'paid' && paidStyles.optionPaid]}
-                onPress={() => dispatch(setPaidStatus('paid'))}
-                disabled={isSubmitting}
-                activeOpacity={0.85}
-              >
-                <Feather
-                  name="check-circle"
-                  size={18}
-                  color={paidStatus === 'paid' ? THEME.colors.textInverse : THEME.colors.success}
-                />
-                <Text
-                  style={[
-                    paidStyles.optionText,
-                    { color: paidStatus === 'paid' ? THEME.colors.textInverse : THEME.colors.success },
-                  ]}
-                >
-                  PAID
+            <View style={paidStyles.duePanel}>
+              <Text style={paidStyles.dueLabel}>AMOUNT TO COLLECT</Text>
+              <Text style={paidStyles.dueAmount}>{formatCurrency(door.amountDue)}</Text>
+              {hasAdvance && (
+                <Text style={paidStyles.dueSub}>
+                  {formatCurrency(door.gross)} for the goods kept, less {formatCurrency(door.advanceApplied)} paid in advance
                 </Text>
-                <Text
-                  style={[
-                    paidStyles.optionHint,
-                    paidStatus === 'paid' && { color: THEME.colors.textInverse },
-                  ]}
-                >
-                  Cash collected
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[paidStyles.option, paidStatus === 'unpaid' && paidStyles.optionUnpaid]}
-                onPress={() => dispatch(setPaidStatus('unpaid'))}
-                disabled={isSubmitting}
-                activeOpacity={0.85}
-              >
-                <Feather
-                  name="clock"
-                  size={18}
-                  color={paidStatus === 'unpaid' ? THEME.colors.textInverse : THEME.colors.warning}
-                />
-                <Text
-                  style={[
-                    paidStyles.optionText,
-                    { color: paidStatus === 'unpaid' ? THEME.colors.textInverse : THEME.colors.warning },
-                  ]}
-                >
-                  NOT PAID
-                </Text>
-                <Text
-                  style={[
-                    paidStyles.optionHint,
-                    paidStatus === 'unpaid' && { color: THEME.colors.textInverse },
-                  ]}
-                >
-                  On credit
-                </Text>
-              </TouchableOpacity>
+              )}
             </View>
+            <View style={paidStyles.row}>
+              {([
+                { key: 'paid', label: 'PAID', hint: 'All of it', icon: 'check-circle', on: paidStyles.optionPaid, tone: THEME.colors.success },
+                { key: 'partial', label: 'PARTIAL', hint: 'Some of it', icon: 'pie-chart', on: paidStyles.optionPartial, tone: THEME.colors.info },
+                { key: 'unpaid', label: 'NOT PAID', hint: 'On account', icon: 'clock', on: paidStyles.optionUnpaid, tone: THEME.colors.warning },
+              ] as const).map(opt => {
+                const selected = paidStatus === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[paidStyles.option, selected && opt.on]}
+                    onPress={() => dispatch(setPaidStatus(opt.key))}
+                    disabled={isSubmitting}
+                    activeOpacity={0.85}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                  >
+                    <Feather name={opt.icon} size={18} color={selected ? THEME.colors.textInverse : opt.tone} />
+                    <Text style={[paidStyles.optionText, { color: selected ? THEME.colors.textInverse : opt.tone }]}>
+                      {opt.label}
+                    </Text>
+                    <Text style={[paidStyles.optionHint, selected && { color: THEME.colors.textInverse }]}>
+                      {opt.hint}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {paidStatus === 'partial' && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={styles.fieldLabel}>Amount received</Text>
+                <TextInput
+                  style={[styles.input, !!partialError && amountCollectedText !== '' && styles.qtyInputError]}
+                  value={amountCollectedText}
+                  onChangeText={t => dispatch(setAmountCollected(t.replace(/[^0-9.]/g, '')))}
+                  placeholder={`Less than ${formatCurrency(door.amountDue)}`}
+                  placeholderTextColor={THEME.colors.textTertiary}
+                  keyboardType="decimal-pad"
+                  editable={!isSubmitting}
+                  maxLength={14}
+                />
+                {!!partialError && amountCollectedText !== '' ? (
+                  <Text style={styles.qtyError}>{partialError}</Text>
+                ) : (
+                  (() => {
+                    const received = Number(amountCollectedText) || 0;
+                    const left = Math.max(door.amountDue - received, 0);
+                    return received > 0 ? (
+                      <Text style={paidStyles.note}>
+                        {formatCurrency(left)} stays on the customer’s account.
+                      </Text>
+                    ) : null;
+                  })()
+                )}
+              </View>
+            )}
             <Text style={paidStyles.note}>
               This choice posts nothing to the books. Accounting happens only when the
-              admin approves: PAID records the cash, NOT PAID leaves an open invoice.
+              admin approves: the cash you collected is recorded, and anything unpaid
+              stays on the customer’s account.
             </Text>
           </View>
           )}
@@ -605,11 +641,11 @@ const BillPhotoCaptureScreen: React.FC<Props> = ({ navigation, route }) => {
           <TouchableOpacity
             style={[
               styles.submitBtn,
-              (!photoUri || !effectivePaidStatus || isSubmitting || alreadySubmitted || !!invalidLine) &&
+              (!photoUri || !effectivePaidStatus || !!partialError || isSubmitting || alreadySubmitted || !!invalidLine) &&
                 styles.submitBtnDisabled,
             ]}
             onPress={handleSubmit}
-            disabled={!photoUri || !effectivePaidStatus || isSubmitting || alreadySubmitted || !!invalidLine}
+            disabled={!photoUri || !effectivePaidStatus || !!partialError || isSubmitting || alreadySubmitted || !!invalidLine}
             activeOpacity={0.9}
           >
             {isSubmitting ? (
@@ -936,6 +972,33 @@ const paidStyles = StyleSheet.create({
   optionUnpaid: {
     backgroundColor: THEME.colors.warning,
     borderColor: THEME.colors.warning
+  },
+  optionPartial: {
+    backgroundColor: THEME.colors.info,
+    borderColor: THEME.colors.info
+  },
+  duePanel: {
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.radius.lg,
+    padding: 14,
+    marginBottom: 10
+  },
+  dueLabel: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    letterSpacing: 0.5
+  },
+  dueAmount: {
+    ...THEME.typography.h3,
+    color: THEME.colors.textPrimary,
+    marginTop: 2
+  },
+  dueSub: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: 2
   },
   optionText: {
     ...THEME.typography.labelLg,

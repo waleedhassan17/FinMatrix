@@ -27,8 +27,10 @@ export interface DPBillPhotoCaptureSliceState {
   source: BillPhotoSource | null;
   signedBy: string;
   note: string;
-  /** PAID / NOT PAID choice — required before submitting (phase1.md Stage 2). */
+  /** PAID / PARTIAL / NOT PAID — required before submitting, unless nothing is due. */
   paidStatus: DeliveryPaidStatus | null;
+  /** Raw text of the amount received, read only for PARTIAL. */
+  amountCollected: string;
   /**
    * Units the customer refused, keyed by itemId. Kept as raw strings because
    * they come straight off TextInputs; an absent or blank entry means nothing
@@ -46,6 +48,7 @@ const initialState: DPBillPhotoCaptureSliceState = {
   signedBy: '',
   note: '',
   paidStatus: null,
+  amountCollected: '',
   returnedQtys: {},
   isSubmitting: false,
   error: '',
@@ -74,6 +77,9 @@ export const dpBillPhotoCaptureSlice = createAppSlice({
     }),
     setPaidStatus: create.reducer((state, action: { payload: DeliveryPaidStatus }) => {
       state.paidStatus = action.payload;
+    }),
+    setAmountCollected: create.reducer((state, action: { payload: string }) => {
+      state.amountCollected = action.payload;
     }),
     setReturnedQty: create.reducer(
       (state, action: { payload: { itemId: string; qty: string } }) => {
@@ -174,6 +180,7 @@ export const dpBillPhotoCaptureSlice = createAppSlice({
     selectBillPhotoSignedBy: state => state.signedBy,
     selectBillPhotoNote: state => state.note,
     selectBillPhotoPaidStatus: state => state.paidStatus,
+    selectBillPhotoAmountCollected: state => state.amountCollected,
     selectBillPhotoReturnedQtys: state => state.returnedQtys,
     selectBillPhotoIsSubmitting: state => state.isSubmitting,
   },
@@ -185,6 +192,7 @@ export const {
   setSignedBy,
   setNote,
   setPaidStatus,
+  setAmountCollected,
   setReturnedQty,
   resetBillPhotoState,
   submitBillPhoto,
@@ -197,6 +205,7 @@ export const {
   selectBillPhotoSignedBy,
   selectBillPhotoNote,
   selectBillPhotoPaidStatus,
+  selectBillPhotoAmountCollected,
   selectBillPhotoReturnedQtys,
   selectBillPhotoIsSubmitting,
 } = dpBillPhotoCaptureSlice.selectors;

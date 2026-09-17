@@ -159,14 +159,17 @@ const CreditMemoFormScreen: React.FC = () => {
         ...(reversal
           ? {
               originalInvoiceId: reversal.originalInvoiceId ?? undefined,
-              // A credit sale still owes money, so the credit clears the
-              // invoice. A prepaid one has nothing left to settle, so the
-              // money goes back out as cash — without this the credit would
+              // What the customer still owes is cleared from the invoice; what
+              // they already paid (advance, cash at the door, a later receipt)
+              // goes back out as cash — without the refund the credit would
               // leave accounts receivable negative until somebody raised a
-              // separate refund.
-              ...(reversal.settlement === 'apply_to_invoice'
-                ? { applyToInvoiceId: reversal.originalInvoiceId ?? undefined }
-                : { refundRemainderToCash: true }),
+              // separate one. A part-paid delivery needs both.
+              ...(reversal.settlement !== 'refund_cash' && reversal.originalInvoiceId
+                ? { applyToInvoiceId: reversal.originalInvoiceId }
+                : {}),
+              ...(reversal.settlement !== 'apply_to_invoice' || !reversal.originalInvoiceId
+                ? { refundRemainderToCash: true }
+                : {}),
               // Recorded on the delivery so it cannot be reversed twice.
               reversesDeliveryRequestId: reversal.deliveryRequestId,
             }
@@ -213,6 +216,8 @@ const CreditMemoFormScreen: React.FC = () => {
               {' '}
               {reversal.settlement === 'apply_to_invoice'
                 ? `This settles invoice ${reversal.invoiceNumber ?? ''}.`
+                : reversal.settlement === 'apply_then_refund'
+                ? `This clears what is still owing on invoice ${reversal.invoiceNumber ?? ''} and refunds what the customer already paid in cash.`
                 // Prepaid or collected at the door: the customer has the goods
                 // and the business has their money, so reversing means giving
                 // it back.

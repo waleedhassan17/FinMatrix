@@ -270,7 +270,10 @@ export const getInventoryApprovalDetailAPI = async (id: string): Promise<any> =>
 // selling price anywhere on it, a zero-total invoice). Those arrive as codes,
 // and a plain Error would flatten them to a string the screen cannot branch on
 // — hence toApiError, which keeps the code readable even after .unwrap().
-export const reviewInventoryApprovalAPI = async (id: string, data: { action: 'approved' | 'rejected'; notes?: string }): Promise<any> => {
+export const reviewInventoryApprovalAPI = async (
+  id: string,
+  data: { action: 'approved' | 'rejected'; notes?: string; amountCollected?: string },
+): Promise<any> => {
   try {
     const response = await api.patch(`/inventory-approvals/${id}/review`, data);
     return response.data;
@@ -360,14 +363,21 @@ export const getDeliveryLocationHistoryAPI = async (deliveryId: string): Promise
 // ─── Aliases used by inventoryApprovalSlice ─────────
 export const getInventoryUpdateRequestsAPI = getInventoryApprovalsAPI;
 
+/**
+ * `amountCollected` is the owner's count of the cash the rider handed in. Send
+ * it only when it differs from the rider's figure; the server keeps both on
+ * the audit trail.
+ */
 export const approveInventoryUpdateRequestAPI = async (
   requestId: string,
   reviewerComment?: string,
   reviewedBy?: string,
+  amountCollected?: string,
 ): Promise<any> =>
   reviewInventoryApprovalAPI(requestId, {
     action: 'approved',
     notes: reviewerComment,
+    ...(amountCollected !== undefined ? { amountCollected } : {}),
   });
 
 export const rejectInventoryUpdateRequestAPI = async (
@@ -463,8 +473,11 @@ export interface DeliveryCreditMemoDraft {
    * settle, so the money goes back out as cash rather than leaving accounts
    * receivable negative.
    */
-  settlement: 'apply_to_invoice' | 'refund_cash';
+  /** apply_then_refund: part paid — clear what is owed, refund what was paid. */
+  settlement: 'apply_to_invoice' | 'refund_cash' | 'apply_then_refund';
   settlementAmount: string;
+  /** Cash going back to the customer. */
+  refundAmount?: string;
   date: string;
   reason: string;
   lines: Array<{

@@ -198,11 +198,18 @@ export const inventoryApprovalSlice = createAppSlice({
     ),
     /** Approve a request through the API and merge the serialized response. */
     approveRequestAsync: create.asyncThunk(
-      async (params: { requestId: string; reviewedBy: string; reviewerComment?: string }) =>
+      async (params: {
+        requestId: string;
+        reviewedBy: string;
+        reviewerComment?: string;
+        /** The owner's cash count, when it differs from the rider's figure. */
+        amountCollected?: string;
+      }) =>
         approveInventoryUpdateRequestAPI(
           params.requestId,
           params.reviewerComment,
           params.reviewedBy,
+          params.amountCollected,
         ),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
