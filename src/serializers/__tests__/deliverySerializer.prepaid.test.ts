@@ -42,7 +42,7 @@ describe('mapDelivery — payment fields', () => {
     expect(mapDelivery({ ...base, paidStatus: 'weird' as any }).paidStatus).toBeUndefined();
   });
   it('carries a part advance, the cash collected and PARTIAL', () => {
-    const d = mapDelivery({ ...base, paidStatus: 'partial', advanceAmount: '300.0000', amountCollected: '150.0000' });
+    const d = mapDelivery({ ...base, paidStatus: 'partial', advanceAmount: '300.0000', amountCollected: '150.0000' } as any);
     expect(d.paidStatus).toBe('partial');
     expect(d.advanceAmount).toBe(300);
     expect(d.amountCollected).toBe(150);
@@ -51,7 +51,7 @@ describe('mapDelivery — payment fields', () => {
   });
 
   it('keeps each line tax rate so the rider sees the right amount to collect', () => {
-    const d = mapDelivery({ ...base, items: [{ itemId: 'i1', orderedQty: '2', unitPrice: '150', taxRate: '10' }] });
+    const d = mapDelivery({ ...base, items: [{ itemId: 'i1', orderedQty: '2', unitPrice: '150', taxRate: '10' }] } as any);
     expect(d.items[0].taxRate).toBe(10);
   });
 });
