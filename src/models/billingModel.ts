@@ -145,36 +145,3 @@ export interface PaymentSubmissionView {
   /** Hours waiting while still submitted; null once decided. */
   ageHours?: number | null;
 }
-
-/** Queue filter: a specific kind, or every non-trial payment. */
-export type SubmissionKindFilter = SubmissionKind | 'PAYMENT';
-
-export interface RevenueSummary {
-  totalMinorUnits: number;
-  totalLabel: string;
-  thisMonthMinorUnits: number;
-  thisMonthLabel: string;
-  paymentsCount: number;
-  pendingSubmissions: number;
-  byPlan: { plan: PlanKey; planLabel: string; payments: number; totalMinorUnits: number }[];
-  byCompany: {
-    companyId: string;
-    companyName: string;
-    payments: number;
-    totalMinorUnits: number;
-    lastPlan: string;
-  }[];
-  monthly: { year: number; month: number; totalMinorUnits: number }[];
-  entries: {
-    id: string;
-    submissionId: string;
-    companyId: string;
-    companyName: string;
-    plan: PlanKey;
-    planLabel: string;
-    amountMinorUnits: number;
-    amountLabel: string;
-    currency: string;
-    recordedAt: string;
-  }[];
-}

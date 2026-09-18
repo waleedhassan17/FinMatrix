@@ -1,11 +1,14 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Billing / Subscription Network (phase2.md)
 // One reusable manual bank-transfer flow (bill → screenshot → admin approval)
-// across signup / renewal / upgrade, plus plan-limit + super-admin review APIs.
+// across signup / renewal / upgrade, plus plan limits and signup plan choice.
+//
+// The reviewer's side of that flow — listing, approving and rejecting
+// submissions under /admin/payment-submissions — belongs to the platform
+// console, which ships as its own app (FinMatrix Admin).
 // ═══════════════════════════════════════════════════════
 
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system/legacy';
 import {
   api,
   API_BASE_URL,
@@ -19,16 +22,12 @@ import {
 // existing `import { … } from 'networks/billing/billingNetwork'` keeps working.
 import type {
   PlanKey,
-  TierPlanCard,
-  SubmissionKind,
-  SubmissionStatus,
   BillingStatus,
   PlanLimits,
   BankDetails,
   PaymentSubmissionView,
-  RevenueSummary,
   StartTrialResult,
-  SubmissionKindFilter,
+  TierPlanCard,
 } from '../../models/billingModel';
 import {
   billingEnvelopeSerializer,
@@ -44,9 +43,7 @@ export type {
   PlanLimits,
   BankDetails,
   PaymentSubmissionView,
-  RevenueSummary,
   StartTrialResult,
-  SubmissionKindFilter,
 } from '../../models/billingModel';
 
 const unwrap = billingEnvelopeSerializer;
@@ -230,121 +227,4 @@ export const selfSubscribeAPI = async (planId: string): Promise<any> => {
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }
-};
-
-// ─── Super-admin review ───────────────────────────────
-
-export const listPaymentSubmissionsAPI = async (
-  status?: SubmissionStatus,
-  filters: { kind?: SubmissionKindFilter; order?: 'asc' | 'desc' } = {},
-): Promise<PaymentSubmissionView[]> => {
-  try {
-    const res = await api.get('/admin/payment-submissions', {
-      params: {
-        ...(status ? { status } : {}),
-        ...(filters.kind ? { kind: filters.kind } : {}),
-        ...(filters.order ? { order: filters.order } : {}),
-      },
-    });
-    return submissionListSerializer(res);
-  } catch (e) {
-    throw new Error(extractErrorMessage(e));
-  }
-};
-
-/** Platform revenue collected from approved submissions (super-admin). */
-export const getPlatformRevenueAPI = async (): Promise<RevenueSummary> => {
-  try {
-    const res = await api.get('/admin/payment-submissions/revenue/summary');
-    return unwrap(res);
-  } catch (e) {
-    throw new Error(extractErrorMessage(e));
-  }
-};
-
-export const approvePaymentSubmissionAPI = async (
-  id: string,
-): Promise<PaymentSubmissionView> => {
-  try {
-    const res = await api.patch(`/admin/payment-submissions/${id}/approve`);
-    return unwrap(res);
-  } catch (e) {
-    throw new Error(extractErrorMessage(e));
-  }
-};
-
-/**
- * Reject a submission. `blockFutureTrials` applies to TRIAL requests only:
- * false (default) frees the email/phone to ask again; true refuses future
- * trials for them permanently.
- */
-export const rejectPaymentSubmissionAPI = async (
-  id: string,
-  reason: string,
-  blockFutureTrials?: boolean,
-): Promise<PaymentSubmissionView> => {
-  try {
-    const res = await api.patch(`/admin/payment-submissions/${id}/reject`, {
-      reason,
-      ...(blockFutureTrials ? { blockFutureTrials: true } : {}),
-    });
-    return unwrap(res);
-  } catch (e) {
-    throw new Error(extractErrorMessage(e));
-  }
-};
-
-/**
- * The screenshot endpoint is auth-gated. React Native's <Image source={{ uri,
- * headers }} /> does NOT reliably attach auth headers, and fetch→blob→FileReader
- * base64 is unreliable for binary in RN. The robust path is a NATIVE download
- * (expo-file-system) that sends the bearer token and writes the real bytes to
- * disk; <Image source={{ uri: file://… }} /> then always renders it.
- * Returns a local file:// URI.
- */
-export const downloadSubmissionScreenshot = async (
-  id: string,
-  scope: 'admin' | 'company',
-): Promise<string> => {
-  const token = await getAccessToken();
-  const companyId = await getStoredCompanyId();
-  const path =
-    scope === 'admin'
-      ? `/admin/payment-submissions/${id}/screenshot`
-      : `/billing/submissions/${id}/screenshot`;
-
-  if (Platform.OS === 'web') {
-    // expo-file-system has no web implementation — fetch with auth headers
-    // and hand <Image> an object URL instead.
-    const res = await fetch(`${API_BASE_URL}${path}`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        ...(scope === 'company' && companyId ? { 'x-company-id': companyId } : {}),
-      },
-    });
-    if (!res.ok) {
-      throw new Error(
-        res.status === 404
-          ? 'Screenshot is no longer available.'
-          : `Could not load screenshot (${res.status}).`,
-      );
-    }
-    return URL.createObjectURL(await res.blob());
-  }
-
-  const dest = `${FileSystem.cacheDirectory}pay-screenshot-${id}-${Date.now()}.img`;
-  const result = await FileSystem.downloadAsync(`${API_BASE_URL}${path}`, dest, {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : '',
-      ...(scope === 'company' && companyId ? { 'x-company-id': companyId } : {}),
-    },
-  });
-  if (result.status >= 400) {
-    throw new Error(
-      result.status === 404
-        ? 'Screenshot is no longer available.'
-        : `Could not load screenshot (${result.status}).`,
-    );
-  }
-  return result.uri;
 };

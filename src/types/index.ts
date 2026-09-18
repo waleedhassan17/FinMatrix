@@ -840,11 +840,11 @@ export type RootStackParamList = {
   CompanyRejected: { fromLogin?: boolean; mode?: 'rejected' | 'inactive'; reason?: string } | undefined;
   AdminTabs: undefined;
   DeliveryTabs: undefined;
-  SuperAdminTabs: undefined;
   SubscriptionSelect: { companyId?: string; companyType?: string } | undefined;
   RenewSubscription: { mode?: 'renew' | 'change' } | undefined;
   SubscriptionPay: { plan: string; mode?: 'renew' | 'change' | 'signup'; companyId?: string };
-  PaymentSubmissions: undefined;
+  // A platform admin signed into the customer app. See ConsoleMovedScreen.
+  ConsoleMoved: undefined;
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;
   DeliveryPersonnelDetail: { userId: string };

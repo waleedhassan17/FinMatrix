@@ -53,7 +53,6 @@ import { adminDeliveryDetailSlice } from '../screens/Delivery/Admin/AdminDeliver
 import { inventoryApprovalSlice } from '../screens/Delivery/Admin/InventoryApproval/inventoryApprovalSlice';
 import { approvalsSlice } from '../screens/Approvals/approvalsSlice';
 import { adminDashboardSlice } from '../screens/HomeScreen/adminDashboardSlice';
-import { superAdminSlice } from '../screens/SuperAdmin/superAdminSlice';
 import { coaListSlice } from '../screens/ChartOfAccounts/COAList/coaListSlice';
 import { coaFormSlice } from '../screens/ChartOfAccounts/COAForm/coaFormSlice';
 import { coaDetailSlice } from '../screens/ChartOfAccounts/COADetail/coaDetailSlice';
@@ -168,7 +167,6 @@ const rootReducer = combineReducers({
   approvals: approvalsSlice.reducer,
   delivery: deliverySlice.reducer,
   adminDashboard: adminDashboardSlice.reducer,
-  superAdmin: superAdminSlice.reducer,
   coaList: coaListSlice.reducer,
   coaForm: coaFormSlice.reducer,
   coaDetail: coaDetailSlice.reducer,
