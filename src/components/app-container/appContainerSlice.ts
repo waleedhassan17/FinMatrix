@@ -76,6 +76,17 @@ export const appContainerSlice = createAppSlice({
           const me = await authMe();
           const user = me?.data?.user;
           if (!user) throw new Error('Empty /auth/me response');
+          // A platform-console session restored from disk. Sign-in refuses
+          // these, but a token stored before the console moved to its own app
+          // is still valid, and /auth/me still returns it — so this path never
+          // touches SignInScreen and would otherwise drop an account with no
+          // company into the company-creation wizard, which has no way out.
+          // Clear it and land on sign-in, where the refusal explains itself.
+          if (user.role === 'super_admin') {
+            await clearTokens();
+            dispatch(signOut());
+            return { restored: false as const };
+          }
           if (me.data.companyId) {
             await setStoredCompanyId(me.data.companyId);
           }

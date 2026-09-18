@@ -149,8 +149,10 @@ export const GOVERNANCE_CAPABILITIES: Capability[] = [
  * What happens if this role performs this action.
  *
  * Riders never see these surfaces (they have their own navigator), and
- * super_admin is a platform console outside the company model — both get
- * `false` rather than a special case scattered through the screens.
+ * super_admin is a platform console outside the company model — its app is a
+ * separate one entirely, and sign-in turns such an account away before a
+ * session exists. Both get `false` rather than a special case scattered
+ * through the screens, which keeps the fallback honest if either ever arrives.
  */
 export const capabilityFor = (
   role: UserRole | null | undefined,

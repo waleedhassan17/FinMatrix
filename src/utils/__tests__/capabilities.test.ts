@@ -162,6 +162,8 @@ describe('capabilities — Table A', () => {
   });
 
   describe('other roles', () => {
+    // The console is a separate app, and BaseNavigator turns such a session
+    // away — but the role still exists, and this keeps the fallback honest.
     it('riders and the platform console reach none of these surfaces', () => {
       for (const capability of ALL_CAPABILITIES) {
         expect(can('delivery', capability)).toBe(false);

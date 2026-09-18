@@ -158,23 +158,18 @@ export const AppContainer: React.FC = () => {
   // ─── Which top-level navigator mounts (was BaseNavigator's role switch).
   // Role first (riders have no company gates); an approved, email-verified
   // admin gets their tier's app; every other state — unauthenticated, email
-  // verify, pending, inactive, rejected, draft, onboarding, and a platform
-  // admin who is in the wrong app entirely — is handled inside BaseNavigator.
+  // verify, pending, inactive, rejected, draft, onboarding — is a session gate
+  // handled inside BaseNavigator.
   const renderNavigator = () => {
     if (!isAuthenticated || !user) {
       return <BaseNavigator key="base-unauthenticated" />;
     }
-    // The platform console ships as its own app (FinMatrix Admin) — it used to
-    // mount here. The branch stays because the server still authenticates a
-    // platform admin against this app (/auth/signin admits them on portal
-    // 'admin' alongside owners), and both entry points — a fresh sign-in and
-    // bootstrapSession restoring a stored token — funnel through this switch.
-    // BaseNavigator sends them to ConsoleMovedScreen: an explanation with a
-    // sign-out. Deleting the branch instead drops them through every company
-    // gate onto "Set up your workspace", which has no way out.
-    if (user.role === 'super_admin') {
-      return <BaseNavigator key="base-wrong-app" />;
-    }
+    // No super_admin branch: the platform console is its own app now, and a
+    // console account never reaches this switch. Both doors are shut earlier —
+    // authLogin refuses one before storing a token, bootstrapSession clears a
+    // stored one. That ordering matters: renderNavigator only runs once
+    // bootstrapSession has settled (isAppReady), so there is no window where a
+    // restored console session could render a company navigator.
     if (user.role === 'delivery') {
       return <DeliveryTabNavigator key="delivery" />;
     }

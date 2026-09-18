@@ -438,8 +438,8 @@ export const HEADER_NAVY = [HEADER_BG, HEADER_BG] as const;
  * Every domain in the app names its states differently — an invoice is `paid`,
  * a company is `active`, a payment is `approved` — but they mean the same six
  * things, and before this they were coloured by whichever palette the screen
- * happened to define. The SuperAdmin console alone carried five copies of an
- * Atlassian status map.
+ * happened to define. The platform console alone, before it moved to its own
+ * app, carried five copies of an Atlassian status map.
  *
  * Boundary with STATUS_CONFIG below: that map is the delivery domain's own
  * vocabulary and adds a label and an icon this cannot. Its colours are already

@@ -53,7 +53,7 @@ This guide always tests both.
 | **Warehouse admin** | `warehouse@gmail.com` | `123456` | The full app — accounting, inventory, purchasing, delivery, reports |
 | **Rider 1** (Saim Raza) | `rider1@warehouseco.com` | `123456` | Rider app only — their own deliveries |
 | **Rider 2** (Haseeb Ali) | `rider2@warehouseco.com` | `123456` | Rider app only — their own deliveries |
-| **Platform super-admin** | `waleedhassansfd@gmail.com` | `Waleed@104` (prod) · `123456` (local QA) | Company approvals, payment verification, feature kill switch |
+| **Platform super-admin** | `waleedhassansfd@gmail.com` | `Waleed@104` (prod) · `123456` (local QA) | Company approvals, payment verification, feature kill switch — **in the FinMatrix Admin app, not this one** |
 
 
 > **The super-admin password differs between environments.** `Waleed@104` is the real one, but on the
@@ -74,7 +74,7 @@ signed-in user's role ([AppContainer.tsx](src/components/app-container/AppContai
 |---|---|---|
 | Company admin/owner | `AdminTabNavigator` | Dashboard · Transactions · Reports · Inventory · More |
 | `delivery` (rider) | `DeliveryTabNavigator` | Dashboard · Deliveries · Inventory · Profile |
-| Platform super-admin | `SuperAdminNavigator` | Company approvals, payments, overrides |
+| Platform super-admin | **Not in this app** — the console is a separate project, `FinMatrix-Admin-App`. Signing in here is refused on the sign-in form: *"This account signs in through the FinMatrix Admin app."* | — |
 
 A rider **cannot navigate to an accounting screen** — those routes are not registered in their
 navigator at all, and the server answers 403 even if the request is made directly. You will verify

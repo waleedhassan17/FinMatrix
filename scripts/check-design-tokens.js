@@ -41,7 +41,7 @@ const RULES = [
   { re: /fontFamily:\s*'[^']+'/g, msg: 'hardcoded fontFamily — use typography.fontFamily' },
   // Both quote styles. Matching only single quotes let every JSX attribute
   // through — `iconColor="#8B5CF6"` sailed past this gate, which is exactly how
-  // the neon violets reached the SuperAdmin screens and stayed there.
+  // the neon violets reached the platform console's screens and stayed there.
   { re: /'#[0-9A-Fa-f]{3,8}'/g, msg: 'hardcoded colour — use a colour token' },
   { re: /"#[0-9A-Fa-f]{3,8}"/g, msg: 'hardcoded colour — use a colour token' },
 ];

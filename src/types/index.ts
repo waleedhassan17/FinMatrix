@@ -843,8 +843,6 @@ export type RootStackParamList = {
   SubscriptionSelect: { companyId?: string; companyType?: string } | undefined;
   RenewSubscription: { mode?: 'renew' | 'change' } | undefined;
   SubscriptionPay: { plan: string; mode?: 'renew' | 'change' | 'signup'; companyId?: string };
-  // A platform admin signed into the customer app. See ConsoleMovedScreen.
-  ConsoleMoved: undefined;
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;
   DeliveryPersonnelDetail: { userId: string };

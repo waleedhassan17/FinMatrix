@@ -24,7 +24,6 @@ import PendingApprovalScreen from '../screens/Auth/PendingApproval/PendingApprov
 import CompanyRejectedScreen from '../screens/Auth/CompanyRejected/CompanyRejectedScreen';
 import RenewSubscriptionScreen from '../screens/Subscription/RenewSubscriptionScreen';
 import SubscriptionPayScreen from '../screens/Subscription/SubscriptionPayScreen';
-import ConsoleMovedScreen from '../screens/Auth/ConsoleMoved/ConsoleMovedScreen';
 import AdminTabNavigator from '../navigators/AdminTabNavigator';
 
 export const AuthRouteNames = {
@@ -39,7 +38,6 @@ export const AuthRouteNames = {
   RenewSubscription: 'RenewSubscription',
   SubscriptionPay: 'SubscriptionPay',
   SubscriptionSelect: 'SubscriptionSelect',
-  ConsoleMoved: 'ConsoleMoved',
   CompanySetup: 'CompanySetup',
   CompanyTypeSelect: 'CompanyTypeSelect',
   CreateCompany: 'CreateCompany',
@@ -66,18 +64,6 @@ export const UNAUTHENTICATED_ROUTES: IRoute[] = [
   // Reachable from SignIn when the server blocks a non-active login.
   { title: AuthRouteNames.PendingApproval, component: PendingApprovalScreen },
   { title: AuthRouteNames.CompanyRejected, component: CompanyRejectedScreen },
-];
-
-/**
- * ── Platform admin signed into the customer app ──
- * A one-screen branch, not a gate: there is no state they can reach that makes
- * this app usable for them. The console ships separately (FinMatrix Admin), and
- * the server still hands them a valid token here, so this is the explanation
- * plus a sign-out. Without it they fall to COMPANY_ONBOARDING_ROUTES, which has
- * no way out and survives a restart. See ConsoleMovedScreen.
- */
-export const WRONG_APP_ROUTES: IRoute[] = [
-  { title: AuthRouteNames.ConsoleMoved, component: ConsoleMovedScreen, options: { animation: 'none' } },
 ];
 
 /** ── Admin: email not verified ── */

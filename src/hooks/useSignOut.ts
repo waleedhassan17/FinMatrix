@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — useSignOut (the ONLY sign-out implementation)
 // ═══════════════════════════════════════════════════════
-// One sign-out flow for all three roles (super admin, company admin,
-// delivery personnel) and for the auth gate screens:
+// One sign-out flow for every role (company admin, staff, delivery personnel)
+// and for the auth gate screens:
 //
 //   confirm dialog
 //     → dispatch(signOut())  — synchronous. Wipes the ENTIRE Redux store

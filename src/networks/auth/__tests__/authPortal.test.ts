@@ -62,4 +62,22 @@ describe('sign-in portals', () => {
       authDeliveryLogin({ signInInfo: { username: 'owner@x.z', password: 'pw' } }),
     ).rejects.toThrow('This is a business owner account.');
   });
+
+  // The platform console moved to its own app, but the server still admits it
+  // through the Business Portal and returns a real token — so the client is the
+  // only thing standing between a console account and a company navigator it
+  // has no company for. Refused before setTokens, so no session is left behind.
+  it('refuses the platform console on the Business Portal, without storing a session', async () => {
+    const { setTokens, setStoredCompanyId } = jest.requireMock('../../network/apiHelpers');
+    (setTokens as jest.Mock).mockClear();
+    (setStoredCompanyId as jest.Mock).mockClear();
+    post.mockResolvedValueOnce(ok('super_admin'));
+
+    await expect(
+      authLogin({ signInInfo: { email: 'platform@x.z', password: 'pw' } }),
+    ).rejects.toThrow('This account signs in through the FinMatrix Admin app.');
+
+    expect(setTokens).not.toHaveBeenCalled();
+    expect(setStoredCompanyId).not.toHaveBeenCalled();
+  });
 });

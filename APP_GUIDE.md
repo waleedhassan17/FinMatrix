@@ -17,9 +17,14 @@ connect**.
 |------|-----------------|--------------|
 | **Admin / Staff** | Main app (5 bottom tabs) | Run the whole business: inventory, invoices, bills, customers, vendors, deliveries, reports. |
 | **Delivery Personnel (rider)** | Separate "Delivery" app view | See assigned deliveries, navigate to customers, capture proof, mark deliveries done. Their phone streams live GPS to the admin. |
-| **Super Admin** | Super‑admin tabs | Platform owner: manage companies, plans, revenue analytics. |
+| **Super Admin** | **A separate app — FinMatrix Admin** | Platform owner: approve companies, review payment submissions, revenue analytics. Not part of this app. |
 
 The app decides which view to show at login based on the account's role.
+
+The platform console used to be a third view inside this app. It is now its own
+project (`FinMatrix-Admin-App`), so a console change no longer ships to
+customers. A platform admin who tries to sign in here is refused on the sign-in
+form — they have no company, so there is nothing for them to do in this app.
 
 ---
 

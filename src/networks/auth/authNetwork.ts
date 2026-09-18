@@ -97,6 +97,19 @@ export const authLogin = async ({
     });
     const responseData = response.data?.data ?? response.data;
     const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription } = responseData;
+    // The platform console is a separate app now, but the server still admits
+    // it through this portal (see the comment above) and hands back a real
+    // token. Refuse here, BEFORE setTokens, so nothing is persisted and there
+    // is no session to clean up — the same shape as the server's own
+    // WRONG_PORTAL refusal, and it surfaces the same way: an inline error on
+    // the sign-in form. Without this the account signs in successfully and
+    // then has no app to be in, because it has no company.
+    if (backendUser?.role === 'super_admin') {
+      throw new AuthError(
+        'This account signs in through the FinMatrix Admin app.',
+        'WRONG_APP',
+      );
+    }
     if (!tokens?.accessToken) {
       throw new Error('Login succeeded but no token received. Please try again.');
     }
@@ -110,6 +123,11 @@ export const authLogin = async ({
     const user = mapUser(backendUser, companyStatus, { companyType, features, subscription });
     return { data: user };
   } catch (e: any) {
+    // An AuthError raised in the try above is a decision this function already
+    // made — re-throw it untouched. Without this the tail of this block runs
+    // extractErrorMessage() over it and replaces the message with a generic
+    // "Request failed", because the error carries no e.response to read.
+    if (e instanceof AuthError) throw e;
     console.warn('[authLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
     // Surface the EMAIL_NOT_VERIFIED gate so the UI can route to verification.
     const body = e?.response?.data;
