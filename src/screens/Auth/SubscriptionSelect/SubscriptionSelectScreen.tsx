@@ -923,7 +923,7 @@ const S = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   trialBtnBusy: { opacity: 0.8 },
-  trialBtnText: { ...THEME.typography.labelMd, color: colors.neutral0, fontSize: 15 },
+  trialBtnText: { ...THEME.typography.labelLg, color: colors.neutral0 },
   trialFine: { ...THEME.typography.caption, color: DS.text.sub, lineHeight: 18, textAlign: 'center' },
   trialNotice: {
     flexDirection: 'row', gap: 8, backgroundColor: colors.warningLighter, borderRadius: 10, padding: 12,
