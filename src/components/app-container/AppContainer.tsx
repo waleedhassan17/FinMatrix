@@ -22,7 +22,6 @@ import BaseNavigator from '../../navigators/BaseNavigator';
 import AdminTabNavigator from '../../navigators/AdminTabNavigator';
 import DeliveryTabNavigator from '../../navigators/DeliveryTabNavigator';
 import StaffTabNavigator from '../../navigators/StaffTabNavigator';
-import SuperAdminNavigator from '../../navigators/SuperAdminNavigator';
 import SmallBusinessNavigator from '../../navigators/tiers/SmallBusinessNavigator';
 import LargeOrgNavigator from '../../navigators/tiers/LargeOrgNavigator';
 import SplashOverlay from '../../screens/Splash/SplashScreen';
@@ -157,16 +156,24 @@ export const AppContainer: React.FC = () => {
   }, [isAuthenticated, user, dispatch]);
 
   // ─── Which top-level navigator mounts (was BaseNavigator's role switch).
-  // Role first (riders/super-admins have no company gates); an approved,
-  // email-verified admin gets their tier's app; every other state —
-  // unauthenticated, email verify, pending, inactive, rejected, draft,
-  // onboarding — is a session gate handled inside BaseNavigator.
+  // Role first (riders have no company gates); an approved, email-verified
+  // admin gets their tier's app; every other state — unauthenticated, email
+  // verify, pending, inactive, rejected, draft, onboarding, and a platform
+  // admin who is in the wrong app entirely — is handled inside BaseNavigator.
   const renderNavigator = () => {
     if (!isAuthenticated || !user) {
       return <BaseNavigator key="base-unauthenticated" />;
     }
+    // The platform console ships as its own app (FinMatrix Admin) — it used to
+    // mount here. The branch stays because the server still authenticates a
+    // platform admin against this app (/auth/signin admits them on portal
+    // 'admin' alongside owners), and both entry points — a fresh sign-in and
+    // bootstrapSession restoring a stored token — funnel through this switch.
+    // BaseNavigator sends them to ConsoleMovedScreen: an explanation with a
+    // sign-out. Deleting the branch instead drops them through every company
+    // gate onto "Set up your workspace", which has no way out.
     if (user.role === 'super_admin') {
-      return <SuperAdminNavigator key="super-admin" />;
+      return <BaseNavigator key="base-wrong-app" />;
     }
     if (user.role === 'delivery') {
       return <DeliveryTabNavigator key="delivery" />;

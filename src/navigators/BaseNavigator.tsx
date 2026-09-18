@@ -22,7 +22,8 @@ import {
   RENEW_ROUTES,
   REJECTED_ROUTES,
   DRAFT_COMPANY_ROUTES,
-  COMPANY_ONBOARDING_ROUTES
+  COMPANY_ONBOARDING_ROUTES,
+  WRONG_APP_ROUTES
 } from '../navigations-maps/Auth';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -50,23 +51,32 @@ const BaseNavigator: React.FC = () => {
   const isDraftCompany =
     hasCompany && (companyStatus === 'draft' || companyStatus === 'email_verified');
 
+  // A platform admin's account has no company at all, so EVERY gate below
+  // reads null and the chain falls to its terminal else — the company-creation
+  // wizard, which has no sign-out and which bootstrapSession puts them back on
+  // after a restart. Checked first because it is a property of the account, not
+  // a stage of onboarding they could ever move through.
+  const isPlatformAdmin = user?.role === 'super_admin';
+
   // ORDER MATTERS. The draft check must come BEFORE isPending: a server that
   // has not been updated yet reports a draft as 'pending', and a draft that
   // reached this branch would land on "Awaiting approval" — a screen about
   // work the user has not done, with no route back to plan selection.
   const routes: IRoute[] = !isAuthenticated
     ? [...(!hasSeenOnboarding ? [ONBOARDING_ROUTE] : []), ...UNAUTHENTICATED_ROUTES]
-    : !emailVerified
-      ? EMAIL_VERIFY_ROUTES
-      : isDraftCompany
-        ? DRAFT_COMPANY_ROUTES
-        : isPending
-          ? PENDING_ROUTES
-          : isInactive
-            ? RENEW_ROUTES
-            : isRejected
-              ? REJECTED_ROUTES
-              : COMPANY_ONBOARDING_ROUTES;
+    : isPlatformAdmin
+      ? WRONG_APP_ROUTES
+      : !emailVerified
+        ? EMAIL_VERIFY_ROUTES
+        : isDraftCompany
+          ? DRAFT_COMPANY_ROUTES
+          : isPending
+            ? PENDING_ROUTES
+            : isInactive
+              ? RENEW_ROUTES
+              : isRejected
+                ? REJECTED_ROUTES
+                : COMPANY_ONBOARDING_ROUTES;
 
   return (
     <Stack.Navigator
