@@ -200,6 +200,38 @@ export const startTrialAPI = async (companyId: string): Promise<StartTrialResult
   }
 };
 
+/**
+ * The plan cards shown during signup, before the company exists.
+ *
+ * The path says /super-admin because that is what the server named the route —
+ * it is the PUBLIC variant, deliberately exposed to signup, and carries no
+ * platform-admin privilege. This lived in networks/billing/superAdminNetwork.ts
+ * until the platform console moved to its own app; it belongs here, next to
+ * getPlansForTypeAPI and selfSubscribeAPI, which the same screen calls.
+ *
+ * Returns raw res.data — NOT piped through unwrap() like the rest of this file.
+ * Callers handle both `T[]` and `{ data: T[] }`; changing that here would break
+ * SubscriptionSelectScreen's shape check for no gain.
+ */
+export const getPublicPlansAPI = async (): Promise<any> => {
+  try {
+    const res = await api.get('/super-admin/plans/public');
+    return res.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
+/** Attach the chosen plan to the caller's own company during signup. */
+export const selfSubscribeAPI = async (planId: string): Promise<any> => {
+  try {
+    const res = await api.post('/companies/subscribe', { planId });
+    return res.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
 // ─── Super-admin review ───────────────────────────────
 
 export const listPaymentSubmissionsAPI = async (

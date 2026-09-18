@@ -22,11 +22,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../types';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectUser, setUser } from '../authSlice';
-import { getPublicPlansAPI, selfSubscribeAPI } from '../../../networks/billing/superAdminNetwork';
 import { authMe, submitCompanyAPI } from '../../../networks/auth/authNetwork';
 import {
   getBillingStatusAPI,
   getPlansForTypeAPI,
+  getPublicPlansAPI,
+  selfSubscribeAPI,
   startTrialAPI,
   type BillingStatus,
   type TierPlanCard,
