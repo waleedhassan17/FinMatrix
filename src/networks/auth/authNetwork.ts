@@ -104,6 +104,13 @@ export const authLogin = async ({
     // WRONG_PORTAL refusal, and it surfaces the same way: an inline error on
     // the sign-in form. Without this the account signs in successfully and
     // then has no app to be in, because it has no company.
+    //
+    // Naming the other app here does NOT leak which accounts exist. This line
+    // is only reachable after /auth/signin returned 200, i.e. after the
+    // password was accepted — a wrong password or an unknown email fails in
+    // the call above and gets the server's generic message like any other
+    // account. So the only person who can ever see this is the account's own
+    // owner, and telling them where to go beats telling them nothing.
     if (backendUser?.role === 'super_admin') {
       throw new AuthError(
         'This account signs in through the FinMatrix Admin app.',
