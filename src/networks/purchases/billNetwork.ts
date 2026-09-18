@@ -77,9 +77,22 @@ export interface PayBillsPayload {
   applications: Array<{ billId: string; amount: string }>;
 }
 
-export const payBillsAPI = async (data: PayBillsPayload): Promise<any> => {
+/**
+ * `idempotencyKey` must be generated ONCE per payment the user is trying to
+ * record and reused on every retry of it — that is the whole point. The server
+ * keys its IdempotencyRecord on (company, Idempotency-Key) and replays the
+ * first outcome, so a request whose response was lost on a flaky connection can
+ * be retried without paying the vendor twice. Minting a fresh key here per call
+ * would defeat it; the caller owns the key's lifetime.
+ */
+export const payBillsAPI = async (
+  data: PayBillsPayload,
+  idempotencyKey?: string,
+): Promise<any> => {
   try {
-    const response = await api.post('/bills/pay', data);
+    const response = await api.post('/bills/pay', data, {
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+    });
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));

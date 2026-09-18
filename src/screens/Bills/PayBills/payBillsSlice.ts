@@ -367,6 +367,8 @@ export const payBillsSlice = createAppSlice({
         args: {
           paymentNumber: string;
           allocations: { billId: string; billNumber: string; amount: number }[];
+          /** Stable across retries of THIS payment — see payBillsAPI. */
+          idempotencyKey?: string;
         },
         thunkAPI,
       ): Promise<BillPayment> => {
@@ -404,18 +406,21 @@ export const payBillsSlice = createAppSlice({
         // applications[]. The old body sent `date`, `method` and
         // `allocations`, so three REQUIRED fields were simply absent and every
         // payment 400'd. Amounts are @IsNumberString, hence the .toFixed(2).
-        const payment = await payBillsAPI({
-          vendorId: f.vendorId,
-          paymentDate: f.paymentDate,
-          paymentMethod: toBackendPaymentMethod(f.method),
-          bankAccountId: f.bankAccountId,
-          reference: f.reference || undefined,
-          proofId: f.proofId,
-          applications: cash.map(a => ({
-            billId: a.billId,
-            amount: (Math.round(a.amount * 100) / 100).toFixed(2),
-          })),
-        });
+        const payment = await payBillsAPI(
+          {
+            vendorId: f.vendorId,
+            paymentDate: f.paymentDate,
+            paymentMethod: toBackendPaymentMethod(f.method),
+            bankAccountId: f.bankAccountId,
+            reference: f.reference || undefined,
+            proofId: f.proofId,
+            applications: cash.map(a => ({
+              billId: a.billId,
+              amount: (Math.round(a.amount * 100) / 100).toFixed(2),
+            })),
+          },
+          args.idempotencyKey,
+        );
 
         // The bills are NOT patched here. `pay()` is transactional: it locks
         // each bill, writes amountPaid/balance/status, adjusts the vendor

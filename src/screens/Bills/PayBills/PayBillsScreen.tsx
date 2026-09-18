@@ -4,7 +4,8 @@
 // ═══════════════════════════════════════════════════════
 
 import dayjs from 'dayjs';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import {
   View,
   Text,
@@ -117,6 +118,9 @@ const PayBillsScreen: React.FC = () => {
   );
 
   const generatePaymentNumber = useCallback(() => `BPAY-${String(Date.now()).slice(-6)}`, []);
+
+  /** Idempotency key for the payment being recorded. See handleSave. */
+  const idempotencyKey = useRef('');
 
   useEffect(() => {
     dispatch(fetchVendors());
@@ -278,11 +282,23 @@ const PayBillsScreen: React.FC = () => {
       .filter(r => r.allocated > 0 || r.creditApplied > 0)
       .map(r => ({ billId: r.billId, billNumber: r.billNumber, amount: r.allocated }));
 
+    // One key per payment ATTEMPT, held across retries of it. If the request
+    // reaches the server but the reply is lost, the user taps Save again — and
+    // the server, keying on (company, Idempotency-Key), replays the first
+    // outcome instead of paying the vendor a second time. Cleared only once the
+    // payment is safely recorded, so the next payment gets a fresh key.
+    if (!idempotencyKey.current) idempotencyKey.current = uuidv4();
+
     try {
       const reference = form.reference || generatePaymentNumber();
       const saved: any = await dispatch(
-        savePayment({ paymentNumber: reference, allocations }),
+        savePayment({
+          paymentNumber: reference,
+          allocations,
+          idempotencyKey: idempotencyKey.current,
+        }),
       ).unwrap();
+      idempotencyKey.current = '';
       await dispatch(fetchBills());
 
       // Paying a bill is the cash-out moment, so staff file a request instead.
