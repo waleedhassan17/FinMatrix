@@ -35,7 +35,10 @@ const LineEntries: React.FC<Props> = ({ state, lineAmount, onRetry, onOpenSource
   if (!state || state.status === 'loading' || state.status === 'idle') {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="small" color={colors.textTertiary} />
+        <View style={styles.loadingRow}>
+          <ActivityIndicator size="small" color={colors.textTertiary} />
+          <Text style={styles.empty}>Loading transactions…</Text>
+        </View>
       </View>
     );
   }
@@ -85,14 +88,19 @@ const LineEntries: React.FC<Props> = ({ state, lineAmount, onRetry, onOpenSource
           disabled={!onOpenSource || !e.sourceId}
           onPress={() => onOpenSource?.(e.sourceType, e.sourceId)}
           accessibilityRole={onOpenSource ? 'button' : undefined}
-          accessibilityLabel={`${e.sourceLabel} ${e.reference}, ${dayjs(e.date).format('D MMM YYYY')}, ${formatCurrency(e.amount, 'Rs ')}`}
+          accessibilityLabel={`${e.sourceLabel} ${e.documentNumber || e.reference}${e.counterpartyName ? `, ${e.counterpartyName}` : ''}, ${dayjs(e.date).format('D MMM YYYY')}, ${formatCurrency(e.amount, 'Rs ')}${onOpenSource && e.sourceId ? '. Opens the record' : ''}`}
         >
           <View style={styles.meta}>
+            {/* The DOCUMENT leads, not the journal entry. Asked what is in
+                Sales Revenue, the answer is INV-2026-0001 for Acme Ltd — JE-005
+                identifies the posting, which is not what anyone came for. */}
             <Text style={styles.ref} numberOfLines={1}>
-              {e.sourceLabel}
-              {e.reference ? ` · ${e.reference}` : ''}
+              {e.documentNumber || e.reference || e.sourceLabel}
+              {e.counterpartyName ? ` · ${e.counterpartyName}` : ''}
             </Text>
             <Text style={styles.sub} numberOfLines={1}>
+              {e.sourceLabel}
+              {' · '}
               {dayjs(e.date).format('D MMM YYYY')}
               {e.memo ? ` · ${e.memo}` : ''}
             </Text>
@@ -142,6 +150,7 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
   },
   empty: { ...typography.caption, color: colors.textTertiary },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   error: { ...typography.caption, color: colors.danger },
   retry: { ...typography.labelSm, color: colors.primary },
   truncated: {

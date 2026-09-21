@@ -72,6 +72,17 @@ export interface StatementLineEntry {
   sourceId: string;
   /** e.g. 'Invoice' — `sourceType` in words. */
   sourceLabel: string;
+  /**
+   * The document's own number — INV-2026-0001.
+   *
+   * This is what someone is looking for when they open an account. `reference`
+   * is the journal-entry number (JE-005), which identifies the posting rather
+   * than the record. Falls back to `reference` on a manual entry, which has no
+   * document.
+   */
+  documentNumber: string;
+  /** The customer or vendor. Empty on a manual journal entry. */
+  counterpartyName: string;
 }
 
 export interface StatementLineEntries {

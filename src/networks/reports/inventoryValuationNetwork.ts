@@ -49,3 +49,16 @@ export const getItemPerformanceAPI = async (
   range: { startDate: string; endDate: string },
 ): Promise<any> =>
   fetchReport(`/reports/item-performance/${encodeURIComponent(itemId)}`, range);
+
+/**
+ * Every item's sales, cost and margin for a period, beside its stock value.
+ *
+ * Sorted server-side: the questions worth asking of this report — what earns,
+ * what is dead stock — are orderings rather than filters, and the client has
+ * only the page it was given to sort.
+ */
+export const getInventoryPerformanceAPI = async (
+  range: { startDate: string; endDate: string },
+  sort = 'grossProfit',
+): Promise<any> =>
+  fetchReport('/reports/inventory-performance', { ...range, sort });

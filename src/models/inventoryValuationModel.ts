@@ -1,4 +1,4 @@
-import type { ApiEnvelope } from './reportModel';
+import type { ApiEnvelope, ReportDateRange } from './reportModel';
 
 export interface InventoryValuationRow {
   itemId: string;
@@ -118,3 +118,72 @@ export interface ItemPerformance {
 }
 
 export type ItemPerformanceResponse = ApiEnvelope<ItemPerformance>;
+
+export type InventoryPerformanceSort =
+  | 'grossProfit'
+  | 'revenue'
+  | 'marginPct'
+  | 'stockValue';
+
+/** One item: what it is carrying, and what it earned. */
+export interface InventoryPerformanceRow {
+  itemId: string;
+  itemName: string;
+  sku: string;
+  category: string;
+  unitsSold: number;
+  revenue: number;
+  cogs: number;
+  grossProfit: number;
+  /** Null in a period the item did not trade — not zero. */
+  marginPct: number | null;
+  /** AS OF NOW, not the period end — these tie to the balance sheet. */
+  qtyOnHand: number;
+  unitCost: number;
+  stockValue: number;
+  /** 'posted' exact · 'apportioned' estimated split · 'partial' some unknown. */
+  costBasis: string;
+}
+
+/** One named reason the item figures differ from the P&L. */
+export interface ReconcilingItem {
+  label: string;
+  revenue: number;
+  cogs: number;
+  reason: string;
+}
+
+export interface InventoryPerformance {
+  range: ReportDateRange;
+  sort: InventoryPerformanceSort;
+  rows: InventoryPerformanceRow[];
+  totals: {
+    unitsSold: number;
+    revenue: number;
+    cogs: number;
+    grossProfit: number;
+    marginPct: number | null;
+    stockValue: number;
+  };
+  /**
+   * Why this report does not equal the Profit & Loss, itemised.
+   *
+   * It always foots: itemRevenue + the items' revenue = glRevenue, and the
+   * same for cost. Showing the difference and naming it is what lets someone
+   * trust the figures above rather than quietly wondering.
+   */
+  reconciliation: {
+    glRevenue: number;
+    glCogs: number;
+    itemRevenue: number;
+    itemCogs: number;
+    unallocatedRevenue: number;
+    unallocatedCogs: number;
+    items: ReconcilingItem[];
+    note: string;
+  };
+  estimatedCogsShare: number;
+  costHistoryFrom: string | null;
+}
+
+export type InventoryPerformanceResponse = ApiEnvelope<InventoryPerformance>;

@@ -49,6 +49,29 @@ const rs = (n: number) => formatCurrency(n, 'Rs ');
 const lines = (v: PnlLine[] | undefined): PnlLine[] => (Array.isArray(v) ? v : []);
 const sum = (v: PnlLine[]): number => v.reduce((t, l) => t + (l.amount || 0), 0);
 
+
+/**
+ * Which screen shows the record behind a ledger row, and what it calls its id.
+ *
+ * Only documents that HAVE a detail screen appear here. A source with no entry
+ * — a payment, a delivery leg, an inventory adjustment — leaves the row inert
+ * rather than navigating somewhere that cannot show it.
+ */
+const SOURCE_ROUTES: Record<string, { screen: string; param: string }> = {
+  invoice: { screen: 'InvoiceDetail', param: 'invoiceId' },
+  invoice_void: { screen: 'InvoiceDetail', param: 'invoiceId' },
+  bill: { screen: 'BillDetail', param: 'billId' },
+  bill_void: { screen: 'BillDetail', param: 'billId' },
+  credit_memo: { screen: 'CreditMemoDetail', param: 'creditMemoId' },
+  credit_memo_void: { screen: 'CreditMemoDetail', param: 'creditMemoId' },
+  credit_memo_refund: { screen: 'CreditMemoDetail', param: 'creditMemoId' },
+  vendor_credit: { screen: 'VendorCreditDetail', param: 'vendorCreditId' },
+  vendor_credit_void: { screen: 'VendorCreditDetail', param: 'vendorCreditId' },
+  purchase_order: { screen: 'PODetail', param: 'poId' },
+  po_receipt: { screen: 'PODetail', param: 'poId' },
+  journal_entry: { screen: 'JournalEntryDetail', param: 'entryId' },
+};
+
 const ProfitLossScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
   const dispatch = useAppDispatch();
@@ -86,11 +109,42 @@ const ProfitLossScreen: React.FC = () => {
     (accountCode: string) => {
       const willOpen = !state.expanded[accountCode];
       dispatch(toggleProfitLossLine(accountCode));
-      if (willOpen && !state.entries[accountCode]) {
+      // Refetch when there is nothing cached OR the last attempt failed. A
+      // failed entry is still truthy, so checking only for presence cached a
+      // transient network error for the life of the screen — reopening the row
+      // showed the same stale message and never tried again.
+      const cached = state.entries[accountCode];
+      if (willOpen && (!cached || cached.status === 'failed')) {
         dispatch(fetchProfitLossLineEntries({ accountCode, range: state.range }));
       }
     },
     [dispatch, state.expanded, state.entries, state.range],
+  );
+
+  /**
+   * Open the record behind a ledger row.
+   *
+   * The documents live in TransactionsStack and this screen is in
+   * ReportsStack, so the hop goes through the tab navigator. `initial: false`
+   * on both counts: without it React Navigation initialises Transactions as
+   * [InvoiceDetail] with no list underneath, and back falls through to the
+   * Dashboard while stranding the detail screen on that tab. Same pattern as
+   * VendorDetailScreen's create-bill action.
+   */
+  const openSource = useCallback(
+    (sourceType: string, sourceId: string) => {
+      const route = SOURCE_ROUTES[sourceType];
+      if (!route || !sourceId) return;
+      (navigation as unknown as NativeStackNavigationProp<Record<string, object>>).navigate(
+        'TransactionsStack',
+        {
+          screen: route.screen,
+          params: { [route.param]: sourceId },
+          initial: false,
+        },
+      );
+    },
+    [navigation],
   );
 
   /**
@@ -111,6 +165,7 @@ const ProfitLossScreen: React.FC = () => {
       <LineEntries
         state={state.entries[l.accountCode]}
         lineAmount={l.amount}
+        onOpenSource={openSource}
         onRetry={() =>
           dispatch(
             fetchProfitLossLineEntries({ accountCode: l.accountCode, range: state.range }),
@@ -217,7 +272,11 @@ const ProfitLossScreen: React.FC = () => {
               )}
 
               <StatementRow label="Income" bold />
-              {hasDetail ? (
+              {/* Gated on THIS section's own lines, as COGS and expenses are.
+                  Gating income on `hasDetail` — true if ANY section had detail
+                  — rendered the heading followed by nothing for a company with
+                  cost lines and no revenue lines. */}
+              {income.length > 0 ? (
                 income.map(accountRow)
               ) : (
                 <StatementRow label="Sales Revenue" amount={report.revenue} depth={1} />
@@ -225,7 +284,7 @@ const ProfitLossScreen: React.FC = () => {
               <StatementRow
                 label="Total Income"
                 amount={
-                  hasDetail && report.totalIncome !== undefined
+                  income.length > 0 && report.totalIncome !== undefined
                     ? reconcile(sum(income), report.totalIncome, 'P&L — income')
                     : report.revenue
                 }

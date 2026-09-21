@@ -1,4 +1,6 @@
 import type {
+  InventoryPerformance,
+  InventoryPerformanceResponse,
   ItemPerformance,
   ItemPerformanceResponse,
   InventoryItemHistory,
@@ -115,5 +117,57 @@ export const itemPerformanceSerializer = (
     },
     costHistoryFrom: raw.costHistoryFrom ?? null,
     estimatedCogsShare: n(raw.estimatedCogsShare),
+  };
+};
+
+export const inventoryPerformanceSerializer = (
+  payload: InventoryPerformanceResponse,
+): InventoryPerformance | null => {
+  const raw = unwrapEnvelope<any>(payload);
+  if (!raw) return null;
+  const rc = raw.reconciliation ?? {};
+  return {
+    range: raw.range ?? { startDate: '', endDate: '' },
+    sort: raw.sort ?? 'grossProfit',
+    rows: (raw.rows ?? []).map((r: any) => ({
+      itemId: r.itemId ?? '',
+      itemName: r.itemName ?? '',
+      sku: r.sku ?? '',
+      category: r.category ?? 'Uncategorized',
+      unitsSold: n(r.unitsSold),
+      revenue: n(r.revenue),
+      cogs: n(r.cogs),
+      grossProfit: n(r.grossProfit),
+      marginPct: nOrNull(r.marginPct),
+      qtyOnHand: n(r.qtyOnHand),
+      unitCost: n(r.unitCost),
+      stockValue: n(r.stockValue),
+      costBasis: r.costBasis ?? 'posted',
+    })),
+    totals: {
+      unitsSold: n(raw.totals?.unitsSold),
+      revenue: n(raw.totals?.revenue),
+      cogs: n(raw.totals?.cogs),
+      grossProfit: n(raw.totals?.grossProfit),
+      marginPct: nOrNull(raw.totals?.marginPct),
+      stockValue: n(raw.totals?.stockValue),
+    },
+    reconciliation: {
+      glRevenue: n(rc.glRevenue),
+      glCogs: n(rc.glCogs),
+      itemRevenue: n(rc.itemRevenue),
+      itemCogs: n(rc.itemCogs),
+      unallocatedRevenue: n(rc.unallocatedRevenue),
+      unallocatedCogs: n(rc.unallocatedCogs),
+      items: (rc.items ?? []).map((i: any) => ({
+        label: i.label ?? '',
+        revenue: n(i.revenue),
+        cogs: n(i.cogs),
+        reason: i.reason ?? '',
+      })),
+      note: rc.note ?? '',
+    },
+    estimatedCogsShare: n(raw.estimatedCogsShare),
+    costHistoryFrom: raw.costHistoryFrom ?? null,
   };
 };

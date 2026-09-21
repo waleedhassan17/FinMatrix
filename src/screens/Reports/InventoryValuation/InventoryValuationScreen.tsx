@@ -1,18 +1,24 @@
 import dayjs from 'dayjs';
 import React, { useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
+  fetchInventoryPerformance,
   fetchInventoryValuationReport,
   fetchInventoryValuationTrend,
+  refreshInventoryPerfRange,
   selectInventoryValuationState,
+  setInventoryPerfRange,
+  setInventoryPerfSort,
   TREND_MONTHS,
 } from './inventoryValuationSlice';
+import type { InventoryPerformanceSort } from '../../../models/inventoryValuationModel';
 import MonthlyBars from '../shared/MonthlyBars';
+import RankedBars from '../shared/RankedBars';
 import { formatCurrency } from '../../../utils/formatters';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import {
@@ -20,6 +26,9 @@ import {
   ReportHeader,
   SectionCard,
   KpiGrid,
+  DateField,
+  Segmented,
+  amountColWidth,
   SummaryLine,
   Divider,
   TCell,
@@ -32,12 +41,28 @@ import {
   reportContentStyle,
   ReportTitleBlock,
   useStatementCompany,
-  asOfLabel
+  asOfLabel,
+  rangeLabel
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
 
 const rs = (n: number) => formatCurrency(n, 'Rs ');
+
+/**
+ * What the table can be ordered by.
+ *
+ * The backend used to sort by carrying value alone. Once an item's earnings
+ * sit beside its stock that ordering is actively misleading — the stock with
+ * the most capital tied up is not the stock that earns — so the ordering is
+ * the control that makes the new columns usable.
+ */
+const SORTS: { key: InventoryPerformanceSort; label: string }[] = [
+  { key: 'grossProfit', label: 'Gross profit' },
+  { key: 'revenue', label: 'Revenue' },
+  { key: 'marginPct', label: 'Margin' },
+  { key: 'stockValue', label: 'Stock value' },
+];
 
 /** Short form for a bar label, where the full figure will not fit. */
 const compactRs = (n: number): string => {
@@ -53,6 +78,14 @@ const InventoryValuationScreen: React.FC = () => {
   const state = useAppSelector(selectInventoryValuationState);
   const company = useStatementCompany();
 
+  // The margin window follows the calendar unless the user chose one, the same
+  // as every other dated report.
+  useFocusEffect(
+    React.useCallback(() => {
+      dispatch(refreshInventoryPerfRange());
+    }, [dispatch]),
+  );
+
   useEffect(() => {
     dispatch(fetchInventoryValuationReport());
     // Separate request, separate failure. The trend is context around the
@@ -60,8 +93,12 @@ const InventoryValuationScreen: React.FC = () => {
     dispatch(fetchInventoryValuationTrend(TREND_MONTHS));
   }, [dispatch]);
 
+  useEffect(() => {
+    dispatch(fetchInventoryPerformance({ range: state.range, sort: state.sort }));
+  }, [dispatch, state.range.startDate, state.range.endDate, state.sort]);
+
   const report = state.report;
-  const rows = report?.rows ?? [];
+  const valuationRows = report?.rows ?? [];
   const categories = report?.byCategory ?? [];
   const trendPoints = (state.trend?.points ?? []).map(p => ({
     period: p.period,
@@ -69,11 +106,93 @@ const InventoryValuationScreen: React.FC = () => {
     value: p.value,
   }));
 
+  const perf = state.performance;
+  const perfRows = perf?.rows ?? [];
+  // The performance rows carry the same stock figures the valuation snapshot
+  // does, already ordered as asked, so they replace it outright when present.
+  // The snapshot stays as the fallback, so this report still works against a
+  // server without the endpoint — it simply shows no margin columns.
+  const usingPerf = perfRows.length > 0;
+  const traded = perfRows.some(r => r.revenue !== 0 || r.cogs !== 0);
+  const sortIndex = SORTS.findIndex(o => o.key === state.sort);
+
+  const rows = usingPerf
+    ? perfRows.map(r => ({
+        itemId: r.itemId,
+        itemName: r.itemName,
+        sku: r.sku,
+        qty: r.qtyOnHand,
+        cost: r.unitCost,
+        value: r.stockValue,
+        revenue: r.revenue,
+        grossProfit: r.grossProfit,
+        marginPct: r.marginPct,
+        costBasis: r.costBasis,
+      }))
+    : valuationRows.map(r => ({
+        itemId: r.itemId,
+        itemName: r.itemName,
+        sku: r.sku,
+        qty: r.qty,
+        cost: r.cost,
+        value: r.value,
+        revenue: 0,
+        grossProfit: 0,
+        marginPct: null as number | null,
+        costBasis: 'posted',
+      }));
+
+  const rankPoints = perfRows
+    .filter(r => r.revenue !== 0 || r.cogs !== 0)
+    .map(r => ({
+      key: r.itemId,
+      label: r.itemName,
+      value:
+        state.sort === 'revenue'
+          ? r.revenue
+          : state.sort === 'stockValue'
+            ? r.stockValue
+            : r.grossProfit,
+      hint:
+        r.marginPct === null
+          ? `${r.unitsSold} sold`
+          : `${r.unitsSold} sold · ${r.marginPct.toFixed(1)}% margin`,
+    }));
+
+  // Sized to the widest figure each column must hold. The hardcoded 130 was
+  // tuned for a carrying value; a year's revenue is wider and would clip.
+  const wValue = amountColWidth([...rows.map(r => rs(r.value)), rs(perf?.totals.stockValue ?? 0)]);
+  const wRevenue = amountColWidth([...rows.map(r => rs(r.revenue)), rs(perf?.totals.revenue ?? 0)]);
+  const wProfit = amountColWidth([...rows.map(r => rs(r.grossProfit)), rs(perf?.totals.grossProfit ?? 0)]);
   return (
     <ReportContainer>
       <ReportHeader title="Inventory Valuation" subtitle="Stock on hand" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
+        {/* Stock is as of now; sales and margin cover this window. The two
+            are labelled separately in the table because they are different
+            claims about different moments. */}
+        <Card>
+          <View style={styles.filterRow}>
+            <DateField
+              label="Sales from"
+              value={state.range.startDate}
+              onChangeText={t => dispatch(setInventoryPerfRange({ ...state.range, startDate: t }))}
+            />
+            <DateField
+              label="To"
+              value={state.range.endDate}
+              onChangeText={t => dispatch(setInventoryPerfRange({ ...state.range, endDate: t }))}
+            />
+          </View>
+          <Text style={styles.sortLabel}>Rank by</Text>
+          <Segmented
+            options={SORTS.map(o => o.label)}
+            activeIndex={sortIndex < 0 ? 0 : sortIndex}
+            onChange={i => dispatch(setInventoryPerfSort(SORTS[i].key))}
+          />
+        </Card>
+
         {state.isLoading && <LoadingBlock label="Valuing inventory…" />}
         {!!state.error && (
           <ErrorBlock message={state.error} onRetry={() => dispatch(fetchInventoryValuationReport())} />
@@ -83,9 +202,32 @@ const InventoryValuationScreen: React.FC = () => {
           <>
             <KpiGrid
               items={[
-                { label: 'Total Value', value: rs(report.totalValue ?? 0), accent: ACCENT.brand, icon: 'dollar-sign' },
+                { label: 'Stock Value', value: rs(report.totalValue ?? 0), accent: ACCENT.brand, icon: 'dollar-sign' },
                 { label: 'Items', value: String(rows.length), accent: ACCENT.blue, icon: 'box' },
-                { label: 'Categories', value: String(categories.length), accent: ACCENT.violet, icon: 'grid' },
+                ...(traded
+                  ? [
+                      {
+                        label: 'Revenue',
+                        value: rs(perf?.totals.revenue ?? 0),
+                        accent: ACCENT.green,
+                        icon: 'trending-up' as const,
+                      },
+                      {
+                        label: 'Gross Profit',
+                        value: rs(perf?.totals.grossProfit ?? 0),
+                        accent:
+                          (perf?.totals.grossProfit ?? 0) >= 0 ? ACCENT.green : ACCENT.red,
+                        icon: 'percent' as const,
+                      },
+                    ]
+                  : [
+                      {
+                        label: 'Categories',
+                        value: String(categories.length),
+                        accent: ACCENT.violet,
+                        icon: 'grid' as const,
+                      },
+                    ]),
               ]}
             />
 
@@ -95,6 +237,20 @@ const InventoryValuationScreen: React.FC = () => {
               report="Inventory Valuation Summary"
               periodLabel={asOfLabel(dayjs().format('YYYY-MM-DD'))}
             />
+
+            {traded && (
+              <SectionCard
+                title={`Top items by ${SORTS.find(o => o.key === state.sort)?.label.toLowerCase()}`}
+                subtitle={rangeLabel(state.range.startDate, state.range.endDate)}
+                icon="award"
+              >
+                <RankedBars
+                  points={rankPoints}
+                  format={v => rs(v)}
+                  emptyLabel="Nothing sold in this period."
+                />
+              </SectionCard>
+            )}
 
             {trendPoints.length > 0 && (
               <SectionCard
@@ -169,11 +325,83 @@ const InventoryValuationScreen: React.FC = () => {
                 </ScrollView>
               </SectionCard>
             )}
+
+            {perf && traded && perf.reconciliation.items.length > 0 && (
+              // Why this report does not equal the Profit & Loss, named rather
+              // than left to be discovered as a discrepancy. It foots exactly:
+              // goods sold plus every line below equals the P&L figure. An
+              // accountant who cannot see this reconciliation stops trusting
+              // the whole screen.
+              <SectionCard
+                title="How this ties to Profit & Loss"
+                subtitle={rangeLabel(state.range.startDate, state.range.endDate)}
+                icon="git-merge"
+              >
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View>
+                    <View style={tableStyles.head}>
+                      <TCell width={210} head>Source</TCell>
+                      <TCell width={wRevenue} head align="right">Revenue</TCell>
+                      <TCell width={wProfit} head align="right">Cost of sales</TCell>
+                    </View>
+                    <View style={tableStyles.row}>
+                      <TCell width={210}>Goods sold (this report)</TCell>
+                      <TCell width={wRevenue} align="right">{rs(perf.reconciliation.itemRevenue)}</TCell>
+                      <TCell width={wProfit} align="right">{rs(perf.reconciliation.itemCogs)}</TCell>
+                    </View>
+                    {perf.reconciliation.items.map((it, i) => (
+                      <View key={it.label} style={[tableStyles.row, i % 2 === 0 && tableStyles.rowAlt]}>
+                        <TCell width={210}>{it.label}</TCell>
+                        <TCell width={wRevenue} align="right">{it.revenue === 0 ? '—' : rs(it.revenue)}</TCell>
+                        <TCell width={wProfit} align="right">{it.cogs === 0 ? '—' : rs(it.cogs)}</TCell>
+                      </View>
+                    ))}
+                    <View style={tableStyles.totalRow}>
+                      <TCell width={210} strong>Profit &amp; Loss</TCell>
+                      <TCell width={wRevenue} align="right" strong>{rs(perf.reconciliation.glRevenue)}</TCell>
+                      <TCell width={wProfit} align="right" strong>{rs(perf.reconciliation.glCogs)}</TCell>
+                    </View>
+                  </View>
+                </ScrollView>
+                <Text style={styles.reconcileNote}>{perf.reconciliation.note}</Text>
+                {perf.estimatedCogsShare > 0.33 && (
+                  <Text style={styles.reconcileReason}>
+                    {Math.round(perf.estimatedCogsShare * 100)}% of the cost above was split
+                    across items that shared an invoice. Each invoice&apos;s total is exact;
+                    how it divides between items on it is an estimate.
+                  </Text>
+                )}
+              </SectionCard>
+            )}
           </>
         )}
       </ScrollView>
     </ReportContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  filterRow: { flexDirection: 'row', gap: THEME.spacing.sm },
+  sortLabel: {
+    ...THEME.typography.labelSm,
+    color: THEME.colors.textTertiary,
+    marginTop: THEME.spacing.sm,
+    marginBottom: THEME.spacing.xs,
+  },
+  // A figure that rests on an apportioned cost is marked rather than silently
+  // presented as exact — the invoice total is right, the split between items
+  // on it is an estimate.
+  estimated: { ...THEME.typography.overline, color: THEME.colors.textTertiary },
+  reconcileNote: {
+    ...THEME.typography.caption,
+    color: THEME.colors.textSecondary,
+    marginTop: THEME.spacing.xs,
+  },
+  reconcileReason: {
+    ...THEME.typography.overline,
+    color: THEME.colors.textTertiary,
+    marginBottom: THEME.spacing.xs,
+  },
+});
 
 export default InventoryValuationScreen;
