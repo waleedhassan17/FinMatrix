@@ -66,6 +66,43 @@ export const isWarehouseTier = (companyType: string | null | undefined): boolean
 // To restore a feature: delete its entry here. Nothing else changes.
 export const DISABLED_FEATURES: readonly string[] = ['agencies'];
 
+// ═══════════════════════════════════════════════════════
+// BILLING-DISABLED BUILD  (free trial + subscriptions)
+// ═══════════════════════════════════════════════════════
+// The app is going to warehouses for a testing phase, and for that phase
+// there is exactly ONE acquisition path:
+//
+//   signup → company setup → auto-submit → super-admin approval → full app
+//
+// No plan selection, no free trial, no payment step, no paywall. Nothing is
+// deleted — SubscriptionSelectScreen, SubscriptionPayScreen,
+// RenewSubscriptionScreen, TrialBanner, networks/billing and utils/trial all
+// stay exactly where they are, just unreferenced (tsconfig has
+// noUnusedLocals: false, so that costs nothing).
+//
+// To restore Free Trial + Subscriptions:
+//   1. set BILLING_DISABLED_BUILD = false in all THREE repos
+//        FinMatrix          src/utils/featureGates.ts        (this file)
+//        FinMatrix-Web      src/config/featureFlags.ts
+//        FinMatrix-Backend  src/common/feature-flags.ts
+//   2. grep this repo for "BILLING-DISABLED" and un-comment the marked blocks:
+//        navigations-maps/Auth.ts   — route names, imports, and the three
+//                                     route arrays (see INACTIVE_ROUTES)
+//        navigations-maps/More.ts   — names + registrations, paired with
+//                                     navigators/stacks/MoreStack.tsx's ParamList
+//        navigators/tiers/tierRoutes.tsx, types/index.ts (RootStackParamList)
+//        components/app-container/AppContainer.tsx — TrialBanner wrapper
+//        screens/Settings/SettingsMain/SettingsScreen.tsx — SubscriptionSection
+//        screens/Delivery/Admin/DeliveryPersonnelList/… — the Upgrade CTAs
+//        screens/Auth/CreateCompany/CreateCompanyScreen.tsx — the submit hop
+//        screens/Auth/PendingApproval/PendingApprovalScreen.tsx — copy + auto-submit
+//        screens/Auth/CompanySetup/CompanySetupScreen.tsx — NEXT_STEPS
+//
+// EXISTING paying companies are left alone: the server keeps every plan key,
+// keeps running the expiry cron, and keeps a paid company's limits and
+// renewal date. Only the ACQUISITION path is short-circuited.
+export const BILLING_DISABLED_BUILD = true;
+
 /**
  * False for a feature withdrawn from the product. Use this for the places
  * that are not a gated row/card — route registration, effects, form fields —

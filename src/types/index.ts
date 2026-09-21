@@ -840,6 +840,20 @@ export type RootStackParamList = {
   CompanyRejected: { fromLogin?: boolean; mode?: 'rejected' | 'inactive'; reason?: string } | undefined;
   AdminTabs: undefined;
   DeliveryTabs: undefined;
+  // BILLING-DISABLED BUILD: these three routes are no longer REGISTERED
+  // (see navigations-maps/Auth.ts), but their params must stay declared —
+  // unlike MoreStackParamList's, which could be commented out.
+  //
+  // `tsc --noEmit` covers all of src/, so SubscriptionSelectScreen,
+  // RenewSubscriptionScreen and SubscriptionPayScreen are still type-checked
+  // even though nothing imports them, and each one types its own props as
+  // NativeStackScreenProps<RootStackParamList, '…'>. Commenting these out
+  // breaks the type-check in three files that are only being kept for the
+  // restore.
+  //
+  // Nothing navigates to them: every call site is commented out in the same
+  // change. The compile-time guard is lost here, so the runtime guard is that
+  // the screens are unreachable — there is no entry point left to tap.
   SubscriptionSelect: { companyId?: string; companyType?: string } | undefined;
   RenewSubscription: { mode?: 'renew' | 'change' } | undefined;
   SubscriptionPay: { plan: string; mode?: 'renew' | 'change' | 'signup'; companyId?: string };

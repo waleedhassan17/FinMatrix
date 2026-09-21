@@ -1,13 +1,16 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
   ActivityIndicator
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import {
-  getBillingStatusAPI, getPlanLimitsAPI,
-  type BillingStatus, type PlanLimits
-} from '../../../networks/billing/billingNetwork';
+// BILLING-DISABLED BUILD: useState, useFocusEffect and the billing network
+// were only used by the commented-out SubscriptionSection below.
+// import { useState } from 'react';
+// import { useFocusEffect } from '@react-navigation/native';
+// import {
+//   getBillingStatusAPI, getPlanLimitsAPI,
+//   type BillingStatus, type PlanLimits
+// } from '../../../networks/billing/billingNetwork';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -80,7 +83,14 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
   <Text style={s.sectionHeader}>{title}</Text>
 );
 
-/* ─── Subscription section (phase2.md Flow 3) ─── */
+// ─── Subscription section (phase2.md Flow 3) ───
+//
+// BILLING-DISABLED BUILD. There is no plan to show and no plan chooser to
+// manage, so the whole card is commented out along with its render below.
+// Its styles (awaitCard/awaitTitle/awaitText/manageBtn*) are deliberately
+// left in the stylesheet — unused styles cost nothing and un-commenting this
+// block has to bring the card back intact.
+/*
 const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) => {
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [limits, setLimits] = useState<PlanLimits | null>(null);
@@ -189,6 +199,7 @@ const SubscriptionSection: React.FC<{ onManage: () => void }> = ({ onManage }) =
     </>
   );
 };
+*/
 
 /* ─── main screen ─── */
 const SettingsScreen: React.FC = () => {
@@ -219,16 +230,18 @@ const SettingsScreen: React.FC = () => {
   return (
     <SafeAreaView style={[s.safe, s.safeTop]} edges={['top']}>
       <View style={s.body}>
+      {/* BILLING-DISABLED BUILD: subtitle was "Plan, company & notifications". */}
       <ReportHeader
         title="Settings"
-        subtitle="Plan, company & notifications"
+        subtitle="Company & notifications"
         onBack={() => nav.goBack()}
         right={<HeaderAction label={saving ? 'Saving…' : 'Save'} icon="check" onPress={handleSave} disabled={saving} />}
       />
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        {/* Subscription (phase2.md Flow 3) */}
-        <SubscriptionSection onManage={() => nav.navigate('RenewSubscription', { mode: 'change' })} />
+        {/* BILLING-DISABLED BUILD: the Subscription card (phase2.md Flow 3).
+            RenewSubscription is no longer a registered MoreStack route. */}
+        {/* <SubscriptionSection onManage={() => nav.navigate('RenewSubscription', { mode: 'change' })} /> */}
 
         {/* Company */}
         <SectionHeader title="COMPANY" />

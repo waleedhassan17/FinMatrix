@@ -69,8 +69,9 @@ import TaxPaymentScreen from '../../screens/Tax/TaxPayment/TaxPaymentScreen';
 import SettingsScreen from '../../screens/Settings/SettingsMain/SettingsScreen';
 import CompanyProfileScreen from '../../screens/Settings/CompanyProfile/CompanyProfileScreen';
 import CompanySwitcherScreen from '../../screens/Settings/CompanySwitcher/CompanySwitcherScreen';
-import RenewSubscriptionScreen from '../../screens/Subscription/RenewSubscriptionScreen';
-import SubscriptionPayScreen from '../../screens/Subscription/SubscriptionPayScreen';
+// BILLING-DISABLED BUILD: un-comment with SB_MORE_ROUTES below.
+// import RenewSubscriptionScreen from '../../screens/Subscription/RenewSubscriptionScreen';
+// import SubscriptionPayScreen from '../../screens/Subscription/SubscriptionPayScreen';
 // Bank Reconciliation is a CORE feature (phase3.md): every tier gets it.
 import BankReconciliationListScreen from '../../screens/BankReconciliation/BankReconciliationListScreen';
 import BankReconciliationScreen from '../../screens/BankReconciliation/BankReconciliationScreen';
@@ -179,8 +180,9 @@ export const SB_MORE_ROUTES: TierRoute[] = [
   { name: 'CompanyProfile', component: CompanyProfileScreen },
   { name: 'CompanySwitcher', component: CompanySwitcherScreen },
   { name: 'GlobalSearch', component: GlobalSearchScreen },
-  { name: 'RenewSubscription', component: RenewSubscriptionScreen },
-  { name: 'SubscriptionPay', component: SubscriptionPayScreen },
+  // BILLING-DISABLED BUILD
+  // { name: 'RenewSubscription', component: RenewSubscriptionScreen },
+  // { name: 'SubscriptionPay', component: SubscriptionPayScreen },
 ];
 
 // ═══ LARGE ORGANIZATION — small business + payroll/budgets/roles/bank-rec ═══

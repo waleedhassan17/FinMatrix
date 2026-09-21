@@ -11,9 +11,10 @@ import {
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
-import { getPlanLimitsAPI, type PlanLimits } from '../../../../networks/billing/billingNetwork';
+// BILLING-DISABLED BUILD: both were only used by the plan-limit fetch below.
+// import { useFocusEffect } from '@react-navigation/native';
+// import { getPlanLimitsAPI, type PlanLimits } from '../../../../networks/billing/billingNetwork';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HEADER_NAVY,
   HeaderAction
@@ -82,41 +83,50 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
 
-  const [limits, setLimits] = useState<PlanLimits | null>(null);
+  // BILLING-DISABLED BUILD: nothing reads the plan limits any more — the
+  // usage bar and the Add gate are both commented out below — so the fetch
+  // goes too rather than polling /billing/plan-limits on every refocus.
+  // const [limits, setLimits] = useState<PlanLimits | null>(null);
 
   useEffect(() => {
     dispatch(fetchDeliveryPersonnel());
   }, [dispatch]);
 
-  // Plan-based limit (phase2.md): refresh whenever the screen refocuses so the
-  // "X of LIMIT used" count and the Add gate stay accurate after changes.
-  useFocusEffect(
-    useCallback(() => {
-      getPlanLimitsAPI().then(setLimits).catch(() => {});
-    }, []),
-  );
+  // // Plan-based limit (phase2.md): refresh whenever the screen refocuses so the
+  // // "X of LIMIT used" count and the Add gate stay accurate after changes.
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     getPlanLimitsAPI().then(setLimits).catch(() => {});
+  //   }, []),
+  // );
+  //
+  // const atLimit = !!limits && !limits.canAddMore;
 
-  const atLimit = !!limits && !limits.canAddMore;
-
+  // BILLING-DISABLED BUILD: the at-limit branch offered an "Upgrade plan"
+  // action, and RenewSubscription is no longer a registered route — the
+  // `as any` means that would have compiled and then crashed on tap. The
+  // server also uncaps the free plan's rider seats while the flag is on
+  // (riderSeatLimit in the backend's plan-config.ts), so `atLimit` should
+  // never be true here anyway.
   const guardedAdd = useCallback(() => {
-    if (atLimit && limits) {
-      Alert.alert(
-        'Personnel limit reached',
-        `Your ${limits.planLabel} plan allows ${limits.deliveryPersonnelLimit} delivery ` +
-          `${limits.deliveryPersonnelLimit === 1 ? 'person' : 'people'}. ` +
-          `Upgrade your plan to add more delivery personnel.`,
-        [
-          { text: 'Not now', style: 'cancel' },
-          {
-            text: 'Upgrade plan',
-            onPress: () => navigation.navigate('RenewSubscription' as any, { mode: 'change' })
-          },
-        ],
-      );
-      return;
-    }
+    // if (atLimit && limits) {
+    //   Alert.alert(
+    //     'Personnel limit reached',
+    //     `Your ${limits.planLabel} plan allows ${limits.deliveryPersonnelLimit} delivery ` +
+    //       `${limits.deliveryPersonnelLimit === 1 ? 'person' : 'people'}. ` +
+    //       `Upgrade your plan to add more delivery personnel.`,
+    //     [
+    //       { text: 'Not now', style: 'cancel' },
+    //       {
+    //         text: 'Upgrade plan',
+    //         onPress: () => navigation.navigate('RenewSubscription' as any, { mode: 'change' })
+    //       },
+    //     ],
+    //   );
+    //   return;
+    // }
     navigation.navigate(ROUTES.ADD_DELIVERY_PERSONNEL as any);
-  }, [atLimit, limits, navigation]);
+  }, [navigation]);
 
   const getEffectiveStatus = (p: DummyDeliveryPerson): string => {
     if (p.status === 'plan_locked') return 'plan_locked';
@@ -256,7 +266,11 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
         <HeaderAction label="New" onPress={guardedAdd} />
       </LinearGradient>
 
-      {/* Plan usage (phase2.md) */}
+      {/* BILLING-DISABLED BUILD: the plan-usage bar (phase2.md). The whole
+          strip goes, not just its Upgrade link — with the free plan's rider
+          seats uncapped server-side it would read "3 of 999999 delivery
+          personnel used", which is worse than showing nothing. */}
+      {/*
       {limits && (
         <View style={[styles.usageBar, atLimit && styles.usageBarWarn]}>
           <Feather
@@ -279,6 +293,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
           )}
         </View>
       )}
+      */}
 
       {/* Summary */}
       <View style={styles.summaryBar}>

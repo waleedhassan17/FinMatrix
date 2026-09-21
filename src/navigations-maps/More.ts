@@ -46,8 +46,9 @@ import UserManagementScreen from '../screens/Settings/UserManagement/UserManagem
 import StaffApprovalsScreen from '../screens/Approvals/StaffApprovalsScreen';
 import CompanySwitcherScreen from '../screens/Settings/CompanySwitcher/CompanySwitcherScreen';
 import GlobalSearchScreen from '../screens/GlobalSearch/GlobalSearchScreen';
-import RenewSubscriptionScreen from '../screens/Subscription/RenewSubscriptionScreen';
-import SubscriptionPayScreen from '../screens/Subscription/SubscriptionPayScreen';
+// BILLING-DISABLED BUILD: un-comment with the registrations at the bottom.
+// import RenewSubscriptionScreen from '../screens/Subscription/RenewSubscriptionScreen';
+// import SubscriptionPayScreen from '../screens/Subscription/SubscriptionPayScreen';
 
 export const MoreRouteNames = {
   MoreHub: 'MoreHub',
@@ -90,8 +91,10 @@ export const MoreRouteNames = {
   StaffApprovals: 'StaffApprovals',
   CompanySwitcher: 'CompanySwitcher',
   GlobalSearch: 'GlobalSearch',
-  RenewSubscription: 'RenewSubscription',
-  SubscriptionPay: 'SubscriptionPay',
+  // BILLING-DISABLED BUILD: un-comment with the registrations below and the
+  // MoreStackParamList entries in navigators/stacks/MoreStack.tsx.
+  // RenewSubscription: 'RenewSubscription',
+  // SubscriptionPay: 'SubscriptionPay',
 } as const;
 
 export type MoreRouteName = typeof MoreRouteNames[keyof typeof MoreRouteNames];
@@ -144,6 +147,7 @@ export const MORE_ROUTES: IRoute[] = [
   { title: MoreRouteNames.StaffApprovals, component: StaffApprovalsScreen },
   { title: MoreRouteNames.CompanySwitcher, component: CompanySwitcherScreen },
   { title: MoreRouteNames.GlobalSearch, component: GlobalSearchScreen },
-  { title: MoreRouteNames.RenewSubscription, component: RenewSubscriptionScreen },
-  { title: MoreRouteNames.SubscriptionPay, component: SubscriptionPayScreen },
+  // BILLING-DISABLED BUILD
+  // { title: MoreRouteNames.RenewSubscription, component: RenewSubscriptionScreen },
+  // { title: MoreRouteNames.SubscriptionPay, component: SubscriptionPayScreen },
 ];

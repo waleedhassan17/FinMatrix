@@ -48,8 +48,12 @@ export type MoreStackParamList = {
   StaffApprovals: undefined;
   CompanySwitcher: undefined;
   GlobalSearch: undefined;
-  RenewSubscription: { mode?: 'renew' | 'change' } | undefined;
-  SubscriptionPay: { plan: 'standard' | 'pro'; mode?: 'renew' | 'change' };
+  // BILLING-DISABLED BUILD. Commented with the registrations, for the same
+  // reason as TaxSettings above: leaving these params declared would let
+  // navigate('RenewSubscription') compile against a route that is no longer
+  // registered, failing silently at runtime instead of at build time.
+  // RenewSubscription: { mode?: 'renew' | 'change' } | undefined;
+  // SubscriptionPay: { plan: 'standard' | 'pro'; mode?: 'renew' | 'change' };
 };
 
 const Stack = createNativeStackNavigator();

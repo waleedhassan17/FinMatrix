@@ -3,8 +3,10 @@
 // ═══════════════════════════════════════════════════════
 // First screen an email-verified admin sees when they have no company yet.
 // "What happens next" is spelled out because registration is a multi-step
-// commitment ending in a payment — people abandon flows whose length they
-// can't see.
+// commitment — people abandon flows whose length they can't see.
+//
+// BILLING-DISABLED BUILD: it no longer ends in a payment, it ends in an
+// administrator's review. NEXT_STEPS below says so.
 
 import React, { useEffect } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -33,7 +35,9 @@ const NEXT_STEPS = [
   // starts at company details. Restore "Pick the business type that matches
   // how you operate" as step 1 when the three-tier model comes back.
   'Enter registration, address and contact details',
-  'Choose a billing period and submit payment',
+  // BILLING-DISABLED BUILD: there is no plan or payment step. Restore the
+  // commented line with the flag.
+  // 'Choose a billing period and submit payment',
   'We review and approve — usually within one business day',
 ];
 

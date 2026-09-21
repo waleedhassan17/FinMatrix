@@ -19,7 +19,8 @@ import {
   UNAUTHENTICATED_ROUTES,
   EMAIL_VERIFY_ROUTES,
   PENDING_ROUTES,
-  RENEW_ROUTES,
+  // BILLING-DISABLED BUILD: RENEW_ROUTES → INACTIVE_ROUTES (see Auth.ts).
+  INACTIVE_ROUTES,
   REJECTED_ROUTES,
   DRAFT_COMPANY_ROUTES,
   COMPANY_ONBOARDING_ROUTES
@@ -63,7 +64,7 @@ const BaseNavigator: React.FC = () => {
         : isPending
           ? PENDING_ROUTES
           : isInactive
-            ? RENEW_ROUTES
+            ? INACTIVE_ROUTES
             : isRejected
               ? REJECTED_ROUTES
               : COMPANY_ONBOARDING_ROUTES;

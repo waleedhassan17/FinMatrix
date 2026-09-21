@@ -20,12 +20,14 @@ import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser, selectSelectedRole } from '../authSlice';
-import { authMe } from '../../../networks/auth/authNetwork';
-import {
-  getBillingStatusAPI,
-  type BillingStatus,
-} from '../../../networks/billing/billingNetwork';
+import { authMe, submitCompanyAPI } from '../../../networks/auth/authNetwork';
+// BILLING-DISABLED BUILD: un-comment with the /billing/status effect below.
+// import {
+//   getBillingStatusAPI,
+//   type BillingStatus,
+// } from '../../../networks/billing/billingNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
+import { BILLING_DISABLED_BUILD } from '../../../utils/featureGates';
 import { useSignOut } from '../../../hooks/useSignOut';
 import type { UserRole } from '../../../types';
 import { THEME } from '../../../theme';
@@ -59,7 +61,8 @@ const PendingApprovalScreen: React.FC = () => {
   const [notice, setNotice] = useState<{ tone: AuthTone; message: string } | null>(
     null,
   );
-  const [billing, setBilling] = useState<BillingStatus | null>(null);
+  // BILLING-DISABLED BUILD: un-comment with the /billing/status effect below.
+  // const [billing, setBilling] = useState<BillingStatus | null>(null);
   const isAuthenticated = useAppSelector(s => s.auth.isAuthenticated);
 
   // This screen is registered in the signed-out stack only as the hand-off
@@ -91,25 +94,69 @@ const PendingApprovalScreen: React.FC = () => {
     signOutNow();
   }, [signOutNow]);
 
-  // A signed-in session can ask what is in review; a blocked sign-in cannot
-  // (no token), which is why the gate passes pendingKind along instead.
+  // BILLING-DISABLED BUILD: nothing can be in billing review any more, so
+  // there is nothing to ask /billing/status about.
+  //
+  // // A signed-in session can ask what is in review; a blocked sign-in cannot
+  // // (no token), which is why the gate passes pendingKind along instead.
+  // useEffect(() => {
+  //   if (fromLogin || !isAuthenticated) return;
+  //   let cancelled = false;
+  //   getBillingStatusAPI()
+  //     .then(st => {
+  //       if (!cancelled) setBilling(st);
+  //     })
+  //     .catch(() => {
+  //       /* copy falls back to the payment wording's neutral parts */
+  //     });
+  //   return () => {
+  //     cancelled = true;
+  //   };
+  // }, [fromLogin, isAuthenticated]);
+
+  // BILLING-DISABLED BUILD: no trial can be requested, so every branch below
+  // takes its non-trial form. Pinned to a constant rather than deleting the
+  // ternaries so the trial copy survives for the restore.
+  const isTrialRequest = BILLING_DISABLED_BUILD
+    ? false
+    : route.params?.pendingKind === 'trial';
+  // const isTrialRequest =
+  //   route.params?.pendingKind === 'trial' || billing?.trialPending === true;
+
+  // ── BILLING-DISABLED BUILD ──────────────────────────────────────────────
+  // Submit-on-arrival safety net. Onboarding now submits from
+  // CreateCompanyScreen, but a draft can still reach this screen: that call
+  // failed, or the owner registered on an older build, or they abandoned
+  // onboarding half-way and signed back in (the server deliberately does not
+  // block `draft` at sign-in). A draft 403s every business request, so
+  // leaving one un-submitted strands the account — an administrator never
+  // sees it in the queue, because nobody ever asked them to.
+  const submitAttempted = React.useRef(false);
   useEffect(() => {
+    // Must not run once the plan step is back: it would submit a company for
+    // approval before the owner had chosen anything, and the server would
+    // refuse it with PLAN_REQUIRED.
+    if (!BILLING_DISABLED_BUILD) return;
     if (fromLogin || !isAuthenticated) return;
+    const status = user?.companyStatus;
+    const isDraft = status === 'draft' || status === 'email_verified';
+    if (!isDraft || !user?.companyId || submitAttempted.current) return;
+    submitAttempted.current = true;
     let cancelled = false;
-    getBillingStatusAPI()
-      .then(st => {
-        if (!cancelled) setBilling(st);
+    submitCompanyAPI(user.companyId)
+      .then(() => authMe())
+      .then(({ data }) => {
+        if (!cancelled) dispatch(setUser(data.user));
       })
       .catch(() => {
-        /* copy falls back to the payment wording's neutral parts */
+        // Leave the waiting copy up rather than showing an error for work the
+        // owner did not ask for. "Check status" retries the whole thing.
+        submitAttempted.current = false;
       });
     return () => {
       cancelled = true;
     };
-  }, [fromLogin, isAuthenticated]);
-
-  const isTrialRequest =
-    route.params?.pendingKind === 'trial' || billing?.trialPending === true;
+  }, [dispatch, fromLogin, isAuthenticated, user?.companyId, user?.companyStatus]);
 
   const backToSignIn = useCallback(() => {
     navigation.navigate('SignIn', { role });
@@ -146,7 +193,9 @@ const PendingApprovalScreen: React.FC = () => {
             ? 'Your registration was reviewed — see the details on the next screen.'
             : isTrialRequest
               ? 'Not activated yet. Your free trial request is with our team — usually within 24 hours. We will email you as soon as it is live.'
-              : 'Not approved yet. Your payment is with our team; we will email you as soon as it is verified.'
+                // BILLING-DISABLED BUILD: was "Your payment is with our team;
+              // we will email you as soon as it is verified."
+              : 'Not approved yet. Your registration is with our team; we will email you as soon as it is reviewed.'
       });
     } catch (e: any) {
       setNotice({ tone: 'error', message: e?.message ?? 'Could not refresh status' });
@@ -245,11 +294,20 @@ const PendingApprovalScreen: React.FC = () => {
               ]
             : [
                 { title: 'Registration submitted', detail: 'Company details received', done: true },
+                // BILLING-DISABLED BUILD: was "Payment receipt received /
+                // Awaiting administrator verification". Nobody pays anything
+                // on this build, so that step described a receipt that does
+                // not exist. Restore the two commented lines with the flag.
                 {
-                  title: 'Payment receipt received',
-                  detail: 'Awaiting administrator verification',
+                  title: 'Details received',
+                  detail: 'Your company is in the review queue',
                   done: true,
                 },
+                // {
+                //   title: 'Payment receipt received',
+                //   detail: 'Awaiting administrator verification',
+                //   done: true,
+                // },
                 {
                   title: approved ? 'Approved' : 'Administrator review',
                   detail: approved
