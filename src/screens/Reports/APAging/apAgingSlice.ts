@@ -1,51 +1,33 @@
 // AP aging shares A/R's bucket model: the backend builds both with the same
-// bucketAging() helper, so the row/total shapes are identical.
+// bucketAging() helper, so the row/total shapes are identical — including the
+// configurable `buckets[]` and the legacy five.
+//
+// It also shares A/R's state shape and preference handling, which live in
+// arAgingSlice. Only the endpoint and the thunk name differ.
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { ARAgingReport } from '../../../models/arAgingModel';
+import type { AgingPresetKey } from '../../../models/arAgingModel';
 import { getAPAgingReportAPI } from '../../../networks/reports/apAgingNetwork';
 import { arAgingSerializer } from '../../../serializers/arAgingSerializer';
-import { toIsoDate } from '../../../models/reportModel';
-
-interface APAgingState {
-  /** True once the user picks their own date — see getDefaultReportRange. */
-  isCustomRange: boolean;
-  asOfDate: string;
-  report: ARAgingReport | null;
-  isLoading: boolean;
-  error: string;
-}
-
-const initialState: APAgingState = {
-  isCustomRange: false,
-  // LOCAL calendar date — toISOString() is UTC and ages the buckets from
-  // yesterday in PKT until 05:00 local.
-  asOfDate: toIsoDate(new Date()),
-  report: null,
-  isLoading: false,
-  error: '',
-};
+import { agingInitialState, type AgingSliceState } from '../ARAging/arAgingSlice';
 
 export const apAgingSlice = createAppSlice({
   name: 'apAging',
-  initialState,
+  initialState: agingInitialState,
   reducers: create => ({
-    setAPAgingAsOfDate: create.reducer((state, action: PayloadAction<string>) => {
-      state.asOfDate = action.payload;
-      state.isCustomRange = true;
+    setAPAgingPreset: create.reducer((state, action: PayloadAction<AgingPresetKey>) => {
+      state.preset = action.payload;
     }),
-    /**
-     * Re-seed to today unless the user chose their own date.
-     *
-     * initialState is evaluated once at bundle startup, so without this the
-     * date freezes on the day the app launched and the report silently
-     * stops including anything newer. Screens dispatch this on focus.
-     */
-    refreshAPAgingAsOfDate: create.reducer(state => {
-      if (!state.isCustomRange) state.asOfDate = toIsoDate(new Date());
+    setAPAgingCustomBuckets: create.reducer((state, action: PayloadAction<string>) => {
+      state.customBuckets = action.payload;
+      state.preset = 'custom';
     }),
-    fetchARAgingReport: create.asyncThunk(
-      async (asOfDate: string) => arAgingSerializer(await getAPAgingReportAPI(asOfDate)),
+    // Named for the report it loads. It used to be exported as
+    // `fetchARAgingReport` from this file — it worked, but it read as a bug and
+    // the A/P screen imported the A/R name from its own slice.
+    fetchAPAgingReport: create.asyncThunk(
+      async (params: Record<string, string> = {}) =>
+        arAgingSerializer(await getAPAgingReportAPI(params)),
       {
         pending: state => {
           state.isLoading = true;
@@ -54,6 +36,7 @@ export const apAgingSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.isLoading = false;
           state.report = action.payload;
+          if (action.payload?.preset) state.preset = action.payload.preset;
         },
         rejected: (state, action) => {
           state.isLoading = false;
@@ -67,6 +50,7 @@ export const apAgingSlice = createAppSlice({
   },
 });
 
-export const { setAPAgingAsOfDate, refreshAPAgingAsOfDate, fetchARAgingReport } = apAgingSlice.actions;
-export const selectAPAgingState = (rootState: { apAging?: APAgingState }) =>
-  rootState.apAging ?? initialState;
+export const { setAPAgingPreset, setAPAgingCustomBuckets, fetchAPAgingReport } =
+  apAgingSlice.actions;
+export const selectAPAgingState = (rootState: { apAging?: AgingSliceState }) =>
+  rootState.apAging ?? agingInitialState;

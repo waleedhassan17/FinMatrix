@@ -53,6 +53,30 @@ const palette = {
   navy700: '#163A5C',
   navyTint: '#EAF0F6',
 
+  // Sequential ramp in the navy family, light → dark, for ORDERED data.
+  //
+  // Aging buckets are ordinal: swapping "1–30" and "61–90" would change the
+  // meaning, so age belongs in the colour as lightness rather than as identity.
+  // CHART_SERIES cannot do this job — it carries five hues chosen to be told
+  // APART, and the aging report now runs anywhere from five to fourteen
+  // buckets, so it would both repeat and imply differences that are not there.
+  //
+  // 50–300 are the web app's existing values, which already paint its public
+  // pages; 400 and 500 are new and were added to both. These agree with
+  // FinMatrix-Web/src/theme/tokens.ts step for step, because a colour that
+  // disagrees between the two clients is a bug rather than a variation.
+  //
+  // Verified monotonic in OKLCH lightness (0.974 → 0.341) and hue-stable
+  // (245–252°), which is the correct check for a ramp. Running the CATEGORICAL
+  // contrast validator over these fails by design — adjacent steps of a ramp
+  // are meant to sit close.
+  navy50: '#F3F7FB',
+  navy100: '#E3ECF5',
+  navy200: '#C7D9E9',
+  navy300: '#9DB9D4',
+  navy400: '#6E93BC',
+  navy500: '#3F6C9B',
+
   // Emerald — no longer the brand accent, but still the SUCCESS green: a paid
   // invoice, a delivery in transit, a strong password. Kept so meaning stays
   // green while the brand moved to navy.
@@ -130,6 +154,17 @@ const colors = {
   // Info
   info: palette.blue600,
   infoLight: palette.blueLight,
+
+  // Sequential navy ramp, light → dark. See the palette note: this is for
+  // ORDERED data (aging buckets), never for telling separate series apart.
+  navy50: palette.navy50,
+  navy100: palette.navy100,
+  navy200: palette.navy200,
+  navy300: palette.navy300,
+  navy400: palette.navy400,
+  navy500: palette.navy500,
+  navy600: palette.navy600,
+  navy700: palette.navy700,
 
   // Neutrals (exposed for direct use)
   neutral25: palette.neutral25,
@@ -397,6 +432,40 @@ export const THEME = {
 } as const;
 
 export type Theme = typeof THEME;
+
+/**
+ * The sequential ramp for ordered buckets, darkest last.
+ *
+ * Six steps starting at navy200. The two palest steps are left out on purpose:
+ * against a white card navy50 and navy100 read as an EMPTY column rather than a
+ * small one, which is the one thing a bar must never do. Sample with
+ * `rampSteps` rather than indexing — the aging report runs from five to
+ * fourteen buckets, and the ends must always be the ends.
+ */
+export const AGING_RAMP = [
+  colors.navy200,
+  colors.navy300,
+  colors.navy400,
+  colors.navy500,
+  colors.navy600,
+  colors.navy700,
+] as const;
+
+/**
+ * `count` colours spread evenly across a ramp, always including both ends.
+ *
+ * Fewer buckets than steps takes a subset; more repeats intermediate steps
+ * rather than inventing new ones — a generated hue would not be a step of this
+ * ramp and would break its monotonicity, which is the only thing making the
+ * order readable.
+ */
+export const rampSteps = (count: number, ramp: readonly string[] = AGING_RAMP): string[] => {
+  if (count <= 0) return [];
+  if (count === 1) return [ramp[ramp.length - 1]];
+  return Array.from({ length: count }, (_, i) =>
+    ramp[Math.round((i * (ramp.length - 1)) / (count - 1))],
+  );
+};
 
 /**
  * The navy header gradient, shared by every screen that has one: the reports

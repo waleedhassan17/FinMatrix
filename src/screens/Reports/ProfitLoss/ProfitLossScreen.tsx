@@ -6,13 +6,16 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
+  fetchProfitLossLineEntries,
   fetchProfitLossReport,
   selectProfitLossState,
   setProfitLossComparisonEnabled,
-  setProfitLossRange, refreshProfitLossRange
+  setProfitLossRange, refreshProfitLossRange,
+  toggleProfitLossLine
 } from './profitLossSlice';
 import { formatCurrency } from '../../../utils/formatters';
-import type { ProfitLossReport } from '../../../models/profitLossModel';
+import type { PnlLine, ProfitLossReport } from '../../../models/profitLossModel';
+import LineEntries from './LineEntries';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import {
   ReportContainer,
@@ -37,29 +40,12 @@ type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
 /**
- * Per-account detail and the operating / non-operating split. The API returns
- * these alongside the five scalars the screen has always used, and the
- * serializer passes the whole object through untouched — but a deployment that
- * predates them returns only the scalars, so every field is optional and the
- * statement falls back to group rows when they are absent.
- *
- * Declared here rather than in profitLossModel so this presentation refactor
- * changes no shared type.
+ * `PnlLine` and `PnlDetail` moved to profitLossModel when the drill-down
+ * landed: the slice keys fetched transactions by `accountCode`, so the store
+ * and the screen have to agree on the shape. They remain optional there for
+ * the same reason as before — a deployment that predates them returns only the
+ * scalars, and the statement falls back to group rows when they are absent.
  */
-type PnlLine = { accountCode: string; accountName: string; amount: number };
-type PnlDetail = {
-  income?: PnlLine[];
-  cogsLines?: PnlLine[];
-  expenseLines?: PnlLine[];
-  otherIncome?: PnlLine[];
-  otherExpense?: PnlLine[];
-  totalIncome?: number;
-  totalCogs?: number;
-  totalExpenses?: number;
-  netOperatingIncome?: number;
-  netOtherIncome?: number;
-};
-
 const lines = (v: PnlLine[] | undefined): PnlLine[] => (Array.isArray(v) ? v : []);
 const sum = (v: PnlLine[]): number => v.reduce((t, l) => t + (l.amount || 0), 0);
 
@@ -85,9 +71,54 @@ const ProfitLossScreen: React.FC = () => {
     dispatch(fetchProfitLossReport({ range: state.range, comparisonEnabled: state.comparisonEnabled }));
   }, [dispatch, state.range.startDate, state.range.endDate, state.comparisonEnabled]);
 
-  const report = state.report as (ProfitLossReport & PnlDetail) | null;
+  const report: ProfitLossReport | null = state.report;
   const netPositive = (report?.netIncome ?? 0) >= 0;
   const showPrior = state.comparisonEnabled;
+
+  /**
+   * Open or close one account line, fetching its transactions the first time.
+   *
+   * Once per line per period: the slice keys them by account code and clears
+   * the map when the range changes, so reopening a line already loaded is
+   * instant and changing the period cannot leave last period's rows behind.
+   */
+  const openLine = useCallback(
+    (accountCode: string) => {
+      const willOpen = !state.expanded[accountCode];
+      dispatch(toggleProfitLossLine(accountCode));
+      if (willOpen && !state.entries[accountCode]) {
+        dispatch(fetchProfitLossLineEntries({ accountCode, range: state.range }));
+      }
+    },
+    [dispatch, state.expanded, state.entries, state.range],
+  );
+
+  /**
+   * One account line, expandable into the transactions behind it.
+   *
+   * The amount stays exactly what the server sent — expanding reveals what is
+   * under a figure, it never recomputes it.
+   */
+  const accountRow = (l: PnlLine) => (
+    <StatementRow
+      key={l.accountCode}
+      label={`${l.accountCode}  ${l.accountName}`}
+      amount={l.amount}
+      depth={1}
+      expanded={!!state.expanded[l.accountCode]}
+      onToggle={() => openLine(l.accountCode)}
+    >
+      <LineEntries
+        state={state.entries[l.accountCode]}
+        lineAmount={l.amount}
+        onRetry={() =>
+          dispatch(
+            fetchProfitLossLineEntries({ accountCode: l.accountCode, range: state.range }),
+          )
+        }
+      />
+    </StatementRow>
+  );
 
   // Detail is present only once the backend that returns it is deployed.
   const income = lines(report?.income);
@@ -187,9 +218,7 @@ const ProfitLossScreen: React.FC = () => {
 
               <StatementRow label="Income" bold />
               {hasDetail ? (
-                income.map(l => (
-                  <StatementRow key={l.accountCode} label={`${l.accountCode}  ${l.accountName}`} amount={l.amount} depth={1} />
-                ))
+                income.map(accountRow)
               ) : (
                 <StatementRow label="Sales Revenue" amount={report.revenue} depth={1} />
               )}
@@ -208,9 +237,7 @@ const ProfitLossScreen: React.FC = () => {
 
               <StatementRow label="Cost of Goods Sold" bold />
               {cogsLines.length > 0 ? (
-                cogsLines.map(l => (
-                  <StatementRow key={l.accountCode} label={`${l.accountCode}  ${l.accountName}`} amount={l.amount} depth={1} />
-                ))
+                cogsLines.map(accountRow)
               ) : (
                 <StatementRow label="Cost of Goods Sold" amount={report.cogs} depth={1} />
               )}
@@ -238,9 +265,7 @@ const ProfitLossScreen: React.FC = () => {
 
               <StatementRow label="Expenses" bold />
               {expenseLines.length > 0 ? (
-                expenseLines.map(l => (
-                  <StatementRow key={l.accountCode} label={`${l.accountCode}  ${l.accountName}`} amount={l.amount} depth={1} />
-                ))
+                expenseLines.map(accountRow)
               ) : (
                 <StatementRow label="Operating Expenses" amount={report.expenses} depth={1} />
               )}
@@ -270,17 +295,13 @@ const ProfitLossScreen: React.FC = () => {
               {otherIncome.length > 0 && (
                 <>
                   <StatementRow label="Other Income" bold />
-                  {otherIncome.map(l => (
-                    <StatementRow key={l.accountCode} label={`${l.accountCode}  ${l.accountName}`} amount={l.amount} depth={1} />
-                  ))}
+                  {otherIncome.map(accountRow)}
                 </>
               )}
               {otherExpense.length > 0 && (
                 <>
                   <StatementRow label="Other Expenses" bold />
-                  {otherExpense.map(l => (
-                    <StatementRow key={l.accountCode} label={`${l.accountCode}  ${l.accountName}`} amount={l.amount} depth={1} />
-                  ))}
+                  {otherExpense.map(accountRow)}
                 </>
               )}
               {otherIncome.length + otherExpense.length > 0 && report.netOtherIncome !== undefined && (

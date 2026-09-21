@@ -97,6 +97,7 @@ import { generalLedgerSlice } from '../screens/Reports/GeneralLedger/generalLedg
 import { arAgingSlice } from '../screens/Reports/ARAging/arAgingSlice';
 import { apAgingSlice } from '../screens/Reports/APAging/apAgingSlice';
 import { inventoryValuationSlice } from '../screens/Reports/InventoryValuation/inventoryValuationSlice';
+import { inventoryItemReportSlice } from '../screens/Reports/InventoryItemReport/inventoryItemReportSlice';
 import { analyticsDashboardSlice } from '../screens/Reports/AnalyticsDashboard/analyticsDashboardSlice';
 import { deliveryDailyReportSlice } from '../screens/Reports/DeliveryDailyReport/deliveryDailyReportSlice';
 import { deliveryPerformanceSlice } from '../screens/Reports/DeliveryPerformance/deliveryPerformanceSlice';
@@ -122,6 +123,7 @@ const rootReducer = combineReducers({
   arAging: arAgingSlice.reducer,
   apAging: apAgingSlice.reducer,
   inventoryValuation: inventoryValuationSlice.reducer,
+  inventoryItemReport: inventoryItemReportSlice.reducer,
   analyticsDashboard: analyticsDashboardSlice.reducer,
     deliveryDailyReport: deliveryDailyReportSlice.reducer,
     deliveryPerformance: deliveryPerformanceSlice.reducer,

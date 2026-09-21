@@ -18,6 +18,8 @@ export type ReportsStackParamList = {
   ARAging: undefined;
   APAging: undefined;
   InventoryValuation: undefined;
+  /** Reached by tapping a row in Inventory Valuation. */
+  InventoryItemReport: { itemId: string; itemName?: string };
   AnalyticsDashboard: undefined;
   DeliveryDailyReport: undefined;
   DeliveryPerformance: undefined;

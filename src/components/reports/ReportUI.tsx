@@ -599,6 +599,12 @@ export const ReportTitleBlock: React.FC<{
  * One line of a statement. `depth` indents the label so sub-accounts sit under
  * their group; `isTotal` rules off above the amount; `isGrand` is the heavier
  * treatment for TOTAL ASSETS / NET INCOME and the like.
+ *
+ * Pass `onToggle` to make the line expandable. It gains a +/− affordance and
+ * becomes tappable, and whatever the caller renders as `children` appears
+ * beneath it — the transactions behind the figure, for the P&L drill-down. The
+ * amount shown is still the one handed in: expanding a line reveals what is
+ * under it, it never recomputes it.
  */
 export const StatementRow: React.FC<{
   label: string;
@@ -612,6 +618,10 @@ export const StatementRow: React.FC<{
   prior?: number;
   showPrior?: boolean;
   currency?: string;
+  /** Supplying this makes the row expandable. */
+  onToggle?: () => void;
+  expanded?: boolean;
+  children?: React.ReactNode;
 }> = ({
   label,
   amount,
@@ -623,14 +633,29 @@ export const StatementRow: React.FC<{
   prior,
   showPrior,
   currency = 'Rs ',
+  onToggle,
+  expanded,
+  children,
 }) => {
   const emphasise = bold || isGrand;
-  return (
+
+  const body = (
     <View style={[S.stRow, isTotal && S.stRowTotal, isGrand && S.stRowGrand]}>
+      {/* The affordance sits in the indent rather than beside the label, so
+          expandable and plain rows keep their labels on the same x. */}
+      {onToggle ? (
+        <View style={[S.stToggle, { marginLeft: depth * 16 }]}>
+          <Feather
+            name={expanded ? 'minus-square' : 'plus-square'}
+            size={14}
+            color={T.colors.textTertiary}
+          />
+        </View>
+      ) : null}
       <Text
         style={[
           S.stLabel,
-          { paddingLeft: depth * 16 },
+          { paddingLeft: onToggle ? 0 : depth * 16 },
           emphasise && S.stEmphasis,
           italic && S.stItalic,
         ]}
@@ -645,6 +670,22 @@ export const StatementRow: React.FC<{
           {prior === undefined ? '—' : parenNegative(prior, currency)}
         </Text>
       ) : null}
+    </View>
+  );
+
+  if (!onToggle) return body;
+
+  return (
+    <View>
+      <TouchableOpacity
+        onPress={onToggle}
+        activeOpacity={0.6}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: !!expanded }}
+        accessibilityLabel={`${label}. ${expanded ? 'Hide' : 'Show'} transactions`}>
+        {body}
+      </TouchableOpacity>
+      {expanded ? children : null}
     </View>
   );
 };
@@ -833,6 +874,8 @@ const S = StyleSheet.create({
     marginTop: 4,
     paddingTop: 9,
   },
+  // Fixed width so an expandable row's label starts where a plain row's does.
+  stToggle: { width: 16, alignItems: 'center', paddingTop: 2 },
   stLabel: { ...T.typography.bodySm, color: T.colors.textPrimary, flex: 1 },
   stAmount: { ...T.typography.bodySm, color: T.colors.textPrimary, width: 118, textAlign: 'right' },
   stEmphasis: { fontWeight: T.typography.h1.fontWeight },

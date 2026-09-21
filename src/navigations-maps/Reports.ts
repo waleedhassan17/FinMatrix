@@ -17,6 +17,7 @@ import BudgetDetailScreen from '../screens/Budgets/BudgetDetailScreen';
 import ARAgingScreen from '../screens/Reports/ARAging/ARAgingScreen';
 import APAgingScreen from '../screens/Reports/APAging/APAgingScreen';
 import InventoryValuationScreen from '../screens/Reports/InventoryValuation/InventoryValuationScreen';
+import InventoryItemReportScreen from '../screens/Reports/InventoryItemReport/InventoryItemReportScreen';
 import AnalyticsDashboardScreen from '../screens/Reports/AnalyticsDashboard/AnalyticsDashboardScreen';
 import DeliveryDailyReportScreen from '../screens/Reports/DeliveryDailyReport/DeliveryDailyReportScreen';
 import DeliveryPerformanceScreen from '../screens/Reports/DeliveryPerformance/DeliveryPerformanceScreen';
@@ -34,6 +35,7 @@ export const ReportsRouteNames = {
   ARAging: 'ARAging',
   APAging: 'APAging',
   InventoryValuation: 'InventoryValuation',
+  InventoryItemReport: 'InventoryItemReport',
   AnalyticsDashboard: 'AnalyticsDashboard',
   DeliveryDailyReport: 'DeliveryDailyReport',
   DeliveryPerformance: 'DeliveryPerformance',
@@ -54,6 +56,7 @@ export const REPORTS_ROUTES: IRoute[] = [
   { title: ReportsRouteNames.ARAging, component: ARAgingScreen },
   { title: ReportsRouteNames.APAging, component: APAgingScreen },
   { title: ReportsRouteNames.InventoryValuation, component: InventoryValuationScreen },
+  { title: ReportsRouteNames.InventoryItemReport, component: InventoryItemReportScreen },
   { title: ReportsRouteNames.AnalyticsDashboard, component: AnalyticsDashboardScreen },
   { title: ReportsRouteNames.DeliveryDailyReport, component: DeliveryDailyReportScreen },
   { title: ReportsRouteNames.DeliveryPerformance, component: DeliveryPerformanceScreen },

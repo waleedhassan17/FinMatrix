@@ -6,9 +6,12 @@
 
 import { fetchReport } from './reportHelpers';
 
-export const getAPAgingAPI = async (params: any = {}): Promise<any> => {
-  // The slice passes asOfDate as a string; axios needs an object for `params`.
-  const query = typeof params === 'string' ? { asOfDate: params } : params;
-  return fetchReport('/reports/ap-aging', query);
-};
+/**
+ * Open payables, bucketed by how overdue they are. Same params and the same
+ * missing `asOfDate` as the receivables side — see arAgingNetwork.
+ */
+export const getAPAgingAPI = async (
+  params: Record<string, string> = {},
+): Promise<any> => fetchReport('/reports/ap-aging', params);
+
 export const getAPAgingReportAPI = getAPAgingAPI;

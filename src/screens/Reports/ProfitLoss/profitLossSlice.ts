@@ -5,9 +5,22 @@ import {
   getComparisonRange,
   getDefaultReportRange,
 } from '../../../models/reportModel';
-import type { ProfitLossReport } from '../../../models/profitLossModel';
-import { getProfitLossReportAPI } from '../../../networks/reports/profitLossNetwork';
-import { profitLossSerializer } from '../../../serializers/profitLossSerializer';
+import {
+  emptyLineEntries,
+  type LineEntriesState,
+  type ProfitLossReport,
+} from '../../../models/profitLossModel';
+import {
+  getProfitLossReportAPI,
+  getStatementLineEntriesAPI,
+} from '../../../networks/reports/profitLossNetwork';
+import {
+  profitLossSerializer,
+  statementLineEntriesSerializer,
+} from '../../../serializers/profitLossSerializer';
+
+/** How many ledger rows one expanded line pulls. */
+export const LINE_ENTRY_LIMIT = 50;
 
 interface ProfitLossState {
   range: ReportDateRange;
@@ -17,6 +30,10 @@ interface ProfitLossState {
   report: ProfitLossReport | null;
   isLoading: boolean;
   error: string;
+  /** Which account lines are open, keyed by account code. */
+  expanded: Record<string, boolean>;
+  /** The transactions behind each opened line, keyed by account code. */
+  entries: Record<string, LineEntriesState>;
 }
 
 const initialState: ProfitLossState = {
@@ -26,6 +43,8 @@ const initialState: ProfitLossState = {
   report: null,
   isLoading: false,
   error: '',
+  expanded: {},
+  entries: {},
 };
 
 export const profitLossSlice = createAppSlice({
@@ -68,10 +87,55 @@ export const profitLossSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.isLoading = false;
           state.report = action.payload;
+          // A new period means the cached transactions describe the old one.
+          // Collapsing rather than refetching keeps the reload to one request;
+          // the user reopens the lines they still care about.
+          state.expanded = {};
+          state.entries = {};
         },
         rejected: (state, action) => {
           state.isLoading = false;
           state.error = action.error?.message ?? 'Failed to load P&L report';
+        },
+      },
+    ),
+
+    toggleProfitLossLine: create.reducer((state, action: PayloadAction<string>) => {
+      const code = action.payload;
+      state.expanded[code] = !state.expanded[code];
+    }),
+
+    /**
+     * The posted transactions behind one account line.
+     *
+     * Keyed by account code in a map rather than held as a single "open line",
+     * so several lines can stay open at once and a row that has already been
+     * fetched reopens instantly.
+     */
+    fetchProfitLossLineEntries: create.asyncThunk(
+      async (payload: { accountCode: string; range: ReportDateRange }) =>
+        statementLineEntriesSerializer(
+          await getStatementLineEntriesAPI(payload.accountCode, {
+            ...payload.range,
+            limit: LINE_ENTRY_LIMIT,
+          }),
+        ),
+      {
+        pending: (state, action) => {
+          const code = action.meta.arg.accountCode;
+          state.entries[code] = { ...emptyLineEntries, status: 'loading' };
+        },
+        fulfilled: (state, action) => {
+          const code = action.meta.arg.accountCode;
+          state.entries[code] = { status: 'succeeded', error: '', data: action.payload };
+        },
+        rejected: (state, action) => {
+          const code = action.meta.arg.accountCode;
+          state.entries[code] = {
+            status: 'failed',
+            error: action.error?.message ?? 'Failed to load transactions',
+            data: null,
+          };
         },
       },
     ),
@@ -86,6 +150,8 @@ export const {
   refreshProfitLossRange,
   setProfitLossComparisonEnabled,
   fetchProfitLossReport,
+  toggleProfitLossLine,
+  fetchProfitLossLineEntries,
 } = profitLossSlice.actions;
 
 export const selectProfitLossState = (rootState: { profitLoss?: ProfitLossState }) =>
