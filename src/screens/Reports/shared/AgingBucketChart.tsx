@@ -16,12 +16,16 @@
 //   CHART_SERIES holds five hues picked to be told apart, which would both run
 //   out and imply differences between buckets that do not exist.
 
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
 import { THEME, AGING_RAMP, rampSteps } from '../../../theme';
 import { formatCurrency } from '../../../utils/formatters';
-import type { AgingBucketDef } from '../../../models/arAgingModel';
+import {
+  bucketTopParties,
+  type AgingBucketDef,
+  type ARAgingRow,
+} from '../../../models/arAgingModel';
 
 const { colors, radius, spacing, typography } = THEME;
 
@@ -30,6 +34,10 @@ const BAR_AREA = 104;
 /** Every bucket keeps a visible stub, so an empty column is not a missing one. */
 const MIN_BAR = 3;
 const COL_WIDTH = 64;
+/** How many parties the readout names before folding the rest away. */
+const READOUT_PARTY_LIMIT = 2;
+/** Unselected bars keep their ramp step and lose contrast. */
+const DIMMED = 0.35;
 
 const compact = (n: number): string => {
   const abs = Math.abs(n);
@@ -41,12 +49,37 @@ const compact = (n: number): string => {
 interface Props {
   buckets: AgingBucketDef[];
   amounts: Record<string, number>;
+  /**
+   * The per-party rows behind those totals. Given them, the readout names who
+   * is in the tapped bucket — the phone's answer to a hover tooltip, and a
+   * better one, because it stays on screen instead of vanishing with the finger.
+   */
+  rows?: ARAgingRow[];
+  /** Controlled: the screen owns the selection, because the list below filters on it. */
+  selectedBucketKey?: string | null;
+  onSelectBucket?: (key: string | null) => void;
   /** 'Rs ' — passed through rather than assumed, as the tables do. */
   currency?: string;
 }
 
-const AgingBucketChart: React.FC<Props> = ({ buckets, amounts, currency = 'Rs ' }) => {
-  const [picked, setPicked] = useState<number | null>(null);
+const AgingBucketChart: React.FC<Props> = ({
+  buckets,
+  amounts,
+  rows,
+  selectedBucketKey = null,
+  onSelectBucket,
+  currency = 'Rs ',
+}) => {
+  // Ranked once per payload, not per tap.
+  const rankings = useMemo(() => {
+    if (!rows?.length) return null;
+    return new Map(
+      buckets.map(b => [
+        b.key,
+        bucketTopParties({ rows, bucketKey: b.key, limit: READOUT_PARTY_LIMIT }),
+      ]),
+    );
+  }, [rows, buckets]);
 
   const values = buckets.map(b => {
     const v = amounts[b.key];
@@ -59,7 +92,9 @@ const AgingBucketChart: React.FC<Props> = ({ buckets, amounts, currency = 'Rs ' 
   if (max <= 0) return null;
 
   const ramp = rampSteps(buckets.length, AGING_RAMP);
-  const selected = picked !== null ? picked : null;
+  const selectedIndex = buckets.findIndex(b => b.key === selectedBucketKey);
+  const selected = selectedIndex >= 0 ? selectedIndex : null;
+  const ranked = selected === null ? null : rankings?.get(buckets[selected].key);
 
   return (
     <View>
@@ -73,6 +108,24 @@ const AgingBucketChart: React.FC<Props> = ({ buckets, amounts, currency = 'Rs ' 
             : formatCurrency(values[selected], currency)}
         </Text>
       </View>
+
+      {/* Who is in the tapped bucket. The whole point of the tap: a column
+          total says how bad, a name says who to call. */}
+      {ranked && ranked.parties.length > 0 && (
+        <View style={styles.who}>
+          {ranked.parties.map(p => (
+            <View key={p.id || p.name} style={styles.whoRow}>
+              <Text style={styles.whoName} numberOfLines={1}>{p.name}</Text>
+              <Text style={styles.whoAmount}>{formatCurrency(p.amount, currency)}</Text>
+            </View>
+          ))}
+          {ranked.moreCount > 0 && (
+            <Text style={styles.whoMore}>
+              +{ranked.moreCount} more · {formatCurrency(ranked.moreAmount, currency)}
+            </Text>
+          )}
+        </View>
+      )}
 
       <ScrollView
         horizontal
@@ -89,7 +142,8 @@ const AgingBucketChart: React.FC<Props> = ({ buckets, amounts, currency = 'Rs ' 
               key={bucket.key}
               style={styles.col}
               activeOpacity={0.75}
-              onPress={() => setPicked(on ? null : i)}
+              onPress={() => onSelectBucket?.(on ? null : bucket.key)}
+              disabled={!onSelectBucket}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               accessibilityLabel={`${bucket.label}: ${formatCurrency(values[i], currency)}`}
@@ -101,7 +155,14 @@ const AgingBucketChart: React.FC<Props> = ({ buckets, amounts, currency = 'Rs ' 
                 <View
                   style={[
                     styles.bar,
-                    { height, backgroundColor: ramp[i] },
+                    // Opacity, never a different colour: the bar's hue is its
+                    // position in the ramp and must not move when something
+                    // else is selected.
+                    {
+                      height,
+                      backgroundColor: ramp[i],
+                      opacity: selected !== null && !on ? DIMMED : 1,
+                    },
                     on && styles.barOn,
                   ]}
                 />
@@ -126,6 +187,17 @@ const styles = StyleSheet.create({
   },
   readoutLabel: { ...typography.labelSm, color: colors.textTertiary },
   readoutValue: { ...typography.h4, color: colors.textPrimary },
+  who: {
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    paddingTop: spacing.xs,
+    marginBottom: spacing.sm,
+    gap: spacing.xxs,
+  },
+  whoRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  whoName: { ...typography.caption, color: colors.textSecondary, flex: 1, marginRight: spacing.sm },
+  whoAmount: { ...typography.caption, color: colors.textPrimary },
+  whoMore: { ...typography.overline, color: colors.textTertiary },
   plot: { flexDirection: 'row', alignItems: 'flex-end', paddingTop: spacing.xxs },
   col: { width: COL_WIDTH, alignItems: 'center' },
   barTrack: { height: BAR_AREA, justifyContent: 'flex-end' },

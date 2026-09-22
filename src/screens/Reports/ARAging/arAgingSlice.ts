@@ -1,9 +1,25 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { AgingPresetKey, ARAgingReport } from '../../../models/arAgingModel';
-import { getARAgingReportAPI } from '../../../networks/reports/arAgingNetwork';
+import {
+  emptyPartyDocs,
+  type AgingPresetKey,
+  type AgingSort,
+  type ARAgingReport,
+  type PartyDocsState,
+} from '../../../models/arAgingModel';
+import {
+  getARAgingPartyDocumentsAPI,
+  getARAgingReportAPI,
+} from '../../../networks/reports/arAgingNetwork';
+import type { ReportHttpError } from '../../../networks/reports/reportHelpers';
 import { updateSettingsAPI } from '../../../networks/settings/settingsNetwork';
-import { arAgingSerializer } from '../../../serializers/arAgingSerializer';
+import {
+  agingPartyDocumentsSerializer,
+  arAgingSerializer,
+} from '../../../serializers/arAgingSerializer';
+
+/** How many documents one expanded party pulls. */
+export const PARTY_DOCS_LIMIT = 50;
 
 export interface AgingSliceState {
   /**
@@ -20,6 +36,18 @@ export interface AgingSliceState {
   report: ARAgingReport | null;
   isLoading: boolean;
   error: string;
+  /** The bucket being investigated. Validated against the payload on read. */
+  selectedBucket: string | null;
+  /** null means "follow whatever the default is for the current selection". */
+  sort: AgingSort | null;
+  /** Which party rows are open, keyed by party id. */
+  expanded: Record<string, boolean>;
+  /**
+   * The documents behind each opened party, keyed by party id rather than held
+   * as a single "open party" — so several can stay open and a party already
+   * fetched reopens instantly. Same shape as profitLossSlice.entries.
+   */
+  documents: Record<string, PartyDocsState>;
 }
 
 export const agingInitialState: AgingSliceState = {
@@ -28,6 +56,10 @@ export const agingInitialState: AgingSliceState = {
   report: null,
   isLoading: false,
   error: '',
+  selectedBucket: null,
+  sort: null,
+  expanded: {},
+  documents: {},
 };
 
 /**
@@ -45,6 +77,32 @@ export const agingQueryFrom = (state: AgingSliceState): Record<string, string> =
   }
   return { preset: state.preset };
 };
+
+/**
+ * Changing the bucket set invalidates the investigation built on top of it.
+ *
+ * A `d31to60` selection means nothing under `days3`, the order that selection
+ * implied is no longer the right default, and any open panel holds documents
+ * labelled with columns that are about to leave the screen. Clearing all four
+ * together is the invariant — figures stay right while the rows underneath
+ * them come from a different bucket scheme is exactly the kind of wrongness
+ * nobody reports because nothing looks broken.
+ */
+export const clearAgingInvestigation = (state: AgingSliceState): void => {
+  state.selectedBucket = null;
+  state.sort = null;
+  state.expanded = {};
+  state.documents = {};
+};
+
+/** The drill-down query for a party: the report's spec, plus any bucket filter. */
+export const agingDetailQueryFrom = (
+  state: AgingSliceState,
+): Record<string, string> => ({
+  ...agingQueryFrom(state),
+  ...(state.selectedBucket ? { bucket: state.selectedBucket } : {}),
+  limit: String(PARTY_DOCS_LIMIT),
+});
 
 /**
  * Remember the choice as the company default.
@@ -78,11 +136,61 @@ export const arAgingSlice = createAppSlice({
   reducers: create => ({
     setARAgingPreset: create.reducer((state, action: PayloadAction<AgingPresetKey>) => {
       state.preset = action.payload;
+      clearAgingInvestigation(state);
     }),
     setARAgingCustomBuckets: create.reducer((state, action: PayloadAction<string>) => {
       state.customBuckets = action.payload;
       state.preset = 'custom';
+      clearAgingInvestigation(state);
     }),
+    setARAgingBucket: create.reducer((state, action: PayloadAction<string | null>) => {
+      state.selectedBucket = action.payload;
+      // The open panels were fetched under a different filter, so their
+      // contents no longer match the row they sit under.
+      state.expanded = {};
+      state.documents = {};
+    }),
+    setARAgingSort: create.reducer((state, action: PayloadAction<AgingSort>) => {
+      state.sort = action.payload;
+    }),
+    toggleARAgingParty: create.reducer((state, action: PayloadAction<string>) => {
+      const id = action.payload;
+      state.expanded[id] = !state.expanded[id];
+    }),
+    fetchARAgingPartyDocuments: create.asyncThunk(
+      async (payload: { partyId: string; query: Record<string, string> }) =>
+        agingPartyDocumentsSerializer(
+          await getARAgingPartyDocumentsAPI(payload.partyId, payload.query),
+        ),
+      {
+        pending: (state, action) => {
+          state.documents[action.meta.arg.partyId] = {
+            ...emptyPartyDocs,
+            status: 'loading',
+          };
+        },
+        fulfilled: (state, action) => {
+          state.documents[action.meta.arg.partyId] = {
+            status: 'succeeded',
+            error: '',
+            data: action.payload,
+          };
+        },
+        rejected: (state, action) => {
+          // A 404 means this build is newer than the server it is talking to,
+          // not that anything failed. Retrying cannot fix that, so it gets its
+          // own state and the panel offers no retry button.
+          const status = (action.error as ReportHttpError)?.status;
+          const unavailable =
+            status === 404 || /not found/i.test(action.error?.message ?? '');
+          state.documents[action.meta.arg.partyId] = {
+            status: unavailable ? 'unavailable' : 'failed',
+            error: action.error?.message ?? 'Failed to load documents',
+            data: null,
+          };
+        },
+      },
+    ),
     fetchARAgingReport: create.asyncThunk(
       async (params: Record<string, string> = {}) =>
         arAgingSerializer(await getARAgingReportAPI(params)),
@@ -110,7 +218,14 @@ export const arAgingSlice = createAppSlice({
   },
 });
 
-export const { setARAgingPreset, setARAgingCustomBuckets, fetchARAgingReport } =
-  arAgingSlice.actions;
+export const {
+  setARAgingPreset,
+  setARAgingCustomBuckets,
+  setARAgingBucket,
+  setARAgingSort,
+  toggleARAgingParty,
+  fetchARAgingReport,
+  fetchARAgingPartyDocuments,
+} = arAgingSlice.actions;
 export const selectARAgingState = (rootState: { arAging?: AgingSliceState }) =>
   rootState.arAging ?? agingInitialState;

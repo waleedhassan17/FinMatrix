@@ -11,7 +11,7 @@ jest.mock('../../networks/network/apiHelpers', () => ({
   unwrapEnvelope: (r: unknown) => r,
 }));
 
-import { arAgingSerializer } from '../arAgingSerializer';
+import { agingPartyDocumentsSerializer, arAgingSerializer } from '../arAgingSerializer';
 import { overdueTotal, notYetDueTotal } from '../../models/arAgingModel';
 
 const legacyRow = {
@@ -101,5 +101,104 @@ describe('arAgingSerializer', () => {
 
   it('returns null when there is no payload at all', () => {
     expect(arAgingSerializer(null as any)).toBeNull();
+  });
+});
+
+/**
+ * The drill-down payload. Same coercion concern as the report above — these are
+ * Postgres `numeric` and arrive as strings — plus one of its own: daysOverdue
+ * is signed, and 0 and negative are both real answers.
+ */
+describe('agingPartyDocumentsSerializer', () => {
+  const payload = {
+    partyType: 'customer',
+    partyId: 'c1',
+    partyName: 'Allama Traders',
+    asOfDate: '2026-09-22',
+    preset: 'monthly',
+    buckets: [
+      { key: 'current', label: 'Current', minDays: 0, maxDays: 0 },
+      { key: 'd1to30', label: '1–30', minDays: 1, maxDays: 30 },
+      { key: 'd31plus', label: '31 and over', minDays: 31, maxDays: null },
+    ],
+    bucket: 'd1to30',
+    outstandingTotal: '300.00',
+    documents: [
+      {
+        documentId: 'i1',
+        documentType: 'invoice',
+        documentNumber: 'INV-1',
+        issueDate: '2026-08-01',
+        dueDate: '2026-09-01',
+        daysOverdue: 21,
+        bucketKey: 'd1to30',
+        bucketLabel: '1–30',
+        total: '500.00',
+        amountPaid: '200.00',
+        balance: '300.00',
+        status: 'partial',
+      },
+    ],
+    total: 1,
+    page: 1,
+    limit: 50,
+  };
+
+  it('reads the party, the spec and the documents', () => {
+    const d = agingPartyDocumentsSerializer(payload)!;
+    expect(d.partyName).toBe('Allama Traders');
+    expect(d.bucket).toBe('d1to30');
+    expect(d.buckets).toHaveLength(3);
+    expect(d.buckets[2].maxDays).toBeNull();
+    expect(d.documents[0].documentNumber).toBe('INV-1');
+  });
+
+  it('coerces every money field off the numeric strings', () => {
+    const d = agingPartyDocumentsSerializer(payload)!;
+    expect(d.outstandingTotal).toBe(300);
+    expect(d.documents[0].total).toBe(500);
+    expect(d.documents[0].balance).toBe(300);
+    // The contract that makes the panel reconcilable against its row.
+    expect(d.documents.reduce((t, x) => t + x.balance, 0)).toBe(d.outstandingTotal);
+  });
+
+  it('keeps a negative daysOverdue for a document that is not yet due', () => {
+    const d = agingPartyDocumentsSerializer({
+      ...payload,
+      documents: [
+        { ...payload.documents[0], daysOverdue: -4 },
+        { ...payload.documents[0], documentId: 'i2', daysOverdue: 0 },
+      ],
+    })!;
+    expect(d.documents[0].daysOverdue).toBe(-4);
+    expect(d.documents[1].daysOverdue).toBe(0);
+  });
+
+  it('reads the payables side', () => {
+    const d = agingPartyDocumentsSerializer({
+      ...payload,
+      partyType: 'vendor',
+      partyName: 'Supplier Co',
+      documents: [{ ...payload.documents[0], documentType: 'bill' }],
+    })!;
+    expect(d.partyType).toBe('vendor');
+    expect(d.documents[0].documentType).toBe('bill');
+  });
+
+  it('tolerates a bare array, so an envelope regression cannot blank the panel', () => {
+    const d = agingPartyDocumentsSerializer(payload.documents)!;
+    expect(d.documents).toHaveLength(1);
+    expect(d.documents[0].documentNumber).toBe('INV-1');
+  });
+
+  it('zeroes a malformed payload rather than throwing', () => {
+    const d = agingPartyDocumentsSerializer({})!;
+    expect(d.documents).toEqual([]);
+    expect(d.outstandingTotal).toBe(0);
+    expect(d.partyName).toBe('Unknown');
+  });
+
+  it('returns null when there is no payload at all', () => {
+    expect(agingPartyDocumentsSerializer(null)).toBeNull();
   });
 });

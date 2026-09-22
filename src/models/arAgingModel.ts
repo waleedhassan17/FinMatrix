@@ -114,3 +114,221 @@ export const overdueTotal = (report: ARAgingReport): number =>
 /** What is in the not-yet-due column. */
 export const notYetDueTotal = (report: ARAgingReport): number =>
   report.totals.amounts[report.buckets[0]?.key] ?? 0;
+
+// ═══════════════════════════════════════════════════════
+// Investigating a bucket — who is in it, and what they owe
+// ═══════════════════════════════════════════════════════
+// The same functions as the web client's models/reportAging.ts, deliberately
+// under the same names. These two codebases already keep overdueTotal and
+// notYetDueTotal in lockstep; a report that ordered its rows differently on a
+// phone than on a desktop would be a bug nobody could describe.
+//
+// Pure on purpose: the interaction is a reducer and a tap handler away from
+// anything renderable, and this is where it can be tested directly.
+
+/**
+ * How the party list is ordered.
+ *
+ * `oldest` is the collections order and the reason the control exists: the
+ * server sorts by total descending, but the biggest debtor and the most urgent
+ * debtor are rarely the same party.
+ */
+export type AgingSort = 'oldest' | 'total' | 'name';
+
+/** Chip labels, in the order they are shown. */
+export const AGING_SORT_LABELS: { key: AgingSort; label: string }[] = [
+  { key: 'oldest', label: 'Oldest' },
+  { key: 'total', label: 'Largest' },
+  { key: 'name', label: 'Name' },
+];
+
+/**
+ * What to sort by when the user has not said.
+ *
+ * Picking a bucket is an act of triage — the question just became "who is in
+ * here" — and within one bucket the useful order is by how much of it each
+ * party holds. With nothing picked the report is a summary again, and the
+ * largest balance leads.
+ */
+export const defaultAgingSort = (selectedBucket: string | null): AgingSort =>
+  selectedBucket ? 'oldest' : 'total';
+
+/**
+ * Drop a selected bucket the current payload no longer describes.
+ *
+ * Bucket sets are configurable, so `d31to60` exists under `monthly` and does
+ * not exist under `days3`. Without this, changing preset while a bucket is
+ * selected filters the list to nothing under a heading naming a column that is
+ * not on screen.
+ */
+export const resolveSelectedBucket = (
+  selected: string | null,
+  buckets: AgingBucketDef[],
+): string | null =>
+  selected && buckets.some(b => b.key === selected) ? selected : null;
+
+/** Displayed when the server sends a party with no name. Never render blank. */
+export const NO_PARTY_NAME = '(no name)';
+
+/** The label for a party row. */
+export const agingPartyLabel = (row: ARAgingRow): string =>
+  row.customerName?.trim() || NO_PARTY_NAME;
+
+/**
+ * Can this row be drilled into?
+ *
+ * A party id is what the detail endpoint is addressed by, so a row without one
+ * must not offer a tap target that could only fail.
+ */
+export const canDrillParty = (row: ARAgingRow): boolean => Boolean(row.customerId);
+
+/** A counterparty's share of one bucket. */
+export interface BucketParty {
+  id: string;
+  name: string;
+  amount: number;
+}
+
+export interface BucketRanking {
+  parties: BucketParty[];
+  /** Parties past the limit. 0 when everything fitted. */
+  moreCount: number;
+  /** What those folded parties hold between them. */
+  moreAmount: number;
+}
+
+/**
+ * Who is in this bucket, biggest share first, with the tail folded.
+ *
+ * The fold is not cosmetic: a readout naming 2 of 40 parties without saying so
+ * reads as the complete answer.
+ */
+export const bucketTopParties = ({
+  rows,
+  bucketKey,
+  limit,
+}: {
+  rows: ARAgingRow[];
+  bucketKey: string;
+  limit: number;
+}): BucketRanking => {
+  const held = rows
+    .map(row => ({
+      id: row.customerId,
+      name: agingPartyLabel(row),
+      amount: row.amounts[bucketKey] ?? 0,
+    }))
+    .filter(p => p.amount > 0)
+    .sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name));
+
+  const parties = held.slice(0, limit);
+  const tail = held.slice(limit);
+  return {
+    parties,
+    moreCount: tail.length,
+    moreAmount: tail.reduce((sum, p) => sum + p.amount, 0),
+  };
+};
+
+/**
+ * The sort key `oldest` ranks by: the selected bucket if there is one, the
+ * genuinely oldest bucket otherwise. One comparator, two readings.
+ */
+const oldestSortKey = (
+  buckets: AgingBucketDef[],
+  selectedBucket: string | null,
+): string | undefined => selectedBucket ?? buckets[buckets.length - 1]?.key;
+
+/**
+ * The rows to show, filtered by the selected bucket and ordered by `sort`.
+ *
+ * Ties break explicitly rather than falling back to the order the server sent.
+ * The server does sort by total descending today, so leaning on input order
+ * would work — and would break silently, with no test failing, the first time
+ * anything upstream reordered.
+ */
+export const visibleAgingRows = ({
+  rows,
+  buckets,
+  selectedBucket,
+  sort,
+}: {
+  rows: ARAgingRow[];
+  buckets: AgingBucketDef[];
+  selectedBucket: string | null;
+  sort: AgingSort;
+}): ARAgingRow[] => {
+  const shown = selectedBucket
+    ? rows.filter(row => (row.amounts[selectedBucket] ?? 0) > 0)
+    : rows;
+
+  const byName = (a: ARAgingRow, b: ARAgingRow) =>
+    agingPartyLabel(a).localeCompare(agingPartyLabel(b));
+  const byTotal = (a: ARAgingRow, b: ARAgingRow) => b.total - a.total;
+
+  const compare = (a: ARAgingRow, b: ARAgingRow): number => {
+    if (sort === 'name') return byName(a, b) || byTotal(a, b);
+    if (sort === 'total') return byTotal(a, b) || byName(a, b);
+    const key = oldestSortKey(buckets, selectedBucket);
+    const held = key ? (b.amounts[key] ?? 0) - (a.amounts[key] ?? 0) : 0;
+    return held || byTotal(a, b) || byName(a, b);
+  };
+
+  // Copied before sorting: `rows` lives in the redux store, and sorting it in
+  // place would mutate state outside a reducer.
+  return [...shown].sort(compare);
+};
+
+// ─── The drill-down payload ────────────────────────────────────────────────
+
+/** One open invoice or bill behind an aging row. */
+export interface AgingPartyDocument {
+  documentId: string;
+  /** Drives which detail screen the number opens. */
+  documentType: 'invoice' | 'bill';
+  documentNumber: string;
+  issueDate: string;
+  dueDate: string;
+  /** Signed: negative means not yet due. */
+  daysOverdue: number;
+  bucketKey: string;
+  bucketLabel: string;
+  total: number;
+  amountPaid: number;
+  balance: number;
+  status: string;
+}
+
+export interface AgingPartyDocuments {
+  partyType: 'customer' | 'vendor';
+  partyId: string;
+  /**
+   * The party's own name. The summary calls a vendor `customerName` for
+   * back-compat with shipped clients; this endpoint is new and does not
+   * inherit that.
+   */
+  partyName: string;
+  asOfDate: string;
+  preset: AgingPresetKey;
+  buckets: AgingBucketDef[];
+  bucket: string | null;
+  /** Over every matching document, not just this page. */
+  outstandingTotal: number;
+  documents: AgingPartyDocument[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/** Per-party fetch state, keyed by party id in the slice. */
+export interface PartyDocsState {
+  status: 'idle' | 'loading' | 'succeeded' | 'failed' | 'unavailable';
+  error: string;
+  data: AgingPartyDocuments | null;
+}
+
+export const emptyPartyDocs: PartyDocsState = {
+  status: 'idle',
+  error: '',
+  data: null,
+};

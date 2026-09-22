@@ -2,7 +2,7 @@
 // FinMatrix — AR Aging Report Network (Production API)
 // ═══════════════════════════════════════════════════════
 
-import { fetchReport } from './reportHelpers';
+import { fetchReport, fetchReportWithStatus } from './reportHelpers';
 
 /**
  * Open receivables, bucketed by how overdue they are.
@@ -22,3 +22,24 @@ export const getARAgingAPI = async (
 ): Promise<any> => fetchReport('/reports/ar-aging', params);
 
 export const getARAgingReportAPI = getARAgingAPI;
+
+/**
+ * The open invoices behind one customer's aging row.
+ *
+ * **The bucket spec goes with every call.** The server resolves the company
+ * default when a request names no preset, so omitting it would bucket the
+ * documents differently from the columns they were opened from — and both sets
+ * of labels would be individually correct, which is what makes that class of
+ * bug survive review.
+ *
+ * Uses `fetchReportWithStatus` so a 404 from a server older than this build can
+ * be told apart from a real failure.
+ */
+export const getARAgingPartyDocumentsAPI = async (
+  customerId: string,
+  params: Record<string, string> = {},
+): Promise<any> =>
+  fetchReportWithStatus(
+    `/reports/ar-aging/customers/${encodeURIComponent(customerId)}/documents`,
+    params,
+  );

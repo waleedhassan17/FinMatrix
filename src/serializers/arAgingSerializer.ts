@@ -1,6 +1,7 @@
 import {
   LEGACY_BUCKETS,
   amountsFromLegacy,
+  type AgingPartyDocuments,
   type ARAgingReport,
   type ARAgingReportResponse,
   type ARAgingRow,
@@ -78,5 +79,67 @@ export const arAgingSerializer = (
     buckets,
     rows,
     totals,
+  };
+};
+
+/**
+ * One party's open documents behind an aging row.
+ *
+ * Money is coerced for the same reason the report above is: these are Postgres
+ * `numeric` and arrive as strings, which format fine and fail on arithmetic.
+ *
+ * `daysOverdue` is passed through `n()` but must not be defaulted away — 0 is a
+ * real answer (due today) and so is a negative one (not yet due).
+ */
+export const agingPartyDocumentsSerializer = (
+  payload: any,
+): AgingPartyDocuments | null => {
+  const raw = unwrapEnvelope<any>(payload);
+  if (!raw) return null;
+
+  // A bare array is tolerated because a response whose rows were ever named
+  // `data` has them lifted into the envelope slot with every sibling
+  // discarded. The panel should still show documents rather than nothing.
+  const rows: any[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw.documents)
+      ? raw.documents
+      : Array.isArray(raw.data)
+        ? raw.data
+        : [];
+
+  return {
+    partyType: raw.partyType === 'vendor' ? 'vendor' : 'customer',
+    partyId: raw.partyId ?? '',
+    partyName: raw.partyName ?? 'Unknown',
+    asOfDate: raw.asOfDate ?? '',
+    preset: raw.preset ?? 'monthly',
+    buckets: Array.isArray(raw.buckets)
+      ? raw.buckets.map((b: any) => ({
+          key: b?.key ?? '',
+          label: b?.label ?? '',
+          minDays: n(b?.minDays),
+          maxDays: b?.maxDays === null || b?.maxDays === undefined ? null : n(b.maxDays),
+        }))
+      : [],
+    bucket: raw.bucket ?? null,
+    outstandingTotal: n(raw.outstandingTotal),
+    documents: rows.map((d: any) => ({
+      documentId: d?.documentId ?? '',
+      documentType: d?.documentType === 'bill' ? 'bill' : 'invoice',
+      documentNumber: d?.documentNumber ?? '',
+      issueDate: d?.issueDate ?? '',
+      dueDate: d?.dueDate ?? '',
+      daysOverdue: n(d?.daysOverdue),
+      bucketKey: d?.bucketKey ?? '',
+      bucketLabel: d?.bucketLabel ?? '',
+      total: n(d?.total),
+      amountPaid: n(d?.amountPaid),
+      balance: n(d?.balance),
+      status: d?.status ?? '',
+    })),
+    total: n(raw.total),
+    page: n(raw.page) || 1,
+    limit: n(raw.limit) || 50,
   };
 };
