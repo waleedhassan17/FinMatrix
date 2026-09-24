@@ -84,6 +84,55 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+/**
+ * Swap the refresh token for a new pair NOW, rather than on the next 401.
+ *
+ * The company a request acts on travels inside the token, and a new owner's
+ * session is minted before their company exists — so it names none. The
+ * server fills it in on refresh; the pending-approval screen asks for that the
+ * moment the company is approved, instead of signing the owner out so they
+ * could sign back in with a token that carries it.
+ *
+ * Shares the interceptor's single-flight lock: refresh rotates the token, so
+ * two racing refreshes would revoke each other. Returns false rather than
+ * throwing; the 401 path stays the backstop.
+ */
+export const refreshSessionTokens = async (): Promise<boolean> => {
+  if (isRefreshing) {
+    try {
+      await new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) return false;
+
+  isRefreshing = true;
+  try {
+    const { data } = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
+      refreshToken,
+    });
+    const pair = data?.data ?? data;
+    if (!pair?.accessToken || !pair?.refreshToken) {
+      processQueue(new Error('No token in refresh response'), null);
+      return false;
+    }
+    await setTokens(pair.accessToken, pair.refreshToken);
+    processQueue(null, pair.accessToken);
+    return true;
+  } catch (e) {
+    processQueue(e, null);
+    return false;
+  } finally {
+    isRefreshing = false;
+  }
+};
+
 api.interceptors.response.use(
   response => response,
   async (error: AxiosError) => {

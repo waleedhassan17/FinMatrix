@@ -1,16 +1,26 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Email Verification gate
 // ═══════════════════════════════════════════════════════
-// Reached after signup (tokens are stored but the account is unverified) and
-// from the finmatrix://verify-email deep link, which carries a token and
-// auto-verifies on mount.
+// Reached after signup or an unverified sign-in (tokens are stored, the
+// account is unverified), and from the finmatrix://verify-email deep link.
+//
+// It moves on BY ITSELF. It re-reads the account every few seconds while open
+// and the moment the app returns to the foreground — which is when an owner
+// comes back from their mail app — and the navigator mounts company setup as
+// soon as the account reads verified. It used to wait for "I've verified —
+// continue", and a link opened on a computer left the phone sitting here.
+//
+// A deep link may carry a token (spent here) or only `verified=1` (the web
+// page or the API's own page already confirmed the address; nothing to spend).
+// Either way the account is re-read before anything is called a failure: a
+// token the web page already used is not an unverified email.
 //
 // Feedback renders inline rather than as a floating toast: <Toast/> is
 // mounted without a toastConfig, so its default styling sits outside this
 // flow's design language and drifts away from the action that produced it.
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, AppState } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList, UserRole } from '../../../types';
@@ -42,6 +52,8 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, 'EmailVerification'
 type RouteProps = RouteProp<RootStackParamList, 'EmailVerification'>;
 
 const RESEND_COOLDOWN = 60;
+/** How often the screen re-reads the account while it is open. */
+const POLL_MS = 5000;
 
 const EmailVerificationScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
@@ -55,6 +67,7 @@ const EmailVerificationScreen: React.FC = () => {
   const role: UserRole = selectedRole ?? 'admin';
   const email = route.params?.email ?? user?.email ?? '';
   const token = route.params?.token;
+  const confirmedElsewhere = route.params?.verified === '1';
 
   const [verified, setVerified] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -76,21 +89,37 @@ const EmailVerificationScreen: React.FC = () => {
     }
   }, [dispatch]);
 
-  // ─── Auto-verify when opened from a deep link with a token ──────────────
+  // ─── Auto-verify when opened from a deep link ──────────────────────────
+  // Once per link: a token is single-use, and signing in afterwards must not
+  // send it again.
+  const handledLink = useRef<string | null>(null);
   useEffect(() => {
-    if (!token) return;
+    if (!token && !confirmedElsewhere) return;
+    const linkKey = token ?? 'verified';
+    if (handledLink.current === linkKey) return;
+    handledLink.current = linkKey;
     let active = true;
     (async () => {
       setIsVerifying(true);
       try {
-        await authVerifyEmail(token);
+        if (token) await authVerifyEmail(token);
         if (!active) return;
         setVerified(true);
         setNotice({ tone: 'success', message: 'Email verified!' });
-        await refreshSession();
+        // Signed in: re-reading the account moves the navigator on.
+        if (isAuthenticated) await refreshSession();
       } catch (e: any) {
         if (!active) return;
-        setNotice({ tone: 'error', message: e?.message ?? 'Verification failed' });
+        // A spent token is not an unverified email — the web page may have
+        // used it a moment ago. Ask the account before saying anything failed.
+        const u = isAuthenticated ? await refreshSession() : null;
+        if (!active) return;
+        if (u?.isEmailVerified) {
+          setVerified(true);
+          setNotice({ tone: 'success', message: 'Email verified!' });
+        } else {
+          setNotice({ tone: 'error', message: e?.message ?? 'Verification failed' });
+        }
       } finally {
         if (active) setIsVerifying(false);
       }
@@ -98,7 +127,36 @@ const EmailVerificationScreen: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [token, refreshSession]);
+  }, [token, confirmedElsewhere, isAuthenticated, refreshSession]);
+
+  // ─── Watch for the link being opened anywhere else ───────────────────────
+  // Every few seconds, and when the app comes back to the foreground. Only
+  // while signed in and not yet verified: refreshSession dispatches the fresh
+  // user, and the navigator swaps to company setup the moment it reads
+  // verified — this screen needs no navigation of its own.
+  const watching = isAuthenticated && !verified && !isVerifying;
+  const inFlight = useRef(false);
+  const checkQuietly = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    try {
+      await refreshSession();
+    } finally {
+      inFlight.current = false;
+    }
+  }, [refreshSession]);
+
+  useEffect(() => {
+    if (!watching) return;
+    const id = setInterval(() => void checkQuietly(), POLL_MS);
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') void checkQuietly();
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
+  }, [watching, checkQuietly]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -121,6 +179,12 @@ const EmailVerificationScreen: React.FC = () => {
   };
 
   const handleContinue = async () => {
+    // Signed out (the link was opened with no session on this phone): the
+    // address is confirmed, so signing in is the one step left.
+    if (!isAuthenticated) {
+      navigation.navigate('SignIn', { role });
+      return;
+    }
     setIsChecking(true);
     const u = await refreshSession();
     setIsChecking(false);
@@ -129,7 +193,10 @@ const EmailVerificationScreen: React.FC = () => {
       return;
     }
     if (!u.isEmailVerified) {
-      setNotice({ tone: 'info', message: 'Not verified yet — check your email.' });
+      setNotice({
+        tone: 'info',
+        message: "We haven't seen the confirmation yet. Open the link in the email — this screen moves on by itself.",
+      });
     }
   };
 
@@ -145,8 +212,10 @@ const EmailVerificationScreen: React.FC = () => {
           title={verified ? 'Email verified' : 'Verify your email'}
           subtitle={
             verified
-              ? 'Your email has been verified. Continue to finish setting up your company.'
-              : 'Open the verification link on this device to activate your account.'
+              ? isAuthenticated
+                ? 'Your email has been verified. Taking you to company setup…'
+                : 'Your email has been verified. Sign in to set up your company.'
+              : 'Open the link we emailed you — on this phone or any computer. This screen moves on by itself.'
           }
         />
       }

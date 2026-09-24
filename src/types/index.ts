@@ -830,7 +830,9 @@ export type RootStackParamList = {
   SignIn: { role?: UserRole } | undefined;
   SignUp: { role?: UserRole } | undefined;
   ForgotPassword: undefined;
-  EmailVerification: { email?: string; token?: string } | undefined;
+  // `verified` is set by links that only report a confirmation made elsewhere
+  // (the web page, the API's fallback page); they carry no token to spend.
+  EmailVerification: { email?: string; token?: string; verified?: string } | undefined;
   CompanySetup: undefined;
   CompanyTypeSelect: undefined;
   CreateCompany: { companyType?: 'small_business' | 'large_org' | 'warehouse' } | undefined;

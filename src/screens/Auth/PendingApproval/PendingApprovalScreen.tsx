@@ -15,12 +15,15 @@
 // Which one applies comes from the sign-in gate (route param pendingKind) or,
 // with a live session, from /billing/status.
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Platform, AppState } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser, selectSelectedRole } from '../authSlice';
 import { authMe, submitCompanyAPI } from '../../../networks/auth/authNetwork';
+import { refreshSessionTokens } from '../../../networks/network/apiHelpers';
+import { bootstrapSession } from '../../../components/app-container/appContainerSlice';
 // BILLING-DISABLED BUILD: un-comment with the /billing/status effect below.
 // import {
 //   getBillingStatusAPI,
@@ -83,8 +86,9 @@ const PendingApprovalScreen: React.FC = () => {
     return () => clearTimeout(id);
   }, [isAuthenticated, fromLogin, navigation]);
 
-  // Approved: sign out so the owner signs in again with a token that carries
-  // the company. On web, clear the /PendingApproval URL first — otherwise the
+  // Fallback only, for when the token could not be re-issued (see goLive):
+  // sign out so the owner signs in again with a token that carries the
+  // company. On web, clear the /PendingApproval URL first — otherwise the
   // signed-out navigator restores this screen from it instead of opening at
   // the start of sign-in.
   const continueToSignIn = useCallback(() => {
@@ -162,6 +166,68 @@ const PendingApprovalScreen: React.FC = () => {
     navigation.navigate('SignIn', { role });
   }, [navigation, role]);
 
+  // Approved: straight into the app. The session's token was minted before
+  // the company existed and names none; the server fills it in on refresh, so
+  // re-issue it, then re-read the account — the navigator mounts the
+  // dashboard as soon as the approved status lands. This used to sign the
+  // owner out and make them sign in again to get that token.
+  const wentLive = useRef(false);
+  const goLive = useCallback(async () => {
+    if (wentLive.current) return;
+    wentLive.current = true;
+    const refreshed = await refreshSessionTokens();
+    if (!refreshed) {
+      // Could not re-issue it: fall back to the old path, which always works.
+      wentLive.current = false;
+      setApproved(true);
+      setNotice({
+        tone: 'success',
+        message: 'Your company has been approved. Sign in again to start using FinMatrix.',
+      });
+      return;
+    }
+    Toast.show({
+      type: 'success',
+      text1: 'Your company is approved',
+      text2: 'Welcome to FinMatrix.',
+    });
+    await dispatch(bootstrapSession());
+  }, [dispatch]);
+
+  // Look again without being asked: every 30 seconds while this screen is
+  // open, and whenever the app comes back to the foreground (the owner has
+  // just read the approval email). Quiet — no notice unless something changed.
+  const currentStatus = user?.companyStatus;
+  const checkQuietly = useCallback(async () => {
+    if (fromLogin || !isAuthenticated || wentLive.current) return;
+    try {
+      const { data } = await authMe();
+      const status = data.user.companyStatus;
+      if (status === 'approved' || status === 'active') {
+        await goLive();
+        return;
+      }
+      if (status !== currentStatus) {
+        if (data.companyId) await setStoredCompanyId(data.companyId);
+        dispatch(setUser(data.user));
+      }
+    } catch {
+      /* offline or a blip — the next tick tries again */
+    }
+  }, [dispatch, fromLogin, goLive, isAuthenticated, currentStatus]);
+
+  useEffect(() => {
+    if (fromLogin || !isAuthenticated) return;
+    const id = setInterval(() => void checkQuietly(), 30_000);
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') void checkQuietly();
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
+  }, [checkQuietly, fromLogin, isAuthenticated]);
+
   const handleRefresh = useCallback(async () => {
     if (fromLogin) {
       backToSignIn();
@@ -173,15 +239,7 @@ const PendingApprovalScreen: React.FC = () => {
       const { data } = await authMe();
       const status = data.user.companyStatus;
       if (status === 'approved' || status === 'active') {
-        // Approved. Tell the user and hand them the button — signing them out
-        // on the spot replaced the answer they asked for with a login screen.
-        setApproved(true);
-        setNotice({
-          tone: 'success',
-          message: isTrialRequest
-            ? 'Your free trial is active. Sign in again to start using FinMatrix — your 30 days have begun.'
-            : 'Your company has been approved. Sign in again to start using FinMatrix.',
-        });
+        await goLive();
         return;
       }
       if (data.companyId) await setStoredCompanyId(data.companyId);
@@ -202,7 +260,7 @@ const PendingApprovalScreen: React.FC = () => {
     } finally {
       setChecking(false);
     }
-  }, [dispatch, fromLogin, backToSignIn, isTrialRequest]);
+  }, [dispatch, fromLogin, backToSignIn, isTrialRequest, goLive]);
 
   const handleSignOut = useCallback(() => {
     if (fromLogin) {
@@ -312,7 +370,7 @@ const PendingApprovalScreen: React.FC = () => {
                   title: approved ? 'Approved' : 'Administrator review',
                   detail: approved
                     ? 'Sign in again to start using FinMatrix'
-                    : 'Usually within one business day',
+                    : 'Usually within one business day. This screen moves on by itself.',
                   done: approved,
                 },
               ]
