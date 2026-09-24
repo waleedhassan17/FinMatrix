@@ -5,13 +5,15 @@
 // All tokens come from utils/theme (THEME) — single source of truth.
 // ═══════════════════════════════════════════════════════
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Animated,
+  Platform,
   ScrollView,
   StatusBar,
   Modal,
@@ -146,11 +148,16 @@ export const HeaderAction: React.FC<{
  * shown complete, at full size, never scaled down or clipped. Pair with a
  * horizontal ScrollView around the table so narrow screens pan instead of
  * squeezing the numbers. Heuristic: ~7.3px per character at the bodySm table
- * type size, plus a small buffer; clamped so empty tables keep sane columns.
+ * type size, plus the cell's own padding on both sides; clamped so empty
+ * tables keep sane columns.
+ *
+ * The padding used to be counted as a flat 8px while TCell pads 12px a side,
+ * so a column was 16px short of its widest figure and "Rs 320,000.00" drew as
+ * "Rs 320,00…" — clipped, the one thing this rule exists to prevent.
  */
 export const amountColWidth = (formatted: Array<string | null | undefined>): number => {
   const longest = formatted.reduce<number>((m, s) => Math.max(m, (s ?? '').length), 0);
-  return Math.min(190, Math.max(88, Math.round(longest * 7.3) + 8));
+  return Math.min(200, Math.max(88, Math.round(longest * 7.3) + T.spacing.sm * 2));
 };
 
 // ── Card surfaces ─────────────────────────────────────
@@ -241,6 +248,98 @@ export const KpiGrid: React.FC<{ items: KpiItem[] }> = ({ items }) => (
     ))}
   </View>
 );
+
+// ── Figure strip ──────────────────────────────────────
+// The headline figures of one report on ONE surface, divided by hairlines,
+// rather than floated as separate accent-striped tiles — the same treatment
+// the web gives aging and analytics. Colour goes on an amount only where it
+// states a fact (overdue, a loss), never as decoration.
+
+export type FigureTone = 'default' | 'success' | 'warning' | 'danger';
+
+export type FigureItem = {
+  label: string;
+  value: string;
+  /** A line qualifying the figure. Two lines at most. */
+  caption?: React.ReactNode;
+  tone?: FigureTone;
+};
+
+const FIGURE_TONE: Record<FigureTone, string> = {
+  default: T.colors.textPrimary,
+  success: T.colors.success,
+  warning: T.colors.warning,
+  danger: T.colors.danger,
+};
+
+/** Two across on a phone; the hairlines are the card's own background. */
+export const FigureStrip: React.FC<{ items: FigureItem[] }> = ({ items }) => (
+  <View style={[S.card, S.figureStrip]}>
+    {items.map((it, i) => (
+      <View
+        key={`${it.label}-${i}`}
+        style={[S.figure, i % 2 === 0 && S.figureLeft, i >= 2 && S.figureBelow]}
+      >
+        <Text style={S.figureLabel} numberOfLines={1}>
+          {it.label}
+        </Text>
+        <Text
+          style={[S.figureValue, { color: FIGURE_TONE[it.tone ?? 'default'] }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {it.value}
+        </Text>
+        {it.caption !== undefined ? (
+          <Text style={S.figureCaption} numberOfLines={2}>
+            {it.caption}
+          </Text>
+        ) : null}
+      </View>
+    ))}
+  </View>
+);
+
+// ── Refresh fade ──────────────────────────────────────
+/**
+ * Keeps a report on screen while its next version loads.
+ *
+ * The screens used to render `{report && !isLoading && …}`, so changing a
+ * period blanked the whole report to a spinner and threw away the scroll
+ * position. This keeps the figures where they are, dims them once a request
+ * has run past 150ms — most land inside that, and a screen that flickers on
+ * every tap reads as broken — and blocks taps on what is about to change.
+ * Leaving the state has no delay, so new figures appear at once.
+ */
+export const RefreshFade: React.FC<{ busy: boolean; children: React.ReactNode }> = ({
+  busy,
+  children,
+}) => {
+  // Created once and kept: state rather than a ref, because it is read
+  // during render (as a style) and refs must not be.
+  const [opacity] = useState(() => new Animated.Value(1));
+  useEffect(() => {
+    const anim = Animated.timing(opacity, {
+      toValue: busy ? 0.55 : 1,
+      duration: 200,
+      delay: busy ? 150 : 0,
+      // The web build has no native animation module to hand this to.
+      useNativeDriver: Platform.OS !== 'web',
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [busy, opacity]);
+
+  return (
+    <Animated.View
+      style={[S.fade, { opacity, pointerEvents: busy ? 'none' : 'auto' }]}
+      accessibilityState={{ busy }}
+    >
+      {children}
+    </Animated.View>
+  );
+};
 
 // ── Summary label/value line ──────────────────────────
 export const SummaryLine: React.FC<{
@@ -773,6 +872,22 @@ const S = StyleSheet.create({
   sectionSub: { ...T.typography.caption, color: T.colors.textTertiary, marginTop: 1 },
   sectionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: T.colors.borderLight },
   sectionBody: { padding: T.spacing.md },
+
+  // Figure strip
+  figureStrip: { flexDirection: 'row', flexWrap: 'wrap' },
+  figure: {
+    width: '50%',
+    paddingHorizontal: T.spacing.md,
+    paddingVertical: T.spacing.sm + 4,
+  },
+  figureLeft: { borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: T.colors.borderLight },
+  figureBelow: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: T.colors.borderLight },
+  figureLabel: { ...T.typography.labelSm, color: T.colors.textSecondary },
+  figureValue: { ...T.typography.h4, marginTop: 4, fontVariant: ['tabular-nums'] },
+  figureCaption: { ...T.typography.caption, color: T.colors.textTertiary, marginTop: 3 },
+
+  // Refresh fade — the same gap the report body's scroll content uses.
+  fade: { gap: T.spacing.sm + 2 },
 
   // KPI
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: T.spacing.xs + 2 },

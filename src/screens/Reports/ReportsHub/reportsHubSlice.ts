@@ -15,7 +15,7 @@ const initialCategories: ReportHubCategory[] = [
       { key: 'cf', title: 'Cash Flow', icon: 'CF', target: 'CashFlow' },
       { key: 'gl', title: 'General Ledger', icon: 'GL', target: 'GeneralLedger' },
       { key: 'budgets', title: 'Budgets', icon: 'BUD', target: 'BudgetList', feature: 'budgets' },
-      { key: 'analytics', title: 'Analytics Dashboard', icon: 'ANL', target: 'AnalyticsDashboard' },
+      { key: 'analytics', title: 'Analytics', icon: 'ANL', target: 'AnalyticsDashboard' },
     ],
   },
   {

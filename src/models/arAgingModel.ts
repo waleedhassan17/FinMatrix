@@ -252,15 +252,21 @@ export const visibleAgingRows = ({
   buckets,
   selectedBucket,
   sort,
+  search = '',
 }: {
   rows: ARAgingRow[];
   buckets: AgingBucketDef[];
   selectedBucket: string | null;
   sort: AgingSort;
+  /** Narrows by party name, case-insensitively. Blank shows everyone. */
+  search?: string;
 }): ARAgingRow[] => {
-  const shown = selectedBucket
-    ? rows.filter(row => (row.amounts[selectedBucket] ?? 0) > 0)
-    : rows;
+  const term = search.trim().toLowerCase();
+  const shown = rows.filter(
+    row =>
+      (!selectedBucket || (row.amounts[selectedBucket] ?? 0) > 0) &&
+      (!term || agingPartyLabel(row).toLowerCase().includes(term)),
+  );
 
   const byName = (a: ARAgingRow, b: ARAgingRow) =>
     agingPartyLabel(a).localeCompare(agingPartyLabel(b));
@@ -282,6 +288,112 @@ export const visibleAgingRows = ({
 // ─── The drill-down payload ────────────────────────────────────────────────
 
 /** One open invoice or bill behind an aging row. */
+// ─── The summary and charts above the list ─────────────────────────────────
+// Shares and counts for display, kept in step with the web's reportAging.ts.
+// None of it foots a column: every amount is one the server sent, and a share
+// is that amount over the server's total.
+
+/** One bucket's slice of the report. */
+export interface BucketShare {
+  key: string;
+  label: string;
+  amount: number;
+  /** 0–1, of the report total. */
+  share: number;
+}
+
+/** Every bucket with its share of the total, in the report's column order. */
+export const bucketShares = (
+  buckets: AgingBucketDef[],
+  totals: { amounts: Record<string, number>; total: number },
+): BucketShare[] =>
+  buckets.map(b => {
+    const amount = totals.amounts[b.key] ?? 0;
+    return {
+      key: b.key,
+      label: b.label,
+      amount,
+      share: totals.total > 0 ? amount / totals.total : 0,
+    };
+  });
+
+/**
+ * A share as the screen prints it. A sliver that rounds to 0% is said as
+ * "<1%": printing "0%" beside an amount that is not zero reads as a
+ * contradiction.
+ */
+export const formatShare = (share: number): string => {
+  if (!(share > 0)) return '0%';
+  if (share < 0.005) return '<1%';
+  return `${Math.round(share * 100)}%`;
+};
+
+/**
+ * How many parties hold anything past its due date — a count of rows, never a
+ * sum. "Overdue" follows the bucket spec, exactly as `overdueTotal` does.
+ */
+export const overduePartyCount = (rows: ARAgingRow[], buckets: AgingBucketDef[]): number => {
+  const late = buckets.filter(b => b.minDays > 0).map(b => b.key);
+  return rows.filter(row => late.some(k => (row.amounts[k] ?? 0) > 0)).length;
+};
+
+/** One bar of the top-parties chart. */
+export interface TopAgingParty {
+  id: string;
+  name: string;
+  /** The row's total, or its amount in the selected bucket. A server figure either way. */
+  amount: number;
+  /** The positive bucket amounts, in column order — what the bar is stacked from. */
+  segments: { key: string; amount: number }[];
+}
+
+export interface TopAgingParties {
+  parties: TopAgingParty[];
+  moreCount: number;
+  moreAmount: number;
+}
+
+/**
+ * The parties holding the most, each split by how late its money is.
+ *
+ * With no bucket selected this ranks by total and stacks every bucket; with
+ * one selected it ranks by that bucket alone and draws only that segment, so
+ * the chart follows the list's filter instead of contradicting it. Only
+ * positive amounts become segments — a credit has no length to draw.
+ */
+export const topAgingParties = ({
+  rows,
+  buckets,
+  selectedBucket,
+  limit,
+}: {
+  rows: ARAgingRow[];
+  buckets: AgingBucketDef[];
+  selectedBucket: string | null;
+  limit: number;
+}): TopAgingParties => {
+  const keys = selectedBucket ? [selectedBucket] : buckets.map(b => b.key);
+
+  const held = rows
+    .map(row => ({
+      id: row.customerId,
+      name: agingPartyLabel(row),
+      amount: selectedBucket ? (row.amounts[selectedBucket] ?? 0) : row.total,
+      segments: keys
+        .map(key => ({ key, amount: row.amounts[key] ?? 0 }))
+        .filter(s => s.amount > 0),
+    }))
+    .filter(p => p.amount > 0)
+    .sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name));
+
+  const tail = held.slice(limit);
+  return {
+    parties: held.slice(0, limit),
+    moreCount: tail.length,
+    moreAmount: tail.reduce((sum, p) => sum + p.amount, 0),
+  };
+};
+
 export interface AgingPartyDocument {
   documentId: string;
   /** Drives which detail screen the number opens. */

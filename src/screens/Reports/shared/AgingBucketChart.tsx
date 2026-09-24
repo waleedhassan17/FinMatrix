@@ -23,6 +23,7 @@ import { THEME, AGING_RAMP, rampSteps } from '../../../theme';
 import { formatCurrency } from '../../../utils/formatters';
 import {
   bucketTopParties,
+  formatShare,
   type AgingBucketDef,
   type ARAgingRow,
 } from '../../../models/arAgingModel';
@@ -50,6 +51,12 @@ interface Props {
   buckets: AgingBucketDef[];
   amounts: Record<string, number>;
   /**
+   * The report total, from the server. Each bar's share is printed under its
+   * label against it — the same figure the web prints — and the readout
+   * shows it rather than adding the columns up on the phone.
+   */
+  total?: number;
+  /**
    * The per-party rows behind those totals. Given them, the readout names who
    * is in the tapped bucket — the phone's answer to a hover tooltip, and a
    * better one, because it stays on screen instead of vanishing with the finger.
@@ -65,6 +72,7 @@ interface Props {
 const AgingBucketChart: React.FC<Props> = ({
   buckets,
   amounts,
+  total,
   rows,
   selectedBucketKey = null,
   onSelectBucket,
@@ -86,6 +94,7 @@ const AgingBucketChart: React.FC<Props> = ({
     return Number.isFinite(v) ? v : 0;
   });
   const max = Math.max(...values, 0);
+  const grand = total ?? values.reduce((t, v) => t + v, 0);
 
   // Nothing outstanding is not a chart. The caller still renders the table, so
   // this returning null loses no information.
@@ -104,7 +113,7 @@ const AgingBucketChart: React.FC<Props> = ({
         </Text>
         <Text style={styles.readoutValue}>
           {selected === null
-            ? formatCurrency(values.reduce((t, v) => t + v, 0), currency)
+            ? formatCurrency(grand, currency)
             : formatCurrency(values[selected], currency)}
         </Text>
       </View>
@@ -167,8 +176,13 @@ const AgingBucketChart: React.FC<Props> = ({
                   ]}
                 />
               </View>
-              <Text style={[styles.label, on && styles.labelOn]} numberOfLines={1}>
+              {/* Two lines, so "91 and over" is never cut to "91 AND …"; the
+                  fixed height keeps every share below on one baseline. */}
+              <Text style={[styles.label, on && styles.labelOn]} numberOfLines={2}>
                 {bucket.label}
+              </Text>
+              <Text style={styles.share} numberOfLines={1}>
+                {formatShare(grand > 0 ? values[i] / grand : 0)}
               </Text>
             </TouchableOpacity>
           );
@@ -205,14 +219,17 @@ const styles = StyleSheet.create({
   // Selection is a ring rather than a colour change: the bar's colour is its
   // position in the ramp and must not move when it is tapped.
   barOn: { borderWidth: 2, borderColor: colors.textPrimary },
-  value: { ...typography.overline, color: colors.textTertiary, marginBottom: spacing.xxs },
+  // The amount above each bar is read, not glanced at — primary ink, as on the web.
+  value: { ...typography.overline, color: colors.textPrimary, marginBottom: spacing.xxs },
   label: {
     ...typography.overline,
     color: colors.textTertiary,
     marginTop: spacing.xs,
     textAlign: 'center',
+    height: typography.overline.lineHeight * 2,
   },
   labelOn: { color: colors.textPrimary },
+  share: { ...typography.overline, color: colors.textTertiary, opacity: 0.8, marginTop: 1 },
 });
 
 export default AgingBucketChart;

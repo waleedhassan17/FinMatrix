@@ -2,10 +2,14 @@ import {
   AGING_SORT_LABELS,
   NO_PARTY_NAME,
   agingPartyLabel,
+  bucketShares,
   bucketTopParties,
   canDrillParty,
   defaultAgingSort,
+  formatShare,
+  overduePartyCount,
   resolveSelectedBucket,
+  topAgingParties,
   visibleAgingRows,
   type AgingBucketDef,
   type ARAgingRow,
@@ -225,5 +229,83 @@ describe('visibleAgingRows', () => {
 describe('AGING_SORT_LABELS', () => {
   it('offers exactly the three sorts the type allows', () => {
     expect(AGING_SORT_LABELS.map(o => o.key)).toEqual(['oldest', 'total', 'name']);
+  });
+});
+
+// ─── Kept in step with the web's reportAging tests ──────────────────────────
+
+describe('visibleAgingRows — finding a party by name', () => {
+  const ROWS = [
+    row('c1', 'Allama Traders', { current: 500, d1to30: 300 }),
+    row('c2', 'Metro Foods', { d1to30: 200, d31to60: 150 }),
+    row('c3', 'Sukoon Mart', { d61plus: 90 }),
+  ];
+
+  it('matches any part of the name, ignoring case and spaces around it', () => {
+    const found = visibleAgingRows({ rows: ROWS, buckets: BUCKETS, selectedBucket: null, sort: 'total', search: '  metro ' });
+    expect(found.map(r => r.customerName)).toEqual(['Metro Foods']);
+  });
+
+  it('applies together with a bucket filter', () => {
+    const found = visibleAgingRows({ rows: ROWS, buckets: BUCKETS, selectedBucket: 'current', sort: 'total', search: 'metro' });
+    expect(found).toEqual([]);
+  });
+});
+
+describe('bucketShares / formatShare / overduePartyCount', () => {
+  const ROWS = [
+    row('c1', 'Allama Traders', { current: 500, d1to30: 300 }),
+    row('c3', 'Sukoon Mart', { d61plus: 90 }),
+    row('c9', 'Early Bird', { current: 10 }),
+  ];
+
+  it('gives each bucket its share of the server total', () => {
+    const shares = bucketShares(BUCKETS, { amounts: { current: 510, d1to30: 300, d61plus: 90 }, total: 900 });
+    expect(shares.map(s => [s.key, Math.round(s.share * 100)])).toEqual([
+      ['current', 57],
+      ['d1to30', 33],
+      ['d31to60', 0],
+      ['d61plus', 10],
+    ]);
+  });
+
+  it('never prints 0% beside an amount that is not zero', () => {
+    expect(formatShare(0)).toBe('0%');
+    expect(formatShare(0.004)).toBe('<1%');
+    expect(formatShare(0.426)).toBe('43%');
+  });
+
+  it('counts the parties holding anything past due', () => {
+    expect(overduePartyCount(ROWS, BUCKETS)).toBe(2);
+  });
+});
+
+describe('topAgingParties', () => {
+  const ALLAMA = row('c1', 'Allama Traders', { current: 500, d1to30: 300 });
+  const METRO = row('c2', 'Metro Foods', { d1to30: 200, d31to60: 150 });
+  const SUKOON = row('c3', 'Sukoon Mart', { d61plus: 90 });
+  const ROWS = [ALLAMA, METRO, SUKOON];
+
+  it('ranks by total and stacks every positive bucket, in column order', () => {
+    const top = topAgingParties({ rows: ROWS, buckets: BUCKETS, selectedBucket: null, limit: 10 });
+    expect(top.parties.map(p => p.name)).toEqual(['Allama Traders', 'Metro Foods', 'Sukoon Mart']);
+    expect(top.parties[0].segments).toEqual([
+      { key: 'current', amount: 500 },
+      { key: 'd1to30', amount: 300 },
+    ]);
+  });
+
+  it('follows a selected bucket: ranks by it, draws only it, drops who holds none', () => {
+    const top = topAgingParties({ rows: ROWS, buckets: BUCKETS, selectedBucket: 'd1to30', limit: 10 });
+    expect(top.parties.map(p => [p.name, p.amount])).toEqual([
+      ['Allama Traders', 300],
+      ['Metro Foods', 200],
+    ]);
+  });
+
+  it('folds the tail instead of dropping it', () => {
+    const top = topAgingParties({ rows: ROWS, buckets: BUCKETS, selectedBucket: null, limit: 1 });
+    expect(top.moreCount).toBe(2);
+    expect(top.moreAmount).toBe(350 + 90);
   });
 });

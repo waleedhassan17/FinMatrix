@@ -34,6 +34,7 @@ import {
   TCell,
   tableStyles,
   LoadingBlock,
+  RefreshFade,
   ErrorBlock,
   EmptyBlock,
   Card,
@@ -193,13 +194,15 @@ const InventoryValuationScreen: React.FC = () => {
           />
         </Card>
 
-        {state.isLoading && <LoadingBlock label="Valuing inventory…" />}
+        {/* The spinner is for the first load only. A new period or ranking
+            keeps the figures on screen, dimmed, until the answer lands. */}
+        {state.isLoading && !report && <LoadingBlock label="Valuing inventory…" />}
         {!!state.error && (
           <ErrorBlock message={state.error} onRetry={() => dispatch(fetchInventoryValuationReport())} />
         )}
 
-        {report && !state.isLoading && (
-          <>
+        {report && (
+          <RefreshFade busy={state.isLoading || state.perfStatus === 'loading'}>
             <KpiGrid
               items={[
                 { label: 'Stock Value', value: rs(report.totalValue ?? 0), accent: ACCENT.brand, icon: 'dollar-sign' },
@@ -373,7 +376,7 @@ const InventoryValuationScreen: React.FC = () => {
                 )}
               </SectionCard>
             )}
-          </>
+          </RefreshFade>
         )}
       </ScrollView>
     </ReportContainer>
