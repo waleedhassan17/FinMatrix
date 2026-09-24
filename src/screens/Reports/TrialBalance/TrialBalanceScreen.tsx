@@ -16,7 +16,8 @@ import {
   ReportHeader,
   Card,
   SectionCard,
-  KpiGrid,
+  FigureStrip,
+  RefreshFade,
   DateField,
   Badge,
   LoadingBlock,
@@ -87,21 +88,21 @@ const TrialBalanceScreen: React.FC = () => {
           </View>
         </Card>
 
-        {state.isLoading && <LoadingBlock label="Calculating trial balance…" />}
+        {state.isLoading && !report && <LoadingBlock label="Calculating trial balance…" />}
         {!!state.error && <ErrorBlock message={state.error} onRetry={() => dispatch(fetchTrialBalanceReport(state.range))} />}
 
-        {report && !state.isLoading && (
-          <>
+        {report && !state.error && (
+          <RefreshFade busy={state.isLoading}>
             <ReportTitleBlock
               company={company}
               report="Trial Balance"
               periodLabel={rangeLabel(state.range.startDate, state.range.endDate)}
             />
 
-            <KpiGrid
+            <FigureStrip
               items={[
-                { label: 'Total Debits', value: rs(report.totalDebits), accent: ACCENT.blue, icon: 'arrow-down-circle' },
-                { label: 'Total Credits', value: rs(report.totalCredits), accent: ACCENT.violet, icon: 'arrow-up-circle' },
+                { label: 'Total debits', value: rs(report.totalDebits), caption: 'Moved in the period' },
+                { label: 'Total credits', value: rs(report.totalCredits), caption: 'Moved in the period' },
               ]}
             />
 
@@ -142,7 +143,7 @@ const TrialBalanceScreen: React.FC = () => {
                 </ScrollView>
               )}
             </SectionCard>
-          </>
+          </RefreshFade>
         )}
       </ScrollView>
     </ReportContainer>

@@ -88,3 +88,13 @@ export const reconcile = (displaySum: number, serverTotal: number, label: string
   }
   return serverTotal;
 };
+
+/**
+ * A ratio as a figure's caption prints it: "41.2%", "−3.1%", or "—" when the
+ * base is zero. Kept in step with the web's formatRatio.
+ */
+export const formatRatio = (part: number, whole: number): string => {
+  if (!whole) return '—';
+  const pct = Math.round((part / whole) * 1000) / 10;
+  return `${pct < 0 ? '−' : ''}${Math.abs(pct)}%`;
+};

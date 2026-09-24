@@ -33,7 +33,7 @@ import { DEFAULT_COMPANY } from '../../utils/invoicePdf';
 import { parenNegative } from './reportFormat';
 
 // Re-exported so every screen has one import site for the reports kit.
-export { parenNegative, asOfLabel, rangeLabel, classifyAccount, reconcile } from './reportFormat';
+export { parenNegative, asOfLabel, rangeLabel, classifyAccount, reconcile, formatRatio } from './reportFormat';
 export type { AccountGroup } from './reportFormat';
 
 const T = THEME;
@@ -275,29 +275,38 @@ const FIGURE_TONE: Record<FigureTone, string> = {
 /** Two across on a phone; the hairlines are the card's own background. */
 export const FigureStrip: React.FC<{ items: FigureItem[] }> = ({ items }) => (
   <View style={[S.card, S.figureStrip]}>
-    {items.map((it, i) => (
-      <View
-        key={`${it.label}-${i}`}
-        style={[S.figure, i % 2 === 0 && S.figureLeft, i >= 2 && S.figureBelow]}
-      >
-        <Text style={S.figureLabel} numberOfLines={1}>
-          {it.label}
-        </Text>
-        <Text
-          style={[S.figureValue, { color: FIGURE_TONE[it.tone ?? 'default'] }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.7}
+    {items.map((it, i) => {
+      // An odd one out spans the row, rather than leaving half of it empty.
+      const alone = items.length % 2 === 1 && i === items.length - 1;
+      return (
+        <View
+          key={`${it.label}-${i}`}
+          style={[
+            S.figure,
+            i % 2 === 0 && !alone && S.figureLeft,
+            i >= 2 && S.figureBelow,
+            alone && S.figureAlone,
+          ]}
         >
-          {it.value}
-        </Text>
-        {it.caption !== undefined ? (
-          <Text style={S.figureCaption} numberOfLines={2}>
-            {it.caption}
+          <Text style={S.figureLabel} numberOfLines={1}>
+            {it.label}
           </Text>
-        ) : null}
-      </View>
-    ))}
+          <Text
+            style={[S.figureValue, { color: FIGURE_TONE[it.tone ?? 'default'] }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+          >
+            {it.value}
+          </Text>
+          {it.caption !== undefined ? (
+            <Text style={S.figureCaption} numberOfLines={2}>
+              {it.caption}
+            </Text>
+          ) : null}
+        </View>
+      );
+    })}
   </View>
 );
 
@@ -881,6 +890,7 @@ const S = StyleSheet.create({
     paddingVertical: T.spacing.sm + 4,
   },
   figureLeft: { borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: T.colors.borderLight },
+  figureAlone: { width: '100%' },
   figureBelow: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: T.colors.borderLight },
   figureLabel: { ...T.typography.labelSm, color: T.colors.textSecondary },
   figureValue: { ...T.typography.h4, marginTop: 4, fontVariant: ['tabular-nums'] },

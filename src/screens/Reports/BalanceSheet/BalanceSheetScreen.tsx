@@ -17,13 +17,14 @@ import {
   ReportHeader,
   Card,
   SectionCard,
-  KpiGrid,
+  FigureStrip,
+  RefreshFade,
   DateField,
   Badge,
   LoadingBlock,
   ErrorBlock,
-  ACCENT,
   reportContentStyle,
+  formatRatio,
   ReportTitleBlock,
   StatementRow,
   useStatementCompany,
@@ -139,18 +140,27 @@ const BalanceSheetScreen: React.FC = () => {
           />
         </Card>
 
-        {state.isLoading && <LoadingBlock label="Building balance sheet…" />}
+        {state.isLoading && !report && <LoadingBlock label="Building balance sheet…" />}
         {!!state.error && (
           <ErrorBlock message={state.error} onRetry={() => dispatch(fetchBalanceSheetReport(state.asOfDate))} />
         )}
 
-        {report && !state.isLoading && (
-          <>
-            <KpiGrid
+        {report && !state.error && (
+          <RefreshFade busy={state.isLoading}>
+            <FigureStrip
               items={[
-                { label: 'Total Assets', value: rs(report.totalAssets), accent: ACCENT.brand, icon: 'trending-up' },
-                { label: 'Total Liabilities', value: rs(report.totalLiabilities), accent: ACCENT.amber, icon: 'credit-card' },
-                { label: 'Total Equity', value: rs(report.totalEquity), accent: ACCENT.blue, icon: 'pie-chart' },
+                { label: 'Total assets', value: rs(report.totalAssets), caption: 'What the business owns' },
+                {
+                  label: 'Total liabilities',
+                  value: rs(report.totalLiabilities),
+                  caption: `${formatRatio(report.totalLiabilities, report.totalAssets)} of assets`,
+                },
+                {
+                  label: 'Total equity',
+                  value: rs(report.totalEquity),
+                  tone: report.totalEquity < 0 ? 'danger' : 'default',
+                  caption: `${formatRatio(report.totalEquity, report.totalAssets)} of assets`,
+                },
               ]}
             />
 
@@ -229,7 +239,7 @@ const BalanceSheetScreen: React.FC = () => {
                 />
               </View>
             </SectionCard>
-          </>
+          </RefreshFade>
         )}
       </ScrollView>
     </ReportContainer>

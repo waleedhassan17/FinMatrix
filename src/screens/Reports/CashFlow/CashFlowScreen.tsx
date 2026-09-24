@@ -14,11 +14,11 @@ import {
   ReportHeader,
   Card,
   SectionCard,
-  KpiGrid,
+  FigureStrip,
+  RefreshFade,
   DateField,
   LoadingBlock,
   ErrorBlock,
-  ACCENT,
   reportContentStyle,
   ReportTitleBlock,
   StatementRow,
@@ -95,16 +95,21 @@ const CashFlowScreen: React.FC = () => {
           </View>
         </Card>
 
-        {state.isLoading && <LoadingBlock label="Calculating cash flow…" />}
+        {state.isLoading && !report && <LoadingBlock label="Calculating cash flow…" />}
         {!!state.error && <ErrorBlock message={state.error} onRetry={() => dispatch(fetchCashFlowReport(state.range))} />}
 
-        {report && !state.isLoading && (
-          <>
-            <KpiGrid
+        {report && !state.error && (
+          <RefreshFade busy={state.isLoading}>
+            <FigureStrip
               items={[
-                { label: 'Beginning Cash', value: rs(report.beginningCash), accent: ACCENT.teal, icon: 'circle' },
-                { label: 'Net Change', value: rs(report.netChange), accent: positive ? ACCENT.green : ACCENT.red, icon: positive ? 'trending-up' : 'trending-down' },
-                { label: 'Ending Cash', value: rs(report.endingCash), accent: ACCENT.blue, icon: 'dollar-sign' },
+                { label: 'Cash at start', value: rs(report.beginningCash), caption: 'In cash and bank accounts' },
+                {
+                  label: 'Net change',
+                  value: rs(report.netChange),
+                  tone: positive ? 'default' : 'danger',
+                  caption: positive ? 'More came in than went out' : 'More went out than came in',
+                },
+                { label: 'Cash at end', value: rs(report.endingCash), caption: 'Matches the Balance Sheet’s cash' },
               ]}
             />
 
@@ -123,7 +128,7 @@ const CashFlowScreen: React.FC = () => {
               <StatementRow label="Cash at beginning of period" amount={report.beginningCash} />
               <StatementRow label="Cash at end of period" amount={report.endingCash} isGrand />
             </SectionCard>
-          </>
+          </RefreshFade>
         )}
       </ScrollView>
     </ReportContainer>

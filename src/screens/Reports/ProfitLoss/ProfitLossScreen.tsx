@@ -22,12 +22,13 @@ import {
   ReportHeader,
   Card,
   SectionCard,
-  KpiGrid,
+  FigureStrip,
+  RefreshFade,
   DateField,
   LoadingBlock,
   ErrorBlock,
-  ACCENT,
   reportContentStyle,
+  formatRatio,
   ReportTitleBlock,
   StatementRow,
   useStatementCompany,
@@ -219,7 +220,7 @@ const ProfitLossScreen: React.FC = () => {
           </View>
         </Card>
 
-        {state.isLoading && <LoadingBlock label="Calculating profit & loss…" />}
+        {state.isLoading && !report && <LoadingBlock label="Calculating profit & loss…" />}
         {!!state.error && (
           <ErrorBlock
             message={state.error}
@@ -229,19 +230,27 @@ const ProfitLossScreen: React.FC = () => {
           />
         )}
 
-        {report && !state.isLoading && (
-          <>
+        {report && !state.error && (
+          <RefreshFade busy={state.isLoading}>
             {/* Headline KPIs */}
-            <KpiGrid
+            <FigureStrip
               items={[
-                { label: 'Revenue', value: rs(report.revenue), accent: ACCENT.brand, icon: 'trending-up' },
-                { label: 'Gross Profit', value: rs(report.grossProfit), accent: ACCENT.blue, icon: 'bar-chart-2' },
-                { label: 'Expenses', value: rs(report.expenses), accent: ACCENT.amber, icon: 'arrow-down-circle' },
+                { label: 'Revenue', value: rs(report.revenue), caption: 'Income for the period' },
                 {
-                  label: 'Net Income',
+                  label: 'Gross profit',
+                  value: rs(report.grossProfit),
+                  caption: `${formatRatio(report.grossProfit, report.revenue)} gross margin`,
+                },
+                {
+                  label: 'Expenses',
+                  value: rs(report.expenses),
+                  caption: `${formatRatio(report.expenses, report.revenue)} of revenue`,
+                },
+                {
+                  label: 'Net income',
                   value: rs(report.netIncome),
-                  accent: netPositive ? ACCENT.green : ACCENT.red,
-                  icon: 'dollar-sign',
+                  tone: netPositive ? 'default' : 'danger',
+                  caption: `${formatRatio(report.netIncome, report.revenue)} net margin`,
                 },
               ]}
             />
@@ -381,7 +390,7 @@ const ProfitLossScreen: React.FC = () => {
                 </Text>
               )}
             </SectionCard>
-          </>
+          </RefreshFade>
         )}
       </ScrollView>
     </ReportContainer>

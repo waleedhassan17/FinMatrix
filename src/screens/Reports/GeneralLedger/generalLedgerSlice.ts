@@ -42,7 +42,16 @@ export const generalLedgerSlice = createAppSlice({
      * stops including anything newer. Screens dispatch this on focus.
      */
     refreshLedgerRange: create.reducer(state => {
-      if (!state.isCustomRange) state.range = getDefaultReportRange();
+      if (state.isCustomRange) return;
+      const next = getDefaultReportRange();
+      // Replaced only when the day has actually moved on. Assigning a fresh
+      // object with the same dates changed the range's identity on every
+      // focus; the screen's focus effect is keyed on it (through `reload`), so
+      // it re-ran, dispatched this again, and looped until React gave up with
+      // "Maximum update depth exceeded" — the ledger would not open.
+      if (next.startDate !== state.range.startDate || next.endDate !== state.range.endDate) {
+        state.range = next;
+      }
     }),
     setLedgerAccount: create.reducer((state, action: PayloadAction<string | null>) => {
       state.account = action.payload;

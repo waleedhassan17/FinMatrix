@@ -17,8 +17,8 @@ import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsSt
 // Design-system tokens (see src/theme/theme.ts).
 const { typography } = THEME;
 import {
-  ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, DateField, Badge,
-  LoadingBlock, ErrorBlock, EmptyBlock, ACCENT, reportContentStyle, amountColWidth,
+  ReportContainer, ReportHeader, Card, SectionCard, FigureStrip, RefreshFade, DateField, Badge,
+  LoadingBlock, ErrorBlock, EmptyBlock, reportContentStyle, amountColWidth,
   ReportTitleBlock, useStatementCompany, rangeLabel
 } from '../../../components/reports/ReportUI';
 
@@ -145,23 +145,23 @@ const GeneralLedgerScreen: React.FC = () => {
           </View>
         </Card>
 
-        {state.isLoading && <LoadingBlock label="Loading ledger…" />}
+        {state.isLoading && !ledger && <LoadingBlock label="Loading ledger…" />}
         {!!state.error && (
           <ErrorBlock message={state.error}
             onRetry={() => dispatch(fetchGeneralLedger({ range: state.range, account: state.account }))} />
         )}
 
-        {!state.isLoading && ledger && (
-          <>
+        {ledger && !state.error && (
+          <RefreshFade busy={state.isLoading}>
             <ReportTitleBlock
               company={company}
               report="General Ledger"
               periodLabel={rangeLabel(state.range.startDate, state.range.endDate)}
             />
 
-            <KpiGrid items={[
-              { label: 'Total Debits', value: rs(ledger.totals.debit), accent: ACCENT.blue, icon: 'arrow-down-circle' },
-              { label: 'Total Credits', value: rs(ledger.totals.credit), accent: ACCENT.violet, icon: 'arrow-up-circle' },
+            <FigureStrip items={[
+              { label: 'Total debits', value: rs(ledger.totals.debit), caption: 'In the period' },
+              { label: 'Total credits', value: rs(ledger.totals.credit), caption: 'In the period' },
             ]} />
 
             {/* Account filter chips */}
@@ -301,7 +301,7 @@ const GeneralLedgerScreen: React.FC = () => {
                 </ScrollView>
               )}
             </SectionCard>
-          </>
+          </RefreshFade>
         )}
       </ScrollView>
     </ReportContainer>
