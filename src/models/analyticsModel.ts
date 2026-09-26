@@ -11,6 +11,7 @@
 // this is a statement total — Profit & Loss remains the report for revenue.
 
 import type { TrendPoint } from './analyticsDashboardModel';
+import { niceAxis, type ChartAxis } from './chartAxisModel';
 
 /** Money to the paisa, without float drift from the subtraction. */
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -104,40 +105,11 @@ export const formatChange = (c: MonthChange | null): string | null => {
 
 // ─── The chart's money axis ─────────────────────────────────────────────────
 
-const NICE_STEPS = [1, 2, 2.5, 5, 10];
-
-const niceStep = (raw: number): number => {
-  const magnitude = 10 ** Math.floor(Math.log10(raw));
-  return NICE_STEPS.map(n => n * magnitude).find(s => s >= raw) ?? 10 * magnitude;
-};
-
-export interface AnalyticsAxis {
-  /** [bottom, top] of the plot, in rupees. */
-  domain: [number, number];
-  ticks: number[];
-}
+export type AnalyticsAxis = ChartAxis;
 
 /**
- * The value axis for the monthly chart, in round steps.
- *
- * A shallow dip below zero (under half a step) gets a sliver and no negative
- * tick — the zero line marks the floor — instead of a whole step of empty
- * axis. A deep one gets the full steps it needs. Same rule as the web.
+ * The value axis for the monthly chart: invoiced, billed and the difference
+ * on one set of round ticks. Same rule as the web — see `niceAxis`.
  */
-export const analyticsAxis = (months: AnalyticsMonth[], tickCount = 4): AnalyticsAxis => {
-  const values = months.flatMap(m => [m.invoiced, m.billed, m.net]);
-  const hi = Math.max(0, ...values);
-  const lo = Math.min(0, ...values);
-  if (hi === 0 && lo === 0) return { domain: [0, 1], ticks: [0] };
-
-  const step = niceStep(Math.max(hi, -lo) / tickCount);
-  const top = Math.ceil(hi / step) * step;
-  const deep = -lo > step / 2;
-  const bottom = deep ? Math.floor(lo / step) * step : lo * 1.15;
-
-  const first = deep ? Math.round(bottom / step) : 0;
-  const last = Math.round(top / step);
-  const ticks: number[] = [];
-  for (let i = first; i <= last; i++) ticks.push(i * step);
-  return { domain: [bottom, top], ticks };
-};
+export const analyticsAxis = (months: AnalyticsMonth[], tickCount = 4): AnalyticsAxis =>
+  niceAxis(months.flatMap(m => [m.invoiced, m.billed, m.net]), { tickCount });

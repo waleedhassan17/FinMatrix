@@ -18,8 +18,16 @@ export type ReportsStackParamList = {
   ARAging: undefined;
   APAging: undefined;
   InventoryValuation: undefined;
-  /** Reached by tapping a row in Inventory Valuation. */
-  InventoryItemReport: { itemId: string; itemName?: string };
+  /**
+   * Reached by tapping an item in Inventory Valuation. `range` carries the
+   * period the list was showing, so the explorer opens on the figures that
+   * were tapped; without it, the last twelve months.
+   */
+  InventoryItemReport: {
+    itemId: string;
+    itemName?: string;
+    range?: { startDate: string; endDate: string };
+  };
   AnalyticsDashboard: undefined;
   DeliveryDailyReport: undefined;
   DeliveryPerformance: undefined;

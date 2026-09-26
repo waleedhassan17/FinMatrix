@@ -2,7 +2,7 @@
 // FinMatrix — Inventory Valuation Report Network (Production API)
 // ═══════════════════════════════════════════════════════
 
-import { fetchReport } from './reportHelpers';
+import { fetchReport, fetchReportWithStatus } from './reportHelpers';
 
 export const getInventoryValuationAPI = async (params: any = {}): Promise<any> => {
   return fetchReport('/reports/inventory-valuation', params);
@@ -20,20 +20,41 @@ export const getInventoryValuationTrendAPI = async (
 ): Promise<any> => fetchReport('/reports/inventory-valuation/trend', { months });
 
 /**
- * One item's stock level month by month, from its movement history.
+ * One item's stock level and value month by month, from its movement history.
  *
- * Quantity is exact. Month-end VALUE is not returned yet: there is no cost on
- * a stock movement, and pricing a past quantity at the item's current
- * weighted-average cost would be retroactively wrong. The response says so in
- * its `coverage` block rather than returning a plausible zero.
+ * Both walk back from today's quantity and value through the dated movements,
+ * so the latest month is what the valuation list shows. Value is only claimed
+ * from the company's cost-history date; `coverage` says where it stops.
+ *
+ * Given a range, the months match the ones item-performance returns for it —
+ * the explorer puts the two side by side. A server that predates the range
+ * ignores it and answers with the last `months`.
  */
 export const getInventoryItemHistoryAPI = async (
   itemId: string,
   months = 12,
+  range?: { startDate: string; endDate: string },
 ): Promise<any> =>
-  fetchReport(
+  fetchReportWithStatus(
     `/reports/inventory-valuation/items/${encodeURIComponent(itemId)}/history`,
-    { months },
+    range ? { months, ...range } : { months },
+  );
+
+/**
+ * The document lines behind one item's figures — invoices, deliveries and
+ * returns — newest first, a page at a time. The status survives, so a server
+ * from before the endpoint (404) reads as "not available" rather than as a
+ * failure to retry.
+ */
+export const getItemSalesEntriesAPI = async (
+  itemId: string,
+  range: { startDate: string; endDate: string },
+  page = 1,
+  limit = 25,
+): Promise<any> =>
+  fetchReportWithStatus(
+    `/reports/item-performance/${encodeURIComponent(itemId)}/entries`,
+    { ...range, page, limit },
   );
 
 /**
@@ -48,14 +69,13 @@ export const getItemPerformanceAPI = async (
   itemId: string,
   range: { startDate: string; endDate: string },
 ): Promise<any> =>
-  fetchReport(`/reports/item-performance/${encodeURIComponent(itemId)}`, range);
+  fetchReportWithStatus(`/reports/item-performance/${encodeURIComponent(itemId)}`, range);
 
 /**
  * Every item's sales, cost and margin for a period, beside its stock value.
  *
- * Sorted server-side: the questions worth asking of this report — what earns,
- * what is dead stock — are orderings rather than filters, and the client has
- * only the page it was given to sort.
+ * Every item comes back, unpaginated, so the screen ranks and filters the
+ * whole list itself; `sort` only sets the order the server returns it in.
  */
 export const getInventoryPerformanceAPI = async (
   range: { startDate: string; endDate: string },

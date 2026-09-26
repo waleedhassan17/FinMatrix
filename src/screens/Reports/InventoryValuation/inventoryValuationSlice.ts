@@ -2,9 +2,9 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type {
   InventoryPerformance,
-  InventoryPerformanceSort,
   InventoryValuationReport,
   InventoryValuationTrend,
+  RankKey,
 } from '../../../models/inventoryValuationModel';
 import {
   getInventoryPerformanceAPI,
@@ -17,7 +17,7 @@ import {
   inventoryValuationTrendSerializer,
 } from '../../../serializers/inventoryValuationSerializer';
 import {
-  getYtdRange,
+  getDefaultReportRange,
   type ReportDateRange,
 } from '../../../models/reportModel';
 
@@ -44,10 +44,14 @@ interface InventoryValuationState {
    */
   performance: InventoryPerformance | null;
   perfStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
-  /** Governs the MARGIN columns only. Stock is always as of now. */
+  /** Governs the SALES figures only. Stock is always as of now. */
   range: ReportDateRange;
   isCustomRange: boolean;
-  sort: InventoryPerformanceSort;
+  /**
+   * How the top list is ordered. Ranked on the phone, not by the server:
+   * every item comes back, so changing it costs no request.
+   */
+  rank: RankKey;
 }
 
 const initialState: InventoryValuationState = {
@@ -58,9 +62,11 @@ const initialState: InventoryValuationState = {
   trendStatus: 'idle',
   performance: null,
   perfStatus: 'idle',
-  range: getYtdRange(),
+  // Year to date through TODAY. getYtdRange ends on 31 December, a future
+  // date the date field refuses and the report has no figures for.
+  range: getDefaultReportRange(),
   isCustomRange: false,
-  sort: 'grossProfit',
+  rank: 'grossProfit',
 };
 
 export const inventoryValuationSlice = createAppSlice({
@@ -78,13 +84,11 @@ export const inventoryValuationSlice = createAppSlice({
      * freeze on the day the app launched.
      */
     refreshInventoryPerfRange: create.reducer(state => {
-      if (!state.isCustomRange) state.range = getYtdRange();
+      if (!state.isCustomRange) state.range = getDefaultReportRange();
     }),
-    setInventoryPerfSort: create.reducer(
-      (state, action: PayloadAction<InventoryPerformanceSort>) => {
-        state.sort = action.payload;
-      },
-    ),
+    setInventoryRank: create.reducer((state, action: PayloadAction<RankKey>) => {
+      state.rank = action.payload;
+    }),
 
     /**
      * Sales, cost and margin per item.
@@ -94,10 +98,8 @@ export const inventoryValuationSlice = createAppSlice({
      * blank the stock figures the user came for.
      */
     fetchInventoryPerformance: create.asyncThunk(
-      async (payload: { range: ReportDateRange; sort: InventoryPerformanceSort }) =>
-        inventoryPerformanceSerializer(
-          await getInventoryPerformanceAPI(payload.range, payload.sort),
-        ),
+      async (payload: { range: ReportDateRange }) =>
+        inventoryPerformanceSerializer(await getInventoryPerformanceAPI(payload.range)),
       {
         pending: state => {
           state.perfStatus = 'loading';
@@ -168,7 +170,7 @@ export const {
   fetchInventoryPerformance,
   setInventoryPerfRange,
   refreshInventoryPerfRange,
-  setInventoryPerfSort,
+  setInventoryRank,
 } = inventoryValuationSlice.actions;
 export const selectInventoryValuationState = (rootState: { inventoryValuation?: InventoryValuationState }) =>
   rootState.inventoryValuation ?? initialState;

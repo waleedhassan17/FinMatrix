@@ -2,71 +2,109 @@ import { createAppSlice } from '@store/createAppSlice';
 import type {
   InventoryItemHistory,
   ItemPerformance,
+  ItemSalesEntries,
 } from '../../../models/inventoryValuationModel';
 import {
   getInventoryItemHistoryAPI,
   getItemPerformanceAPI,
+  getItemSalesEntriesAPI,
 } from '../../../networks/reports/inventoryValuationNetwork';
 import {
   inventoryItemHistorySerializer,
   itemPerformanceSerializer,
+  itemSalesEntriesSerializer,
 } from '../../../serializers/inventoryValuationSerializer';
-import { getYtdRange, type ReportDateRange } from '../../../models/reportModel';
+import type { ReportDateRange } from '../../../models/reportModel';
 
 export const ITEM_HISTORY_MONTHS = 12;
+/** Lines per page of "what's behind this month". */
+export const ENTRIES_PAGE = 25;
+
+type Status = 'idle' | 'loading' | 'succeeded' | 'failed';
+
+/** What a rejection carries: the HTTP status survives, so a 404 is an answer. */
+interface Rejection {
+  message: string;
+  status?: number;
+}
+
+const rejection = (e: unknown): Rejection => {
+  const err = e as { message?: string; status?: number } | null;
+  return { message: err?.message ?? 'Request failed', status: err?.status };
+};
 
 interface InventoryItemReportState {
-  history: InventoryItemHistory | null;
-  isLoading: boolean;
-  error: string;
-  /** The in-flight request — see the stale-response guard below. */
-  requestId: string;
-  /** Sales and gross margin. Tracked separately: it is a different endpoint,
-   *  and the stock history is still worth showing if margin fails. */
+  /** Sales and margin by month over the window. */
   performance: ItemPerformance | null;
-  perfStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
+  perfStatus: Status;
   perfRequestId: string;
+  /** The window before, for the headline changes. Optional. */
+  prior: ItemPerformance | null;
+  priorStatus: Status;
+  priorRequestId: string;
+  /** Stock on hand and value by month over the same window. */
+  history: InventoryItemHistory | null;
+  historyStatus: Status;
+  historyRequestId: string;
+  /** The item is not this company's, or was deleted. */
+  notFound: boolean;
+  error: string;
+  /** The documents behind the selected month, accumulated page by page. */
+  entries: ItemSalesEntries | null;
+  entriesStatus: Status | 'unavailable';
+  entriesRequestId: string;
+  entriesLoadingMore: boolean;
 }
 
 const initialState: InventoryItemReportState = {
-  history: null,
-  isLoading: false,
-  error: '',
-  requestId: '',
   performance: null,
   perfStatus: 'idle',
   perfRequestId: '',
+  prior: null,
+  priorStatus: 'idle',
+  priorRequestId: '',
+  history: null,
+  historyStatus: 'idle',
+  historyRequestId: '',
+  notFound: false,
+  error: '',
+  entries: null,
+  entriesStatus: 'idle',
+  entriesRequestId: '',
+  entriesLoadingMore: false,
 };
 
-/** Margin is reported against the same window the other reports default to. */
-export const itemPerformanceRange = (): ReportDateRange => getYtdRange();
-
+/**
+ * One item, explored.
+ *
+ * Four requests, four fates. Sales and stock are separate endpoints and each
+ * is worth showing without the other; the prior window only colours the
+ * headline changes; the month's documents load on demand. Every write is
+ * guarded by the request that asked for it — the slice is shared across
+ * items and windows, and a slow answer for the previous one must never land
+ * on top of the current one.
+ */
 export const inventoryItemReportSlice = createAppSlice({
   name: 'inventoryItemReport',
   initialState,
   reducers: create => ({
-    resetInventoryItemReport: create.reducer(state => {
-      state.history = null;
-      state.isLoading = false;
-      state.error = '';
-      state.requestId = '';
-      state.performance = null;
-      state.perfStatus = 'idle';
-      state.perfRequestId = '';
+    resetInventoryItemReport: create.reducer(() => initialState),
+
+    clearItemSalesEntries: create.reducer(state => {
+      state.entries = null;
+      state.entriesStatus = 'idle';
+      state.entriesRequestId = '';
+      state.entriesLoadingMore = false;
     }),
 
-    /**
-     * Sales and gross margin for the item.
-     *
-     * Fails soft: margin is an addition to the stock history, not a
-     * replacement for it, and it 404s on a server deployed before the endpoint
-     * existed — which must not blank the charts that do work.
-     */
     fetchItemPerformance: create.asyncThunk(
-      async (payload: { itemId: string; range: ReportDateRange }) =>
-        itemPerformanceSerializer(
-          await getItemPerformanceAPI(payload.itemId, payload.range),
-        ),
+      async (payload: { itemId: string; range: ReportDateRange }, thunkAPI) => {
+        try {
+          return itemPerformanceSerializer(await getItemPerformanceAPI(payload.itemId, payload.range));
+        } catch (e) {
+          return thunkAPI.rejectWithValue(rejection(e));
+        }
+      },
       {
         pending: (state, action) => {
           state.perfStatus = 'loading';
@@ -76,43 +114,115 @@ export const inventoryItemReportSlice = createAppSlice({
           if (action.meta.requestId !== state.perfRequestId) return;
           state.perfStatus = 'succeeded';
           state.performance = action.payload;
+          state.notFound = false;
         },
         rejected: (state, action) => {
           if (action.meta.requestId !== state.perfRequestId) return;
+          const r = action.payload as Rejection | undefined;
           state.perfStatus = 'failed';
-          state.performance = null;
+          state.error = r?.message ?? action.error?.message ?? 'Failed to load item';
+          // 400 is a malformed id — as final as a missing item.
+          if (r?.status === 404 || r?.status === 400) state.notFound = true;
+        },
+      },
+    ),
+
+    fetchPriorPerformance: create.asyncThunk(
+      async (payload: { itemId: string; range: ReportDateRange }) =>
+        itemPerformanceSerializer(await getItemPerformanceAPI(payload.itemId, payload.range)),
+      {
+        pending: (state, action) => {
+          state.priorStatus = 'loading';
+          state.priorRequestId = action.meta.requestId;
+        },
+        fulfilled: (state, action) => {
+          if (action.meta.requestId !== state.priorRequestId) return;
+          state.priorStatus = 'succeeded';
+          state.prior = action.payload;
+        },
+        rejected: (state, action) => {
+          if (action.meta.requestId !== state.priorRequestId) return;
+          state.priorStatus = 'failed';
+          state.prior = null;
         },
       },
     ),
 
     fetchInventoryItemHistory: create.asyncThunk(
-      async (payload: { itemId: string; months?: number }) =>
-        inventoryItemHistorySerializer(
-          await getInventoryItemHistoryAPI(
-            payload.itemId,
-            payload.months ?? ITEM_HISTORY_MONTHS,
-          ),
-        ),
+      async (payload: { itemId: string; months?: number; range?: ReportDateRange }, thunkAPI) => {
+        try {
+          return inventoryItemHistorySerializer(
+            await getInventoryItemHistoryAPI(
+              payload.itemId,
+              payload.months ?? ITEM_HISTORY_MONTHS,
+              payload.range,
+            ),
+          );
+        } catch (e) {
+          return thunkAPI.rejectWithValue(rejection(e));
+        }
+      },
       {
         pending: (state, action) => {
-          state.isLoading = true;
-          state.error = '';
-          state.requestId = action.meta.requestId;
+          state.historyStatus = 'loading';
+          state.historyRequestId = action.meta.requestId;
         },
         fulfilled: (state, action) => {
-          // Only the most recent request may write. Keyed on requestId rather
-          // than itemId because this slice is shared across items: opening A,
-          // going back and opening B can land A's response last, and it would
-          // otherwise overwrite B's chart with the wrong item's history. Two
-          // fetches for the SAME item overlap too, on focus-then-retry.
-          if (action.meta.requestId !== state.requestId) return;
-          state.isLoading = false;
+          if (action.meta.requestId !== state.historyRequestId) return;
+          state.historyStatus = 'succeeded';
           state.history = action.payload;
         },
         rejected: (state, action) => {
-          if (action.meta.requestId !== state.requestId) return;
-          state.isLoading = false;
-          state.error = action.error?.message ?? 'Failed to load item history';
+          if (action.meta.requestId !== state.historyRequestId) return;
+          const r = action.payload as Rejection | undefined;
+          state.historyStatus = 'failed';
+          if (!state.error) state.error = r?.message ?? action.error?.message ?? 'Failed to load item history';
+          if (r?.status === 404 || r?.status === 400) state.notFound = true;
+        },
+      },
+    ),
+
+    /**
+     * A page of the documents behind a month. Page 1 replaces what is there;
+     * later pages append to it. A 404 means a server from before the endpoint:
+     * the screen says the detail is not available, and offers no retry.
+     */
+    fetchItemSalesEntries: create.asyncThunk(
+      async (payload: { itemId: string; range: ReportDateRange; page?: number }, thunkAPI) => {
+        try {
+          return itemSalesEntriesSerializer(
+            await getItemSalesEntriesAPI(payload.itemId, payload.range, payload.page ?? 1, ENTRIES_PAGE),
+          );
+        } catch (e) {
+          return thunkAPI.rejectWithValue(rejection(e));
+        }
+      },
+      {
+        pending: (state, action) => {
+          const more = (action.meta.arg.page ?? 1) > 1;
+          state.entriesRequestId = action.meta.requestId;
+          state.entriesLoadingMore = more;
+          if (!more) {
+            state.entriesStatus = 'loading';
+            state.entries = null;
+          }
+        },
+        fulfilled: (state, action) => {
+          if (action.meta.requestId !== state.entriesRequestId) return;
+          const page = action.payload;
+          state.entriesLoadingMore = false;
+          state.entriesStatus = 'succeeded';
+          if (!page) return;
+          state.entries =
+            page.page > 1 && state.entries
+              ? { ...page, entries: [...state.entries.entries, ...page.entries] }
+              : page;
+        },
+        rejected: (state, action) => {
+          if (action.meta.requestId !== state.entriesRequestId) return;
+          const r = action.payload as Rejection | undefined;
+          state.entriesLoadingMore = false;
+          state.entriesStatus = r?.status === 404 ? 'unavailable' : 'failed';
         },
       },
     ),
@@ -123,8 +233,11 @@ export const inventoryItemReportSlice = createAppSlice({
 });
 
 export const {
+  clearItemSalesEntries,
   fetchInventoryItemHistory,
   fetchItemPerformance,
+  fetchItemSalesEntries,
+  fetchPriorPerformance,
   resetInventoryItemReport,
 } = inventoryItemReportSlice.actions;
 

@@ -1,4 +1,6 @@
 import type {
+  ItemSalesEntries,
+  ItemSalesEntry,
   InventoryPerformance,
   InventoryPerformanceResponse,
   ItemPerformance,
@@ -84,6 +86,7 @@ export const inventoryItemHistorySerializer = (
     coverage: {
       quantity: raw.coverage?.quantity ?? 'exact',
       value: raw.coverage?.value ?? 'unavailable',
+      costHistoryFrom: raw.coverage?.costHistoryFrom ?? null,
       message: raw.coverage?.message ?? '',
     },
   };
@@ -94,10 +97,13 @@ export const itemPerformanceSerializer = (
 ): ItemPerformance | null => {
   const raw = unwrapEnvelope<any>(payload);
   if (!raw) return null;
+  const item = raw.item ?? null;
+  const others = raw.otherCustomers ?? {};
   return {
     itemId: raw.itemId ?? '',
     itemName: raw.itemName ?? '',
     sku: raw.sku ?? '',
+    range: { startDate: raw.range?.startDate ?? '', endDate: raw.range?.endDate ?? '' },
     points: (raw.points ?? []).map((p: any) => ({
       period: p.period ?? '',
       label: p.label ?? '',
@@ -117,6 +123,71 @@ export const itemPerformanceSerializer = (
     },
     costHistoryFrom: raw.costHistoryFrom ?? null,
     estimatedCogsShare: n(raw.estimatedCogsShare),
+    // Absent from a server that predates the explorer: the screen then shows
+    // the charts without the item's facts, rather than failing.
+    item: item
+      ? {
+          category: item.category || 'Uncategorized',
+          unitOfMeasure: item.unitOfMeasure || 'unit',
+          sellingPrice: n(item.sellingPrice),
+          unitCost: n(item.unitCost),
+          qtyOnHand: n(item.qtyOnHand),
+          stockValue: n(item.stockValue),
+          reorderPoint: n(item.reorderPoint),
+          isActive: item.isActive !== false,
+          lastSoldDate: item.lastSoldDate ?? null,
+        }
+      : null,
+    customers: (raw.customers ?? []).map((c: any) => ({
+      customerId: c.customerId ?? null,
+      customerName: c.customerName || '(no customer)',
+      unitsSold: n(c.unitsSold),
+      revenue: n(c.revenue),
+      grossProfit: n(c.grossProfit),
+    })),
+    otherCustomers: {
+      count: n(others.count),
+      unitsSold: n(others.unitsSold),
+      revenue: n(others.revenue),
+      grossProfit: n(others.grossProfit),
+    },
+  };
+};
+
+const DOC_TYPES: ItemSalesEntry['docType'][] = ['invoice', 'delivery', 'credit_memo'];
+
+/** The document lines behind an item's month — a page of them, with the month's totals. */
+export const itemSalesEntriesSerializer = (payload: any): ItemSalesEntries | null => {
+  const raw = unwrapEnvelope<any>(payload);
+  if (!raw) return null;
+  return {
+    itemId: raw.itemId ?? '',
+    range: { startDate: raw.range?.startDate ?? '', endDate: raw.range?.endDate ?? '' },
+    entries: (raw.entries ?? []).map((e: any) => ({
+      date: e.date ?? '',
+      docType: DOC_TYPES.includes(e.docType) ? e.docType : 'invoice',
+      docId: e.docId ?? '',
+      docNumber: e.docNumber ?? '',
+      customerId: e.customerId ?? null,
+      customerName: e.customerName || '(no customer)',
+      units: n(e.units),
+      unitPrice: n(e.unitPrice),
+      revenue: n(e.revenue),
+      cogs: n(e.cogs),
+      grossProfit: n(e.grossProfit),
+      marginPct: nOrNull(e.marginPct),
+      costBasis: e.costBasis ?? 'unknown',
+      costKnown: e.costKnown !== false,
+    })),
+    total: n(raw.total),
+    page: n(raw.page) || 1,
+    limit: n(raw.limit) || 25,
+    totals: {
+      unitsSold: n(raw.totals?.unitsSold),
+      revenue: n(raw.totals?.revenue),
+      cogs: n(raw.totals?.cogs),
+      grossProfit: n(raw.totals?.grossProfit),
+    },
   };
 };
 
@@ -143,6 +214,7 @@ export const inventoryPerformanceSerializer = (
       unitCost: n(r.unitCost),
       stockValue: n(r.stockValue),
       costBasis: r.costBasis ?? 'posted',
+      lastSoldDate: r.lastSoldDate ?? null,
     })),
     totals: {
       unitsSold: n(raw.totals?.unitsSold),
@@ -151,6 +223,7 @@ export const inventoryPerformanceSerializer = (
       grossProfit: n(raw.totals?.grossProfit),
       marginPct: nOrNull(raw.totals?.marginPct),
       stockValue: n(raw.totals?.stockValue),
+      ledgerValue: nOrNull(raw.totals?.ledgerValue),
     },
     reconciliation: {
       glRevenue: n(rc.glRevenue),

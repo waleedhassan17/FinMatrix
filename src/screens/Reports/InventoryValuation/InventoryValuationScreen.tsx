@@ -1,10 +1,23 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Inventory Valuation
+// ═══════════════════════════════════════════════════════
+// What the stock is worth, and which of it earns — the phone's half of the
+// web report. Two claims about two moments share the screen and it says so:
+// STOCK is as of now (quantity at average cost, which ties to Inventory 1200
+// on the balance sheet); SALES cover the dates picked at the top.
+//
+// Every item opens its explorer — monthly figures, charted, down to the
+// documents behind each month — carrying the dates along, so it opens on the
+// figures that were tapped.
+
 import dayjs from 'dayjs';
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { THEME } from '../../../utils/theme';
+import { THEME } from '../../../theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchInventoryPerformance,
@@ -13,11 +26,28 @@ import {
   refreshInventoryPerfRange,
   selectInventoryValuationState,
   setInventoryPerfRange,
-  setInventoryPerfSort,
+  setInventoryRank,
   TREND_MONTHS,
 } from './inventoryValuationSlice';
-import type { InventoryPerformanceSort } from '../../../models/inventoryValuationModel';
-import MonthlyBars from '../shared/MonthlyBars';
+import {
+  RANK_OPTIONS,
+  STOCK_FILTERS,
+  categoryShares,
+  filterRows,
+  formatShare,
+  ledgerTie,
+  matchesFilter,
+  rankFigure,
+  rankRows,
+  rowTotals,
+  traded,
+  unsoldStock,
+  valuationRows,
+  type RankKey,
+  type StockFilter,
+  type ValuationRow,
+} from '../../../models/inventoryValuationModel';
+import MetricChart from '../shared/MetricChart';
 import RankedBars from '../shared/RankedBars';
 import { formatCurrency } from '../../../utils/formatters';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
@@ -25,12 +55,8 @@ import {
   ReportContainer,
   ReportHeader,
   SectionCard,
-  KpiGrid,
+  FigureStrip,
   DateField,
-  Segmented,
-  amountColWidth,
-  SummaryLine,
-  Divider,
   TCell,
   tableStyles,
   LoadingBlock,
@@ -38,40 +64,22 @@ import {
   ErrorBlock,
   EmptyBlock,
   Card,
-  ACCENT,
   reportContentStyle,
   ReportTitleBlock,
   useStatementCompany,
   asOfLabel,
-  rangeLabel
+  rangeLabel,
 } from '../../../components/reports/ReportUI';
+
+const { colors, radius, spacing, typography } = THEME;
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
 
 const rs = (n: number) => formatCurrency(n, 'Rs ');
-
-/**
- * What the table can be ordered by.
- *
- * The backend used to sort by carrying value alone. Once an item's earnings
- * sit beside its stock that ordering is actively misleading — the stock with
- * the most capital tied up is not the stock that earns — so the ordering is
- * the control that makes the new columns usable.
- */
-const SORTS: { key: InventoryPerformanceSort; label: string }[] = [
-  { key: 'grossProfit', label: 'Gross profit' },
-  { key: 'revenue', label: 'Revenue' },
-  { key: 'marginPct', label: 'Margin' },
-  { key: 'stockValue', label: 'Stock value' },
-];
-
-/** Short form for a bar label, where the full figure will not fit. */
-const compactRs = (n: number): string => {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${Math.round(n / 1_000)}k`;
-  return `${Math.round(n)}`;
-};
+const qty = (n: number) =>
+  `${n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 4 })}`;
+/** Rows drawn before "Show more" — a warehouse can carry hundreds of items. */
+const PAGE = 40;
 
 const InventoryValuationScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
@@ -79,7 +87,13 @@ const InventoryValuationScreen: React.FC = () => {
   const state = useAppSelector(selectInventoryValuationState);
   const company = useStatementCompany();
 
-  // The margin window follows the calendar unless the user chose one, the same
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<StockFilter>('all');
+  const [category, setCategory] = useState('');
+  const [shown, setShown] = useState(PAGE);
+  const [trendMonth, setTrendMonth] = useState<string | null>(null);
+
+  // The sales window follows the calendar unless the user chose one, the same
   // as every other dated report.
   useFocusEffect(
     React.useCallback(() => {
@@ -95,107 +109,136 @@ const InventoryValuationScreen: React.FC = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchInventoryPerformance({ range: state.range, sort: state.sort }));
-  }, [dispatch, state.range.startDate, state.range.endDate, state.sort]);
+    dispatch(fetchInventoryPerformance({ range: state.range }));
+  }, [dispatch, state.range.startDate, state.range.endDate]);
 
   const report = state.report;
-  const valuationRows = report?.rows ?? [];
-  const categories = report?.byCategory ?? [];
-  const trendPoints = (state.trend?.points ?? []).map(p => ({
-    period: p.period,
-    label: p.label,
-    value: p.value,
-  }));
-
   const perf = state.performance;
-  const perfRows = perf?.rows ?? [];
-  // The performance rows carry the same stock figures the valuation snapshot
-  // does, already ordered as asked, so they replace it outright when present.
-  // The snapshot stays as the fallback, so this report still works against a
-  // server without the endpoint — it simply shows no margin columns.
-  const usingPerf = perfRows.length > 0;
-  const traded = perfRows.some(r => r.revenue !== 0 || r.cogs !== 0);
-  const sortIndex = SORTS.findIndex(o => o.key === state.sort);
+  const rows = useMemo(() => valuationRows(report, perf), [report, perf]);
+  const showSales = (perf?.rows.length ?? 0) > 0;
+  const stockValue = perf?.totals.stockValue ?? report?.totalValue ?? 0;
+  const tie = ledgerTie(stockValue, perf?.totals.ledgerValue ?? null);
+  const unsold = unsoldStock(rows);
+  const shares = useMemo(() => categoryShares(rows), [rows]);
+  const period = rangeLabel(state.range.startDate, state.range.endDate);
+  const periodShort = `${dayjs(state.range.startDate).format('MMM D')} – ${dayjs(state.range.endDate).format('MMM D, YYYY')}`;
 
-  const rows = usingPerf
-    ? perfRows.map(r => ({
-        itemId: r.itemId,
-        itemName: r.itemName,
-        sku: r.sku,
-        qty: r.qtyOnHand,
-        cost: r.unitCost,
-        value: r.stockValue,
-        revenue: r.revenue,
-        grossProfit: r.grossProfit,
-        marginPct: r.marginPct,
-        costBasis: r.costBasis,
-      }))
-    : valuationRows.map(r => ({
-        itemId: r.itemId,
-        itemName: r.itemName,
-        sku: r.sku,
-        qty: r.qty,
-        cost: r.cost,
-        value: r.value,
-        revenue: 0,
-        grossProfit: 0,
-        marginPct: null as number | null,
-        costBasis: 'posted',
-      }));
+  const rank = state.rank;
+  const ranked = rankRows(rows, rank);
+  const rankLabel = RANK_OPTIONS.find(o => o.key === rank)?.label ?? 'Gross profit';
+  const rankFormat = (v: number) =>
+    rank === 'marginPct' ? `${v.toFixed(1)}%` : rank === 'unitsSold' ? qty(v) : rs(v);
+  const rankHint = (r: ValuationRow) => {
+    if (rank === 'stockValue') {
+      const held = `${qty(r.qty)} on hand`;
+      if (!showSales) return held;
+      return r.unitsSold > 0 ? `${held} · ${qty(r.unitsSold)} sold` : `${held} · not sold in period`;
+    }
+    const sold = `${qty(r.unitsSold)} sold`;
+    return r.marginPct === null ? sold : `${sold} · ${r.marginPct.toFixed(1)}% margin`;
+  };
 
-  const rankPoints = perfRows
-    .filter(r => r.revenue !== 0 || r.cogs !== 0)
-    .map(r => ({
-      key: r.itemId,
-      label: r.itemName,
-      value:
-        state.sort === 'revenue'
-          ? r.revenue
-          : state.sort === 'stockValue'
-            ? r.stockValue
-            : r.grossProfit,
-      hint:
-        r.marginPct === null
-          ? `${r.unitsSold} sold`
-          : `${r.unitsSold} sold · ${r.marginPct.toFixed(1)}% margin`,
-    }));
+  const counts = useMemo(
+    () =>
+      Object.fromEntries(STOCK_FILTERS.map(f => [f.key, rows.filter(r => matchesFilter(r, f.key)).length])) as Record<
+        StockFilter,
+        number
+      >,
+    [rows],
+  );
+  const filters = STOCK_FILTERS.filter(f => showSales || (f.key !== 'belowCost' && f.key !== 'unsold'));
+  const listed = useMemo(
+    () =>
+      filterRows(rows, { search, category, filter }).sort(
+        (a, b) => b.value - a.value || a.itemName.localeCompare(b.itemName),
+      ),
+    [rows, search, category, filter],
+  );
+  const listTotals = rowTotals(listed);
+  const narrowed = search.trim() !== '' || category !== '' || filter !== 'all';
 
-  // Sized to the widest figure each column must hold. The hardcoded 130 was
-  // tuned for a carrying value; a year's revenue is wider and would clip.
-  const wValue = amountColWidth([...rows.map(r => rs(r.value)), rs(perf?.totals.stockValue ?? 0)]);
-  const wRevenue = amountColWidth([...rows.map(r => rs(r.revenue)), rs(perf?.totals.revenue ?? 0)]);
-  const wProfit = amountColWidth([...rows.map(r => rs(r.grossProfit)), rs(perf?.totals.grossProfit ?? 0)]);
+  const openItem = (itemId: string) => {
+    const row = rows.find(r => r.itemId === itemId);
+    navigation.navigate('InventoryItemReport', {
+      itemId,
+      itemName: row?.itemName,
+      range: showSales ? state.range : undefined,
+    });
+  };
+
+  const trendPoints = (state.trend?.points ?? []).map(p => ({ period: p.period, label: p.label, value: p.value }));
+  const trendSelected = trendPoints.find(p => p.period === trendMonth) ?? trendPoints[trendPoints.length - 1];
+
+  const figures = [
+    {
+      label: 'Stock value',
+      value: rs(stockValue),
+      caption:
+        tie && !tie.ties ? (
+          <Text style={styles.warn}>
+            Ledger {rs(tie.ledgerValue)} · differs by {rs(tie.difference)}
+          </Text>
+        ) : (
+          `${rows.length} items · ${shares.length} categor${shares.length === 1 ? 'y' : 'ies'}${tie ? ' · ties to the ledger' : ''}`
+        ),
+    },
+    {
+      label: 'Revenue',
+      value: showSales ? rs(perf?.totals.revenue ?? 0) : '—',
+      caption: showSales ? `${qty(perf?.totals.unitsSold ?? 0)} units sold` : 'Not available',
+    },
+    {
+      label: 'Gross profit',
+      value: showSales ? rs(perf?.totals.grossProfit ?? 0) : '—',
+      tone: showSales && (perf?.totals.grossProfit ?? 0) < 0 ? ('danger' as const) : ('default' as const),
+      caption: showSales
+        ? perf?.totals.marginPct == null
+          ? 'No sales in the period'
+          : `${perf.totals.marginPct.toFixed(1)}% margin`
+        : 'Not available',
+    },
+    {
+      label: 'Unsold stock',
+      value: showSales ? rs(unsold.value) : '—',
+      tone: showSales && unsold.value > 0 ? ('warning' as const) : ('default' as const),
+      caption: showSales
+        ? unsold.count === 0
+          ? 'Every item in stock sold'
+          : `${unsold.count} item${unsold.count === 1 ? '' : 's'} · ${formatShare(stockValue > 0 ? unsold.value / stockValue : 0)} of stock`
+        : 'Not available',
+    },
+  ];
+
   return (
     <ReportContainer>
-      <ReportHeader title="Inventory Valuation" subtitle="Stock on hand" onBack={() => navigation.goBack()} />
+      <ReportHeader title="Inventory Valuation" subtitle="Stock, and which of it earns" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
-        {/* Stock is as of now; sales and margin cover this window. The two
-            are labelled separately in the table because they are different
-            claims about different moments. */}
         <Card>
           <View style={styles.filterRow}>
-            <DateField
-              label="Sales from"
-              value={state.range.startDate}
-              onChangeText={t => dispatch(setInventoryPerfRange({ ...state.range, startDate: t }))}
-            />
-            <DateField
-              label="To"
-              value={state.range.endDate}
-              onChangeText={t => dispatch(setInventoryPerfRange({ ...state.range, endDate: t }))}
-            />
+            <View style={styles.dateCell}>
+              <DateField
+                label="Sales from"
+                value={state.range.startDate}
+                onChangeText={t => dispatch(setInventoryPerfRange({ ...state.range, startDate: t }))}
+              />
+            </View>
+            <View style={styles.dateCell}>
+              <DateField
+                label="To"
+                value={state.range.endDate}
+                onChangeText={t => dispatch(setInventoryPerfRange({ ...state.range, endDate: t }))}
+              />
+            </View>
           </View>
-          <Text style={styles.sortLabel}>Rank by</Text>
-          <Segmented
-            options={SORTS.map(o => o.label)}
-            activeIndex={sortIndex < 0 ? 0 : sortIndex}
-            onChange={i => dispatch(setInventoryPerfSort(SORTS[i].key))}
-          />
+          <Text style={styles.note}>
+            Stock is as of today and ties to the balance sheet. Revenue and margin cover the dates
+            above. Tap any item to explore it month by month.
+          </Text>
         </Card>
 
-        {/* The spinner is for the first load only. A new period or ranking
-            keeps the figures on screen, dimmed, until the answer lands. */}
+        {/* The spinner is for the first load only. A new period keeps the
+            figures on screen, dimmed, until the answer lands. */}
         {state.isLoading && !report && <LoadingBlock label="Valuing inventory…" />}
         {!!state.error && (
           <ErrorBlock message={state.error} onRetry={() => dispatch(fetchInventoryValuationReport())} />
@@ -203,54 +246,82 @@ const InventoryValuationScreen: React.FC = () => {
 
         {report && (
           <RefreshFade busy={state.isLoading || state.perfStatus === 'loading'}>
-            <KpiGrid
-              items={[
-                { label: 'Stock Value', value: rs(report.totalValue ?? 0), accent: ACCENT.brand, icon: 'dollar-sign' },
-                { label: 'Items', value: String(rows.length), accent: ACCENT.blue, icon: 'box' },
-                ...(traded
-                  ? [
-                      {
-                        label: 'Revenue',
-                        value: rs(perf?.totals.revenue ?? 0),
-                        accent: ACCENT.green,
-                        icon: 'trending-up' as const,
-                      },
-                      {
-                        label: 'Gross Profit',
-                        value: rs(perf?.totals.grossProfit ?? 0),
-                        accent:
-                          (perf?.totals.grossProfit ?? 0) >= 0 ? ACCENT.green : ACCENT.red,
-                        icon: 'percent' as const,
-                      },
-                    ]
-                  : [
-                      {
-                        label: 'Categories',
-                        value: String(categories.length),
-                        accent: ACCENT.violet,
-                        icon: 'grid' as const,
-                      },
-                    ]),
-              ]}
-            />
+            <FigureStrip items={figures} />
 
-            {/* The endpoint values stock as it stands now — there is no date filter. */}
             <ReportTitleBlock
               company={company}
-              report="Inventory Valuation Summary"
-              periodLabel={asOfLabel(dayjs().format('YYYY-MM-DD'))}
+              report="Inventory Valuation"
+              periodLabel={
+                showSales
+                  ? `Stock ${asOfLabel(dayjs().format('YYYY-MM-DD')).replace(/^As of/, 'as of')} · sales ${period}`
+                  : asOfLabel(dayjs().format('YYYY-MM-DD'))
+              }
             />
 
-            {traded && (
+            <SectionCard
+              title={`Top items by ${rankLabel.toLowerCase()}`}
+              subtitle={rank === 'stockValue' ? 'As of today · every item held' : `${periodShort} · items that sold`}
+              icon="award"
+            >
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+                {RANK_OPTIONS.filter(o => showSales || o.key === 'stockValue').map(o => {
+                  const on = o.key === rank;
+                  return (
+                    <TouchableOpacity
+                      key={o.key}
+                      style={[styles.chip, on && styles.chipOn]}
+                      activeOpacity={0.8}
+                      onPress={() => dispatch(setInventoryRank(o.key as RankKey))}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                    >
+                      <Text style={[styles.chipText, on && styles.chipTextOn]}>{o.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <View style={styles.gapTop}>
+                <RankedBars
+                  points={ranked.map(r => ({
+                    key: r.itemId,
+                    label: r.itemName,
+                    value: rankFigure(r, rank) ?? 0,
+                    hint: rankHint(r),
+                  }))}
+                  format={rankFormat}
+                  onSelect={openItem}
+                  navigates
+                  emptyLabel={rank === 'stockValue' ? 'Nothing is held in stock.' : 'Nothing sold in this period.'}
+                />
+              </View>
+            </SectionCard>
+
+            {shares.length > 0 && (
               <SectionCard
-                title={`Top items by ${SORTS.find(o => o.key === state.sort)?.label.toLowerCase()}`}
-                subtitle={rangeLabel(state.range.startDate, state.range.endDate)}
-                icon="award"
+                title="Stock value by category"
+                subtitle={category ? `Filtering the list to ${category}` : 'As of today · tap one to filter the list'}
+                icon="layers"
+                right={
+                  category ? (
+                    <TouchableOpacity onPress={() => setCategory('')} accessibilityRole="button">
+                      <Text style={styles.link}>Show all</Text>
+                    </TouchableOpacity>
+                  ) : undefined
+                }
               >
                 <RankedBars
-                  points={rankPoints}
+                  points={shares.map(c => ({
+                    key: c.category,
+                    label: c.category,
+                    value: c.value,
+                    hint: `${c.items} item${c.items === 1 ? '' : 's'} · ${formatShare(c.share)} of stock`,
+                  }))}
                   format={v => rs(v)}
-                  emptyLabel="Nothing sold in this period."
+                  onSelect={key => {
+                    setCategory(key === category ? '' : key);
+                    setShown(PAGE);
+                  }}
+                  activeKey={category || null}
                 />
               </SectionCard>
             )}
@@ -258,120 +329,196 @@ const InventoryValuationScreen: React.FC = () => {
             {trendPoints.length > 0 && (
               <SectionCard
                 title="Stock value over time"
-                subtitle="From the inventory control account — ties to the balance sheet"
+                subtitle="Inventory account 1200 at each month end — ties to the balance sheet"
                 icon="trending-up"
               >
-                <MonthlyBars
+                {trendSelected && (
+                  <View style={styles.readout}>
+                    <Text style={styles.readoutLabel}>{trendSelected.label}</Text>
+                    <Text style={[styles.readoutValue, (trendSelected.value ?? 0) < 0 && styles.bad]}>
+                      {rs(trendSelected.value ?? 0)}
+                    </Text>
+                  </View>
+                )}
+                <MetricChart
+                  metric="closingValue"
+                  type="bar"
                   points={trendPoints}
-                  caption="Latest month end"
-                  format={v => rs(v)}
-                  compact={compactRs}
+                  selected={trendMonth}
+                  onSelect={setTrendMonth}
                 />
               </SectionCard>
             )}
 
-            {categories.length > 0 && (
-              <SectionCard title="Value by Category" icon="layers">
-                {categories.map(cat => (
-                  <SummaryLine key={cat.category} label={cat.category} value={rs(cat.totalValue)} />
-                ))}
-                <Divider />
-                <SummaryLine label="Total Inventory Value" value={rs(report.totalValue ?? 0)} strong highlight valueColor={THEME.colors.primaryHover} />
-              </SectionCard>
-            )}
+            <SectionCard
+              title="Items"
+              subtitle={showSales ? `Stock today · sales ${periodShort}` : 'Stock today'}
+              icon="package"
+            >
+              <View style={styles.search}>
+                <Feather name="search" size={15} color={colors.textTertiary} />
+                <TextInput
+                  value={search}
+                  onChangeText={v => {
+                    setSearch(v);
+                    setShown(PAGE);
+                  }}
+                  placeholder="Find an item or SKU"
+                  placeholderTextColor={colors.textTertiary}
+                  style={styles.searchInput}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  returnKeyType="search"
+                  accessibilityLabel="Find an item or SKU"
+                />
+                {search.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearch('')} accessibilityRole="button" accessibilityLabel="Clear search">
+                    <Feather name="x" size={15} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </View>
 
-            {rows.length === 0 ? (
-              <Card>
-                <EmptyBlock icon="box" title="No inventory items" hint="Add items to see valuation." />
-              </Card>
-            ) : (
-              <SectionCard title="Items" subtitle="Tap an item for its history" icon="package">
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View>
-                    <View style={tableStyles.head}>
-                      <TCell width={200} head>Item</TCell>
-                      <TCell width={120} head>SKU</TCell>
-                      <TCell width={70} head align="right">Qty</TCell>
-                      <TCell width={110} head align="right">Avg Cost</TCell>
-                      <TCell width={130} head align="right">Asset Value</TCell>
-                    </View>
-                    {rows.map((row, i) => (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.chips, styles.gapTop]}>
+                {filters.map(f => {
+                  const on = f.key === filter;
+                  return (
+                    <TouchableOpacity
+                      key={f.key}
+                      style={[styles.chip, on && styles.chipOn]}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setFilter(f.key);
+                        setShown(PAGE);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                    >
+                      <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                        {f.label} {counts[f.key]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {listed.length === 0 ? (
+                <EmptyBlock
+                  icon="search"
+                  title="No items match"
+                  hint={narrowed ? 'Try another search or filter.' : 'Add items to see valuation.'}
+                />
+              ) : (
+                <View style={styles.gapTop}>
+                  {listed.slice(0, shown).map((r, i) => {
+                    const idle = showSales && r.qty > 0 && r.unitsSold <= 0;
+                    const sub = !showSales
+                      ? `${qty(r.qty)} on hand`
+                      : r.qty <= 0 && !traded(r)
+                        ? 'Out of stock'
+                        : idle
+                          ? r.lastSoldDate
+                            ? `Not sold since ${dayjs(r.lastSoldDate).format('MMM D, YYYY')}`
+                            : 'Never sold'
+                          : `${qty(r.unitsSold)} sold${r.marginPct !== null ? ` · ${r.marginPct.toFixed(1)}%` : ''}`;
+                    return (
                       <TouchableOpacity
-                        key={row.itemId}
-                        style={[tableStyles.row, i % 2 === 1 && tableStyles.rowAlt]}
+                        key={r.itemId}
+                        style={[styles.itemRow, i > 0 && styles.itemRule]}
                         activeOpacity={0.6}
-                        onPress={() =>
-                          navigation.navigate('InventoryItemReport', {
-                            itemId: row.itemId,
-                            itemName: row.itemName,
-                          })
-                        }
+                        onPress={() => openItem(r.itemId)}
                         accessibilityRole="button"
-                        accessibilityLabel={`${row.itemName}, ${rs(row.value)}. Open item report`}
+                        accessibilityLabel={`${r.itemName}, ${rs(r.value)}. Explore`}
                       >
-                        <TCell width={200}>{row.itemName}</TCell>
-                        <TCell width={120} color={THEME.colors.textTertiary}>{row.sku}</TCell>
-                        <TCell width={70} align="right">{String(row.qty)}</TCell>
-                        <TCell width={110} align="right">{rs(row.cost)}</TCell>
-                        <TCell width={130} align="right" strong>{rs(row.value)}</TCell>
+                        <View style={styles.itemMain}>
+                          <Text style={styles.itemName} numberOfLines={1}>
+                            {r.itemName}
+                          </Text>
+                          <Text style={styles.itemMeta} numberOfLines={1}>
+                            {[r.sku, r.category].filter(Boolean).join(' · ')}
+                          </Text>
+                        </View>
+                        <View style={styles.itemFigures}>
+                          <Text style={styles.itemValue}>{rs(r.value)}</Text>
+                          <Text
+                            style={[
+                              styles.itemSub,
+                              idle && styles.warn,
+                              traded(r) && r.grossProfit < 0 && styles.bad,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {sub}
+                          </Text>
+                        </View>
+                        <Feather name="chevron-right" size={16} color={colors.textTertiary} />
                       </TouchableOpacity>
-                    ))}
-                    {/* The server's own totalValue — the rows above are not re-summed. */}
-                    <View style={tableStyles.totalRow}>
-                      <TCell width={200} strong>TOTAL</TCell>
-                      <TCell width={120}>{''}</TCell>
-                      <TCell width={70} align="right">{''}</TCell>
-                      <TCell width={110} align="right">{''}</TCell>
-                      <TCell width={130} align="right" strong>{rs(report.totalValue ?? 0)}</TCell>
+                    );
+                  })}
+
+                  {listed.length > shown && (
+                    <TouchableOpacity style={styles.more} onPress={() => setShown(s => s + PAGE)} accessibilityRole="button">
+                      <Text style={styles.link}>
+                        Show more ({shown} of {listed.length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* The rows SHOWING, so a filtered list foots to itself. */}
+                  <View style={styles.total}>
+                    <Text style={styles.totalLabel}>
+                      {narrowed ? `${listed.length} of ${rows.length} items` : `${rows.length} items`}
+                    </Text>
+                    <View style={styles.itemFigures}>
+                      <Text style={styles.totalValue}>{rs(listTotals.value)}</Text>
+                      {showSales && (
+                        <Text style={[styles.itemSub, listTotals.grossProfit < 0 && styles.bad]}>
+                          GP {rs(listTotals.grossProfit)}
+                          {listTotals.marginPct !== null ? ` · ${listTotals.marginPct.toFixed(1)}%` : ''}
+                        </Text>
+                      )}
                     </View>
                   </View>
-                </ScrollView>
-              </SectionCard>
-            )}
+                </View>
+              )}
+            </SectionCard>
 
-            {perf && traded && perf.reconciliation.items.length > 0 && (
+            {perf && rows.some(traded) && perf.reconciliation.items.length > 0 && (
               // Why this report does not equal the Profit & Loss, named rather
               // than left to be discovered as a discrepancy. It foots exactly:
-              // goods sold plus every line below equals the P&L figure. An
-              // accountant who cannot see this reconciliation stops trusting
-              // the whole screen.
-              <SectionCard
-                title="How this ties to Profit & Loss"
-                subtitle={rangeLabel(state.range.startDate, state.range.endDate)}
-                icon="git-merge"
-              >
+              // goods sold plus every line below equals the P&L figure.
+              <SectionCard title="How this ties to Profit & Loss" subtitle={period} icon="git-merge">
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View>
                     <View style={tableStyles.head}>
                       <TCell width={210} head>Source</TCell>
-                      <TCell width={wRevenue} head align="right">Revenue</TCell>
-                      <TCell width={wProfit} head align="right">Cost of sales</TCell>
+                      <TCell width={130} head align="right">Revenue</TCell>
+                      <TCell width={130} head align="right">Cost of sales</TCell>
                     </View>
                     <View style={tableStyles.row}>
                       <TCell width={210}>Goods sold (this report)</TCell>
-                      <TCell width={wRevenue} align="right">{rs(perf.reconciliation.itemRevenue)}</TCell>
-                      <TCell width={wProfit} align="right">{rs(perf.reconciliation.itemCogs)}</TCell>
+                      <TCell width={130} align="right">{rs(perf.reconciliation.itemRevenue)}</TCell>
+                      <TCell width={130} align="right">{rs(perf.reconciliation.itemCogs)}</TCell>
                     </View>
                     {perf.reconciliation.items.map((it, i) => (
                       <View key={it.label} style={[tableStyles.row, i % 2 === 0 && tableStyles.rowAlt]}>
                         <TCell width={210}>{it.label}</TCell>
-                        <TCell width={wRevenue} align="right">{it.revenue === 0 ? '—' : rs(it.revenue)}</TCell>
-                        <TCell width={wProfit} align="right">{it.cogs === 0 ? '—' : rs(it.cogs)}</TCell>
+                        <TCell width={130} align="right">{it.revenue === 0 ? '—' : rs(it.revenue)}</TCell>
+                        <TCell width={130} align="right">{it.cogs === 0 ? '—' : rs(it.cogs)}</TCell>
                       </View>
                     ))}
                     <View style={tableStyles.totalRow}>
                       <TCell width={210} strong>Profit &amp; Loss</TCell>
-                      <TCell width={wRevenue} align="right" strong>{rs(perf.reconciliation.glRevenue)}</TCell>
-                      <TCell width={wProfit} align="right" strong>{rs(perf.reconciliation.glCogs)}</TCell>
+                      <TCell width={130} align="right" strong>{rs(perf.reconciliation.glRevenue)}</TCell>
+                      <TCell width={130} align="right" strong>{rs(perf.reconciliation.glCogs)}</TCell>
                     </View>
                   </View>
                 </ScrollView>
-                <Text style={styles.reconcileNote}>{perf.reconciliation.note}</Text>
+                <Text style={styles.note}>{perf.reconciliation.note}</Text>
                 {perf.estimatedCogsShare > 0.33 && (
-                  <Text style={styles.reconcileReason}>
-                    {Math.round(perf.estimatedCogsShare * 100)}% of the cost above was split
-                    across items that shared an invoice. Each invoice&apos;s total is exact;
-                    how it divides between items on it is an estimate.
+                  <Text style={styles.reason}>
+                    {Math.round(perf.estimatedCogsShare * 100)}% of the cost above was split across items
+                    that shared an invoice. Each invoice&apos;s total is exact; how it divides between items
+                    on it is an estimate.
                   </Text>
                 )}
               </SectionCard>
@@ -384,27 +531,61 @@ const InventoryValuationScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  filterRow: { flexDirection: 'row', gap: THEME.spacing.sm },
-  sortLabel: {
-    ...THEME.typography.labelSm,
-    color: THEME.colors.textTertiary,
-    marginTop: THEME.spacing.sm,
-    marginBottom: THEME.spacing.xs,
+  filterRow: { flexDirection: 'row', gap: spacing.sm },
+  dateCell: { flex: 1 },
+  note: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xs },
+  reason: { ...typography.overline, color: colors.textTertiary, marginTop: spacing.xxs },
+  warn: { color: colors.warning },
+  bad: { color: colors.danger },
+  link: { ...typography.labelSm, color: colors.primary },
+  gapTop: { marginTop: spacing.sm },
+  chips: { flexDirection: 'row', gap: spacing.xs },
+  chip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs + 2,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  // A figure that rests on an apportioned cost is marked rather than silently
-  // presented as exact — the invoice total is right, the split between items
-  // on it is an estimate.
-  estimated: { ...THEME.typography.overline, color: THEME.colors.textTertiary },
-  reconcileNote: {
-    ...THEME.typography.caption,
-    color: THEME.colors.textSecondary,
-    marginTop: THEME.spacing.xs,
+  chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { ...typography.labelSm, color: colors.textSecondary },
+  chipTextOn: { color: colors.textInverse },
+  readout: { marginBottom: spacing.xs },
+  readoutLabel: { ...typography.labelSm, color: colors.textTertiary },
+  readoutValue: { ...typography.h4, color: colors.textPrimary },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    height: 40,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  reconcileReason: {
-    ...THEME.typography.overline,
-    color: THEME.colors.textTertiary,
-    marginBottom: THEME.spacing.xs,
+  searchInput: { ...typography.bodySm, color: colors.textPrimary, flex: 1, paddingVertical: 0 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+  itemRule: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight },
+  itemMain: { flex: 1, gap: 2 },
+  itemName: { ...typography.bodySm, color: colors.textPrimary },
+  itemMeta: { ...typography.caption, color: colors.textTertiary },
+  itemFigures: { alignItems: 'flex-end', gap: 2, maxWidth: '50%' },
+  itemValue: { ...typography.labelMd, color: colors.textPrimary },
+  itemSub: { ...typography.caption, color: colors.textSecondary },
+  more: { alignItems: 'center', paddingVertical: spacing.sm },
+  total: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.textPrimary,
   },
+  totalLabel: { ...typography.labelSm, color: colors.textPrimary },
+  totalValue: { ...typography.labelLg, color: colors.textPrimary },
 });
 
 export default InventoryValuationScreen;

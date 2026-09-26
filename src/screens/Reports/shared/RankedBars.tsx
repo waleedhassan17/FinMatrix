@@ -13,7 +13,8 @@
 // this chart can surface.
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../theme';
 
@@ -33,6 +34,15 @@ interface Props {
   limit?: number;
   format: (value: number) => string;
   emptyLabel?: string;
+  /**
+   * Tapping a bar — opening the item, filtering by the category. The folded
+   * "Other" row never responds: it is not one thing to open.
+   */
+  onSelect?: (key: string) => void;
+  /** A bar to mark as chosen (a filter it applies, say). */
+  activeKey?: string | null;
+  /** Whether a tap goes somewhere (a chevron) or toggles in place (none). */
+  navigates?: boolean;
 }
 
 const RankedBars: React.FC<Props> = ({
@@ -40,6 +50,9 @@ const RankedBars: React.FC<Props> = ({
   limit = 10,
   format,
   emptyLabel = 'Nothing to rank yet.',
+  onSelect,
+  activeKey = null,
+  navigates = false,
 }) => {
   if (points.length === 0) {
     return <Text style={styles.empty}>{emptyLabel}</Text>;
@@ -71,10 +84,12 @@ const RankedBars: React.FC<Props> = ({
       {rows.map(r => {
         const negative = r.value < 0;
         const pct = max > 0 ? Math.max(2, (Math.abs(r.value) / max) * 100) : 2;
-        return (
-          <View key={r.key} style={styles.row}>
+        const tappable = !!onSelect && r.key !== '__other__';
+        const active = activeKey !== null && r.key === activeKey;
+        const body = (
+          <>
             <View style={styles.head}>
-              <Text style={styles.label} numberOfLines={1}>
+              <Text style={[styles.label, active && styles.labelActive]} numberOfLines={1}>
                 {r.label}
               </Text>
               <Text style={[styles.value, negative && styles.valueNegative]}>
@@ -95,6 +110,33 @@ const RankedBars: React.FC<Props> = ({
                 {r.hint}
               </Text>
             ) : null}
+          </>
+        );
+        return tappable ? (
+          <TouchableOpacity
+            key={r.key}
+            style={[styles.row, styles.tapRow, active && styles.rowActive]}
+            activeOpacity={0.6}
+            onPress={() => onSelect!(r.key)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`${r.label}, ${format(r.value)}`}
+          >
+            <View style={styles.tapBody}>{body}</View>
+            {navigates ? <Feather name="chevron-right" size={16} color={colors.textTertiary} /> : null}
+          </TouchableOpacity>
+        ) : (
+          <View key={r.key} style={[styles.row, onSelect && styles.staticRow, navigates && styles.staticNav]}>
+            {navigates ? (
+              <>
+                <View style={styles.tapBody}>{body}</View>
+                {/* Room for the chevron the tappable rows carry, so every
+                    bar in the list ends at the same edge. */}
+                <View style={styles.chevronSpace} />
+              </>
+            ) : (
+              body
+            )}
           </View>
         );
       })}
@@ -107,6 +149,21 @@ const styles = StyleSheet.create({
   row: { gap: spacing.xxs },
   head: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
   label: { ...typography.caption, color: colors.textPrimary, flex: 1 },
+  labelActive: { color: colors.primary },
+  tapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xxs,
+    paddingHorizontal: spacing.xs,
+    marginHorizontal: -spacing.xs,
+    borderRadius: radius.md,
+  },
+  tapBody: { flex: 1, gap: spacing.xxs },
+  rowActive: { backgroundColor: colors.primaryLight },
+  staticRow: { paddingVertical: spacing.xxs },
+  staticNav: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  chevronSpace: { width: 16 },
   value: { ...typography.labelSm, color: colors.textPrimary },
   valueNegative: { color: colors.danger },
   track: {

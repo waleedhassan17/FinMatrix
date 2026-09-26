@@ -131,3 +131,86 @@ export const getLastNDaysRange = (n: number): ReportDateRange => {
   const start = new Date(end.getTime() - (n - 1) * 86400000);
   return { startDate: toIsoDate(start), endDate: toIsoDate(end) };
 };
+
+// ─── Trend windows ──────────────────────────────────────────────────────────
+// The item explorer reads MONTHLY series, so its choices are trailing months
+// rather than calendar periods: a chart of "this month" is one bar. Each
+// trailing window starts on the first of a month and ends today. Kept in step
+// with the web's models/reportPeriod.ts.
+
+export type TrendWindowKey = 'last6m' | 'last12m' | 'last24m' | 'ytd';
+
+export const TREND_WINDOWS: { key: TrendWindowKey; label: string }[] = [
+  { key: 'last6m', label: '6M' },
+  { key: 'last12m', label: '12M' },
+  { key: 'last24m', label: '24M' },
+  { key: 'ytd', label: 'YTD' },
+];
+
+/** The last `months` calendar months, this one included, ending today. */
+export const trailingMonths = (months: number, today: Date = new Date()): ReportDateRange => ({
+  startDate: toIsoDate(new Date(today.getFullYear(), today.getMonth() - (months - 1), 1)),
+  endDate: toIsoDate(today),
+});
+
+export const trendWindowRange = (key: TrendWindowKey, today: Date = new Date()): ReportDateRange => {
+  switch (key) {
+    case 'last6m':
+      return trailingMonths(6, today);
+    case 'last24m':
+      return trailingMonths(24, today);
+    case 'ytd':
+      return { startDate: toIsoDate(new Date(today.getFullYear(), 0, 1)), endDate: toIsoDate(today) };
+    case 'last12m':
+    default:
+      return trailingMonths(12, today);
+  }
+};
+
+/** Which window a range is, or null for one the user set by hand. */
+export const matchTrendWindow = (
+  range: ReportDateRange,
+  today: Date = new Date(),
+): TrendWindowKey | null => {
+  for (const { key } of TREND_WINDOWS) {
+    const r = trendWindowRange(key, today);
+    if (r.startDate === range.startDate && r.endDate === range.endDate) return key;
+  }
+  return null;
+};
+
+/** Whole calendar months a range touches, both ends included. */
+export const monthsSpanned = (range: ReportDateRange): number => {
+  const [sy, sm] = range.startDate.slice(0, 7).split('-').map(Number);
+  const [ey, em] = range.endDate.slice(0, 7).split('-').map(Number);
+  return Math.max(1, (ey - sy) * 12 + (em - sm) + 1);
+};
+
+const parseLocal = (iso: string): Date => new Date(`${iso}T00:00:00`);
+const lastDayOf = (y: number, m: number): number => new Date(y, m + 1, 0).getDate();
+
+/**
+ * The window a monthly trend is compared against: the same number of months,
+ * immediately before. A range opening on the first of a month shifts back by
+ * the months it spans, keeping its day of month at the end (a month end stays
+ * a month end); anything else takes the preceding window of equal length.
+ */
+export const priorWindow = (range: ReportDateRange): ReportDateRange => {
+  const start = parseLocal(range.startDate);
+  if (start.getDate() !== 1) return getComparisonRange(range);
+  const n = monthsSpanned(range);
+  const end = parseLocal(range.endDate);
+  const endMonth = new Date(end.getFullYear(), end.getMonth() - n, 1);
+  const lastDay = lastDayOf(endMonth.getFullYear(), endMonth.getMonth());
+  const endsOnMonthEnd = end.getDate() === lastDayOf(end.getFullYear(), end.getMonth());
+  return {
+    startDate: toIsoDate(new Date(start.getFullYear(), start.getMonth() - n, 1)),
+    endDate: toIsoDate(
+      new Date(
+        endMonth.getFullYear(),
+        endMonth.getMonth(),
+        endsOnMonthEnd ? lastDay : Math.min(end.getDate(), lastDay),
+      ),
+    ),
+  };
+};
