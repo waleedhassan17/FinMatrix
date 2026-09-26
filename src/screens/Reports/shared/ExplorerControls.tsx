@@ -1,53 +1,51 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Item explorer controls
 // ═══════════════════════════════════════════════════════
-// Which metric to chart, and whether as columns or a line. The web lays the
-// metrics out as two rows of pills; a phone scrolls one row sideways, grouped
-// the same way (Sales, then Stock), so every choice is still in reach.
+// Which metric to chart, and whether as columns or a line. The four headline
+// figures choose themselves (MetricTiles); the other six sit in one short row
+// here, beside nothing else, so the chart card stays quiet.
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
-import {
-  EXPLORER_METRICS,
-  METRIC_GROUPS,
-  type ExplorerMetricKey,
-} from '../../../models/itemExplorerModel';
+import { EXPLORER_METRICS, type ExplorerMetricKey } from '../../../models/itemExplorerModel';
 import type { ChartType } from './MetricChart';
 import { THEME } from '../../../theme';
 
 const { colors, radius, spacing, typography } = THEME;
 
+/**
+ * The metrics that are not headline figures, in one short row. The headline
+ * four are chosen from the figure tiles above the chart; these are the rest.
+ */
 export const MetricChips: React.FC<{
+  metrics: readonly ExplorerMetricKey[];
   value: ExplorerMetricKey;
   onChange: (key: ExplorerMetricKey) => void;
   /** Metrics with nothing to draw: shown, not choosable. */
   disabled?: readonly ExplorerMetricKey[];
-}> = ({ value, onChange, disabled = [] }) => (
+}> = ({ metrics, value, onChange, disabled = [] }) => (
   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-    {METRIC_GROUPS.map((g, gi) => (
-      <View key={g.key} style={styles.group}>
-        <Text style={[styles.groupLabel, gi > 0 && styles.groupLabelSpaced]}>{g.label}</Text>
-        {EXPLORER_METRICS.filter(m => m.group === g.key).map(m => {
-          const on = m.key === value;
-          const off = disabled.includes(m.key);
-          return (
-            <TouchableOpacity
-              key={m.key}
-              style={[styles.chip, on && styles.chipOn, off && styles.chipOff]}
-              activeOpacity={0.8}
-              disabled={off}
-              onPress={() => onChange(m.key)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on, disabled: off }}
-            >
-              <Text style={[styles.chipText, on && styles.chipTextOn]}>{m.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    ))}
+    <Text style={styles.groupLabel}>More</Text>
+    {metrics.map(key => {
+      const m = EXPLORER_METRICS.find(x => x.key === key)!;
+      const on = key === value;
+      const off = disabled.includes(key);
+      return (
+        <TouchableOpacity
+          key={key}
+          style={[styles.chip, on && styles.chipOn, off && styles.chipOff]}
+          activeOpacity={0.8}
+          disabled={off}
+          onPress={() => onChange(key)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: on, disabled: off }}
+        >
+          <Text style={[styles.chipText, on && styles.chipTextOn]}>{m.label}</Text>
+        </TouchableOpacity>
+      );
+    })}
   </ScrollView>
 );
 
@@ -82,12 +80,10 @@ export const ChartTypeToggle: React.FC<{
 
 const styles = StyleSheet.create({
   chips: { alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xxs },
-  group: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   groupLabel: { ...typography.overline, color: colors.textTertiary },
-  groupLabelSpaced: { marginLeft: spacing.sm },
   chip: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs + 2,
+    paddingVertical: spacing.xxs + 1,
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.border,

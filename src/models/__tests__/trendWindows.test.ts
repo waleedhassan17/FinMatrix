@@ -1,4 +1,6 @@
 import {
+  matchSalesPeriod,
+  salesPeriodRange,
   matchTrendWindow,
   monthsSpanned,
   priorWindow,
@@ -48,5 +50,20 @@ describe('niceAxis', () => {
     expect(niceAxis([0, 96370, 59000]).ticks).toEqual([0, 25000, 50000, 75000, 100000]);
     expect(niceAxis([0, 1, 2], { integer: true }).ticks).toEqual([0, 1, 2]);
     expect(niceAxis([null, null])).toEqual({ domain: [0, 1], ticks: [0] });
+  });
+});
+
+describe('sales periods', () => {
+  it('names the calendar periods, year to date ending today', () => {
+    expect(salesPeriodRange('thisMonth', TODAY)).toEqual({ startDate: '2026-05-01', endDate: '2026-05-31' });
+    expect(salesPeriodRange('lastMonth', TODAY)).toEqual({ startDate: '2026-04-01', endDate: '2026-04-30' });
+    expect(salesPeriodRange('thisQuarter', TODAY)).toEqual({ startDate: '2026-04-01', endDate: '2026-06-30' });
+    expect(salesPeriodRange('ytd', TODAY)).toEqual({ startDate: '2026-01-01', endDate: '2026-05-20' });
+    expect(salesPeriodRange('lastYear', TODAY)).toEqual({ startDate: '2025-01-01', endDate: '2025-12-31' });
+  });
+
+  it('recognises a named period, and nothing else', () => {
+    expect(matchSalesPeriod(salesPeriodRange('lastMonth', TODAY), TODAY)).toBe('lastMonth');
+    expect(matchSalesPeriod({ startDate: '2026-02-03', endDate: '2026-05-20' }, TODAY)).toBeNull();
   });
 });

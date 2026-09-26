@@ -214,3 +214,49 @@ export const priorWindow = (range: ReportDateRange): ReportDateRange => {
     ),
   };
 };
+
+// ─── Sales periods ──────────────────────────────────────────────────────────
+// The calendar periods a report's SALES figures are read over — the same
+// choices the web offers for them. Year to date ends TODAY.
+
+export type SalesPeriodKey = 'thisMonth' | 'lastMonth' | 'thisQuarter' | 'ytd' | 'lastYear';
+
+export const SALES_PERIODS: { key: SalesPeriodKey; label: string }[] = [
+  { key: 'thisMonth', label: 'This month' },
+  { key: 'lastMonth', label: 'Last month' },
+  { key: 'thisQuarter', label: 'This quarter' },
+  { key: 'ytd', label: 'Year to date' },
+  { key: 'lastYear', label: 'Last year' },
+];
+
+export const salesPeriodRange = (key: SalesPeriodKey, today: Date = new Date()): ReportDateRange => {
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  switch (key) {
+    case 'thisMonth':
+      return { startDate: toIsoDate(new Date(y, m, 1)), endDate: toIsoDate(new Date(y, m + 1, 0)) };
+    case 'lastMonth':
+      return { startDate: toIsoDate(new Date(y, m - 1, 1)), endDate: toIsoDate(new Date(y, m, 0)) };
+    case 'thisQuarter': {
+      const q = Math.floor(m / 3) * 3;
+      return { startDate: toIsoDate(new Date(y, q, 1)), endDate: toIsoDate(new Date(y, q + 3, 0)) };
+    }
+    case 'lastYear':
+      return { startDate: toIsoDate(new Date(y - 1, 0, 1)), endDate: toIsoDate(new Date(y - 1, 11, 31)) };
+    case 'ytd':
+    default:
+      return { startDate: toIsoDate(new Date(y, 0, 1)), endDate: toIsoDate(today) };
+  }
+};
+
+/** Which sales period a range is, or null for one set by hand. */
+export const matchSalesPeriod = (
+  range: ReportDateRange,
+  today: Date = new Date(),
+): SalesPeriodKey | null => {
+  for (const { key } of SALES_PERIODS) {
+    const r = salesPeriodRange(key, today);
+    if (r.startDate === range.startDate && r.endDate === range.endDate) return key;
+  }
+  return null;
+};

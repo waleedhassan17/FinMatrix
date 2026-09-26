@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   },
   bar: { height: '100%', borderRadius: radius.full, backgroundColor: colors.navy500 },
   barNegative: { backgroundColor: colors.danger },
-  hint: { ...typography.overline, color: colors.textTertiary },
+  hint: { ...typography.caption, color: colors.textTertiary },
   empty: { ...typography.caption, color: colors.textTertiary },
 });
 
