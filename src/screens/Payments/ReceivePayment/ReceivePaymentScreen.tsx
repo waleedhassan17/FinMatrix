@@ -66,7 +66,7 @@ import {
   creditAvailable,
   isCreditOverUsed,
 } from '../../../models/creditSpreadModel';
-import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
+import { useCustomerPicker } from '../../../hooks/usePartyPicker';
 import { fetchInvoices } from '../../Invoices/InvoiceList/invoiceListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -114,7 +114,9 @@ const ReceivePaymentScreen: React.FC = () => {
   const allocationsAppliedRef = React.useRef(false);
 
   const form = useAppSelector(selectReceivePaymentState);
-  const customers = useAppSelector(selectCustomers);
+  // Its own picker list (up to 200, as on the web), plus the customer this
+  // screen was opened for when they are not among those.
+  const { customers } = useCustomerPicker(preCustomerId);
 
   // ── Success overlay state ───────────────────────
   const [showSuccess, setShowSuccess] = useState(false);
@@ -137,7 +139,6 @@ const ReceivePaymentScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    if (customers.length === 0) dispatch(fetchCustomers());
     if (preUseCredits && !isReviewing) dispatch(openForCredit({ invoiceId: preInvoiceId }));
     // No invented reference: the server numbers every receipt RCT-YYYY-NNNN.
     // The reference field is for the customer's own cheque or transfer id.

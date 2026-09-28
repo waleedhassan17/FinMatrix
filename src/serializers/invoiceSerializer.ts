@@ -12,6 +12,11 @@ import type {
   InvoiceStatus,
 } from '../types';
 import type { InvoiceApiEntity, InvoiceApiLine } from '../models/invoiceModel';
+import {
+  documentListSummaryOf,
+  listPaginationOf,
+  type DocumentListSummary,
+} from '../models/documentListModel';
 
 // ─── Output shapes for the slice ─────────────────────
 
@@ -20,6 +25,8 @@ export interface SerializedInvoiceList {
   page: number;
   totalPages: number;
   totalInvoices: number;
+  /** Over everything the search matches; null from an older server. */
+  summary: DocumentListSummary | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────
@@ -76,13 +83,14 @@ export function invoiceListSerializer(payload: any): SerializedInvoiceList {
     : Array.isArray(data?.invoices)
       ? data.invoices
       : [];
-  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
+  const pagination = listPaginationOf(payload, raw.length);
 
   return {
     invoices: raw.map(mapInvoice),
-    page: pagination.page ?? 1,
-    totalPages: pagination.totalPages ?? 1,
-    totalInvoices: pagination.total ?? raw.length,
+    page: pagination.page,
+    totalPages: pagination.totalPages,
+    totalInvoices: pagination.total,
+    summary: documentListSummaryOf(payload),
   };
 }
 

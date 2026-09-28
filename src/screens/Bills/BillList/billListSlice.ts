@@ -19,15 +19,18 @@ import {
   billListSerializer,
   billSingleSerializer,
 } from '../../../serializers/billSerializer';
+import { LIST_PAGE_SIZE } from '../../../models/documentListModel';
 
 export type BillStatusFilter = 'all' | BillStatus;
 
 
 export interface BillListSliceState {
+  /** The pages loaded so far, in the server's order (newest first). */
   bills: Bill[];
   searchQuery: string;
   statusFilter: BillStatusFilter;
   isLoading: boolean;
+  isLoadingMore: boolean;
   error: string;
   page: number;
   totalPages: number;
@@ -35,13 +38,20 @@ export interface BillListSliceState {
   counts: Record<'all' | BillStatus, number>;
   totalOutstanding: number;
   overdueAmount: number;
+  /** The request whose answer the list shows — a slower, older one is dropped. */
+  latestRequestId: string;
+  /** The search and tab the loaded rows answer; a later page must match it. */
+  loadedKey: string;
 }
+
+const queryKeyOf = (search: string, status: string) => `${search.trim()}|${status}`;
 
 const initialState: BillListSliceState = {
   bills: [],
   searchQuery: '',
   statusFilter: 'all',
   isLoading: false,
+  isLoadingMore: false,
   error: '',
   page: 1,
   totalPages: 1,
@@ -49,6 +59,8 @@ const initialState: BillListSliceState = {
   counts: { all: 0, draft: 0, open: 0, partial: 0, paid: 0, overdue: 0, void: 0 },
   totalOutstanding: 0,
   overdueAmount: 0,
+  latestRequestId: '',
+  loadedKey: '',
 };
 
 export const billListSlice = createAppSlice({
@@ -73,34 +85,76 @@ export const billListSlice = createAppSlice({
     }),
 
     // ── Async thunks ────────────────────────────────
+    /**
+     * A page of bills, searched and filtered BY THE SERVER, with the server's
+     * counts and totals over every bill the search matches.
+     *
+     * This fetched up to 200 and searched and filtered them on the phone, so a
+     * bill older than those could not be found, and the tabs and tiles counted
+     * only what had loaded (filtering server-side then would have made the
+     * other tabs read 0 — the reason it was client-side). The summary the
+     * server now sends removes that trade-off: the tab goes to the server and
+     * every count stays true. The list loads more as it scrolls (`append`).
+     */
     fetchBills: create.asyncThunk(
-      async (_arg, thunkAPI) => {
-        const root = thunkAPI.getState() as { billList: BillListSliceState };
-        const { searchQuery } = root.billList;
-        // The status tab is applied client-side ONLY. Filtering server-side
-        // too meant `bills` held just that tab, so the Outstanding tile read
-        // Rs 0 on the Paid tab and every other tab's count collapsed to 0.
-        // The limit is explicit because the API defaults to 50 and silently
-        // drops the rest.
-        return getBillsAPI({
-          ...(searchQuery ? { search: searchQuery } : {}),
-          limit: 200,
+      async (arg: { page?: number; append?: boolean } | void, thunkAPI) => {
+        const a = arg ? arg : {};
+        const { searchQuery, statusFilter } = (thunkAPI.getState() as { billList: BillListSliceState }).billList;
+        const payload = await getBillsAPI({
+          page: a.page ?? 1,
+          limit: LIST_PAGE_SIZE,
+          ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+          ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
         });
+        return {
+          data: billListSerializer(payload),
+          append: a.append === true,
+          key: queryKeyOf(searchQuery, statusFilter),
+        };
       },
       {
-        pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action: PayloadAction<any>) => {
-          const data = billListSerializer(action.payload);
-          state.bills = data.bills;
+        pending: (state, action) => {
+          const a = action.meta.arg ? action.meta.arg : {};
+          if (a.append) {
+            state.isLoadingMore = true;
+          } else {
+            state.isLoading = true;
+            state.latestRequestId = action.meta.requestId;
+          }
+          state.error = '';
+        },
+        fulfilled: (state, action) => {
+          const { data, append, key } = action.payload;
+          if (append) {
+            state.isLoadingMore = false;
+            // A page for a search or tab no longer on screen is dropped.
+            if (key !== state.loadedKey || data.page !== state.page + 1) return;
+            const seen = new Set(state.bills.map(b => b.id));
+            state.bills.push(...data.bills.filter(b => !seen.has(b.id)));
+          } else {
+            if (action.meta.requestId !== state.latestRequestId) return;
+            state.isLoading = false;
+            state.bills = data.bills;
+            state.loadedKey = key;
+          }
           state.page = data.page;
           state.totalPages = data.totalPages;
           state.totalBills = data.totalBills;
-          state.counts = data.counts;
-          state.totalOutstanding = data.totalOutstanding;
-          state.overdueAmount = data.overdueAmount;
-          state.isLoading = false;
+          // Counts and totals: the server's (every tab, every page) — or, from
+          // an older server, only what the first page held.
+          if (data.summary || !append) {
+            state.counts = data.counts;
+            state.totalOutstanding = data.totalOutstanding;
+            state.overdueAmount = data.overdueAmount;
+          }
         },
         rejected: (state, action) => {
+          const a = action.meta.arg ? action.meta.arg : {};
+          if (a.append) {
+            state.isLoadingMore = false;
+            return;
+          }
+          if (action.meta.requestId !== state.latestRequestId) return;
           state.isLoading = false;
           state.error = action.error?.message ?? 'Failed to load bills';
         },
@@ -149,7 +203,9 @@ export const billListSlice = createAppSlice({
     selectBillSearchQuery: state => state.searchQuery,
     selectBillStatusFilter: state => state.statusFilter,
     selectBillIsLoading: state => state.isLoading,
+    selectBillIsLoadingMore: state => state.isLoadingMore,
     selectBillError: state => state.error,
+    selectBillPaging: state => ({ page: state.page, totalPages: state.totalPages }),
     selectBillCounts: state => state.counts,
     selectBillTotalOutstanding: state => state.totalOutstanding,
     selectBillOverdueAmount: state => state.overdueAmount,
@@ -173,7 +229,9 @@ export const {
   selectBillSearchQuery,
   selectBillStatusFilter,
   selectBillIsLoading,
+  selectBillIsLoadingMore,
   selectBillError,
+  selectBillPaging,
   selectBillCounts,
   selectBillTotalOutstanding,
   selectBillOverdueAmount,

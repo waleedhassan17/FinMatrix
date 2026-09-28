@@ -11,6 +11,12 @@ import type {
   BillApiEntity,
   BillApiLineEntity,
 } from '../models/billModel';
+import {
+  documentListSummaryOf,
+  listPaginationOf,
+  statusCountsOf,
+  type DocumentListSummary,
+} from '../models/documentListModel';
 
 // ─── Serialized output for the list slice ────────────
 export interface SerializedBillList {
@@ -22,24 +28,42 @@ export interface SerializedBillList {
   counts: Record<'all' | BillStatus, number>;
   totalOutstanding: number;
   overdueAmount: number;
+  /** Over everything the search matches; null from an older server. */
+  summary: DocumentListSummary | null;
 }
 
 // ─── Raw → UI mappers ────────────────────────────────
-const mapBillLine = (raw: Partial<BillApiLineEntity>): BillLine => ({
-  id: raw.id ?? '',
-  accountId: raw.accountId ?? '',
-  accountName: raw.accountName ?? '',
-  description: raw.description ?? '',
-  quantity: typeof raw.quantity === 'number' ? raw.quantity : 1,
-  unitPrice: typeof raw.unitPrice === 'number' ? raw.unitPrice : 0,
-  taxRate: typeof raw.taxRate === 'number' ? raw.taxRate : 0,
-  amount: typeof raw.amount === 'number' ? raw.amount : 0,
-});
-
 const toNum = (v: any): number => {
   if (typeof v === 'number') return v;
   const n = parseFloat(v);
   return isNaN(n) ? 0 : n;
+};
+
+/**
+ * Postgres `numeric` arrives as a STRING ("72000.0000"). This mapper used to
+ * accept numbers only, so every line read amount 0, quantity 1 and tax 0% —
+ * the bill screen listed Rs 0.00 lines under a real subtotal, and editing a
+ * draft bill loaded its lines as zeros.
+ */
+const mapBillLine = (raw: Partial<BillApiLineEntity> & { unitCost?: unknown }): BillLine => {
+  const amount = toNum(raw.amount);
+  const quantity = raw.quantity === undefined || raw.quantity === null ? 1 : toNum(raw.quantity) || 1;
+  const unitPrice =
+    raw.unitPrice !== undefined && raw.unitPrice !== null
+      ? toNum(raw.unitPrice)
+      : raw.unitCost !== undefined && raw.unitCost !== null
+        ? toNum(raw.unitCost)
+        : Math.round((amount / quantity) * 100) / 100;
+  return {
+    id: raw.id ?? '',
+    accountId: raw.accountId ?? '',
+    accountName: raw.accountName ?? '',
+    description: raw.description ?? '',
+    quantity,
+    unitPrice,
+    taxRate: toNum(raw.taxRate),
+    amount,
+  };
 };
 
 export const mapBill = (raw: Partial<BillApiEntity> & { billDate?: string; memo?: string }): Bill => ({
@@ -70,39 +94,48 @@ export function billListSerializer(payload: any): SerializedBillList {
     : Array.isArray(data?.bills)
       ? data.bills
       : [];
-  const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
-  const totals = (data && !Array.isArray(data)) ? (data.totals || {}) : {};
+  const pagination = listPaginationOf(payload, raw.length);
+  const summary = documentListSummaryOf(payload);
 
   const bills = raw.map(mapBill);
 
-  // Compute counts client-side if not provided.
-  const counts: Record<'all' | BillStatus, number> = totals.counts || {
-    all: bills.length,
-    draft: bills.filter(b => b.status === 'draft').length,
-    open: bills.filter(b => b.status === 'open').length,
-    partial: bills.filter(b => b.status === 'partial').length,
-    paid: bills.filter(b => b.status === 'paid').length,
-    overdue: bills.filter(b => b.status === 'overdue').length,
+  // The server's counts and totals when it sent them — over every bill the
+  // search matches — else what has loaded (an older server).
+  const c = statusCountsOf(summary, bills);
+  const counts: Record<'all' | BillStatus, number> = {
+    all: c.all ?? 0,
+    draft: c.draft ?? 0,
+    open: c.open ?? 0,
+    partial: c.partial ?? 0,
+    paid: c.paid ?? 0,
+    overdue: c.overdue ?? 0,
+    void: c.void ?? 0,
   };
 
   let totalOutstanding = 0;
   let overdueAmount = 0;
-  bills.forEach(b => {
-    if (b.status === 'open' || b.status === 'overdue' || b.status === 'partial') {
-      const bal = b.total - b.amountPaid;
-      totalOutstanding += bal;
-      if (b.status === 'overdue') overdueAmount += bal;
-    }
-  });
+  if (summary) {
+    totalOutstanding = summary.outstanding;
+    overdueAmount = summary.overdue;
+  } else {
+    bills.forEach(b => {
+      if (b.status === 'open' || b.status === 'overdue' || b.status === 'partial') {
+        const bal = b.total - b.amountPaid;
+        totalOutstanding += bal;
+        if (b.status === 'overdue') overdueAmount += bal;
+      }
+    });
+  }
 
   return {
     bills,
-    page: pagination.page ?? 1,
-    totalPages: pagination.totalPages ?? 1,
-    totalBills: pagination.total ?? bills.length,
+    page: pagination.page,
+    totalPages: pagination.totalPages,
+    totalBills: pagination.total,
     counts,
-    totalOutstanding: totals.totalOutstanding ?? totalOutstanding,
-    overdueAmount: totals.overdueAmount ?? overdueAmount,
+    totalOutstanding,
+    overdueAmount,
+    summary,
   };
 }
 

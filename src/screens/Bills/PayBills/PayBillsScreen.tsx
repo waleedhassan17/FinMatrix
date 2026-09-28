@@ -54,7 +54,7 @@ import {
   uploadPaymentProof,
   selectPayBillProof,
 } from './payBillsSlice';
-import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
+import { useVendorPicker } from '../../../hooks/usePartyPicker';
 import { fetchBills } from '../BillList/billListSlice';
 import { fetchAccounts, selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
@@ -93,7 +93,9 @@ const PayBillsScreen: React.FC = () => {
 
   const form = useAppSelector(selectPayBillsState);
   const proof = useAppSelector(selectPayBillProof);
-  const vendors = useAppSelector(selectVendors);
+  // Its own picker list (up to 200, as on the web), plus the vendor this
+  // screen was opened for when they are not among those.
+  const { vendors } = useVendorPicker(preVendorId);
   const accounts = useAppSelector(selectAccounts);
 
   const vendorOptions = useMemo(
@@ -127,7 +129,6 @@ const PayBillsScreen: React.FC = () => {
   const idempotencyKey = useRef('');
 
   useEffect(() => {
-    dispatch(fetchVendors());
     dispatch(fetchAccounts());
     dispatch(setPayBillField({ key: 'reference', value: generatePaymentNumber() }));
     // Today, read now rather than whenever the bundle started. This one is the

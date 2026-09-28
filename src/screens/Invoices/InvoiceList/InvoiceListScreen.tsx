@@ -2,9 +2,11 @@
 // FinMatrix — Invoice List Screen
 // Filter tabs (All / Draft / Sent / Overdue / Paid) with
 // counts, search, summary bar, and colored status cards.
+// Searched, filtered and paged by the server; the counts and
+// tiles are the server's, over every invoice the search matches.
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +15,7 @@ import {
   TextInput,
   TouchableOpacity,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
@@ -27,11 +30,15 @@ import {
   selectInvoiceSearchQuery,
   selectInvoiceStatusFilter,
   selectInvoiceIsLoading,
+  selectInvoiceIsLoadingMore,
   selectInvoiceError,
+  selectInvoicePaging,
+  selectInvoiceSummary,
   setSearchQuery,
   setStatusFilter,
   type InvoiceStatusFilter,
 } from './invoiceListSlice';
+import { statusCountsOf } from '../../../models/documentListModel';
 import {
   ReportContainer,
   ReportHeader,
@@ -71,7 +78,10 @@ const InvoiceListScreen: React.FC = () => {
   const searchQuery = useAppSelector(selectInvoiceSearchQuery);
   const statusFilter = useAppSelector(selectInvoiceStatusFilter);
   const isLoading = useAppSelector(selectInvoiceIsLoading);
+  const isLoadingMore = useAppSelector(selectInvoiceIsLoadingMore);
   const error = useAppSelector(selectInvoiceError);
+  const { page, totalPages } = useAppSelector(selectInvoicePaging);
+  const summary = useAppSelector(selectInvoiceSummary);
   const [showSearch, setShowSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const initialLoading = isLoading && invoices.length === 0;
@@ -101,62 +111,69 @@ const InvoiceListScreen: React.FC = () => {
     setRefreshing(false);
   }, [dispatch, loadPending]);
 
+  // Server-side search, debounced so a request is not fired per keystroke.
+  // The first run is skipped: the focus effect above has just loaded.
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchMounted = useRef(false);
+  useEffect(() => {
+    if (!searchMounted.current) {
+      searchMounted.current = true;
+      return;
+    }
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => { dispatch(fetchInvoices()); }, 350);
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
+  }, [searchQuery, dispatch]);
+
+  const onTab = useCallback(
+    (v: InvoiceStatusFilter) => {
+      dispatch(setStatusFilter(v));
+      dispatch(fetchInvoices());
+    },
+    [dispatch],
+  );
+
+  // The next page, as the list nears its end.
+  const onEndReached = useCallback(() => {
+    if (isLoading || isLoadingMore || page >= totalPages) return;
+    dispatch(fetchInvoices({ page: page + 1, append: true }));
+  }, [dispatch, isLoading, isLoadingMore, page, totalPages]);
+
   // ── Tab counts ──────────────────────────────────
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {
-      all: invoices.length,
-      draft: 0, sent: 0, partial: 0, paid: 0, overdue: 0, void: 0, cancelled: 0,
-    };
-    invoices.forEach(i => { c[i.status] = (c[i.status] ?? 0) + 1; });
-    return c;
-  }, [invoices]);
+  // The server's, over every invoice the search matches — not the page held.
+  const counts = useMemo(() => statusCountsOf(summary, invoices), [summary, invoices]);
 
   const TABS: TabItem<InvoiceStatusFilter>[] = [
-    { label: 'All', value: 'all', count: counts.all },
-    { label: 'Draft', value: 'draft', count: counts.draft },
-    { label: 'Sent', value: 'sent', count: counts.sent },
-    { label: 'Overdue', value: 'overdue', count: counts.overdue },
-    { label: 'Paid', value: 'paid', count: counts.paid },
+    { label: 'All', value: 'all', count: counts.all ?? 0 },
+    { label: 'Draft', value: 'draft', count: counts.draft ?? 0 },
+    { label: 'Sent', value: 'sent', count: counts.sent ?? 0 },
+    { label: 'Overdue', value: 'overdue', count: counts.overdue ?? 0 },
+    { label: 'Paid', value: 'paid', count: counts.paid ?? 0 },
   ];
 
-  // ── Filtered list ───────────────────────────────
-  const filtered = useMemo(() => {
-    let list = invoices;
-
-    if (statusFilter !== 'all') {
-      list = list.filter(i => i.status === statusFilter);
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(
-        i =>
-          i.invoiceNumber.toLowerCase().includes(q) ||
-          i.customerName.toLowerCase().includes(q),
-      );
-    }
-
-    return [...list].sort(
-      (a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime(),
-    );
-  }, [invoices, statusFilter, searchQuery]);
+  // ── The list ────────────────────────────────────
+  // Already searched and filtered by the server, in its order. The tab is
+  // applied here too only so a switch shows at once, before the answer lands.
+  const filtered = useMemo(
+    () => (statusFilter === 'all' ? invoices : invoices.filter(i => i.status === statusFilter)),
+    [invoices, statusFilter],
+  );
 
   // ── Summary values ──────────────────────────────
-  const totalOutstanding = useMemo(
-    () =>
-      invoices
-        .filter(i => i.status === 'sent' || i.status === 'overdue')
-        .reduce((sum, i) => sum + (i.total - i.amountPaid), 0),
-    [invoices],
-  );
-
-  const overdueAmount = useMemo(
-    () =>
-      invoices
-        .filter(i => i.status === 'overdue')
-        .reduce((sum, i) => sum + (i.total - i.amountPaid), 0),
-    [invoices],
-  );
+  // The server's figures; from what has loaded only with an older server.
+  const { totalOutstanding, overdueAmount, invoiceCount } = useMemo(() => {
+    if (summary) {
+      return { totalOutstanding: summary.outstanding, overdueAmount: summary.overdue, invoiceCount: summary.count };
+    }
+    let outstanding = 0;
+    let overdue = 0;
+    invoices.forEach(i => {
+      const balance = i.total - i.amountPaid;
+      if (i.status === 'sent' || i.status === 'partial' || i.status === 'overdue') outstanding += balance;
+      if (i.status === 'overdue') overdue += balance;
+    });
+    return { totalOutstanding: outstanding, overdueAmount: overdue, invoiceCount: invoices.length };
+  }, [summary, invoices]);
 
   // ── Render invoice card ─────────────────────────
   const renderCard = ({ item: inv }: { item: Invoice }) => {
@@ -186,7 +203,10 @@ const InvoiceListScreen: React.FC = () => {
   // Genuine first-run: no invoices at all (not a filter/search result).
   // We hide the summary cards, filter tabs and FAB to keep the zero-state
   // clean and professional instead of a cluttered wall of zeros.
-  const isFirstRun = !initialLoading && !error && invoices.length === 0;
+  // Not while a search or a tab is narrowing the list: then the search bar and
+  // tabs must stay, or an empty result could not be cleared.
+  const isFirstRun =
+    !initialLoading && !error && invoices.length === 0 && !searchQuery.trim() && statusFilter === 'all';
 
   const openMyRequests = useCallback(() => {
     // This screen sits in the Transactions tab; My Requests is in the staff
@@ -258,7 +278,7 @@ const InvoiceListScreen: React.FC = () => {
           <Text style={styles.summaryLabel}>Overdue</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>{counts.all}</Text>
+          <Text style={styles.summaryValue}>{invoiceCount}</Text>
           <Text style={styles.summaryLabel}>Total</Text>
         </View>
       </View>
@@ -288,7 +308,7 @@ const InvoiceListScreen: React.FC = () => {
         <FilterTabs
           tabs={TABS}
           active={statusFilter}
-          onChange={v => dispatch(setStatusFilter(v))}
+          onChange={onTab}
         />
       )}
 
@@ -321,6 +341,15 @@ const InvoiceListScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+          }
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <View style={styles.footer}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : null
           }
         />
       )}
@@ -373,6 +402,7 @@ const styles = StyleSheet.create({
 
   // ── List ───────────────────────────────────────
   list: { flex: 1 },
+  footer: { paddingVertical: spacing.md, alignItems: 'center' },
   listContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxl * 3 },
   // Requests, not invoices — muted so they do not compete with the real rows
   // below. Mirrors the PO list's strip so the two read as one idea.

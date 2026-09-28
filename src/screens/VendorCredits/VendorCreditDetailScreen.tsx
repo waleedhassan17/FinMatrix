@@ -45,7 +45,9 @@ const VendorCreditDetailScreen: React.FC = () => {
   const openApply = async () => {
     if (!c) return;
     try {
-      const res = await getBillsAPI({ vendorId: c.vendorId } as any);
+      // As many as one page holds (as Pay Bills and the web ask): the default
+      // 50 left a busy vendor's older open bills out of this list.
+      const res = await getBillsAPI({ vendorId: c.vendorId, limit: 200 });
       const list = billListSerializer(res).bills.filter(b => b.total - b.amountPaid > 0.01 && b.status !== 'void' && b.status !== 'draft');
       setOpenBills(list);
       setShowApply(true);

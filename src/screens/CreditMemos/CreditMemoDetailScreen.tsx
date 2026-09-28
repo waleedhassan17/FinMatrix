@@ -17,7 +17,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import {
   fetchCreditMemo, selectCreditMemoState, applyCreditMemo, refundCreditMemo, voidCreditMemo, removeCreditMemo,
 } from './creditMemoSlice';
-import { getInvoicesAPI } from '../../networks/sales/invoiceNetwork';
+import { getOutstandingInvoicesAPI } from '../../networks/sales/paymentNetwork';
 import { invoiceListSerializer } from '../../serializers/invoiceSerializer';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
@@ -45,7 +45,10 @@ const CreditMemoDetailScreen: React.FC = () => {
   const openApply = async () => {
     if (!c) return;
     try {
-      const res = await getInvoicesAPI({ customerId: c.customerId } as any);
+      // Every open invoice the customer has, oldest due first — the server's
+      // outstanding list. The customer's invoice list pages 50 at a time, so
+      // an older open invoice could not be chosen here.
+      const res = await getOutstandingInvoicesAPI(c.customerId);
       const list = invoiceListSerializer(res).invoices.filter(i => i.total - i.amountPaid > 0.01 && i.status !== 'void' && i.status !== 'draft');
       setOpenInvoices(list);
       setShowApply(true);

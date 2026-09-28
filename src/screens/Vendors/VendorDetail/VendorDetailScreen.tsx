@@ -163,6 +163,16 @@ const VendorDetailScreen: React.FC = () => {
         initial: false
       });
   };
+  // A bill from the tab below. The bill screens live in the Transactions tab,
+  // so the hop goes through it, with its hub underneath.
+  const handleOpenBill = (billId: string) => {
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
+      .navigate('TransactionsStack', {
+        screen: 'BillDetail',
+        params: { billId },
+        initial: false
+      });
+  };
   const handleRecordPayment = () => {
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
       .navigate('TransactionsStack', {
@@ -303,6 +313,7 @@ const VendorDetailScreen: React.FC = () => {
             tab={billsTab}
             onRetry={() => dispatch(fetchVendorBills({ vendorId }))}
             onLoadMore={() => dispatch(fetchVendorBills({ vendorId, page: billsTab.page + 1 }))}
+            onOpen={handleOpenBill}
           />
         )}
         {activeTab === 'payments' && (
@@ -425,7 +436,8 @@ const BillsTab: React.FC<{
   tab: { rows: VendorBillRow[]; status: string; error: string; page: number; totalPages: number };
   onRetry: () => void;
   onLoadMore: () => void;
-}> = ({ tab, onRetry, onLoadMore }) => (
+  onOpen: (billId: string) => void;
+}> = ({ tab, onRetry, onLoadMore, onOpen }) => (
   <TabStateBlock
     loading={tab.status === 'loading' || tab.status === 'idle'}
     failed={tab.status === 'failed'}
@@ -436,7 +448,14 @@ const BillsTab: React.FC<{
   >
     <View style={styles.tabContent}>
       {tab.rows.map(bill => (
-        <View key={bill.id} style={styles.listCard}>
+        <TouchableOpacity
+          key={bill.id}
+          style={styles.listCard}
+          onPress={() => onOpen(bill.id)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${bill.billNumber}`}
+        >
           <View style={styles.listCardTop}>
             <View style={{ flex: 1 }}>
               <Text style={styles.listCardTitle}>{bill.billNumber}</Text>
@@ -455,7 +474,7 @@ const BillsTab: React.FC<{
             {bill.dueDate ? `Due: ${formatDate(bill.dueDate)}` : ''}
             {bill.balance > 0 ? `  ·  Balance: ${formatCurrency(bill.balance, 'Rs ')}` : ''}
           </Text>
-        </View>
+        </TouchableOpacity>
       ))}
       {tab.page < tab.totalPages && (
         <CustomButton title="Load more" variant="secondary" size="sm" onPress={onLoadMore} />

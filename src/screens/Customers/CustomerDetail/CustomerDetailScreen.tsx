@@ -192,6 +192,16 @@ const CustomerDetailScreen: React.FC = () => {
         initial: false
       });
   };
+  // An invoice from the tab below. The invoice screens live in the
+  // Transactions tab, so the hop goes through it, with its hub underneath.
+  const handleOpenInvoice = (invoiceId: string) => {
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
+      .navigate('TransactionsStack', {
+        screen: 'InvoiceDetail',
+        params: { invoiceId },
+        initial: false
+      });
+  };
   // Credit on account, spent in Receive Payment with the switch already on —
   // the web's flow: advances and credit memos alike, oldest invoice first, and
   // any new money alongside, in one settlement.
@@ -389,7 +399,14 @@ const CustomerDetailScreen: React.FC = () => {
           >
             <View style={styles.tabContent}>
               {invoicesTab.rows.map(inv => (
-                <View key={inv.id} style={styles.listCard}>
+                <TouchableOpacity
+                  key={inv.id}
+                  style={styles.listCard}
+                  onPress={() => handleOpenInvoice(inv.id)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${inv.invoiceNumber}`}
+                >
                   <View style={styles.listCardTop}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.listCardTitle}>{inv.invoiceNumber}</Text>
@@ -408,7 +425,7 @@ const CustomerDetailScreen: React.FC = () => {
                     {inv.dueDate ? `Due: ${formatDate(inv.dueDate)}` : ''}
                     {inv.balance > 0 ? `  ·  Balance: ${formatCurrency(inv.balance, 'Rs ')}` : ''}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
               {invoicesTab.page < invoicesTab.totalPages && (
                 <CustomButton

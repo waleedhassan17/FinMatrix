@@ -4,7 +4,7 @@
 // Status: Draft / Open / Partially Paid / Paid / Overdue
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   FlatList,
   TextInput,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,7 +25,11 @@ import {
   selectBillSearchQuery,
   selectBillStatusFilter,
   selectBillIsLoading,
+  selectBillIsLoadingMore,
   selectBillError,
+  selectBillPaging,
+  selectBillCounts,
+  selectBillTotals,
   setSearchQuery,
   setStatusFilter,
   type BillStatusFilter,
@@ -59,7 +64,12 @@ const BillListScreen: React.FC = () => {
   const searchQuery = useAppSelector(selectBillSearchQuery);
   const statusFilter = useAppSelector(selectBillStatusFilter);
   const isLoading = useAppSelector(selectBillIsLoading);
+  const isLoadingMore = useAppSelector(selectBillIsLoadingMore);
   const error = useAppSelector(selectBillError);
+  const { page, totalPages } = useAppSelector(selectBillPaging);
+  // The server's counts and totals, over every bill the search matches.
+  const counts = useAppSelector(selectBillCounts);
+  const { totalOutstanding, overdueAmount } = useAppSelector(selectBillTotals);
   const [searchOpen, setSearchOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -73,12 +83,33 @@ const BillListScreen: React.FC = () => {
     setRefreshing(false);
   }, [dispatch]);
 
-  // ── Tab counts ──────────────────────────────────
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: bills.length, draft: 0, open: 0, partial: 0, paid: 0, overdue: 0, void: 0 };
-    bills.forEach(b => { c[b.status] = (c[b.status] ?? 0) + 1; });
-    return c;
-  }, [bills]);
+  // Server-side search, debounced so a request is not fired per keystroke.
+  // The first run is skipped: the focus effect above has just loaded.
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchMounted = useRef(false);
+  useEffect(() => {
+    if (!searchMounted.current) {
+      searchMounted.current = true;
+      return;
+    }
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => { dispatch(fetchBills()); }, 350);
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
+  }, [searchQuery, dispatch]);
+
+  const onTab = useCallback(
+    (v: BillStatusFilter) => {
+      dispatch(setStatusFilter(v));
+      dispatch(fetchBills());
+    },
+    [dispatch],
+  );
+
+  // The next page, as the list nears its end.
+  const onEndReached = useCallback(() => {
+    if (isLoading || isLoadingMore || page >= totalPages) return;
+    dispatch(fetchBills({ page: page + 1, append: true }));
+  }, [dispatch, isLoading, isLoadingMore, page, totalPages]);
 
   const TABS: TabItem<BillStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
@@ -89,32 +120,13 @@ const BillListScreen: React.FC = () => {
     { label: 'Paid', value: 'paid', count: counts.paid },
   ];
 
-  // ── Filtered list ───────────────────────────────
-  const filtered = useMemo(() => {
-    let list = bills;
-    if (statusFilter !== 'all') list = list.filter(b => b.status === statusFilter);
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(
-        b => b.billNumber.toLowerCase().includes(q) || b.vendorName.toLowerCase().includes(q),
-      );
-    }
-    return list;
-  }, [bills, statusFilter, searchQuery]);
-
-  // ── Summary values ──────────────────────────────
-  const { totalOutstanding, overdueAmount } = useMemo(() => {
-    let outstanding = 0;
-    let overdue = 0;
-    bills.forEach(b => {
-      if (b.status === 'open' || b.status === 'overdue' || b.status === 'partial') {
-        const bal = b.total - b.amountPaid;
-        outstanding += bal;
-        if (b.status === 'overdue') overdue += bal;
-      }
-    });
-    return { totalOutstanding: outstanding, overdueAmount: overdue };
-  }, [bills]);
+  // ── The list ────────────────────────────────────
+  // Already searched and filtered by the server, in its order. The tab is
+  // applied here too only so a switch shows at once, before the answer lands.
+  const filtered = useMemo(
+    () => (statusFilter === 'all' ? bills : bills.filter(b => b.status === statusFilter)),
+    [bills, statusFilter],
+  );
 
   // ── Render card ─────────────────────────────────
   const renderCard = useCallback(({ item }: { item: Bill }) => {
@@ -145,8 +157,11 @@ const BillListScreen: React.FC = () => {
   const loadFailed = !!error && bills.length === 0;
 
   // Genuine first-run: no bills at all, and neither loading nor failed.
-  // Hide summary, tabs and FAB for a clean, professional zero-state.
-  const isFirstRun = !initialLoading && !loadFailed && bills.length === 0;
+  // Hide summary, tabs and FAB for a clean, professional zero-state — but not
+  // while a search or a tab narrows the list, or an empty result could not be
+  // cleared.
+  const isFirstRun =
+    !initialLoading && !loadFailed && bills.length === 0 && !searchQuery.trim() && statusFilter === 'all';
   // Summary / search / tabs only make sense once there is a list to act on.
   const showChrome = !initialLoading && !loadFailed && !isFirstRun;
 
@@ -202,7 +217,7 @@ const BillListScreen: React.FC = () => {
         <FilterTabs
           tabs={TABS}
           active={statusFilter}
-          onChange={v => dispatch(setStatusFilter(v))}
+          onChange={onTab}
         />
       )}
 
@@ -236,6 +251,15 @@ const BillListScreen: React.FC = () => {
               title="No bills found"
               hint={searchQuery ? `No results for "${searchQuery}"` : 'Try a different filter.'}
             />
+          }
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <View style={styles.footer}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : null
           }
         />
       )}
@@ -284,6 +308,7 @@ const styles = StyleSheet.create({
   },
 
   list: { flex: 1 },
+  footer: { paddingVertical: spacing.md, alignItems: 'center' },
   listContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxxxl + spacing.xxl },
 });
 
