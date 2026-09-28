@@ -11,7 +11,7 @@ import {
 } from './journalEntrySlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, refreshingOverContent } from '../../components/reports/ReportUI';
 import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
 import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
@@ -58,7 +58,7 @@ const GeneralJournalListScreen: React.FC = () => {
       <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setJournalStatusFilter(v))} />
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshingOverContent(state.isLoading, state.entries.length)} onRefresh={load} tintColor={THEME.colors.primary} />}>
         {state.isLoading && state.entries.length === 0 && <LoadingBlock label="Loading…" />}
         {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
         {!state.isLoading && state.entries.length === 0 && !state.error && (

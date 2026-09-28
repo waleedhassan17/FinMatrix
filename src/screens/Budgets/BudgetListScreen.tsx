@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchBudgets, selectBudgetState } from './budgetSlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { ReportsStackParamList } from '../../navigators/stacks/ReportsStack';
-import { ReportContainer, ReportHeader, HeaderAction, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT, refreshingOverContent } from '../../components/reports/ReportUI';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { typography } = THEME;
@@ -29,7 +29,7 @@ const BudgetListScreen: React.FC = () => {
       <ReportHeader title="Budgets" subtitle="Plan & track by fiscal year" onBack={() => navigation.goBack()}
         right={<HeaderAction label="New" onPress={() => navigation.navigate('BudgetForm' as any)} />} />
       <ScrollView contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshingOverContent(state.isLoading, state.budgets.length)} onRefresh={load} tintColor={THEME.colors.primary} />}>
         {state.isLoading && state.budgets.length === 0 && <LoadingBlock label="Loading budgets…" />}
         {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
         {!state.isLoading && state.budgets.length === 0 && !state.error && (

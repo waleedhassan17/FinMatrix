@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchEmployees, selectPayrollState } from './payrollSlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
-import { ReportContainer, ReportHeader, HeaderIconButton, HeaderAction, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderIconButton, HeaderAction, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT, refreshingOverContent } from '../../components/reports/ReportUI';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { typography } = THEME;
@@ -33,7 +33,7 @@ const EmployeeListScreen: React.FC = () => {
           </>
         } />
       <ScrollView contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshingOverContent(state.isLoading, state.employees.length)} onRefresh={load} tintColor={THEME.colors.primary} />}>
         {state.isLoading && state.employees.length === 0 && <LoadingBlock label="Loading employees…" />}
         {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
         {!state.isLoading && state.employees.length === 0 && !state.error && (

@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchSalesOrders, selectSalesOrderState, setSalesOrderStatusFilter, type SalesOrderStatusFilter } from './salesOrderSlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, refreshingOverContent } from '../../components/reports/ReportUI';
 import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
 import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
@@ -57,7 +57,7 @@ const SalesOrderListScreen: React.FC = () => {
       <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setSalesOrderStatusFilter(v))} />
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshingOverContent(state.isLoading, state.salesOrders.length)} onRefresh={load} tintColor={THEME.colors.primary} />}>
         {state.isLoading && state.salesOrders.length === 0 && <LoadingBlock label="Loading sales orders…" />}
         {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
         {!state.isLoading && state.salesOrders.length === 0 && !state.error && (

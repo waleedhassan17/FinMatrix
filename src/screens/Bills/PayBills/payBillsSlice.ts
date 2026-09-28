@@ -7,6 +7,7 @@
 // covers the first of it, oldest bill first; cash the rest.
 // ═══════════════════════════════════════════════════════
 
+import { createSelector } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { toIsoDate } from '../../../models/reportModel';
 import { createAppSlice } from '@store/createAppSlice';
@@ -465,14 +466,12 @@ export const payBillsSlice = createAppSlice({
     selectOutstandingBillRows: state => state.outstandingRows,
     selectPayBillErrors: state => state.errors,
     selectPayBillIsSaving: state => state.isSaving,
-    selectPayBillProof: state => ({
-      id: state.proofId,
-      name: state.proofName,
-      mimeType: state.proofMimeType,
-      localUri: state.proofLocalUri,
-      isUploading: state.isUploadingProof,
-      error: state.proofError,
-    }),
+    selectPayBillProofId: state => state.proofId,
+    selectPayBillProofName: state => state.proofName,
+    selectPayBillProofMimeType: state => state.proofMimeType,
+    selectPayBillProofLocalUri: state => state.proofLocalUri,
+    selectPayBillProofUploading: state => state.isUploadingProof,
+    selectPayBillProofError: state => state.proofError,
   },
 });
 
@@ -501,5 +500,37 @@ export const {
   selectOutstandingBillRows,
   selectPayBillErrors,
   selectPayBillIsSaving,
-  selectPayBillProof,
+  selectPayBillProofId,
+  selectPayBillProofName,
+  selectPayBillProofMimeType,
+  selectPayBillProofLocalUri,
+  selectPayBillProofUploading,
+  selectPayBillProofError,
 } = payBillsSlice.selectors;
+
+/**
+ * Memoized — returns a stable object reference unless the proof actually changes.
+ *
+ * It used to assemble this object inline, which mints a new one on every call:
+ * `useSelector` compares by reference, so PayBills re-rendered on every store
+ * action anywhere in the app — including each keystroke in an unrelated form —
+ * and React-Redux logged a warning every time.
+ */
+export const selectPayBillProof = createSelector(
+  [
+    selectPayBillProofId,
+    selectPayBillProofName,
+    selectPayBillProofMimeType,
+    selectPayBillProofLocalUri,
+    selectPayBillProofUploading,
+    selectPayBillProofError,
+  ],
+  (id, name, mimeType, localUri, isUploading, error) => ({
+    id,
+    name,
+    mimeType,
+    localUri,
+    isUploading,
+    error,
+  }),
+);

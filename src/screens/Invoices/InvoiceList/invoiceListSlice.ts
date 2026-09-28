@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 // Flow: Screen → Slice → Network → Serializer (in fulfilled) → Screen
 
+import { createSelector } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { Invoice, InvoiceStatus } from '../../../types';
@@ -169,7 +170,8 @@ export const invoiceListSlice = createAppSlice({
     selectInvoiceIsLoading: state => state.isLoading,
     selectInvoiceIsLoadingMore: state => state.isLoadingMore,
     selectInvoiceError: state => state.error,
-    selectInvoicePaging: state => ({ page: state.page, totalPages: state.totalPages }),
+    selectInvoicePage: state => state.page,
+    selectInvoiceTotalPages: state => state.totalPages,
     selectInvoiceSummary: state => state.summary,
   },
 });
@@ -195,6 +197,20 @@ export const {
   selectInvoiceIsLoading,
   selectInvoiceIsLoadingMore,
   selectInvoiceError,
-  selectInvoicePaging,
+  selectInvoicePage,
+  selectInvoiceTotalPages,
   selectInvoiceSummary,
 } = invoiceListSlice.selectors;
+
+/**
+ * Memoized — returns a stable object reference unless the page actually moves.
+ *
+ * It used to build `{ page, totalPages }` inline, which mints a new object on
+ * every call: `useSelector` compares by reference, so the screen re-rendered on
+ * every store action anywhere in the app, and React-Redux logged a warning
+ * about it on each one.
+ */
+export const selectInvoicePaging = createSelector(
+  [selectInvoicePage, selectInvoiceTotalPages],
+  (page, totalPages) => ({ page, totalPages }),
+);

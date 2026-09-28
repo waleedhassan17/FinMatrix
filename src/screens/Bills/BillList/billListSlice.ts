@@ -205,7 +205,8 @@ export const billListSlice = createAppSlice({
     selectBillIsLoading: state => state.isLoading,
     selectBillIsLoadingMore: state => state.isLoadingMore,
     selectBillError: state => state.error,
-    selectBillPaging: state => ({ page: state.page, totalPages: state.totalPages }),
+    selectBillPage: state => state.page,
+    selectBillTotalPages: state => state.totalPages,
     selectBillCounts: state => state.counts,
     selectBillTotalOutstanding: state => state.totalOutstanding,
     selectBillOverdueAmount: state => state.overdueAmount,
@@ -231,12 +232,26 @@ export const {
   selectBillIsLoading,
   selectBillIsLoadingMore,
   selectBillError,
-  selectBillPaging,
+  selectBillPage,
+  selectBillTotalPages,
   selectBillCounts,
   selectBillTotalOutstanding,
   selectBillOverdueAmount,
   selectBillTotalBills,
 } = billListSlice.selectors;
+
+/**
+ * Memoized — returns a stable object reference unless the page actually moves.
+ *
+ * It used to build `{ page, totalPages }` inline, which mints a new object on
+ * every call: `useSelector` compares by reference, so the screen re-rendered on
+ * every store action anywhere in the app, and React-Redux logged a warning
+ * about it on each one.
+ */
+export const selectBillPaging = createSelector(
+  [selectBillPage, selectBillTotalPages],
+  (page, totalPages) => ({ page, totalPages }),
+);
 
 /** Memoized — returns a stable object reference unless inputs change. */
 export const selectBillTotals = createSelector(

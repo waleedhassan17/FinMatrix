@@ -98,3 +98,28 @@ export const formatRatio = (part: number, whole: number): string => {
   const pct = Math.round((part / whole) * 1000) / 10;
   return `${pct < 0 ? '−' : ''}${Math.abs(pct)}%`;
 };
+
+/**
+ * Should the pull-to-refresh spinner show?
+ *
+ * The list screens pair a `RefreshControl` with a `LoadingBlock`, and both used
+ * to read the same `isLoading` flag — so a cold load drew TWO spinners at once:
+ * the RefreshControl's arc at the top of the scroll view and the LoadingBlock's
+ * ring below it, overlapping. It looked like a rendering fault, and on a slow
+ * connection it sat there for seconds.
+ *
+ * They answer different questions. `LoadingBlock` means "there is nothing here
+ * yet"; the RefreshControl means "what you are looking at is being brought up
+ * to date". So the RefreshControl only spins when there is already content to
+ * refresh, and the empty case belongs to the LoadingBlock alone. The two
+ * conditions are mutually exclusive by construction — see the test.
+ *
+ * Lives here rather than in ReportUI because it is a predicate, and importing
+ * it from a component module drags the whole React Native UI tree into anything
+ * that wants to test it.
+ *
+ * @param isLoading the slice's in-flight flag
+ * @param count     how many rows are currently on screen
+ */
+export const refreshingOverContent = (isLoading: boolean, count: number): boolean =>
+  isLoading && count > 0;

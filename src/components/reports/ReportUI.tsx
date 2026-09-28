@@ -33,7 +33,7 @@ import { DEFAULT_COMPANY } from '../../utils/invoicePdf';
 import { parenNegative } from './reportFormat';
 
 // Re-exported so every screen has one import site for the reports kit.
-export { parenNegative, asOfLabel, rangeLabel, classifyAccount, reconcile, formatRatio } from './reportFormat';
+export { parenNegative, asOfLabel, rangeLabel, classifyAccount, reconcile, formatRatio, refreshingOverContent } from './reportFormat';
 export type { AccountGroup } from './reportFormat';
 
 const T = THEME;
@@ -620,6 +620,7 @@ export const DateField: React.FC<{
 };
 
 // ── Loading / error / empty states ────────────────────
+
 export const LoadingBlock: React.FC<{ label?: string }> = ({ label = 'Loading…' }) => (
   <View style={S.stateBlock}>
     <ActivityIndicator size="large" color={T.colors.primary} />

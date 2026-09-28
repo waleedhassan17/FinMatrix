@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchVendorCredits, selectVendorCreditState, setVendorCreditStatusFilter, type VendorCreditStatusFilter } from './vendorCreditSlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, refreshingOverContent } from '../../components/reports/ReportUI';
 import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
 import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
@@ -56,7 +56,7 @@ const VendorCreditListScreen: React.FC = () => {
       <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setVendorCreditStatusFilter(v))} />
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshingOverContent(state.isLoading, state.vendorCredits.length)} onRefresh={load} tintColor={THEME.colors.primary} />}>
         {state.isLoading && state.vendorCredits.length === 0 && <LoadingBlock label="Loading…" />}
         {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
         {!state.isLoading && state.vendorCredits.length === 0 && !state.error && (

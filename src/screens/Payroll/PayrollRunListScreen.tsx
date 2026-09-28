@@ -18,7 +18,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { payrollPeriodFor } from '../../utils/payrollMath';
 import CustomButton from '../../Custom-Components/CustomButton';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
-import { ReportContainer, ReportHeader, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, Badge, EmptyBlock, LoadingBlock, ErrorBlock, ACCENT, refreshingOverContent } from '../../components/reports/ReportUI';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { typography } = THEME;
@@ -56,7 +56,7 @@ const PayrollRunListScreen: React.FC = () => {
       <ReportHeader title="Payroll" subtitle="Run & track payroll" onBack={() => navigation.goBack()} />
       <View style={styles.runBtn}><CustomButton title={creating ? 'Building…' : '+ Run Payroll (this month)'} onPress={runNow} isLoading={creating} fullWidth /></View>
       <ScrollView contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={state.isLoading} onRefresh={load} tintColor={THEME.colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshingOverContent(state.isLoading, state.runs.length)} onRefresh={load} tintColor={THEME.colors.primary} />}>
         {state.isLoading && state.runs.length === 0 && <LoadingBlock label="Loading…" />}
         {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
         {!state.isLoading && state.runs.length === 0 && !state.error && (
