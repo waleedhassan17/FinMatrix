@@ -94,10 +94,22 @@ export interface CustomerAdvance {
   unapplied: number;
 }
 
-/** GET /payments/customer/:id/advances — a bare array or `{ data }`. */
+/**
+ * GET /payments/customer/:id/advances.
+ *
+ * The server answers `{ total, advances: [...] }` inside the envelope. This
+ * used to accept only a bare array, so against the real server it read every
+ * customer as holding no advance — the receive-payment hint and the "apply an
+ * advance" offer never appeared. A bare array (or one under `data`) is still
+ * read, for any build or test that sends one.
+ */
 export function customerAdvancesSerializer(payload: any): CustomerAdvance[] {
-  const data = payload?.data ?? payload;
-  const raw: any[] = Array.isArray(data) ? data : [];
+  const body = payload?.data ?? payload;
+  const raw: any[] = Array.isArray(body)
+    ? body
+    : Array.isArray(body?.advances)
+      ? body.advances
+      : [];
   return raw
     .map(r => ({
       paymentId: r?.paymentId ?? '',

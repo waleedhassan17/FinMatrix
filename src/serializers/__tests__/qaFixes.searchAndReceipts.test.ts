@@ -57,6 +57,29 @@ describe('receipts and advances', () => {
       }),
     ).toEqual([{ paymentId: 'a', paymentNumber: 'RCT-1', paymentDate: '2026-09-01', unapplied: 106050 }]);
   });
+
+  it('reads the advances the way the server actually sends them', () => {
+    // GET /payments/customer/:id/advances → { success, data: { total, advances } }.
+    // Read as a bare array, this came back empty for every customer.
+    expect(
+      customerAdvancesSerializer({
+        success: true,
+        data: {
+          total: '250.0000',
+          advances: [
+            {
+              paymentId: 'p1',
+              paymentNumber: 'RCT-2026-0091',
+              paymentDate: '2026-09-28',
+              amount: '250.0000',
+              unapplied: '250.0000',
+              advancePosted: true,
+            },
+          ],
+        },
+      }),
+    ).toEqual([{ paymentId: 'p1', paymentNumber: 'RCT-2026-0091', paymentDate: '2026-09-28', unapplied: 250 }]);
+  });
 });
 
 describe('customer payment rows', () => {
