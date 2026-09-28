@@ -33,6 +33,7 @@ import * as Sharing from 'expo-sharing';
 
 import type { Customer, Invoice } from '../types';
 import { formatCurrency, formatDate } from './formatters';
+import { normalizeWhatsappPhone } from './whatsappPhone';
 import {
   DEFAULT_COMPANY,
   generateInvoicePdf,
@@ -95,17 +96,16 @@ export function buildInvoiceMessage(
 // ─── Phone sanitizer (WhatsApp deep-link) ────────────
 
 /**
- * Converts any international phone number to the digits-only
- * form required by `wa.me/<number>` (no leading `+`, no
- * spaces, no dashes, no parentheses).
+ * The digits-only form `wa.me/<number>` needs, country code first.
+ *
+ * This used to strip punctuation and nothing else, so a number saved the
+ * usual local way — "0300 1234567" — became wa.me/03001234567, a chat with a
+ * number that does not exist. It now follows the app's one rule
+ * (utils/whatsappPhone): local Pakistani numbers gain 92. Invoices, estimates
+ * and sales orders all come through here.
  */
 export function sanitizePhoneForWhatsApp(phone?: string): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
-  // Strip a leading `00` international prefix if the user
-  // entered e.g. "0092…" instead of "+92…".
-  const normalized = digits.startsWith('00') ? digits.slice(2) : digits;
-  return normalized.length >= 8 ? normalized : null;
+  return normalizeWhatsappPhone(phone);
 }
 
 // ═══════════════════════════════════════════════════════
