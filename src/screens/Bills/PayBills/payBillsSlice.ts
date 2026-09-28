@@ -12,10 +12,11 @@ import type { Bill, BillPayment, BillStatus, PaymentMethod } from '../../../type
 import {
   getBillsAPI,
   payBillsAPI,
+  settleBillsAPI,
   uploadBillPaymentProofAPI,
 } from '../../../networks/purchases/billNetwork';
 import { billListSerializer } from '../../../serializers/billSerializer';
-import { applyVendorCreditAPI, getVendorCreditsAPI } from '../../../networks/purchases/vendorCreditNetwork';
+import { getVendorCreditsAPI } from '../../../networks/purchases/vendorCreditNetwork';
 import { vendorCreditListSerializer } from '../../../serializers/vendorCreditSerializer';
 
 /** The API's enum is cash | check | bank_transfer | credit_card | other, so
@@ -132,6 +133,32 @@ function creditPoolLeft(state: PayBillsSliceState): number {
 function clampToBalance(row: OutstandingBillRow, value: number): number {
   if (!Number.isFinite(value) || value < 0) return 0;
   return Math.round(Math.min(value, row.balance) * 100) / 100;
+}
+
+/**
+ * Turn "this much vendor credit on each bill" into the pieces the server
+ * applies — `{vendorCreditId, billId, amount}` — spending credits oldest first.
+ * A row asking for more credit than is left gets only what is left.
+ */
+export function pairCreditsWithBills(
+  credits: AvailableCredit[],
+  rows: Pick<OutstandingBillRow, 'billId' | 'creditApplied'>[],
+): Array<{ vendorCreditId: string; billId: string; amount: string }> {
+  const pool = credits.map(c => ({ ...c }));
+  const pieces: Array<{ vendorCreditId: string; billId: string; amount: string }> = [];
+  for (const row of rows) {
+    let owed = Math.round(row.creditApplied * 100) / 100;
+    for (const credit of pool) {
+      if (owed <= 0) break;
+      if (credit.balance <= 0) continue;
+      const take = Math.round(Math.min(credit.balance, owed) * 100) / 100;
+      if (take <= 0) continue;
+      pieces.push({ vendorCreditId: credit.id, billId: row.billId, amount: take.toFixed(2) });
+      credit.balance = Math.round((credit.balance - take) * 100) / 100;
+      owed = Math.round((owed - take) * 100) / 100;
+    }
+  }
+  return pieces;
 }
 
 function buildRows(bills: Bill[], vendorId: string): OutstandingBillRow[] {
@@ -345,13 +372,16 @@ export const payBillsSlice = createAppSlice({
      *  screen so PayBillsScreen only has to dispatch one action. */
     /** Open credits for the selected vendor — what "Set Credits" can spend. */
     fetchVendorCreditsForPayment: create.asyncThunk(
+      // Every status, filtered below. Asking for `open` only left out a credit
+      // already partly used (status `applied`), so what remained of it could
+      // never be spent here.
       async (vendorId: string) =>
-        vendorCreditListSerializer(await getVendorCreditsAPI({ vendorId, status: 'open' })),
+        vendorCreditListSerializer(await getVendorCreditsAPI({ vendorId })),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
           const list = Array.isArray(action.payload) ? action.payload : action.payload?.vendorCredits ?? [];
           state.availableCredits = list
-            .filter((c: any) => Number(c.balance) > 0)
+            .filter((c: any) => Number(c.balance) > 0 && c.status !== 'void' && c.status !== 'closed')
             .map((c: any) => ({
               id: c.id,
               number: c.vendorCreditNumber ?? c.number ?? '',
@@ -375,59 +405,50 @@ export const payBillsSlice = createAppSlice({
         const root = thunkAPI.getState() as { payBills: PayBillsSliceState };
         const f = root.payBills;
 
-        // Credits FIRST, cash second.
-        //
-        // Applying a credit reduces the bill's balance without posting
-        // anything (the credit's creation already debited A/P). If the cash
-        // went first the bill could be settled and the credit application
-        // would then be refused for exceeding the balance. Credits are
-        // consumed oldest-first; they are fungible against the same vendor,
-        // so which document funds which bill has no ledger consequence.
-        const pool = f.availableCredits.map(c => ({ ...c }));
-        for (const row of f.outstandingRows) {
-          let owed = row.creditApplied;
-          if (owed <= 0) continue;
-          for (const credit of pool) {
-            if (owed <= 0) break;
-            if (credit.balance <= 0) continue;
-            const take = Math.round(Math.min(credit.balance, owed) * 100) / 100;
-            await applyVendorCreditAPI(credit.id, row.billId, take.toFixed(2));
-            credit.balance = Math.round((credit.balance - take) * 100) / 100;
-            owed = Math.round((owed - take) * 100) / 100;
-          }
-        }
-
-        // Nothing left to pay in cash — the credits covered it. Returning
-        // early avoids posting a zero-value payment, which the API rejects.
-        const cash = args.allocations.filter(a => a.amount > 0);
-        if (cash.length === 0) return null as unknown as BillPayment;
+        // Which credit funds which bill — oldest credit first. Credits are
+        // fungible against one vendor, so the pairing has no ledger meaning;
+        // it only has to be something the server can apply.
+        const credits = pairCreditsWithBills(f.availableCredits, f.outstandingRows);
 
         // PayBillsDto: vendorId, paymentDate, paymentMethod, bankAccountId,
-        // applications[]. The old body sent `date`, `method` and
-        // `allocations`, so three REQUIRED fields were simply absent and every
-        // payment 400'd. Amounts are @IsNumberString, hence the .toFixed(2).
-        const payment = await payBillsAPI(
+        // applications[]. Amounts are @IsNumberString, hence the .toFixed(2).
+        const cash = args.allocations.filter(a => a.amount > 0);
+        const cashLeg = {
+          paymentMethod: toBackendPaymentMethod(f.method),
+          bankAccountId: f.bankAccountId,
+          reference: f.reference || undefined,
+          proofId: f.proofId,
+          applications: cash.map(a => ({
+            billId: a.billId,
+            amount: (Math.round(a.amount * 100) / 100).toFixed(2),
+          })),
+        };
+
+        // No credit in play: the plain payment it has always been.
+        if (credits.length === 0) {
+          return payBillsAPI(
+            { vendorId: f.vendorId, paymentDate: f.paymentDate, ...cashLeg },
+            args.idempotencyKey,
+          );
+        }
+
+        // Credit and cash together go as ONE settlement the server runs in a
+        // single transaction, credit first. This used to apply each credit
+        // with its own request before posting the cash — so a refused payment
+        // (a closed period, a bill paid meanwhile, a dropped connection) left
+        // the credits spent, and a retry spent them again. Credit alone leaves
+        // the cash leg out, so no proof or account is needed.
+        //
+        // The bills are NOT patched here: the server writes every balance.
+        return settleBillsAPI(
           {
             vendorId: f.vendorId,
             paymentDate: f.paymentDate,
-            paymentMethod: toBackendPaymentMethod(f.method),
-            bankAccountId: f.bankAccountId,
-            reference: f.reference || undefined,
-            proofId: f.proofId,
-            applications: cash.map(a => ({
-              billId: a.billId,
-              amount: (Math.round(a.amount * 100) / 100).toFixed(2),
-            })),
+            credits,
+            ...(cash.length > 0 ? { cash: cashLeg } : {}),
           },
           args.idempotencyKey,
         );
-
-        // The bills are NOT patched here. `pay()` is transactional: it locks
-        // each bill, writes amountPaid/balance/status, adjusts the vendor
-        // balance and posts DR AP / CR Bank. Re-applying the amounts from the
-        // client would double-count every payment.
-
-        return payment;
       },
       {
         pending: state => { state.isSaving = true; },

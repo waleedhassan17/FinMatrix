@@ -699,8 +699,8 @@ const PayBillsScreen: React.FC = () => {
 
                   Only when cash actually moves, though. A settlement funded
                   entirely from vendor credit posts no payment — savePayment
-                  returns before calling the API — so there is nothing to
-                  evidence and demanding a receipt would just block it. */}
+                  sends it with no cash leg — so there is nothing to evidence
+                  and demanding a receipt would just block it. */}
               <PrimaryButton
                 title={
                   form.isSaving

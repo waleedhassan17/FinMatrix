@@ -99,6 +99,33 @@ export const payBillsAPI = async (
   }
 };
 
+/**
+ * POST /bills/settle — spend vendor credit and pay cash in ONE request the
+ * server runs as one transaction: credit first, then cash. A refused cash leg
+ * leaves every credit where it was. The cash leg is left out when credit
+ * covers everything, and then no proof or account is needed.
+ */
+export interface SettleBillsPayload {
+  vendorId: string;
+  paymentDate: string;
+  credits?: Array<{ vendorCreditId: string; billId: string; amount: string }>;
+  cash?: Omit<PayBillsPayload, 'vendorId' | 'paymentDate'>;
+}
+
+export const settleBillsAPI = async (
+  data: SettleBillsPayload,
+  idempotencyKey?: string,
+): Promise<any> => {
+  try {
+    const response = await api.post('/bills/settle', data, {
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+    });
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
 // ── Payment proof ─────────────────────────────────────
 // Two steps by design: the file is uploaded here and the pay request quotes
 // the id it returns, so the financial endpoint stays JSON.
