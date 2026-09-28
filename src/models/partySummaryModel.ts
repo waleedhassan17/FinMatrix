@@ -1,0 +1,268 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — Outstanding-invoices and payables summaries
+// ═══════════════════════════════════════════════════════
+// What a business sends a customer ("here is everything you still owe us"),
+// or keeps for a vendor ("here is everything we owe you"). The phone's half of
+// the web's summary: the screen, the PDF and the WhatsApp message all take
+// their words and figures from here, so the three — and the website's — say
+// the same thing about the same money.
+//
+// The figures come from GET /reports/ar-aging/customers/:id/summary (and its
+// A/P twin). `totals.outstanding` is the party's aging row; `netDue` is that
+// less the credits on account, and can be zero or negative.
+
+import type { AgingBucketDef, AgingPartyDocument, AgingPresetKey } from './arAgingModel';
+import { formatCurrency, formatDate } from '../utils/formatters';
+
+export type SummaryParty = 'customer' | 'vendor';
+
+/** An aging bucket with what this party has in it. */
+export interface PartySummaryBucket extends AgingBucketDef {
+  amount: number;
+  count: number;
+}
+
+/**
+ * Money on the party's account that no document has used yet. It comes off
+ * what is due: a customer's unapplied receipt or open credit memo, or an open
+ * vendor credit.
+ */
+export interface PartySummaryCredit {
+  kind: 'payment' | 'credit_memo' | 'vendor_credit';
+  id: string;
+  reference: string;
+  date: string;
+  amount: number;
+  /** What is left to apply — the part that reduces what is due. */
+  available: number;
+}
+
+export interface PartySummary {
+  partyType: SummaryParty;
+  party: {
+    id: string;
+    name: string;
+    contactPerson: string;
+    email: string;
+    phone: string;
+    /** One line, already joined by the server. */
+    address: string;
+    /** The API's dialect (`net30`); map with `paymentTermsFromApi`. */
+    paymentTerms: string;
+    taxId: string;
+  };
+  asOfDate: string;
+  preset: AgingPresetKey;
+  buckets: PartySummaryBucket[];
+  /** Soonest due first. */
+  documents: AgingPartyDocument[];
+  totals: {
+    count: number;
+    outstanding: number;
+    overdue: number;
+    overdueCount: number;
+    notYetDue: number;
+  };
+  credits: { total: number; items: PartySummaryCredit[] };
+  netDue: number;
+  lastPayment: { date: string; amount: number; reference: string } | null;
+}
+
+export interface SummaryCopy {
+  /** The screen's and the PDF's title. */
+  title: string;
+  /**
+   * The action on the party's screen that opens it. Two short words, so it
+   * wraps like its neighbours ("Create Invoice", "Send Statement") instead of
+   * one long word that clips on a narrow phone.
+   */
+  action: string;
+  noun: string;
+  nounPlural: string;
+  /** Heading over the documents. */
+  documentsTitle: string;
+  /** Header of the document-number column. */
+  numberHeader: string;
+  /** Over the party's name on the PDF. */
+  partyLabel: string;
+  /** The figure to ask for. */
+  dueLabel: string;
+  /** When credits cover more than is open. */
+  creditBalanceLabel: string;
+  lastPaymentLabel: string;
+  /** The empty state, after the party's name. */
+  nothingOpen: string;
+}
+
+export const SUMMARY_COPY: Record<SummaryParty, SummaryCopy> = {
+  customer: {
+    title: 'Outstanding invoices',
+    action: 'Unpaid Invoices',
+    noun: 'invoice',
+    nounPlural: 'invoices',
+    documentsTitle: 'Unpaid invoices',
+    numberHeader: 'Invoice',
+    partyLabel: 'Prepared for',
+    dueLabel: 'Total due',
+    creditBalanceLabel: 'Credit in your favour',
+    lastPaymentLabel: 'Last payment received',
+    nothingOpen: 'has no unpaid invoices',
+  },
+  vendor: {
+    title: 'Payables summary',
+    action: 'Unpaid Bills',
+    noun: 'bill',
+    nounPlural: 'bills',
+    documentsTitle: 'Unpaid bills',
+    numberHeader: 'Bill',
+    partyLabel: 'Payable to',
+    dueLabel: 'Total payable',
+    creditBalanceLabel: 'Credit in our favour',
+    lastPaymentLabel: 'Last payment made',
+    nothingOpen: 'has no unpaid bills',
+  },
+};
+
+export const CREDIT_KIND_LABELS: Record<PartySummaryCredit['kind'], string> = {
+  payment: 'Unapplied payment',
+  credit_memo: 'Credit memo',
+  vendor_credit: 'Vendor credit',
+};
+
+export const rs = (n: number): string => formatCurrency(n, 'Rs ');
+
+/** "Sep 28, 2026"; empty for a missing date rather than "Invalid Date". */
+export const summaryDate = (iso: string | null | undefined): string =>
+  iso ? formatDate(iso.slice(0, 10)) : '';
+
+/**
+ * How late, in words.
+ *
+ * `daysOverdue` arrives signed, so a document not yet due is negative and one
+ * due today is zero. Saying "0 days overdue" for something due this afternoon
+ * is the kind of true-but-wrong that makes a report feel careless.
+ */
+export const lateness = (days: number): string => {
+  if (days < 0) return `Due in ${-days} day${days === -1 ? '' : 's'}`;
+  if (days === 0) return 'Due today';
+  return `${days} day${days === 1 ? '' : 's'} overdue`;
+};
+
+/** "1 invoice", "3 bills". */
+export const countLabel = (count: number, party: SummaryParty): string => {
+  const copy = SUMMARY_COPY[party];
+  return `${count} ${count === 1 ? copy.noun : copy.nounPlural}`;
+};
+
+/**
+ * The figure to ask for, and what to call it.
+ *
+ * Net of credits whenever there are any: a customer holding an unapplied
+ * receipt will point to it, and a summary that ignored it would overstate what
+ * they owe. When credits cover more than is open, the figure turns around and
+ * says so rather than printing a negative amount due.
+ */
+export const headlineFigure = (s: PartySummary): { label: string; value: number } => {
+  const copy = SUMMARY_COPY[s.partyType];
+  if (s.credits.total <= 0) return { label: copy.dueLabel, value: s.totals.outstanding };
+  if (s.netDue < 0) return { label: copy.creditBalanceLabel, value: -s.netDue };
+  return { label: copy.dueLabel, value: s.netDue };
+};
+
+/** Whether there is anything worth sending: an open document or a credit. */
+export const hasAnythingOpen = (s: PartySummary): boolean =>
+  s.documents.length > 0 || s.credits.items.length > 0;
+
+/** How many documents a chat message lists before pointing to the PDF. */
+export const MESSAGE_DOCUMENT_LIMIT = 10;
+
+/** One line per document for a chat message, soonest due first, capped. */
+export const summaryMessageLines = (s: PartySummary, limit = MESSAGE_DOCUMENT_LIMIT): string[] => {
+  const copy = SUMMARY_COPY[s.partyType];
+  const lines = s.documents.slice(0, limit).map(d =>
+    [
+      d.documentNumber || copy.noun,
+      d.dueDate ? `due ${summaryDate(d.dueDate)}` : '',
+      rs(d.balance),
+      d.daysOverdue > 0 ? lateness(d.daysOverdue) : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+  );
+  const more = s.documents.length - limit;
+  if (more > 0) lines.push(`…and ${more} more in the attached PDF`);
+  return lines;
+};
+
+/**
+ * The message that travels with the PDF, between the greeting and the
+ * sign-off. It stands on its own — a WhatsApp chat shows the text first, and
+ * the reader should know what they owe before they open anything.
+ */
+export const summaryMessageBody = (s: PartySummary, companyName: string): string[] => {
+  const asOf = summaryDate(s.asOfDate);
+  const withCompany = companyName ? ` with ${companyName}` : '';
+  const body: string[] = [];
+
+  if (s.documents.length === 0) {
+    body.push(
+      s.partyType === 'customer'
+        ? `You have no unpaid invoices${withCompany} as of ${asOf}.`
+        : `We have no unpaid bills with you as of ${asOf}.`,
+    );
+  } else {
+    body.push(
+      s.partyType === 'customer'
+        ? `Here is a summary of your unpaid invoices${withCompany} as of ${asOf}:`
+        : `Here is a summary of the bills we have open with you as of ${asOf}:`,
+      '',
+      ...summaryMessageLines(s),
+    );
+  }
+
+  body.push('');
+  if (s.credits.total > 0 && s.documents.length > 0) {
+    body.push(`Total outstanding: ${rs(s.totals.outstanding)}`);
+    body.push(`Less credits: ${rs(s.credits.total)}`);
+  }
+  const head = headlineFigure(s);
+  body.push(`${head.label}: ${rs(head.value)}`);
+  if (s.totals.overdue > 0) body.push(`Overdue: ${rs(s.totals.overdue)}`);
+  body.push('', 'The full summary is attached as a PDF.');
+  return body;
+};
+
+/** The whole message, greeting to sign-off — what WhatsApp opens with. */
+export const summaryMessage = (s: PartySummary, companyName: string): string =>
+  [
+    s.party.name ? `Dear ${s.party.name},` : 'Hello,',
+    '',
+    ...summaryMessageBody(s, companyName),
+    '',
+    'Regards,',
+    ...(companyName ? [companyName] : []),
+  ].join('\n');
+
+/**
+ * A phone number as wa.me wants it: digits only, country code first.
+ *
+ * Pakistani local forms (0300…, 300…) gain 92 — the way numbers are usually
+ * saved here, and without it wa.me opens a chat with a number that does not
+ * exist. Anything too short or too long is dropped rather than guessed at.
+ * The same rule as the website's share menu.
+ */
+export const normalizeWhatsappPhone = (phone: string | null | undefined): string | null => {
+  if (!phone) return null;
+  let digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.length === 11 && digits.startsWith('0')) digits = `92${digits.slice(1)}`;
+  else if (digits.length === 10 && digits.startsWith('3')) digits = `92${digits}`;
+  return digits.length >= 10 && digits.length <= 15 ? digits : null;
+};
+
+/** "Outstanding_invoices_Acme_Traders_2026-09-28.pdf" — safe on every filesystem. */
+export const summaryFilename = (s: PartySummary): string => {
+  const safe = (v: string) => v.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+  const parts = [SUMMARY_COPY[s.partyType].title, s.party.name, s.asOfDate].map(safe).filter(Boolean);
+  return `${parts.join('_').slice(0, 100) || 'Summary'}.pdf`;
+};

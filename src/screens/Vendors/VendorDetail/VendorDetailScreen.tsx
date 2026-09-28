@@ -47,6 +47,7 @@ import {
 } from '../../../serializers/vendorSerializer';
 import { getVendorStatementAPI } from '../../../networks/purchases/vendorNetwork';
 import { shareVendorStatementPdf } from '../../../utils/statementPdf';
+import { SUMMARY_COPY } from '../../../models/partySummaryModel';
 import { useCompanyInfo } from '../../../utils/companyInfo';
 import type { PaymentTerms, Vendor } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
@@ -170,6 +171,14 @@ const VendorDetailScreen: React.FC = () => {
         initial: false
       });
   };
+  // Every unpaid bill, as of today — what is owed to this vendor.
+  const handlePayablesSummary = () => {
+    navigation.navigate('PartySummary', {
+      partyType: 'vendor',
+      partyId: vendor.id,
+      partyName: vendor.name,
+    });
+  };
   const handleSendStatement = async () => {
     if (isSharingStatement) return;
     setIsSharingStatement(true);
@@ -252,6 +261,10 @@ const VendorDetailScreen: React.FC = () => {
           <TouchableOpacity style={styles.actionBtn} onPress={handleRecordPayment} activeOpacity={0.7}>
             <Feather name="dollar-sign" size={20} color={colors.actionGreen} style={{ marginBottom: spacing.xxs }} />
             <Text style={styles.actionLabel}>Record Payment</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={handlePayablesSummary} activeOpacity={0.7}>
+            <Feather name="list" size={20} color={colors.actionGreen} style={{ marginBottom: spacing.xxs }} />
+            <Text style={styles.actionLabel}>{SUMMARY_COPY.vendor.action}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionBtn, isSharingStatement && { opacity: 0.5 }]}

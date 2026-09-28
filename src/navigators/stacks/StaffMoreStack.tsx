@@ -14,6 +14,7 @@ export type StaffMoreStackParamList = {
   VendorList: undefined;
   VendorDetail: { vendorId: string };
   VendorForm: { vendorId?: string } | undefined;
+  PartySummary: { partyType: 'customer' | 'vendor'; partyId: string; partyName?: string };
   AssignDeliveries: undefined;
   CreateDelivery: undefined;
   AssignWork: undefined;

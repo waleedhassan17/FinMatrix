@@ -19,23 +19,14 @@ import dayjs from 'dayjs';
 import { THEME } from '../../../theme';
 import { formatCurrency } from '../../../utils/formatters';
 import type { PartyDocsState } from '../../../models/arAgingModel';
+import { lateness } from '../../../models/partySummaryModel';
 
 const { colors, radius, spacing, typography } = THEME;
 
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
-/**
- * How late, in words.
- *
- * `daysOverdue` arrives signed, so a document not yet due is negative and one
- * due today is zero. Saying "0 days overdue" for something due this afternoon
- * is the kind of true-but-wrong that makes a report feel careless.
- */
-export const lateness = (days: number): string => {
-  if (days < 0) return `Due in ${-days} day${days === -1 ? '' : 's'}`;
-  if (days === 0) return 'Due today';
-  return `${days} day${days === 1 ? '' : 's'} overdue`;
-};
+/** How late, in words — shared with the outstanding and payables summaries. */
+export { lateness } from '../../../models/partySummaryModel';
 
 interface Props {
   state: PartyDocsState | undefined;

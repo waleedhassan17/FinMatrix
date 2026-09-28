@@ -25,3 +25,7 @@ export const getAPAgingPartyDocumentsAPI = async (
     `/reports/ap-aging/vendors/${encodeURIComponent(vendorId)}/documents`,
     params,
   );
+
+/** Everything owed to one vendor, as of today — the payables summary. */
+export const getAPPartySummaryAPI = async (vendorId: string): Promise<any> =>
+  fetchReportWithStatus(`/reports/ap-aging/vendors/${encodeURIComponent(vendorId)}/summary`);

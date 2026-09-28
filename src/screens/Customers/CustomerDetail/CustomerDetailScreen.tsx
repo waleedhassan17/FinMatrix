@@ -41,6 +41,7 @@ import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { PAYMENT_TERMS_LABELS } from '../../../models/customerModel';
 import { getCustomerStatementAPI } from '../../../networks/sales/customerNetwork';
+import { SUMMARY_COPY } from '../../../models/partySummaryModel';
 import { statementSerializer, shareStatementPdf } from '../../../utils/statementPdf';
 import { useCompanyInfo } from '../../../utils/companyInfo';
 import { mapCustomer } from '../../../serializers/customerSerializer';
@@ -193,6 +194,14 @@ const CustomerDetailScreen: React.FC = () => {
         initial: false
       });
   };
+  // Every unpaid invoice, as of today, ready to share or save.
+  const handleOutstandingSummary = () => {
+    navigation.navigate('PartySummary', {
+      partyType: 'customer',
+      partyId: customer.id,
+      partyName: customer.name,
+    });
+  };
   const handleSendStatement = async () => {
     if (isSharingStatement) return;
     setIsSharingStatement(true);
@@ -330,6 +339,7 @@ const CustomerDetailScreen: React.FC = () => {
         <View style={styles.actionRow}>
           <ActionButton icon="file-text" label="Create Invoice" onPress={handleCreateInvoice} />
           <ActionButton icon="dollar-sign" label="Record Payment" onPress={handleRecordPayment} />
+          <ActionButton icon="list" label={SUMMARY_COPY.customer.action} onPress={handleOutstandingSummary} />
           <ActionButton
             icon="send"
             label={isSharingStatement ? 'Preparing…' : 'Send Statement'}

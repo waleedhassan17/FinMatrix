@@ -43,3 +43,14 @@ export const getARAgingPartyDocumentsAPI = async (
     `/reports/ar-aging/customers/${encodeURIComponent(customerId)}/documents`,
     params,
   );
+
+/**
+ * Everything one customer still owes, as of today — what the "Outstanding
+ * invoices" summary is built from. Takes no bucket spec: a document sent to a
+ * customer is cut the way the company's aging report opens.
+ *
+ * With status, like the drill-down: an older server answers 404, and the
+ * screen says so instead of offering a retry that cannot work.
+ */
+export const getARPartySummaryAPI = async (customerId: string): Promise<any> =>
+  fetchReportWithStatus(`/reports/ar-aging/customers/${encodeURIComponent(customerId)}/summary`);

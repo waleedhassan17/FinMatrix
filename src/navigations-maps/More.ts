@@ -23,6 +23,7 @@ import CustomerDetailScreen from '../screens/Customers/CustomerDetail/CustomerDe
 import CustomerFormScreen from '../screens/Customers/CustomerForm/CustomerFormScreen';
 import VendorListScreen from '../screens/Vendors/VendorList/VendorListScreen';
 import VendorDetailScreen from '../screens/Vendors/VendorDetail/VendorDetailScreen';
+import PartySummaryScreen from '../screens/Reports/PartySummary/PartySummaryScreen';
 import VendorFormScreen from '../screens/Vendors/VendorForm/VendorFormScreen';
 import AssignDeliveriesScreen from '../screens/Delivery/Admin/AssignDeliveries/AssignDeliveriesScreen';
 import CreateDeliveryScreen from '../screens/Delivery/Admin/CreateDelivery/CreateDeliveryScreen';
@@ -69,6 +70,7 @@ export const MoreRouteNames = {
   VendorList: 'VendorList',
   VendorDetail: 'VendorDetail',
   VendorForm: 'VendorForm',
+  PartySummary: 'PartySummary',
   AssignDeliveries: 'AssignDeliveries',
   CreateDelivery: 'CreateDelivery',
   AssignWork: 'AssignWork',
@@ -125,6 +127,7 @@ export const MORE_ROUTES: IRoute[] = [
   { title: MoreRouteNames.VendorList, component: VendorListScreen },
   { title: MoreRouteNames.VendorDetail, component: VendorDetailScreen },
   { title: MoreRouteNames.VendorForm, component: VendorFormScreen },
+  { title: MoreRouteNames.PartySummary, component: PartySummaryScreen },
   { title: MoreRouteNames.AssignDeliveries, component: AssignDeliveriesScreen },
   { title: MoreRouteNames.CreateDelivery, component: CreateDeliveryScreen },
   { title: MoreRouteNames.AssignWork, component: AssignWorkScreen },

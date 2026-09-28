@@ -35,6 +35,7 @@ import CustomerFormScreen from '../screens/Customers/CustomerForm/CustomerFormSc
 import VendorListScreen from '../screens/Vendors/VendorList/VendorListScreen';
 import VendorDetailScreen from '../screens/Vendors/VendorDetail/VendorDetailScreen';
 import VendorFormScreen from '../screens/Vendors/VendorForm/VendorFormScreen';
+import PartySummaryScreen from '../screens/Reports/PartySummary/PartySummaryScreen';
 import AssignDeliveriesScreen from '../screens/Delivery/Admin/AssignDeliveries/AssignDeliveriesScreen';
 import CreateDeliveryScreen from '../screens/Delivery/Admin/CreateDelivery/CreateDeliveryScreen';
 import AssignWorkScreen from '../screens/Delivery/Admin/AssignWork/AssignWorkScreen';
@@ -71,6 +72,7 @@ const CORE_ROUTES = [
   { title: StaffMoreRouteNames.VendorList, component: VendorListScreen },
   { title: StaffMoreRouteNames.VendorDetail, component: VendorDetailScreen },
   { title: StaffMoreRouteNames.VendorForm, component: VendorFormScreen },
+  { title: StaffMoreRouteNames.PartySummary, component: PartySummaryScreen },
 
   // Read-only reference
   { title: StaffMoreRouteNames.TaxLiability, component: TaxLiabilityScreen },

@@ -61,6 +61,7 @@ import CustomerDetailScreen from '../../screens/Customers/CustomerDetail/Custome
 import CustomerFormScreen from '../../screens/Customers/CustomerForm/CustomerFormScreen';
 import VendorListScreen from '../../screens/Vendors/VendorList/VendorListScreen';
 import VendorDetailScreen from '../../screens/Vendors/VendorDetail/VendorDetailScreen';
+import PartySummaryScreen from '../../screens/Reports/PartySummary/PartySummaryScreen';
 import VendorFormScreen from '../../screens/Vendors/VendorForm/VendorFormScreen';
 // SHELVED (Tax Management)
 // import TaxSettingsScreen from '../../screens/Tax/TaxSettings/TaxSettingsScreen';
@@ -169,6 +170,7 @@ export const SB_MORE_ROUTES: TierRoute[] = [
   { name: 'VendorList', component: VendorListScreen },
   { name: 'VendorDetail', component: VendorDetailScreen },
   { name: 'VendorForm', component: VendorFormScreen },
+  { name: 'PartySummary', component: PartySummaryScreen },
   { name: 'BankReconciliationList', component: BankReconciliationListScreen },
   { name: 'BankReconciliation', component: BankReconciliationScreen },
   { name: 'BankReconciliationDetail', component: BankReconciliationDetailScreen },

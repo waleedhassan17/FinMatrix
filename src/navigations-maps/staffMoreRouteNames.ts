@@ -38,6 +38,9 @@ export const StaffMoreRouteNames = {
   VendorList: 'VendorList',
   VendorDetail: 'VendorDetail',
   VendorForm: 'VendorForm',
+  // What a customer still owes, or what is owed to a vendor, ready to send —
+  // the same figures staff already see on those screens.
+  PartySummary: 'PartySummary',
   AssignDeliveries: 'AssignDeliveries',
   CreateDelivery: 'CreateDelivery',
   AssignWork: 'AssignWork',
