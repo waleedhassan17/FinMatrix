@@ -21,20 +21,32 @@ import { DEFAULT_COMPANY, type CompanyInfo } from './invoicePdf';
 
 export interface StatementLine {
   date: string;
-  type: 'invoice' | 'payment';
+  /** A charge raises what is owed (invoice, bill, refund); a credit lowers it. */
+  type: 'charge' | 'credit';
+  /** "Invoice", "Payment", "Credit memo", "Refund", "Bill", "Vendor credit". */
+  label: string;
   reference: string;
+  /** Always positive; `type` says which way it moves the balance. */
   amount: number;
 }
 
 export interface StatementData {
+  /** Whose statement — sets the words in the totals. */
+  party: 'customer' | 'vendor';
   customerName: string;
   customerEmail: string;
   startDate: string;
   endDate: string;
   openingBalance: number;
   lines: StatementLine[];
+  /** Invoiced (customer) or billed (vendor) in the period. */
   totalInvoiced: number;
+  /** Received from the customer, or paid to the vendor. */
   totalReceived: number;
+  /** Credit memos or vendor credits in the period; 0 from an older server. */
+  totalCredited: number;
+  /** Cash refunds of credit memos; 0 from an older server. */
+  totalRefunded: number;
   closingBalance: number;
 }
 
@@ -43,31 +55,60 @@ const toNumber = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
-/** Maps the raw /statement response (inside the API envelope) to StatementData. */
+const byDate = (a: StatementLine, b: StatementLine) => a.date.localeCompare(b.date);
+const list = (v: unknown): any[] => (Array.isArray(v) ? v : []);
+
+/**
+ * Maps the raw /statement response (inside the API envelope) to StatementData.
+ *
+ * Credit memos bring the balance down and a cash refund of one puts it back —
+ * the server has sent both since statements stopped leaving them out.
+ */
 export function statementSerializer(payload: any): StatementData | null {
   const d = payload?.data;
   if (!d?.customer) return null;
-  const invoices: StatementLine[] = (Array.isArray(d.invoices) ? d.invoices : []).map((i: any) => ({
-    date: i?.invoiceDate ?? '',
-    type: 'invoice' as const,
-    reference: i?.invoiceNumber ?? 'Invoice',
-    amount: toNumber(i?.total),
-  }));
-  const payments: StatementLine[] = (Array.isArray(d.payments) ? d.payments : []).map((p: any) => ({
-    date: p?.paymentDate ?? '',
-    type: 'payment' as const,
-    reference: p?.reference || `Payment ${String(p?.id ?? '').slice(0, 8).toUpperCase()}`,
-    amount: toNumber(p?.amount),
-  }));
+  const lines: StatementLine[] = [
+    ...list(d.invoices).map((i: any) => ({
+      date: i?.invoiceDate ?? '',
+      type: 'charge' as const,
+      label: 'Invoice',
+      reference: i?.invoiceNumber ?? 'Invoice',
+      amount: toNumber(i?.total),
+    })),
+    ...list(d.payments).map((p: any) => ({
+      date: p?.paymentDate ?? '',
+      type: 'credit' as const,
+      label: 'Payment',
+      reference: p?.paymentNumber || p?.reference || `Payment ${String(p?.id ?? '').slice(0, 8).toUpperCase()}`,
+      amount: toNumber(p?.amount),
+    })),
+    ...list(d.creditMemos).map((m: any) => ({
+      date: m?.date ?? '',
+      type: 'credit' as const,
+      label: 'Credit memo',
+      reference: m?.creditMemoNumber ?? 'Credit memo',
+      amount: toNumber(m?.total),
+    })),
+    ...list(d.refunds).map((r: any) => ({
+      date: r?.date ?? '',
+      type: 'charge' as const,
+      label: 'Refund',
+      reference: r?.creditMemoNumber ?? 'Refund',
+      amount: toNumber(r?.amount),
+    })),
+  ].sort(byDate);
   return {
+    party: 'customer',
     customerName: d.customer.name ?? '',
     customerEmail: d.customer.email ?? '',
     startDate: d.period?.startDate ?? '',
     endDate: d.period?.endDate ?? '',
     openingBalance: toNumber(d.openingBalance),
-    lines: [...invoices, ...payments].sort((a, b) => a.date.localeCompare(b.date)),
+    lines,
     totalInvoiced: toNumber(d.totals?.invoiced),
     totalReceived: toNumber(d.totals?.received),
+    totalCredited: toNumber(d.totals?.credited),
+    totalRefunded: toNumber(d.totals?.refunded),
     closingBalance: toNumber(d.closingBalance),
   };
 }
@@ -82,18 +123,21 @@ export function buildStatementHtml(data: StatementData, company: CompanyInfo = D
   let running = data.openingBalance;
   const rows = data.lines
     .map(line => {
-      running += line.type === 'invoice' ? line.amount : -line.amount;
+      running += line.type === 'charge' ? line.amount : -line.amount;
       return `
         <tr>
           <td>${esc(formatDate(line.date))}</td>
-          <td>${line.type === 'invoice' ? 'Invoice' : 'Payment'}</td>
+          <td>${esc(line.label)}</td>
           <td>${esc(line.reference)}</td>
-          <td class="num">${line.type === 'invoice' ? esc(formatCurrency(line.amount, 'Rs ')) : ''}</td>
-          <td class="num">${line.type === 'payment' ? esc(formatCurrency(line.amount, 'Rs ')) : ''}</td>
+          <td class="num">${line.type === 'charge' ? esc(formatCurrency(line.amount, 'Rs ')) : ''}</td>
+          <td class="num">${line.type === 'credit' ? esc(formatCurrency(line.amount, 'Rs ')) : ''}</td>
           <td class="num">${esc(formatCurrency(running, 'Rs '))}</td>
         </tr>`;
     })
     .join('');
+  const vendor = data.party === 'vendor';
+  const summaryRow = (label: string, value: number) =>
+    `<tr><td>${esc(label)}</td><td class="num">${esc(formatCurrency(value, 'Rs '))}</td></tr>`;
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/><style>
@@ -121,16 +165,18 @@ export function buildStatementHtml(data: StatementData, company: CompanyInfo = D
   </div>
   <div><strong>${esc(data.customerName)}</strong>${data.customerEmail ? `<div class="muted">${esc(data.customerEmail)}</div>` : ''}</div>
   <table>
-    <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th class="num">Invoiced</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead>
+    <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th class="num">${vendor ? 'Billed' : 'Invoiced'}</th><th class="num">Paid &amp; credited</th><th class="num">Balance</th></tr></thead>
     <tbody>
       <tr><td>${esc(formatDate(data.startDate))}</td><td colspan="4">Opening balance</td><td class="num">${esc(formatCurrency(data.openingBalance, 'Rs '))}</td></tr>
       ${rows || '<tr><td colspan="6" class="muted">No activity in this period.</td></tr>'}
     </tbody>
   </table>
   <table class="summary">
-    <tr><td>Opening balance</td><td class="num">${esc(formatCurrency(data.openingBalance, 'Rs '))}</td></tr>
-    <tr><td>Invoiced this period</td><td class="num">${esc(formatCurrency(data.totalInvoiced, 'Rs '))}</td></tr>
-    <tr><td>Payments received</td><td class="num">${esc(formatCurrency(data.totalReceived, 'Rs '))}</td></tr>
+    ${summaryRow('Opening balance', data.openingBalance)}
+    ${summaryRow(vendor ? 'Billed this period' : 'Invoiced this period', data.totalInvoiced)}
+    ${summaryRow(vendor ? 'Payments made' : 'Payments received', data.totalReceived)}
+    ${data.totalCredited ? summaryRow(vendor ? 'Vendor credits' : 'Credit memos', data.totalCredited) : ''}
+    ${data.totalRefunded ? summaryRow('Refunds paid', data.totalRefunded) : ''}
     <tr class="total"><td>Closing balance</td><td class="num">${esc(formatCurrency(data.closingBalance, 'Rs '))}</td></tr>
   </table>
 </body></html>`;
@@ -143,27 +189,41 @@ export function buildStatementHtml(data: StatementData, company: CompanyInfo = D
 export function vendorStatementSerializer(payload: any): StatementData | null {
   const d = payload?.data;
   if (!d?.vendor) return null;
-  const bills: StatementLine[] = (Array.isArray(d.bills) ? d.bills : []).map((b: any) => ({
-    date: b?.billDate ?? '',
-    type: 'invoice' as const,
-    reference: b?.billNumber ?? 'Bill',
-    amount: toNumber(b?.total),
-  }));
-  const payments: StatementLine[] = (Array.isArray(d.payments) ? d.payments : []).map((p: any) => ({
-    date: p?.paymentDate ?? '',
-    type: 'payment' as const,
-    reference: p?.reference || `Payment ${String(p?.id ?? '').slice(0, 8).toUpperCase()}`,
-    amount: toNumber(p?.totalAmount ?? p?.amount),
-  }));
+  const lines: StatementLine[] = [
+    ...list(d.bills).map((b: any) => ({
+      date: b?.billDate ?? '',
+      type: 'charge' as const,
+      label: 'Bill',
+      reference: b?.billNumber ?? 'Bill',
+      amount: toNumber(b?.total),
+    })),
+    ...list(d.payments).map((p: any) => ({
+      date: p?.paymentDate ?? '',
+      type: 'credit' as const,
+      label: 'Payment',
+      reference: p?.reference || `Payment ${String(p?.id ?? '').slice(0, 8).toUpperCase()}`,
+      amount: toNumber(p?.totalAmount ?? p?.amount),
+    })),
+    ...list(d.vendorCredits).map((c: any) => ({
+      date: c?.date ?? '',
+      type: 'credit' as const,
+      label: 'Vendor credit',
+      reference: c?.vendorCreditNumber ?? 'Vendor credit',
+      amount: toNumber(c?.total),
+    })),
+  ].sort(byDate);
   return {
+    party: 'vendor',
     customerName: d.vendor.name ?? '',
     customerEmail: d.vendor.email ?? '',
     startDate: d.period?.startDate ?? '',
     endDate: d.period?.endDate ?? '',
     openingBalance: toNumber(d.openingBalance),
-    lines: [...bills, ...payments].sort((a, b) => a.date.localeCompare(b.date)),
+    lines,
     totalInvoiced: toNumber(d.totals?.billed),
     totalReceived: toNumber(d.totals?.paid),
+    totalCredited: toNumber(d.totals?.credited),
+    totalRefunded: 0,
     closingBalance: toNumber(d.closingBalance),
   };
 }
