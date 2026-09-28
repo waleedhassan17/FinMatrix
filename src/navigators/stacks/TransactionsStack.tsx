@@ -39,7 +39,13 @@ export type TransactionsStackParamList = {
   VendorCreditForm: { vendorCreditId?: string } | undefined;
   VendorCreditDetail: { vendorCreditId: string };
   ReceivePayment:
-    | { customerId?: string; invoiceId?: string; fromApprovalRequestId?: string }
+    | {
+        customerId?: string;
+        invoiceId?: string;
+        fromApprovalRequestId?: string;
+        /** "Use credit": credit on account on, `invoiceId` settled first. */
+        useCredits?: boolean;
+      }
     | undefined;
   BillList: undefined;
   BillForm: { billId?: string; vendorId?: string } | undefined;

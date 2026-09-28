@@ -61,10 +61,12 @@ const PaymentSuccessScreen: React.FC = () => {
         {/* The journal entry in plain words — the user should never have to
             open the ledger to know what their action did. */}
         <View style={styles.card}>
-          <Row label="Paid from" value={accountName || '—'} />
+          <Row label="Paid from" value={amount > 0 ? accountName || '—' : 'Vendor credit'} />
           <Row label="Date" value={formatDate(paymentDate)} />
-          <Row label="Method" value={METHOD_LABEL[method] ?? method} />
-          <Row label="Reference" value={reference || '—'} />
+          {/* Credit alone records no payment, so it has no method or
+              reference to show — only the credit it spent. */}
+          {amount > 0 && <Row label="Method" value={METHOD_LABEL[method] ?? method} />}
+          {amount > 0 && <Row label="Reference" value={reference || '—'} />}
           {/* Only a cash payment carries one. A settlement funded entirely
               from vendor credit posts nothing and needs no proof. */}
           {amount > 0 && <Row label="Proof" value="Attached" />}

@@ -107,3 +107,35 @@ describe('anything else leaves it unlocked', () => {
     expect(hasOutstandingPaymentFor(requests, INVOICE)).toBe(true);
   });
 });
+
+describe('a settlement locks every invoice it settles', () => {
+  // Credit on account and new money go as one request with the invoices under
+  // `credits` and `cash` — not `applications`. Missing them left the invoice
+  // payable a second time while the owner had yet to decide.
+  const settlement = {
+    action: 'settle',
+    customerId: 'cust-1',
+    paymentDate: '2026-09-28',
+    credits: [{ kind: 'advance', id: 'rct-1', invoiceId: INVOICE, amount: '100' }],
+    cash: { amount: '50', paymentMethod: 'cash', applications: [{ invoiceId: OTHER, amount: '50' }] },
+  };
+
+  it('matches an invoice the credit lands on', () => {
+    expect(hasOutstandingPaymentFor([request(settlement)], INVOICE)).toBe(true);
+  });
+
+  it('matches an invoice the new money lands on', () => {
+    expect(hasOutstandingPaymentFor([request(settlement)], OTHER)).toBe(true);
+  });
+
+  it('credit alone, with no cash leg, still locks its invoice', () => {
+    const creditOnly = { action: 'settle', customerId: 'cust-1', credits: settlement.credits };
+    expect(hasOutstandingPaymentFor([request(creditOnly)], INVOICE)).toBe(true);
+    expect(hasOutstandingPaymentFor([request(creditOnly)], OTHER)).toBe(false);
+  });
+
+  it('an advance being applied locks its invoice', () => {
+    const apply = { action: 'apply', paymentId: 'rct-2', applications: [{ invoiceId: INVOICE, amount: '10' }] };
+    expect(hasOutstandingPaymentFor([request(apply)], INVOICE)).toBe(true);
+  });
+});

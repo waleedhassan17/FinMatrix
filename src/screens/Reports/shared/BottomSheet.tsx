@@ -4,7 +4,7 @@
 // The phone's side panel: something to look into without leaving the screen
 // it came from — a month's documents, a period to choose. It slides up over a
 // scrim; tapping the scrim, the ✕ or the back button closes it, and the screen
-// underneath has not moved. Same shape as ApplyAdvanceModal's sheet.
+// underneath has not moved.
 
 import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity, ScrollView } from 'react-native';

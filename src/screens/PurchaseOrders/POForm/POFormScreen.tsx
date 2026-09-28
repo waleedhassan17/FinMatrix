@@ -60,6 +60,7 @@ import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/report
 import TaxField from '../../../components/form/TaxField';
 import { lineTaxError } from '../../../models/taxRate';
 import { useCapability } from '../../../hooks/useCapability';
+import { useRequesterName } from '../../../hooks/useRequesterName';
 import { fetchApprovalById } from '../../../networks/approvals/approvalsNetwork';
 import { decideApproval } from '../../Approvals/approvalsSlice';
 import { APPROVAL_TYPE_EFFECTS, isPendingApproval } from '../../../models/approvalModel';
@@ -108,6 +109,7 @@ const POFormScreen: React.FC = () => {
   // The request under review. Held locally, not in the form slice: it is
   // metadata about the decision, not part of the purchase order being drawn.
   const [request, setRequest] = useState<ApprovalRequest | null>(null);
+  const requesterName = useRequesterName(request?.requestedBy);
   const [loadingRequest, setLoadingRequest] = useState(isReviewing);
   const [deciding, setDeciding] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -488,7 +490,7 @@ const POFormScreen: React.FC = () => {
         subtitle={
           isReviewing
             ? request?.requestedBy
-              ? `Raised by ${request.requestedBy}`
+              ? `Raised by ${requesterName}`
               : 'Raised by a staff member'
             : isEditing
               ? 'Update PO details'

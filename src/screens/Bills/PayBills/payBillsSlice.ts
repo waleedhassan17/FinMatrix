@@ -1,14 +1,16 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Pay Bills Slice (createAppSlice pattern)
-// Manages form state: vendor, date, method, amount,
-// bank account, outstanding bill checkboxes, and
-// auto-distribute.
+// Manages form state: vendor, date, method, bank account,
+// the bills to settle, the vendor's credit, and the proof.
+// Settles the way the web's Pay Bills does: each ticked
+// bill's figure is what it is settled by; vendor credit
+// covers the first of it, oldest bill first; cash the rest.
 // ═══════════════════════════════════════════════════════
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { toIsoDate } from '../../../models/reportModel';
 import { createAppSlice } from '@store/createAppSlice';
-import type { Bill, BillPayment, BillStatus, PaymentMethod } from '../../../types';
+import type { Bill, BillPayment, PaymentMethod } from '../../../types';
 import {
   getBillsAPI,
   payBillsAPI,
@@ -16,8 +18,14 @@ import {
   uploadBillPaymentProofAPI,
 } from '../../../networks/purchases/billNetwork';
 import { billListSerializer } from '../../../serializers/billSerializer';
-import { getVendorCreditsAPI } from '../../../networks/purchases/vendorCreditNetwork';
-import { vendorCreditListSerializer } from '../../../serializers/vendorCreditSerializer';
+import { getAPPartySummaryAPI } from '../../../networks/reports/apAgingNetwork';
+import { partySummarySerializer } from '../../../serializers/partySummarySerializer';
+import {
+  creditSourcesFromSummary,
+  spreadCredits,
+  type CreditSource,
+  type CreditSpread,
+} from '../../../models/creditSpreadModel';
 
 /** The API's enum is cash | check | bank_transfer | credit_card | other, so
  *  the UI's `cheque` / `online` have to be translated (same mapping the
@@ -36,6 +44,8 @@ function toBackendPaymentMethod(method: PaymentMethod): string {
   }
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 export interface OutstandingBillRow {
   billId: string;
   billNumber: string;
@@ -44,19 +54,13 @@ export interface OutstandingBillRow {
   total: number;
   amountPaid: number;
   balance: number;
-  /** Cash portion. */
+  /** What this bill is settled by — vendor credit and cash together. */
   allocated: number;
-  /** Vendor-credit portion. Credits post no journal entry when applied — the
-   *  credit's own creation already debited A/P — so this simply settles part
-   *  of the bill without cash leaving the building. */
+  /** Of `allocated`, what vendor credit covers — derived, never typed. Credits
+   *  post no journal entry when applied (the credit's own creation already
+   *  debited A/P), so this part settles the bill without cash leaving. */
   creditApplied: number;
   checked: boolean;
-}
-
-export interface AvailableCredit {
-  id: string;
-  number: string;
-  balance: number;
 }
 
 export interface PayBillsSliceState {
@@ -65,12 +69,16 @@ export interface PayBillsSliceState {
   paymentDate: string;
   method: PaymentMethod;
   reference: string;
+  /** What the ticked bills are settled by in all. Derived from the rows. */
   amount: string;
   bankAccountId: string;
   notes: string;
   outstandingRows: OutstandingBillRow[];
-  allBills: Bill[];
-  availableCredits: AvailableCredit[];
+  /** The vendor's credits — open ones and ones already partly used. */
+  credits: CreditSource[];
+  /** On as soon as the vendor has credit, as on the web: using a supplier's
+   *  credit before paying them cash is almost always what is meant. */
+  useCredits: boolean;
   errors: Record<string, string>;
   isSaving: boolean;
   isLoadingBills: boolean;
@@ -102,8 +110,8 @@ const initialState: PayBillsSliceState = {
   bankAccountId: '',
   notes: '',
   outstandingRows: [],
-  allBills: [],
-  availableCredits: [],
+  credits: [],
+  useCredits: false,
   errors: {},
   isSaving: false,
   isLoadingBills: false,
@@ -115,61 +123,62 @@ const initialState: PayBillsSliceState = {
   proofError: '',
 };
 
-/** The payment total is derived from the rows, never typed. */
-function syncTotal(state: PayBillsSliceState) {
+/**
+ * Where the vendor's credit goes: over the ticked bills in the order they are
+ * listed (oldest due first), each taking no more than it is being settled by.
+ * The web's Pay Bills spreads it the same way.
+ */
+export function billCreditSpreadOf(
+  state: Pick<PayBillsSliceState, 'outstandingRows' | 'credits' | 'useCredits'>,
+): CreditSpread {
+  return spreadCredits(
+    state.outstandingRows
+      .filter(r => r.checked && r.allocated > 0)
+      .map(r => ({ documentId: r.billId, cap: r.allocated })),
+    state.useCredits ? state.credits : [],
+  );
+}
+
+/** Of a row, what leaves the bank. */
+export const cashOf = (row: OutstandingBillRow): number =>
+  row.checked ? Math.max(0, round2(row.allocated - row.creditApplied)) : 0;
+
+/** Put the credit on the rows and the total on the form. Run after any change
+ *  to the rows, the credits or the switch. */
+function recompute(state: PayBillsSliceState) {
+  const spread = billCreditSpreadOf(state);
+  state.outstandingRows.forEach(r => {
+    r.creditApplied = spread.perDocument[r.billId] ?? 0;
+  });
   const total = state.outstandingRows.reduce((sum, r) => sum + (r.checked ? r.allocated : 0), 0);
-  state.amount = total > 0 ? String(Math.round(total * 100) / 100) : '';
+  state.amount = total > 0 ? String(round2(total)) : '';
 }
 
-/** Credit still unspent across the whole screen. */
-function creditPoolLeft(state: PayBillsSliceState): number {
-  const total = state.availableCredits.reduce((sum, c) => sum + c.balance, 0);
-  const used = state.outstandingRows.reduce((sum, r) => sum + r.creditApplied, 0);
-  return Math.round((total - used) * 100) / 100;
-}
-
-/** Clamp to the bill's balance — you can never pay a supplier more than the
- *  bill owes them from this screen. */
+/** Clamp to the bill's balance — you can never settle a supplier's bill for
+ *  more than it owes from this screen. */
 function clampToBalance(row: OutstandingBillRow, value: number): number {
   if (!Number.isFinite(value) || value < 0) return 0;
-  return Math.round(Math.min(value, row.balance) * 100) / 100;
+  return round2(Math.min(value, row.balance));
 }
 
 /**
- * Turn "this much vendor credit on each bill" into the pieces the server
- * applies — `{vendorCreditId, billId, amount}` — spending credits oldest first.
- * A row asking for more credit than is left gets only what is left.
+ * The vendor's unpaid bills, oldest due first.
+ *
+ * Asked of the server by vendor — the web does the same — rather than filtered
+ * out of the company's latest 200 bills, which left a busy company's older
+ * bills off the list. Drafts and voids are left out: paying a draft is refused
+ * with BILL_NOT_POSTED.
  */
-export function pairCreditsWithBills(
-  credits: AvailableCredit[],
-  rows: Pick<OutstandingBillRow, 'billId' | 'creditApplied'>[],
-): Array<{ vendorCreditId: string; billId: string; amount: string }> {
-  const pool = credits.map(c => ({ ...c }));
-  const pieces: Array<{ vendorCreditId: string; billId: string; amount: string }> = [];
-  for (const row of rows) {
-    let owed = Math.round(row.creditApplied * 100) / 100;
-    for (const credit of pool) {
-      if (owed <= 0) break;
-      if (credit.balance <= 0) continue;
-      const take = Math.round(Math.min(credit.balance, owed) * 100) / 100;
-      if (take <= 0) continue;
-      pieces.push({ vendorCreditId: credit.id, billId: row.billId, amount: take.toFixed(2) });
-      credit.balance = Math.round((credit.balance - take) * 100) / 100;
-      owed = Math.round((owed - take) * 100) / 100;
-    }
-  }
-  return pieces;
-}
-
-function buildRows(bills: Bill[], vendorId: string): OutstandingBillRow[] {
+export function buildRows(bills: Bill[], vendorId: string): OutstandingBillRow[] {
   return bills
     .filter(
       b =>
         b.vendorId === vendorId &&
-        (b.status === 'open' || b.status === 'overdue' || b.status === 'partial') &&
-        b.total - b.amountPaid > 0,
+        b.status !== 'draft' &&
+        b.status !== 'void' &&
+        round2(b.total - b.amountPaid) > 0,
     )
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'))
     .map(b => ({
       billId: b.id,
       billNumber: b.billNumber,
@@ -177,7 +186,7 @@ function buildRows(bills: Bill[], vendorId: string): OutstandingBillRow[] {
       dueDate: b.dueDate,
       total: b.total,
       amountPaid: b.amountPaid,
-      balance: Math.round((b.total - b.amountPaid) * 100) / 100,
+      balance: round2(b.total - b.amountPaid),
       allocated: 0,
       creditApplied: 0,
       checked: false,
@@ -200,71 +209,63 @@ export const payBillsSlice = createAppSlice({
 
     setPayBillVendor: create.reducer(
       (state, action: PayloadAction<{ id: string; name: string }>) => {
+        const changed = state.vendorId !== action.payload.id;
         state.vendorId = action.payload.id;
         state.vendorName = action.payload.name;
         if (state.errors.vendorId) {
           const { vendorId: _, ...rest } = state.errors;
           state.errors = rest;
         }
-        state.outstandingRows = buildRows(state.allBills, action.payload.id);
+        // The screen fetches this vendor's bills and credit next.
+        if (changed) {
+          state.outstandingRows = [];
+          state.credits = [];
+          state.useCredits = false;
+          state.amount = '';
+        }
       },
     ),
 
+    /** Ticking a bill offers to settle it in full; unticking clears it. */
     toggleBillCheck: create.reducer(
       (state, action: PayloadAction<string>) => {
         const row = state.outstandingRows.find(r => r.billId === action.payload);
         if (row) {
           row.checked = !row.checked;
-          // Checking a bill offers to settle it in full; unchecking clears it.
-          if (!row.checked) row.creditApplied = 0;
-          row.allocated = row.checked
-            ? Math.max(0, Math.round((row.balance - row.creditApplied) * 100) / 100)
-            : 0;
+          row.allocated = row.checked ? row.balance : 0;
         }
-        syncTotal(state);
+        recompute(state);
       },
     ),
 
-    /** Use available vendor credit against one bill, QuickBooks' "Set
-     *  Credits". Credits are fungible against the same vendor and applying
-     *  one posts nothing to the ledger, so which credit document funds which
-     *  bill has no accounting consequence — they are consumed oldest-first
-     *  behind the scenes and the user only chooses the amount per bill. */
-    toggleBillCredit: create.reducer(
-      (state, action: PayloadAction<string>) => {
-        const row = state.outstandingRows.find(r => r.billId === action.payload);
-        if (!row) return;
-        if (row.creditApplied > 0) {
-          row.creditApplied = 0;
-        } else {
-          const take = Math.min(row.balance, creditPoolLeft(state));
-          row.creditApplied = Math.round(take * 100) / 100;
-        }
-        // Cash covers whatever the credit does not.
-        row.checked = row.creditApplied > 0 ? true : row.checked;
-        row.allocated = row.checked
-          ? Math.max(0, Math.round((row.balance - row.creditApplied) * 100) / 100)
-          : 0;
-        syncTotal(state);
+    setUseCredits: create.reducer((state, action: PayloadAction<boolean>) => {
+      state.useCredits = action.payload;
+      if (state.errors.credits) {
+        const { credits: _, ...rest } = state.errors;
+        state.errors = rest;
+      }
+      recompute(state);
+    }),
+
+    /** How much of one credit to spend, as typed. */
+    setCreditUse: create.reducer(
+      (state, action: PayloadAction<{ id: string; value: string }>) => {
+        const credit = state.credits.find(c => c.id === action.payload.id);
+        if (!credit) return;
+        credit.use = action.payload.value.replace(/[^0-9.]/g, '');
+        recompute(state);
       },
     ),
 
-    setAvailableCredits: create.reducer(
-      (state, action: PayloadAction<AvailableCredit[]>) => {
-        state.availableCredits = action.payload;
-      },
-    ),
-
-    /** The per-bill "Amt To Pay" cell — the whole point of the redesign. */
+    /** The per-bill figure: what this bill is settled by. Editable, so a newer
+     *  bill can be settled in full while an older one is paid in part. */
     setBillAllocation: create.reducer(
       (state, action: PayloadAction<{ billId: string; value: string }>) => {
         const row = state.outstandingRows.find(r => r.billId === action.payload.billId);
         if (!row) return;
-        const parsed = parseFloat(action.payload.value);
-        const cashCeiling = Math.max(0, row.balance - row.creditApplied);
-        row.allocated = Math.min(clampToBalance(row, parsed), Math.round(cashCeiling * 100) / 100);
+        row.allocated = clampToBalance(row, parseFloat(action.payload.value));
         row.checked = row.allocated > 0;
-        syncTotal(state);
+        recompute(state);
       },
     ),
 
@@ -272,18 +273,17 @@ export const payBillsSlice = createAppSlice({
       const allChecked = state.outstandingRows.every(r => r.checked);
       state.outstandingRows.forEach(r => {
         r.checked = !allChecked;
-        if (allChecked) r.creditApplied = 0;
-        r.allocated = allChecked ? 0 : Math.max(0, Math.round((r.balance - r.creditApplied) * 100) / 100);
+        r.allocated = allChecked ? 0 : r.balance;
       });
-      syncTotal(state);
+      recompute(state);
     }),
 
     payAllBills: create.reducer(state => {
       state.outstandingRows.forEach(r => {
         r.checked = true;
-        r.allocated = Math.max(0, Math.round((r.balance - r.creditApplied) * 100) / 100);
+        r.allocated = r.balance;
       });
-      syncTotal(state);
+      recompute(state);
     }),
 
     clearPaymentProof: create.reducer(state => {
@@ -332,8 +332,8 @@ export const payBillsSlice = createAppSlice({
         const row = state.outstandingRows.find(r => r.billId === action.payload);
         if (row) {
           row.checked = true;
-          row.allocated = Math.max(0, Math.round((row.balance - row.creditApplied) * 100) / 100);
-          syncTotal(state);
+          row.allocated = row.balance;
+          recompute(state);
         }
       },
     ),
@@ -349,46 +349,45 @@ export const payBillsSlice = createAppSlice({
       Object.assign(state, { ...initialState });
     }),
 
-    fetchAllBillsForPayment: create.asyncThunk(
-      async () => getBillsAPI({ limit: 200 }),
+    /** The vendor's unpaid bills — see buildRows. */
+    fetchBillsForPayment: create.asyncThunk(
+      async (vendorId: string) => billListSerializer(await getBillsAPI({ vendorId, limit: 200 })).bills,
       {
         pending: state => { state.isLoadingBills = true; },
         fulfilled: (state, action) => {
-          const { bills } = billListSerializer(action.payload);
-          state.allBills = bills;
+          // A late answer for a vendor no longer selected is dropped.
+          if (action.meta.arg !== state.vendorId) return;
           state.isLoadingBills = false;
-          if (state.vendorId) {
-            state.outstandingRows = buildRows(bills, state.vendorId);
-          }
+          state.outstandingRows = buildRows(action.payload, action.meta.arg);
+          recompute(state);
         },
-        rejected: state => { state.isLoadingBills = false; },
+        rejected: (state, action) => {
+          if (action.meta.arg === state.vendorId) state.isLoadingBills = false;
+        },
       },
     ),
 
-    /** Activity step: "Confirm Payment → JE: DR AP, CR Cash for each
-     *  vendor → Bills marked Paid, AP & Cash updated".
-     *  Creates the BillPayment then patches every allocated bill's
-     *  amountPaid + status. Centralises what used to live in the
-     *  screen so PayBillsScreen only has to dispatch one action. */
-    /** Open credits for the selected vendor — what "Set Credits" can spend. */
+    /**
+     * The vendor's credits — open ones and ones already partly used — from the
+     * payables summary, the figures the web's Pay Bills reads. Switched on as
+     * soon as there are any. A failed lookup offers none; it never blocks
+     * paying.
+     */
     fetchVendorCreditsForPayment: create.asyncThunk(
-      // Every status, filtered below. Asking for `open` only left out a credit
-      // already partly used (status `applied`), so what remained of it could
-      // never be spent here.
-      async (vendorId: string) =>
-        vendorCreditListSerializer(await getVendorCreditsAPI({ vendorId })),
+      async (vendorId: string) => {
+        const summary = partySummarySerializer(await getAPPartySummaryAPI(vendorId));
+        return creditSourcesFromSummary(summary?.credits.items ?? [], 'vendor');
+      },
       {
-        fulfilled: (state, action: PayloadAction<any>) => {
-          const list = Array.isArray(action.payload) ? action.payload : action.payload?.vendorCredits ?? [];
-          state.availableCredits = list
-            .filter((c: any) => Number(c.balance) > 0 && c.status !== 'void' && c.status !== 'closed')
-            .map((c: any) => ({
-              id: c.id,
-              number: c.vendorCreditNumber ?? c.number ?? '',
-              balance: Number(c.balance) || 0,
-            }));
+        fulfilled: (state, action) => {
+          if (action.meta.arg !== state.vendorId) return;
+          state.credits = action.payload;
+          state.useCredits = action.payload.length > 0;
+          recompute(state);
         },
-        rejected: state => { state.availableCredits = []; },
+        rejected: (state, action) => {
+          if (action.meta.arg === state.vendorId) state.credits = [];
+        },
       },
     ),
 
@@ -396,7 +395,6 @@ export const payBillsSlice = createAppSlice({
       async (
         args: {
           paymentNumber: string;
-          allocations: { billId: string; billNumber: string; amount: number }[];
           /** Stable across retries of THIS payment — see payBillsAPI. */
           idempotencyKey?: string;
         },
@@ -405,23 +403,27 @@ export const payBillsSlice = createAppSlice({
         const root = thunkAPI.getState() as { payBills: PayBillsSliceState };
         const f = root.payBills;
 
-        // Which credit funds which bill — oldest credit first. Credits are
-        // fungible against one vendor, so the pairing has no ledger meaning;
-        // it only has to be something the server can apply.
-        const credits = pairCreditsWithBills(f.availableCredits, f.outstandingRows);
+        // Which credit funds which bill — oldest credit first, over the ticked
+        // bills oldest first. Credits are fungible against one vendor, so the
+        // pairing has no ledger meaning; it only has to be what the server
+        // can apply, and the same as the web would send.
+        const credits = billCreditSpreadOf(f)
+          .pieces.filter(p => p.amount > 0)
+          .map(p => ({ vendorCreditId: p.creditId, billId: p.documentId, amount: p.amount.toFixed(2) }));
 
         // PayBillsDto: vendorId, paymentDate, paymentMethod, bankAccountId,
         // applications[]. Amounts are @IsNumberString, hence the .toFixed(2).
-        const cash = args.allocations.filter(a => a.amount > 0);
+        // Each bill's cash is what it is settled by, less the credit on it.
+        const applications = f.outstandingRows
+          .map(r => ({ billId: r.billId, amount: cashOf(r) }))
+          .filter(a => a.amount > 0.004)
+          .map(a => ({ billId: a.billId, amount: a.amount.toFixed(2) }));
         const cashLeg = {
           paymentMethod: toBackendPaymentMethod(f.method),
           bankAccountId: f.bankAccountId,
           reference: f.reference || undefined,
           proofId: f.proofId,
-          applications: cash.map(a => ({
-            billId: a.billId,
-            amount: (Math.round(a.amount * 100) / 100).toFixed(2),
-          })),
+          applications,
         };
 
         // No credit in play: the plain payment it has always been.
@@ -445,7 +447,7 @@ export const payBillsSlice = createAppSlice({
             vendorId: f.vendorId,
             paymentDate: f.paymentDate,
             credits,
-            ...(cash.length > 0 ? { cash: cashLeg } : {}),
+            ...(applications.length > 0 ? { cash: cashLeg } : {}),
           },
           args.idempotencyKey,
         );
@@ -481,8 +483,8 @@ export const {
   payAllBills,
   setBillAllocation,
   toggleAllBills,
-  toggleBillCredit,
-  setAvailableCredits,
+  setUseCredits,
+  setCreditUse,
   fetchVendorCreditsForPayment,
   preselectBill,
   clearPaymentProof,
@@ -490,7 +492,7 @@ export const {
   setPayBillErrors,
   setPayBillIsSaving,
   resetPayBills,
-  fetchAllBillsForPayment,
+  fetchBillsForPayment,
   savePayment,
 } = payBillsSlice.actions;
 

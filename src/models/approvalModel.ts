@@ -132,9 +132,24 @@ export const hasOutstandingPaymentFor = (
 ): boolean =>
   requests.some(req => {
     if (!req || !(isPendingApproval(req) || isInterruptedApproval(req))) return false;
-    const applications = (req.payload as { applications?: unknown })?.applications;
-    return (
-      Array.isArray(applications) &&
-      applications.some(a => (a as { invoiceId?: string })?.invoiceId === invoiceId)
-    );
+    return paymentRequestInvoiceIds(req.payload).includes(invoiceId);
   });
+
+/**
+ * Every invoice a customer-payment request would settle, whichever shape it
+ * came in: a receipt names them in `applications`; a settlement (`action:
+ * 'settle'`) in `credits[].invoiceId` and `cash.applications`; applying an
+ * advance (`action: 'apply'`) in `applications`. Missing a shape here is how a
+ * pending settlement would leave its invoice open to being paid twice.
+ */
+export const paymentRequestInvoiceIds = (payload: unknown): string[] => {
+  const p = (payload ?? {}) as Record<string, unknown>;
+  const idsOf = (v: unknown): string[] =>
+    Array.isArray(v)
+      ? v.map(a => (a as { invoiceId?: unknown })?.invoiceId).filter((id): id is string => typeof id === 'string')
+      : [];
+  if (p.action === 'settle') {
+    return [...idsOf(p.credits), ...idsOf((p.cash as { applications?: unknown } | undefined)?.applications)];
+  }
+  return idsOf(p.applications);
+};

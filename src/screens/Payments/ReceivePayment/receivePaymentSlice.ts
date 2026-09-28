@@ -2,19 +2,30 @@
 // FinMatrix — Receive Payment Slice (createAppSlice pattern)
 // Manages the form state for the "Receive Customer Payment"
 // flow: customer, date, method, reference, amount,
-// outstanding-invoice allocations, and overpayment-as-credit
-// behaviour. Also exposes the `savePayment` thunk that talks
-// to the backend.
+// outstanding-invoice allocations, credit on account, and
+// overpayment-as-advance behaviour. Also exposes the
+// `savePayment` thunk that talks to the backend.
 // ═══════════════════════════════════════════════════════
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { Invoice, PaymentMethod } from '../../../types';
-import { getInvoicesAPI } from '../../../networks/sales/invoiceNetwork';
-import { createPaymentAPI } from '../../../networks/sales/paymentNetwork';
-import { invoiceListSerializer } from '../../../serializers/invoiceSerializer';
+import type { PaymentMethod } from '../../../types';
+import {
+  createPaymentAPI,
+  getOutstandingInvoicesAPI,
+  settleInvoicesAPI,
+  type CustomerCreditUsePayload,
+} from '../../../networks/sales/paymentNetwork';
+import { getARPartySummaryAPI } from '../../../networks/reports/arAgingNetwork';
+import { partySummarySerializer } from '../../../serializers/partySummarySerializer';
 import { toUiPaymentMethod } from '../../../serializers/paymentSerializer';
 import { toIsoDate } from '../../../models/reportModel';
+import {
+  creditSourcesFromSummary,
+  spreadCredits,
+  type CreditSource,
+  type CreditSpread,
+} from '../../../models/creditSpreadModel';
 
 /**
  * The UI's payment-method vocabulary differs from the backend's. Map the
@@ -35,6 +46,8 @@ function toBackendPaymentMethod(method: PaymentMethod): string {
   }
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 // ── Outstanding invoice row (used in the allocations table) ────
 export interface OutstandingRow {
   invoiceId: string;
@@ -43,7 +56,10 @@ export interface OutstandingRow {
   total: number;
   amountPaid: number;
   balance: number;
+  /** New money applied to this invoice. */
   allocated: number;
+  /** Credit on account landing on this invoice — derived, never typed. */
+  credit: number;
   checked: boolean;
 }
 
@@ -53,14 +69,24 @@ export interface ReceivePaymentSliceState {
   paymentDate: string;
   method: PaymentMethod;
   reference: string;
+  /** New money received. May be empty when credit on account settles it all. */
   amount: string;
   notes: string;
   /** When true, money not applied to an invoice is held as a customer
    *  advance (Customer Advances, a liability) to apply later. When false,
    *  the user is blocked from saving until the allocations match. */
   saveOverpaymentAsCredit: boolean;
+  /** The customer's open invoices, oldest due first — as the server orders them. */
   outstandingRows: OutstandingRow[];
-  allInvoices: Invoice[];
+  /** Advances and open credit memos the customer holds. */
+  credits: CreditSource[];
+  /** Off until asked for, as on the web: a plain receipt never quietly spends
+   *  an advance the user did not mean to. "Use credit" on an invoice turns it on. */
+  useCredits: boolean;
+  /** Settled first by credit — the invoice "Use credit" was pressed on. */
+  priorityInvoiceId: string;
+  /** Reviewing a staff settlement: the credit it asks to spend, as asked. */
+  requestCredits: CustomerCreditUsePayload[];
   errors: Record<string, string>;
   isSaving: boolean;
   isLoadingInvoices: boolean;
@@ -79,60 +105,82 @@ const initialState: ReceivePaymentSliceState = {
   notes: '',
   saveOverpaymentAsCredit: true,
   outstandingRows: [],
-  allInvoices: [],
+  credits: [],
+  useCredits: false,
+  priorityInvoiceId: '',
+  requestCredits: [],
   errors: {},
   isSaving: false,
   isLoadingInvoices: false,
 };
 
-// ── Helper: auto-distribute payment to checked rows (oldest first) ──
+/** What is left on a row for new money once credit has taken its part. */
+export const cashCapOf = (row: OutstandingRow): number => Math.max(0, round2(row.balance - row.credit));
+
+/**
+ * Where the credit goes: every open invoice, oldest due first — except that
+ * the invoice "Use credit" was pressed on goes first in line. The same order
+ * the web app spreads it in.
+ */
+export function creditSpreadOf(
+  state: Pick<ReceivePaymentSliceState, 'outstandingRows' | 'credits' | 'useCredits' | 'priorityInvoiceId'>,
+): CreditSpread {
+  const targets = state.outstandingRows.map(r => ({ documentId: r.invoiceId, cap: r.balance }));
+  const first = targets.findIndex(t => t.documentId === state.priorityInvoiceId);
+  const ordered = first > 0 ? [targets[first], ...targets.filter((_, i) => i !== first)] : targets;
+  return spreadCredits(ordered, state.useCredits ? state.credits : []);
+}
+
+// ── Helper: auto-distribute the new money to checked rows (oldest first) ──
+// Each row takes no more than credit left of it, so cash never overlaps credit.
 function autoDistribute(state: ReceivePaymentSliceState) {
   let remaining = parseFloat(state.amount) || 0;
-
-  // Sort checked rows by due date ascending (oldest first)
-  const checkedIds = new Set(
-    state.outstandingRows.filter(r => r.checked).map(r => r.invoiceId),
-  );
-
   state.outstandingRows.forEach(row => {
-    if (checkedIds.has(row.invoiceId) && remaining > 0) {
-      const alloc = Math.min(row.balance, remaining);
-      row.allocated = Math.round(alloc * 100) / 100;
-      remaining = Math.round((remaining - alloc) * 100) / 100;
+    if (row.checked && remaining > 0) {
+      const alloc = Math.min(cashCapOf(row), remaining);
+      row.allocated = round2(alloc);
+      remaining = round2(remaining - alloc);
     } else {
       row.allocated = 0;
     }
   });
 }
 
-// ── Helper: rebuild outstanding rows for a customer ─────
-function buildOutstandingForCustomer(
-  invoices: Invoice[],
-  customerId: string,
-): OutstandingRow[] {
-  return invoices
-    .filter(
-      inv =>
-        inv.customerId === customerId &&
-        (inv.status === 'sent' ||
-          inv.status === 'overdue' ||
-          inv.status === 'partial') &&
-        inv.total - inv.amountPaid > 0,
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
-    )
-    .map(inv => ({
-      invoiceId: inv.id,
-      invoiceNumber: inv.invoiceNumber,
-      dueDate: inv.dueDate,
-      total: inv.total,
-      amountPaid: inv.amountPaid,
-      balance: Math.round((inv.total - inv.amountPaid) * 100) / 100,
-      allocated: 0,
-      checked: false,
-    }));
+/**
+ * Put the credit on the rows, then re-spread the cash over what it left. A row
+ * credit settles in full takes no cash at all. Run after anything that changes
+ * what credit covers: the switch, a credit's amount, the rows or credits arriving.
+ */
+function recompute(state: ReceivePaymentSliceState) {
+  const spread = creditSpreadOf(state);
+  state.outstandingRows.forEach(row => {
+    row.credit = spread.perDocument[row.invoiceId] ?? 0;
+    if (cashCapOf(row) <= 0) row.checked = false;
+  });
+  autoDistribute(state);
+}
+
+/** `GET /payments/customer/:id/outstanding` → rows. */
+export function outstandingRowsOf(payload: any): OutstandingRow[] {
+  const list: any[] = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
+  return list
+    .map(inv => {
+      const total = Number(inv?.total) || 0;
+      const amountPaid = Number(inv?.amountPaid) || 0;
+      const balance = inv?.balance !== undefined ? Number(inv.balance) || 0 : total - amountPaid;
+      return {
+        invoiceId: String(inv?.id ?? ''),
+        invoiceNumber: String(inv?.invoiceNumber ?? ''),
+        dueDate: String(inv?.dueDate ?? ''),
+        total,
+        amountPaid,
+        balance: round2(balance),
+        allocated: 0,
+        credit: 0,
+        checked: false,
+      };
+    })
+    .filter(r => r.invoiceId && r.balance > 0);
 }
 
 export const receivePaymentSlice = createAppSlice({
@@ -151,24 +199,55 @@ export const receivePaymentSlice = createAppSlice({
 
     setPaymentCustomer: create.reducer(
       (state, action: PayloadAction<{ id: string; name: string }>) => {
+        const changed = state.customerId !== action.payload.id;
         state.customerId = action.payload.id;
         state.customerName = action.payload.name;
         if (state.errors.customerId) {
           const { customerId: _, ...rest } = state.errors;
           state.errors = rest;
         }
-        // Rebuild outstanding rows for the selected customer
-        state.outstandingRows = buildOutstandingForCustomer(
-          state.allInvoices,
-          action.payload.id,
-        );
+        // The screen fetches this customer's invoices and credits next.
+        if (changed) {
+          state.outstandingRows = [];
+          state.credits = [];
+        }
+      },
+    ),
+
+    /** Where the screen was opened from: "Use credit" on an invoice turns
+     *  credit on and puts that invoice first in line. */
+    openForCredit: create.reducer(
+      (state, action: PayloadAction<{ invoiceId?: string }>) => {
+        state.useCredits = true;
+        state.priorityInvoiceId = action.payload.invoiceId ?? '';
+        recompute(state);
+      },
+    ),
+
+    setUseCredits: create.reducer((state, action: PayloadAction<boolean>) => {
+      state.useCredits = action.payload;
+      if (state.errors.credits) {
+        const { credits: _, ...rest } = state.errors;
+        state.errors = rest;
+      }
+      recompute(state);
+    }),
+
+    /** How much of one credit to spend, as typed. */
+    setCreditUse: create.reducer(
+      (state, action: PayloadAction<{ id: string; value: string }>) => {
+        const credit = state.credits.find(c => c.id === action.payload.id);
+        if (!credit) return;
+        credit.use = action.payload.value.replace(/[^0-9.]/g, '');
+        recompute(state);
       },
     ),
 
     toggleInvoiceCheck: create.reducer(
       (state, action: PayloadAction<string>) => {
         const row = state.outstandingRows.find(r => r.invoiceId === action.payload);
-        if (row) row.checked = !row.checked;
+        // Credit already settles it: there is nothing left for cash to take.
+        if (row && cashCapOf(row) > 0) row.checked = !row.checked;
         autoDistribute(state);
       },
     ),
@@ -177,16 +256,17 @@ export const receivePaymentSlice = createAppSlice({
       (state, action: PayloadAction<{ invoiceId: string; amount: number }>) => {
         const row = state.outstandingRows.find(r => r.invoiceId === action.payload.invoiceId);
         if (row) {
-          row.allocated = Math.min(action.payload.amount, row.balance);
+          row.allocated = Math.min(action.payload.amount, cashCapOf(row));
           row.checked = row.allocated > 0;
         }
       },
     ),
 
+    /** Receive what is still owed once credit has taken its part. */
     payInFull: create.reducer(state => {
-      const totalOutstanding = state.outstandingRows.reduce((s, r) => s + r.balance, 0);
-      state.amount = String(Math.round(totalOutstanding * 100) / 100);
-      state.outstandingRows.forEach(r => { r.checked = true; });
+      const owed = state.outstandingRows.reduce((s, r) => s + cashCapOf(r), 0);
+      state.amount = String(round2(owed));
+      state.outstandingRows.forEach(r => { r.checked = cashCapOf(r) > 0; });
       autoDistribute(state);
     }),
 
@@ -202,13 +282,18 @@ export const receivePaymentSlice = createAppSlice({
       state.errors = action.payload;
     }),
 
+    /**
+     * Tick the invoice the screen was opened for. With no credit in play the
+     * amount is seeded with what it owes; with credit, it is not — credit is
+     * what settles it, and any new money is the user's to enter.
+     */
     preselectInvoice: create.reducer(
       (state, action: PayloadAction<string>) => {
         const row = state.outstandingRows.find(r => r.invoiceId === action.payload);
-        if (row) {
+        if (row && cashCapOf(row) > 0) {
           row.checked = true;
-          if (!state.amount || parseFloat(state.amount) === 0) {
-            state.amount = String(row.balance);
+          if (!state.useCredits && (!state.amount || parseFloat(state.amount) === 0)) {
+            state.amount = String(cashCapOf(row));
           }
           autoDistribute(state);
         }
@@ -218,7 +303,7 @@ export const receivePaymentSlice = createAppSlice({
     /**
      * Load a staff approval request back into the form so the owner can see the
      * figures they are approving. Phase one: everything that does not depend on
-     * the invoice list.
+     * the invoice rows.
      *
      * Inverts what savePayment builds. Two renames to watch — the payload's
      * `memo` is the form's `notes`, and `paymentMethod` carries the API's
@@ -226,6 +311,11 @@ export const receivePaymentSlice = createAppSlice({
      * rather than blanked, so nothing here may assume a field is present; the
      * auto-generated reference in particular has to be overwritten, not
      * defaulted around.
+     *
+     * Three shapes arrive here: a receipt (the fields at the top level), a
+     * settlement (`action: 'settle'` — credit in `credits`, new money in
+     * `cash`), and applying an advance a receipt already holds
+     * (`action: 'apply'` — credit only, no new money).
      *
      * The customer name is passed in: the payload stores an id, and a review
      * screen showing a bare uuid where the customer should be is not a review.
@@ -236,33 +326,29 @@ export const receivePaymentSlice = createAppSlice({
         action: PayloadAction<{ payload: Record<string, any>; customerName: string }>,
       ) => {
         const { payload, customerName } = action.payload;
+        const action_ = String(payload.action ?? '');
+        const cash: Record<string, any> =
+          action_ === 'settle' ? (payload.cash ?? {}) : action_ === 'apply' ? {} : payload;
         state.customerId = payload.customerId ?? '';
         state.customerName = customerName;
-        state.paymentDate = String(payload.paymentDate ?? '').slice(0, 10);
-        state.method = toUiPaymentMethod(String(payload.paymentMethod ?? ''));
-        state.amount = String(payload.amount ?? '');
-        state.reference = payload.reference ?? '';
-        state.notes = payload.memo ?? '';
+        state.paymentDate = String(payload.paymentDate ?? payload.date ?? '').slice(0, 10);
+        state.method = toUiPaymentMethod(String(cash.paymentMethod ?? ''));
+        state.amount = String(cash.amount ?? '');
+        state.reference = cash.reference ?? '';
+        state.notes = cash.memo ?? '';
         state.errors = {};
-        // Rows come from allInvoices, which may not have arrived yet. Rebuilding
-        // here is harmless when it has; phase two puts the allocations on.
-        if (state.customerId) {
-          state.outstandingRows = buildOutstandingForCustomer(
-            state.allInvoices,
-            state.customerId,
-          );
-        }
+        state.useCredits = false;
+        state.requestCredits = requestCreditsOf(payload);
       },
     ),
 
     /**
      * Phase two: put the request's allocations onto the rows, once they exist.
      *
-     * Separate from the load above because outstandingRows are built from
-     * allInvoices, and fetchAllInvoicesForPayment rebuilds them from scratch
-     * when it lands — so allocations set before that arrives are wiped. The
-     * screen chains this off outstandingRows appearing, the same way
-     * preselectInvoice already does.
+     * Separate from the load above because the rows arrive by their own
+     * request, and building them sets every allocation to zero — so
+     * allocations set before they arrive are wiped. The screen chains this off
+     * outstandingRows appearing, the same way preselectInvoice does.
      *
      * Deliberately does NOT call autoDistribute: this is a replay of a split
      * somebody already chose, and autoDistribute would redistribute it
@@ -274,8 +360,8 @@ export const receivePaymentSlice = createAppSlice({
           if (!app?.invoiceId) continue;
           const row = state.outstandingRows.find(r => r.invoiceId === app.invoiceId);
           // A row can legitimately be missing — the invoice may have been paid
-          // another way since, or fall outside the page this screen fetches.
-          // The amount above still tells the owner what they are approving.
+          // another way since. The amount above still tells the owner what
+          // they are approving.
           if (!row) continue;
           const amount = parseFloat(String(app.amount ?? '')) || 0;
           row.allocated = Math.min(amount, row.balance);
@@ -289,59 +375,82 @@ export const receivePaymentSlice = createAppSlice({
     }),
 
     // ── Async thunks ────────────────────────────────
-    fetchAllInvoicesForPayment: create.asyncThunk(
-      async () => {
-        // Pull the largest page the API allows so a customer's open invoices
-        // aren't missed by the default page size when building allocations.
-        const envelope = await getInvoicesAPI({ limit: 200 });
-        return invoiceListSerializer(envelope);
-      },
+    /**
+     * The customer's open invoices, from the server — every one, oldest due
+     * first, the order the settlement sweeps in. (This used to filter the
+     * company's latest 200 invoices on the phone, so a busy company's older
+     * invoices simply were not offered.)
+     */
+    fetchOutstandingForPayment: create.asyncThunk(
+      async (customerId: string) => outstandingRowsOf(await getOutstandingInvoicesAPI(customerId)),
       {
         pending: state => { state.isLoadingInvoices = true; },
         fulfilled: (state, action) => {
-          const invoices = action.payload.invoices;
-          state.allInvoices = invoices;
+          // A late answer for a customer no longer selected is dropped.
+          if (action.meta.arg !== state.customerId) return;
           state.isLoadingInvoices = false;
-
-          // If customer already selected, rebuild rows
-          if (state.customerId) {
-            state.outstandingRows = buildOutstandingForCustomer(
-              invoices,
-              state.customerId,
-            );
-          }
+          state.outstandingRows = action.payload;
+          recompute(state);
         },
-        rejected: state => { state.isLoadingInvoices = false; },
+        rejected: (state, action) => {
+          if (action.meta.arg === state.customerId) state.isLoadingInvoices = false;
+        },
       },
     ),
 
     /**
-     * Persists the payment to the backend via `POST /payments`. The
-     * backend atomically applies the payment to each invoice (updating
-     * `amountPaid` / `balance` / `status`), decrements the customer's AR
-     * balance, and posts the double-entry journal — so the client must
-     * NOT separately mutate invoices (that would double-count).
+     * Advances and open credit memos — from the customer summary, the figures
+     * the web's Receive Payment reads. A failed lookup offers no credit; it
+     * never blocks recording a payment.
+     */
+    fetchCreditsForPayment: create.asyncThunk(
+      async (customerId: string) => {
+        const summary = partySummarySerializer(await getARPartySummaryAPI(customerId));
+        return creditSourcesFromSummary(summary?.credits.items ?? [], 'customer');
+      },
+      {
+        fulfilled: (state, action) => {
+          if (action.meta.arg !== state.customerId) return;
+          state.credits = action.payload;
+          recompute(state);
+        },
+        rejected: (state, action) => {
+          if (action.meta.arg === state.customerId) state.credits = [];
+        },
+      },
+    ),
+
+    /**
+     * Records it.
      *
-     * Any portion not allocated to an invoice is held by the backend as a
-     * customer advance (Cr Customer Advances), applied later from the
-     * customer or invoice screen.
+     * With credit in use: ONE `POST /payments/settle` the server runs as one
+     * transaction — credit first, then the receipt — so a refused receipt
+     * leaves the credit exactly where it was. With none: the plain
+     * `POST /payments` it has always been. Either way the server applies the
+     * money to each invoice and posts the journal, so the client must NOT
+     * separately mutate invoices (that would double-count).
+     *
+     * Any new money not applied to an invoice is held by the backend as a
+     * customer advance (Cr Customer Advances).
+     *
+     * `idempotencyKey` is held by the screen across retries of this one
+     * attempt, so a retry after a lost response replays instead of banking the
+     * money twice.
      */
     savePayment: create.asyncThunk(
-      async (_arg, thunkAPI) => {
+      async (arg: { idempotencyKey?: string } | void, thunkAPI) => {
+        const idempotencyKey = arg ? arg.idempotencyKey : undefined;
         const state = thunkAPI.getState() as { receivePayment: ReceivePaymentSliceState };
         const f = state.receivePayment;
 
-        const paymentAmount = Math.round((parseFloat(f.amount) || 0) * 100) / 100;
+        const paymentAmount = round2(parseFloat(f.amount) || 0);
         const applications = f.outstandingRows
           .filter(r => r.allocated > 0)
           .map(r => ({
             invoiceId: r.invoiceId,
-            amount: (Math.round(r.allocated * 100) / 100).toFixed(2),
+            amount: round2(r.allocated).toFixed(2),
           }));
-
-        const created = await createPaymentAPI({
-          customerId: f.customerId,
-          paymentDate: f.paymentDate, // 'YYYY-MM-DD' — valid ISO date
+        const cash = {
           paymentMethod: toBackendPaymentMethod(f.method),
           amount: paymentAmount.toFixed(2),
           reference: f.reference || undefined,
@@ -351,7 +460,33 @@ export const receivePaymentSlice = createAppSlice({
           // omitting them alone did the opposite of "save as customer credit".
           // holdAsAdvance keeps the whole receipt as an advance.
           ...(applications.length === 0 ? { holdAsAdvance: true } : {}),
-        });
+        };
+
+        const credits: CustomerCreditUsePayload[] = creditSpreadOf(f)
+          .pieces.filter(p => p.amount > 0)
+          .map(p => ({
+            kind: p.kind === 'credit_memo' ? 'credit_memo' : 'advance',
+            id: p.creditId,
+            invoiceId: p.documentId,
+            amount: p.amount.toFixed(2),
+          }));
+
+        const response =
+          credits.length > 0
+            ? await settleInvoicesAPI(
+                {
+                  customerId: f.customerId,
+                  paymentDate: f.paymentDate,
+                  credits,
+                  // No new money, no receipt: a zero cash leg would be refused.
+                  ...(paymentAmount > 0 ? { cash } : {}),
+                },
+                idempotencyKey,
+              )
+            : await createPaymentAPI(
+                { customerId: f.customerId, paymentDate: f.paymentDate, ...cash },
+                idempotencyKey,
+              );
 
         // Staff get an approval request back, not a payment. Read the flag off
         // the raw envelope and check BOTH positions: the network layer returns
@@ -359,10 +494,14 @@ export const receivePaymentSlice = createAppSlice({
         // `(created?.data ?? created)?.pending` is NOT the same test — ?? picks
         // whichever operand is merely present, so a truthy `data` wins and its
         // missing `.pending` reads undefined.
-        if (created?.data?.pending ?? created?.pending) {
+        if (response?.data?.pending ?? response?.pending) {
           return { payment: null, pending: true };
         }
-        return { payment: created, pending: false };
+        if (credits.length > 0) {
+          const settled = response?.data ?? response;
+          return { payment: settled?.payment ?? null, pending: false };
+        }
+        return { payment: response, pending: false };
       },
       {
         pending: state => {
@@ -390,9 +529,49 @@ export const receivePaymentSlice = createAppSlice({
   },
 });
 
+/** The credit a staff request asks to spend, whichever shape it came in. */
+export function requestCreditsOf(payload: Record<string, any>): CustomerCreditUsePayload[] {
+  const action = String(payload?.action ?? '');
+  if (action === 'settle' && Array.isArray(payload.credits)) {
+    return payload.credits
+      .filter((c: any) => c?.invoiceId && c?.id)
+      .map((c: any) => ({
+        kind: c.kind === 'credit_memo' ? 'credit_memo' : 'advance',
+        id: String(c.id),
+        invoiceId: String(c.invoiceId),
+        amount: String(c.amount ?? '0'),
+      }));
+  }
+  // Applying an advance a receipt holds: every application is credit.
+  if (action === 'apply' && Array.isArray(payload.applications)) {
+    return payload.applications
+      .filter((a: any) => a?.invoiceId)
+      .map((a: any) => ({
+        kind: 'advance' as const,
+        id: String(payload.paymentId ?? ''),
+        invoiceId: String(a.invoiceId),
+        amount: String(a.amount ?? '0'),
+      }));
+  }
+  return [];
+}
+
+/** The new money's allocations in a staff request, whichever shape it came in. */
+export function requestCashApplicationsOf(
+  payload: Record<string, any>,
+): Array<{ invoiceId?: string; amount?: string }> | null {
+  const action = String(payload?.action ?? '');
+  if (action === 'apply') return null;
+  const source = action === 'settle' ? payload.cash : payload;
+  return Array.isArray(source?.applications) ? source.applications : null;
+}
+
 export const {
   setPaymentField,
   setPaymentCustomer,
+  openForCredit,
+  setUseCredits,
+  setCreditUse,
   toggleInvoiceCheck,
   setAllocatedAmount,
   payInFull,
@@ -403,7 +582,8 @@ export const {
   loadFromRequestPayload,
   applyRequestAllocations,
   resetReceivePayment,
-  fetchAllInvoicesForPayment,
+  fetchOutstandingForPayment,
+  fetchCreditsForPayment,
   savePayment,
 } = receivePaymentSlice.actions;
 

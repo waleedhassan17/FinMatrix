@@ -63,6 +63,7 @@ import {
   SecondaryButton,
 } from '../../../components/form/FormUI';
 import { useCapability } from '../../../hooks/useCapability';
+import { useRequesterName } from '../../../hooks/useRequesterName';
 import { fetchApprovalById } from '../../../networks/approvals/approvalsNetwork';
 import { decideApproval } from '../../Approvals/approvalsSlice';
 import { APPROVAL_TYPE_EFFECTS, isPendingApproval } from '../../../models/approvalModel';
@@ -122,6 +123,7 @@ const InvoiceFormScreen: React.FC = () => {
   const requestLoadedRef = React.useRef(false);
 
   const [request, setRequest] = useState<ApprovalRequest | null>(null);
+  const requesterName = useRequesterName(request?.requestedBy);
   const [deciding, setDeciding] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
 
@@ -441,7 +443,7 @@ const InvoiceFormScreen: React.FC = () => {
         subtitle={
           isReviewing
             ? request?.requestedBy
-              ? `Raised by ${request.requestedBy}`
+              ? `Raised by ${requesterName}`
               : 'Raised by a staff member'
             : isEditing
               ? 'Update invoice details'

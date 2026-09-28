@@ -15,10 +15,9 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
-import ApplyAdvanceModal from '../../../components/shared/ApplyAdvanceModal';
 import CreditLimitModal from '../../../components/shared/CreditLimitModal';
 import { creditAssessmentFrom, type CreditAssessment } from '../../../models/creditModel';
-import { useCustomerAdvanceTotal } from '../../../hooks/useCustomerAdvanceTotal';
+import { useCustomerCreditOnAccount } from '../../../hooks/useCustomerCreditOnAccount';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -179,12 +178,12 @@ const InvoiceDetailScreen: React.FC = () => {
     [invoice],
   );
 
-  // Advances the customer already paid. Offered ahead of Record Payment: an
-  // invoice the customer has paid for is settled from the advance, not by
-  // recording the same cash a second time.
+  // Credit the customer already has with us — advances and open credit memos.
+  // Offered ahead of Record Payment, as on the web: an invoice the customer has
+  // already paid for is settled from that credit, not by recording the same
+  // cash a second time. Re-read whenever what the invoice has been paid moves.
   const invoiceCustomerId = invoice?.customerId;
-  const { total: advanceTotal, reload: loadAdvances } = useCustomerAdvanceTotal(invoiceCustomerId);
-  const [applyOpen, setApplyOpen] = React.useState(false);
+  const creditOnAccount = useCustomerCreditOnAccount(invoiceCustomerId, true, invoice?.amountPaid);
 
   // ── Actions ─────────────────────────────────
 
@@ -354,18 +353,32 @@ const InvoiceDetailScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
         }
       >
-        {advanceTotal > 0 && balance > 0 &&
+        {creditOnAccount > 0 && balance > 0 &&
           ['sent', 'overdue', 'partial'].includes(invoice.status) &&
           !paymentAwaitingApproval && (
           <View style={styles.advanceBanner}>
             <Feather name="info" size={14} color={colors.warning} />
             <View style={{ flex: 1 }}>
               <Text style={styles.advanceBannerText}>
-                {invoice.customerName || customer?.name || 'This customer'} holds{' '}
-                {formatCurrency(advanceTotal, 'Rs ')} in advances.
+                {invoice.customerName || customer?.name || 'This customer'} has{' '}
+                {formatCurrency(creditOnAccount, 'Rs ')} on account — advances and credit memos.
               </Text>
-              <TouchableOpacity onPress={() => setApplyOpen(true)} accessibilityRole="button">
-                <Text style={styles.advanceBannerLink}>Apply advance to this invoice</Text>
+              {/* Receive Payment with credit switched on and this invoice first
+                  in line: advances and credit memos alike, and any new money
+                  alongside, settled in one step. */}
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('ReceivePayment', {
+                    customerId: invoice.customerId,
+                    invoiceId: invoice.id,
+                    useCredits: true,
+                  })
+                }
+                accessibilityRole="button"
+              >
+                <Text style={styles.advanceBannerLink}>
+                  Use credit ({formatCurrency(creditOnAccount, 'Rs ')})
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -672,18 +685,6 @@ const InvoiceDetailScreen: React.FC = () => {
         onRecordAdvance={a => {
           setCreditRefusal(null);
           navigation.navigate('ReceivePayment', { customerId: a.customerId });
-        }}
-      />
-      <ApplyAdvanceModal
-        visible={applyOpen}
-        customerId={invoice.customerId}
-        customerName={invoice.customerName || customer?.name}
-        invoiceId={invoice.id}
-        onClose={() => setApplyOpen(false)}
-        onApplied={() => {
-          loadAdvances();
-          void loadPendingPayments();
-          dispatch(fetchInvoiceDetail(invoiceId));
         }}
       />
     </ReportContainer>

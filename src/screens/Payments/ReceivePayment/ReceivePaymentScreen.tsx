@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import {
   View,
   Text,
@@ -14,12 +15,14 @@ import {
   Platform,
   StatusBar,
   Animated,
+  TextInput,
   Modal,
   Dimensions,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import Toast from 'react-native-toast-message';
 import { useCapability } from '../../../hooks/useCapability';
+import { useRequesterName } from '../../../hooks/useRequesterName';
 import { fetchApprovalById } from '../../../networks/approvals/approvalsNetwork';
 import { decideApproval } from '../../Approvals/approvalsSlice';
 import { APPROVAL_TYPE_EFFECTS, isPendingApproval } from '../../../models/approvalModel';
@@ -39,6 +42,9 @@ import {
   selectReceivePaymentState,
   setPaymentField,
   setPaymentCustomer,
+  openForCredit,
+  setUseCredits,
+  setCreditUse,
   toggleInvoiceCheck,
   payInFull,
   distributeAmount,
@@ -48,12 +54,19 @@ import {
   loadFromRequestPayload,
   applyRequestAllocations,
   resetReceivePayment,
-  fetchAllInvoicesForPayment,
+  fetchOutstandingForPayment,
+  fetchCreditsForPayment,
   savePayment,
+  cashCapOf,
+  creditSpreadOf,
+  requestCashApplicationsOf,
 } from './receivePaymentSlice';
+import {
+  CREDIT_SOURCE_LABELS,
+  creditAvailable,
+  isCreditOverUsed,
+} from '../../../models/creditSpreadModel';
 import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
-import ApplyAdvanceModal from '../../../components/shared/ApplyAdvanceModal';
-import { useCustomerAdvanceTotal } from '../../../hooks/useCustomerAdvanceTotal';
 import { fetchInvoices } from '../../Invoices/InvoiceList/invoiceListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -84,6 +97,8 @@ const ReceivePaymentScreen: React.FC = () => {
 
   const preCustomerId = route.params?.customerId;
   const preInvoiceId = route.params?.invoiceId;
+  // "Use credit" on an invoice: credit on account switched on, that invoice first.
+  const preUseCredits = !!route.params?.useCredits;
   // Cash coming IN — the mirror of paying a bill, and gated the same way:
   // staff prepare it, the owner posts it.
   const payCap = useCapability('payment.receive');
@@ -93,6 +108,7 @@ const ReceivePaymentScreen: React.FC = () => {
   const decideCap = useCapability('approvals.decide');
   const requestLoadedRef = React.useRef(false);
   const [request, setRequest] = useState<ApprovalRequest | null>(null);
+  const requesterName = useRequesterName(request?.requestedBy);
   const [deciding, setDeciding] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const allocationsAppliedRef = React.useRef(false);
@@ -102,16 +118,15 @@ const ReceivePaymentScreen: React.FC = () => {
 
   // ── Success overlay state ───────────────────────
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successTitle, setSuccessTitle] = useState('Payment Recorded!');
   const [successMsg, setSuccessMsg] = useState('');
   const [successSub, setSuccessSub] = useState('');
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(0)).current;
 
-  // Money this customer already paid and has not had applied. Recording new
-  // cash to settle an invoice the advance covers double-counts the receipt.
-  const { total: advanceTotal, reload: reloadAdvances } = useCustomerAdvanceTotal(form.customerId, !isReviewing);
-  const [applyOpen, setApplyOpen] = useState(false);
+  /** One per attempt, held across its retries — see handleSave. */
+  const idempotencyKey = useRef('');
 
   const customerOptions = useMemo(
     () =>
@@ -123,7 +138,7 @@ const ReceivePaymentScreen: React.FC = () => {
 
   useEffect(() => {
     if (customers.length === 0) dispatch(fetchCustomers());
-    dispatch(fetchAllInvoicesForPayment());
+    if (preUseCredits && !isReviewing) dispatch(openForCredit({ invoiceId: preInvoiceId }));
     // No invented reference: the server numbers every receipt RCT-YYYY-NNNN.
     // The reference field is for the customer's own cheque or transfer id.
     return () => { dispatch(resetReceivePayment()); };
@@ -131,11 +146,20 @@ const ReceivePaymentScreen: React.FC = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    if (preCustomerId && !form.customerId && form.allInvoices.length > 0 && customers.length > 0) {
+    if (preCustomerId && !form.customerId && customers.length > 0) {
       const cust = customers.find(c => c.id === preCustomerId);
       if (cust) dispatch(setPaymentCustomer({ id: cust.id, name: cust.name }));
     }
-  }, [preCustomerId, form.customerId, form.allInvoices, customers, dispatch]);
+  }, [preCustomerId, form.customerId, customers, dispatch]);
+
+  // The customer's open invoices and the credit they hold — both from the
+  // server, the same figures the web's Receive Payment works from. A review
+  // shows the credit the request asks for instead, so none is offered there.
+  useEffect(() => {
+    if (!form.customerId) return;
+    dispatch(fetchOutstandingForPayment(form.customerId));
+    if (!isReviewing) dispatch(fetchCreditsForPayment(form.customerId));
+  }, [form.customerId, isReviewing, dispatch]);
 
   useEffect(() => {
     if (preInvoiceId && form.outstandingRows.length > 0) {
@@ -165,14 +189,31 @@ const ReceivePaymentScreen: React.FC = () => {
     [form.outstandingRows],
   );
 
+  // Credit on account: what the customer holds, and what this payment spends.
+  const spread = useMemo(
+    () => creditSpreadOf(form),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [form.outstandingRows, form.credits, form.useCredits, form.priorityInvoiceId],
+  );
+  const creditHeld = creditAvailable(form.credits);
+  const creditUsed = form.useCredits ? spread.used : 0;
+  const creditOverUse = form.useCredits && isCreditOverUsed(form.credits);
+  // Reviewing a staff request: the credit it asks to spend, as asked.
+  const requestCreditTotal = useMemo(
+    () => Math.round(form.requestCredits.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0) * 100) / 100,
+    [form.requestCredits],
+  );
+  const creditShown = isReviewing ? requestCreditTotal : creditUsed;
+
   const paymentAmount = parseFloat(form.amount) || 0;
   const overpayment = useMemo(
     () => Math.max(0, Math.round((paymentAmount - totalAllocated) * 100) / 100),
     [paymentAmount, totalAllocated],
   );
   const hasOutstanding = form.outstandingRows.length > 0;
+  // What is still owed once credit has taken its part — what "Pay in Full" receives.
   const totalOutstanding = useMemo(
-    () => form.outstandingRows.reduce((s, r) => s + r.balance, 0),
+    () => Math.round(form.outstandingRows.reduce((s, r) => s + cashCapOf(r), 0) * 100) / 100,
     [form.outstandingRows],
   );
 
@@ -180,15 +221,23 @@ const ReceivePaymentScreen: React.FC = () => {
     const errs: Record<string, string> = {};
     if (!form.customerId) errs.customerId = 'Select a customer';
     if (!form.paymentDate) errs.paymentDate = 'Payment date is required';
-    if (!form.amount || paymentAmount <= 0) errs.amount = 'Enter a positive amount';
-    if (totalAllocated <= 0 && !(overpayment > 0 && form.saveOverpaymentAsCredit)) {
-      errs.allocations = 'Allocate the payment to at least one invoice, or enable "Keep as customer advance".';
+    // Credit alone can settle an invoice; without it, money has to arrive.
+    if (paymentAmount <= 0 && creditUsed <= 0) {
+      errs.amount = form.credits.length > 0
+        ? 'Enter the amount received, or use credit on account'
+        : 'Enter a positive amount';
     }
-    if (overpayment > 0 && !form.saveOverpaymentAsCredit) {
-      errs.allocations = 'The amount exceeds allocation. Reduce or enable "Keep as customer advance".';
+    if (creditOverUse) errs.credits = 'A credit is set to use more than it holds';
+    if (paymentAmount > 0) {
+      if (totalAllocated <= 0 && !(overpayment > 0 && form.saveOverpaymentAsCredit)) {
+        errs.allocations = 'Allocate the payment to at least one invoice, or enable "Keep as customer advance".';
+      }
+      if (overpayment > 0 && !form.saveOverpaymentAsCredit) {
+        errs.allocations = 'The amount exceeds allocation. Reduce or enable "Keep as customer advance".';
+      }
     }
     return errs;
-  }, [form, paymentAmount, totalAllocated, overpayment]);
+  }, [form, paymentAmount, totalAllocated, overpayment, creditUsed, creditOverUse]);
 
   const animateSuccess = useCallback(() => {
     successScale.setValue(0);
@@ -250,22 +299,18 @@ const ReceivePaymentScreen: React.FC = () => {
 
   // Phase two: the allocations, once the rows they attach to exist.
   //
-  // Separate because outstandingRows are built from allInvoices, and
-  // fetchAllInvoicesForPayment rebuilds them from scratch when it lands — so
-  // anything applied before that arrives is wiped. Chained off the rows
-  // appearing, exactly as the preselectInvoice effect above is.
+  // Separate because the rows arrive by their own request and are built with
+  // every allocation at zero — so anything applied before they land is wiped.
+  // Chained off the rows appearing, exactly as the preselectInvoice effect is.
   useEffect(() => {
     if (!request || allocationsAppliedRef.current) return;
     if (form.outstandingRows.length === 0) return;
-    const applications = (request.payload as { applications?: unknown })?.applications;
-    // Omitted entirely for a pure prepayment — the amount is then the whole
-    // story, and there is nothing to attach.
-    if (!Array.isArray(applications)) {
-      allocationsAppliedRef.current = true;
-      return;
-    }
+    // The new money's split — at the top level of a receipt, under `cash` in a
+    // settlement. Omitted entirely for a pure prepayment or credit alone: the
+    // amount is then the whole story, and there is nothing to attach.
+    const applications = requestCashApplicationsOf((request.payload ?? {}) as Record<string, any>);
     allocationsAppliedRef.current = true;
-    dispatch(applyRequestAllocations(applications as Array<{ invoiceId?: string; amount?: string }>));
+    if (applications) dispatch(applyRequestAllocations(applications));
   }, [request, form.outstandingRows.length, dispatch]);
 
   // ── Deciding a request under review ─────────────
@@ -310,14 +355,15 @@ const ReceivePaymentScreen: React.FC = () => {
   // with the customer and invoice already selected.
   const handleOpenInvoice = useCallback(() => {
     const payload = (request?.payload ?? {}) as Record<string, any>;
-    const invoiceId = Array.isArray(payload.applications)
-      ? payload.applications[0]?.invoiceId
-      : undefined;
+    const invoiceId =
+      requestCashApplicationsOf(payload)?.[0]?.invoiceId ?? form.requestCredits[0]?.invoiceId;
     navigation.replace('ReceivePayment', {
       customerId: payload.customerId,
       invoiceId,
+      // A request that spends credit reopens with credit on, as it was asked.
+      useCredits: form.requestCredits.length > 0 || undefined,
     });
-  }, [request, navigation]);
+  }, [request, form.requestCredits, navigation]);
 
   const handleReject = useCallback(
     async (comment: string) => {
@@ -342,9 +388,16 @@ const ReceivePaymentScreen: React.FC = () => {
       return;
     }
 
+    // One key per payment ATTEMPT, held across retries of it. If the request
+    // reaches the server but the reply is lost, the user taps Save again — and
+    // the server replays the first outcome instead of banking it twice.
+    // Cleared once it is safely recorded, so the next payment gets a fresh key.
+    if (!idempotencyKey.current) idempotencyKey.current = uuidv4();
+
     try {
-      const result: any = await dispatch(savePayment());
+      const result: any = await dispatch(savePayment({ idempotencyKey: idempotencyKey.current }));
       if (result.error) throw new Error(result.error.message);
+      idempotencyKey.current = '';
 
       // Staff get an approval request back, and no cash has moved. The
       // "Payment Recorded!" screen below would not merely be wrong, it reads
@@ -362,18 +415,30 @@ const ReceivePaymentScreen: React.FC = () => {
       dispatch(fetchInvoices());
 
       const amt = formatCurrency(paymentAmount, 'Rs ');
-      if (overpayment > 0 && form.saveOverpaymentAsCredit) {
+      const creditNote = creditUsed > 0 ? `${formatCurrency(creditUsed, 'Rs ')} of credit on account applied` : '';
+      if (paymentAmount <= 0) {
+        // Credit covered it all: nothing was banked, so there is no receipt.
+        setSuccessTitle('Settled from Credit');
+        setSuccessMsg(formatCurrency(creditUsed, 'Rs '));
+        setSuccessSub(`${creditNote} — no new money recorded.`);
+      } else if (overpayment > 0 && form.saveOverpaymentAsCredit) {
+        setSuccessTitle('Payment Recorded!');
         setSuccessMsg(amt);
-        setSuccessSub(`${formatCurrency(overpayment, 'Rs ')} held as customer advance`);
+        setSuccessSub(
+          [creditNote, `${formatCurrency(overpayment, 'Rs ')} held as customer advance`].filter(Boolean).join(' · '),
+        );
       } else {
+        setSuccessTitle('Payment Recorded!');
         setSuccessMsg(amt);
-        setSuccessSub(`Payment from ${form.customerName} recorded`);
+        setSuccessSub(
+          [`Payment from ${form.customerName} recorded`, creditNote].filter(Boolean).join(' · '),
+        );
       }
       animateSuccess();
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to record payment.');
     }
-  }, [dispatch, validate, paymentAmount, overpayment, form.saveOverpaymentAsCredit, form.customerName, animateSuccess, navigation]);
+  }, [dispatch, validate, paymentAmount, overpayment, creditUsed, form.saveOverpaymentAsCredit, form.customerName, animateSuccess, navigation]);
 
   // ═════════════════════════════════════════════════════
   return (
@@ -383,7 +448,7 @@ const ReceivePaymentScreen: React.FC = () => {
         subtitle={
           isReviewing
             ? request?.requestedBy
-              ? `Raised by ${request.requestedBy}`
+              ? `Raised by ${requesterName}`
               : 'Raised by a staff member'
             : 'Record an incoming payment'
         }
@@ -439,19 +504,20 @@ const ReceivePaymentScreen: React.FC = () => {
                 error={form.errors.customerId}
                 searchable
               />
-              {advanceTotal > 0 && !isReviewing && (
+              {/* Money already on account, not yet in use: the situation behind a
+                  receipt recorded twice. Said once, with the way to use it. */}
+              {creditHeld > 0 && !form.useCredits && !isReviewing && (
                 <View style={styles.advanceBanner}>
                   <Feather name="info" size={14} color={colors.warning} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.advanceBannerText}>
-                      {form.customerName} already holds {formatCurrency(advanceTotal, 'Rs ')} in advances.
-                      Apply them instead of recording new cash for the same money.
+                      {form.customerName || 'This customer'} already has {formatCurrency(creditHeld, 'Rs ')} on
+                      account. If this is money they already paid, use it instead of recording new cash —
+                      recording it again would count the same money twice.
                     </Text>
-                    {hasOutstanding && (
-                      <TouchableOpacity onPress={() => setApplyOpen(true)} accessibilityRole="button">
-                        <Text style={styles.advanceBannerLink}>Apply advance to invoices</Text>
-                      </TouchableOpacity>
-                    )}
+                    <TouchableOpacity onPress={() => dispatch(setUseCredits(true))} accessibilityRole="button">
+                      <Text style={styles.advanceBannerLink}>Use in this payment</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               )}
@@ -479,23 +545,130 @@ const ReceivePaymentScreen: React.FC = () => {
                 placeholder="e.g. CHQ-12345"
               />
               <CustomInput
-                label="Amount (Rs) *"
+                label={creditShown > 0 ? 'Amount received (Rs)' : 'Amount (Rs) *'}
                 value={form.amount}
                 onChangeText={handleAmountChange}
                 placeholder="0"
                 keyboardType="decimal-pad"
                 error={form.errors.amount}
               />
-              {hasOutstanding && (
+              {creditUsed > 0 && !isReviewing && (
+                <Text style={styles.fieldHint}>
+                  Leave empty if credit on account covers what is being settled.
+                </Text>
+              )}
+              {hasOutstanding && totalOutstanding > 0 && !isReviewing && (
                 <TouchableOpacity onPress={() => dispatch(payInFull())} activeOpacity={0.7} style={styles.payFullChip}>
                   <Feather name="zap" size={14} color={colors.actionGreen} />
                   <Text style={styles.payFullChipText}>
-                    Pay in Full ({formatCurrency(totalOutstanding, 'Rs ')})
+                    {creditUsed > 0 ? 'Pay the Rest' : 'Pay in Full'} ({formatCurrency(totalOutstanding, 'Rs ')})
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
           </View>
+
+          {/* ── Credit on account ────────────────────── */}
+          {/* Advances and open credit memos, spent first — oldest due date
+              first, or the invoice "Use credit" came from — before any new
+              money. One switch; each credit's amount stays editable. */}
+          {!isReviewing && form.credits.length > 0 && (
+            <>
+              <View style={styles.sectionLabelRow}>
+                <View style={[styles.sectionDot, { backgroundColor: colors.primary }]} />
+                <Text style={styles.sectionTitle}>CREDITS ON ACCOUNT</Text>
+              </View>
+              <View style={styles.sectionCard}>
+                <View style={[styles.cardAccent, { backgroundColor: colors.primary }]} />
+                <View style={styles.cardBody}>
+                  <View style={styles.creditHeadRow}>
+                    <Text style={[styles.creditHeadText, { flex: 1 }]}>
+                      {form.customerName || 'This customer'} has {formatCurrency(creditHeld, 'Rs ')} to use —
+                      spent first, oldest due date first, before any new money.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => dispatch(setUseCredits(!form.useCredits))}
+                      activeOpacity={0.8}
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: form.useCredits }}
+                      accessibilityLabel="Use in this payment"
+                      style={[styles.toggleSwitch, styles.toggleSwitchLight, form.useCredits && styles.toggleSwitchOn]}
+                    >
+                      <View style={[styles.toggleKnob, form.useCredits && styles.toggleKnobOn]} />
+                    </TouchableOpacity>
+                  </View>
+                  {form.useCredits && (
+                    <>
+                      {form.credits.map(c => {
+                        const over = (parseFloat(c.use) || 0) > c.available + 0.004;
+                        return (
+                          <View key={c.id} style={styles.creditLine}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.creditRef} numberOfLines={1}>
+                                {c.reference || CREDIT_SOURCE_LABELS[c.kind]}
+                              </Text>
+                              <Text style={styles.creditMeta}>
+                                {CREDIT_SOURCE_LABELS[c.kind]} · {formatCurrency(c.available, 'Rs ')} available
+                              </Text>
+                              <Text style={styles.creditApplies}>
+                                Applies {formatCurrency(spread.perCredit[c.id] ?? 0, 'Rs ')}
+                              </Text>
+                            </View>
+                            <TextInput
+                              style={[styles.creditInput, over && styles.creditInputOver]}
+                              value={c.use}
+                              onChangeText={v => dispatch(setCreditUse({ id: c.id, value: v }))}
+                              keyboardType="decimal-pad"
+                              accessibilityLabel={`Amount of ${c.reference || CREDIT_SOURCE_LABELS[c.kind]} to use`}
+                              editable={!form.isSaving}
+                            />
+                          </View>
+                        );
+                      })}
+                      <Text style={styles.creditTotal}>Credits used {formatCurrency(creditUsed, 'Rs ')}</Text>
+                      {!!form.errors.credits && <Text style={styles.allocError}>{form.errors.credits}</Text>}
+                    </>
+                  )}
+                </View>
+              </View>
+            </>
+          )}
+
+          {/* Reviewing a staff settlement: the credit it asks to spend. */}
+          {isReviewing && form.requestCredits.length > 0 && (
+            <>
+              <View style={styles.sectionLabelRow}>
+                <View style={[styles.sectionDot, { backgroundColor: colors.primary }]} />
+                <Text style={styles.sectionTitle}>CREDIT ON ACCOUNT USED</Text>
+              </View>
+              <View style={styles.sectionCard}>
+                <View style={[styles.cardAccent, { backgroundColor: colors.primary }]} />
+                <View style={styles.cardBody}>
+                  {form.requestCredits.map((c, i) => (
+                    <View key={`${c.id}-${c.invoiceId}-${i}`} style={styles.creditLine}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.creditRef}>
+                          {c.kind === 'credit_memo' ? 'Credit memo' : 'Advance'}
+                        </Text>
+                        <Text style={styles.creditMeta}>
+                          On{' '}
+                          {form.outstandingRows.find(r => r.invoiceId === c.invoiceId)?.invoiceNumber ??
+                            'an invoice since settled'}
+                        </Text>
+                      </View>
+                      <Text style={styles.creditRequestAmount}>
+                        {formatCurrency(parseFloat(c.amount) || 0, 'Rs ')}
+                      </Text>
+                    </View>
+                  ))}
+                  <Text style={styles.creditTotal}>
+                    {formatCurrency(requestCreditTotal, 'Rs ')} of credit, then{' '}
+                    {paymentAmount > 0 ? `${formatCurrency(paymentAmount, 'Rs ')} of new money` : 'no new money'}.
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
 
           {/* ── Outstanding Invoices ─────────────────── */}
           <View style={styles.sectionLabelRow2}>
@@ -538,33 +711,42 @@ const ReceivePaymentScreen: React.FC = () => {
                 <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Balance</Text>
                 <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Applied</Text>
               </View>
-              {form.outstandingRows.map((row, idx) => (
-                <TouchableOpacity
-                  key={row.invoiceId}
-                  style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven, row.checked && styles.tableRowChecked]}
-                  activeOpacity={0.6}
-                  onPress={() => dispatch(toggleInvoiceCheck(row.invoiceId))}
-                >
-                  <View style={styles.checkboxWrap}>
-                    <View style={[styles.checkbox, row.checked && styles.checkboxChecked]}>
-                      {row.checked && <Feather name="check" size={13} color={colors.neutral0} />}
-                    </View>
-                  </View>
-                  <Text style={[styles.tdText, styles.tdStrong, { flex: 1.2 }]}>{row.invoiceNumber}</Text>
-                  <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatDate(row.dueDate)}</Text>
-                  <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatCurrency(row.balance, 'Rs ')}</Text>
-                  <Text
-                    style={[styles.tdText, styles.tdRight, styles.tdStrong, { flex: 1 }, row.allocated > 0 && { color: colors.success }]}
+              {form.outstandingRows.map((row, idx) => {
+                const covered = row.credit > 0 && cashCapOf(row) <= 0;
+                return (
+                  <TouchableOpacity
+                    key={row.invoiceId}
+                    style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven, (row.checked || covered) && styles.tableRowChecked]}
+                    activeOpacity={0.6}
+                    disabled={covered}
+                    onPress={() => dispatch(toggleInvoiceCheck(row.invoiceId))}
                   >
-                    {row.allocated > 0 ? formatCurrency(row.allocated, 'Rs ') : '—'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <View style={styles.checkboxWrap}>
+                      <View style={[styles.checkbox, (row.checked || covered) && styles.checkboxChecked]}>
+                        {(row.checked || covered) && <Feather name="check" size={13} color={colors.neutral0} />}
+                      </View>
+                    </View>
+                    <View style={{ flex: 1.2 }}>
+                      <Text style={[styles.tdText, styles.tdStrong]}>{row.invoiceNumber}</Text>
+                      {row.credit > 0 && (
+                        <Text style={styles.tdCredit}>{formatCurrency(row.credit, 'Rs ')} from credit</Text>
+                      )}
+                    </View>
+                    <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatDate(row.dueDate)}</Text>
+                    <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatCurrency(row.balance, 'Rs ')}</Text>
+                    <Text
+                      style={[styles.tdText, styles.tdRight, styles.tdStrong, { flex: 1 }, (row.allocated > 0 || covered) && { color: colors.success }]}
+                    >
+                      {covered ? 'By credit' : row.allocated > 0 ? formatCurrency(row.allocated, 'Rs ') : '—'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
 
           {/* ── Summary Panel ────────────────────────── */}
-          {paymentAmount > 0 && (
+          {(paymentAmount > 0 || creditShown > 0) && (
             <LinearGradient
               colors={PANEL.gradient}
               style={styles.summaryCard}
@@ -576,8 +758,14 @@ const ReceivePaymentScreen: React.FC = () => {
                 <Text style={styles.summaryHeaderText}>Payment Summary</Text>
               </View>
               <View style={styles.summaryDivider} />
-              <SummaryRow label="Payment Amount" value={formatCurrency(paymentAmount, 'Rs ')} />
-              <SummaryRow label="Applied to Invoices" value={formatCurrency(totalAllocated, 'Rs ')} valueColor={totalAllocated > 0 ? PANEL.positive : undefined} />
+              {creditShown > 0 && (
+                <SummaryRow label="Credit on Account Used" value={formatCurrency(creditShown, 'Rs ')} valueColor={PANEL.positive} />
+              )}
+              <SummaryRow label={creditShown > 0 ? 'Money Received' : 'Payment Amount'} value={formatCurrency(paymentAmount, 'Rs ')} />
+              <SummaryRow label={creditShown > 0 ? 'Money Applied to Invoices' : 'Applied to Invoices'} value={formatCurrency(totalAllocated, 'Rs ')} valueColor={totalAllocated > 0 ? PANEL.positive : undefined} />
+              {creditShown > 0 && (
+                <SummaryRow label="Credit + Money Received" value={formatCurrency(Math.round((creditShown + paymentAmount) * 100) / 100, 'Rs ')} />
+              )}
               {overpayment > 0 && (
                 <>
                   <SummaryRow label="Unapplied Amount" value={formatCurrency(overpayment, 'Rs ')} valueColor={form.saveOverpaymentAsCredit ? PANEL.caution : PANEL.negative} />
@@ -670,7 +858,11 @@ const ReceivePaymentScreen: React.FC = () => {
           </View>
           <View style={{ flex: 1.4 }}>
             <PrimaryButton
-              title={form.isSaving ? 'Recording…' : payCap.submitLabel('Record Payment')}
+              title={
+                form.isSaving
+                  ? 'Recording…'
+                  : payCap.submitLabel(creditUsed > 0 && paymentAmount <= 0 ? 'Apply Credit' : 'Record Payment')
+              }
               onPress={handleSave}
               isLoading={form.isSaving}
               icon={<Feather name="check-circle" size={16} color={colors.neutral0} />}
@@ -693,7 +885,7 @@ const ReceivePaymentScreen: React.FC = () => {
             <Animated.View style={[sStyles.checkCircle, { transform: [{ scale: checkScale }] }]}>
               <Feather name="check" size={40} color={colors.neutral0} />
             </Animated.View>
-            <Text style={sStyles.title}>Payment Recorded!</Text>
+            <Text style={sStyles.title}>{successTitle}</Text>
             <Text style={sStyles.amount}>{successMsg}</Text>
             <Text style={sStyles.sub}>{successSub}</Text>
             <View style={sStyles.divider} />
@@ -706,18 +898,6 @@ const ReceivePaymentScreen: React.FC = () => {
           </Animated.View>
         </Animated.View>
       </Modal>
-      <ApplyAdvanceModal
-        visible={applyOpen}
-        customerId={form.customerId}
-        customerName={form.customerName}
-        invoiceId={preInvoiceId}
-        onClose={() => setApplyOpen(false)}
-        onApplied={() => {
-          reloadAdvances();
-          dispatch(fetchAllInvoicesForPayment());
-          dispatch(fetchInvoices());
-        }}
-      />
     </SafeAreaView>
   );
 };
@@ -742,6 +922,27 @@ const styles = StyleSheet.create({
   },
   advanceBannerText: { ...typography.caption, color: colors.textPrimary },
   advanceBannerLink: { ...typography.labelSm, color: colors.primary, marginTop: spacing.xxs },
+  fieldHint: { ...typography.caption, color: colors.textSecondary, marginTop: -spacing.xxs, marginBottom: spacing.xs },
+  creditHeadRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  creditHeadText: { ...typography.caption, color: colors.textSecondary },
+  creditLine: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    paddingVertical: spacing.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.neutral200,
+    marginTop: spacing.xs,
+  },
+  creditRef: { ...typography.labelMd, color: colors.textPrimary },
+  creditMeta: { ...typography.caption, color: colors.textSecondary },
+  creditApplies: { ...typography.caption, color: colors.success, marginTop: 2 },
+  creditInput: {
+    width: 104, height: 40, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.neutral300,
+    paddingHorizontal: spacing.xs, textAlign: 'right', ...typography.bodySm, color: colors.textPrimary,
+    backgroundColor: colors.neutral0,
+  },
+  creditInputOver: { borderColor: colors.danger },
+  creditTotal: { ...typography.labelSm, color: colors.textPrimary, textAlign: 'right', marginTop: spacing.xs },
+  creditRequestAmount: { ...typography.labelMd, color: colors.textPrimary },
+  tdCredit: { ...typography.caption, color: colors.success, marginTop: 1 },
+  toggleSwitchLight: { backgroundColor: colors.neutral300 },
   container: { flex: 1, backgroundColor: colors.neutral100 },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
 

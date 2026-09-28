@@ -46,7 +46,6 @@ import { statementSerializer, shareStatementPdf } from '../../../utils/statement
 import { useCompanyInfo } from '../../../utils/companyInfo';
 import { mapCustomer } from '../../../serializers/customerSerializer';
 import type { PaymentTerms, Customer } from '../../../types';
-import ApplyAdvanceModal from '../../../components/shared/ApplyAdvanceModal';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -99,7 +98,6 @@ const CustomerDetailScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSharingStatement, setIsSharingStatement] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
-  const [applyOpen, setApplyOpen] = useState(false);
 
   useEffect(() => {
     return () => { dispatch(resetCustomerDetail()); };
@@ -191,6 +189,17 @@ const CustomerDetailScreen: React.FC = () => {
       .navigate('TransactionsStack', {
         screen: 'ReceivePayment',
         params: { customerId: customer.id },
+        initial: false
+      });
+  };
+  // Credit on account, spent in Receive Payment with the switch already on —
+  // the web's flow: advances and credit memos alike, oldest invoice first, and
+  // any new money alongside, in one settlement.
+  const handleUseCredit = () => {
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
+      .navigate('TransactionsStack', {
+        screen: 'ReceivePayment',
+        params: { customerId: customer.id, useCredits: true },
         initial: false
       });
   };
@@ -323,7 +332,7 @@ const CustomerDetailScreen: React.FC = () => {
                 <Text style={styles.creditLabel}>Advances held</Text>
                 <Text style={styles.creditPercent}>{formatCurrency(advancesHeld, 'Rs ')}</Text>
               </View>
-              <CustomButton title="Apply to invoices" variant="secondary" size="sm" onPress={() => setApplyOpen(true)} />
+              <CustomButton title="Apply to invoices" variant="secondary" size="sm" onPress={handleUseCredit} />
             </View>
           )}
 
@@ -451,16 +460,6 @@ const CustomerDetailScreen: React.FC = () => {
           </ListTabState>
         )}
       </ScrollView>
-      <ApplyAdvanceModal
-        visible={applyOpen}
-        customerId={customer.id}
-        customerName={customer.name}
-        onClose={() => setApplyOpen(false)}
-        onApplied={() => {
-          dispatch(fetchCustomerDetail(customerId));
-          dispatch(fetchCustomerPayments({ customerId }));
-        }}
-      />
     </SafeAreaView>
   );
 };

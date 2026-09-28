@@ -10,8 +10,18 @@
 
 import { configureStore } from '@reduxjs/toolkit';
 
+// The customer summary's serializer reaches the report helpers, and the real
+// network module pulls in Expo's environment, which Jest cannot load.
+jest.mock('../../../../networks/network/apiHelpers', () => ({
+  api: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
+  API_BASE_URL: 'http://test.local/api/v1',
+  extractErrorMessage: jest.fn(),
+  unwrapEnvelope: (r: unknown) => r,
+}));
+
 jest.mock('../../../../networks/sales/paymentNetwork', () => ({
   createPaymentAPI: jest.fn(),
+  settleInvoicesAPI: jest.fn(),
   receivePaymentAPI: jest.fn(),
   getOutstandingInvoicesAPI: jest.fn(),
   getPaymentHistoryAPI: jest.fn(),
@@ -22,6 +32,9 @@ jest.mock('../../../../networks/sales/paymentNetwork', () => ({
 jest.mock('../../../../networks/sales/invoiceNetwork', () => ({
   getInvoicesAPI: jest.fn(),
   getInvoiceByIdAPI: jest.fn(),
+}));
+jest.mock('../../../../networks/reports/arAgingNetwork', () => ({
+  getARPartySummaryAPI: jest.fn(),
 }));
 
 import { createPaymentAPI } from '../../../../networks/sales/paymentNetwork';
@@ -115,14 +128,15 @@ describe('owner — the payment posts', () => {
 // Amount 0, no allocations. The screen fetched the request for its banner and
 // never put the payload anywhere. These pin the reconstruction.
 //
-// It is two-phase on purpose. outstandingRows are built from allInvoices, and
-// fetchAllInvoicesForPayment REBUILDS them (allocated: 0, checked: false) when
-// it lands — so allocations applied before that arrives are silently wiped.
+// It is two-phase on purpose. The rows arrive by their own request and
+// fetchOutstandingForPayment BUILDS them (allocated: 0, checked: false) when it
+// lands — so allocations applied before that arrives are silently wiped.
 
 import {
   loadFromRequestPayload,
   applyRequestAllocations,
-  fetchAllInvoicesForPayment,
+  fetchOutstandingForPayment,
+  outstandingRowsOf,
 } from '../receivePaymentSlice';
 
 const payload = {
@@ -135,7 +149,7 @@ const payload = {
   applications: [{ invoiceId: 'inv-1', amount: '60000.00' }],
 };
 
-/** An invoice list shaped as the serializer leaves it. */
+/** An open invoice as GET /payments/customer/:id/outstanding returns it. */
 const invoiceRow = (id: string, total: number, amountPaid = 0) => ({
   id,
   invoiceNumber: `INV-${id}`,
@@ -147,11 +161,14 @@ const invoiceRow = (id: string, total: number, amountPaid = 0) => ({
   lines: [] as unknown[],
 });
 
-const withInvoices = (store: ReturnType<typeof makeStore>, rows: object[]) =>
-  store.dispatch({
-    type: fetchAllInvoicesForPayment.fulfilled.type,
-    payload: { invoices: rows.map(r => r as never) },
-  });
+const withInvoices = (store: ReturnType<typeof makeStore>, rows: object[], customerId = 'cust-1') =>
+  store.dispatch(
+    fetchOutstandingForPayment.fulfilled(
+      outstandingRowsOf({ success: true, data: rows }),
+      'req-rows',
+      customerId,
+    ),
+  );
 
 describe('loadFromRequestPayload — phase one', () => {
   const load = (p: object, customerName = 'Acme Ltd') => {
@@ -198,8 +215,10 @@ describe('loadFromRequestPayload — phase one', () => {
 describe('applyRequestAllocations — phase two', () => {
   const loaded = (p: object = payload, rows = [invoiceRow('inv-1', 60000)]) => {
     const store = makeStore();
-    withInvoices(store, rows);
+    // The review loads the request first; that names the customer whose
+    // invoices are then fetched.
     store.dispatch(loadFromRequestPayload({ payload: p as never, customerName: 'Acme Ltd' }));
+    withInvoices(store, rows);
     return store;
   };
 
@@ -277,5 +296,238 @@ describe('money not applied to an invoice is held as a customer advance', () => 
     seed(store);
     await store.dispatch(savePayment());
     expect(createPayment.mock.calls[0][0].reference).toBeUndefined();
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+// Credit on account — the same settlement the web records
+// ═══════════════════════════════════════════════════════
+// An overdue invoice paid from an advance, a credit memo and new money used to
+// take the "Apply advance" dialog (advances only, one receipt at a time) and
+// then a separate receipt. It is now one settlement, spread the way the web
+// spreads it: credit first, oldest due first, then the cash over what is left.
+
+import { getARPartySummaryAPI } from '../../../../networks/reports/arAgingNetwork';
+import { settleInvoicesAPI } from '../../../../networks/sales/paymentNetwork';
+import {
+  fetchCreditsForPayment,
+  openForCredit,
+  payInFull,
+  preselectInvoice,
+  requestCashApplicationsOf,
+  setCreditUse,
+  setUseCredits,
+  toggleInvoiceCheck,
+} from '../receivePaymentSlice';
+
+const settle = settleInvoicesAPI as jest.Mock;
+const summaryApi = getARPartySummaryAPI as jest.Mock;
+
+const openInvoice = (id: string, dueDate: string, balance: number) => ({
+  id,
+  invoiceNumber: `INV-${id}`,
+  dueDate,
+  total: String(balance),
+  amountPaid: '0',
+  balance: String(balance),
+});
+
+const creditsOf = (items: object[]) => ({
+  success: true,
+  data: { partyType: 'customer', credits: { total: 0, items } },
+});
+
+/** Overdue 1000 and current 500; an advance of 300 and a credit memo of 200. */
+const books = async () => {
+  const store = makeStore();
+  store.dispatch(setPaymentCustomer({ id: 'cust-1', name: 'Acme Ltd' }));
+  withInvoices(store, [openInvoice('overdue', '2026-08-01', 1000), openInvoice('current', '2026-10-20', 500)]);
+  summaryApi.mockResolvedValue(
+    creditsOf([
+      { kind: 'payment', id: 'rct-1', reference: 'RCT-1', date: '2026-07-01', amount: 300, available: 300 },
+      { kind: 'credit_memo', id: 'cm-1', reference: 'CM-1', date: '2026-09-01', amount: 200, available: 200 },
+      { kind: 'payment', id: 'rct-spent', reference: 'RCT-0', date: '2026-06-01', amount: 90, available: 0 },
+    ]),
+  );
+  await store.dispatch(fetchCreditsForPayment('cust-1'));
+  return store;
+};
+const rowsOf = (store: ReturnType<typeof makeStore>) =>
+  Object.fromEntries(store.getState().receivePayment.outstandingRows.map(r => [r.invoiceId, r]));
+
+describe('credit on account', () => {
+  it('offers advances and credit memos with something left, each set to use all it holds', async () => {
+    const store = await books();
+    const credits = store.getState().receivePayment.credits;
+    expect(credits.map(c => [c.id, c.kind, c.use])).toEqual([
+      ['rct-1', 'advance', '300'],
+      ['cm-1', 'credit_memo', '200'],
+    ]);
+  });
+
+  it('is off until asked for: a plain receipt never quietly spends an advance', async () => {
+    createPayment.mockResolvedValue({ data: { id: 'pay-1' } });
+    const store = await books();
+    store.dispatch(setPaymentField({ key: 'amount', value: '100' }));
+    await store.dispatch(savePayment({ idempotencyKey: 'k-plain' }));
+
+    expect(settle).not.toHaveBeenCalled();
+    expect(createPayment).toHaveBeenCalledWith(expect.objectContaining({ amount: '100.00' }), 'k-plain');
+  });
+
+  it('switched on, credit lands on the oldest invoice first and cash cannot overlap it', async () => {
+    const store = await books();
+    store.dispatch(setUseCredits(true));
+    expect(rowsOf(store).overdue.credit).toBe(500);
+    expect(rowsOf(store).current.credit).toBe(0);
+
+    store.dispatch(setPaymentField({ key: 'amount', value: '500' }));
+    store.dispatch(toggleInvoiceCheck('overdue'));
+    // Only 500 is left on the overdue invoice once credit has taken 500.
+    expect(rowsOf(store).overdue.allocated).toBe(500);
+  });
+
+  it('settles credit and cash in ONE request, under the attempt\'s idempotency key', async () => {
+    settle.mockResolvedValue({ success: true, data: { payment: { id: 'rct-new' }, credits: [] } });
+    const store = await books();
+    store.dispatch(setUseCredits(true));
+    store.dispatch(setPaymentField({ key: 'amount', value: '500' }));
+    store.dispatch(toggleInvoiceCheck('overdue'));
+
+    const result = await store.dispatch(savePayment({ idempotencyKey: 'k-1' }));
+
+    expect(createPayment).not.toHaveBeenCalled();
+    expect(settle).toHaveBeenCalledTimes(1);
+    expect(settle).toHaveBeenCalledWith(
+      {
+        customerId: 'cust-1',
+        paymentDate: expect.any(String),
+        credits: [
+          { kind: 'advance', id: 'rct-1', invoiceId: 'overdue', amount: '300.00' },
+          { kind: 'credit_memo', id: 'cm-1', invoiceId: 'overdue', amount: '200.00' },
+        ],
+        cash: expect.objectContaining({
+          amount: '500.00',
+          applications: [{ invoiceId: 'overdue', amount: '500.00' }],
+        }),
+      },
+      'k-1',
+    );
+    expect(result.payload).toEqual({ payment: { id: 'rct-new' }, pending: false });
+  });
+
+  it('credit alone sends no cash leg — no receipt is made', async () => {
+    settle.mockResolvedValue({ data: { payment: null, credits: [] } });
+    const store = await books();
+    store.dispatch(setUseCredits(true));
+    await store.dispatch(savePayment({ idempotencyKey: 'k-2' }));
+
+    const body = settle.mock.calls[0][0];
+    expect(body).not.toHaveProperty('cash');
+    expect(body.credits).toHaveLength(2);
+  });
+
+  it('a staff settlement comes back pending, like a receipt', async () => {
+    settle.mockResolvedValue({ success: true, pending: true, data: { requestId: 'req-9' } });
+    const store = await books();
+    store.dispatch(setUseCredits(true));
+    const result = await store.dispatch(savePayment());
+    expect(result.payload).toEqual({ payment: null, pending: true });
+  });
+
+  it('spends only the part of a credit the user chose', async () => {
+    const store = await books();
+    store.dispatch(setUseCredits(true));
+    store.dispatch(setCreditUse({ id: 'rct-1', value: '120' }));
+    expect(rowsOf(store).overdue.credit).toBe(320);
+  });
+
+  it('"Use credit" on an invoice puts that invoice first in line', async () => {
+    const store = makeStore();
+    store.dispatch(openForCredit({ invoiceId: 'current' }));
+    store.dispatch(setPaymentCustomer({ id: 'cust-1', name: 'Acme Ltd' }));
+    withInvoices(store, [openInvoice('overdue', '2026-08-01', 1000), openInvoice('current', '2026-10-20', 500)]);
+    summaryApi.mockResolvedValue(
+      creditsOf([{ kind: 'payment', id: 'rct-1', reference: 'RCT-1', date: '2026-07-01', amount: 600, available: 600 }]),
+    );
+    await store.dispatch(fetchCreditsForPayment('cust-1'));
+
+    expect(rowsOf(store).current.credit).toBe(500);
+    expect(rowsOf(store).overdue.credit).toBe(100);
+    // Opened for credit, the invoice is ticked but no money is assumed.
+    store.dispatch(preselectInvoice('current'));
+    expect(store.getState().receivePayment.amount).toBe('');
+  });
+
+  it('an invoice credit settles in full cannot be ticked for cash, and "pay in full" receives only the rest', async () => {
+    const store = makeStore();
+    store.dispatch(setPaymentCustomer({ id: 'cust-1', name: 'Acme Ltd' }));
+    withInvoices(store, [openInvoice('small', '2026-08-01', 100), openInvoice('big', '2026-09-01', 400)]);
+    summaryApi.mockResolvedValue(
+      creditsOf([{ kind: 'credit_memo', id: 'cm-1', reference: 'CM-1', date: '2026-07-01', amount: 150, available: 150 }]),
+    );
+    await store.dispatch(fetchCreditsForPayment('cust-1'));
+    store.dispatch(setUseCredits(true));
+
+    store.dispatch(toggleInvoiceCheck('small'));
+    expect(rowsOf(store).small.checked).toBe(false);
+
+    store.dispatch(payInFull());
+    expect(store.getState().receivePayment.amount).toBe('350');
+    expect(rowsOf(store).big.allocated).toBe(350);
+  });
+
+  it("drops a late answer for a customer who is no longer selected", async () => {
+    const store = makeStore();
+    store.dispatch(setPaymentCustomer({ id: 'cust-2', name: 'Other' }));
+    withInvoices(store, [openInvoice('stale', '2026-08-01', 100)], 'cust-1');
+    expect(store.getState().receivePayment.outstandingRows).toEqual([]);
+  });
+});
+
+describe('reviewing a staff settlement', () => {
+  const settlement = {
+    action: 'settle',
+    customerId: 'cust-1',
+    paymentDate: '2026-09-28',
+    credits: [{ kind: 'credit_memo', id: 'cm-1', invoiceId: 'inv-1', amount: '100' }],
+    cash: {
+      amount: '50',
+      paymentMethod: 'cash',
+      reference: 'CHQ-7',
+      applications: [{ invoiceId: 'inv-1', amount: '50' }],
+    },
+  };
+
+  it('reads the new money from `cash` and the credit from `credits`', () => {
+    const store = makeStore();
+    store.dispatch(loadFromRequestPayload({ payload: settlement as never, customerName: 'Acme Ltd' }));
+    const form = store.getState().receivePayment;
+
+    expect(form.amount).toBe('50');
+    expect(form.method).toBe('cash');
+    expect(form.reference).toBe('CHQ-7');
+    expect(form.requestCredits).toEqual([
+      { kind: 'credit_memo', id: 'cm-1', invoiceId: 'inv-1', amount: '100' },
+    ]);
+    expect(requestCashApplicationsOf(settlement)).toEqual([{ invoiceId: 'inv-1', amount: '50' }]);
+  });
+
+  it('an advance applied from a receipt is all credit and no new money', () => {
+    const apply = {
+      action: 'apply',
+      paymentId: 'rct-3',
+      customerId: 'cust-1',
+      date: '2026-09-28',
+      applications: [{ invoiceId: 'inv-1', amount: '75' }],
+    };
+    const store = makeStore();
+    store.dispatch(loadFromRequestPayload({ payload: apply as never, customerName: 'Acme Ltd' }));
+    const form = store.getState().receivePayment;
+
+    expect(form.amount).toBe('');
+    expect(form.paymentDate).toBe('2026-09-28');
+    expect(form.requestCredits).toEqual([{ kind: 'advance', id: 'rct-3', invoiceId: 'inv-1', amount: '75' }]);
+    expect(requestCashApplicationsOf(apply)).toBeNull();
   });
 });
