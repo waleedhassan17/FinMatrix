@@ -6,7 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
-import { fetchCustomers, selectCustomers } from '../Customers/CustomerList/customerListSlice';
+import { useCustomerPicker } from '../../hooks/usePartyPicker';
 import { selectInventoryItems, fetchInventoryItems } from '../Inventory/InventoryList/inventoryListSlice';
 import { selectFeatures } from '../Auth/authSlice';
 import { createCreditMemoAPI } from '../../networks/sales/creditMemoNetwork';
@@ -41,7 +41,8 @@ const CreditMemoFormScreen: React.FC = () => {
   // Reversing an approved delivery: the form arrives pre-filled from the
   // delivery's own figures rather than making somebody re-key them.
   const fromDeliveryRequestId = route.params?.fromDeliveryRequestId;
-  const customers = useAppSelector(selectCustomers);
+  // Every customer, page by page — the list screen's state held only its first page.
+  const { customers } = useCustomerPicker();
   const inventory = useAppSelector(selectInventoryItems);
 
   const [customerId, setCustomerId] = useState('');
@@ -57,7 +58,6 @@ const CreditMemoFormScreen: React.FC = () => {
   const memoCap = useCapability('creditMemo.manage');
 
   useEffect(() => {
-    dispatch(fetchCustomers());
     // Inventory is tier-gated (FinMatrix.md): small_business/large_org have it
     // disabled, so the fetch would be a guaranteed 403 — skip it and the memo
     // lines stay free-text (linking an item is optional anyway).

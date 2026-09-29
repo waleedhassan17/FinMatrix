@@ -7,7 +7,7 @@
 //   • Pill status tabs, summary cards, FAB, "+ New" sm button
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   TextInput,
   RefreshControl,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,18 +25,16 @@ import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
-  fetchPurchaseOrders,
-  selectItems,
   selectSearchQuery,
   selectStatusFilter,
-  selectIsLoading,
-  selectError,
-  selectCounts,
-  selectListTotals,
   setSearchQuery,
   setStatusFilter,
   type POStatusFilter,
 } from './poListSlice';
+import { getPurchaseOrdersAPI } from '../../../networks/purchases/purchaseOrderNetwork';
+import { purchaseOrderListSerializer } from '../../../serializers/purchaseOrderSerializer';
+import { toApiPOStatus } from '../../../models/purchaseOrderModel';
+import { useDebouncedValue, usePagedList } from '../../../hooks/usePagedList';
 import {
   ReportContainer,
   ReportHeader,
@@ -60,25 +59,51 @@ const POListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
 
-  const rawItems = useAppSelector(selectItems);
   const searchQuery = useAppSelector(selectSearchQuery);
   const statusFilter = useAppSelector(selectStatusFilter);
-  const isLoading = useAppSelector(selectIsLoading);
-  const error = useAppSelector(selectError);
-  const rawCounts = useAppSelector(selectCounts);
-  const totals = useAppSelector(selectListTotals);
 
-  const items = useMemo(() => (Array.isArray(rawItems) ? rawItems : []), [rawItems]);
-  const counts = useMemo(
+  // Searched, filtered by tab, paged and counted BY THE SERVER. This read one
+  // page and counted its tabs and summed "Total Value" over that page alone.
+  const search = useDebouncedValue(searchQuery.trim());
+  const list = usePagedList(
+    useCallback(
+      (page: number, limit: number) => {
+        const apiStatus = toApiPOStatus(statusFilter);
+        return getPurchaseOrdersAPI({
+          page,
+          limit,
+          ...(search ? { search } : {}),
+          ...(apiStatus ? { status: apiStatus } : {}),
+        });
+      },
+      [search, statusFilter],
+    ),
+    p => purchaseOrderListSerializer(p).purchaseOrders,
+    `${search}|${statusFilter}`,
+  );
+  const items = list.rows;
+  const isLoading = list.isLoading;
+  const error = list.error;
+
+  // The server's statuses (partial, received) under the app's names.
+  const counts = useMemo(() => {
+    const by = list.summary?.byStatus ?? {};
+    const n = (k: string) => by[k]?.count ?? 0;
+    return {
+      all: list.summary?.count ?? items.length,
+      draft: n('draft'),
+      sent: n('sent'),
+      partially_received: n('partial'),
+      fully_received: n('received'),
+      closed: n('closed'),
+    };
+  }, [list.summary, items.length]);
+  const totals = useMemo(
     () => ({
-      all: Number(rawCounts?.all ?? 0),
-      draft: Number(rawCounts?.draft ?? 0),
-      sent: Number(rawCounts?.sent ?? 0),
-      partially_received: Number(rawCounts?.partially_received ?? 0),
-      fully_received: Number(rawCounts?.fully_received ?? 0),
-      closed: Number(rawCounts?.closed ?? 0),
+      totalPOs: list.summary?.count ?? list.total,
+      totalValue: Number(list.extras?.totals?.total ?? 0),
     }),
-    [rawCounts],
+    [list.summary, list.total, list.extras],
   );
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -97,26 +122,21 @@ const POListScreen: React.FC = () => {
     showsPending,
   } = usePendingApprovals('po', 'purchaseOrder.create');
 
-  // Re-fetch whenever filter/search changes. Also covers the first load.
-  useEffect(() => {
-    dispatch(fetchPurchaseOrders());
-  }, [statusFilter, searchQuery, dispatch]);
-
-  // On focus, not just on mount: the owner approves elsewhere, and coming back
-  // to this screen is exactly when the real PO should appear and the pending
-  // row drop off. Without this the list was stale until a manual pull.
+  // The list reloads itself on focus and when the search or tab changes. On
+  // focus the pending requests reload too: the owner approves elsewhere, and
+  // coming back is when the real PO should appear and the pending row drop off.
   useFocusEffect(
     useCallback(() => {
-      dispatch(fetchPurchaseOrders());
       void loadPending();
-    }, [dispatch, loadPending]),
+    }, [loadPending]),
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([dispatch(fetchPurchaseOrders()), loadPending()]);
+    list.reload();
+    await loadPending();
     setRefreshing(false);
-  }, [dispatch, loadPending]);
+  }, [list, loadPending]);
 
   const TABS: TabItem<POStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
@@ -282,7 +302,7 @@ const POListScreen: React.FC = () => {
       {initialLoading ? (
         <LoadingBlock />
       ) : loadFailed ? (
-        <ErrorBlock message={error!} onRetry={() => dispatch(fetchPurchaseOrders())} />
+        <ErrorBlock message={error!} onRetry={list.reload} />
       ) : isFirstRun ? (
         <EmptyBlock
           icon="clipboard"
@@ -302,6 +322,15 @@ const POListScreen: React.FC = () => {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
           }
+          onEndReached={list.loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            list.isLoadingMore ? (
+              <View style={styles.footer}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <EmptyBlock
               icon="search"
@@ -319,6 +348,7 @@ const POListScreen: React.FC = () => {
 // Scaffold, tabs and cards now come from ReportUI / TxnListUI; what remains
 // is the summary strip and the search field, which are specific to this screen.
 const styles = StyleSheet.create({
+  footer: { paddingVertical: spacing.md, alignItems: 'center' },
   summaryRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.xl,

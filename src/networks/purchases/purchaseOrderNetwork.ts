@@ -41,6 +41,8 @@ export interface POQueryParams {
   search?: string;
   status?: string;
   vendorId?: string;
+  /** Orders with a line for this inventory item. */
+  itemId?: string;
   page?: number;
   limit?: number;
 }

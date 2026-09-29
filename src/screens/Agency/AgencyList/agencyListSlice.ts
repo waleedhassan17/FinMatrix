@@ -18,6 +18,7 @@ import {
   agencyListSerializer,
   agencySingleSerializer,
 } from '../../../serializers/agencySerializer';
+import { fetchAllPages } from '../../../models/documentListModel';
 
 export interface AgencyListSliceState {
   agencies: WarehouseAgency[];
@@ -57,10 +58,14 @@ export const agencyListSlice = createAppSlice({
 
     // ── Async thunks ────────────────────────────────
     fetchAgencies: create.asyncThunk(
-      async () => {
-        const envelope = await getAgenciesAPI();
-        return agencyListSerializer(envelope);
-      },
+      // Every page. The screen, the inventory form's agency picker and the
+      // detail screens all read this list, and it was the first 50 — an
+      // agency past that could not be found or chosen.
+      async () =>
+        fetchAllPages(
+          (page, limit) => getAgenciesAPI({ page, limit }),
+          agencyListSerializer,
+        ),
       {
         pending: state => { state.isLoading = true; state.error = ''; },
         fulfilled: (state, action) => {

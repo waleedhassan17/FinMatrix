@@ -42,7 +42,7 @@ import {
   fetchPOForEdit,
 } from './poFormSlice';
 import { selectItems as selectPOs, upsertPurchaseOrder, fetchPurchaseOrders } from '../POList/poListSlice';
-import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
+import { useVendorPicker } from '../../../hooks/usePartyPicker';
 import { previewWeightedAverage } from '../../../models/inventoryModel';
 import {
   fetchInventoryItems,
@@ -92,7 +92,8 @@ const POFormScreen: React.FC = () => {
   const approvalRequestId = route.params?.fromApprovalRequestId;
   const isReviewing = !!approvalRequestId;
   const pos = useAppSelector(selectPOs);
-  const vendors = useAppSelector(selectVendors);
+  // Every vendor, page by page — the list screen's state held only its first page.
+  const { vendors } = useVendorPicker();
   const items = useAppSelector(selectInventoryItems);
   const form = useAppSelector(selectPOFormState);
   // Staff file a request rather than creating a PO. Draft-vs-send is a
@@ -128,7 +129,6 @@ const POFormScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    dispatch(fetchVendors());
     dispatch(fetchInventoryItems());
 
     if (hydratedRef.current) return;

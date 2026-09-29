@@ -4,19 +4,18 @@ import { getCustomerByIdAPI, getCustomersAPI } from '../networks/sales/customerN
 import { getVendorByIdAPI, getVendorsAPI } from '../networks/purchases/vendorNetwork';
 import { customerListSerializer, customerSingleSerializer } from '../serializers/customerSerializer';
 import { vendorListSerializer, vendorSingleSerializer } from '../serializers/vendorSerializer';
+import { fetchAllPages } from '../models/documentListModel';
 import type { Customer, Vendor } from '../types';
 
-/** The most the server returns in one page — what the web's pickers load. */
-const PICKER_LIMIT = 200;
-
 /**
- * The customers a payment can be received from, for its picker.
+ * Every customer, for a form's picker.
  *
- * Its own fetch, sized like the web's picker, rather than the Customers list
- * screen's state: that loads 50 at a time as it scrolls, so a payment screen
- * reading it offered only the first 50 customers — and "Record Payment" from
- * the 51st customer's page silently failed to select them. A customer the
- * screen was opened for is fetched on its own when it is not among the 200.
+ * Its own fetch, walking every page, rather than the Customers list screen's
+ * state: that loads 50 at a time as it scrolls, so a form reading it offered
+ * only the first 50 customers — and "Record Payment" from the 51st customer's
+ * page silently failed to select them. (This hook itself stopped at 200.) A
+ * customer the screen was opened for is also fetched on its own, so it is
+ * selectable even if the list failed.
  */
 export const useCustomerPicker = (presetId?: string) => {
   const [list, setList] = useState<Customer[]>([]);
@@ -25,8 +24,11 @@ export const useCustomerPicker = (presetId?: string) => {
 
   useEffect(() => {
     let cancelled = false;
-    getCustomersAPI({ page: 1, limit: PICKER_LIMIT })
-      .then(raw => { if (!cancelled) setList(customerListSerializer(raw).customers); })
+    fetchAllPages(
+      (page, limit) => getCustomersAPI({ page, limit }),
+      payload => customerListSerializer(payload).customers,
+    )
+      .then(rows => { if (!cancelled) setList(rows); })
       .catch(() => { /* an empty picker; the preset below still resolves */ })
       .finally(() => { if (!cancelled) setLoaded(true); });
     return () => { cancelled = true; };
@@ -45,7 +47,7 @@ export const useCustomerPicker = (presetId?: string) => {
   return { customers, loaded };
 };
 
-/** The vendors a bill can be paid to — see useCustomerPicker. */
+/** Every vendor, for a form's picker — see useCustomerPicker. */
 export const useVendorPicker = (presetId?: string) => {
   const [list, setList] = useState<Vendor[]>([]);
   const [extra, setExtra] = useState<Vendor | null>(null);
@@ -53,8 +55,11 @@ export const useVendorPicker = (presetId?: string) => {
 
   useEffect(() => {
     let cancelled = false;
-    getVendorsAPI({ page: 1, limit: PICKER_LIMIT })
-      .then(raw => { if (!cancelled) setList(vendorListSerializer(raw).vendors); })
+    fetchAllPages(
+      (page, limit) => getVendorsAPI({ page, limit }),
+      payload => vendorListSerializer(payload).vendors,
+    )
+      .then(rows => { if (!cancelled) setList(rows); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoaded(true); });
     return () => { cancelled = true; };
@@ -71,4 +76,23 @@ export const useVendorPicker = (presetId?: string) => {
 
   const vendors = extra && !list.some(v => v.id === extra.id) ? [extra, ...list] : list;
   return { vendors, loaded };
+};
+
+/**
+ * One customer, by id — for a screen about a single document or customer.
+ * Looking it up in the Customers list's state found only its first page, so
+ * the 51st customer's invoice had no contact details and its edit form opened
+ * empty.
+ */
+export const useCustomerById = (id?: string | null) => {
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    getCustomerByIdAPI(id)
+      .then(raw => { if (!cancelled) setCustomer(customerSingleSerializer(raw)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [id]);
+  return customer && customer.id === id ? customer : null;
 };

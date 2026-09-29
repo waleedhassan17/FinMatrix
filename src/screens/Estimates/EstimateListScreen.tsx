@@ -1,15 +1,19 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
-import { fetchEstimates, selectEstimateState, setEstimateStatusFilter, type EstimateStatusFilter } from './estimateSlice';
+import { selectEstimateState, setEstimateStatusFilter, type EstimateStatusFilter } from './estimateSlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, refreshingOverContent } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, LoadMoreFooter, nearEnd, refreshingOverContent } from '../../components/reports/ReportUI';
+import { getEstimatesAPI } from '../../networks/sales/estimateNetwork';
+import { estimateListSerializer } from '../../serializers/estimateSerializer';
+import { useDebouncedValue, usePagedList } from '../../hooks/usePagedList';
+import { statusCountsOf } from '../../models/documentListModel';
 import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
 import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
@@ -24,37 +28,32 @@ const EstimateListScreen: React.FC = () => {
   const state = useAppSelector(selectEstimateState);
   const [q, setQ] = useState('');
 
-  // Load ALL estimates once so tab counts are accurate and switching tabs is
-  // instant client-side — no refetch flicker that shifts layout.
-  const load = useCallback(() => { dispatch(fetchEstimates({})); }, [dispatch]);
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  // Searched, filtered by tab, paged and counted BY THE SERVER. This loaded
+  // one page and searched and counted it here, so an estimate older than that
+  // page could not be found and the counts stopped at it.
+  const search = useDebouncedValue(q.trim());
+  const status = state.statusFilter;
+  const list = usePagedList(
+    useCallback(
+      (page: number, limit: number) =>
+        getEstimatesAPI({ page, limit, ...(search ? { search } : {}), ...(status !== 'all' ? { status } : {}) }),
+      [search, status],
+    ),
+    p => estimateListSerializer(p).estimates,
+    `${search}|${status}`,
+  );
+  const load = list.reload;
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: state.estimates.length, draft: 0, sent: 0, accepted: 0, converted: 0, declined: 0 };
-    state.estimates.forEach(e => { c[e.status] = (c[e.status] ?? 0) + 1; });
-    return c;
-  }, [state.estimates]);
+  const counts = useMemo(() => statusCountsOf(list.summary, list.rows), [list.summary, list.rows]);
 
   const TABS: TabItem<EstimateStatusFilter>[] = [
-    { label: 'All', value: 'all', count: counts.all },
-    { label: 'Draft', value: 'draft', count: counts.draft },
-    { label: 'Sent', value: 'sent', count: counts.sent },
-    { label: 'Accepted', value: 'accepted', count: counts.accepted },
-    { label: 'Converted', value: 'converted', count: counts.converted },
-    { label: 'Declined', value: 'declined', count: counts.declined },
+    { label: 'All', value: 'all', count: counts.all ?? 0 },
+    { label: 'Draft', value: 'draft', count: counts.draft ?? 0 },
+    { label: 'Sent', value: 'sent', count: counts.sent ?? 0 },
+    { label: 'Accepted', value: 'accepted', count: counts.accepted ?? 0 },
+    { label: 'Converted', value: 'converted', count: counts.converted ?? 0 },
+    { label: 'Declined', value: 'declined', count: counts.declined ?? 0 },
   ];
-
-  const filtered = useMemo(() => {
-    let list = state.estimates;
-    if (state.statusFilter !== 'all') list = list.filter(e => e.status === state.statusFilter);
-    const term = q.trim().toLowerCase();
-    if (term) {
-      list = list.filter(
-        e => e.estimateNumber.toLowerCase().includes(term) || (e.customerName || '').toLowerCase().includes(term),
-      );
-    }
-    return list;
-  }, [state.estimates, state.statusFilter, q]);
 
   return (
     <ReportContainer>
@@ -82,17 +81,19 @@ const EstimateListScreen: React.FC = () => {
       <ScrollView
         style={styles.list}
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshingOverContent(state.isLoading, state.estimates.length)} onRefresh={load} tintColor={THEME.colors.primary} />}
+        onScroll={nearEnd(list.loadMore)}
+        scrollEventThrottle={200}
+        refreshControl={<RefreshControl refreshing={refreshingOverContent(list.isLoading, list.rows.length)} onRefresh={load} tintColor={THEME.colors.primary} />}
       >
-        {state.isLoading && state.estimates.length === 0 && <LoadingBlock label="Loading estimates…" />}
-        {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
-        {!state.isLoading && state.estimates.length === 0 && !state.error && (
+        {list.isLoading && list.rows.length === 0 && <LoadingBlock label="Loading estimates…" />}
+        {!!list.error && <ErrorBlock message={list.error} onRetry={load} />}
+        {!list.isLoading && list.rows.length === 0 && !list.error && status === 'all' && !search && (
           <EmptyBlock icon="file-text" title="No estimates yet" hint="Tap + to create your first quote." />
         )}
-        {state.estimates.length > 0 && filtered.length === 0 && !state.error && (
+        {!list.isLoading && list.rows.length === 0 && !list.error && (status !== 'all' || !!search) && (
           <EmptyBlock icon="search" title="No estimates found" hint="Try a different tab or search." />
         )}
-        {filtered.map(e => (
+        {list.rows.map(e => (
           <TxnCard
             key={e.id}
             number={e.estimateNumber}
@@ -106,6 +107,7 @@ const EstimateListScreen: React.FC = () => {
             onPress={() => navigation.navigate('EstimateDetail', { estimateId: e.id })}
           />
         ))}
+        <LoadMoreFooter shown={list.rows.length} total={list.total} hasMore={list.hasMore} loading={list.isLoadingMore} onMore={list.loadMore} />
       </ScrollView>
     </ReportContainer>
   );

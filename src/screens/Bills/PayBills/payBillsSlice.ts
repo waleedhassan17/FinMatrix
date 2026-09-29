@@ -27,6 +27,7 @@ import {
   type CreditSource,
   type CreditSpread,
 } from '../../../models/creditSpreadModel';
+import { fetchAllPages } from '../../../models/documentListModel';
 
 /** The API's enum is cash | check | bank_transfer | credit_card | other, so
  *  the UI's `cheque` / `online` have to be translated (same mapping the
@@ -352,7 +353,10 @@ export const payBillsSlice = createAppSlice({
 
     /** The vendor's unpaid bills — see buildRows. */
     fetchBillsForPayment: create.asyncThunk(
-      async (vendorId: string) => billListSerializer(await getBillsAPI({ vendorId, limit: 200 })).bills,
+      // Every page of the vendor's bills: an unpaid bill past the first 200
+      // could not be paid here.
+      async (vendorId: string) =>
+        fetchAllPages((page, limit) => getBillsAPI({ vendorId, page, limit }), payload => billListSerializer(payload).bills),
       {
         pending: state => { state.isLoadingBills = true; },
         fulfilled: (state, action) => {

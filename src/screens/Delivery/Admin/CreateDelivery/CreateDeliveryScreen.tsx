@@ -18,7 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { THEME } from '../../../../utils/theme';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
-import { selectCustomers, fetchCustomers } from '../../../Customers/CustomerList/customerListSlice';
+import { useCustomerPicker } from '../../../../hooks/usePartyPicker';
 import { selectInventoryItems, fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryListSlice';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import CustomInput from '../../../../Custom-Components/CustomInput';
@@ -96,14 +96,14 @@ const CreateDeliveryScreen: React.FC = () => {
   const credit = useCreditLimitPrompt();
   const isOwner = useIsOwner();
   const draft = useAppSelector(selectCreateDeliveryDraft);
-  const customers = useAppSelector(selectCustomers);
+  // Every customer, page by page — the list screen's state held only its first page.
+  const { customers } = useCustomerPicker();
   const inventory = useAppSelector(selectInventoryItems);
 
   const [itemId, setItemId] = useState('');
   const [qty, setQty] = useState('1');
 
   useEffect(() => {
-    dispatch(fetchCustomers());
     dispatch(fetchInventoryItems());
   }, [dispatch]);
 

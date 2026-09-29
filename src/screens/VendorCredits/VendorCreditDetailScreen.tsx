@@ -26,6 +26,7 @@ import { txnStatusColor } from '../../components/transactions/txnStatus';
 import { titleCase } from '../../components/transactions/TxnListUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import type { Bill } from '../../types';
+import { fetchAllPages } from '../../models/documentListModel';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'VendorCreditDetail'>;
@@ -45,10 +46,13 @@ const VendorCreditDetailScreen: React.FC = () => {
   const openApply = async () => {
     if (!c) return;
     try {
-      // As many as one page holds (as Pay Bills and the web ask): the default
-      // 50 left a busy vendor's older open bills out of this list.
-      const res = await getBillsAPI({ vendorId: c.vendorId, limit: 200 });
-      const list = billListSerializer(res).bills.filter(b => b.total - b.amountPaid > 0.01 && b.status !== 'void' && b.status !== 'draft');
+      // Every page of the vendor's bills: one page left a busy vendor's older
+      // open bills out of this list.
+      const all = await fetchAllPages(
+        (page, limit) => getBillsAPI({ vendorId: c.vendorId, page, limit }),
+        payload => billListSerializer(payload).bills,
+      );
+      const list = all.filter(b => b.total - b.amountPaid > 0.01 && b.status !== 'void' && b.status !== 'draft');
       setOpenBills(list);
       setShowApply(true);
     } catch (e: any) { Alert.alert('Error', e?.message ?? 'Could not load bills'); }

@@ -668,6 +668,46 @@ export const EmptyBlock: React.FC<{
   </View>
 );
 
+/**
+ * The foot of a list the server pages: a spinner while the next page loads,
+ * else how much is showing and the way to the rest. Nothing once all of it
+ * has loaded — a list that simply ends is complete. Pair it with `nearEnd`
+ * on the ScrollView so scrolling to the bottom loads more by itself.
+ */
+export const LoadMoreFooter: React.FC<{
+  shown: number;
+  total: number;
+  hasMore: boolean;
+  loading: boolean;
+  onMore: () => void;
+}> = ({ shown, total, hasMore, loading, onMore }) => {
+  if (loading) {
+    return (
+      <View style={S.moreBlock}>
+        <ActivityIndicator color={T.colors.primary} />
+      </View>
+    );
+  }
+  if (!hasMore) return null;
+  return (
+    <View style={S.moreBlock}>
+      <Text style={S.stateHint}>Showing {shown} of {total}</Text>
+      <TouchableOpacity style={S.retryBtn} onPress={onMore} activeOpacity={0.8}>
+        <Feather name="chevrons-down" size={13} color={T.colors.primary} />
+        <Text style={S.retryText}>Load more</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+/** A ScrollView `onScroll` that calls `onEnd` near the bottom. */
+export const nearEnd =
+  (onEnd: () => void, threshold = 240) =>
+  (e: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - threshold) onEnd();
+  };
+
 // ═══════════════════════════════════════════════════════
 // Statement primitives — QuickBooks-style formal statements
 // ═══════════════════════════════════════════════════════
@@ -1114,6 +1154,7 @@ const S = StyleSheet.create({
 
   // States
   stateBlock: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 10 },
+  moreBlock: { alignItems: 'center', justifyContent: 'center', paddingVertical: T.spacing.md, gap: T.spacing.xs },
   stateIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   stateText: { ...T.typography.bodyMd, color: T.colors.textSecondary, textAlign: 'center' },
   stateHint: { ...T.typography.caption, color: T.colors.textTertiary, textAlign: 'center' },

@@ -14,6 +14,7 @@ import { purchaseOrderListSerializer } from '../../../serializers/purchaseOrderS
 import type { StockMovement } from '../../../models/inventoryModel';
 import { isPendingApproval, type ApprovalRequest } from '../../../models/approvalModel';
 import type { PurchaseOrder } from '../../../types';
+import { fetchAllPages } from '../../../models/documentListModel';
 
 export type InventoryDetailTab = 'stock' | 'transactions' | 'purchaseOrders';
 
@@ -80,7 +81,14 @@ export const inventoryDetailSlice = createAppSlice({
     // the Transactions tab used to claim was always empty because the model
     // helper it read returned a hardcoded [].
     fetchItemMovements: create.asyncThunk(
-      async (itemId: string) => getStockMovementsAPI(itemId),
+      // Every page of the item's ledger, as one `{ data }` payload: a single
+      // request stopped at the server's default page, so older movements were
+      // missing from the item's history.
+      async (itemId: string) =>
+        fetchAllPages(
+          (page, limit) => getStockMovementsAPI(itemId, { page, limit }),
+          (payload: any): any[] => (Array.isArray(payload?.data) ? payload.data : []),
+        ).then(rows => ({ success: true, data: rows })),
       {
         pending: (state, action) => {
           state.status = 'loading';
@@ -119,10 +127,13 @@ export const inventoryDetailSlice = createAppSlice({
         // In parallel — two sequential round trips are a visible wait on a
         // phone. Only the PO call may reject: the pending strip fails soft.
         const [envelope, requests] = await Promise.all([
-          // One page, capped. Filtering page 1 of a paginated endpoint would
-          // silently drop older POs; past 100 this needs a server-side itemId
-          // filter rather than a bigger number.
-          getPurchaseOrdersAPI({ limit: PO_FETCH_LIMIT }),
+          // Every order with a line for this item, filtered by the server
+          // (?itemId=) and walked to its last page. This read the latest 100
+          // orders and filtered their lines here, so older ones never showed.
+          fetchAllPages(
+            (page, limit) => getPurchaseOrdersAPI({ itemId, page, limit }),
+            (payload: any): any[] => (Array.isArray(payload?.data) ? payload.data : []),
+          ).then(rows => ({ success: true, data: rows })),
           // Staff only: the owner's POs never wait on anyone, and an
           // unfiltered GET /approvals would hand them the whole company inbox.
           // Losing the strip beats blanking rows that loaded fine.
@@ -147,14 +158,12 @@ export const inventoryDetailSlice = createAppSlice({
           if (action.meta.requestId !== state.poRequestId) return;
 
           const { itemId } = action.payload;
-          const { purchaseOrders, totalPOs } = purchaseOrderListSerializer(action.payload.envelope);
+          const { purchaseOrders } = purchaseOrderListSerializer(action.payload.envelope);
           state.purchaseOrders = purchaseOrders.filter(po =>
             po.lines?.some(line => line.itemId === itemId),
           );
-          // Past one page the filter can only see what it was given, and an
-          // unqualified "No purchase orders for this item" would be a confident
-          // wrong answer to "is this already on order?".
-          state.poTruncated = totalPOs > purchaseOrders.length;
+          // Every page was read, so nothing is left out.
+          state.poTruncated = false;
 
           // `payload` is the original request body the server replays on
           // approval, so it is shaped like the PO write payload — but it is

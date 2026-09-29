@@ -42,10 +42,7 @@ import {
   selectInvoices,
   upsertInvoice,
 } from '../InvoiceList/invoiceListSlice';
-import {
-  fetchCustomers,
-  selectCustomers,
-} from '../../Customers/CustomerList/customerListSlice';
+import { useCustomerById } from '../../../hooks/usePartyPicker';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import {
   ReportContainer,
@@ -106,7 +103,6 @@ const InvoiceDetailScreen: React.FC = () => {
   const isLoading = useAppSelector(selectInvoiceDetailLoading);
   const isSending = useAppSelector(selectInvoiceDetailSending);
   const error = useAppSelector(selectInvoiceDetailError);
-  const customers = useAppSelector(selectCustomers);
   const invoicesList = useAppSelector(selectInvoices);
 
   const [refreshing, setRefreshing] = React.useState(false);
@@ -129,9 +125,6 @@ const InvoiceDetailScreen: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchInvoiceDetail(invoiceId));
-    // Customers are needed for the Bill-To block on the PDF
-    // and for the WhatsApp phone-number lookup.
-    if (customers.length === 0) dispatch(fetchCustomers());
     // Also here, not only on focus: the listener below skips the first focus by
     // design, which would leave the button enabled on the very first render.
     void loadPendingPayments();
@@ -155,11 +148,11 @@ const InvoiceDetailScreen: React.FC = () => {
     return unsubscribe;
   }, [navigation, invoiceId, dispatch, loadPendingPayments]);
 
-  // Resolve the customer record that matches this invoice.
-  const customer = useMemo(
-    () => customers.find(c => c.id === invoice?.customerId) || null,
-    [customers, invoice?.customerId],
-  );
+  // The invoice's customer, fetched by id — for the Bill-To block on the PDF
+  // and the WhatsApp phone lookup. It was looked up in the Customers list's
+  // state, which held only its first page: the 51st customer's invoice had no
+  // Bill-To details and no WhatsApp button.
+  const customer = useCustomerById(invoice?.customerId);
   const customerHasWhatsApp = !!sanitizePhoneForWhatsApp(customer?.phone);
   void invoicesList;
 

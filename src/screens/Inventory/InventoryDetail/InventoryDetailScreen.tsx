@@ -38,12 +38,10 @@ import {
   selectInventoryDetailPendingPOs,
   selectInventoryDetailPOStatus,
   selectInventoryDetailPOError,
-  selectInventoryDetailPOTruncated,
   setActiveTab,
   resetInventoryDetail,
   fetchItemMovements,
   fetchItemPurchaseOrders,
-  PO_FETCH_LIMIT
 } from './inventoryDetailSlice';
 import type { InventoryDetailTab } from './inventoryDetailSlice';
 import { movementLabel } from '../../../models/inventoryModel';
@@ -115,7 +113,6 @@ const InventoryDetailScreen: React.FC = () => {
   const pendingPORequests = useAppSelector(selectInventoryDetailPendingPOs);
   const poStatus = useAppSelector(selectInventoryDetailPOStatus);
   const poError = useAppSelector(selectInventoryDetailPOError);
-  const poTruncated = useAppSelector(selectInventoryDetailPOTruncated);
   // Whether the tab currently has anything to show. A re-fetch keeps these on
   // screen rather than collapsing the card to a spinner.
   const hasPORows = purchaseOrders.length > 0 || pendingPORequests.length > 0;
@@ -616,25 +613,12 @@ const InventoryDetailScreen: React.FC = () => {
             })}
 
             {/* Only a settled fetch that found nothing is an empty item —
-                otherwise a slow load flashes "no purchase orders" first. And
-                say so when the answer is only as good as the page we read:
-                claiming "none" to someone checking whether stock is already on
-                order is worse than admitting the list was cut short. */}
+                otherwise a slow load flashes "no purchase orders" first. The
+                server filters by item and every page is read, so "none" is
+                the whole answer. */}
             {poStatus === 'succeeded' && !hasPORows && (
               <View style={styles.emptyTab}>
-                <Text style={styles.emptyTabText}>
-                  {poTruncated
-                    ? `None in the ${PO_FETCH_LIMIT} most recent purchase orders — there are older ones this screen cannot search.`
-                    : 'No purchase orders for this item'}
-                </Text>
-              </View>
-            )}
-
-            {poStatus === 'succeeded' && hasPORows && poTruncated && (
-              <View style={styles.poTruncatedNote}>
-                <Text style={styles.poTruncatedText}>
-                  Searched the {PO_FETCH_LIMIT} most recent purchase orders. Older ones are not shown.
-                </Text>
+                <Text style={styles.emptyTabText}>No purchase orders for this item</Text>
               </View>
             )}
           </View>
@@ -894,12 +878,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   poStatusText: { ...typography.overline },
-  poTruncatedNote: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.backgroundAlt,
-  },
-  poTruncatedText: { ...typography.caption, color: colors.textTertiary },
 
   emptyTab: {
     padding: spacing.xxl,

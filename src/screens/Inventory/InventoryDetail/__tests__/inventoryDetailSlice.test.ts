@@ -22,7 +22,10 @@ jest.mock('../../../../networks/inventory/inventoryNetwork', () => ({
   getStockMovementsAPI: jest.fn(),
 }));
 
+import { configureStore } from '@reduxjs/toolkit';
+
 import type { ApprovalRequest } from '../../../../models/approvalModel';
+import { getPurchaseOrdersAPI } from '../../../../networks/purchases/purchaseOrderNetwork';
 import {
   inventoryDetailSlice,
   fetchItemPurchaseOrders,
@@ -56,7 +59,7 @@ const rawPO = (id: string, lines: ReturnType<typeof line>[]) => ({
   lines,
 });
 
-/** The GET /purchase-orders envelope. `total` drives the truncation flag. */
+/** A GET /purchase-orders envelope. */
 const envelope = (pos: ReturnType<typeof rawPO>[], total?: number) => ({
   data: { purchaseOrders: pos, pagination: { total: total ?? pos.length } },
 });
@@ -126,22 +129,23 @@ describe('purchase orders are filtered to this item', () => {
       .toEqual([]);
   });
 
-  // Past one page the filter only sees what it was given, so "none" would be a
-  // confident wrong answer to "is this already on order?".
-  it('flags truncation when the server reports more POs than it returned', () => {
-    const partial = loadPOs({
-      envelope: envelope([rawPO('1', [line(ITEM)])], 250),
-      requests: [],
-      itemId: ITEM,
-    });
-    expect(partial.poTruncated).toBe(true);
+  // The server filters by item (?itemId=) and every page is read, so the list
+  // is whole: "none" is a true answer to "is this already on order?".
+  it('asks the server for this item\'s orders, walks every page, never truncates', async () => {
+    const api = getPurchaseOrdersAPI as jest.Mock;
+    api.mockImplementation(async ({ page }: { page: number }) => ({
+      success: true,
+      data: page === 1 ? [rawPO('1', [line(ITEM)])] : [rawPO('2', [line(ITEM)])],
+      pagination: { page, limit: 200, total: 2, totalPages: 2 },
+    }));
+    const store = configureStore({ reducer: { inventoryDetail: reducer } });
+    await store.dispatch(fetchItemPurchaseOrders({ itemId: ITEM, includePending: false }));
 
-    const complete = loadPOs({
-      envelope: envelope([rawPO('1', [line(ITEM)])]),
-      requests: [],
-      itemId: ITEM,
-    });
-    expect(complete.poTruncated).toBe(false);
+    expect(api).toHaveBeenCalledWith({ itemId: ITEM, page: 1, limit: 200 });
+    expect(api).toHaveBeenCalledWith({ itemId: ITEM, page: 2, limit: 200 });
+    const state = store.getState().inventoryDetail;
+    expect(state.purchaseOrders.map(po => po.id)).toEqual(['1', '2']);
+    expect(state.poTruncated).toBe(false);
   });
 });
 

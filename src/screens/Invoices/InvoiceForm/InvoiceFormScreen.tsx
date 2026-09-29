@@ -48,7 +48,7 @@ import {
   selectInvoices,
   fetchInvoices,
 } from '../InvoiceList/invoiceListSlice';
-import { fetchCustomers, selectCustomers } from '../../Customers/CustomerList/customerListSlice';
+import { useCustomerPicker } from '../../../hooks/usePartyPicker';
 import { selectInventoryItems, fetchInventoryItems } from '../../Inventory/InventoryList/inventoryListSlice';
 import { selectFeatures } from '../../Auth/authSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
@@ -110,7 +110,8 @@ const InvoiceFormScreen: React.FC = () => {
   const approvalRequestId = route.params?.fromApprovalRequestId;
   const isReviewing = !!approvalRequestId;
   const invoices = useAppSelector(selectInvoices);
-  const customers = useAppSelector(selectCustomers);
+  // Every customer, page by page — the list screen's state held only its first page.
+  const { customers } = useCustomerPicker();
   const inventory = useAppSelector(selectInventoryItems);
   const features = useAppSelector(selectFeatures);
   const form = useAppSelector(selectInvoiceFormState);
@@ -170,7 +171,6 @@ const InvoiceFormScreen: React.FC = () => {
 
   // ── Load data on mount ──────────────────────────
   useEffect(() => {
-    dispatch(fetchCustomers());
     // Inventory is tier-gated (FinMatrix.md) — skip the fetch entirely for
     // companies without the feature instead of firing a guaranteed 403.
     if (features?.inventory !== false) {

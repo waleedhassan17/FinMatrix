@@ -1,4 +1,10 @@
-import { documentListSummaryOf, listPaginationOf, statusCountsOf } from '../documentListModel';
+import {
+  documentListSummaryOf,
+  listPaginationOf,
+  statusCountsOf,
+  fetchAllPages,
+  appendUnique,
+} from '../documentListModel';
 
 const payload = {
   success: true,
@@ -45,5 +51,59 @@ describe('statusCountsOf', () => {
 
   it('counts what loaded when the server sent none', () => {
     expect(statusCountsOf(null, [{ status: 'sent' }, { status: 'sent' }, { status: 'paid' }])).toEqual({ all: 3, sent: 2, paid: 1 });
+  });
+});
+
+describe('fetchAllPages', () => {
+  const page = (rows: { id: string }[], p: number, totalPages: number) => ({
+    success: true,
+    data: rows,
+    pagination: { page: p, limit: 2, total: 5, totalPages },
+  });
+  const serialize = (payload: any) => payload.data as { id: string }[];
+
+  it('walks every page the server reports, in order', async () => {
+    const pages = [[{ id: '1' }, { id: '2' }], [{ id: '3' }, { id: '4' }], [{ id: '5' }]];
+    const asked: number[] = [];
+    const rows = await fetchAllPages(async (p, limit) => {
+      asked.push(p);
+      expect(limit).toBe(2);
+      return page(pages[p - 1], p, 3);
+    }, serialize, 2);
+    expect(asked).toEqual([1, 2, 3]);
+    expect(rows.map(r => r.id)).toEqual(['1', '2', '3', '4', '5']);
+  });
+
+  it('reads pagination nested under data (customers, vendors)', async () => {
+    const rows = await fetchAllPages(
+      async p => ({ success: true, data: { data: [{ id: `c${p}` }], pagination: { page: p, totalPages: 2, total: 2 } } }),
+      (payload: any): { id: string }[] => payload.data.data,
+      1,
+    );
+    expect(rows.map(r => r.id)).toEqual(['c1', 'c2']);
+  });
+
+  it('adds a row repeated on a later page only once, by a custom key', async () => {
+    const riders = [[{ userId: 'u1' }], [{ userId: 'u1' }, { userId: 'u2' }]];
+    const rows = await fetchAllPages(
+      async p => ({ data: riders[p - 1], pagination: { page: p, totalPages: 2 } }),
+      (payload: any) => payload.data as { userId: string }[],
+      1,
+      r => r.userId,
+    );
+    expect(rows.map(r => r.userId)).toEqual(['u1', 'u2']);
+  });
+
+  it('makes one request when there is no pagination (an older server)', async () => {
+    let calls = 0;
+    await fetchAllPages(async () => { calls++; return { data: [{ id: 'x' }] }; }, serialize);
+    expect(calls).toBe(1);
+  });
+});
+
+describe('appendUnique', () => {
+  it('appends only rows not already held', () => {
+    expect(appendUnique([{ id: 'a' }, { id: 'b' }], [{ id: 'b' }, { id: 'c' }]).map(r => r.id))
+      .toEqual(['a', 'b', 'c']);
   });
 });

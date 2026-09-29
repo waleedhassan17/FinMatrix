@@ -88,9 +88,9 @@ const save = (store: ReturnType<typeof makeStore>) =>
 beforeEach(() => jest.clearAllMocks());
 
 describe('the bills offered', () => {
-  it("asks the server for this vendor's bills, not the company's latest page", async () => {
+  it("asks the server for this vendor's bills, every page, not the company's latest page", async () => {
     await books();
-    expect(listBills).toHaveBeenCalledWith({ vendorId: 'v1', limit: 200 });
+    expect(listBills).toHaveBeenCalledWith({ vendorId: 'v1', page: 1, limit: 200 });
   });
 
   it('keeps unpaid posted bills, oldest due first; drops drafts, voids and paid ones', () => {

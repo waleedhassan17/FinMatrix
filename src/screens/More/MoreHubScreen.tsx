@@ -8,8 +8,9 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { selectFeatures, selectUser } from '../Auth/authSlice';
 import { isFeatureVisible } from '../../utils/featureGates';
-import { selectCustomers } from '../Customers/CustomerList/customerListSlice';
-import { selectVendors } from '../Vendors/VendorList/vendorListSlice';
+import { getCustomersAPI } from '../../networks/sales/customerNetwork';
+import { getVendorsAPI } from '../../networks/purchases/vendorNetwork';
+import { listPaginationOf } from '../../models/documentListModel';
 import { selectUnassignedDeliveries } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
 import {
   fetchPendingCount,
@@ -204,8 +205,23 @@ const MoreHubScreen: React.FC = () => {
     rows: section.rows.filter(r => isFeatureVisible(r.feature, features, companyType))
   })).filter(section => section.rows.length > 0);
 
-  const customerCount = useAppSelector(selectCustomers).length;
-  const vendorCount = useAppSelector(selectVendors).length;
+  // How many there are — the server's totals. These counted the rows the
+  // Customers and Vendors screens happened to have loaded: "50", or 0 before
+  // either screen was opened.
+  const [customerCount, setCustomerCount] = React.useState(0);
+  const [vendorCount, setVendorCount] = React.useState(0);
+  useFocusEffect(
+    React.useCallback(() => {
+      let alive = true;
+      getCustomersAPI({ page: 1, limit: 1 })
+        .then(p => { if (alive) setCustomerCount(listPaginationOf(p, 0).total); })
+        .catch(() => {});
+      getVendorsAPI({ page: 1, limit: 1 })
+        .then(p => { if (alive) setVendorCount(listPaginationOf(p, 0).total); })
+        .catch(() => {});
+      return () => { alive = false; };
+    }, []),
+  );
   const pendingDeliveries = useAppSelector(selectUnassignedDeliveries).length;
   const pendingApprovals = useAppSelector(selectPendingApprovalCount);
 

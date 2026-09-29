@@ -105,7 +105,10 @@ export type StatementLineEntriesResponse = ApiEnvelope<StatementLineEntries>;
 export interface LineEntriesState {
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string;
+  /** Every page loaded so far; `entries` grows as more is loaded. */
   data: StatementLineEntries | null;
+  /** The next page is on its way. */
+  loadingMore?: boolean;
 }
 
 export const emptyLineEntries: LineEntriesState = {

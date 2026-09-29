@@ -7,7 +7,7 @@ import type { RouteProp } from '@react-navigation/native';
 
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
-import { fetchCustomers, selectCustomers } from '../Customers/CustomerList/customerListSlice';
+import { useCustomerPicker } from '../../hooks/usePartyPicker';
 import { fetchInventoryItems, selectInventoryItems } from '../Inventory/InventoryList/inventoryListSlice';
 import { selectFeatures } from '../Auth/authSlice';
 import { toIsoDate } from '../../models/reportModel';
@@ -50,7 +50,8 @@ const EstimateFormScreen: React.FC = () => {
   const route = useRoute<Rt>();
   const editingId = route.params?.estimateId;
   const dispatch = useAppDispatch();
-  const customers = useAppSelector(selectCustomers);
+  // Every customer, page by page — the list screen's state held only its first page.
+  const { customers } = useCustomerPicker();
   const inventory = useAppSelector(selectInventoryItems);
   const features = useAppSelector(selectFeatures);
 
@@ -64,7 +65,6 @@ const EstimateFormScreen: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchCustomers());
     // Inventory is tier-gated (FinMatrix.md) — skip the fetch entirely for
     // companies without the feature instead of firing a guaranteed 403.
     if (features?.inventory !== false) dispatch(fetchInventoryItems());

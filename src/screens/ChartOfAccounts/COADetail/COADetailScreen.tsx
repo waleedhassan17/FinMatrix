@@ -20,7 +20,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
-import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
+import { ReportHeader, HEADER_NAVY, LoadMoreFooter, nearEnd } from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { selectAccounts, toggleAccount } from '../COAList/coaListSlice';
 import { blockSystemDeactivation, isSystemAccount } from '../../../utils/systemAccounts';
@@ -87,18 +87,41 @@ const COADetailScreen: React.FC = () => {
   }, [dispatch]);
 
   // Real ledger activity for this account (was a hardcoded-empty stub).
+  // Paged: more loads as the tab scrolls, so a busy account's older entries
+  // are reachable (this showed the first 50 and stopped).
   const [transactions, setTransactions] = useState<AccountTransaction[]>([]);
   const [txnsLoading, setTxnsLoading] = useState(false);
+  const [txnPaging, setTxnPaging] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [txnsLoadingMore, setTxnsLoadingMore] = useState(false);
   useEffect(() => {
     if (!account) return;
     let cancelled = false;
     setTxnsLoading(true);
     fetchAccountTransactions(account.id)
-      .then(rows => { if (!cancelled) setTransactions(rows); })
+      .then(p => {
+        if (cancelled) return;
+        setTransactions(p.rows);
+        setTxnPaging({ page: p.page, totalPages: p.totalPages, total: p.total });
+      })
       .catch(() => { if (!cancelled) setTransactions([]); })
       .finally(() => { if (!cancelled) setTxnsLoading(false); });
     return () => { cancelled = true; };
   }, [account?.id]);
+  const loadMoreTxns = useCallback(() => {
+    if (!account || txnsLoading || txnsLoadingMore || txnPaging.page >= txnPaging.totalPages) return;
+    const id = account.id;
+    setTxnsLoadingMore(true);
+    fetchAccountTransactions(id, txnPaging.page + 1)
+      .then(p => {
+        setTransactions(prev => {
+          const seen = new Set(prev.map(t => t.id));
+          return [...prev, ...p.rows.filter(t => !seen.has(t.id))];
+        });
+        setTxnPaging({ page: p.page, totalPages: p.totalPages, total: p.total });
+      })
+      .catch(() => {})
+      .finally(() => setTxnsLoadingMore(false));
+  }, [account, txnsLoading, txnsLoadingMore, txnPaging]);
 
   const handleEdit = useCallback(() => {
     if (account) {
@@ -190,6 +213,8 @@ const COADetailScreen: React.FC = () => {
         style={[styles.scroll, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={activeTab === 'transactions' ? nearEnd(loadMoreTxns) : undefined}
+        scrollEventThrottle={200}
       >
         {/* ── Top Card ── */}
         <View style={[styles.topCard, { borderLeftColor: typeColor }]}>
@@ -306,6 +331,13 @@ const COADetailScreen: React.FC = () => {
             ) : (
               transactions.map((txn, idx) => renderTxnRow({ item: txn, index: idx }))
             )}
+            <LoadMoreFooter
+              shown={transactions.length}
+              total={txnPaging.total}
+              hasMore={!txnsLoading && txnPaging.page < txnPaging.totalPages}
+              loading={txnsLoadingMore}
+              onMore={loadMoreTxns}
+            />
           </View>
         ) : (
           <View style={styles.infoCard}>

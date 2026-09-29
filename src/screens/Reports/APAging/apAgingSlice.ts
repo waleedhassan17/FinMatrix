@@ -25,6 +25,7 @@ import {
   clearAgingInvestigation,
   type AgingSliceState,
 } from '../ARAging/arAgingSlice';
+import { allPartyDocuments } from '../shared/allPartyDocuments';
 
 export const apAgingSlice = createAppSlice({
   name: 'apAging',
@@ -55,9 +56,11 @@ export const apAgingSlice = createAppSlice({
     // calls with separate action prefixes; the state SHAPE is shared, which is
     // what keeps the two screens honest with each other.
     fetchAPAgingPartyDocuments: create.asyncThunk(
+      // Every page of the party's open bills.
       async (payload: { partyId: string; query: Record<string, string> }) =>
-        agingPartyDocumentsSerializer(
-          await getAPAgingPartyDocumentsAPI(payload.partyId, payload.query),
+        allPartyDocuments(
+          q => getAPAgingPartyDocumentsAPI(payload.partyId, q),
+          payload.query,
         ),
       {
         pending: (state, action) => {

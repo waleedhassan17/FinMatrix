@@ -17,6 +17,7 @@ import {
   agingPartyDocumentsSerializer,
   arAgingSerializer,
 } from '../../../serializers/arAgingSerializer';
+import { allPartyDocuments } from '../shared/allPartyDocuments';
 
 /** How many documents one expanded party pulls. */
 export const PARTY_DOCS_LIMIT = 50;
@@ -158,9 +159,11 @@ export const arAgingSlice = createAppSlice({
       state.expanded[id] = !state.expanded[id];
     }),
     fetchARAgingPartyDocuments: create.asyncThunk(
+      // Every page of the party's open invoices.
       async (payload: { partyId: string; query: Record<string, string> }) =>
-        agingPartyDocumentsSerializer(
-          await getARAgingPartyDocumentsAPI(payload.partyId, payload.query),
+        allPartyDocuments(
+          q => getARAgingPartyDocumentsAPI(payload.partyId, q),
+          payload.query,
         ),
       {
         pending: (state, action) => {

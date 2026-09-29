@@ -1,14 +1,18 @@
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
-import { fetchCreditMemos, selectCreditMemoState, setCreditMemoStatusFilter, type CreditMemoStatusFilter } from './creditMemoSlice';
+import { selectCreditMemoState, setCreditMemoStatusFilter, type CreditMemoStatusFilter } from './creditMemoSlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, refreshingOverContent } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, LoadMoreFooter, nearEnd, refreshingOverContent } from '../../components/reports/ReportUI';
+import { getCreditMemosAPI } from '../../networks/sales/creditMemoNetwork';
+import { creditMemoListSerializer } from '../../serializers/creditMemoSerializer';
+import { usePagedList } from '../../hooks/usePagedList';
+import { statusCountsOf } from '../../models/documentListModel';
 import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
 import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
@@ -22,28 +26,27 @@ const CreditMemoListScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectCreditMemoState);
 
-  const load = useCallback(() => { dispatch(fetchCreditMemos({})); }, [dispatch]);
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  // Paged, filtered by tab and counted BY THE SERVER. This fetched one page
+  // and filtered and counted it here, so a tab never showed an older
+  // credit memo and "All" stopped at a page.
+  const status = state.statusFilter;
+  const list = usePagedList(
+    useCallback((page: number, limit: number) => getCreditMemosAPI({ page, limit, ...(status !== 'all' ? { status } : {}) }), [status]),
+    creditMemoListSerializer,
+    status,
+  );
+  const load = list.reload;
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: state.creditMemos.length, open: 0, applied: 0, closed: 0, refunded: 0, void: 0 };
-    state.creditMemos.forEach(m => { c[m.status] = (c[m.status] ?? 0) + 1; });
-    return c;
-  }, [state.creditMemos]);
+  const counts = useMemo(() => statusCountsOf(list.summary, list.rows), [list.summary, list.rows]);
 
   const TABS: TabItem<CreditMemoStatusFilter>[] = [
-    { label: 'All', value: 'all', count: counts.all },
-    { label: 'Open', value: 'open', count: counts.open },
-    { label: 'Applied', value: 'applied', count: counts.applied },
-    { label: 'Closed', value: 'closed', count: counts.closed },
-    { label: 'Refunded', value: 'refunded', count: counts.refunded },
-    { label: 'Void', value: 'void', count: counts.void },
+    { label: 'All', value: 'all', count: counts.all ?? 0 },
+    { label: 'Open', value: 'open', count: counts.open ?? 0 },
+    { label: 'Applied', value: 'applied', count: counts.applied ?? 0 },
+    { label: 'Closed', value: 'closed', count: counts.closed ?? 0 },
+    { label: 'Refunded', value: 'refunded', count: counts.refunded ?? 0 },
+    { label: 'Void', value: 'void', count: counts.void ?? 0 },
   ];
-
-  const filtered = useMemo(() => {
-    if (state.statusFilter === 'all') return state.creditMemos;
-    return state.creditMemos.filter(m => m.status === state.statusFilter);
-  }, [state.creditMemos, state.statusFilter]);
 
   return (
     <ReportContainer>
@@ -57,16 +60,17 @@ const CreditMemoListScreen: React.FC = () => {
       <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setCreditMemoStatusFilter(v))} />
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshingOverContent(state.isLoading, state.creditMemos.length)} onRefresh={load} tintColor={THEME.colors.primary} />}>
-        {state.isLoading && state.creditMemos.length === 0 && <LoadingBlock label="Loading…" />}
-        {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
-        {!state.isLoading && state.creditMemos.length === 0 && !state.error && (
+        onScroll={nearEnd(list.loadMore)} scrollEventThrottle={200}
+        refreshControl={<RefreshControl refreshing={refreshingOverContent(list.isLoading, list.rows.length)} onRefresh={load} tintColor={THEME.colors.primary} />}>
+        {list.isLoading && list.rows.length === 0 && <LoadingBlock label="Loading…" />}
+        {!!list.error && <ErrorBlock message={list.error} onRetry={load} />}
+        {!list.isLoading && list.rows.length === 0 && !list.error && status === 'all' && (
           <EmptyBlock icon="rotate-ccw" title="No credit memos" hint="Tap + to issue a customer credit." />
         )}
-        {state.creditMemos.length > 0 && filtered.length === 0 && !state.error && (
+        {!list.isLoading && list.rows.length === 0 && !list.error && status !== 'all' && (
           <EmptyBlock icon="search" title="No credit memos found" hint="Try a different tab." />
         )}
-        {filtered.map(c => (
+        {list.rows.map(c => (
           <TxnCard
             key={c.id}
             number={c.creditMemoNumber}
@@ -82,6 +86,7 @@ const CreditMemoListScreen: React.FC = () => {
             onPress={() => navigation.navigate('CreditMemoDetail', { creditMemoId: c.id })}
           />
         ))}
+        <LoadMoreFooter shown={list.rows.length} total={list.total} hasMore={list.hasMore} loading={list.isLoadingMore} onMore={list.loadMore} />
       </ScrollView>
     </ReportContainer>
   );

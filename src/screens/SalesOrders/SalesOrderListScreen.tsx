@@ -1,14 +1,18 @@
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
-import { fetchSalesOrders, selectSalesOrderState, setSalesOrderStatusFilter, type SalesOrderStatusFilter } from './salesOrderSlice';
+import { selectSalesOrderState, setSalesOrderStatusFilter, type SalesOrderStatusFilter } from './salesOrderSlice';
 import { formatCurrency } from '../../utils/formatters';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, refreshingOverContent } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader, HeaderAction, EmptyBlock, LoadingBlock, ErrorBlock, LoadMoreFooter, nearEnd, refreshingOverContent } from '../../components/reports/ReportUI';
+import { getSalesOrdersAPI } from '../../networks/sales/salesOrderNetwork';
+import { salesOrderListSerializer } from '../../serializers/salesOrderSerializer';
+import { usePagedList } from '../../hooks/usePagedList';
+import { statusCountsOf } from '../../models/documentListModel';
 import { TxnCard, titleCase } from '../../components/transactions/TxnListUI';
 import { FilterTabs, type TabItem } from '../../components/shared/Tabs';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
@@ -22,28 +26,27 @@ const SalesOrderListScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectSalesOrderState);
 
-  const load = useCallback(() => { dispatch(fetchSalesOrders({})); }, [dispatch]);
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  // Paged, filtered by tab and counted BY THE SERVER. This fetched one page
+  // and filtered and counted it here, so a tab never showed an older order
+  // and "All" stopped at a page.
+  const status = state.statusFilter;
+  const list = usePagedList(
+    useCallback((page: number, limit: number) => getSalesOrdersAPI({ page, limit, ...(status !== 'all' ? { status } : {}) }), [status]),
+    p => salesOrderListSerializer(p).salesOrders,
+    status,
+  );
+  const load = list.reload;
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: state.salesOrders.length, open: 0, partial: 0, fulfilled: 0, invoiced: 0, cancelled: 0 };
-    state.salesOrders.forEach(o => { c[o.status] = (c[o.status] ?? 0) + 1; });
-    return c;
-  }, [state.salesOrders]);
+  const counts = useMemo(() => statusCountsOf(list.summary, list.rows), [list.summary, list.rows]);
 
   const TABS: TabItem<SalesOrderStatusFilter>[] = [
-    { label: 'All', value: 'all', count: counts.all },
-    { label: 'Open', value: 'open', count: counts.open },
-    { label: 'Partial', value: 'partial', count: counts.partial },
-    { label: 'Fulfilled', value: 'fulfilled', count: counts.fulfilled },
-    { label: 'Invoiced', value: 'invoiced', count: counts.invoiced },
-    { label: 'Cancelled', value: 'cancelled', count: counts.cancelled },
+    { label: 'All', value: 'all', count: counts.all ?? 0 },
+    { label: 'Open', value: 'open', count: counts.open ?? 0 },
+    { label: 'Partial', value: 'partial', count: counts.partial ?? 0 },
+    { label: 'Fulfilled', value: 'fulfilled', count: counts.fulfilled ?? 0 },
+    { label: 'Invoiced', value: 'invoiced', count: counts.invoiced ?? 0 },
+    { label: 'Cancelled', value: 'cancelled', count: counts.cancelled ?? 0 },
   ];
-
-  const filtered = useMemo(() => {
-    if (state.statusFilter === 'all') return state.salesOrders;
-    return state.salesOrders.filter(o => o.status === state.statusFilter);
-  }, [state.salesOrders, state.statusFilter]);
 
   return (
     <ReportContainer>
@@ -57,16 +60,17 @@ const SalesOrderListScreen: React.FC = () => {
       <FilterTabs tabs={TABS} active={state.statusFilter} onChange={v => dispatch(setSalesOrderStatusFilter(v))} />
 
       <ScrollView style={styles.list} contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshingOverContent(state.isLoading, state.salesOrders.length)} onRefresh={load} tintColor={THEME.colors.primary} />}>
-        {state.isLoading && state.salesOrders.length === 0 && <LoadingBlock label="Loading sales orders…" />}
-        {!!state.error && <ErrorBlock message={state.error} onRetry={load} />}
-        {!state.isLoading && state.salesOrders.length === 0 && !state.error && (
+        onScroll={nearEnd(list.loadMore)} scrollEventThrottle={200}
+        refreshControl={<RefreshControl refreshing={refreshingOverContent(list.isLoading, list.rows.length)} onRefresh={load} tintColor={THEME.colors.primary} />}>
+        {list.isLoading && list.rows.length === 0 && <LoadingBlock label="Loading sales orders…" />}
+        {!!list.error && <ErrorBlock message={list.error} onRetry={load} />}
+        {!list.isLoading && list.rows.length === 0 && !list.error && status === 'all' && (
           <EmptyBlock icon="clipboard" title="No sales orders" hint="Tap + to create one, or convert an accepted estimate." />
         )}
-        {state.salesOrders.length > 0 && filtered.length === 0 && !state.error && (
+        {!list.isLoading && list.rows.length === 0 && !list.error && status !== 'all' && (
           <EmptyBlock icon="search" title="No sales orders found" hint="Try a different tab." />
         )}
-        {filtered.map(o => {
+        {list.rows.map(o => {
           const fulfilledLines = o.lines.filter(l => l.quantityFulfilled >= l.quantity).length;
           return (
             <TxnCard
@@ -83,6 +87,7 @@ const SalesOrderListScreen: React.FC = () => {
             />
           );
         })}
+        <LoadMoreFooter shown={list.rows.length} total={list.total} hasMore={list.hasMore} loading={list.isLoadingMore} onMore={list.loadMore} />
       </ScrollView>
     </ReportContainer>
   );

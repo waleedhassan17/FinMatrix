@@ -19,7 +19,6 @@ import { THEME } from '../../../theme';
 import { formatCurrency } from '../../../utils/formatters';
 import { parenNegative } from '../../../components/reports/reportFormat';
 import type { LineEntriesState } from '../../../models/profitLossModel';
-import { LINE_ENTRY_LIMIT } from './profitLossSlice';
 
 const { colors, radius, spacing, typography } = THEME;
 
@@ -28,10 +27,12 @@ interface Props {
   /** The statement figure this line shows, for the dev-only reconcile check. */
   lineAmount: number;
   onRetry: () => void;
+  /** Fetch the next page of this line's transactions. */
+  onMore?: () => void;
   onOpenSource?: (sourceType: string, sourceId: string) => void;
 }
 
-const LineEntries: React.FC<Props> = ({ state, lineAmount, onRetry, onOpenSource }) => {
+const LineEntries: React.FC<Props> = ({ state, lineAmount, onRetry, onMore, onOpenSource }) => {
   if (!state || state.status === 'loading' || state.status === 'idle') {
     return (
       <View style={styles.centered}>
@@ -113,10 +114,22 @@ const LineEntries: React.FC<Props> = ({ state, lineAmount, onRetry, onOpenSource
       ))}
 
       {truncated && (
-        // Saying so beats an unqualified list that reads as complete.
-        <Text style={styles.truncated}>
-          Showing the first {LINE_ENTRY_LIMIT} of {data?.total} transactions.
-        </Text>
+        // Saying so beats an unqualified list that reads as complete — and
+        // the rest is one tap away.
+        <View style={styles.moreRow}>
+          <Text style={styles.truncated}>
+            Showing {entries.length} of {data?.total} transactions.
+          </Text>
+          {onMore ? (
+            state.loadingMore ? (
+              <ActivityIndicator size="small" color={colors.textTertiary} />
+            ) : (
+              <TouchableOpacity onPress={onMore} accessibilityRole="button">
+                <Text style={styles.retry}>Load more</Text>
+              </TouchableOpacity>
+            )
+          ) : null}
+        </View>
       )}
     </View>
   );
@@ -153,6 +166,7 @@ const styles = StyleSheet.create({
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   error: { ...typography.caption, color: colors.danger },
   retry: { ...typography.labelSm, color: colors.primary },
+  moreRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   truncated: {
     ...typography.overline,
     color: colors.textTertiary,

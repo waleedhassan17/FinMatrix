@@ -14,6 +14,7 @@ import {
   getStoredCompanyId,
 } from '../network/apiHelpers';
 import { creditOverrideBody } from '../../models/creditModel';
+import { fetchAllPages } from '../../models/documentListModel';
 
 // ─── Bad-network resilience ─────────────────────────
 // Retries a request when it failed at the NETWORK level (no HTTP response —
@@ -249,8 +250,16 @@ export const getMyHistoryAPI = async (params: any = {}): Promise<any> => {
 
 export const getInventoryApprovalsAPI = async (params: any = {}): Promise<any> => {
   try {
-    const response = await api.get('/inventory-approvals', { params });
-    return response.data;
+    // Every page, as one `{ data: { requests } }` payload. Asked once with no
+    // page, the server's default of 20 was all the approvals inbox showed.
+    const rows = await fetchAllPages(
+      async (page, limit) => (await api.get('/inventory-approvals', { params: { ...params, page, limit } })).data,
+      (payload: any): any[] => {
+        const d = payload?.data;
+        return Array.isArray(d?.requests) ? d.requests : Array.isArray(d) ? d : [];
+      },
+    );
+    return { success: true, data: { requests: rows } };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }

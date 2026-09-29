@@ -11,7 +11,7 @@ import {
 } from './generalLedgerSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { LedgerEntry } from '../../../models/generalLedgerModel';
-import { displayOrder, visibleLedgerRows } from './ledgerRows';
+import { displayOrder, ROW_CAP, visibleLedgerRows } from './ledgerRows';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -102,9 +102,14 @@ const GeneralLedgerScreen: React.FC = () => {
 
   // The most recent lines, never the oldest — see ledgerRows.ts for why that
   // distinction cost a week of apparently missing accounts.
+  // The table draws a bounded window (a plain ScrollView), but every line is
+  // reachable: "Show earlier lines" widens it a thousand at a time. A new
+  // ledger (period, refresh) starts from the most recent window again.
+  const [widened, setWidened] = useState<{ ledger: unknown; cap: number }>({ ledger: null, cap: ROW_CAP });
+  const cap = widened.ledger === ledger ? widened.cap : ROW_CAP;
   const { rows, hiddenCount } = useMemo(
-    () => visibleLedgerRows(ledger ? ledger.entries : []),
-    [ledger],
+    () => visibleLedgerRows(ledger ? ledger.entries : [], cap),
+    [ledger, cap],
   );
   const groups = useMemo(() => groupByAccount(rows), [rows]);
   const openingByCode = useMemo(
@@ -208,10 +213,14 @@ const GeneralLedgerScreen: React.FC = () => {
                 <View style={styles.truncationNotice}>
                   <Text style={styles.truncationText}>
                     Showing the most recent {rows.length.toLocaleString()} of{' '}
-                    {ledger.entries.length.toLocaleString()} lines. Narrow the date range above to
-                    see the {hiddenCount.toLocaleString()} earlier{' '}
-                    {hiddenCount === 1 ? 'line' : 'lines'}.
+                    {ledger.entries.length.toLocaleString()} lines.
                   </Text>
+                  <TouchableOpacity onPress={() => setWidened({ ledger, cap: cap + ROW_CAP })} activeOpacity={0.7}>
+                    <Text style={styles.truncationAction}>
+                      Show {Math.min(hiddenCount, ROW_CAP).toLocaleString()} earlier{' '}
+                      {Math.min(hiddenCount, ROW_CAP) === 1 ? 'line' : 'lines'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -326,6 +335,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   truncationText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
+  truncationAction: { ...THEME.typography.labelSm, color: THEME.colors.primary, marginTop: 4 },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
   chip: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: 16, backgroundColor: THEME.colors.neutral100, borderWidth: 1, borderColor: THEME.colors.border },
   chipActive: { backgroundColor: THEME.colors.primary + '18', borderColor: THEME.colors.primary },

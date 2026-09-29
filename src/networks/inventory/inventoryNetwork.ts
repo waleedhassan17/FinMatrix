@@ -8,6 +8,7 @@ import type {
   UpdateInventoryItemPayload,
 } from '../../models/inventoryModel';
 import type { AdjustmentReason } from '../../models/adjustmentModel';
+import { fetchAllPages } from '../../models/documentListModel';
 
 export interface InventoryQueryParams {
   search?: string;
@@ -21,12 +22,17 @@ export interface InventoryQueryParams {
 
 export const getInventoryItemsAPI = async (params: InventoryQueryParams = {}): Promise<any> => {
   try {
-    // 50 silently truncated every item dropdown in the app (PO, invoice, credit
-  // memo, delivery) with no indication anything was missing, because the
-  // screens filter client-side. The API caps nothing.
-  const queryParams = { page: 1, limit: 500, ...params };
-    const response = await api.get('/inventory/items', { params: queryParams });
-    return response.data;
+    // Every page, as one `{ data }` payload. The item pickers (PO, invoice,
+    // credit memo, delivery) and the inventory list filter this on the phone,
+    // so one page — 50, then 500 — silently dropped items past it.
+    const filters: InventoryQueryParams = { ...params };
+    delete filters.page;
+    delete filters.limit;
+    const rows = await fetchAllPages(
+      async (page, limit) => (await api.get('/inventory/items', { params: { ...filters, page, limit } })).data,
+      (payload: any): any[] => (Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.data?.items) ? payload.data.items : []),
+    );
+    return { success: true, data: rows };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }

@@ -3,11 +3,18 @@
 // ═══════════════════════════════════════════════════════
 
 import { api, extractErrorMessage } from '../network/apiHelpers';
+import { fetchAllPages } from '../../models/documentListModel';
 
 export const getTaxRatesAPI = async (): Promise<any> => {
   try {
-    const response = await api.get('/taxes/rates');
-    return response.data;
+    // Every page, as one `{ data }` payload. Asked once with no page, the
+    // server's default of 20 was every rate the app ever saw — a rate past
+    // that could not be chosen or edited.
+    const rows = await fetchAllPages(
+      async (page, limit) => (await api.get('/taxes/rates', { params: { page, limit } })).data,
+      (payload: any): any[] => (Array.isArray(payload?.data) ? payload.data : []),
+    );
+    return { success: true, data: rows };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }

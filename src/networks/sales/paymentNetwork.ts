@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { api, extractErrorMessage } from '../network/apiHelpers';
+import { fetchAllPages } from '../../models/documentListModel';
 
 /**
  * `idempotencyKey` must be generated ONCE per receipt the user is trying to
@@ -102,8 +103,13 @@ export const getPaymentsAPI = async (params: any = {}): Promise<any> => {
 
 export const getPaymentsByInvoiceAPI = async (invoiceId: string): Promise<any> => {
   try {
-    const response = await api.get('/payments', { params: { invoiceId } });
-    return response.data;
+    // Every page, as one `{ data }` payload — one request stopped at the
+    // server's default page of receipts.
+    const rows = await fetchAllPages(
+      async (page, limit) => (await api.get('/payments', { params: { invoiceId, page, limit } })).data,
+      (payload: any): any[] => (Array.isArray(payload?.data) ? payload.data : []),
+    );
+    return { success: true, data: rows };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
   }

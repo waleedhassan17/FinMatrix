@@ -43,7 +43,7 @@ import {
   type BillFormLine,
 } from './billFormSlice';
 import { selectBills, fetchBills, upsertBill } from '../BillList/billListSlice';
-import { fetchVendors, selectVendors } from '../../Vendors/VendorList/vendorListSlice';
+import { useVendorPicker } from '../../../hooks/usePartyPicker';
 import { fetchAccounts, selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
@@ -78,7 +78,8 @@ const BillFormScreen: React.FC = () => {
   const editingId = route.params?.billId;
   const isEditing = !!editingId;
   const bills = useAppSelector(selectBills);
-  const vendors = useAppSelector(selectVendors);
+  // Every vendor, page by page — the list screen's state held only its first page.
+  const { vendors } = useVendorPicker();
   const accounts = useAppSelector(selectAccounts);
   const form = useAppSelector(selectBillFormState);
   const hydratedRef = React.useRef(false);
@@ -117,7 +118,6 @@ const BillFormScreen: React.FC = () => {
 
   // ── Load data on mount ──────────────────
   useEffect(() => {
-    dispatch(fetchVendors());
     dispatch(fetchAccounts());
 
     if (hydratedRef.current) return;

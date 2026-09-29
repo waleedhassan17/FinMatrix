@@ -27,6 +27,7 @@ import {
   resetPersonnelPasswordAPI
 } from '../../../../networks/delivery/deliveryNetwork';
 import type { RootStackParamList } from '../../../../types';
+import { fetchAllPages } from '../../../../models/documentListModel';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -143,12 +144,16 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
     }
     try {
       setDeliveriesState('loading');
-      const payload = await getDeliveriesAPI({ personnelId: userId, limit: 50 });
-      const rows: any[] = Array.isArray(payload?.data)
-        ? payload.data
-        : Array.isArray(payload?.data?.data)
-          ? payload.data.data
-          : [];
+      // Every page of this rider's deliveries — it was the latest 50.
+      const rows = await fetchAllPages(
+        (page, limit) => getDeliveriesAPI({ personnelId: userId, page, limit }),
+        (payload: any): any[] =>
+          Array.isArray(payload?.data)
+            ? payload.data
+            : Array.isArray(payload?.data?.data)
+              ? payload.data.data
+              : [],
+      );
       setDeliveries(rows.map(mapDelivery));
       setDeliveriesState('loaded');
     } catch {

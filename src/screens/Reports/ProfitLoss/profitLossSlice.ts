@@ -112,25 +112,50 @@ export const profitLossSlice = createAppSlice({
      * so several lines can stay open at once and a row that has already been
      * fetched reopens instantly.
      */
+    // `page` > 1 appends ("Load more"): a busy line used to stop at the
+    // first 50 transactions.
     fetchProfitLossLineEntries: create.asyncThunk(
-      async (payload: { accountCode: string; range: ReportDateRange }) =>
+      async (payload: { accountCode: string; range: ReportDateRange; page?: number }) =>
         statementLineEntriesSerializer(
           await getStatementLineEntriesAPI(payload.accountCode, {
             ...payload.range,
             limit: LINE_ENTRY_LIMIT,
+            page: payload.page ?? 1,
           }),
         ),
       {
         pending: (state, action) => {
           const code = action.meta.arg.accountCode;
+          if ((action.meta.arg.page ?? 1) > 1 && state.entries[code]) {
+            state.entries[code].loadingMore = true;
+            return;
+          }
           state.entries[code] = { ...emptyLineEntries, status: 'loading' };
         },
         fulfilled: (state, action) => {
           const code = action.meta.arg.accountCode;
+          const prev = state.entries[code]?.data;
+          if ((action.meta.arg.page ?? 1) > 1 && prev) {
+            const seen = new Set(prev.entries.map(e => e.id));
+            state.entries[code] = {
+              status: 'succeeded',
+              error: '',
+              loadingMore: false,
+              data: {
+                ...action.payload,
+                entries: [...prev.entries, ...action.payload.entries.filter(e => !seen.has(e.id))],
+              },
+            };
+            return;
+          }
           state.entries[code] = { status: 'succeeded', error: '', data: action.payload };
         },
         rejected: (state, action) => {
           const code = action.meta.arg.accountCode;
+          if ((action.meta.arg.page ?? 1) > 1 && state.entries[code]) {
+            state.entries[code].loadingMore = false;
+            return;
+          }
           state.entries[code] = {
             status: 'failed',
             error: action.error?.message ?? 'Failed to load transactions',

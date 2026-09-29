@@ -8,7 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { useCapability } from '../../hooks/useCapability';
-import { fetchVendors, selectVendors } from '../Vendors/VendorList/vendorListSlice';
+import { useVendorPicker } from '../../hooks/usePartyPicker';
 import { fetchInventoryItems, selectInventoryItems } from '../Inventory/InventoryList/inventoryListSlice';
 import { fetchAccounts, selectAccounts } from '../ChartOfAccounts/COAList/coaListSlice';
 import { createVendorCreditAPI } from '../../networks/purchases/vendorCreditNetwork';
@@ -58,7 +58,8 @@ const rs = (n: number) => formatCurrency(n, 'Rs ');
 const VendorCreditFormScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
-  const vendors = useAppSelector(selectVendors);
+  // Every vendor, page by page — the list screen's state held only its first page.
+  const { vendors } = useVendorPicker();
   const items = useAppSelector(selectInventoryItems);
   const accounts = useAppSelector(selectAccounts);
   const creditCap = useCapability('vendorCredit.manage');
@@ -70,7 +71,6 @@ const VendorCreditFormScreen: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchVendors());
     dispatch(fetchInventoryItems());
     dispatch(fetchAccounts());
   }, [dispatch]);

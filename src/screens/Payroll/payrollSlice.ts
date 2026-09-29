@@ -8,6 +8,7 @@ import {
 import {
   employeeListSerializer, payrollRunListSerializer, payrollRunSingleSerializer,
 } from '../../serializers/payrollSerializer';
+import { fetchAllPages } from '../../models/documentListModel';
 
 interface PayrollState {
   employees: Employee[];
@@ -25,10 +26,12 @@ export const payrollSlice = createAppSlice({
   initialState,
   reducers: create => ({
     fetchEmployees: create.asyncThunk(
-      async () => getEmployeesAPI({ limit: 200 }),
+      // Every page: a payroll run pays everyone on this list, and it stopped
+      // at 200 — past that, employees were silently left out of the run.
+      async () => fetchAllPages((page, limit) => getEmployeesAPI({ page, limit }), employeeListSerializer),
       {
         pending: state => { state.isLoading = true; state.error = ''; },
-        fulfilled: (state, action) => { state.isLoading = false; state.employees = employeeListSerializer(action.payload); },
+        fulfilled: (state, action) => { state.isLoading = false; state.employees = action.payload; },
         rejected: (state, action) => { state.isLoading = false; state.error = action.error?.message ?? 'Failed to load employees'; },
       },
     ),

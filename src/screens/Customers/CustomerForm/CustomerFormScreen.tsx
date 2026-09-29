@@ -32,11 +32,11 @@ import {
   resetCustomerForm
 } from './customerFormSlice';
 import {
-  selectCustomers,
   fetchCustomers,
   createCustomer,
   editCustomer
 } from '../CustomerList/customerListSlice';
+import { useCustomerById } from '../../../hooks/usePartyPicker';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -61,20 +61,17 @@ const CustomerFormScreen: React.FC = () => {
 
   const editingId = route.params?.customerId;
   const isEditing = !!editingId;
-  const customers = useAppSelector(selectCustomers);
   const form = useAppSelector(selectCustomerFormState);
 
-  // ── Load for edit on mount ──────────────────────
+  // ── Load for edit ───────────────────────────────
+  // The customer is fetched by id. It was looked up in the Customers list's
+  // state, which holds only the pages loaded so far — a customer past them
+  // (or opened from an invoice) got an empty edit form.
+  const editing = useCustomerById(isEditing ? editingId : null);
   useEffect(() => {
-    if (isEditing) {
-      const customer = customers.find(c => c.id === editingId);
-      if (customer) {
-        const formData = customerToFormData(customer);
-        dispatch(loadCustomerForEdit(formData));
-      }
-    }
-    return () => { dispatch(resetCustomerForm()); };
-  }, [isEditing, editingId, customers, dispatch]);
+    if (editing) dispatch(loadCustomerForEdit(customerToFormData(editing)));
+  }, [editing, dispatch]);
+  useEffect(() => () => { dispatch(resetCustomerForm()); }, [dispatch]);
 
   // ── Field update helper ─────────────────────────
   const updateField = useCallback(

@@ -6,6 +6,7 @@
 // response envelope).
 
 import { getAccountTransactionsAPI } from '../networks/accounting/coaNetwork';
+import { listPaginationOf } from './documentListModel';
 
 export interface AccountTransaction {
   id: string;
@@ -19,15 +20,23 @@ export interface AccountTransaction {
 
 const num = (v: unknown) => parseFloat(String(v ?? '0')) || 0;
 
-/** Ledger rows for one account, mapped for the COA detail Transactions tab. */
+/**
+ * One page of an account's ledger rows, newest first, for the COA detail
+ * Transactions tab — which loads more as it scrolls. It used to show the
+ * first 50 and stop.
+ */
 export const fetchAccountTransactions = async (
   accountId: string,
+  page = 1,
   limit = 50,
-): Promise<AccountTransaction[]> => {
-  const raw = await getAccountTransactionsAPI(accountId, { page: 1, limit });
+): Promise<{ rows: AccountTransaction[]; page: number; totalPages: number; total: number }> => {
+  const raw = await getAccountTransactionsAPI(accountId, { page, limit });
   const payload = raw?.data ?? raw;
   const rows: any[] = Array.isArray(payload) ? payload : payload?.data ?? [];
-  return rows.map(g => ({
+  return { ...listPaginationOf(raw, rows.length), rows: rows.map(mapRow) };
+};
+
+const mapRow = (g: any): AccountTransaction => ({
     id: g.id,
     date: g.date,
     reference: g.reference ?? '',
@@ -35,8 +44,7 @@ export const fetchAccountTransactions = async (
     debit: num(g.debit),
     credit: num(g.credit),
     runningBalance: num(g.balance),
-  }));
-};
+});
 
 /** @deprecated kept for compatibility; the screen now fetches for real. */
 export const getAccountTransactions = (_accountId: string): AccountTransaction[] => [];

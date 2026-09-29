@@ -172,6 +172,17 @@ const ProfitLossScreen: React.FC = () => {
             fetchProfitLossLineEntries({ accountCode: l.accountCode, range: state.range }),
           )
         }
+        onMore={() => {
+          const d = state.entries[l.accountCode]?.data;
+          if (!d || state.entries[l.accountCode]?.loadingMore) return;
+          dispatch(
+            fetchProfitLossLineEntries({
+              accountCode: l.accountCode,
+              range: state.range,
+              page: (d.page || 1) + 1,
+            }),
+          );
+        }}
       />
     </StatementRow>
   );

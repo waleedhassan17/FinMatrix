@@ -18,6 +18,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSelector } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
+import { fetchAllPages } from '../../../../models/documentListModel';
 import { type DeliveryItemLine, type DeliveryPriority, type DeliveryRecord, type StatusHistoryEntry } from '../../../../models/deliveryModel';
 import { type DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import {
@@ -554,41 +555,56 @@ export const deliverySlice = createAppSlice({
     ),
 
     // ── Async thunks (GL pipeline: network → serializer → state) ──
-    /** Fetch latest deliveries from the API and refresh state. */
+    /**
+     * Every delivery the signed-in user may see, page by page.
+     *
+     * This was the latest 50, and a dozen screens read it — the detail screen
+     * finds its delivery in it — so a delivery older than the fiftieth opened
+     * as "not found", and the monitor's and rider's lists stopped at 50.
+     */
     fetchDeliveries: create.asyncThunk(
-      async () => {
-        const response = await getDeliveriesAPI();
-        return response;
-      },
+      async () =>
+        fetchAllPages(
+          (page, limit) => getDeliveriesAPI({ page, limit }),
+          payload => deliveryListSerializer(payload).deliveries,
+        ),
       {
-        fulfilled: (state, action: PayloadAction<any>) => {
-          const serialized = deliveryListSerializer(action.payload);
-          state.deliveries = serialized.deliveries;
+        fulfilled: (state, action) => {
+          state.deliveries = action.payload;
         },
       },
     ),
     /** Fetch latest delivery personnel from the API and refresh state. */
+    // Every page — riders past the fiftieth were missing from every picker.
     fetchDeliveryPersonnel: create.asyncThunk(
-      async () => {
-        const response = await getDeliveryPersonnelAPI();
-        return response;
-      },
+      async () =>
+        fetchAllPages(
+          (page, limit) => getDeliveryPersonnelAPI({ page, limit }),
+          payload => personnelListSerializer(payload).personnel,
+          200,
+          p => p.userId,
+        ),
       {
-        fulfilled: (state, action: PayloadAction<any>) => {
-          const serialized = personnelListSerializer(action.payload);
-          state.deliveryPersonnel = serialized.personnel;
+        fulfilled: (state, action) => {
+          state.deliveryPersonnel = action.payload;
         },
       },
     ),
     /** Fetch shadow inventory from the API */
+    // Every page: asked with no page at all, the server's default of 20 was
+    // all a rider ever saw of what they carry.
     fetchShadowInventory: create.asyncThunk(
-      async () => {
-        const response = await getShadowInventoryAPI();
-        return response;
-      },
+      async () =>
+        fetchAllPages(
+          (page, limit) => getShadowInventoryAPI({ page, limit }),
+          (payload: any) => {
+            const d = payload?.data ?? payload;
+            return (Array.isArray(d) ? d : []) as any[];
+          },
+        ),
       {
         fulfilled: (state, action: PayloadAction<any>) => {
-          const raw = action.payload?.data ?? action.payload;
+          const raw = action.payload;
           if (Array.isArray(raw)) {
             state.shadowInventory = raw.map((item: any) => ({
               personnelId: item.personnelId ?? item.personnel_id ?? '',

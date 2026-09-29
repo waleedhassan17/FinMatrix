@@ -68,3 +68,40 @@ export const statusCountsOf = (
   loaded.forEach(d => { c[d.status] = (c[d.status] ?? 0) + 1; });
   return c;
 };
+
+/** Rows of `next` not already in `rows`, by key — a page that shifted under
+ *  new rows repeats some of the last one. */
+export const appendUnique = <T>(
+  rows: T[],
+  next: T[],
+  keyOf: (row: T) => string | undefined = row => (row as { id?: string }).id,
+): T[] => {
+  const seen = new Set(rows.map(keyOf).filter(Boolean));
+  return [...rows, ...next.filter(r => { const k = keyOf(r); return !k || !seen.has(k); })];
+};
+
+/** The most pages `fetchAllPages` walks — 20,000 rows at 200 a page. */
+const MAX_PAGES = 100;
+
+/**
+ * Every page of a list, for the places that must hold all of it: a picker has
+ * to offer every customer, a payroll run every employee. A list screen pages
+ * as it scrolls instead; this is for sets a user chooses from.
+ *
+ * They used to read one page (50, 200 or 500 rows), so the rest silently went
+ * missing — a customer past the fiftieth could not be chosen on an invoice.
+ */
+export async function fetchAllPages<T>(
+  fetchPage: (page: number, limit: number) => Promise<any>,
+  serialize: (payload: any) => T[],
+  limit = 200,
+  keyOf?: (row: T) => string | undefined,
+): Promise<T[]> {
+  const first = await fetchPage(1, limit);
+  let rows = serialize(first);
+  const pages = Math.min(listPaginationOf(first, rows.length).totalPages, MAX_PAGES);
+  for (let page = 2; page <= pages; page++) {
+    rows = appendUnique(rows, serialize(await fetchPage(page, limit)), keyOf);
+  }
+  return rows;
+}
