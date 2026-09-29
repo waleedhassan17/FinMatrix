@@ -391,20 +391,13 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Please refresh', "This request hasn't finished syncing with the server. Pull to refresh and try again.");
       return;
     }
-    // The credit memo form lives in the Transactions tab, and this screen is
-    // registered in the More tab of BOTH navigators — so the hop goes through
-    // the parent tab navigator. Typed locally rather than cast to `never`,
-    // which would hide a genuine mistake in the route name or params.
-    const tabs = (navigation.getParent() ?? navigation) as unknown as {
+    // The credit memo form is a shared record screen, registered wherever this
+    // screen is (navigations-maps/sharedRecords), so this is a push and back
+    // returns here. Typed locally rather than cast to `never`, which would hide
+    // a genuine mistake in the route name or params.
+    (navigation as unknown as {
       navigate: (name: string, params?: Record<string, unknown>) => void;
-    };
-    // initial: false so TransactionsHub sits underneath — otherwise that stack
-    // initialises as [CreditMemoForm] alone and back leaves for the Dashboard.
-    tabs.navigate('TransactionsStack', {
-      screen: 'CreditMemoForm',
-      params: { fromDeliveryRequestId: request.id },
-      initial: false,
-    });
+    }).navigate('CreditMemoForm', { fromDeliveryRequestId: request.id });
   };
 
   const requestUndo = (request: InventoryUpdateRequest) => {

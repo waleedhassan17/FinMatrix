@@ -1,13 +1,13 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  Dimensions,
   TouchableOpacity,
   Animated,
-  StatusBar
+  StatusBar,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -22,7 +22,6 @@ const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryOnboarding'>;
 
-const { width } = Dimensions.get('window');
 
 const BRAND = {
   navy: colors.neutral900,
@@ -56,6 +55,16 @@ const DeliveryOnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
+  // The window's current width, not a snapshot from when the module loaded —
+  // otherwise a resized or rotated window keeps slides at the old width.
+  const { width } = useWindowDimensions();
+
+  // Keep the current slide in place when the width changes.
+  useEffect(() => {
+    flatListRef.current?.scrollToOffset({ offset: currentIndex * width, animated: false });
+    // Only a width change should re-align; paging updates currentIndex itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width]);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: any[] }) => {
@@ -78,7 +87,7 @@ const DeliveryOnboardingScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderSlide = ({ item }: { item: typeof slides[0] }) => (
-    <View style={styles.slide}>
+    <View style={[styles.slide, { width }]}>
       <View style={styles.slideNumberContainer}>
         <View style={styles.slideNumberCircle}>
           <Text style={styles.slideNumber}>{item.letter}</Text>
@@ -110,6 +119,8 @@ const DeliveryOnboardingScreen: React.FC<Props> = ({ navigation }) => {
         ref={flatListRef}
         data={slides}
         renderItem={renderSlide}
+        extraData={width}
+        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
         keyExtractor={item => item.id}
         horizontal
         pagingEnabled
@@ -220,7 +231,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   slide: {
-    width,
     alignItems: 'center',
     paddingHorizontal: spacing.xxl + 8,
     paddingTop: spacing.xxl + 16,

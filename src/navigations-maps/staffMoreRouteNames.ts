@@ -29,7 +29,14 @@
 // InventoryApproval IS on the list: signing off a rider's delivery is a staff
 // action (Table B row 4), and it is not the owner's approvals inbox.
 
+import { SharedRecordRouteNames } from './sharedRecordRouteNames';
+
 export const StaffMoreRouteNames = {
+  // The record screens every tab registers (invoices, bills, POs, customers,
+  // vendors, items…) — staff reach all of them already through their other
+  // tabs; registering them here keeps a drill-down from a customer or vendor on
+  // this tab. See sharedRecords.ts.
+  ...SharedRecordRouteNames,
   StaffMoreHub: 'StaffMoreHub',
   MyRequests: 'MyRequests',
   CustomerList: 'CustomerList',

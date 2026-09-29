@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, StatusBar, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -38,12 +38,22 @@ const STATUS_FILTERS = [
 
 const ITEMS_PER_PAGE = 10;
 
-const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
+const DPHistoryScreen: React.FC<Props> = ({ navigation, route }) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUser);
   const deliveries = useAppSelector(selectDeliveries);
   const { statusFilter, dateFilter, customDateStart, customDateEnd, page } = useAppSelector(selectDPHistoryUI);
-  const userId = user?.uid ?? 'dp_002';
+  const userId = user?.uid ?? '';
+
+  // Opened from "View All" (dashboard) or "View all completed" (deliveries
+  // list) with a status: show exactly that, over all time, rather than
+  // whatever filters were left from the last visit.
+  const initialStatus = route.params?.status;
+  useEffect(() => {
+    if (!initialStatus) return;
+    dispatch(setHistoryStatusFilter(initialStatus));
+    dispatch(setHistoryDateFilter('all'));
+  }, [dispatch, initialStatus]);
 
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
@@ -66,7 +76,8 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     filtered = filtered.filter(d => {
-      const date = new Date(d.updatedAt);
+      // When it was completed; the last update for records without it.
+      const date = new Date(d.deliveredAt ?? d.updatedAt);
       switch (dateFilter) {
         case 'today':
           return date >= todayStart;
@@ -89,7 +100,9 @@ const DPHistoryScreen: React.FC<Props> = ({ navigation }) => {
       }
     });
 
-    return filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return filtered.sort(
+      (a, b) => new Date(b.deliveredAt ?? b.updatedAt).getTime() - new Date(a.deliveredAt ?? a.updatedAt).getTime(),
+    );
   }, [deliveries, userId, statusFilter, dateFilter, customDateStart, customDateEnd]);
 
   const stats = useMemo(() => ({

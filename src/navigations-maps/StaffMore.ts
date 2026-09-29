@@ -28,6 +28,7 @@ import {
   type StaffMoreRouteName,
 } from './staffMoreRouteNames';
 import { isFeatureEnabled } from '../utils/featureGates';
+import { SHARED_RECORD_ROUTES, withSharedRecords } from './sharedRecords';
 import StaffMoreHubScreen from '../screens/More/StaffMoreHubScreen';
 import CustomerListScreen from '../screens/Customers/CustomerList/CustomerListScreen';
 import CustomerDetailScreen from '../screens/Customers/CustomerDetail/CustomerDetailScreen';
@@ -96,7 +97,8 @@ const DELIVERY_ROUTES = [
 
 type RegisteredRoute =
   | (typeof CORE_ROUTES)[number]['title']
-  | (typeof DELIVERY_ROUTES)[number]['title'];
+  | (typeof DELIVERY_ROUTES)[number]['title']
+  | (typeof SHARED_RECORD_ROUTES)[number]['title'];
 
 // The allow-list type stops an EXTRA route being registered; this stops one
 // going MISSING. A name on the allow-list with no screen behind it makes
@@ -111,10 +113,10 @@ const _everyAllowedRouteIsRegistered: Unregistered extends never
   ? true
   : ['staff routes on the allow-list with no screen registered:', Unregistered] = true;
 
-export const STAFF_MORE_ROUTES: StaffRoute[] = [
+export const STAFF_MORE_ROUTES = withSharedRecords<StaffRoute>([
   ...CORE_ROUTES,
   ...(isFeatureEnabled('delivery') ? DELIVERY_ROUTES : []),
-];
+]) as StaffRoute[];
 
 export { StaffMoreRouteNames };
 export type { StaffMoreRouteName };

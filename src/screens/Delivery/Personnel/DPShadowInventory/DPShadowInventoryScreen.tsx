@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
   TextInput,
   StatusBar
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Alert } from '../../../../utils/alert';
+import { syncShadowInventoryAPI } from '../../../../networks/delivery/deliveryNetwork';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { DPInventoryStackParamList } from '../../../../navigators/stacks/DPInventoryStack';
@@ -61,7 +63,8 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
   const requests = useAppSelector(selectInventoryUpdateRequests);
   const shadowItems = useAppSelector(selectShadowInventory);
   const { selectedItemId, showChangeLog, searchTerm, sortBy } = useAppSelector(selectShadowInventoryUI);
-  const userId = user?.uid ?? 'dp_002';
+  const userId = user?.uid ?? '';
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     dispatch(fetchShadowInventory());
@@ -118,6 +121,33 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
     pending: items.filter(i => i.status === 'pending').length,
     totalChanges: items.reduce((sum, i) => sum + i.changesToday.length, 0)
   }), [items]);
+
+  /**
+   * Mark the rider's pending van-stock lines as synced with the warehouse and
+   * reload them. Replaces a "Submit Inventory Update" button that showed
+   * "Submitted" without calling the server at all.
+   */
+  const handleSync = async () => {
+    if (syncing || !userId) return;
+    if (stats.pending === 0) {
+      Toast.show({ type: 'success', text1: 'Van stock is up to date', text2: 'Nothing is waiting to sync.' });
+      return;
+    }
+    setSyncing(true);
+    try {
+      await syncShadowInventoryAPI(userId);
+      await dispatch(fetchShadowInventory());
+      Toast.show({
+        type: 'success',
+        text1: 'Van stock synced',
+        text2: `${stats.pending} ${stats.pending === 1 ? 'item is' : 'items are'} now in sync with the warehouse.`,
+      });
+    } catch (e: any) {
+      Alert.alert('Could not sync van stock', e?.message || 'Please try again.');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -302,17 +332,22 @@ const DPShadowInventoryScreen: React.FC<Props> = ({ navigation }) => {
           )}
         </View>
 
-        {/* Submit Button */}
-        <TouchableOpacity 
-          style={styles.submitButton}
-          onPress={() => Alert.alert('Submitted', 'Inventory update request queued for warehouse review.')}
+        {/* Sync van stock — a real call now (see handleSync). */}
+        <TouchableOpacity
+          style={[styles.submitButton, syncing && { opacity: 0.7 }]}
+          onPress={handleSync}
+          disabled={syncing}
           activeOpacity={0.9}
         >
           <View style={styles.submitButtonContent}>
-            <Feather name="upload" size={24} color={THEME.colors.textInverse} style={{ marginRight: 14 }} />
+            <Feather name="refresh-cw" size={24} color={THEME.colors.textInverse} style={{ marginRight: 14 }} />
             <View>
-              <Text style={styles.submitTitle}>Submit Inventory Update</Text>
-              <Text style={styles.submitSubtitle}>Send changes for warehouse approval</Text>
+              <Text style={styles.submitTitle}>{syncing ? 'Syncing…' : 'Sync van stock'}</Text>
+              <Text style={styles.submitSubtitle}>
+                {stats.pending > 0
+                  ? `${stats.pending} ${stats.pending === 1 ? 'item' : 'items'} waiting to sync with the warehouse`
+                  : 'Everything is in sync with the warehouse'}
+              </Text>
             </View>
           </View>
           <View style={styles.submitArrow}>

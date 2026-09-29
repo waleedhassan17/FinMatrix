@@ -37,17 +37,11 @@ export const useCreditLimitPrompt = () => {
       }}
       onRecordAdvance={a => {
         setState(null);
-        // Delivery screens live outside the Transactions tab; hop there when
-        // this stack has no Receive Payment of its own.
-        if (navigation.getState?.()?.routeNames?.includes('ReceivePayment')) {
-          navigation.navigate('ReceivePayment', { customerId: a.customerId });
-        } else {
-          navigation.navigate('TransactionsStack', {
-            screen: 'ReceivePayment',
-            params: { customerId: a.customerId },
-            initial: false,
-          });
-        }
+        // Receive Payment is a shared record screen, registered in every tab
+        // stack (navigations-maps/sharedRecords) — including the ones the
+        // delivery screens sit in — so this is always a push, and back returns
+        // to the screen that raised the prompt.
+        navigation.navigate('ReceivePayment', { customerId: a.customerId });
       }}
     />
   );

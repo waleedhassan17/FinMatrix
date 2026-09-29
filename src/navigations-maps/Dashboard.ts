@@ -5,6 +5,7 @@
 // navigator maps over this array — screens register here only.
 
 import type { IRoute } from './types';
+import { withSharedRecords } from './sharedRecords';
 import AdminDashboardScreen from '../screens/HomeScreen/AdminDashboardScreen';
 import DeliveryPersonnelListScreen from '../screens/Delivery/Admin/DeliveryPersonnelList/DeliveryPersonnelListScreen';
 import AddDeliveryPersonnelScreen from '../screens/Delivery/Admin/AddDeliveryPersonnel/AddDeliveryPersonnelScreen';
@@ -126,7 +127,7 @@ export const DashboardRouteNames = {
 
 export type DashboardRouteName = typeof DashboardRouteNames[keyof typeof DashboardRouteNames];
 
-export const DASHBOARD_ROUTES: IRoute[] = [
+export const DASHBOARD_ROUTES: IRoute[] = withSharedRecords([
   { title: DashboardRouteNames.AdminDashboard, component: AdminDashboardScreen },
   { title: DashboardRouteNames.DeliveryPersonnelList, component: DeliveryPersonnelListScreen },
   { title: DashboardRouteNames.AddDeliveryPersonnel, component: AddDeliveryPersonnelScreen },
@@ -162,4 +163,4 @@ export const DASHBOARD_ROUTES: IRoute[] = [
   { title: DashboardRouteNames.SalesOrderForm, component: SalesOrderFormScreen },
   { title: DashboardRouteNames.POForm, component: POFormScreen },
   { title: DashboardRouteNames.BillForm, component: BillFormScreen },
-];
+]);

@@ -183,10 +183,9 @@ const InventoryItemReportScreen: React.FC = () => {
   };
 
   /**
-   * Open the document behind a line. InvoiceDetail and CreditMemoDetail live
-   * in TransactionsStack and this screen in ReportsStack, so the hop goes
-   * through the tab navigator; `initial: false` keeps the Transactions list
-   * underneath, the same as the aging reports.
+   * Open the document behind a line. InvoiceDetail and CreditMemoDetail are
+   * shared record screens, registered in ReportsStack too
+   * (navigations-maps/sharedRecords), so this is a push and back returns here.
    */
   const openEntry = (e: ItemSalesEntry) => {
     if (!e.docId) return;
@@ -194,8 +193,8 @@ const InventoryItemReportScreen: React.FC = () => {
     const screen = e.docType === 'credit_memo' ? 'CreditMemoDetail' : 'InvoiceDetail';
     const param = e.docType === 'credit_memo' ? { creditMemoId: e.docId } : { invoiceId: e.docId };
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>).navigate(
-      'TransactionsStack',
-      { screen, params: param, initial: false },
+      screen,
+      param,
     );
   };
 

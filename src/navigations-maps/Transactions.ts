@@ -5,6 +5,7 @@
 // navigator maps over this array — screens register here only.
 
 import type { IRoute } from './types';
+import { withSharedRecords } from './sharedRecords';
 import TransactionsHubScreen from '../screens/Transactions/TransactionsHubScreen';
 import InvoiceListScreen from '../screens/Invoices/InvoiceList/InvoiceListScreen';
 import InvoiceFormScreen from '../screens/Invoices/InvoiceForm/InvoiceFormScreen';
@@ -67,7 +68,7 @@ export const TransactionsRouteNames = {
 
 export type TransactionsRouteName = typeof TransactionsRouteNames[keyof typeof TransactionsRouteNames];
 
-export const TRANSACTIONS_ROUTES: IRoute[] = [
+export const TRANSACTIONS_ROUTES: IRoute[] = withSharedRecords([
   { title: TransactionsRouteNames.TransactionsHub, component: TransactionsHubScreen },
   { title: TransactionsRouteNames.InvoiceList, component: InvoiceListScreen },
   { title: TransactionsRouteNames.InvoiceForm, component: InvoiceFormScreen },
@@ -96,4 +97,4 @@ export const TRANSACTIONS_ROUTES: IRoute[] = [
   { title: TransactionsRouteNames.JournalEntryList, component: GeneralJournalListScreen },
   { title: TransactionsRouteNames.JournalEntryForm, component: GeneralJournalFormScreen },
   { title: TransactionsRouteNames.JournalEntryDetail, component: GeneralJournalDetailScreen },
-];
+]);

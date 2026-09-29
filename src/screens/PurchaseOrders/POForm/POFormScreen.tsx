@@ -454,14 +454,14 @@ const POFormScreen: React.FC = () => {
             text2: `${ref} has been ${isEditing ? 'updated' : 'created'} ${saveStatus === 'sent' ? 'and sent to vendor' : 'as draft'}.`,
           });
         }
-        // This form is mounted in two navigators: TransactionsStack, where
-        // PODetail sits beside it, and DashboardStack, where the quick-action
-        // tile opens it and PODetail is not registered. Asking the navigator
-        // what it knows about keeps one behaviour per place without a prop
-        // that callers could forget to pass: from Transactions you land on the
-        // PO you just made, from the dashboard you go back to the dashboard.
+        // A PO raised from an item goes back to that item — the flow started
+        // there, and its POs tab shows the new order. Anywhere else you land
+        // on the PO you just made; back from it returns to where the form was
+        // opened. PODetail is a shared record screen, registered in every tab
+        // stack (navigations-maps/sharedRecords); the routeNames check stays
+        // as a guard for a navigator that does not register it.
         const canOpenDetail = navigation.getState().routeNames.includes('PODetail');
-        if (saved?.id && canOpenDetail) navigation.replace('PODetail', { poId: saved.id });
+        if (saved?.id && canOpenDetail && !prefillItemId) navigation.replace('PODetail', { poId: saved.id });
         else navigation.goBack();
       } catch (e: any) {
         Toast.show({

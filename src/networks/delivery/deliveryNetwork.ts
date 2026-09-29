@@ -87,6 +87,22 @@ export const togglePersonnelAvailabilityAPI = async (userId: string): Promise<an
   }
 };
 
+/**
+ * Set a rider on or off duty. Says which, rather than toggling, so a retried
+ * or doubled tap lands on the state the rider asked for.
+ */
+export const setPersonnelAvailabilityAPI = async (
+  userId: string,
+  isAvailable: boolean,
+): Promise<any> => {
+  try {
+    const response = await api.patch(`/delivery-personnel/${userId}/availability`, { isAvailable });
+    return response.data;
+  } catch (e: any) {
+    throw new Error(extractErrorMessage(e));
+  }
+};
+
 export const resetPersonnelPasswordAPI = async (userId: string): Promise<any> => {
   try {
     const response = await api.post(`/delivery-personnel/${userId}/reset-password`);

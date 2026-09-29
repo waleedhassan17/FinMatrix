@@ -11,7 +11,6 @@ import {
   TextInput,
   TouchableOpacity,
   RefreshControl,
-  Dimensions,
   Modal
 } from 'react-native';
 
@@ -48,8 +47,12 @@ import { formatCurrency } from '../../../utils/formatters';
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const GRID_CARD_WIDTH = (SCREEN_WIDTH - spacing.xl * 2 - spacing.xs) / 2;
+// The grid sizes its cards with flex, not from the window's width. That width
+// was read once when the module loaded, so a window resized afterwards — the
+// browser's device toolbar switched on after loading the web build — kept
+// cards sized for the old window and the grid broke (QA #8). An odd count gets
+// an invisible spacer so the last card keeps its half width.
+const GRID_SPACER_ID = '__grid-spacer__';
 type PickerType = 'category' | 'agency' | null;
 
 // ── Constants ─────────────────────────────────────────
@@ -248,6 +251,7 @@ const InventoryListScreen: React.FC = () => {
   // ── Grid View Card ────────────────────────────────
   const renderGridItem = useCallback(
     ({ item }: { item: InventoryItemData }) => {
+      if (item.itemId === GRID_SPACER_ID) return <View style={styles.gridSpacer} />;
       const status = getStockStatus(item);
       const stockColor = getStockColor(status);
 
@@ -263,10 +267,10 @@ const InventoryListScreen: React.FC = () => {
           </View>
           <View style={styles.gridCardBody}>
             <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
-            <Text style={styles.gridSku}>{item.sku}</Text>
+            <Text style={styles.gridSku} numberOfLines={1}>{item.sku}</Text>
             <View style={styles.gridBottom}>
-              <Text style={[styles.gridQty, { color: stockColor }]}>
-                Qty: {item.quantityOnHand}
+              <Text style={[styles.gridQty, { color: stockColor }]} numberOfLines={1}>
+                Qty: {Number(item.quantityOnHand).toLocaleString()}
               </Text>
               <View style={[styles.statusDot, { backgroundColor: stockColor }]} />
             </View>
@@ -278,6 +282,14 @@ const InventoryListScreen: React.FC = () => {
   );
 
   const keyExtractor = useCallback((item: InventoryItemData) => item.itemId, []);
+
+  const gridItems = useMemo(
+    () =>
+      filteredItems.length % 2 === 1
+        ? [...filteredItems, { itemId: GRID_SPACER_ID } as InventoryItemData]
+        : filteredItems,
+    [filteredItems],
+  );
 
   const ListEmptyComponent = useMemo(
     () => (
@@ -487,7 +499,7 @@ const InventoryListScreen: React.FC = () => {
       ) : (
         <FlatList
           key="grid"
-          data={filteredItems}
+          data={gridItems}
           keyExtractor={keyExtractor}
           renderItem={renderGridItem}
           numColumns={2}
@@ -583,6 +595,9 @@ const styles = StyleSheet.create({
   // ── Filter Chips ──────────────────────────────────
   chipRow: {
     flexDirection: 'row',
+    // Wraps rather than overflowing: four chips need more than a 393pt
+    // phone's width once the selected one turns bold.
+    flexWrap: 'wrap',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xs,
     backgroundColor: colors.surface,
@@ -782,20 +797,25 @@ const styles = StyleSheet.create({
   // ── Grid View ─────────────────────────────────────
   gridContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxl },
   gridRow: {
-    justifyContent: 'space-between',
+    gap: spacing.xs,
     marginTop: spacing.xs,
   },
+  // No overflow: 'hidden' here — on iOS it clips the card's own shadow. The
+  // image tile rounds its own top corners instead.
   gridCard: {
-    width: GRID_CARD_WIDTH,
+    flex: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    overflow: 'hidden',
     ...shadows.xs,
   },
+  gridSpacer: { flex: 1 },
   gridImagePlaceholder: {
     width: '100%',
     height: 90,
-    backgroundColor: colors.background,
+    // Tinted, not the page colour, so the tile reads as part of the card.
+    backgroundColor: colors.primaryLight,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },

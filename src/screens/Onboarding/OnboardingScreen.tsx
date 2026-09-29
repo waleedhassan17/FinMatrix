@@ -1,15 +1,15 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   FlatList,
   NativeSyntheticEvent,
   NativeScrollEvent,
   StatusBar,
   TouchableOpacity,
-  Animated
+  Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
@@ -21,7 +21,6 @@ import type { RootStackParamList } from '../../types';
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
 
-const { width } = Dimensions.get('window');
 
 // ═══════════════════════════════════════
 // Design Tokens
@@ -266,6 +265,11 @@ const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
   const activeIndex = useAppSelector(selectCurrentPage);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
+  // The window's CURRENT width. This was read once when the module loaded, so
+  // a window that changed size afterwards — a rotation, split screen, or the
+  // browser's device toolbar switched on after loading the web build — kept
+  // slides as wide as the old window and they overflowed the screen (QA #1).
+  const { width } = useWindowDimensions();
 
   const isLast = activeIndex === slides.length - 1;
   const current = slides[activeIndex] ?? slides[0];
@@ -275,8 +279,16 @@ const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
       const idx = Math.round(e.nativeEvent.contentOffset.x / width);
       if (idx !== activeIndex) dispatch(setCurrentPage(idx));
     },
-    [dispatch, activeIndex],
+    [dispatch, activeIndex, width],
   );
+
+  // Keep the current slide in place when the width changes; the old offset
+  // would otherwise land between two slides.
+  useEffect(() => {
+    flatListRef.current?.scrollToOffset({ offset: activeIndex * width, animated: false });
+    // Only a width change should re-align; paging updates activeIndex itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width]);
 
   const skip = () => {
     dispatch(setOnboardingSeen());
@@ -292,10 +304,20 @@ const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
     const isDashboard = item.cardType === 'dashboard';
 
     return (
-      <View style={ms.slide}>
+      <View style={[ms.slide, { width }]}>
         {/* Radial glow layers */}
-        <View style={[ms.glowOuter, { backgroundColor: item.accent + '0A' }]} />
-        <View style={[ms.glowInner, { backgroundColor: item.accent + '06' }]} />
+        <View
+          style={[
+            ms.glowOuter,
+            { width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, backgroundColor: item.accent + '0A' },
+          ]}
+        />
+        <View
+          style={[
+            ms.glowInner,
+            { width: width * 0.6, height: width * 0.6, borderRadius: width * 0.3, backgroundColor: item.accent + '06' },
+          ]}
+        />
 
         {/* Decorative geometry */}
         <View style={ms.decorRect} />
@@ -369,6 +391,8 @@ const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
         ref={flatListRef}
         data={slides}
         renderItem={renderSlide}
+        extraData={width}
+        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
         keyExtractor={item => item.id}
         horizontal
         pagingEnabled
@@ -462,12 +486,12 @@ const ms = StyleSheet.create({
   },
   skipBtnText: { ...typography.bodySm, color: B.w30 },
 
-  slide: { width, flex: 1, backgroundColor: B.navy },
+  slide: { flex: 1, backgroundColor: B.navy },
   slideContent: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
 
   // Glow
-  glowOuter: { position: 'absolute', top: '12%', left: '10%', width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4 },
-  glowInner: { position: 'absolute', top: '18%', left: '20%', width: width * 0.6, height: width * 0.6, borderRadius: width * 0.3 },
+  glowOuter: { position: 'absolute', top: '12%', left: '10%' },
+  glowInner: { position: 'absolute', top: '18%', left: '20%' },
 
   // Decor
   decorRect: { position: 'absolute', top: '10%', right: '-5%', width: 80, height: 80, borderRadius: 22, borderWidth: 1, borderColor: B.w06, transform: [{ rotate: '15deg' }] },

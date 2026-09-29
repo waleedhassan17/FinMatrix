@@ -1,3 +1,5 @@
+import type { SharedRecordRouteName } from '../navigations-maps/sharedRecordRouteNames';
+
 export type AuditModule =
   | 'Invoices'
   | 'Customers'
@@ -64,9 +66,12 @@ export interface SearchResult {
   module: SearchModule;
   title: string;
   subtitle: string;
-  /** Tab-level stack that owns `routeName`; results are opened across stacks. */
-  stack: 'TransactionsStack' | 'MoreStack' | 'InventoryStack';
-  routeName: string;
+  /**
+   * The screen that opens the result. Always a shared record screen, which
+   * every tab stack registers, so a result opens on the tab search was opened
+   * from and back returns to the results. See navigations-maps/sharedRecords.
+   */
+  routeName: SharedRecordRouteName;
   routeParams: Record<string, string>;
 }
 

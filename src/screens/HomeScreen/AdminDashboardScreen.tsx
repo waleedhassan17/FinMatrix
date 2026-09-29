@@ -349,6 +349,11 @@ const AdminDashboardScreen: React.FC = () => {
                 it is a review figure, not something acted on. */}
 
             {/* ── Receivables / Payables ─────────────── */}
+            {/* The Receivables and Payables lists are shared record screens,
+                registered on this tab too (navigations-maps/sharedRecords), so
+                each tile is a push and back returns to the dashboard. They used
+                to hop into the Transactions tab, where back landed on its hub
+                (QA #3, #4). */}
             <Section title="Financials" caption={asOfLabel(rawData?.period?.endDate)}>
               <View style={s.statRow}>
                 <StatCard
@@ -358,7 +363,7 @@ const AdminDashboardScreen: React.FC = () => {
                   value={statById.ar?.value ?? 'Rs 0'}
                   label="Receivables"
                   sub="Due from customers"
-                  onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'InvoiceList', initial: false })}
+                  onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InvoiceList')}
                 />
                 <StatCard
                   icon="arrow-up-right"
@@ -367,7 +372,7 @@ const AdminDashboardScreen: React.FC = () => {
                   value={statById.ap?.value ?? 'Rs 0'}
                   label="Payables"
                   sub="Owed to suppliers"
-                  onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', { screen: 'BillList', initial: false })}
+                  onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('BillList')}
                 />
               </View>
             </Section>

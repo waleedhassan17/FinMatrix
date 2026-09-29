@@ -4,6 +4,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MORE_ROUTES } from '../../navigations-maps/More';
+import type { SharedRecordParamList } from './sharedRecordParams';
 
 export type MoreStackParamList = {
   MoreHub: undefined;
@@ -19,12 +20,7 @@ export type MoreStackParamList = {
   AgencyForm: { agencyId?: string } | undefined;
   AgencyInventorySync: { agencyId: string };
   CustomerList: undefined;
-  CustomerDetail: { customerId: string };
-  CustomerForm: { customerId?: string } | undefined;
   VendorList: undefined;
-  VendorDetail: { vendorId: string };
-  VendorForm: { vendorId?: string } | undefined;
-  PartySummary: { partyType: 'customer' | 'vendor'; partyId: string; partyName?: string };
   AssignDeliveries: undefined;
   CreateDelivery: undefined;
   AssignWork: undefined;
@@ -55,7 +51,7 @@ export type MoreStackParamList = {
   // registered, failing silently at runtime instead of at build time.
   // RenewSubscription: { mode?: 'renew' | 'change' } | undefined;
   // SubscriptionPay: { plan: 'standard' | 'pro'; mode?: 'renew' | 'change' };
-};
+} & SharedRecordParamList;
 
 const Stack = createNativeStackNavigator();
 

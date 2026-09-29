@@ -95,21 +95,20 @@ const GlobalSearchScreen: React.FC = () => {
     }, 300);
   }, [dispatch]);
 
-  // Results are opened across tab stacks (an invoice lives in
-  // TransactionsStack, a customer in MoreStack), so each one carries the
-  // stack that owns its detail screen.
+  // Every result opens a shared record screen, which this tab registers too
+  // (navigations-maps/sharedRecords), so opening one is a push and back returns
+  // to these results. Results used to hop into the tab that "owned" the screen,
+  // where back landed on that tab's hub (QA #2) — and a staff member's
+  // customer, vendor and receipt results did nothing, their navigator having
+  // no 'MoreStack' to hop to.
   const handleTapResult = useCallback((item: SearchResult) => {
     // Record the query, not the row title: tapping a recent search should
     // reproduce the search the user actually ran.
     const term = query.trim();
     if (term.length >= MIN_QUERY_LENGTH) dispatch(addRecentSearch(term));
-    // initial: false so the owning stack builds its real initial state (its
-    // hub or list) beneath the result. Without it the stack initialises as
-    // [InvoiceDetail] alone, back has nothing to pop and falls through to the
-    // tab navigator's 'firstRoute' default — the Dashboard — and the record is
-    // left stranded on that tab. Every result type is a detail screen, never a
-    // stack's initial route, so the flag is safe for all of them.
-    nav.navigate(item.stack, { screen: item.routeName, params: item.routeParams, initial: false });
+    // Typed locally: navigate's overloads cannot take a union of route names.
+    (nav as unknown as { navigate: (name: string, params?: object) => void })
+      .navigate(item.routeName, item.routeParams);
   }, [dispatch, nav, query]);
 
   const handleRecentTap = useCallback((term: string) => {
@@ -155,6 +154,13 @@ const GlobalSearchScreen: React.FC = () => {
 
   const hasQuery = query.trim().length >= MIN_QUERY_LENGTH;
   const resultCount = sections.reduce((n, sec) => n + sec.data.length, 0);
+  // Render every result up front. A SectionList counts each section's header
+  // and footer as cells, and renders only 10 cells before it measures: three
+  // one-row sections use nine, so a fourth section showed its header and none
+  // of its rows, and on the web build — where a list too short to scroll never
+  // renders its next batch — they never appeared. "5 results" over 3 rows
+  // (QA #2). The server caps results at 20 per type, so this stays small.
+  const cellCount = resultCount + sections.length * 2;
 
   const recentBlock = (
     <View style={s.recentSection}>
@@ -267,6 +273,7 @@ const GlobalSearchScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           stickySectionHeadersEnabled={false}
+          initialNumToRender={Math.max(10, cellCount)}
           ListHeaderComponent={
             hasQuery ? (
               resultCount > 0 ? (

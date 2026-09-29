@@ -47,7 +47,6 @@ const invoiceResult = (row: RawSearchInvoice): SearchResult | null =>
         module: 'Invoices',
         title: row.invoiceNumber ?? 'Invoice',
         subtitle: line(money(row.total), titleCase(row.status), row.dueDate && `Due ${formatDate(row.dueDate)}`),
-        stack: 'TransactionsStack',
         routeName: 'InvoiceDetail',
         routeParams: { invoiceId: row.id },
       }
@@ -60,7 +59,6 @@ const billResult = (row: RawSearchBill): SearchResult | null =>
         module: 'Bills',
         title: row.billNumber ?? 'Bill',
         subtitle: line(money(row.total), titleCase(row.status), row.dueDate && `Due ${formatDate(row.dueDate)}`),
-        stack: 'TransactionsStack',
         routeName: 'BillDetail',
         routeParams: { billId: row.id },
       }
@@ -73,7 +71,6 @@ const customerResult = (row: RawSearchCustomer): SearchResult | null =>
         module: 'Customers',
         title: row.name ?? row.company ?? 'Customer',
         subtitle: line(row.email ?? row.phone, `Balance ${money(row.balance)}`),
-        stack: 'MoreStack',
         routeName: 'CustomerDetail',
         routeParams: { customerId: row.id },
       }
@@ -86,7 +83,6 @@ const vendorResult = (row: RawSearchVendor): SearchResult | null =>
         module: 'Vendors',
         title: row.companyName ?? row.contactPerson ?? 'Vendor',
         subtitle: line(row.email ?? row.phone, `Balance ${money(row.balance)}`),
-        stack: 'MoreStack',
         routeName: 'VendorDetail',
         routeParams: { vendorId: row.id },
       }
@@ -101,7 +97,6 @@ const inventoryResult = (row: RawSearchInventoryItem): SearchResult | null =>
         // "Qty n" matches how the inventory list states stock; the raw
         // unitOfMeasure is free text and reads badly inline ("10 unit").
         subtitle: line(row.sku, `Qty ${toNum(row.quantityOnHand)}`, row.category),
-        stack: 'InventoryStack',
         routeName: 'InventoryDetail',
         routeParams: { itemId: row.id },
       }
@@ -117,7 +112,6 @@ const poResult = (row: RawSearchDocument): SearchResult | null =>
         title: row.poNumber ?? 'Purchase order',
         // A draft is a requisition, not yet an order.
         subtitle: line(row.vendorName, money(row.total), row.status === 'draft' ? 'Requisition' : titleCase(row.status)),
-        stack: 'TransactionsStack',
         routeName: 'PODetail',
         routeParams: { poId: row.id },
       }
@@ -130,7 +124,6 @@ const salesOrderResult = (row: RawSearchDocument): SearchResult | null =>
         module: 'Sales Orders',
         title: row.orderNumber ?? 'Sales order',
         subtitle: line(row.customerName, money(row.total), titleCase(row.status)),
-        stack: 'TransactionsStack',
         routeName: 'SalesOrderDetail',
         routeParams: { salesOrderId: row.id },
       }
@@ -143,7 +136,6 @@ const estimateResult = (row: RawSearchDocument): SearchResult | null =>
         module: 'Estimates',
         title: row.estimateNumber ?? 'Estimate',
         subtitle: line(row.customerName, money(row.total), titleCase(row.status)),
-        stack: 'TransactionsStack',
         routeName: 'EstimateDetail',
         routeParams: { estimateId: row.id },
       }
@@ -158,7 +150,6 @@ const paymentResult = (row: RawSearchDocument): SearchResult | null =>
         module: 'Receipts',
         title: row.paymentNumber || row.reference || 'Receipt',
         subtitle: line(row.customerName, money(row.amount), date(row.paymentDate)),
-        stack: 'MoreStack',
         routeName: 'CustomerDetail',
         routeParams: { customerId: row.customerId },
       }
@@ -171,7 +162,6 @@ const creditMemoResult = (row: RawSearchDocument): SearchResult | null =>
         module: 'Credit Memos',
         title: row.creditMemoNumber ?? 'Credit memo',
         subtitle: line(row.customerName, money(row.total), titleCase(row.status)),
-        stack: 'TransactionsStack',
         routeName: 'CreditMemoDetail',
         routeParams: { creditMemoId: row.id },
       }
@@ -184,7 +174,6 @@ const vendorCreditResult = (row: RawSearchDocument): SearchResult | null =>
         module: 'Vendor Credits',
         title: row.vendorCreditNumber ?? 'Vendor credit',
         subtitle: line(row.vendorName, money(row.total), titleCase(row.status)),
-        stack: 'TransactionsStack',
         routeName: 'VendorCreditDetail',
         routeParams: { vendorCreditId: row.id },
       }
@@ -197,7 +186,6 @@ const journalEntryResult = (row: RawSearchDocument): SearchResult | null =>
         module: 'Journal Entries',
         title: row.reference || 'Journal entry',
         subtitle: line(row.memo, date(row.date), titleCase(row.status)),
-        stack: 'TransactionsStack',
         routeName: 'JournalEntryDetail',
         routeParams: { entryId: row.id },
       }

@@ -14,7 +14,8 @@ export interface DPHistorySliceState {
 
 const initialState: DPHistorySliceState = {
   statusFilter: 'all',
-  dateFilter: '',
+  // 'all', not '': the "All Time" chip is the one highlighted on first open.
+  dateFilter: 'all',
   datePreset: 'all',
   customDateStart: '',
   customDateEnd: '',

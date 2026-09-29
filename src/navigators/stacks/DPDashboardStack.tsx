@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import type { DPHistoryParams } from './DPProfileStack';
 import { DP_DASHBOARD_ROUTES } from '../../navigations-maps/DPDashboard';
 
 export type DPDashboardStackParamList = {
@@ -11,6 +12,9 @@ export type DPDashboardStackParamList = {
   BillPhotoCapture: { deliveryId: string };
   CustomerConfirm: { deliveryId: string };
   DeliveryComplete: { deliveryId: string };
+  // Recent Activity's "View All" — registered here too, like the delivery
+  // screens, so back returns to the dashboard.
+  DPHistory: DPHistoryParams;
 };
 
 const Stack = createNativeStackNavigator();

@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   Animated,
   StatusBar,
-  RefreshControl
+  RefreshControl,
+  ActivityIndicator
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Alert } from '../../../../utils/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -19,16 +21,16 @@ import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks'
 import { selectUser } from '../../../Auth/authSlice';
 import {
   selectDeliveries,
-  selectDeliveryPersonnel,
+  selectMyPersonnel,
   fetchDeliveries,
-  fetchDeliveryPersonnel
+  fetchMyPersonnel,
+  setMyAvailability
 } from '../../Admin/AssignDeliveries/deliverySlice';
 import { startDelivery } from './dpDashboardSlice';
 import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DPDashboardStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { locationService } from '../../../../services/locationService';
-import { togglePersonnelAvailabilityAPI } from '../../../../networks/delivery/deliveryNetwork';
 import { toIsoDate } from '../../../../models/reportModel';
 
 type Nav = NativeStackNavigationProp<DPDashboardStackParamList>;
@@ -53,12 +55,19 @@ const formatTime = (date: Date): string => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+/** When a delivery was completed; the last update for records without it. */
+const completedTime = (d: { deliveredAt?: string; updatedAt: string }): number =>
+  new Date(d.deliveredAt ?? d.updatedAt).getTime();
+
 const DPDashboardScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUser);
   const deliveries = useAppSelector(selectDeliveries);
-  const personnel = useAppSelector(selectDeliveryPersonnel);
+  // The rider's own record. Riders cannot read the personnel list (it is
+  // admin/staff only and answered with a silent 403), so reading their duty
+  // status from it left the pill stuck on "Off Duty" (QA #13).
+  const me = useAppSelector(selectMyPersonnel);
   const userId = user?.uid ?? '';
 
   const [isGpsTracking, setIsGpsTracking] = useState(false);
@@ -72,7 +81,6 @@ const DPDashboardScreen: React.FC = () => {
   const progressAnim = useRef(new Animated.Value(0)).current;
   const scaleAnims = useRef([...Array(4)].map(() => new Animated.Value(0.9))).current;
 
-  const me = useMemo(() => personnel.find(p => p.userId === userId), [personnel, userId]);
   const todayKey = toIsoDate(new Date());
   const myDeliveries = useMemo(() => deliveries.filter(d => d.assignedTo === userId), [deliveries, userId]);
   const todayDeliveries = useMemo(() => myDeliveries.filter(d => d.scheduledDate === todayKey), [myDeliveries, todayKey]);
@@ -92,9 +100,9 @@ const DPDashboardScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    // Fetch deliveries & personnel from backend on mount
+    // Fetch deliveries and the rider's own record from the backend on mount.
     dispatch(fetchDeliveries());
-    dispatch(fetchDeliveryPersonnel());
+    if (userId) dispatch(fetchMyPersonnel(userId));
 
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
@@ -125,10 +133,10 @@ const DPDashboardScreen: React.FC = () => {
     setRefreshing(true);
     await Promise.all([
       dispatch(fetchDeliveries()),
-      dispatch(fetchDeliveryPersonnel()),
+      userId ? dispatch(fetchMyPersonnel(userId)) : Promise.resolve(),
     ]);
     setRefreshing(false);
-  }, [dispatch]);
+  }, [dispatch, userId]);
 
   const hasActiveDelivery = summary.inProgress > 0 || summary.pending > 0;
 
@@ -144,7 +152,14 @@ const DPDashboardScreen: React.FC = () => {
   // Live tracking runs while the rider is ON DUTY with active work, and
   // stops off-shift — no needless battery/data drain.
   const isOnDuty = me?.isAvailable ?? false;
+  const dutyKnown = me !== null;
+  // Whether THIS screen started the tracker. Stopping only what it started
+  // leaves alone a tracker the delivery screen started for a job in progress.
+  const startedTrackingRef = useRef(false);
   useEffect(() => {
+    // Until the rider's record arrives, "off duty" is only a default — acting
+    // on it would stop tracking the rider never asked to stop.
+    if (!dutyKnown) return;
     let cancelled = false;
     (async () => {
       if (isOnDuty && hasActiveDelivery) {
@@ -152,35 +167,50 @@ const DPDashboardScreen: React.FC = () => {
         if (cancelled) return;
         if (granted) {
           await locationService.startTracking();
+          startedTrackingRef.current = true;
           if (!cancelled) setIsGpsTracking(locationService.isTracking);
         } else {
           setIsGpsTracking(false);
         }
-      } else {
+      } else if (startedTrackingRef.current) {
         await locationService.stopTracking();
+        startedTrackingRef.current = false;
         if (!cancelled) setIsGpsTracking(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [isOnDuty, hasActiveDelivery]);
+  }, [dutyKnown, isOnDuty, hasActiveDelivery]);
 
+  /**
+   * Put the rider on or off duty. Asks the server for the state the rider
+   * chose (not a blind toggle), shows what it saved, and says so — QA could
+   * not tell whether "Off Duty" had taken effect.
+   */
   const handleToggleDuty = useCallback(async () => {
-    if (isTogglingDuty || !userId) return;
+    if (isTogglingDuty || !userId || !dutyKnown) return;
+    const next = !isOnDuty;
     setIsTogglingDuty(true);
     try {
-      await togglePersonnelAvailabilityAPI(userId);
-      await dispatch(fetchDeliveryPersonnel());
-      // Off duty → stop sharing location immediately.
-      if (isOnDuty) {
+      await dispatch(setMyAvailability({ userId, isAvailable: next })).unwrap();
+      if (!next) {
+        // Off duty → stop sharing location immediately.
         await locationService.stopTracking();
+        startedTrackingRef.current = false;
         setIsGpsTracking(false);
       }
+      Toast.show({
+        type: 'success',
+        text1: next ? "You're on duty" : "You're off duty",
+        text2: next
+          ? 'New deliveries can be assigned to you.'
+          : 'No new deliveries will be assigned to you.',
+      });
     } catch (e: any) {
       Alert.alert('Could not update duty status', e?.message || 'Please try again.');
     } finally {
       setIsTogglingDuty(false);
     }
-  }, [isTogglingDuty, userId, isOnDuty, dispatch]);
+  }, [isTogglingDuty, userId, dutyKnown, isOnDuty, dispatch]);
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -205,14 +235,14 @@ const DPDashboardScreen: React.FC = () => {
     () =>
       myDeliveries
         .filter(d => d.status === 'delivered')
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .sort((a, b) => completedTime(b) - completedTime(a))
         .slice(0, 4),
     [myDeliveries],
   );
 
   const thisWeekCount = useMemo(() => {
     const weekStart = getWeekStart(new Date());
-    return myDeliveries.filter(d => d.status === 'delivered' && new Date(d.updatedAt) >= weekStart).length;
+    return myDeliveries.filter(d => d.status === 'delivered' && completedTime(d) >= weekStart.getTime()).length;
   }, [myDeliveries]);
 
   // The status change is a server call; announcing "in transit" without
@@ -299,16 +329,25 @@ const DPDashboardScreen: React.FC = () => {
                 <Text style={styles.gpsTrackingText}>GPS Active</Text>
               </View>
             )}
+            {/* A switch that shows the SAVED state: the label is where the
+                rider is now, the knob flips only once the server agrees. */}
             <TouchableOpacity
-              style={[styles.dutyPill, !isOnDuty && styles.dutyPillOff, isTogglingDuty && { opacity: 0.6 }]}
+              style={[styles.dutyPill, !isOnDuty && styles.dutyPillOff, !dutyKnown && { opacity: 0.6 }]}
               onPress={handleToggleDuty}
-              disabled={isTogglingDuty}
+              disabled={isTogglingDuty || !dutyKnown}
               activeOpacity={0.7}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: isOnDuty, busy: isTogglingDuty, disabled: !dutyKnown }}
+              accessibilityLabel={isOnDuty ? 'On duty. Tap to go off duty' : 'Off duty. Tap to go on duty'}
             >
-              <Feather name={isOnDuty ? 'briefcase' : 'moon'} size={11} color={DP_BRAND.white} />
-              <Text style={styles.dutyPillText}>
-                {isTogglingDuty ? 'Updating…' : isOnDuty ? 'On Duty' : 'Off Duty'}
-              </Text>
+              <Text style={styles.dutyPillText}>{isOnDuty ? 'On duty' : 'Off duty'}</Text>
+              <View style={[styles.dutyTrack, isOnDuty && styles.dutyTrackOn]}>
+                {isTogglingDuty ? (
+                  <ActivityIndicator size="small" color={DP_BRAND.white} style={styles.dutyBusy} />
+                ) : (
+                  <View style={[styles.dutyKnob, isOnDuty && styles.dutyKnobOn]} />
+                )}
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -473,7 +512,11 @@ const DPDashboardScreen: React.FC = () => {
         {/* Recent Activity */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <TouchableOpacity style={styles.sectionLinkBtn}>
+          {/* Opens the delivery history, filtered to delivered (QA #14). */}
+          <TouchableOpacity
+            style={styles.sectionLinkBtn}
+            onPress={() => navigation.navigate('DPHistory', { status: 'delivered' })}
+          >
             <Text style={styles.sectionLink}>View All</Text>
             <Feather name="chevron-right" size={14} color={DP_BRAND.primary} />
           </TouchableOpacity>
@@ -483,16 +526,18 @@ const DPDashboardScreen: React.FC = () => {
           {recentActivity.length === 0 ? (
             <View style={styles.emptyActivityState}>
               <Feather name="inbox" size={24} color={THEME.colors.textDisabled} />
-              <Text style={styles.emptyActivityText}>No completed deliveries yet today</Text>
+              <Text style={styles.emptyActivityText}>No completed deliveries yet</Text>
             </View>
           ) : (
             recentActivity.map((item, index) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
                 style={[
                   styles.activityItem,
                   index === recentActivity.length - 1 && styles.activityItemLast
                 ]}
+                activeOpacity={0.6}
+                onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: item.id })}
               >
                 <View style={styles.activityIconWrap}>
                   <View style={styles.activityCheck}>
@@ -504,9 +549,9 @@ const DPDashboardScreen: React.FC = () => {
                   <Text style={styles.activityRef}>{item.referenceNo}</Text>
                 </View>
                 <Text style={styles.activityTime}>
-                  {formatTime(new Date(item.updatedAt))}
+                  {formatTime(new Date(completedTime(item)))}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
@@ -522,7 +567,8 @@ const DPDashboardScreen: React.FC = () => {
               <View style={[styles.performanceIconCircle, { backgroundColor: THEME.colors.warningLight }]}>
                 <Feather name="star" size={18} color={THEME.colors.warning} />
               </View>
-              <Text style={styles.performanceValue}>{me?.rating?.toFixed(1) ?? '4.8'}</Text>
+              {/* A dash, not an invented figure, when there is no rating yet. */}
+              <Text style={styles.performanceValue}>{me?.rating != null ? me.rating.toFixed(1) : '—'}</Text>
               <Text style={styles.performanceLabel}>Rating</Text>
             </View>
             <View style={styles.performanceDivider} />
@@ -530,7 +576,7 @@ const DPDashboardScreen: React.FC = () => {
               <View style={[styles.performanceIconCircle, { backgroundColor: THEME.colors.successLight }]}>
                 <Feather name="clock" size={18} color={THEME.colors.success} />
               </View>
-              <Text style={styles.performanceValue}>{me?.onTimeRate ?? 96}%</Text>
+              <Text style={styles.performanceValue}>{me?.onTimeRate != null ? `${me.onTimeRate}%` : '—'}</Text>
               <Text style={styles.performanceLabel}>On-Time</Text>
             </View>
             <View style={styles.performanceDivider} />
@@ -625,6 +671,24 @@ const styles = StyleSheet.create({
     ...THEME.typography.labelSm,
     color: DP_BRAND.white
   },
+  // The switch inside the duty pill: knob right and green when on duty.
+  dutyTrack: {
+    width: 30,
+    height: 18,
+    borderRadius: 9,
+    padding: 2,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.25)'
+  },
+  dutyTrackOn: { backgroundColor: THEME.colors.success },
+  dutyKnob: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: DP_BRAND.white
+  },
+  dutyKnobOn: { alignSelf: 'flex-end' },
+  dutyBusy: { transform: [{ scale: 0.6 }] },
   gpsTrackingPill: {
     flexDirection: 'row',
     alignItems: 'center',

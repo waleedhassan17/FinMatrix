@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAppSelector } from '../../../../hooks/useReduxHooks';
+import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { useSignOut } from '../../../../hooks/useSignOut';
-import { selectDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
+import {
+  selectDeliveries,
+  selectMyPersonnel,
+  fetchMyPersonnel,
+} from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPProfileStack';
-import NotificationIcon from '../../../../components/shared/NotificationIcon';
+import { Alert } from '../../../../utils/alert';
+import { toIsoDate } from '../../../../models/reportModel';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
@@ -17,16 +22,32 @@ type Props = NativeStackScreenProps<DPProfileStackParamList, 'DPProfile'>;
 
 const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { signingOut, confirmSignOut } = useSignOut();
+  const dispatch = useAppDispatch();
   const user = useAppSelector(state => state.auth.user);
   const deliveries = useAppSelector(selectDeliveries);
+  // The rider's own record, for the real rating and on-time rate.
+  const me = useAppSelector(selectMyPersonnel);
 
-  const userId = user?.uid ?? 'dp_002';
+  const userId = user?.uid ?? '';
+  useEffect(() => {
+    if (userId) dispatch(fetchMyPersonnel(userId));
+  }, [dispatch, userId]);
+
   const myDeliveries = deliveries.filter(d => d.assignedTo === userId);
-  const delivered = myDeliveries.filter(d => d.status === 'delivered').length;
   const totalDeliveries = myDeliveries.length;
-  const onTimeRate = delivered > 0 ? Math.min(98, Math.round((delivered / Math.max(1, totalDeliveries)) * 100)) : 0;
-  const thisMonth = myDeliveries.filter(d => d.scheduledDate.startsWith('2026-03')).length;
-  const rating = delivered > 0 ? 4.8 : 4.5;
+  // The current month — this was fixed at '2026-03'.
+  const monthKey = toIsoDate(new Date()).slice(0, 7);
+  const thisMonth = myDeliveries.filter(d => d.scheduledDate.startsWith(monthKey)).length;
+  // The server's figures, or a dash. These were invented: a 4.8 or 4.5 rating
+  // and an "on-time rate" that was really the share of jobs delivered.
+  const rating = me?.rating != null ? me.rating.toFixed(1) : '—';
+  const onTimeRate = me?.onTimeRate != null ? `${me.onTimeRate}%` : '—';
+
+  const openSupport = () => {
+    Linking.openURL('mailto:support@finmatrix.pk?subject=FinMatrix%20Delivery%20Support').catch(() =>
+      Alert.alert('Help & Support', 'Contact support@finmatrix.pk for assistance.'),
+    );
+  };
 
   const displayName = user?.displayName ?? 'Delivery Personnel';
   const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -61,9 +82,8 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
       >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>My Profile</Text>
-          <TouchableOpacity style={styles.headerIcon} activeOpacity={0.7}>
-            <NotificationIcon size={20} color={THEME.colors.neutral0} />
-          </TouchableOpacity>
+          {/* The bell that sat here did nothing: riders have no notifications
+              screen. Removed rather than left as a dead button. */}
         </View>
 
         {/* Profile Section inside gradient */}
@@ -164,14 +184,14 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
               <View style={[styles.metricIconWrap, { backgroundColor: THEME.colors.successLight }]}>
                 <Feather name="clock" size={18} color={THEME.colors.success} />
               </View>
-              <Text style={styles.metricValue}>{onTimeRate}%</Text>
+              <Text style={styles.metricValue}>{onTimeRate}</Text>
               <Text style={styles.metricLabel}>On-Time Rate</Text>
             </View>
             <View style={styles.metricItem}>
               <View style={[styles.metricIconWrap, { backgroundColor: THEME.colors.warningLight }]}>
                 <Feather name="star" size={18} color={THEME.colors.warning} />
               </View>
-              <Text style={styles.metricValue}>{rating.toFixed(1)}</Text>
+              <Text style={styles.metricValue}>{rating}</Text>
               <Text style={styles.metricLabel}>Rating</Text>
             </View>
             <View style={styles.metricItem}>
@@ -228,8 +248,9 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.menuDivider} />
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.menuItem}
+            onPress={openSupport}
             activeOpacity={0.7}
           >
             <View style={styles.menuLeft}>

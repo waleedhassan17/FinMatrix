@@ -125,24 +125,18 @@ const ProfitLossScreen: React.FC = () => {
   /**
    * Open the record behind a ledger row.
    *
-   * The documents live in TransactionsStack and this screen is in
-   * ReportsStack, so the hop goes through the tab navigator. `initial: false`
-   * on both counts: without it React Navigation initialises Transactions as
-   * [InvoiceDetail] with no list underneath, and back falls through to the
-   * Dashboard while stranding the detail screen on that tab. Same pattern as
-   * VendorDetailScreen's create-bill action.
+   * The documents are shared record screens, registered in ReportsStack too
+   * (navigations-maps/sharedRecords), so this is a push onto the Reports tab:
+   * back returns to this report, open line and all. It used to hop into the
+   * Transactions tab, where back popped to that tab's hub instead.
    */
   const openSource = useCallback(
     (sourceType: string, sourceId: string) => {
       const route = SOURCE_ROUTES[sourceType];
       if (!route || !sourceId) return;
       (navigation as unknown as NativeStackNavigationProp<Record<string, object>>).navigate(
-        'TransactionsStack',
-        {
-          screen: route.screen,
-          params: { [route.param]: sourceId },
-          initial: false,
-        },
+        route.screen,
+        { [route.param]: sourceId },
       );
     },
     [navigation],

@@ -5,6 +5,7 @@
 // navigator maps over this array — screens register here only.
 
 import type { IRoute } from './types';
+import { withSharedRecords } from './sharedRecords';
 import InventoryListScreen from '../screens/Inventory/InventoryList/InventoryListScreen';
 import InventoryFormScreen from '../screens/Inventory/InventoryForm/InventoryFormScreen';
 import InventoryDetailScreen from '../screens/Inventory/InventoryDetail/InventoryDetailScreen';
@@ -19,10 +20,10 @@ import AdjustmentScreen from '../screens/Inventory/Adjustment/AdjustmentScreen';
 // Dashboard — while leaving the form stranded on the Transactions tab, which
 // then reopened it instead of the hub.
 //
-// Raising a PO is a flow launched FROM an item that has to return to it, and
-// the closure rule holds: POForm only calls goBack(), plus a replace('PODetail')
-// on save that it guards by asking the navigator it is in — and PODetail is
-// deliberately not registered here, so an owner's save comes back to the item.
+// Raising a PO is a flow launched FROM an item that has to return to it:
+// POForm goes back after saving when it was opened with an item
+// (prefillItemId). PODetail and the rest of the record screens are registered
+// here too, through withSharedRecords — see sharedRecords.ts.
 import POFormScreen from '../screens/PurchaseOrders/POForm/POFormScreen';
 
 export const InventoryRouteNames = {
@@ -35,10 +36,10 @@ export const InventoryRouteNames = {
 
 export type InventoryRouteName = typeof InventoryRouteNames[keyof typeof InventoryRouteNames];
 
-export const INVENTORY_ROUTES: IRoute[] = [
+export const INVENTORY_ROUTES: IRoute[] = withSharedRecords([
   { title: InventoryRouteNames.InventoryList, component: InventoryListScreen },
   { title: InventoryRouteNames.InventoryForm, component: InventoryFormScreen },
   { title: InventoryRouteNames.InventoryDetail, component: InventoryDetailScreen },
   { title: InventoryRouteNames.Adjustment, component: AdjustmentScreen },
   { title: InventoryRouteNames.POForm, component: POFormScreen },
-];
+]);

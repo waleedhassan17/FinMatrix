@@ -4,17 +4,13 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { STAFF_MORE_ROUTES } from '../../navigations-maps/StaffMore';
+import type { SharedRecordParamList } from './sharedRecordParams';
 
 export type StaffMoreStackParamList = {
   StaffMoreHub: undefined;
   MyRequests: undefined;
   CustomerList: undefined;
-  CustomerDetail: { customerId: string };
-  CustomerForm: { customerId?: string } | undefined;
   VendorList: undefined;
-  VendorDetail: { vendorId: string };
-  VendorForm: { vendorId?: string } | undefined;
-  PartySummary: { partyType: 'customer' | 'vendor'; partyId: string; partyName?: string };
   AssignDeliveries: undefined;
   CreateDelivery: undefined;
   AssignWork: undefined;
@@ -26,7 +22,7 @@ export type StaffMoreStackParamList = {
   DeliveryPersonnelDetail: { userId: string };
   TaxLiability: undefined;
   StaffSettings: undefined;
-};
+} & SharedRecordParamList;
 
 const Stack = createNativeStackNavigator();
 

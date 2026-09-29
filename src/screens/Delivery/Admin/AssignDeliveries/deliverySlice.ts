@@ -24,6 +24,8 @@ import { type DummyDeliveryPerson } from '../../../../models/deliveryModel';
 import {
   getDeliveriesAPI,
   getDeliveryPersonnelAPI,
+  getPersonnelDetailAPI,
+  setPersonnelAvailabilityAPI,
   assignDeliveriesAPI,
   createDeliveryAPI,
   getShadowInventoryAPI,
@@ -33,6 +35,7 @@ import {
 import {
   deliveryListSerializer,
   personnelListSerializer,
+  personnelSingleSerializer,
   mapDelivery,
 } from '../../../../serializers/deliverySerializer';
 
@@ -71,6 +74,12 @@ export interface DeliveryNotification {
 export interface DeliverySliceState {
   deliveries: DeliveryRecord[];
   deliveryPersonnel: DummyDeliveryPerson[];
+  /**
+   * The signed-in rider's own record — on/off duty, rating. Riders cannot read
+   * the personnel LIST (admin/staff only: a silent 403), which is why their
+   * duty pill always read "Off Duty" (QA #13); they read their own record.
+   */
+  myPersonnel: DummyDeliveryPerson | null;
   shadowInventory: ShadowInventoryItem[];
   inventoryUpdateRequests: InventoryUpdateRequest[];
   notifications: DeliveryNotification[];
@@ -95,6 +104,7 @@ const buildLoadMap = (deliveries: DeliveryRecord[]): Record<string, number> => {
 const initialState: DeliverySliceState = {
   deliveries: [],
   deliveryPersonnel: [],
+  myPersonnel: null,
   shadowInventory: [],
   inventoryUpdateRequests: [],
   notifications: [],
@@ -590,6 +600,32 @@ export const deliverySlice = createAppSlice({
         },
       },
     ),
+    /** The signed-in rider's own record (GET /delivery-personnel/:userId). */
+    fetchMyPersonnel: create.asyncThunk(
+      async (userId: string) => personnelSingleSerializer(await getPersonnelDetailAPI(userId)),
+      {
+        fulfilled: (state, action) => {
+          if (action.payload) state.myPersonnel = action.payload;
+        },
+      },
+    ),
+    /**
+     * Put the signed-in rider on or off duty, and keep what the server saved.
+     * Rejects with the server's message, so the screen can say why.
+     */
+    setMyAvailability: create.asyncThunk(
+      async ({ userId, isAvailable }: { userId: string; isAvailable: boolean }) =>
+        personnelSingleSerializer(await setPersonnelAvailabilityAPI(userId, isAvailable)),
+      {
+        fulfilled: (state, action) => {
+          const saved = action.payload;
+          if (!saved) return;
+          state.myPersonnel = saved;
+          const i = state.deliveryPersonnel.findIndex(p => p.userId === saved.userId);
+          if (i !== -1) state.deliveryPersonnel[i] = saved;
+        },
+      },
+    ),
     /** Fetch shadow inventory from the API */
     // Every page: asked with no page at all, the server's default of 20 was
     // all a rider ever saw of what they carry.
@@ -624,6 +660,7 @@ export const deliverySlice = createAppSlice({
   selectors: {
     selectDeliveries: state => state.deliveries,
     selectDeliveryPersonnel: state => state.deliveryPersonnel,
+    selectMyPersonnel: state => state.myPersonnel,
     selectShadowInventory: state => state.shadowInventory,
     selectInventoryUpdateRequests: state => state.inventoryUpdateRequests,
     selectDeliveryNotifications: state => state.notifications,
@@ -681,12 +718,15 @@ export const {
   clearShadowInventoryForRequest,
   fetchDeliveries,
   fetchDeliveryPersonnel,
+  fetchMyPersonnel,
+  setMyAvailability,
   fetchShadowInventory,
 } = deliverySlice.actions;
 
 export const {
   selectDeliveries,
   selectDeliveryPersonnel,
+  selectMyPersonnel,
   selectShadowInventory,
   selectInventoryUpdateRequests,
   selectDeliveryNotifications,

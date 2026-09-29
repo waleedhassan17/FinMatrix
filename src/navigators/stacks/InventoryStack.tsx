@@ -4,20 +4,14 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { INVENTORY_ROUTES } from '../../navigations-maps/Inventory';
-import type { TransactionsStackParamList } from './TransactionsStack';
+import type { SharedRecordParamList } from './sharedRecordParams';
 
 export type InventoryStackParamList = {
   InventoryList: undefined;
-  InventoryForm: { itemId?: string } | undefined;
-  InventoryDetail: { itemId: string };
-  Adjustment: { itemId?: string } | undefined;
-  // "Create PO" / "Request PO" from an item — mounted here so back returns to
-  // the item instead of popping into the Transactions tab's history. See
-  // navigations-maps/Inventory. Params are taken from TransactionsStackParamList
-  // by reference rather than retyped, so the two registrations of the same
-  // screen cannot drift into disagreeing about what it accepts.
-  POForm: TransactionsStackParamList['POForm'];
-};
+  // An item's detail, its forms, its purchase orders and everything those open
+  // are the shared record screens, registered here so back returns to the item
+  // instead of popping into the Transactions tab. See navigations-maps/sharedRecords.
+} & SharedRecordParamList;
 
 const Stack = createNativeStackNavigator();
 

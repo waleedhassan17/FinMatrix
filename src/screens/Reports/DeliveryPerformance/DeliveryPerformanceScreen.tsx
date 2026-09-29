@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Dimensions
+  useWindowDimensions
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { BarChart } from 'react-native-chart-kit';
@@ -38,7 +38,6 @@ import {
   reportContentStyle
 } from '../../../components/reports/ReportUI';
 
-const CHART_WIDTH = Dimensions.get('window').width - THEME.spacing.md * 4;
 
 const PERIOD_OPTIONS = [
   { label: '7 Days', days: 7 },
@@ -78,6 +77,9 @@ const DeliveryPerformanceScreen: React.FC = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const { report, range, isLoading, error } = useAppSelector(selectDeliveryPerformanceState);
+  // The window's current width, not a snapshot from when the module loaded.
+  const { width } = useWindowDimensions();
+  const chartWidth = width - THEME.spacing.md * 4;
   const [activePeriod, setActivePeriod] = useState(1);
 
   // Bring the window up to today every time the screen is opened.
@@ -135,7 +137,7 @@ const DeliveryPerformanceScreen: React.FC = () => {
               <SectionCard title="Daily Activity" icon="bar-chart-2">
                 <BarChart
                   data={barData}
-                  width={CHART_WIDTH}
+                  width={chartWidth}
                   height={200}
                   yAxisLabel=""
                   yAxisSuffix=""

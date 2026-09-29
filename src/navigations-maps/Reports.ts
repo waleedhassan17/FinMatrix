@@ -5,6 +5,7 @@
 // navigator maps over this array — screens register here only.
 
 import type { IRoute } from './types';
+import { withSharedRecords } from './sharedRecords';
 import ReportsHubScreen from '../screens/Reports/ReportsHub/ReportsHubScreen';
 import ProfitLossScreen from '../screens/Reports/ProfitLoss/ProfitLossScreen';
 import BalanceSheetScreen from '../screens/Reports/BalanceSheet/BalanceSheetScreen';
@@ -43,7 +44,7 @@ export const ReportsRouteNames = {
 
 export type ReportsRouteName = typeof ReportsRouteNames[keyof typeof ReportsRouteNames];
 
-export const REPORTS_ROUTES: IRoute[] = [
+export const REPORTS_ROUTES: IRoute[] = withSharedRecords([
   { title: ReportsRouteNames.ReportsHub, component: ReportsHubScreen },
   { title: ReportsRouteNames.ProfitLoss, component: ProfitLossScreen },
   { title: ReportsRouteNames.BalanceSheet, component: BalanceSheetScreen },
@@ -60,4 +61,4 @@ export const REPORTS_ROUTES: IRoute[] = [
   { title: ReportsRouteNames.AnalyticsDashboard, component: AnalyticsDashboardScreen },
   { title: ReportsRouteNames.DeliveryDailyReport, component: DeliveryDailyReportScreen },
   { title: ReportsRouteNames.DeliveryPerformance, component: DeliveryPerformanceScreen },
-];
+]);

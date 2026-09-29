@@ -173,45 +173,24 @@ const CustomerDetailScreen: React.FC = () => {
       : colors.success;
 
   // ── Action handlers ─────────────────────────────
-  // initial: false on both hops — see VendorDetailScreen. Without it the
-  // Transactions stack initialises as [InvoiceForm] with no hub beneath, and
-  // back lands on the Dashboard rather than returning into that tab.
+  // The invoice and payment screens are shared record screens, registered on
+  // this tab too (navigations-maps/sharedRecords), so each action is a push
+  // and back — or saving — returns to this customer. They used to hop into
+  // the Transactions tab, where back landed on its hub (QA #10).
   const handleCreateInvoice = () => {
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
-      .navigate('TransactionsStack', {
-        screen: 'InvoiceForm',
-        params: { customerId: customer.id },
-        initial: false
-      });
+    navigation.navigate('InvoiceForm', { customerId: customer.id });
   };
   const handleRecordPayment = () => {
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
-      .navigate('TransactionsStack', {
-        screen: 'ReceivePayment',
-        params: { customerId: customer.id },
-        initial: false
-      });
+    navigation.navigate('ReceivePayment', { customerId: customer.id });
   };
-  // An invoice from the tab below. The invoice screens live in the
-  // Transactions tab, so the hop goes through it, with its hub underneath.
   const handleOpenInvoice = (invoiceId: string) => {
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
-      .navigate('TransactionsStack', {
-        screen: 'InvoiceDetail',
-        params: { invoiceId },
-        initial: false
-      });
+    navigation.navigate('InvoiceDetail', { invoiceId });
   };
   // Credit on account, spent in Receive Payment with the switch already on —
   // the web's flow: advances and credit memos alike, oldest invoice first, and
   // any new money alongside, in one settlement.
   const handleUseCredit = () => {
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
-      .navigate('TransactionsStack', {
-        screen: 'ReceivePayment',
-        params: { customerId: customer.id, useCredits: true },
-        initial: false
-      });
+    navigation.navigate('ReceivePayment', { customerId: customer.id, useCredits: true });
   };
   // Every unpaid invoice, as of today, ready to share or save.
   const handleOutstandingSummary = () => {

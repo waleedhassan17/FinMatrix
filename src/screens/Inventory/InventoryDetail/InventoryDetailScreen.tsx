@@ -205,27 +205,17 @@ const InventoryDetailScreen: React.FC = () => {
     if (item) navigation.navigate('Adjustment', { itemId: item.itemId });
   }, [item, navigation]);
 
-  // POForm is registered in THIS stack (see navigations-maps/Inventory), not
-  // reached by hopping to the Transactions tab: raising a PO starts here and
-  // has to come back here. The old cross-tab navigate left the form stranded on
-  // the Transactions tab and sent back to the Dashboard.
+  // POForm and PODetail are shared record screens, registered in THIS stack
+  // too (navigations-maps/sharedRecords): raising or opening a PO starts here
+  // and back comes back here. Opening a PO used to hop into the Transactions
+  // tab, where back landed on that tab's hub (QA #9).
   const handleCreatePO = useCallback(() => {
     if (!item) return;
     navigation.navigate('POForm', { prefillItemId: item.itemId });
   }, [item, navigation]);
 
-  // PODetail stays a cross-tab hop — unlike POForm it is a document owned by
-  // the Transactions tab, and it reaches BillDetail/BillList, which this stack
-  // does not have.
-  //
-  // `initial: false` is load-bearing: without it React Navigation builds the
-  // target stack as [PODetail] alone, so back has nothing to pop and falls
-  // through to the tab navigator's 'firstRoute' default — the Dashboard. The
-  // flag makes it build the real initial state (TransactionsHub) underneath,
-  // and the nested params still ride along on the navigate it dispatches.
   const handleOpenPO = useCallback((poId: string) => {
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
-      .navigate('TransactionsStack', { screen: 'PODetail', params: { poId }, initial: false });
+    navigation.navigate('PODetail', { poId });
   }, [navigation]);
 
   // A pending request is not a purchase order and has nothing to open, so it

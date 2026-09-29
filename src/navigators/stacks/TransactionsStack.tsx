@@ -4,6 +4,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TRANSACTIONS_ROUTES } from '../../navigations-maps/Transactions';
+import type { SharedPartyParamList } from './sharedRecordParams';
 
 export type TransactionsStackParamList = {
   TransactionsHub: undefined;
@@ -80,7 +81,7 @@ export type TransactionsStackParamList = {
   JournalEntryList: undefined;
   JournalEntryForm: { entryId?: string } | undefined;
   JournalEntryDetail: { entryId: string };
-};
+} & SharedPartyParamList;
 
 const Stack = createNativeStackNavigator();
 

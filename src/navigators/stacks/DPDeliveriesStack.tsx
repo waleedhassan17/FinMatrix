@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import type { DPHistoryParams } from './DPProfileStack';
 import { DP_DELIVERIES_ROUTES } from '../../navigations-maps/DPDeliveries';
 
 export type DPDeliveriesStackParamList = {
@@ -11,6 +12,8 @@ export type DPDeliveriesStackParamList = {
   BillPhotoCapture: { deliveryId: string };
   CustomerConfirm: { deliveryId: string };
   DeliveryComplete: { deliveryId: string };
+  // "View all completed" — registered here too, so back returns to the list.
+  DPHistory: DPHistoryParams;
 };
 
 const Stack = createNativeStackNavigator();

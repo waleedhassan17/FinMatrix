@@ -17,7 +17,6 @@ import {
   Animated,
   TextInput,
   Modal,
-  Dimensions,
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import Toast from 'react-native-toast-message';
@@ -1052,14 +1051,15 @@ const styles = StyleSheet.create({
 });
 
 // ── Success Overlay Styles ────────────────────────
-const { width: SCREEN_W } = Dimensions.get('window');
 const sStyles = StyleSheet.create({
   overlay: {
     flex: 1, backgroundColor: 'rgba(15,23,42,0.75)',
     justifyContent: 'center', alignItems: 'center',
   },
   card: {
-    width: SCREEN_W * 0.82, backgroundColor: colors.neutral0,
+    // A share of the overlay rather than of the window's width at load time,
+    // which a resized or rotated window would leave behind.
+    width: '82%', maxWidth: 420, backgroundColor: colors.neutral0,
     borderRadius: 24, paddingVertical: 36, paddingHorizontal: 28,
     alignItems: 'center',
     shadowColor: colors.neutral900, shadowOffset: { width: 0, height: 12 },

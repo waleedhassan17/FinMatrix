@@ -4,6 +4,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { REPORTS_ROUTES } from '../../navigations-maps/Reports';
+import type { SharedRecordParamList } from './sharedRecordParams';
 
 export type ReportsStackParamList = {
   ReportsHub: undefined;
@@ -31,7 +32,7 @@ export type ReportsStackParamList = {
   AnalyticsDashboard: undefined;
   DeliveryDailyReport: undefined;
   DeliveryPerformance: undefined;
-};
+} & SharedRecordParamList;
 
 const Stack = createNativeStackNavigator();
 

@@ -116,7 +116,9 @@ export const mapDelivery = (
   pickedUpAt: raw.pickedUpAt ?? raw.picked_up_at,
   inTransitAt: raw.inTransitAt ?? raw.in_transit_at,
   arrivedAt: raw.arrivedAt ?? raw.arrived_at,
-  deliveredAt: raw.deliveredAt ?? raw.delivered_at,
+  // The backend's column is completedAt; deliveredAt was never sent, so
+  // completion times fell back to the last update.
+  deliveredAt: raw.deliveredAt ?? raw.delivered_at ?? raw.completedAt ?? raw.completed_at,
   issueNote: raw.issueNote ?? raw.issue_note,
   // The backend has always returned these (myDeliveries hands back whole
   // entities), but they were never mapped — so the rider's screens could not

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, StatusBar, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, StatusBar, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -14,15 +14,16 @@ import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'DeliveryComplete'>;
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Confetti Particle Component
 const ConfettiParticle: React.FC<{ 
   delay: number; 
-  startX: number; 
+  startX: `${number}%`;
   color: string;
   size: number;
 }> = ({ delay, startX, color, size }) => {
+  // The window's current height, not a snapshot from when the module loaded.
+  const { height: windowHeight } = useWindowDimensions();
   const translateY = useRef(new Animated.Value(-50)).current;
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -33,7 +34,7 @@ const ConfettiParticle: React.FC<{
       Animated.delay(delay),
       Animated.parallel([
         Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: SCREEN_HEIGHT * 0.6, duration: 2500, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: windowHeight * 0.6, duration: 2500, useNativeDriver: true }),
         Animated.timing(translateX, { 
           toValue: (Math.random() - 0.5) * 150, 
           duration: 2500, 
@@ -150,7 +151,8 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
   const confettiParticles = useMemo(() => {
     return Array.from({ length: 30 }).map((_, i) => ({
       id: i,
-      startX: (i / 30) * SCREEN_WIDTH,
+      // A share of the width, so the burst spans whatever the window is now.
+      startX: `${(i / 30) * 100}%` as const,
       color: confettiColors[i % confettiColors.length],
       delay: Math.random() * 500,
       size: 8 + Math.random() * 6,
@@ -298,7 +300,13 @@ const DeliveryCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
         }]}>
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => navigation.popToTop()}
+            onPress={() => {
+              // Close the completion flow on this tab, then show the Deliveries
+              // tab: started from the Dashboard, popToTop alone landed on the
+              // Dashboard, not on the deliveries the button names.
+              navigation.popToTop();
+              navigation.getParent()?.navigate('DPDeliveriesStack');
+            }}
             activeOpacity={0.9}
           >
             <Text style={styles.primaryButtonText}>Back to Deliveries</Text>
@@ -332,7 +340,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: SCREEN_HEIGHT * 0.35,
+    height: '35%',
     overflow: 'hidden',
     zIndex: 1,
     pointerEvents: 'none',

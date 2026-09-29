@@ -5,6 +5,7 @@
 // navigator maps over this array — screens register here only.
 
 import type { IRoute } from './types';
+import { withSharedRecords } from './sharedRecords';
 import { isFeatureEnabled } from '../utils/featureGates';
 import MoreHubScreen from '../screens/More/MoreHubScreen';
 import EmployeeListScreen from '../screens/Payroll/EmployeeListScreen';
@@ -101,7 +102,7 @@ export const MoreRouteNames = {
 
 export type MoreRouteName = typeof MoreRouteNames[keyof typeof MoreRouteNames];
 
-export const MORE_ROUTES: IRoute[] = [
+export const MORE_ROUTES: IRoute[] = withSharedRecords([
   { title: MoreRouteNames.MoreHub, component: MoreHubScreen },
   { title: MoreRouteNames.EmployeeList, component: EmployeeListScreen },
   { title: MoreRouteNames.EmployeeForm, component: EmployeeFormScreen },
@@ -153,4 +154,4 @@ export const MORE_ROUTES: IRoute[] = [
   // BILLING-DISABLED BUILD
   // { title: MoreRouteNames.RenewSubscription, component: RenewSubscriptionScreen },
   // { title: MoreRouteNames.SubscriptionPay, component: SubscriptionPayScreen },
-];
+]);

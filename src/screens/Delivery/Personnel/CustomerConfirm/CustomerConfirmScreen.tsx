@@ -8,7 +8,6 @@ import {
   TextInput,
   Animated,
   ScrollView,
-  Dimensions,
   StatusBar
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
@@ -34,7 +33,6 @@ import AppLogo from '../../../../Custom-Components/AppLogo';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'CustomerConfirm'>;
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COMPANY_NAME = 'FinMatrix';
 
 // Icon Components for Professional Look

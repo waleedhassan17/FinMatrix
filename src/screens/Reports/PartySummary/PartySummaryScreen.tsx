@@ -162,14 +162,14 @@ const PartySummaryScreen: React.FC = () => {
     }
   };
 
+  // A push onto this tab: the documents are shared record screens
+  // (navigations-maps/sharedRecords), so back returns to this summary.
   const openDocument = (documentType: 'invoice' | 'bill', documentId: string) => {
     if (!documentId) return;
     const screen = documentType === 'bill' ? 'BillDetail' : 'InvoiceDetail';
     const param = documentType === 'bill' ? 'billId' : 'invoiceId';
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>).navigate('TransactionsStack', {
-      screen,
-      params: { [param]: documentId },
-      initial: false,
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>).navigate(screen, {
+      [param]: documentId,
     });
   };
 

@@ -73,24 +73,21 @@ const APAgingScreen: React.FC = () => {
   /**
    * Open the record behind a document row.
    *
-   * InvoiceDetail and BillDetail live in TransactionsStack and this screen is in
-   * ReportsStack, so the hop goes through the tab navigator. `initial: false` is
-   * load-bearing: without it React Navigation initialises Transactions as
-   * [InvoiceDetail] with no list underneath, and back falls through to the
-   * Dashboard while stranding the detail screen on that tab.
+   * InvoiceDetail and BillDetail are shared record screens, registered in
+   * ReportsStack too (navigations-maps/sharedRecords), so this is a push onto
+   * the Reports tab and back returns to this report. It used to hop into the
+   * Transactions tab, where back popped to that tab's hub instead.
    *
-   * Only the DOCUMENT is opened, never the party. CustomerDetail/VendorDetail
-   * exist in BOTH MoreStack and StaffMoreStack, so a hardcoded stack name here
-   * would break for staff users — and the invoice is what someone drilling into
-   * a debt actually wants to see.
+   * Only the DOCUMENT is opened, never the party: the invoice is what someone
+   * drilling into a debt actually wants to see.
    */
   const openDocument = (documentType: string, documentId: string) => {
     const screen = documentType === 'bill' ? 'BillDetail' : 'InvoiceDetail';
     const param = documentType === 'bill' ? 'billId' : 'invoiceId';
     if (!documentId) return;
     (navigation as unknown as NativeStackNavigationProp<Record<string, object>>).navigate(
-      'TransactionsStack',
-      { screen, params: { [param]: documentId }, initial: false },
+      screen,
+      { [param]: documentId },
     );
   };
 

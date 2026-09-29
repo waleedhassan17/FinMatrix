@@ -4,7 +4,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DASHBOARD_ROUTES } from '../../navigations-maps/Dashboard';
-import type { TransactionsStackParamList } from './TransactionsStack';
+import type { SharedRecordParamList } from './sharedRecordParams';
 
 export type DashboardStackParamList = {
   AdminDashboard: undefined;
@@ -25,9 +25,6 @@ export type DashboardStackParamList = {
   COAList: undefined;
   COAForm: { accountId?: string } | undefined;
   COADetail: { accountId: string };
-  InventoryForm: { itemId?: string } | undefined;
-  CustomerForm: { customerId?: string } | undefined;
-  VendorForm: { vendorId?: string } | undefined;
   // SHELVED (Tax Management). Commented with the registration: leaving the
   // param declared would let navigate('TaxSettings') compile against a route
   // that no longer exists, which fails silently rather than at build time.
@@ -35,23 +32,11 @@ export type DashboardStackParamList = {
   // Revenue "View all" — mounted here so it does not strand Analytics on top
   // of the Reports tab.
   AnalyticsDashboard: undefined;
-  // Opening a document from Recent transactions, and the closed set of screens
-  // those documents can reach. Params are taken from TransactionsStackParamList
-  // by reference rather than retyped, so the two registrations of the same
-  // screen cannot drift into disagreeing about what it accepts.
-  InvoiceDetail: TransactionsStackParamList['InvoiceDetail'];
-  BillDetail: TransactionsStackParamList['BillDetail'];
-  BillList: TransactionsStackParamList['BillList'];
-  ReceivePayment: TransactionsStackParamList['ReceivePayment'];
-  PayBills: TransactionsStackParamList['PayBills'];
-  PaymentSuccess: TransactionsStackParamList['PaymentSuccess'];
-  // Dashboard quick actions — mounted here so back returns to the dashboard
-  // instead of popping into the Transactions tab's history.
-  InvoiceForm: { invoiceId?: string; customerId?: string } | undefined;
-  SalesOrderForm: { salesOrderId?: string } | undefined;
-  POForm: { poId?: string; prefillItemId?: string } | undefined;
-  BillForm: { billId?: string; vendorId?: string } | undefined;
-};
+  // Documents, parties and items opened from the dashboard — recent
+  // transactions, quick actions, the Receivables/Payables tiles, search — are
+  // the shared record screens, so back returns to the dashboard instead of
+  // popping into another tab. See navigations-maps/sharedRecords.
+} & SharedRecordParamList;
 
 const Stack = createNativeStackNavigator();
 

@@ -227,16 +227,19 @@ const UserManagementScreen: React.FC = () => {
                     <Text style={styles.cardActionText}>Show login</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity
-                  style={styles.cardAction}
-                  disabled={busy}
-                  onPress={() => confirmReset(item)}
-                >
-                  <Feather name="key" size={14} color={colors.textSecondary} />
-                  <Text style={styles.cardActionText}>Reset password</Text>
-                </TouchableOpacity>
                 {!isSelf(item) && (
                   <>
+                    {/* Not on your own row, as on the web: you change your
+                        own password from your account, not by issuing
+                        yourself one here. */}
+                    <TouchableOpacity
+                      style={styles.cardAction}
+                      disabled={busy}
+                      onPress={() => confirmReset(item)}
+                    >
+                      <Feather name="key" size={14} color={colors.textSecondary} />
+                      <Text style={styles.cardActionText}>Reset password</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.cardAction}
                       disabled={busy}
@@ -388,11 +391,19 @@ const UserManagementScreen: React.FC = () => {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Sign-in details</Text>
+            {/* A reset reads as a reset, not as "Show login": QA saw the same
+                "Sign-in details" card for both and took the reset for a no-op. */}
+            <Text style={styles.modalTitle}>
+              {issued?.reason === 'reset'
+                ? `New password for ${issued.name ?? 'this user'}`
+                : 'Sign-in details'}
+            </Text>
             <Text style={styles.modalSubtitle}>
-              {issued
-                ? `Give these to ${issued.name ?? 'them'}. You can show them again from this screen.`
-                : 'Read these out to the account holder.'}
+              {issued?.reason === 'reset'
+                ? 'The old password no longer works. Hand this one over — you can show it again from this screen.'
+                : issued
+                  ? `Give these to ${issued.name ?? 'them'}. You can show them again from this screen.`
+                  : 'Read these out to the account holder.'}
             </Text>
 
             <CredentialRow
@@ -476,10 +487,22 @@ const styles = StyleSheet.create({
   cardActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginTop: spacing.md,
   },
-  cardAction: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  // Real buttons with a comfortable target: as bare text links 12pt apart, a
+  // tap meant for one could land on its neighbour.
+  cardAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minHeight: 36,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
   cardActionText: { ...typography.labelSm, color: colors.textSecondary },
   footer: {
     padding: spacing.md,

@@ -10,6 +10,7 @@ import DPDeliveryDetailScreen from '../screens/Delivery/Personnel/DPDeliveryDeta
 import BillPhotoCaptureScreen from '../screens/Delivery/Personnel/BillPhotoCapture/BillPhotoCaptureScreen';
 import CustomerConfirmScreen from '../screens/Delivery/Personnel/CustomerConfirm/CustomerConfirmScreen';
 import DeliveryCompleteScreen from '../screens/Delivery/Personnel/DeliveryComplete/DeliveryCompleteScreen';
+import DPHistoryScreen from '../screens/Delivery/Personnel/DPHistory/DPHistoryScreen';
 
 export const DPDashboardRouteNames = {
   DPDashboard: 'DPDashboard',
@@ -17,6 +18,7 @@ export const DPDashboardRouteNames = {
   BillPhotoCapture: 'BillPhotoCapture',
   CustomerConfirm: 'CustomerConfirm',
   DeliveryComplete: 'DeliveryComplete',
+  DPHistory: 'DPHistory',
 } as const;
 
 export type DPDashboardRouteName = typeof DPDashboardRouteNames[keyof typeof DPDashboardRouteNames];
@@ -27,4 +29,7 @@ export const DP_DASHBOARD_ROUTES: IRoute[] = [
   { title: DPDashboardRouteNames.BillPhotoCapture, component: BillPhotoCaptureScreen },
   { title: DPDashboardRouteNames.CustomerConfirm, component: CustomerConfirmScreen },
   { title: DPDashboardRouteNames.DeliveryComplete, component: DeliveryCompleteScreen },
+  // Delivery history — its home is the Profile tab; registered here too so
+  // "View all" opens it on this tab and back returns here (QA #14, #15).
+  { title: DPDashboardRouteNames.DPHistory, component: DPHistoryScreen },
 ];

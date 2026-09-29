@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions
+  useWindowDimensions
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -33,10 +33,13 @@ import {
   tableStyles,
   ACCENT,
   CHART_SERIES,
+  DateField,
   reportContentStyle
 } from '../../../components/reports/ReportUI';
 
-const CHART_WIDTH = Dimensions.get('window').width - THEME.spacing.md * 4;
+// Deliveries are scheduled ahead, so the picker, like the arrows, can go past
+// today (DateField stops at today by default).
+const LATEST_PICKABLE_DATE = new Date(2100, 11, 31);
 
 // The day-back / day-forward arrows. `new Date('YYYY-MM-DD')` parses as UTC
 // midnight while setDate/getDate work in local time, so formatting the result
@@ -44,9 +47,6 @@ const CHART_WIDTH = Dimensions.get('window').width - THEME.spacing.md * 4;
 // skipped or repeated a day. dayjs stays in local time throughout.
 const shiftDate = (dateStr: string, days: number): string =>
   dayjs(dateStr).add(days, 'day').format('YYYY-MM-DD');
-
-const formatDateLabel = (dateStr: string): string =>
-  new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
 const PersonRow: React.FC<{ stat: DeliveryPersonnelStat; alt: boolean }> = ({ stat, alt }) => (
   <View style={[tableStyles.row, alt && tableStyles.rowAlt]}>
@@ -64,6 +64,9 @@ const DeliveryDailyReportScreen: React.FC = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const { report, date, isLoading, error } = useAppSelector(selectDeliveryDailyReportState);
+  // The window's current width, not a snapshot from when the module loaded.
+  const { width } = useWindowDimensions();
+  const chartWidth = width - THEME.spacing.md * 4;
 
   // Bring the window up to today every time the screen is opened.
   //
@@ -108,7 +111,14 @@ const DeliveryDailyReportScreen: React.FC = () => {
             >
               <Feather name="chevron-left" size={20} color={THEME.colors.primary} />
             </TouchableOpacity>
-            <Text style={styles.dateText}>{formatDateLabel(date)}</Text>
+            {/* Tap the date to jump straight to any day; the arrows still step
+                one day at a time (QA #7). */}
+            <DateField
+              value={date}
+              onChange={next => dispatch(setDeliveryDailyDate(next))}
+              maximumDate={LATEST_PICKABLE_DATE}
+              style={styles.datePicker}
+            />
             <TouchableOpacity
               onPress={() => dispatch(setDeliveryDailyDate(shiftDate(date, 1)))}
               style={styles.dateArrow}
@@ -152,7 +162,7 @@ const DeliveryDailyReportScreen: React.FC = () => {
               <SectionCard title="Agency Distribution" icon="pie-chart">
                 <PieChart
                   data={pieData}
-                  width={CHART_WIDTH}
+                  width={chartWidth}
                   height={200}
                   chartConfig={{
                     color: (opacity = 1) => `rgba(5,150,105,${opacity})`,
@@ -194,7 +204,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dateText: { flex: 1, textAlign: 'center', ...THEME.typography.labelLg, color: THEME.colors.textPrimary },
+  datePicker: { flex: 1, marginHorizontal: THEME.spacing.sm },
   empty: { ...THEME.typography.bodySm, color: THEME.colors.textTertiary, textAlign: 'center', paddingVertical: 14 }
 });
 

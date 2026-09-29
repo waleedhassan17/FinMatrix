@@ -151,35 +151,18 @@ const VendorDetailScreen: React.FC = () => {
   }
 
   // ── Action handlers ─────────────────────────────
-  // initial: false on both hops. Without it React Navigation initialises the
-  // Transactions stack as [BillForm] with no hub underneath, so back has
-  // nothing to pop and falls through to the tab navigator's 'firstRoute'
-  // default — the Dashboard — while stranding the form on that tab.
+  // The bill and payment screens are shared record screens, registered on this
+  // tab too (navigations-maps/sharedRecords), so each action is a push and
+  // back — or saving — returns to this vendor. They used to hop into the
+  // Transactions tab, where back landed on its hub (QA #11).
   const handleCreateBill = () => {
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
-      .navigate('TransactionsStack', {
-        screen: 'BillForm',
-        params: { vendorId: vendor.id },
-        initial: false
-      });
+    navigation.navigate('BillForm', { vendorId: vendor.id });
   };
-  // A bill from the tab below. The bill screens live in the Transactions tab,
-  // so the hop goes through it, with its hub underneath.
   const handleOpenBill = (billId: string) => {
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
-      .navigate('TransactionsStack', {
-        screen: 'BillDetail',
-        params: { billId },
-        initial: false
-      });
+    navigation.navigate('BillDetail', { billId });
   };
   const handleRecordPayment = () => {
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>)
-      .navigate('TransactionsStack', {
-        screen: 'PayBills',
-        params: { vendorId: vendor.id },
-        initial: false
-      });
+    navigation.navigate('PayBills', { vendorId: vendor.id });
   };
   // Every unpaid bill, as of today — what is owed to this vendor.
   const handlePayablesSummary = () => {

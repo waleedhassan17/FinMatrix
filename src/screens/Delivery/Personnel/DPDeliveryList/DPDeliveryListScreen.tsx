@@ -7,6 +7,7 @@ import { useAppSelector, useAppDispatch } from '../../../../hooks/useReduxHooks'
 import { selectUser } from '../../../Auth/authSlice';
 import { selectDeliveries, fetchDeliveries } from '../../Admin/AssignDeliveries/deliverySlice';
 import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/DPDeliveriesStack';
+import { toIsoDate } from '../../../../models/reportModel';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 
@@ -111,7 +112,7 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUser);
   const deliveries = useAppSelector(selectDeliveries);
-  const userId = user?.uid ?? 'dp_002';
+  const userId = user?.uid ?? '';
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -129,13 +130,20 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
     [deliveries, userId],
   );
 
-  const { inProgress, pending, completed } = useMemo(() => {
+  const { inProgress, pending, completed, completedToday } = useMemo(() => {
     const inProgress = myDeliveries.filter(d =>
       ['picked_up', 'in_transit', 'arrived'].includes(d.status),
     );
     const pending = myDeliveries.filter(d => d.status === 'pending');
     const completed = myDeliveries.filter(d => d.status === 'delivered');
-    return { inProgress, pending, completed };
+    // "Completed Today" means today: by when each was completed, newest first.
+    const todayKey = toIsoDate(new Date());
+    const completedToday = completed
+      .filter(d => toIsoDate(new Date(d.deliveredAt ?? d.updatedAt)) === todayKey)
+      .sort(
+        (a, b) => new Date(b.deliveredAt ?? b.updatedAt).getTime() - new Date(a.deliveredAt ?? a.updatedAt).getTime(),
+      );
+    return { inProgress, pending, completed, completedToday };
   }, [myDeliveries]);
 
   const totalActive = inProgress.length + pending.length;
@@ -228,19 +236,23 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
         <SectionCard
           title="Completed Today"
           icon="check-circle"
-          count={completed.slice(0, 5).length}
+          count={completedToday.length}
           color={THEME.colors.success}
-          emptyText="No completed deliveries yet"
+          emptyText="No deliveries completed today"
         >
-          {completed.slice(0, 5).map(delivery => (
+          {completedToday.slice(0, 5).map(delivery => (
             <DeliveryCard
               key={delivery.id}
               delivery={delivery}
               onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: delivery.id })}
             />
           ))}
-          {completed.length > 5 && (
-            <TouchableOpacity style={styles.viewAllLink}>
+          {/* Every completed delivery, in the history screen (QA #15). */}
+          {completed.length > Math.min(completedToday.length, 5) && (
+            <TouchableOpacity
+              style={styles.viewAllLink}
+              onPress={() => navigation.navigate('DPHistory', { status: 'delivered' })}
+            >
               <Text style={styles.viewAllText}>View all {completed.length} completed</Text>
               <Feather name="chevron-right" size={14} color={DP_BRAND.primary} />
             </TouchableOpacity>

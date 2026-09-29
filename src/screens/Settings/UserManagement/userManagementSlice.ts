@@ -37,8 +37,11 @@ interface UserManagementState {
   formRole: 'admin' | 'staff';
   isSaving: boolean;
 
-  /** Credentials to read out, after a create or a reset. */
-  issued: (IssuedCredentials & { name?: string }) | null;
+  /**
+   * Credentials to read out, after a create or a reset. `reason` sets the
+   * modal's wording: a reset must not look like "Show login" (QA #12).
+   */
+  issued: (IssuedCredentials & { name?: string; reason: 'created' | 'reset' }) | null;
   /** A stored credential the owner asked to see again. */
   revealed: { userId: string; username: string | null; password: string | null } | null;
   busyUserId: string | null;
@@ -142,7 +145,7 @@ export const userManagementSlice = createAppSlice({
           const { credentials, ...user } = action.payload;
           state.users.push(user as CompanyUser);
           // Shown once, for the owner to write down or read out.
-          state.issued = { ...credentials, name: user.name };
+          state.issued = { ...credentials, name: user.name, reason: 'created' };
           state.formPassword = '';
         },
         rejected: (state, action) => {
@@ -206,6 +209,7 @@ export const userManagementSlice = createAppSlice({
             username: action.payload.username ?? '',
             password: action.payload.password,
             name: action.payload.name,
+            reason: 'reset',
           };
           const i = state.users.findIndex(u => u.id === action.payload.userId);
           if (i !== -1) state.users[i].hasStoredCredential = true;

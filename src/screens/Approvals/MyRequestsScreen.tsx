@@ -60,21 +60,16 @@ const MyRequestsScreen: React.FC = () => {
    * cannot approve anything, and the form it opens shows no decision buttons
    * for a role without approvals.decide.
    *
-   * My requests sits in the staff More tab and the forms in the Transactions
-   * tab, so the hop goes through the parent tab navigator with `initial: false`
-   * — otherwise that stack initialises holding only the form and back falls
-   * through to the Dashboard.
+   * The forms are shared record screens, registered on this tab too
+   * (navigations-maps/sharedRecords), so this is a push and back returns to
+   * this list. It used to hop into the Transactions tab, where back landed on
+   * that tab's hub.
    */
   const openRequest = useCallback(
     (request: ApprovalRequest) => {
-      const tabs = (navigation.getParent() ?? navigation) as unknown as {
+      (navigation as unknown as {
         navigate: (name: string, params?: Record<string, unknown>) => void;
-      };
-      tabs.navigate('TransactionsStack', {
-        screen: APPROVAL_REVIEW_SCREEN[request.type]!,
-        params: { fromApprovalRequestId: request.id },
-        initial: false,
-      });
+      }).navigate(APPROVAL_REVIEW_SCREEN[request.type]!, { fromApprovalRequestId: request.id });
     },
     [navigation],
   );
