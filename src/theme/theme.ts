@@ -6,7 +6,8 @@
 //
 // System philosophy (enterprise / production):
 //   • A cool slate neutral ramp gives the UI a calm, professional base.
-//   • Brand teal is reserved for identity & primary actions (see DP_BRAND).
+//   • Navy carries identity & primary actions. (The rider portal has its own
+//     palette, DP_BRAND in utils/deliveryTheme.ts, and it is green.)
 //   • Semantic colours each ship in three tiers — base / light / lighter —
 //     so a coloured icon, its tinted chip, and a faint section background
 //     always come from the same family and pass AA contrast on white.
@@ -34,7 +35,11 @@ const palette = {
   neutral800: '#1E293B',
   neutral900: '#0F172A',
 
-  // Brand teal (mirrors DP_BRAND so generic primary UI stays on-brand)
+  // Teal, kept ONLY for back-compat. It no longer mirrors anything: this app's
+  // action colour is navy (see `primary` below) and DP_BRAND is green. These
+  // four feed primaryHover / borderFocus / textLink, which two admin screens
+  // still reference — re-tinting them would recolour the admin app, not the
+  // rider portal. No rider screen reaches any of them.
   teal700: '#0F766E',
   teal600: '#0E8C80',
   tealDark: '#0B544E',
