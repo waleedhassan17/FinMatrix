@@ -77,10 +77,14 @@ export const dpDeliveryDetailSlice = createAppSlice({
   }),
   selectors: {
     selectShowItems: state => state.showItems,
+    // Global to the slice on purpose: the Deliveries list shows an action on
+    // every row, and one in-flight update at a time is what stops a rider
+    // double-tapping two rows into a race.
+    selectIsUpdatingStatus: state => state.isUpdatingStatus,
     selectDPDeliveryDetailState: state => state,
   },
 });
 
 export const { toggleShowItems, resetDeliveryDetailState, updateDeliveryExecutionStatus } =
   dpDeliveryDetailSlice.actions;
-export const { selectShowItems, selectDPDeliveryDetailState } = dpDeliveryDetailSlice.selectors;
+export const { selectShowItems, selectDPDeliveryDetailState, selectIsUpdatingStatus } = dpDeliveryDetailSlice.selectors;

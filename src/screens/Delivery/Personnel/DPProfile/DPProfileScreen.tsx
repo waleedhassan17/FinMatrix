@@ -74,8 +74,10 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor={DP_BRAND.primary} />
 
       {/* Header with Gradient */}
+      {/* Light-to-dark, matching every other rider header — this one ran the
+          other way. */}
       <LinearGradient
-        colors={[DP_BRAND.primaryDark, DP_BRAND.primary]}
+        colors={[DP_BRAND.primary, DP_BRAND.primaryDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
@@ -341,7 +343,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     ...THEME.typography.h1,
-    color: DP_BRAND.primary,
+    color: DP_BRAND.primaryDark,
   },
   avatarImage: {
     width: 72,

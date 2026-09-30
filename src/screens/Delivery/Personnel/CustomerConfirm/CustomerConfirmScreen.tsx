@@ -740,7 +740,7 @@ const styles = StyleSheet.create({
   },
   moreItems: {
     ...THEME.typography.bodySm,
-    color: DP_BRAND.primary,
+    color: DP_BRAND.primaryDark,
     marginTop: 4,
     marginLeft: 32
   },

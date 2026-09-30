@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   },
   versionBadgeText: {
     ...THEME.typography.labelSm,
-    color: DP_BRAND.primary,
+    color: DP_BRAND.primaryDark,
   },
 
   // App Info Footer

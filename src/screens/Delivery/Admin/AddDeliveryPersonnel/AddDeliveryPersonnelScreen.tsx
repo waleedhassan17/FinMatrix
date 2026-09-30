@@ -16,6 +16,9 @@ import { Feather } from '@expo/vector-icons';
 import * as ExpoClipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { v4 as uuidv4 } from 'uuid';
+// The handle must satisfy the server's rule; see the model for what went wrong
+// when this lived here as a local helper.
+import { generateRiderUsername } from '../../../../models/riderUsername';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomInput from '../../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../../components/reports/ReportUI';
@@ -49,12 +52,6 @@ const ZONES = ['Zone A', 'Zone B', 'Zone C', 'Zone D'];
 const generatePassword = (): string => {
   const digits = Math.floor(1000 + Math.random() * 9000);
   return `Del@${digits}`;
-};
-
-/** Generate username as COMPANYCODE.firstname (lowercase) */
-const generateUsername = (companyCode: string, name: string): string => {
-  const firstName = name.trim().toLowerCase().split(/\s+/)[0] || 'user';
-  return `${companyCode}.${firstName}`;
 };
 
 /** Slugify a company name into an email domain, e.g. "MetroMatrix" -> "metromatrix.com" */
@@ -93,7 +90,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
   } | null>(null);
 
   const generatedUsername = useMemo(
-    () => fullName.trim() ? generateUsername(inviteCode, fullName) : '',
+    () => fullName.trim() ? generateRiderUsername(inviteCode, fullName) : '',
     [fullName, inviteCode],
   );
 

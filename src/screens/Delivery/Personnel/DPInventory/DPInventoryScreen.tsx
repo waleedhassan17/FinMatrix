@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
   },
   viewLink: {
     ...THEME.typography.labelMd,
-    color: DP_BRAND.primary,
+    color: DP_BRAND.primaryDark,
   },
 
   // Empty States

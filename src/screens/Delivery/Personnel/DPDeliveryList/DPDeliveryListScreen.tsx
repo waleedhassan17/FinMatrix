@@ -10,6 +10,13 @@ import type { DPDeliveriesStackParamList } from '../../../../navigators/stacks/D
 import { toIsoDate } from '../../../../models/reportModel';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
+import Toast from 'react-native-toast-message';
+import { Alert } from '../../../../utils/alert';
+import { riderNextAction, type RiderAction } from '../../../../models/deliveryFlowModel';
+import {
+  selectIsUpdatingStatus,
+  updateDeliveryExecutionStatus,
+} from '../DPDeliveryDetail/dpDeliveryDetailSlice';
 
 type Props = NativeStackScreenProps<DPDeliveriesStackParamList, 'DPDeliveries'>;
 
@@ -18,7 +25,11 @@ type Delivery = ReturnType<typeof selectDeliveries>[number];
 const DeliveryCard: React.FC<{
   delivery: Delivery;
   onPress: () => void;
-}> = ({ delivery, onPress }) => {
+  /** The one legal next step, or null when this job needs nothing from the rider. */
+  action: RiderAction;
+  onAction: () => void;
+  busy: boolean;
+}> = ({ delivery, onPress, action, onAction, busy }) => {
   const statusConfig = STATUS_CONFIG[delivery.status] ?? STATUS_CONFIG.unassigned;
   const priorityConfig = PRIORITY_CONFIG[delivery.priority] ?? PRIORITY_CONFIG.medium;
 
@@ -69,11 +80,28 @@ const DeliveryCard: React.FC<{
         </View>
       </View>
 
+      {/* The rider works from here now, not only from the dashboard. Every
+          job carries its own next step, so which one to do next is the
+          rider's call — the server sequences nothing. */}
       <View style={styles.deliveryCardFooter}>
         <Text style={styles.viewDetailsText}>View Details</Text>
-        <View style={styles.arrowCircle}>
-          <Feather name="arrow-right" size={12} color={DP_BRAND.primary} />
-        </View>
+        {action ? (
+          <TouchableOpacity
+            style={[styles.rowActionButton, busy && styles.rowActionButtonBusy]}
+            onPress={onAction}
+            disabled={busy}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: busy }}
+            accessibilityLabel={`${action.label} for ${delivery.referenceNo}`}
+          >
+            <Text style={styles.rowActionButtonText}>{action.label}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.arrowCircle}>
+            <Feather name="arrow-right" size={12} color={DP_BRAND.primary} />
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -124,6 +152,44 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
     await dispatch(fetchDeliveries());
     setRefreshing(false);
   }, [dispatch]);
+
+  // One in-flight update at a time. The flag is global to the slice, which is
+  // what stops a rider double-tapping two rows into a race.
+  const isUpdatingStatus = Boolean(useAppSelector(selectIsUpdatingStatus));
+
+  /**
+   * Take the next step on whichever delivery the rider picked.
+   *
+   * Sends exactly one hop — the server rejects a skip with
+   * ILLEGAL_STATUS_TRANSITION — and `arrived` is a capture flow rather than a
+   * status change, so it navigates instead.
+   */
+  const advance = useCallback(
+    async (delivery: Delivery) => {
+      const action = riderNextAction(delivery.status);
+      if (!action) return;
+      if (action.kind === 'navigate') {
+        navigation.navigate('BillPhotoCapture', { deliveryId: delivery.id });
+        return;
+      }
+      try {
+        await dispatch(
+          updateDeliveryExecutionStatus({
+            deliveryId: delivery.id,
+            status: action.status,
+            note: 'Updated from my deliveries',
+          }),
+        ).unwrap();
+        Toast.show({ type: 'success', text1: action.done, text2: delivery.referenceNo });
+      } catch (e: any) {
+        Alert.alert(
+          'Could not update',
+          e?.message ?? 'The delivery status was not updated. Please try again.',
+        );
+      }
+    },
+    [dispatch, navigation],
+  );
 
   const myDeliveries = useMemo(
     () => deliveries.filter(d => d.assignedTo === userId),
@@ -211,6 +277,9 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
               key={delivery.id}
               delivery={delivery}
               onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: delivery.id })}
+              action={riderNextAction(delivery.status)}
+              onAction={() => advance(delivery)}
+              busy={isUpdatingStatus}
             />
           ))}
         </SectionCard>
@@ -228,6 +297,9 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
               key={delivery.id}
               delivery={delivery}
               onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: delivery.id })}
+              action={riderNextAction(delivery.status)}
+              onAction={() => advance(delivery)}
+              busy={isUpdatingStatus}
             />
           ))}
         </SectionCard>
@@ -245,6 +317,9 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
               key={delivery.id}
               delivery={delivery}
               onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: delivery.id })}
+              action={riderNextAction(delivery.status)}
+              onAction={() => advance(delivery)}
+              busy={isUpdatingStatus}
             />
           ))}
           {/* Every completed delivery, in the history screen (QA #15). */}
@@ -524,9 +599,19 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: THEME.colors.borderLight,
   },
+  // The per-row action. Filled, so it reads as the thing to tap; the row
+  // itself still opens the delivery.
+  rowActionButton: {
+    backgroundColor: DP_BRAND.primary,
+    borderRadius: THEME.radius.sm,
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: THEME.spacing.xs + 2,
+  },
+  rowActionButtonBusy: { opacity: 0.5 },
+  rowActionButtonText: { ...THEME.typography.labelSm, color: THEME.colors.textInverse },
   viewDetailsText: {
     ...THEME.typography.labelMd,
-    color: DP_BRAND.primary,
+    color: DP_BRAND.primaryDark,
   },
   arrowCircle: {
     width: 24,
@@ -547,7 +632,7 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     ...THEME.typography.labelMd,
-    color: DP_BRAND.primary,
+    color: DP_BRAND.primaryDark,
   }
 });
 

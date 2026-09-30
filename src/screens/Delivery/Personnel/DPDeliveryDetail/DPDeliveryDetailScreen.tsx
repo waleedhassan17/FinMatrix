@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
   },
   qtyText: {
     ...THEME.typography.labelMd,
-    color: DP_BRAND.primary,
+    color: DP_BRAND.primaryDark,
   },
 
   // Notes
@@ -878,7 +878,7 @@ const styles = StyleSheet.create({
   },
   currentBadgeText: {
     ...THEME.typography.labelSm,
-    color: DP_BRAND.primary,
+    color: DP_BRAND.primaryDark,
   },
 
   // Action Button

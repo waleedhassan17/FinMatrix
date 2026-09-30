@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
   },
   statusFilterTextActive: {
-    color: DP_BRAND.primary,
+    color: DP_BRAND.primaryDark,
     fontWeight: THEME.typography.labelMd.fontWeight,
   },
 

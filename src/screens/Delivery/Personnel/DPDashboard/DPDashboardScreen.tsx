@@ -26,12 +26,19 @@ import {
   fetchMyPersonnel,
   setMyAvailability
 } from '../../Admin/AssignDeliveries/deliverySlice';
-import { startDelivery } from './dpDashboardSlice';
+import { riderNextAction, riderQueue } from '../../../../models/deliveryFlowModel';
+// The detail screen's thunk, not the dashboard's own: it accepts every status
+// a rider can advance into (startDelivery stopped at in_transit), and it sends
+// a GPS ping first — which also keeps the rider visible on the monitor.
+import { updateDeliveryExecutionStatus } from '../DPDeliveryDetail/dpDeliveryDetailSlice';
 import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DPDashboardStack';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { locationService } from '../../../../services/locationService';
 import { toIsoDate } from '../../../../models/reportModel';
+
+/** How many of the rider's jobs the dashboard shows before "See all". */
+const DASHBOARD_QUEUE_SIZE = 3;
 
 type Nav = NativeStackNavigationProp<DPDashboardStackParamList>;
 
@@ -149,8 +156,14 @@ const DPDashboardScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [hasActiveDelivery, dispatch]);
 
-  // Live tracking runs while the rider is ON DUTY with active work, and
-  // stops off-shift — no needless battery/data drain.
+  // Live tracking runs while the rider is ON DUTY, and stops off-shift.
+  //
+  // It used to also require active work. A rider who came on duty with an empty
+  // queue therefore sent no location at all, so `locationUpdatedAt` stayed null
+  // and every screen deriving "online" from it showed them offline — which is
+  // exactly the state a dispatcher is looking at the monitor to find. Being on
+  // duty is the whole condition; an idle rider is precisely the one worth
+  // seeing.
   const isOnDuty = me?.isAvailable ?? false;
   const dutyKnown = me !== null;
   // Whether THIS screen started the tracker. Stopping only what it started
@@ -162,7 +175,7 @@ const DPDashboardScreen: React.FC = () => {
     if (!dutyKnown) return;
     let cancelled = false;
     (async () => {
-      if (isOnDuty && hasActiveDelivery) {
+      if (isOnDuty) {
         const granted = await locationService.requestPermission();
         if (cancelled) return;
         if (granted) {
@@ -179,7 +192,7 @@ const DPDashboardScreen: React.FC = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [dutyKnown, isOnDuty, hasActiveDelivery]);
+  }, [dutyKnown, isOnDuty]);
 
   /**
    * Put the rider on or off duty. Asks the server for the state the rider
@@ -217,19 +230,13 @@ const DPDashboardScreen: React.FC = () => {
     outputRange: ['0%', '100%']
   });
 
-  const nextDelivery = useMemo(
-    () =>
-      myDeliveries
-        .filter(d => ['pending', 'picked_up', 'in_transit', 'arrived'].includes(d.status))
-        .sort((a, b) => {
-          const statusOrder = ['arrived', 'in_transit', 'picked_up', 'pending'];
-          const aIndex = statusOrder.indexOf(a.status);
-          const bIndex = statusOrder.indexOf(b.status);
-          if (aIndex !== bIndex) return aIndex - bIndex;
-          return new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime();
-        })[0],
-    [myDeliveries],
-  );
+  // The rider's outstanding work, closest-to-done first. The dashboard shows
+  // the top few and the Deliveries tab shows the rest — it used to show exactly
+  // one, chosen for the rider, which was the only place with an action button
+  // and so the only way through. The server sequences nothing: a rider may hold
+  // several jobs in flight and picks which to work on.
+  const queue = useMemo(() => riderQueue(myDeliveries, 'time'), [myDeliveries]);
+  const upNext = useMemo(() => queue.slice(0, DASHBOARD_QUEUE_SIZE), [queue]);
 
   const recentActivity = useMemo(
     () =>
@@ -248,45 +255,28 @@ const DPDashboardScreen: React.FC = () => {
   // The status change is a server call; announcing "in transit" without
   // waiting meant a rejected transition still read as success and the rider
   // carried on believing the office had been told.
-  /**
-   * The one legal step forward from the delivery's current status.
-   *
-   * The server allows pending → picked_up → in_transit and rejects the jump,
-   * because collecting stock from the warehouse and setting off with it are
-   * separate events its history and monitor rely on. This shortcut used to
-   * always send 'in_transit', so from 'pending' — the state every new job is
-   * in — it failed with "Cannot move a delivery from 'pending' to
-   * 'in_transit'". Advance one step and let the detail screen carry on.
-   */
-  const nextStep = (() => {
-    switch (nextDelivery?.status) {
-      case 'pending':
-        return { status: 'picked_up' as const, label: 'Pick Up Items', done: 'Items picked up' };
-      case 'picked_up':
-        return { status: 'in_transit' as const, label: 'Start Delivery', done: 'Delivery started' };
-      default:
-        return null; // in_transit / arrived → just open the detail screen
-    }
-  })();
-
-  const handleStartDelivery = async () => {
-    if (!nextDelivery) return;
-    if (nextStep) {
+  //
+  // Which step is legal now lives in models/deliveryFlowModel, shared with the
+  // Deliveries list and the detail screen — there were three copies of this and
+  // they did not agree.
+  const handleAdvance = async (delivery: (typeof upNext)[number]) => {
+    const action = riderNextAction(delivery.status);
+    if (action?.kind === 'advance') {
       try {
         await dispatch(
-          startDelivery({
-            deliveryId: nextDelivery.id,
-            status: nextStep.status,
+          updateDeliveryExecutionStatus({
+            deliveryId: delivery.id,
+            status: action.status,
             note: 'Updated from dashboard',
           }),
         ).unwrap();
-        Alert.alert(nextStep.done, `${nextDelivery.referenceNo} updated.`);
+        Alert.alert(action.done, `${delivery.referenceNo} updated.`);
       } catch (e: any) {
         Alert.alert('Could not update', e?.message ?? 'The delivery status was not updated. Please try again.');
         return;
       }
     }
-    navigation.navigate('DPDeliveryDetail', { deliveryId: nextDelivery.id });
+    navigation.navigate('DPDeliveryDetail', { deliveryId: delivery.id });
   };
 
   const displayName = user?.displayName ?? me?.displayName ?? 'Partner';
@@ -296,8 +286,6 @@ const DPDashboardScreen: React.FC = () => {
     day: 'numeric'
   });
 
-  const statusConfig = nextDelivery ? STATUS_CONFIG[nextDelivery.status] ?? STATUS_CONFIG.pending : null;
-  const priorityConfig = nextDelivery ? PRIORITY_CONFIG[nextDelivery.priority] ?? PRIORITY_CONFIG.medium : null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -430,75 +418,30 @@ const DPDashboardScreen: React.FC = () => {
           </View>
         </Animated.View>
 
-        {/* Next Delivery Card */}
+        {/* Up next — the top few, with the rest a tap away. This used to be a
+            single card with the only action button in the rider UI, so the
+            order it chose was the order the rider had to work in. */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Next Delivery</Text>
-          {nextDelivery && (
+          <Text style={styles.sectionTitle}>
+            {queue.length > 1 ? 'Next Deliveries' : 'Next Delivery'}
+          </Text>
+          {queue.length > 0 && (
             <TouchableOpacity
               style={styles.sectionLinkBtn}
-              onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: nextDelivery.id })}
+              onPress={() => navigation.getParent()?.navigate('DPDeliveriesStack')}
+              accessibilityRole="button"
+              accessibilityLabel={`See all ${queue.length} deliveries`}
             >
-              <Text style={styles.sectionLink}>View Details</Text>
+              <Text style={styles.sectionLink}>
+                {queue.length > upNext.length ? `See all ${queue.length}` : 'See all'}
+              </Text>
               <Feather name="chevron-right" size={14} color={DP_BRAND.primary} />
             </TouchableOpacity>
           )}
         </View>
 
-        <View style={styles.nextDeliveryCard}>
-          {nextDelivery ? (
-            <>
-              <View style={styles.nextDeliveryHeader}>
-                <View style={styles.nextDeliveryInfo}>
-                  <View style={styles.nextDeliveryCustomerRow}>
-                    <Text style={styles.nextDeliveryCustomer}>{nextDelivery.customerName}</Text>
-                    <View style={[styles.priorityBadge, { backgroundColor: priorityConfig?.bg }]}>
-                      <Text style={[styles.priorityBadgeText, { color: priorityConfig?.color }]}>
-                        {nextDelivery.priority.toUpperCase()}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.nextDeliveryRef}>{nextDelivery.referenceNo}</Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: statusConfig?.bg }]}>
-                  <Text style={[styles.statusBadgeText, { color: statusConfig?.color }]}>
-                    {statusConfig?.label}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.nextDeliveryDetails}>
-                <View style={styles.nextDeliveryDetailRow}>
-                  <View style={styles.detailIconWrap}>
-                    <Feather name="map-pin" size={14} color={THEME.colors.textTertiary} />
-                  </View>
-                  <Text style={styles.nextDeliveryAddress} numberOfLines={2}>
-                    {nextDelivery.address ?? nextDelivery.zone}
-                  </Text>
-                </View>
-                <View style={styles.nextDeliveryDetailRow}>
-                  <View style={styles.detailIconWrap}>
-                    <Feather name="package" size={14} color={THEME.colors.textTertiary} />
-                  </View>
-                  <Text style={styles.nextDeliveryMeta}>
-                    {nextDelivery.items.length} item{nextDelivery.items.length !== 1 ? 's' : ''}
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={styles.startDeliveryButton}
-                onPress={handleStartDelivery}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.startDeliveryButtonText}>
-                  {/* Name the step the button actually performs — it used to
-                      promise "Start Delivery" from pending and then fail. */}
-                  {nextStep?.label ?? 'Continue Delivery'}
-                </Text>
-                <Feather name="arrow-right" size={16} color={THEME.colors.textInverse} />
-              </TouchableOpacity>
-            </>
-          ) : (
+        {upNext.length === 0 ? (
+          <View style={styles.nextDeliveryCard}>
             <View style={styles.noDeliveryState}>
               <View style={styles.noDeliveryIconWrap}>
                 <Feather name="check-circle" size={28} color={THEME.colors.success} />
@@ -506,8 +449,80 @@ const DPDashboardScreen: React.FC = () => {
               <Text style={styles.noDeliveryTitle}>All Caught Up</Text>
               <Text style={styles.noDeliveryText}>No pending deliveries right now</Text>
             </View>
-          )}
-        </View>
+          </View>
+        ) : (
+          upNext.map((delivery: (typeof upNext)[number]) => {
+            const statusConfig = STATUS_CONFIG[delivery.status] ?? STATUS_CONFIG.pending;
+            const priorityConfig = PRIORITY_CONFIG[delivery.priority] ?? PRIORITY_CONFIG.medium;
+            const action = riderNextAction(delivery.status);
+            return (
+              <View key={delivery.id} style={styles.nextDeliveryCard}>
+                <View style={styles.nextDeliveryHeader}>
+                  <View style={styles.nextDeliveryInfo}>
+                    <View style={styles.nextDeliveryCustomerRow}>
+                      <Text style={styles.nextDeliveryCustomer}>{delivery.customerName}</Text>
+                      <View style={[styles.priorityBadge, { backgroundColor: priorityConfig?.bg }]}>
+                        <Text style={[styles.priorityBadgeText, { color: priorityConfig?.color }]}>
+                          {delivery.priority.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.nextDeliveryRef}>{delivery.referenceNo}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: statusConfig?.bg }]}>
+                    <Text style={[styles.statusBadgeText, { color: statusConfig?.color }]}>
+                      {statusConfig?.label}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.nextDeliveryDetails}>
+                  <View style={styles.nextDeliveryDetailRow}>
+                    <View style={styles.detailIconWrap}>
+                      <Feather name="map-pin" size={14} color={THEME.colors.textTertiary} />
+                    </View>
+                    <Text style={styles.nextDeliveryAddress} numberOfLines={2}>
+                      {delivery.address ?? delivery.zone}
+                    </Text>
+                  </View>
+                  <View style={styles.nextDeliveryDetailRow}>
+                    <View style={styles.detailIconWrap}>
+                      <Feather name="package" size={14} color={THEME.colors.textTertiary} />
+                    </View>
+                    <Text style={styles.nextDeliveryMeta}>
+                      {delivery.items.length} item{delivery.items.length !== 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.cardActions}>
+                  <TouchableOpacity
+                    style={styles.viewDetailsButton}
+                    onPress={() => navigation.navigate('DPDeliveryDetail', { deliveryId: delivery.id })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`View details for ${delivery.referenceNo}`}
+                  >
+                    <Text style={styles.viewDetailsButtonText}>View Details</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.startDeliveryButtonInline}
+                    onPress={() => handleAdvance(delivery)}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${action?.label ?? 'Continue delivery'} for ${delivery.referenceNo}`}
+                  >
+                    <Text style={styles.startDeliveryButtonText}>
+                      {/* Name the step the button actually performs — it used to
+                          promise "Start Delivery" from pending and then fail. */}
+                      {action?.label ?? 'Continue Delivery'}
+                    </Text>
+                    <Feather name="arrow-right" size={16} color={THEME.colors.textInverse} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })
+        )}
 
         {/* Recent Activity */}
         <View style={styles.sectionHeader}>
@@ -623,7 +638,9 @@ const styles = StyleSheet.create({
   headerLeft: { flex: 1, marginRight: 12 },
   greeting: {
     ...THEME.typography.overline,
-    color: DP_BRAND.headerTextSecondary,
+    // Solid white, not the 92% token: at 11px on the brand green every point of
+    // contrast counts, and this is the smallest text on the header.
+    color: DP_BRAND.white,
     letterSpacing: 1,
     marginBottom: 4
   },
@@ -771,7 +788,9 @@ const styles = StyleSheet.create({
   },
   progressPercentageText: {
     ...THEME.typography.h4,
-    color: DP_BRAND.primary
+    // primaryDark, not primary: this sits on primarySoft, where the brand green
+    // itself is 4.29:1 and the darker step is 7.01:1.
+    color: DP_BRAND.primaryDark
   },
   progressBarContainer: {
     height: 8,
@@ -941,6 +960,21 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.lg,
     gap: 8,
     ...THEME.shadows.sm
+  },
+  // Two actions per card now: open it, or take the next step on it. The rider
+  // chooses which delivery to work on, so every card carries both.
+  cardActions: { flexDirection: 'row', alignItems: 'center', gap: THEME.spacing.sm },
+  viewDetailsButton: { paddingVertical: THEME.spacing.sm, paddingHorizontal: THEME.spacing.md },
+  viewDetailsButtonText: { ...THEME.typography.labelMd, color: DP_BRAND.primaryDark },
+  startDeliveryButtonInline: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: THEME.spacing.xs,
+    backgroundColor: DP_BRAND.primary,
+    borderRadius: THEME.radius.md,
+    paddingVertical: THEME.spacing.sm + 2,
   },
   startDeliveryButtonText: {
     ...THEME.typography.labelLg,

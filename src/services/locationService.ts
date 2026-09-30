@@ -31,6 +31,21 @@ const MIN_DISTANCE_METERS = 10;
 const TRACKING_INTERVAL_MS = 15_000;
 // OS-level distance filter for delivering updates to the task.
 const DISTANCE_FILTER_METERS = 20;
+/**
+ * How often a stationary rider still reports in.
+ *
+ * DISTANCE_FILTER_METERS is enforced by the OS, so a parked phone receives no
+ * callbacks at all and `ingest` is never reached — the "heartbeat" promised by
+ * TRACKING_INTERVAL_MS above never fired, and a rider waiting at the warehouse
+ * dropped off the monitor two minutes after their last movement. This timer is
+ * the heartbeat. It goes through sendImmediateUpdate, which forces the POST
+ * past the in-app distance gate by design.
+ *
+ * Well inside the server's two-minute window, and a quarter the wake-ups of the
+ * 15s figure. Note this is a JS timer: reliable in the foreground, not when the
+ * app is backgrounded — the OS task remains the channel for a MOVING rider.
+ */
+const HEARTBEAT_MS = 60_000;
 
 function haversineDistance(
   lat1: number, lng1: number,
@@ -59,6 +74,9 @@ function toLocationData(pos: Location.LocationObject): LocationData {
 
 class LocationService {
   private _isTracking = false;
+  /** How many screens currently want tracking. See startTracking. */
+  private _trackers = 0;
+  private _heartbeat: ReturnType<typeof setInterval> | null = null;
   private _lastPosition: LocationData | null = null;
   private _lastSentPosition: LocationData | null = null;
   private _permissionGranted = false;
@@ -159,6 +177,11 @@ class LocationService {
    */
   async startTracking(intervalMs = TRACKING_INTERVAL_MS): Promise<void> {
     if (!TRACKING_ENABLED) return; // online tracking disabled
+    // Refcounted. The dashboard tracks while the rider is on duty and the
+    // delivery screen tracks while a job is open, so the two overlap — and the
+    // delivery screen stopping on unmount used to kill the dashboard's tracker
+    // with it, silently taking the rider off the monitor.
+    this._trackers += 1;
     if (this._isTracking) return;
     const granted = await this.requestPermission();
     if (!granted) return;
@@ -166,6 +189,13 @@ class LocationService {
 
     // Immediate first fix so the map populates and admin sees us online.
     this.sendImmediateUpdate();
+
+    // …and keep reporting even when the rider does not move. See HEARTBEAT_MS.
+    if (!this._heartbeat) {
+      this._heartbeat = setInterval(() => {
+        void this.sendImmediateUpdate();
+      }, HEARTBEAT_MS);
+    }
 
     try {
       const already = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => false);
@@ -191,7 +221,14 @@ class LocationService {
   }
 
   async stopTracking(): Promise<void> {
+    // Only the last holder actually stops it. See startTracking.
+    this._trackers = Math.max(0, this._trackers - 1);
+    if (this._trackers > 0) return;
     this._isTracking = false;
+    if (this._heartbeat) {
+      clearInterval(this._heartbeat);
+      this._heartbeat = null;
+    }
     try {
       const started = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => false);
       if (started) await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
