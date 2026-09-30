@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { v4 as uuidv4 } from 'uuid';
 // The handle must satisfy the server's rule; see the model for what went wrong
 // when this lived here as a local helper.
 import { generateRiderUsername } from '../../../../models/riderUsername';
+import { riderContactEmail, riderEmailError } from '../../../../models/riderContact';
 import CustomButton from '../../../../Custom-Components/CustomButton';
 import CustomInput from '../../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../../components/reports/ReportUI';
@@ -54,20 +55,6 @@ const generatePassword = (): string => {
   return `Del@${digits}`;
 };
 
-/** Slugify a company name into an email domain, e.g. "MetroMatrix" -> "metromatrix.com" */
-const companyEmailDomain = (companyName?: string): string => {
-  const slug = (companyName ?? 'company').toLowerCase().replace(/[^a-z0-9]/g, '');
-  return `${slug || 'company'}.com`;
-};
-
-/** Build a company-domain email: "firstname.lastname@company.com" */
-const buildCompanyEmail = (name: string, domain: string): string => {
-  const parts = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '';
-  const local = parts.length >= 2 ? `${parts[0]}.${parts[parts.length - 1]}` : parts[0];
-  return `${local}@${domain}`;
-};
-
 const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const activeCompany = useAppSelector(selectActiveCompany);
@@ -75,7 +62,6 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [emailEdited, setEmailEdited] = useState(false);
   const [phone, setPhone] = useState('');
   const [tempPassword, setTempPassword] = useState(generatePassword());
   const [vehicleType, setVehicleType] = useState('motorcycle');
@@ -94,15 +80,6 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
     [fullName, inviteCode],
   );
 
-  // Company-domain email, e.g. "ali.khan@metromatrix.com"
-  const companyDomain = useMemo(() => companyEmailDomain(activeCompany?.name), [activeCompany?.name]);
-  const suggestedEmail = useMemo(() => buildCompanyEmail(fullName, companyDomain), [fullName, companyDomain]);
-
-  // Auto-fill the email with the company-domain address until the admin edits it manually.
-  useEffect(() => {
-    if (!emailEdited) setEmail(suggestedEmail);
-  }, [suggestedEmail, emailEdited]);
-
   const copyToClipboard = (text: string, label: string) => {
     try { ExpoClipboard.setStringAsync(text); } catch {}
     Alert.alert('Copied', `${label} copied to clipboard`);
@@ -115,10 +92,16 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
   const validateForm = (): boolean => {
     const errs: Record<string, string> = {};
     if (!fullName.trim()) errs.fullName = 'Full name is required';
-    const finalEmail = (email.trim() || suggestedEmail).toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(finalEmail)) errs.email = 'A valid login email is required';
+    // Email is a contact detail, not a credential, so it is only checked when
+    // one was actually typed. This used to require an address and, when none
+    // was given, invent one from the company name -- which is how riders ended
+    // up owning mailboxes at domains nobody has ever registered.
+    const emailError = riderEmailError(email);
+    if (emailError) errs.email = emailError;
     if (!phone.trim()) errs.phone = 'Phone is required';
-    if (!tempPassword.trim() || tempPassword.trim().length < 6) errs.password = 'Password must be at least 6 characters';
+    // 8 is the server's minimum (CreatePersonnelDto). Accepting 6 here only
+    // moved the rejection to a 400 the admin could do nothing about.
+    if (!tempPassword.trim() || tempPassword.trim().length < 8) errs.password = 'Password must be at least 8 characters';
     if (!vehicleNumber.trim()) errs.vehicleNumber = 'Vehicle number is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -128,13 +111,13 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
     if (!validateForm() || !activeCompany) return;
     setIsCreating(true);
 
-    const finalEmail = email.trim() || suggestedEmail;
+    const contactEmail = riderContactEmail(email);
     const username = generatedUsername;
     const now = new Date().toISOString();
 
     try {
       const result = await registerAdminCreatedPersonnel({
-        email: finalEmail.toLowerCase(), username, password: tempPassword,
+        email: contactEmail, username, password: tempPassword,
         vehicleType: vehicleType || 'motorcycle',
         vehicleNumber: vehicleNumber.trim(),
         zones: selectedZones.length > 0 ? selectedZones : ['Zone A'],
@@ -149,7 +132,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
       const backendUserId = result?.data?.userId ?? result?.data?.id ?? `dp_${uuidv4().slice(0, 8)}`;
 
       const person: DummyDeliveryPerson = {
-        userId: backendUserId, displayName: fullName.trim(), email: finalEmail.toLowerCase(),
+        userId: backendUserId, displayName: fullName.trim(), email: contactEmail ?? '',
         username, password: tempPassword, phone: phone.trim(), role: 'delivery',
         companyId: activeCompany.companyId, isAvailable: true, currentLoad: 0,
         maxLoad, rating: 0, totalDeliveries: 0, onTimeRate: 0, status: 'active',
@@ -161,10 +144,10 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
       dispatch(addDeliveryPersonnel({ companyId: activeCompany.companyId, person }));
       dispatch(addMember({
         companyId: activeCompany.companyId,
-        member: { userId: backendUserId, role: 'delivery', displayName: fullName.trim(), email: finalEmail.toLowerCase(), phone: phone.trim(), joinedAt: now }
+        member: { userId: backendUserId, role: 'delivery', displayName: fullName.trim(), email: contactEmail ?? '', phone: phone.trim(), joinedAt: now }
       }));
 
-      setCreatedPerson({ name: fullName.trim(), username, email: finalEmail.toLowerCase(), password: tempPassword });
+      setCreatedPerson({ name: fullName.trim(), username, email: contactEmail ?? '', password: tempPassword });
       setShowSuccess(true);
     } catch (e: any) {
       Alert.alert('Failed to create personnel', e?.message ?? 'Please try again.');
@@ -196,23 +179,23 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
       )}
 
       <CustomInput
-        label={`Login Email (@${companyDomain}) *`}
+        label="Email (optional)"
         value={email}
-        onChangeText={t => { setEmail(t); setEmailEdited(true); if (errors.email) setErrors(p => ({ ...p, email: '' })); }}
-        placeholder={suggestedEmail || `firstname.lastname@${companyDomain}`}
+        onChangeText={t => { setEmail(t); if (errors.email) setErrors(p => ({ ...p, email: '' })); }}
+        placeholder="Leave empty if they have none"
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
         error={errors.email}
       />
-      <Text style={styles.usernameHint}>Auto-filled with your company domain. The rider signs in with this email and the password below.</Text>
+      <Text style={styles.usernameHint}>Contact only. Riders sign in with the username above, never an email.</Text>
       <CustomInput label="Phone *" value={phone} onChangeText={t => { setPhone(t); if (errors.phone) setErrors(p => ({ ...p, phone: '' })); }} placeholder="+92-3XX-XXXXXXX" keyboardType="phone-pad" error={errors.phone} />
 
       <CustomInput
         label="Login Password *"
         value={tempPassword}
         onChangeText={t => { setTempPassword(t); if (errors.password) setErrors(p => ({ ...p, password: '' })); }}
-        placeholder="Set a password (min 6 characters)"
+        placeholder="Set a password (min 8 characters)"
         autoCapitalize="none"
         autoCorrect={false}
         error={errors.password}
@@ -277,9 +260,11 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
                 <View style={styles.credentialsCard}>
                   {[
                     { label: 'Name', value: createdPerson.name },
-                    { label: 'Email', value: createdPerson.email },
+                    // Only what the rider signs in with. An email is listed
+                    // when one was given, but it is not a credential.
                     { label: 'Username', value: createdPerson.username },
                     { label: 'Password', value: createdPerson.password },
+                    ...(createdPerson.email ? [{ label: 'Email', value: createdPerson.email }] : []),
                   ].map((row, i) => (
                     <View key={i} style={styles.credentialRow}>
                       <Text style={styles.credentialLabel}>{row.label}</Text>
@@ -289,7 +274,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               )}
               <View style={styles.modalButtons}>
-                <CustomButton title="Share" onPress={() => { if (createdPerson) copyToClipboard(`Name: ${createdPerson.name}\nEmail: ${createdPerson.email}\nUsername: ${createdPerson.username}\nPassword: ${createdPerson.password}`, 'Credentials'); }} variant="secondary" size="md" />
+                <CustomButton title="Share" onPress={() => { if (createdPerson) copyToClipboard(`Name: ${createdPerson.name}\nUsername: ${createdPerson.username}\nPassword: ${createdPerson.password}`, 'Credentials'); }} variant="secondary" size="md" />
                 <View style={{ width: spacing.xs }} />
                 <CustomButton title="Done" onPress={handleDismissSuccess} variant="primary" size="md" />
               </View>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -19,8 +19,6 @@ import type { DPProfileStackParamList } from '../../../../navigators/stacks/DPPr
 import { useAppDispatch, useAppSelector } from '../../../../hooks/useReduxHooks';
 import { useSignOut } from '../../../../hooks/useSignOut';
 import { selectDPSettings, setPushNotifications, setSmsNotifications, setEmailNotifications } from './dpSettingsSlice';
-import { selectUser } from '../../../Auth/authSlice';
-import { authForgotPassword } from '../../../../networks/auth/authNetwork';
 import NotificationIcon from '../../../../components/shared/NotificationIcon';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
@@ -40,29 +38,7 @@ const notifyDP = (title: string, message: string) => {
 const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const settings = useAppSelector(selectDPSettings);
-  const user = useAppSelector(selectUser);
-  const [isSendingReset, setIsSendingReset] = useState(false);
   const { signingOut, confirmSignOut } = useSignOut();
-
-  const handleChangePassword = async () => {
-    if (!user?.email) {
-      notifyDP('No email', 'No email on file for this account.');
-      return;
-    }
-    if (isSendingReset) return;
-    setIsSendingReset(true);
-    try {
-      await authForgotPassword({ forgotPasswordInfo: { email: user.email } });
-      notifyDP(
-        'Reset code sent',
-        `A password reset code was sent to ${user.email}. Sign out and use "Forgot password" on the sign-in screen to set a new password.`,
-      );
-    } catch (e: any) {
-      notifyDP('Could not send code', e?.message || 'Please try again.');
-    } finally {
-      setIsSendingReset(false);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -175,22 +151,22 @@ const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.cardDivider} />
 
           <View style={styles.actionsList}>
-            <TouchableOpacity 
-              style={[styles.actionItem, isSendingReset && { opacity: 0.5 }]}
-              onPress={handleChangePassword}
-              disabled={isSendingReset}
-              activeOpacity={0.7}
-            >
+            {/* Not a button. A rider's sign-in is issued by the office and
+                reset by the office -- the server refuses a rider's own reset
+                request, so the tappable row that used to sit here emailed a
+                code that either went nowhere (most riders have no email) or
+                came back rejected. Saying who to ask is the useful thing. */}
+            <View style={styles.actionItem}>
               <View style={styles.actionLeft}>
                 <View style={[styles.actionIconWrap, { backgroundColor: THEME.colors.infoLight }]}>
                   <Feather name="key" size={16} color={THEME.colors.info} />
                 </View>
-                <Text style={styles.actionLabel}>{isSendingReset ? 'Sending reset code…' : 'Change Password'}</Text>
+                <View style={styles.actionTextWrap}>
+                  <Text style={styles.actionLabel}>Password</Text>
+                  <Text style={styles.settingHint}>Ask your manager to reset it for you.</Text>
+                </View>
               </View>
-              <View style={styles.actionArrow}>
-                <Feather name="chevron-right" size={14} color={THEME.colors.textTertiary} />
-              </View>
-            </TouchableOpacity>
+            </View>
 
             <View style={styles.actionDivider} />
 
@@ -468,6 +444,13 @@ const styles = StyleSheet.create({
   actionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    // The rows that carry a hint under the label wrap rather than push the
+    // chevron off the edge on a narrow phone.
+    flex: 1,
+    paddingRight: 8,
+  },
+  actionTextWrap: {
+    flex: 1,
   },
   actionIconWrap: {
     width: 40,

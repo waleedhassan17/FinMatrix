@@ -53,6 +53,8 @@ const ACTIVE_STATUSES = ['pending', 'picked_up', 'in_transit', 'arrived'];
 interface RiderProfile {
   userId: string;
   displayName: string;
+  /** What the rider signs in with. Blank for accounts created before the backfill. */
+  username: string;
   email: string;
   phone: string;
   vehicleType: string;
@@ -83,6 +85,7 @@ const toNum = (v: unknown): number => {
 const mapProfile = (raw: any): RiderProfile => ({
   userId: raw?.userId ?? '',
   displayName: raw?.name ?? raw?.displayName ?? 'Rider',
+  username: raw?.username ?? '',
   email: raw?.email ?? '',
   phone: raw?.phone ?? '',
   vehicleType: raw?.vehicleType ?? '',
@@ -128,7 +131,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isActing, setIsActing] = useState(false);
   const [confirm, setConfirm] = useState<null | 'reset' | 'deactivate' | 'reactivate'>(null);
-  const [tempCredentials, setTempCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [tempCredentials, setTempCredentials] = useState<{ username: string; password: string } | null>(null);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -245,13 +248,18 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
     runAction(async () => {
       const payload = await resetPersonnelPasswordAPI(person.userId);
       const creds = payload?.data?.credentials;
-      if (creds?.temporaryPassword) {
+      // Key on the PASSWORD alone. The server returns { username, password };
+      // this used to look for `temporaryPassword`, a field it stopped sending,
+      // so every reset fell through to the notice below and the freshly issued
+      // password was never shown to anyone. A blank username must not discard
+      // it either -- that is the whole point of resetting one of these riders.
+      if (creds?.password) {
         setTempCredentials({
-          email: creds.email || person.email,
-          password: creds.temporaryPassword,
+          username: creds.username || person.username,
+          password: creds.password,
         });
       } else {
-        notify('Password reset', 'A temporary password has been set for this rider.');
+        notify('Password reset', 'The password was reset, but the server did not return it. Reset again to see it.');
       }
     });
 
@@ -319,6 +327,8 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
             <Text style={[styles.largeAvatarText, { color: statusColor }]}>{getInitials(person.displayName)}</Text>
           </View>
           <Text style={styles.personName}>{person.displayName}</Text>
+          {/* The username, not the email: this is what the rider types to sign in. */}
+          {!!person.username && <Text style={styles.personEmail}>{person.username}</Text>}
           {!!person.email && <Text style={styles.personEmail}>{person.email}</Text>}
           {!!person.phone && (
             <TouchableOpacity onPress={handleCallPhone}>
@@ -587,7 +597,9 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
             <Text style={styles.modalTitle}>Password Reset</Text>
             <Text style={styles.modalBody}>Share these credentials with the rider securely. The temporary password is shown only once.</Text>
             <View style={styles.credsBox}>
-              <Text style={styles.credsLine}>Email: {tempCredentials?.email}</Text>
+              <Text style={styles.credsLine}>
+                Username: {tempCredentials?.username || 'not set - contact support'}
+              </Text>
               <Text style={styles.credsLine}>Password: {tempCredentials?.password}</Text>
             </View>
             <View style={styles.modalActions}>
@@ -598,7 +610,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
                 onPress={() => {
                   if (!tempCredentials) return;
                   Share.share({
-                    message: `FinMatrix rider login\nEmail: ${tempCredentials.email}\nTemporary password: ${tempCredentials.password}`
+                    message: `FinMatrix rider login\nUsername: ${tempCredentials.username}\nTemporary password: ${tempCredentials.password}`
                   }).catch(() => { /* user cancelled */ });
                 }}
               />

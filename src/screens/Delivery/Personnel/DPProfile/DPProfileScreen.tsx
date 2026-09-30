@@ -50,6 +50,8 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const displayName = user?.displayName ?? 'Delivery Personnel';
+  /** What the rider actually signs in with, and what the office hands over. */
+  const signInHandle = user?.username?.trim() ?? '';
   const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   const [profileImage, setProfileImage] = useState<string | null>(user?.photoURL ?? null);
 
@@ -105,7 +107,11 @@ const DPProfileScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.profileMeta}>
             <Text style={styles.userName}>{displayName}</Text>
-            <Text style={styles.userEmail}>{user?.email ?? 'delivery@finmatrix.pk'}</Text>
+            {/* The username, not an email — it is what the rider signs in
+                with. The address this used to show was usually invented (the
+                add-rider form synthesised name@companyslug.com), and its
+                fallback was a hardcoded delivery@finmatrix.pk. */}
+            {!!signInHandle && <Text style={styles.userEmail}>{signInHandle}</Text>}
             <View style={styles.roleBadge}>
               <Feather name="truck" size={10} color={THEME.colors.neutral0} />
               <Text style={styles.roleText}>Delivery Personnel</Text>

@@ -142,10 +142,12 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
     let list = allPersonnel;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
+      // Every field but the name is optional on a rider -- an account created
+      // without an email or a phone would have thrown on .toLowerCase() here.
+      // Username is searchable because it is what the office hands over.
       list = list.filter(p =>
-        p.displayName.toLowerCase().includes(q) ||
-        p.phone.toLowerCase().includes(q) ||
-        p.email.toLowerCase().includes(q),
+        [p.displayName, p.username, p.phone, p.email]
+          .some(v => (v ?? '').toLowerCase().includes(q)),
       );
     }
     if (activeFilter !== 'all') {
@@ -314,7 +316,7 @@ const DeliveryPersonnelListScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by name, phone, or email..."
+          placeholder="Search by name, username, or phone..."
           placeholderTextColor={colors.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
