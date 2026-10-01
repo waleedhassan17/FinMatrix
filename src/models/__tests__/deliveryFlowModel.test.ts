@@ -1,7 +1,9 @@
 import {
   RIDER_ACTIVE_STATUSES,
   compareRiderQueue,
+  completedOn,
   isRiderActive,
+  riderDayStats,
   riderNextAction,
   riderQueue,
 } from '../deliveryFlowModel';
@@ -164,5 +166,133 @@ describe('riderQueue', () => {
     const before = rows.map(r => r.id);
     riderQueue(rows);
     expect(rows.map(r => r.id)).toEqual(before);
+  });
+});
+
+// ─── The rider's day ────────────────────────────────────
+
+/**
+ * Local-time constructors throughout. `toIsoDate` reads the local date, so a
+ * fixture built from a 'Z' string would land on a different day depending on
+ * where the test runs — which is the very class of bug these cases pin.
+ */
+const at = (y: number, m: number, day: number, h = 12, min = 0): string =>
+  new Date(y, m - 1, day, h, min).toISOString();
+
+const NOW = new Date(2026, 9, 1, 14, 0); // 1 Oct 2026, local
+
+describe('riderDayStats', () => {
+  /**
+   * The three rows this bug was reported from, as they stood in production on
+   * 1 Oct 2026 for rider Saim Raza. The dashboard showed "2 of 2 completed,
+   * 100%" for a day he delivered once.
+   */
+  const saimsDay = [
+    // Delivered TODAY, but scheduled for tomorrow -- the one he actually did,
+    // and the one the old filter could not see.
+    d({ id: 'MUP32XA5', status: 'delivered', scheduledDate: '2026-10-02', deliveredAt: at(2026, 10, 1, 10, 21) }),
+    // Both delivered YESTERDAY, scheduled today -- the phantom "2".
+    d({ id: 'MUO68GBI', status: 'delivered', scheduledDate: '2026-10-01', deliveredAt: at(2026, 9, 30, 19, 0) }),
+    d({ id: 'MUNQGJEB', status: 'delivered', scheduledDate: '2026-10-01', deliveredAt: at(2026, 9, 30, 11, 40) }),
+  ];
+
+  it('counts the delivery that was made today, once', () => {
+    const s = riderDayStats(saimsDay, NOW);
+    expect(s.completed).toBe(1);
+    expect(s.total).toBe(1);
+    expect(s.progress).toBe(1);
+  });
+
+  it('does not count work finished yesterday, however it was scheduled', () => {
+    const s = riderDayStats(
+      [d({ id: 'yest', status: 'delivered', scheduledDate: '2026-10-01', deliveredAt: at(2026, 9, 30, 19, 0) })],
+      NOW,
+    );
+    expect(s.completed).toBe(0);
+  });
+
+  it('counts work finished today that was scheduled for another day', () => {
+    const s = riderDayStats(
+      [d({ id: 'tmrw', status: 'delivered', scheduledDate: '2026-10-02', deliveredAt: at(2026, 10, 1, 10, 21) })],
+      NOW,
+    );
+    expect(s.completed).toBe(1);
+  });
+
+  it('falls back to updatedAt when there is no completion time', () => {
+    const s = riderDayStats(
+      [d({ id: 'noDelAt', status: 'delivered', deliveredAt: undefined, updatedAt: at(2026, 10, 1, 9, 0) })],
+      NOW,
+    );
+    expect(s.completed).toBe(1);
+  });
+
+  it('counts open work regardless of the day it is scheduled for', () => {
+    // The tiles sit directly above the queue, which never filtered by date.
+    const s = riderDayStats(
+      [
+        d({ id: 'p', status: 'pending', scheduledDate: '2026-10-09' }),
+        d({ id: 't', status: 'in_transit', scheduledDate: '2026-09-02' }),
+        d({ id: 'a', status: 'arrived', scheduledDate: '2026-10-01' }),
+      ],
+      NOW,
+    );
+    expect(s).toMatchObject({ pending: 1, inProgress: 2, completed: 0, total: 3, progress: 0 });
+  });
+
+  it('counts a failure only on the day it failed', () => {
+    const rows = [
+      d({ id: 'ftoday', status: 'failed', updatedAt: at(2026, 10, 1, 8, 0) }),
+      d({ id: 'fyest', status: 'failed', updatedAt: at(2026, 9, 30, 8, 0) }),
+    ];
+    expect(riderDayStats(rows, NOW).failed).toBe(1);
+  });
+
+  it('ignores statuses that are no longer the rider s problem', () => {
+    const rows = [
+      d({ id: 'ret', status: 'returned', updatedAt: at(2026, 10, 1, 8, 0) }),
+      d({ id: 'can', status: 'cancelled', updatedAt: at(2026, 10, 1, 8, 0) }),
+      d({ id: 'una', status: 'unassigned' }),
+    ];
+    expect(riderDayStats(rows, NOW)).toMatchObject({ total: 0, progress: 0 });
+  });
+
+  it('gives 0 rather than NaN for a rider with nothing to do', () => {
+    const s = riderDayStats([], NOW);
+    expect(s.total).toBe(0);
+    expect(s.progress).toBe(0);
+    expect(Number.isNaN(s.progress)).toBe(false);
+  });
+
+  it('splits the day at LOCAL midnight, not UTC', () => {
+    // The assertion that fails the moment anyone reaches for toISOString():
+    // in Pakistan (UTC+5) the UTC date is still yesterday until 5am.
+    const rows = [
+      d({ id: 'lateYesterday', status: 'delivered', deliveredAt: at(2026, 9, 30, 23, 59) }),
+      d({ id: 'earlyToday', status: 'delivered', deliveredAt: at(2026, 10, 1, 0, 1) }),
+    ];
+    const s = riderDayStats(rows, NOW);
+    expect(s.completed).toBe(1);
+    expect(completedOn(rows[1], '2026-10-01')).toBe(true);
+    expect(completedOn(rows[0], '2026-10-01')).toBe(false);
+  });
+
+  it('survives an unparseable timestamp instead of counting it', () => {
+    const s = riderDayStats(
+      [d({ id: 'junk', status: 'delivered', deliveredAt: 'not a date' })],
+      NOW,
+    );
+    expect(s.completed).toBe(0);
+  });
+
+  it('burns down as the day goes on', () => {
+    const start = [
+      d({ id: 'a', status: 'pending' }),
+      d({ id: 'b', status: 'pending' }),
+    ];
+    expect(riderDayStats(start, NOW)).toMatchObject({ total: 2, completed: 0, progress: 0 });
+
+    const half = [d({ id: 'a', status: 'delivered', deliveredAt: at(2026, 10, 1, 11, 0) }), start[1]];
+    expect(riderDayStats(half, NOW)).toMatchObject({ total: 2, completed: 1, progress: 0.5 });
   });
 });

@@ -219,15 +219,6 @@ export const getMyDeliveriesAPI = async (params: any = {}): Promise<any> => {
   }
 };
 
-export const getMyDashboardAPI = async (): Promise<any> => {
-  try {
-    const response = await api.get('/deliveries/my/dashboard');
-    return response.data;
-  } catch (e: any) {
-    throw new Error(extractErrorMessage(e));
-  }
-};
-
 export const uploadBillPhotoAPI = async (deliveryId: string, formData: FormData): Promise<any> => {
   // fetch-based multipart (postMultipart) — axios with a manual multipart
   // Content-Type drops the boundary and the server never receives the file.

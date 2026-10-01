@@ -12,7 +12,7 @@ import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import Toast from 'react-native-toast-message';
 import { Alert } from '../../../../utils/alert';
-import { riderNextAction, type RiderAction } from '../../../../models/deliveryFlowModel';
+import { completedOn, riderNextAction, type RiderAction } from '../../../../models/deliveryFlowModel';
 import {
   selectIsUpdatingStatus,
   updateDeliveryExecutionStatus,
@@ -203,9 +203,11 @@ const DPDeliveryListScreen: React.FC<Props> = ({ navigation }) => {
     const pending = myDeliveries.filter(d => d.status === 'pending');
     const completed = myDeliveries.filter(d => d.status === 'delivered');
     // "Completed Today" means today: by when each was completed, newest first.
+    // Shared with the dashboard's progress card, which used to answer this
+    // question differently and disagree with the number on this screen.
     const todayKey = toIsoDate(new Date());
     const completedToday = completed
-      .filter(d => toIsoDate(new Date(d.deliveredAt ?? d.updatedAt)) === todayKey)
+      .filter(d => completedOn(d, todayKey))
       .sort(
         (a, b) => new Date(b.deliveredAt ?? b.updatedAt).getTime() - new Date(a.deliveredAt ?? a.updatedAt).getTime(),
       );

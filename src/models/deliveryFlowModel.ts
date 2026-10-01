@@ -21,6 +21,7 @@
 // rider picks which to work on and this model never assumes an order.
 
 import type { DeliveryRecord } from './deliveryModel';
+import { toIsoDate } from './reportModel';
 
 /** The execution statuses a rider may move a delivery into. */
 export type RiderAdvanceStatus = 'picked_up' | 'in_transit' | 'arrived';
@@ -102,3 +103,80 @@ export const riderQueue = (
   sortBy: RiderQueueSort = 'time',
 ): DeliveryRecord[] =>
   deliveries.filter(d => isRiderActive(d.status)).sort(compareRiderQueue(sortBy));
+
+// ─── The rider's day ────────────────────────────────────
+
+/**
+ * Which local day a delivery was closed on.
+ *
+ * `deliveredAt` is the server's `completedAt`; `updatedAt` is the fallback for
+ * records without one, which is every status but `delivered` — the server
+ * stamps `completedAt` only on delivery (deliveries.service.ts), so a failed
+ * job has no completion time of its own and a later edit can move its
+ * `updatedAt`. That is the best available, and the same compromise the
+ * Deliveries list has always made.
+ *
+ * `toIsoDate` reads the LOCAL date. `toISOString().slice(0, 10)` would read
+ * UTC, which in Pakistan is the previous day between midnight and 5am — the
+ * server's own unused stats endpoint got this wrong, and it is the reason the
+ * day key is built in one place rather than at each call site.
+ */
+export const completedOn = (
+  d: Pick<DeliveryRecord, 'deliveredAt' | 'updatedAt'>,
+  dayKey: string,
+): boolean => {
+  const t = new Date((d.deliveredAt ?? d.updatedAt) as unknown as string);
+  return Number.isFinite(t.getTime()) && toIsoDate(t) === dayKey;
+};
+
+export interface RiderDayStats {
+  /** Delivered, and delivered TODAY. */
+  completed: number;
+  /** Failed, and failed today. */
+  failed: number;
+  /** Open right now — not "pending today", which means nothing. */
+  pending: number;
+  inProgress: number;
+  total: number;
+  /** completed / total, and 0 rather than NaN when there is nothing to do. */
+  progress: number;
+}
+
+/**
+ * What the rider has done today, and what is still on their plate.
+ *
+ * The dashboard used to filter on `scheduledDate === today` and label the
+ * result "completed". Those are different questions, and it got both wrong at
+ * once: a job scheduled for today but finished yesterday counted, and a job
+ * finished today but scheduled for tomorrow did not. A rider who delivered one
+ * parcel was shown "2 of 2 completed, 100%", the two being yesterday's work.
+ *
+ * So: completion is counted by when the work was DONE, and the open counts are
+ * a fact about NOW with no date filter at all — they describe the same jobs the
+ * queue lists directly below them, which the date filter also used to hide.
+ */
+export const riderDayStats = (
+  deliveries: DeliveryRecord[],
+  now: Date = new Date(),
+): RiderDayStats => {
+  const dayKey = toIsoDate(now);
+  let completed = 0;
+  let failed = 0;
+  let pending = 0;
+  let inProgress = 0;
+
+  for (const d of deliveries) {
+    if (d.status === 'delivered') {
+      if (completedOn(d, dayKey)) completed += 1;
+    } else if (d.status === 'failed') {
+      if (completedOn(d, dayKey)) failed += 1;
+    } else if (d.status === 'pending') {
+      pending += 1;
+    } else if (isRiderActive(d.status)) {
+      inProgress += 1;
+    }
+  }
+
+  const total = completed + failed + pending + inProgress;
+  return { completed, failed, pending, inProgress, total, progress: total === 0 ? 0 : completed / total };
+};

@@ -26,7 +26,7 @@ import {
   fetchMyPersonnel,
   setMyAvailability
 } from '../../Admin/AssignDeliveries/deliverySlice';
-import { riderNextAction, riderQueue } from '../../../../models/deliveryFlowModel';
+import { riderDayStats, riderNextAction, riderQueue } from '../../../../models/deliveryFlowModel';
 // The detail screen's thunk, not the dashboard's own: it accepts every status
 // a rider can advance into (startDelivery stopped at in_transit), and it sends
 // a GPS ping first — which also keeps the rider visible on the monitor.
@@ -35,7 +35,6 @@ import type { DPDashboardStackParamList } from '../../../../navigators/stacks/DP
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
 import { locationService } from '../../../../services/locationService';
-import { toIsoDate } from '../../../../models/reportModel';
 
 /** How many of the rider's jobs the dashboard shows before "See all". */
 const DASHBOARD_QUEUE_SIZE = 3;
@@ -88,23 +87,15 @@ const DPDashboardScreen: React.FC = () => {
   const progressAnim = useRef(new Animated.Value(0)).current;
   const scaleAnims = useRef([...Array(4)].map(() => new Animated.Value(0.9))).current;
 
-  const todayKey = toIsoDate(new Date());
   const myDeliveries = useMemo(() => deliveries.filter(d => d.assignedTo === userId), [deliveries, userId]);
-  const todayDeliveries = useMemo(() => myDeliveries.filter(d => d.scheduledDate === todayKey), [myDeliveries, todayKey]);
 
-  const summary = useMemo(() => {
-    const total = todayDeliveries.length;
-    const completed = todayDeliveries.filter(d => d.status === 'delivered').length;
-    const inProgress = todayDeliveries.filter(d => ['picked_up', 'in_transit', 'arrived'].includes(d.status)).length;
-    const pending = todayDeliveries.filter(d => d.status === 'pending').length;
-    const failed = todayDeliveries.filter(d => d.status === 'failed').length;
-    return { total, completed, inProgress, pending, failed };
-  }, [todayDeliveries]);
-
-  const progress = useMemo(
-    () => (summary.total === 0 ? 0 : summary.completed / summary.total),
-    [summary.total, summary.completed],
-  );
+  // Counted by when the work was DONE, not by what it was scheduled for. This
+  // used to filter on `scheduledDate === today`, which counted yesterday's
+  // deliveries if they happened to be dated today and missed today's if they
+  // were dated tomorrow -- a rider who delivered one parcel saw "2 of 2, 100%".
+  // See riderDayStats; the Deliveries tab computes "today" from the same place.
+  const summary = useMemo(() => riderDayStats(myDeliveries), [myDeliveries]);
+  const progress = summary.progress;
 
   useEffect(() => {
     // Fetch deliveries and the rider's own record from the backend on mount.
@@ -145,7 +136,10 @@ const DPDashboardScreen: React.FC = () => {
     setRefreshing(false);
   }, [dispatch, userId]);
 
-  const hasActiveDelivery = summary.inProgress > 0 || summary.pending > 0;
+  // Any open job, whatever day it is dated for. While these counts were
+  // filtered to today's date, a rider whose work was scheduled for another day
+  // polled for nothing and watched a stale screen.
+  const hasActiveDelivery = summary.inProgress + summary.pending > 0;
 
   // Poll every 30 seconds while there are active deliveries
   useEffect(() => {
