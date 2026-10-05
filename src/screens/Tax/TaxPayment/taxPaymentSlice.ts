@@ -4,21 +4,16 @@
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
-import type { TaxRate, TaxType } from '../../../types';
+import type { TaxRate } from '../../../types';
 import { getTaxRatesAPI, createTaxPaymentAPI } from '../../../networks/purchases/taxNetwork';
 import {
   taxPaymentSingleSerializer,
   taxRateListSerializer,
 } from '../../../serializers/taxSerializer';
 import { toIsoDate } from '../../../models/reportModel';
+import { quarterLabel, taxPaymentPayload, type TaxPaymentFormValues } from '../../../models/taxModel';
 
-export interface TaxPaymentForm {
-  taxRateId: string;
-  amount: string;
-  date: string;
-  reference: string;
-  notes: string;
-}
+export type TaxPaymentForm = TaxPaymentFormValues;
 
 export interface TaxPaymentState {
   taxRates: TaxRate[];
@@ -29,13 +24,17 @@ export interface TaxPaymentState {
   saved: boolean;
 }
 
-const buildInitialForm = (): TaxPaymentForm => ({
-  taxRateId: '',
-  amount: '',
-  date: toIsoDate(new Date()),
-  reference: '',
-  notes: '',
-});
+const buildInitialForm = (): TaxPaymentForm => {
+  const date = toIsoDate(new Date());
+  return {
+    taxRateId: '',
+    amount: '',
+    date,
+    period: quarterLabel(date),
+    reference: '',
+    bankAccountId: '',
+  };
+};
 
 const initialState: TaxPaymentState = {
   taxRates: [],
@@ -88,18 +87,8 @@ export const taxPaymentSlice = createAppSlice({
 
     submitTaxPayment: create.asyncThunk(
       async (_: void, { getState }) => {
-        const s = (getState() as { taxPayment: TaxPaymentState }).taxPayment;
-        const { form, taxRates } = s;
-        const rate = taxRates.find(r => r.id === form.taxRateId);
-        const envelope = await createTaxPaymentAPI({
-          taxRateId:   form.taxRateId,
-          taxRateName: rate?.name ?? '',
-          taxType:     (rate?.taxType ?? 'GST') as TaxType,
-          amount:      parseFloat(form.amount) || 0,
-          date:        form.date + 'T00:00:00Z',
-          reference:   form.reference.trim(),
-          notes:       form.notes.trim(),
-        });
+        const { form } = (getState() as { taxPayment: TaxPaymentState }).taxPayment;
+        const envelope = await createTaxPaymentAPI(taxPaymentPayload(form));
         return taxPaymentSingleSerializer(envelope);
       },
       {

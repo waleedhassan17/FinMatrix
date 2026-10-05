@@ -29,4 +29,6 @@ export interface CreditMemo {
   balance: number;
   status: CreditMemoStatus;
   lines: CreditMemoLine[];
+  /** The cash or bank account a refund was paid from; null until refunded, and on refunds before the choice (Cash). */
+  refundAccountId: string | null;
 }

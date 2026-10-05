@@ -26,6 +26,9 @@ import { txnStatusColor } from '../../components/transactions/txnStatus';
 import { titleCase } from '../../components/transactions/TxnListUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import type { Invoice } from '../../types';
+import MoneyAccountDropdown from '../../components/shared/MoneyAccountDropdown';
+import { selectAccounts } from '../ChartOfAccounts/COAList/coaListSlice';
+import { moneyAccountLabel } from '../../models/moneyAccountModel';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'CreditMemoDetail'>;
@@ -39,6 +42,9 @@ const CreditMemoDetailScreen: React.FC = () => {
   const { current: c, isLoading, error } = useAppSelector(selectCreditMemoState);
   const [showApply, setShowApply] = useState(false);
   const [openInvoices, setOpenInvoices] = useState<Invoice[]>([]);
+  // The account a refund comes out of — Cash unless a bank is chosen.
+  const [refundFrom, setRefundFrom] = useState('');
+  const accounts = useAppSelector(selectAccounts);
 
   useFocusEffect(useCallback(() => { dispatch(fetchCreditMemo(creditMemoId)); }, [dispatch, creditMemoId]));
 
@@ -97,6 +103,9 @@ const CreditMemoDetailScreen: React.FC = () => {
           {!!c.reason && <Info label="Reason" value={c.reason} />}
           <Info label="Applied" value={rs(c.amountApplied)} />
           <Info label="Available credit" value={rs(c.balance)} strong />
+          {c.status === 'refunded' && (
+            <Info label="Refunded from" value={moneyAccountLabel(accounts, c.refundAccountId)} />
+          )}
         </Card>
 
         <SectionCard title="Credited Items" icon="list">
@@ -123,9 +132,40 @@ const CreditMemoDetailScreen: React.FC = () => {
           </SectionCard>
         )}
 
+        {hasBalance && (
+          // Cash, as every refund was before there was a choice — now shown,
+          // and any bank in the chart can be chosen instead.
+          <MoneyAccountDropdown
+            label="Refund from"
+            value={refundFrom}
+            onChange={setRefundFrom}
+            defaultToCash
+          />
+        )}
+
         <View style={styles.actions}>
           {hasBalance && <CustomButton title="Apply to Invoice" variant="primary" onPress={openApply} fullWidth />}
-          {hasBalance && <CustomButton title="Refund Remaining" variant="secondary" onPress={() => run(refundCreditMemo(creditMemoId), 'Refund recorded')} fullWidth />}
+          {hasBalance && (
+            <CustomButton
+              title="Refund Remaining"
+              variant="secondary"
+              disabled={!refundFrom}
+              onPress={() =>
+                Alert.alert(
+                  'Refund the remaining credit?',
+                  `Pays ${rs(c.balance)} back to ${c.customerName || 'the customer'} from ${moneyAccountLabel(accounts, refundFrom)}.`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Refund',
+                      onPress: () => run(refundCreditMemo({ id: creditMemoId, bankAccountId: refundFrom || undefined }), 'Refund recorded'),
+                    },
+                  ],
+                )
+              }
+              fullWidth
+            />
+          )}
           {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Void" variant="secondary" onPress={() => run(voidCreditMemo(creditMemoId), 'Credit memo voided')} fullWidth />}
           {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Delete" variant="danger" onPress={() => run(removeCreditMemo(creditMemoId), 'Credit memo deleted', true)} fullWidth />}
         </View>

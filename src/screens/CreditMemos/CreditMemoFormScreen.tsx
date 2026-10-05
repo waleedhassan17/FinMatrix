@@ -26,6 +26,7 @@ import type { TransactionsStackParamList } from '../../navigators/stacks/Transac
 import { toIsoDate } from '../../models/reportModel';
 import { lineTaxError } from '../../models/taxRate';
 import { customerOptionLabel } from '../../models/partyCodeModel';
+import MoneyAccountDropdown from '../../components/shared/MoneyAccountDropdown';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'CreditMemoForm'>;
@@ -53,6 +54,11 @@ const CreditMemoFormScreen: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [reversal, setReversal] = useState<DeliveryCreditMemoDraft | null>(null);
   const [loadingDraft, setLoadingDraft] = useState(!!fromDeliveryRequestId);
+  // Where a reversal's refund comes out of — Cash unless a bank is chosen.
+  const [refundFrom, setRefundFrom] = useState('');
+  // Whether reversing pays money back: everything, or the part already paid.
+  const refunds =
+    !!reversal && (reversal.settlement !== 'apply_to_invoice' || !reversal.originalInvoiceId);
 
   const features = useAppSelector(selectFeatures);
   // Staff prepare the reversal; the owner approves it before anything posts.
@@ -168,8 +174,8 @@ const CreditMemoFormScreen: React.FC = () => {
               ...(reversal.settlement !== 'refund_cash' && reversal.originalInvoiceId
                 ? { applyToInvoiceId: reversal.originalInvoiceId }
                 : {}),
-              ...(reversal.settlement !== 'apply_to_invoice' || !reversal.originalInvoiceId
-                ? { refundRemainderToCash: true }
+              ...(refunds
+                ? { refundRemainderToCash: true, ...(refundFrom ? { refundAccountId: refundFrom } : {}) }
                 : {}),
               // Recorded on the delivery so it cannot be reversed twice.
               reversesDeliveryRequestId: reversal.deliveryRequestId,
@@ -218,16 +224,24 @@ const CreditMemoFormScreen: React.FC = () => {
               {reversal.settlement === 'apply_to_invoice'
                 ? `This settles invoice ${reversal.invoiceNumber ?? ''}.`
                 : reversal.settlement === 'apply_then_refund'
-                ? `This clears what is still owing on invoice ${reversal.invoiceNumber ?? ''} and refunds what the customer already paid in cash.`
+                ? `This clears what is still owing on invoice ${reversal.invoiceNumber ?? ''} and refunds what the customer already paid, from the account below.`
                 // Prepaid or collected at the door: the customer has the goods
                 // and the business has their money, so reversing means giving
                 // it back.
-                : 'That invoice is already paid, so this refunds the customer in cash.'}
+                : 'That invoice is already paid, so this refunds the customer from the account below.'}
             </Text>
             <Text style={styles.reversalBody}>
               Remove or reduce a line if the customer kept part of the delivery.
             </Text>
           </View>
+        )}
+        {refunds && (
+          <MoneyAccountDropdown
+            label="Refund from"
+            value={refundFrom}
+            onChange={setRefundFrom}
+            defaultToCash
+          />
         )}
         <Card>
           {reversal ? (

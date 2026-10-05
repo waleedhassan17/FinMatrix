@@ -77,6 +77,7 @@ import { formatCurrency, formatDate, lakhCroreWords } from '../../../utils/forma
 import type { PaymentMethod } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 import { customerOptionLabel } from '../../../models/partyCodeModel';
+import MoneyAccountDropdown from '../../../components/shared/MoneyAccountDropdown';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -567,6 +568,22 @@ const ReceivePaymentScreen: React.FC = () => {
                 value={form.reference}
                 onChangeText={v => dispatch(setPaymentField({ key: 'reference', value: v }))}
                 placeholder="e.g. CHQ-12345"
+              />
+              {/* The bank the customer actually paid into — MCB, Allied,
+                  Meezan. Automatic keeps the old rule. */}
+              <MoneyAccountDropdown
+                label="Deposit to"
+                value={form.bankAccountId}
+                onChange={v => dispatch(setPaymentField({ key: 'bankAccountId', value: v }))}
+                automaticLabel="Automatic — let FinMatrix choose"
+                allowCreate={!isReviewing}
+                hint={
+                  form.bankAccountId
+                    ? undefined
+                    : form.method === 'cash'
+                      ? 'Automatic uses 1000 Cash for a cash payment.'
+                      : 'Automatic uses 1010 Business Checking.'
+                }
               />
               <CustomInput
                 label={creditShown > 0 ? 'Amount received (Rs)' : 'Amount (Rs) *'}

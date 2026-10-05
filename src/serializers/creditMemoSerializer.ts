@@ -31,6 +31,7 @@ export const mapCreditMemo = (raw: any): CreditMemo => ({
   balance: toNum(raw.balance),
   status: (raw.status ?? 'open') as CreditMemoStatus,
   lines: Array.isArray(raw.lines) ? raw.lines.map(mapLine) : [],
+  refundAccountId: raw.refundAccountId ?? null,
 });
 
 const arrayFrom = (payload: any): any[] => {

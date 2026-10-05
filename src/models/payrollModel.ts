@@ -15,4 +15,6 @@ export interface PayrollItem {
 export interface PayrollRun {
   id: string; payPeriod: string; periodStart: string; periodEnd: string; payDate: string;
   totalGross: number; totalDeductions: number; totalNet: number; status: PayrollStatus; items: PayrollItem[];
+  /** The cash or bank account net pay left from; null on a draft, and on runs paid before the choice (Cash). */
+  bankAccountId: string | null;
 }

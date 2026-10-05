@@ -15,6 +15,7 @@ export const mapRun = (r: any): PayrollRun => ({
   id: r.id ?? '', payPeriod: r.payPeriod ?? '', periodStart: r.periodStart ?? '', periodEnd: r.periodEnd ?? '', payDate: r.payDate ?? '',
   totalGross: toNum(r.totalGross), totalDeductions: toNum(r.totalDeductions), totalNet: toNum(r.totalNet),
   status: (r.status ?? 'draft') as PayrollStatus, items: Array.isArray(r.items) ? r.items.map(mapItem) : [],
+  bankAccountId: r.bankAccountId ?? null,
 });
 export const payrollRunListSerializer = (p: any): PayrollRun[] => arrayFrom(p).map(mapRun);
 export const payrollRunSingleSerializer = (p: any): PayrollRun | null => { const r = p?.data ?? p; if (!r || Array.isArray(r) || !r.id) return null; return mapRun(r); };

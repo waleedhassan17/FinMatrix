@@ -313,6 +313,17 @@ const COAListScreen: React.FC = () => {
             );
           })}
         </ScrollView>
+
+        {/* The account people most often need and most often mis-file: it
+            opens already an asset of kind Bank, numbered beside 1010. */}
+        <TouchableOpacity
+          style={styles.bankAction}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('COAForm', { preset: 'bank' })}
+        >
+          <Feather name="briefcase" size={14} color={THEME.colors.primary} />
+          <Text style={styles.bankActionText}>New bank account</Text>
+        </TouchableOpacity>
       </View>
     ),
     [summary, searchQuery, activeFilter, dispatch],
@@ -387,6 +398,20 @@ const styles = StyleSheet.create({
   },
   chipSelected: { backgroundColor: THEME.colors.primary, borderColor: THEME.colors.primary },
   chipText: { ...THEME.typography.labelMd, color: THEME.colors.textSecondary },
+  bankAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: THEME.spacing.xs,
+    marginTop: THEME.spacing.sm,
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: THEME.spacing.xs,
+    borderRadius: THEME.radius.full,
+    borderWidth: 1,
+    borderColor: THEME.colors.primary,
+    backgroundColor: THEME.colors.surface,
+  },
+  bankActionText: { ...THEME.typography.labelMd, color: THEME.colors.primary },
   chipTextSelected: { color: colors.neutral0 },
 
   // Section header

@@ -8,7 +8,9 @@ export const deleteEmployeeAPI = (id: string) => wrap(api.delete(`/employees/${i
 export const getPayrollRunsAPI = () => wrap(api.get('/payroll/runs'));
 export const getPayrollRunByIdAPI = (id: string) => wrap(api.get(`/payroll/runs/${id}`));
 export const createPayrollRunAPI = (data: any) => wrap(api.post('/payroll/runs', data));
-export const processPayrollRunAPI = (id: string) => wrap(api.post(`/payroll/runs/${id}/process`, {}));
+/** Net pay leaves from `bankAccountId` — any active cash or bank account — or 1000 Cash when none is given. */
+export const processPayrollRunAPI = (id: string, bankAccountId?: string) =>
+  wrap(api.post(`/payroll/runs/${id}/process`, bankAccountId ? { bankAccountId } : {}));
 // Official PDF payslip (backend-rendered; figures tie to the posted entry).
 export const getPayslipPdfAPI = async (runId: string, employeeId: string): Promise<Blob> => {
   try {

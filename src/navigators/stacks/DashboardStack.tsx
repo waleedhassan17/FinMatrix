@@ -23,7 +23,7 @@ export type DashboardStackParamList = {
   OpeningBalance: undefined;
   JournalEntryForm: undefined;
   COAList: undefined;
-  COAForm: { accountId?: string } | undefined;
+  COAForm: { accountId?: string; preset?: 'bank' | 'cash' } | undefined;
   COADetail: { accountId: string };
   // SHELVED (Tax Management). Commented with the registration: leaving the
   // param declared would let navigate('TaxSettings') compile against a route

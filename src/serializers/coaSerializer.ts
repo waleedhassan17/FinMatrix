@@ -28,7 +28,7 @@ function serializeAccount(raw: any): COAApiAccount {
     code: raw.code || raw.accountNumber || '',
     name: raw.name || '',
     type: raw.type || 'asset',
-    subType: raw.subType || 'current_asset',
+    subType: raw.subType || '',
     description: raw.description || '',
     parentId: raw.parentId ?? null,
     isActive: typeof raw.isActive === 'boolean' ? raw.isActive : true,
@@ -55,7 +55,10 @@ export function coaListSerializer(payload: any): SerializedCOAListData {
 
 export function coaSingleSerializer(payload: any): SerializedCOASingleData {
   const data = payload?.data || {};
-  const rawAccount = data.account || {};
+  // GET /accounts/:id wraps it ({account, recentEntries}); POST and PATCH
+  // answer with the account itself. Reading only `data.account` turned every
+  // created account into a blank row.
+  const rawAccount = data.account || (data.id ? data : {});
 
   return { account: serializeAccount(rawAccount) };
 }

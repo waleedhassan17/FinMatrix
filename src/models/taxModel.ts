@@ -86,17 +86,50 @@ export const validateTaxRate = (data: {
   return errors;
 };
 
-export const validateTaxPayment = (data: {
+/** "2026-Q3" — the quarter a date falls in, the period a payment usually settles. */
+export const quarterLabel = (isoDate: string): string => {
+  const m = /^(\d{4})-(\d{2})/.exec(isoDate);
+  if (!m) return '';
+  return `${m[1]}-Q${Math.floor((Number(m[2]) - 1) / 3) + 1}`;
+};
+
+export interface TaxPaymentFormValues {
   taxRateId: string;
   amount: string;
   date: string;
+  period: string;
+  reference: string;
+  /** The cash or bank account it is paid from. Empty: the server uses 1000 Cash. */
   bankAccountId: string;
-}): ValidationErrors => {
+}
+
+export const validateTaxPayment = (data: TaxPaymentFormValues): ValidationErrors => {
   const errors: ValidationErrors = {};
   if (!data.taxRateId) errors.taxRateId = 'Select a tax rate';
   const amt = parseFloat(data.amount);
   if (!(amt > 0)) errors.amount = 'Amount must be greater than 0';
-  if (!data.date) errors.date = 'Date is required';
-  if (!data.bankAccountId) errors.bankAccountId = 'Select a bank account';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date)) errors.date = 'Date must be in YYYY-MM-DD format';
+  const period = data.period.trim();
+  if (!period) errors.period = 'Say which period this settles, e.g. 2026-Q3';
+  else if (period.length > 32) errors.period = 'Keep the period to 32 characters';
+  if (data.reference.trim().length > 64) errors.reference = 'Keep the reference to 64 characters';
   return errors;
+};
+
+/**
+ * Form → POST /taxes/payments with exactly the DTO's fields. It used to send
+ * `date`, `notes`, `taxRateName` and a numeric amount, and to leave out the
+ * required `period` and `paymentDate`, so the server refused every payment.
+ */
+export const taxPaymentPayload = (form: TaxPaymentFormValues): Record<string, string> => {
+  const payload: Record<string, string> = {
+    taxRateId: form.taxRateId,
+    period: form.period.trim(),
+    amount: (parseFloat(form.amount.replace(/,/g, '')) || 0).toFixed(2),
+    paymentDate: form.date,
+  };
+  const reference = form.reference.trim();
+  if (reference) payload.reference = reference;
+  if (form.bankAccountId) payload.bankAccountId = form.bankAccountId;
+  return payload;
 };

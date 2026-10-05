@@ -93,6 +93,29 @@ describe('staff — the response is an approval request, not a payment', () => {
   });
 });
 
+describe('the account the money went into', () => {
+  it('sends the bank chosen in Deposit to', async () => {
+    createPayment.mockResolvedValue({ data: { id: 'pay-1' } });
+    const store = makeStore();
+    seed(store);
+    store.dispatch(setPaymentField({ key: 'bankAccountId', value: 'acct-meezan' }));
+
+    await saved(store);
+
+    expect(createPayment.mock.calls[0][0].bankAccountId).toBe('acct-meezan');
+  });
+
+  it('leaves it to the server on Automatic', async () => {
+    createPayment.mockResolvedValue({ data: { id: 'pay-1' } });
+    const store = makeStore();
+    seed(store);
+
+    await saved(store);
+
+    expect(createPayment.mock.calls[0][0]).not.toHaveProperty('bankAccountId');
+  });
+});
+
 describe('owner — the payment posts', () => {
   it('returns the created payment', async () => {
     createPayment.mockResolvedValue({ data: { id: 'pay-1' } });

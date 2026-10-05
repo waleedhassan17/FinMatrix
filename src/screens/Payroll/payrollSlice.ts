@@ -64,7 +64,10 @@ export const payrollSlice = createAppSlice({
       },
     ),
     processRun: create.asyncThunk(
-      async (id: string) => processPayrollRunAPI(id),
+      async (arg: string | { id: string; bankAccountId?: string }) =>
+        typeof arg === 'string'
+          ? processPayrollRunAPI(arg)
+          : processPayrollRunAPI(arg.id, arg.bankAccountId),
       {
         pending: state => { state.isSaving = true; },
         fulfilled: (state, action) => { state.isSaving = false; state.currentRun = payrollRunSingleSerializer(action.payload); },

@@ -10,17 +10,12 @@
  */
 export type UserRole = 'admin' | 'staff' | 'delivery' | 'super_admin';
 export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
-export type AccountSubType =
-  | 'current_asset'
-  | 'fixed_asset'
-  | 'current_liability'
-  | 'long_term_liability'
-  | 'owner_equity'
-  | 'retained_earnings'
-  | 'operating_revenue'
-  | 'other_revenue'
-  | 'operating_expense'
-  | 'cost_of_goods';
+/**
+ * The server's own label for an account's kind — 'Cash', 'Bank', 'Accounts
+ * Receivable', 'Other Expense' … — stored and compared verbatim, so it is a
+ * string rather than a set of slugs the server would refuse.
+ */
+export type AccountSubType = string;
 export type JournalEntryStatus = 'draft' | 'posted' | 'voided';
 export type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue' | 'void' | 'cancelled';
 export type PaymentMethod = 'cash' | 'cheque' | 'bank_transfer' | 'online';

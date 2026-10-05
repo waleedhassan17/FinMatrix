@@ -69,6 +69,12 @@ export interface ReceivePaymentSliceState {
   paymentDate: string;
   method: PaymentMethod;
   reference: string;
+  /**
+   * The cash or bank account the money went into. Empty means Automatic: the
+   * server takes 1000 Cash for a cash payment and 1010 Business Checking for
+   * anything else, as it always has.
+   */
+  bankAccountId: string;
   /** New money received. May be empty when credit on account settles it all. */
   amount: string;
   notes: string;
@@ -106,6 +112,7 @@ const initialState: ReceivePaymentSliceState = {
   paymentDate: toIsoDate(new Date()),
   method: 'bank_transfer',
   reference: '',
+  bankAccountId: '',
   amount: '',
   notes: '',
   saveOverpaymentAsCredit: true,
@@ -360,6 +367,7 @@ export const receivePaymentSlice = createAppSlice({
         state.method = toUiPaymentMethod(String(cash.paymentMethod ?? ''));
         state.amount = String(cash.amount ?? '');
         state.reference = cash.reference ?? '';
+        state.bankAccountId = cash.bankAccountId ?? '';
         state.notes = cash.memo ?? '';
         state.errors = {};
         state.useCredits = false;
@@ -481,6 +489,8 @@ export const receivePaymentSlice = createAppSlice({
           amount: paymentAmount.toFixed(2),
           reference: f.reference || undefined,
           memo: f.notes || undefined,
+          // Omitted on Automatic, so the server's default still applies.
+          ...(f.bankAccountId ? { bankAccountId: f.bankAccountId } : {}),
           applications: applications.length > 0 ? applications : undefined,
           // With no applications the server AUTO-APPLIES oldest-first, so
           // omitting them alone did the opposite of "save as customer credit".

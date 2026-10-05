@@ -59,7 +59,10 @@ export const creditMemoSlice = createAppSlice({
       },
     ),
     refundCreditMemo: create.asyncThunk(
-      async (id: string) => refundCreditMemoAPI(id),
+      async (arg: string | { id: string; bankAccountId?: string }) =>
+        typeof arg === 'string'
+          ? refundCreditMemoAPI(arg)
+          : refundCreditMemoAPI(arg.id, arg.bankAccountId),
       {
         fulfilled: (state, action) => { state.current = creditMemoSingleSerializer(action.payload); },
         rejected: (state, action) => { state.error = action.error?.message ?? 'Failed to refund the credit memo'; },

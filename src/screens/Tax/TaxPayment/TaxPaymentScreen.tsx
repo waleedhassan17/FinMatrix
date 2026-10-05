@@ -17,6 +17,10 @@ import {
   Platform
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
+import MoneyAccountDropdown from '../../../components/shared/MoneyAccountDropdown';
+import { selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
+import { moneyAccountLabel } from '../../../models/moneyAccountModel';
+import { validateTaxPayment } from '../../../models/taxModel';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -127,23 +131,17 @@ const TaxPaymentScreen: React.FC = () => {
   }, [saved, navigation]);
 
   const handleSubmit = useCallback(() => {
-    if (!form.taxRateId) {
-      Alert.alert('Validation', 'Please select a tax rate.');
-      return;
-    }
-    const amount = parseFloat(form.amount);
-    if (!form.amount || isNaN(amount) || amount <= 0) {
-      Alert.alert('Validation', 'Please enter a valid payment amount greater than 0.');
-      return;
-    }
-    if (!form.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      Alert.alert('Validation', 'Date must be in YYYY-MM-DD format.');
+    const errors = validateTaxPayment(form);
+    const first = Object.values(errors)[0];
+    if (first) {
+      Alert.alert('Validation', first);
       return;
     }
     dispatch(submitTaxPayment());
   }, [dispatch, form]);
 
   const selectedRate = rates.find(r => r.id === form.taxRateId);
+  const accounts = useAppSelector(selectAccounts);
 
   if (isLoading) {
     return (
@@ -241,16 +239,29 @@ const TaxPaymentScreen: React.FC = () => {
 
             <View style={styles.divider} />
 
-            <FieldLabel label="Notes" />
+            {/* The period it settles — required by the server. (There used to
+                be a Notes box here; the server has no notes on a tax payment,
+                so what was typed in it was silently dropped.) */}
+            <FieldLabel label="Period" required />
             <TextInput
-              style={[styles.fieldInput, styles.notesInput]}
-              placeholder="Optional notes about this payment"
+              style={styles.fieldInput}
+              placeholder="e.g. 2026-Q3"
               placeholderTextColor={THEME.colors.textTertiary}
-              value={form.notes}
-              onChangeText={v => dispatch(setFormField({ notes: v }))}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
+              value={form.period}
+              onChangeText={v => dispatch(setFormField({ period: v }))}
+              maxLength={32}
+              autoCorrect={false}
+            />
+
+            <View style={styles.divider} />
+
+            {/* Cash, as every tax payment was before there was a choice — now
+                shown, and any bank in the chart can be chosen instead. */}
+            <MoneyAccountDropdown
+              label="Pay from *"
+              value={form.bankAccountId}
+              onChange={v => dispatch(setFormField({ bankAccountId: v }))}
+              defaultToCash
             />
           </Card>
 
@@ -264,6 +275,8 @@ const TaxPaymentScreen: React.FC = () => {
                 valueColor={THEME.colors.primary}
               />
               <SummaryLine label="Date" value={form.date} />
+              {form.period ? <SummaryLine label="Period" value={form.period} /> : null}
+              <SummaryLine label="Paid from" value={moneyAccountLabel(accounts, form.bankAccountId)} />
               {form.reference ? <SummaryLine label="Reference" value={form.reference} /> : null}
             </SectionCard>
           )}

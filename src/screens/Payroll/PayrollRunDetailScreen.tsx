@@ -21,6 +21,9 @@ import CustomButton from '../../Custom-Components/CustomButton';
 import { ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, Badge, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 import { viewPayslipPdf, downloadPayslipPdf, sharePayslipPdf, type PayslipRef, type PayslipActionResult } from '../../utils/payslipPdf';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
+import MoneyAccountDropdown from '../../components/shared/MoneyAccountDropdown';
+import { selectAccounts } from '../ChartOfAccounts/COAList/coaListSlice';
+import { moneyAccountLabel } from '../../models/moneyAccountModel';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, typography } = THEME;
@@ -40,6 +43,9 @@ const PayrollRunDetailScreen: React.FC = () => {
   // official document is a backend-rendered PDF (view / download / share).
   const [payslipItem, setPayslipItem] = useState<any | null>(null);
   const [pdfBusy, setPdfBusy] = useState<'view' | 'download' | 'share' | null>(null);
+  // The account net pay leaves from — Cash unless a bank is chosen.
+  const [payFrom, setPayFrom] = useState('');
+  const accounts = useAppSelector(selectAccounts);
 
   const runPdfAction = async (
     kind: 'view' | 'download' | 'share',
@@ -65,11 +71,12 @@ const PayrollRunDetailScreen: React.FC = () => {
 
   useFocusEffect(useCallback(() => { dispatch(fetchPayrollRun(payrollRunId)); }, [dispatch, payrollRunId]));
 
-  const process = () => Alert.alert('Process Payroll', 'Posts one journal entry — Dr Salary Expense (6200), Cr Cash (1000) for net pay, Cr Payroll Liabilities (2310) for deductions — and marks the run paid. It cannot be edited afterwards.', [
+  const payFromLabel = moneyAccountLabel(accounts, payFrom || null);
+  const process = () => Alert.alert('Process Payroll', `Posts one journal entry — Dr Salary Expense (6200), Cr ${payFromLabel} for net pay, Cr Payroll Liabilities (2310) for deductions — and marks the run paid. It cannot be edited afterwards.`, [
     { text: 'Cancel', style: 'cancel' },
     { text: 'Process', onPress: async () => {
-      const res: any = await dispatch(processRun(payrollRunId));
-      if (res.meta.requestStatus === 'fulfilled') Alert.alert('Done', 'Payroll processed and posted.');
+      const res: any = await dispatch(processRun({ id: payrollRunId, bankAccountId: payFrom || undefined }));
+      if (res.meta.requestStatus === 'fulfilled') Alert.alert('Done', `Payroll processed and posted. Net pay was paid from ${payFromLabel}.`);
       else Alert.alert('Failed', res.error?.message ?? 'Could not process');
     } },
   ]);
@@ -107,8 +114,21 @@ const PayrollRunDetailScreen: React.FC = () => {
           <Text style={styles.hint}>Tap an employee to view & share their payslip.</Text>
         </SectionCard>
 
+        {r.status === 'paid' ? (
+          <Text style={styles.paidFrom}>Net pay paid from {moneyAccountLabel(accounts, r.bankAccountId)}</Text>
+        ) : (
+          // Cash, as every payroll was before there was a choice — now shown,
+          // and any bank in the chart can be chosen instead.
+          <MoneyAccountDropdown
+            label="Pay salaries from"
+            value={payFrom}
+            onChange={setPayFrom}
+            defaultToCash
+          />
+        )}
+
         <View style={styles.actions}>
-          {r.status !== 'paid' && <CustomButton title="Process Payroll" variant="primary" onPress={process} isLoading={isSaving} fullWidth />}
+          {r.status !== 'paid' && <CustomButton title="Process Payroll" variant="primary" onPress={process} isLoading={isSaving} disabled={!payFrom} fullWidth />}
           {r.status !== 'paid' && (
             <CustomButton
               title="Delete"
@@ -178,6 +198,7 @@ const SlipRow: React.FC<{ label: string; value: string; strong?: boolean }> = ({
 );
 
 const styles = StyleSheet.create({
+  paidFrom: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, marginBottom: THEME.spacing.sm },
   content: { padding: 16, gap: 14 },
   statusRow: { alignItems: 'flex-start' },
   headRow: { flexDirection: 'row', paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.border },

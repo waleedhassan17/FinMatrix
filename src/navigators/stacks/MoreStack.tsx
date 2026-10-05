@@ -13,7 +13,7 @@ export type MoreStackParamList = {
   PayrollRunList: undefined;
   PayrollRunDetail: { payrollRunId: string };
   COAList: undefined;
-  COAForm: { accountId?: string } | undefined;
+  COAForm: { accountId?: string; preset?: 'bank' | 'cash' } | undefined;
   COADetail: { accountId: string };
   AgencyList: undefined;
   AgencyDetail: { agencyId: string };

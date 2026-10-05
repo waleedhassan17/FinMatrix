@@ -71,6 +71,8 @@ import type { TransactionsStackParamList } from '../../../navigators/stacks/Tran
 import { creditAvailable, isCreditOverUsed } from '../../../models/creditSpreadModel';
 import Toast from 'react-native-toast-message';
 import { useCapability } from '../../../hooks/useCapability';
+import MoneyAccountDropdown from '../../../components/shared/MoneyAccountDropdown';
+import { isMoneyAccount } from '../../../models/moneyAccountModel';
 import { vendorOptionLabel } from '../../../models/partyCodeModel';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -109,25 +111,10 @@ const PayBillsScreen: React.FC = () => {
     [vendors],
   );
 
-  // Cash/Bank asset accounts from the backend chart of accounts —
-  // the payment source QuickBooks lets you pick when paying bills.
-  const payableAccounts = useMemo(
-    () => accounts.filter(a => a.isActive && a.type === 'asset' && ['Cash', 'Bank'].includes(String(a.subType))),
-    [accounts],
-  );
-
-  // Show what each account actually holds. Paying from an account without the
-  // funds is legitimate for a bank (an overdraft), but for Cash it means the
-  // books claim you handed over notes you did not have — and it is invisible
-  // until the balance is already negative.
-  const bankAccountOptions = useMemo(
-    () =>
-      payableAccounts.map(a => ({
-        label: `${a.name} (${a.code}) · ${formatCurrency(a.balance, 'Rs ')}`,
-        value: a.id,
-      })),
-    [payableAccounts],
-  );
+  // Every active cash and bank account in the chart — MCB, Allied, Meezan —
+  // the payment source Peachtree calls the Cash Account. The picker itself is
+  // MoneyAccountDropdown; this list feeds the overdraft warning.
+  const payableAccounts = useMemo(() => accounts.filter(isMoneyAccount), [accounts]);
 
   const generatePaymentNumber = useCallback(() => `BPAY-${String(Date.now()).slice(-6)}`, []);
 
@@ -402,19 +389,19 @@ const PayBillsScreen: React.FC = () => {
                 error={form.errors.vendorId}
                 searchable
               />
-              <CustomDropdown
+              <MoneyAccountDropdown
                 label={needsProof || creditUsed <= 0 ? 'Pay from account *' : 'Pay from account'}
-                options={bankAccountOptions}
                 value={form.bankAccountId}
                 onChange={v => dispatch(setPayBillField({ key: 'bankAccountId', value: v }))}
-                placeholder="Select the account…"
                 error={form.errors.bankAccountId}
+                hint={
+                  form.bankAccountId
+                    ? undefined
+                    : !needsProof && creditUsed > 0
+                      ? 'Not needed: vendor credit covers what is being settled.'
+                      : 'The account the money leaves — choose Cash for a cash payment. The method above is just how you paid.'
+                }
               />
-              <Text style={styles.fieldHint}>
-                {!needsProof && creditUsed > 0
-                  ? 'Not needed: vendor credit covers what is being settled.'
-                  : 'The account the money leaves — choose Cash for a cash payment. The method above is just how you paid.'}
-              </Text>
               {/* A warning, not a block: a bank overdraft is a real thing. */}
               {!!overdraw && (
                 <Text style={styles.overdrawNote}>
