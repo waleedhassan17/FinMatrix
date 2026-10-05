@@ -36,6 +36,7 @@ export const mapVendor = (raw: Partial<VendorApiEntity> & { companyName?: string
   return {
     id: raw.id ?? '',
     companyId: raw.companyId ?? '',
+    code: (raw as any).code ?? '',
     name: (raw as any).companyName ?? raw.name ?? '',
     email: raw.email ?? '',
     phone: raw.phone ?? '',

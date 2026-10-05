@@ -13,6 +13,7 @@ import { partySummarySerializer } from '../partySummarySerializer';
 const payload: Record<string, any> = {
   partyType: 'customer',
   party: {
+    code: 'C-0007',
     id: 'c1', name: 'Acme Traders', contactPerson: null, email: 'a@acme.pk', phone: '0300 1234567',
     address: '12 Mall Road, Lahore', paymentTerms: 'net30', taxId: null,
   },
@@ -42,6 +43,7 @@ describe('partySummarySerializer', () => {
   it('reads the enveloped summary, numbers as numbers', () => {
     const s = partySummarySerializer({ success: true, data: payload })!;
     expect(s.party).toEqual({
+      code: 'C-0007',
       id: 'c1', name: 'Acme Traders', contactPerson: '', email: 'a@acme.pk', phone: '0300 1234567',
       address: '12 Mall Road, Lahore', paymentTerms: 'net30', taxId: '',
     });

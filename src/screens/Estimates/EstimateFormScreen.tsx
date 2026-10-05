@@ -33,6 +33,7 @@ import { AddButton } from '../../components/form/FormUI';
 import LineItemRow from '../../components/shared/LineItemRow';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
+import { customerOptionLabel } from '../../models/partyCodeModel';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'EstimateForm'>;
@@ -182,7 +183,8 @@ const EstimateFormScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Card>
           <CustomDropdown label="Customer" placeholder="Select customer"
-            options={customers.map((c: any) => ({ label: c.name, value: c.id }))}
+            searchable
+            options={customers.map((c: any) => ({ label: customerOptionLabel(c), value: c.id }))}
             value={customerId} onChange={setCustomerId} />
           <View style={styles.row}>
             <View style={styles.col}>

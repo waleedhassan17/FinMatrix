@@ -82,6 +82,7 @@ import {
 import { formatCurrency } from '../../../utils/formatters';
 import type { DiscountType, InvoiceStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
+import { customerOptionLabel } from '../../../models/partyCodeModel';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -156,7 +157,7 @@ const InvoiceFormScreen: React.FC = () => {
     () =>
       customers
         .filter(c => c.isActive)
-        .map(c => ({ label: `${c.name} — ${c.company}`, value: c.id })),
+        .map(c => ({ label: customerOptionLabel(c), value: c.id })),
     [customers],
   );
 

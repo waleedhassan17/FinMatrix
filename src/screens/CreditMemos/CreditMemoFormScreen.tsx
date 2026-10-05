@@ -25,6 +25,7 @@ import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import { toIsoDate } from '../../models/reportModel';
 import { lineTaxError } from '../../models/taxRate';
+import { customerOptionLabel } from '../../models/partyCodeModel';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type FormRoute = RouteProp<TransactionsStackParamList, 'CreditMemoForm'>;
@@ -244,7 +245,8 @@ const CreditMemoFormScreen: React.FC = () => {
             </View>
           ) : (
             <CustomDropdown label="Customer" placeholder="Select customer"
-              options={customers.map((c: any) => ({ label: c.name, value: c.id }))} value={customerId} onChange={setCustomerId} />
+              searchable
+            options={customers.map((c: any) => ({ label: customerOptionLabel(c), value: c.id }))} value={customerId} onChange={setCustomerId} />
           )}
           <DateField label="Date" value={date} onChangeText={setDate} />
           <CustomInput label="Reason" value={reason} onChangeText={setReason} placeholder="e.g. returned goods" />

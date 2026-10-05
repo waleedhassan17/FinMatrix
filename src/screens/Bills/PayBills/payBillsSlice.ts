@@ -73,6 +73,15 @@ export interface PayBillsSliceState {
   reference: string;
   /** What the ticked bills are settled by in all. Derived from the rows. */
   amount: string;
+  /**
+   * The cash being paid, when typed. Empty: each ticked bill is paid in full.
+   * Typed: vendor credit is used first and the cash is spread over the ticked
+   * bills oldest first — 30 lakh and 20 lakh in full, 10 on the third. A vendor
+   * has no advance account, so it cannot be more than they owe after credit.
+   */
+  payAmount: string;
+  /** Opened from the payables summary: every bill ticked when they arrive. */
+  tickAll: boolean;
   bankAccountId: string;
   notes: string;
   outstandingRows: OutstandingBillRow[];
@@ -109,6 +118,8 @@ const initialState: PayBillsSliceState = {
   method: 'bank_transfer',
   reference: '',
   amount: '',
+  payAmount: '',
+  tickAll: false,
   bankAccountId: '',
   notes: '',
   outstandingRows: [],
@@ -154,6 +165,42 @@ function recompute(state: PayBillsSliceState) {
   });
   const total = state.outstandingRows.reduce((sum, r) => sum + (r.checked ? r.allocated : 0), 0);
   state.amount = total > 0 ? String(round2(total)) : '';
+}
+
+/** The credit a typed payment can lean on: what is set to be used, at most what the ticked bills owe. */
+export function creditCapacityOf(state: Pick<PayBillsSliceState, 'outstandingRows' | 'credits' | 'useCredits'>): number {
+  if (!state.useCredits) return 0;
+  const owed = state.outstandingRows.filter(r => r.checked).reduce((s, r) => s + r.balance, 0);
+  const credit = state.credits.reduce((s, c) => s + (parseFloat(c.use) || 0), 0);
+  return round2(Math.min(owed, credit));
+}
+
+/** The most a typed payment can be: what the ticked bills owe after credit. */
+export function maxCashOf(state: Pick<PayBillsSliceState, 'outstandingRows' | 'credits' | 'useCredits'>): number {
+  const owed = state.outstandingRows.filter(r => r.checked).reduce((s, r) => s + r.balance, 0);
+  return Math.max(0, round2(owed - creditCapacityOf(state)));
+}
+
+/**
+ * Spread a typed payment over the ticked bills, oldest first: credit plus cash,
+ * each bill up to its balance. With nothing typed, each ticked bill is paid in
+ * full, as it always was.
+ */
+function spreadPayAmount(state: PayBillsSliceState) {
+  if (!state.payAmount.trim()) {
+    state.outstandingRows.forEach(r => { r.allocated = r.checked ? r.balance : 0; });
+  } else {
+    let remaining = round2((parseFloat(state.payAmount) || 0) + creditCapacityOf(state));
+    state.outstandingRows.forEach(r => {
+      if (!r.checked || remaining <= 0) {
+        r.allocated = 0;
+        return;
+      }
+      r.allocated = round2(Math.min(r.balance, remaining));
+      remaining = round2(remaining - r.allocated);
+    });
+  }
+  recompute(state);
 }
 
 /** Clamp to the bill's balance — you can never settle a supplier's bill for
@@ -224,6 +271,7 @@ export const payBillsSlice = createAppSlice({
           state.credits = [];
           state.useCredits = false;
           state.amount = '';
+          state.payAmount = '';
         }
       },
     ),
@@ -236,9 +284,35 @@ export const payBillsSlice = createAppSlice({
           row.checked = !row.checked;
           row.allocated = row.checked ? row.balance : 0;
         }
-        recompute(state);
+        // With an amount typed, ticking spreads that amount again.
+        if (state.payAmount.trim()) spreadPayAmount(state);
+        else recompute(state);
       },
     ),
+
+    /** The cash being paid, typed: spread over the ticked bills, oldest first. */
+    setPayAmount: create.reducer((state, action: PayloadAction<string>) => {
+      state.payAmount = action.payload.replace(/[^0-9.]/g, '');
+      if (state.errors.payAmount) {
+        const { payAmount: _, ...rest } = state.errors;
+        state.errors = rest;
+      }
+      spreadPayAmount(state);
+    }),
+
+    /**
+     * Opened from the payables summary ("Pay Bills" there): every bill is
+     * ticked — now, and when the bills arrive — so a typed amount is spread
+     * across them.
+     */
+    openForSummary: create.reducer(state => {
+      state.tickAll = true;
+      state.outstandingRows.forEach(r => {
+        r.checked = true;
+        r.allocated = r.balance;
+      });
+      recompute(state);
+    }),
 
     setUseCredits: create.reducer((state, action: PayloadAction<boolean>) => {
       state.useCredits = action.payload;
@@ -246,7 +320,9 @@ export const payBillsSlice = createAppSlice({
         const { credits: _, ...rest } = state.errors;
         state.errors = rest;
       }
-      recompute(state);
+      // A typed payment stays what was typed: credit's share moves around it.
+      if (state.payAmount.trim()) spreadPayAmount(state);
+      else recompute(state);
     }),
 
     /** How much of one credit to spend, as typed. */
@@ -255,7 +331,8 @@ export const payBillsSlice = createAppSlice({
         const credit = state.credits.find(c => c.id === action.payload.id);
         if (!credit) return;
         credit.use = action.payload.value.replace(/[^0-9.]/g, '');
-        recompute(state);
+        if (state.payAmount.trim()) spreadPayAmount(state);
+        else recompute(state);
       },
     ),
 
@@ -267,11 +344,14 @@ export const payBillsSlice = createAppSlice({
         if (!row) return;
         row.allocated = clampToBalance(row, parseFloat(action.payload.value));
         row.checked = row.allocated > 0;
+        // Typed per bill now: a typed total no longer describes the rows.
+        state.payAmount = '';
         recompute(state);
       },
     ),
 
     toggleAllBills: create.reducer(state => {
+      state.payAmount = '';
       const allChecked = state.outstandingRows.every(r => r.checked);
       state.outstandingRows.forEach(r => {
         r.checked = !allChecked;
@@ -281,6 +361,7 @@ export const payBillsSlice = createAppSlice({
     }),
 
     payAllBills: create.reducer(state => {
+      state.payAmount = '';
       state.outstandingRows.forEach(r => {
         r.checked = true;
         r.allocated = r.balance;
@@ -364,6 +445,12 @@ export const payBillsSlice = createAppSlice({
           if (action.meta.arg !== state.vendorId) return;
           state.isLoadingBills = false;
           state.outstandingRows = buildRows(action.payload, action.meta.arg);
+          if (state.tickAll) {
+            state.outstandingRows.forEach(r => {
+              r.checked = true;
+              r.allocated = r.balance;
+            });
+          }
           recompute(state);
         },
         rejected: (state, action) => {
@@ -483,6 +570,8 @@ export const {
   setPayBillField,
   setPayBillVendor,
   toggleBillCheck,
+  setPayAmount,
+  openForSummary,
   payAllBills,
   setBillAllocation,
   toggleAllBills,

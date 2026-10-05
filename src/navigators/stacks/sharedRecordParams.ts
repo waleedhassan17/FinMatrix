@@ -18,6 +18,9 @@ export type SharedPartyParamList = {
   VendorDetail: { vendorId: string };
   VendorForm: { vendorId?: string } | undefined;
   PartySummary: { partyType: 'customer' | 'vendor'; partyId: string; partyName?: string };
+  PartyHistory: { partyType: 'customer' | 'vendor'; partyId: string; partyName?: string };
+  /** No params: the account view. With a party, that customer's or vendor's ledger. */
+  GeneralLedger: { partyType?: 'customer' | 'vendor'; partyId?: string; partyName?: string } | undefined;
   InventoryDetail: { itemId: string };
   InventoryForm: { itemId?: string } | undefined;
   Adjustment: { itemId?: string } | undefined;

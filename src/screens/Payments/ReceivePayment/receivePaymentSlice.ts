@@ -85,6 +85,11 @@ export interface ReceivePaymentSliceState {
   useCredits: boolean;
   /** Settled first by credit — the invoice "Use credit" was pressed on. */
   priorityInvoiceId: string;
+  /**
+   * Opened from the outstanding summary: every open invoice is ticked when the
+   * rows arrive, so a typed amount is spread across them oldest first.
+   */
+  tickAll: boolean;
   /** Reviewing a staff settlement: the credit it asks to spend, as asked. */
   requestCredits: CustomerCreditUsePayload[];
   errors: Record<string, string>;
@@ -108,6 +113,7 @@ const initialState: ReceivePaymentSliceState = {
   credits: [],
   useCredits: false,
   priorityInvoiceId: '',
+  tickAll: false,
   requestCredits: [],
   errors: {},
   isSaving: false,
@@ -224,6 +230,19 @@ export const receivePaymentSlice = createAppSlice({
       },
     ),
 
+    /**
+     * Opened from the outstanding summary ("Receive Payment" there): the
+     * summary's total is what is due after credits, so credit is switched on
+     * and every open invoice is ticked once the rows arrive. Every amount
+     * stays editable.
+     */
+    openForSummary: create.reducer(state => {
+      state.useCredits = true;
+      state.tickAll = true;
+      state.outstandingRows.forEach(r => { r.checked = true; });
+      recompute(state);
+    }),
+
     setUseCredits: create.reducer((state, action: PayloadAction<boolean>) => {
       state.useCredits = action.payload;
       if (state.errors.credits) {
@@ -252,12 +271,18 @@ export const receivePaymentSlice = createAppSlice({
       },
     ),
 
+    /**
+     * An amount typed on one invoice: two in full, the third in part. Capped at
+     * what the invoice still owes after credit. The row stays ticked while it is
+     * edited — clearing the box to retype must not take the box away — and a
+     * row at zero is simply left out of what is sent.
+     */
     setAllocatedAmount: create.reducer(
       (state, action: PayloadAction<{ invoiceId: string; amount: number }>) => {
         const row = state.outstandingRows.find(r => r.invoiceId === action.payload.invoiceId);
         if (row) {
-          row.allocated = Math.min(action.payload.amount, cashCapOf(row));
-          row.checked = row.allocated > 0;
+          row.allocated = round2(Math.max(0, Math.min(action.payload.amount, cashCapOf(row))));
+          row.checked = true;
         }
       },
     ),
@@ -390,6 +415,7 @@ export const receivePaymentSlice = createAppSlice({
           if (action.meta.arg !== state.customerId) return;
           state.isLoadingInvoices = false;
           state.outstandingRows = action.payload;
+          if (state.tickAll) state.outstandingRows.forEach(r => { r.checked = true; });
           recompute(state);
         },
         rejected: (state, action) => {
@@ -567,6 +593,7 @@ export function requestCashApplicationsOf(
 }
 
 export const {
+  openForSummary,
   setPaymentField,
   setPaymentCustomer,
   openForCredit,

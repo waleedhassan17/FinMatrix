@@ -27,6 +27,7 @@ import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
 import { toIsoDate } from '../../models/reportModel';
 import { lineTaxError } from '../../models/taxRate';
+import { vendorOptionLabel } from '../../models/partyCodeModel';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 // A line either returns STOCK to the supplier or credits money only.
@@ -199,7 +200,8 @@ const VendorCreditFormScreen: React.FC = () => {
 
         <Card>
           <CustomDropdown label="Vendor" placeholder="Select vendor"
-            options={vendors.map((v: any) => ({ label: v.name, value: v.id }))} value={vendorId} onChange={setVendorId} />
+            searchable
+            options={vendors.map((v: any) => ({ label: vendorOptionLabel(v), value: v.id }))} value={vendorId} onChange={setVendorId} />
           <DateField label="Date" value={date} onChangeText={setDate} />
           <CustomInput label="Reason" value={reason} onChangeText={setReason} placeholder="e.g. overcharge / returned stock" />
         </Card>

@@ -25,7 +25,8 @@ export const useCustomerPicker = (presetId?: string) => {
   useEffect(() => {
     let cancelled = false;
     fetchAllPages(
-      (page, limit) => getCustomersAPI({ page, limit }),
+      // A–Z: a picker is browsed by name; typing an ID or name narrows it.
+      (page, limit) => getCustomersAPI({ page, limit, sort: 'name' }),
       payload => customerListSerializer(payload).customers,
     )
       .then(rows => { if (!cancelled) setList(rows); })
@@ -56,7 +57,7 @@ export const useVendorPicker = (presetId?: string) => {
   useEffect(() => {
     let cancelled = false;
     fetchAllPages(
-      (page, limit) => getVendorsAPI({ page, limit }),
+      (page, limit) => getVendorsAPI({ page, limit, sort: 'name' }),
       payload => vendorListSerializer(payload).vendors,
     )
       .then(rows => { if (!cancelled) setList(rows); })

@@ -1,7 +1,8 @@
 import dayjs from 'dayjs';
-import React, { useEffect, useMemo, useCallback, useState } from 'react';
+import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
@@ -10,7 +11,13 @@ import {
   fetchGeneralLedger, selectGeneralLedgerState, setLedgerAccount, setLedgerRange, refreshLedgerRange
 } from './generalLedgerSlice';
 import { formatCurrency } from '../../../utils/formatters';
-import type { LedgerEntry } from '../../../models/generalLedgerModel';
+import type {
+  LedgerEntry, LedgerPartiesReport, LedgerPartyType, PartyLedgerEntry, PartyLedgerReport,
+} from '../../../models/generalLedgerModel';
+import { getLedgerPartiesAPI, getPartyLedgerAPI } from '../../../networks/reports/generalLedgerNetwork';
+import { ledgerPartiesSerializer, partyLedgerSerializer } from '../../../serializers/generalLedgerSerializer';
+import { partyLabel } from '../../../models/partyCodeModel';
+import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import { displayOrder, ROW_CAP, visibleLedgerRows } from './ledgerRows';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 
@@ -19,10 +26,49 @@ const { typography } = THEME;
 import {
   ReportContainer, ReportHeader, Card, SectionCard, FigureStrip, RefreshFade, DateField, Badge,
   LoadingBlock, ErrorBlock, EmptyBlock, reportContentStyle, amountColWidth,
-  ReportTitleBlock, useStatementCompany, rangeLabel
+  ReportTitleBlock, useStatementCompany, rangeLabel, Segmented
 } from '../../../components/reports/ReportUI';
 
 type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
+type LedgerRoute = RouteProp<ReportsStackParamList, 'GeneralLedger'>;
+
+/**
+ * Who the ledger is read by. One ledger, three selections — an account, a
+ * customer or a vendor — the way Peachtree lets you pull up any account's or
+ * any customer's ledger and read it the same way. A customer's or vendor's
+ * page opens this screen with them selected.
+ */
+type LedgerView = 'accounts' | 'customers' | 'vendors';
+const VIEWS: LedgerView[] = ['accounts', 'customers', 'vendors'];
+const VIEW_LABELS = ['Accounts', 'Customers', 'Vendors'];
+const PARTY_OF: Record<LedgerView, LedgerPartyType | null> = {
+  accounts: null,
+  customers: 'customer',
+  vendors: 'vendor',
+};
+
+/** A table line, whoever the ledger is read by. */
+interface TableRow {
+  key: string;
+  date: string;
+  postedAt: string;
+  /** The journal reference (accounts) or the transaction — "Invoice INV-2026-0012" (parties). */
+  title: string;
+  caption: string;
+  debit: number;
+  credit: number;
+  balance: number;
+  /** Where a tap goes; absent when there is nothing to open. */
+  open?: () => void;
+}
+
+interface TableGroup {
+  key: string;
+  heading: string;
+  rows: TableRow[];
+  opening?: number;
+  closing: number;
+}
 const rs = (n: number) => formatCurrency(n, 'Rs ');
 
 // The posting date is the accounting date; the time comes from when the entry
@@ -52,11 +98,37 @@ const groupByAccount = (entries: LedgerEntry[]) => {
   return order.map(code => byCode.get(code)!);
 };
 
+/** Party lines grouped by customer or vendor, in the order they first occur. */
+const groupByParty = (entries: PartyLedgerEntry[]) => {
+  const order: string[] = [];
+  const byId = new Map<string, { id: string; heading: string; rows: PartyLedgerEntry[] }>();
+  for (const e of entries) {
+    let group = byId.get(e.partyId);
+    if (!group) {
+      group = { id: e.partyId, heading: e.partyCode ? `${e.partyCode} — ${e.partyName}` : e.partyName, rows: [] };
+      byId.set(e.partyId, group);
+      order.push(e.partyId);
+    }
+    group.rows.push(e);
+  }
+  return order.map(id => byId.get(id)!);
+};
+
 const GeneralLedgerScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
+  const route = useRoute<LedgerRoute>();
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectGeneralLedgerState);
   const company = useStatementCompany();
+
+  // The selection lives on this screen, not in the shared slice: a ledger
+  // opened from a customer's page must not change the Reports tab's ledger.
+  const params = route.params;
+  const [view, setView] = useState<LedgerView>(
+    params?.partyType === 'vendor' ? 'vendors' : params?.partyType === 'customer' ? 'customers' : 'accounts',
+  );
+  const [partyId, setPartyId] = useState<string>(params?.partyId ?? '');
+  const partyType = PARTY_OF[view];
 
   // Bring the window up to today every time the screen is opened.
   //
@@ -70,9 +142,40 @@ const GeneralLedgerScreen: React.FC = () => {
   // is not updating".
   const range = state.range;
   const account = state.account;
+
+  // The ledger read by party: fetched here, newest request wins.
+  const [party, setParty] = useState<{
+    report: PartyLedgerReport | null;
+    parties: LedgerPartiesReport | null;
+    loading: boolean;
+    error: string;
+  }>({ report: null, parties: null, loading: false, error: '' });
+  const partyRequest = useRef(0);
+  const loadParty = useCallback(async () => {
+    if (!partyType) return;
+    const request = ++partyRequest.current;
+    setParty(p => ({ ...p, loading: true, error: '' }));
+    try {
+      const [ledgerRaw, partiesRaw] = await Promise.all([
+        getPartyLedgerAPI({ ...range, party: partyType, partyId: partyId || undefined }),
+        getLedgerPartiesAPI({ type: partyType, ...range }),
+      ]);
+      if (request !== partyRequest.current) return;
+      setParty({
+        report: partyLedgerSerializer(ledgerRaw),
+        parties: ledgerPartiesSerializer(partiesRaw),
+        loading: false,
+        error: '',
+      });
+    } catch (e: any) {
+      if (request !== partyRequest.current) return;
+      setParty(p => ({ ...p, loading: false, error: e?.message || 'Failed to load the ledger' }));
+    }
+  }, [partyType, partyId, range]);
+
   const reload = useCallback(
-    () => dispatch(fetchGeneralLedger({ range, account })),
-    [dispatch, range, account],
+    () => (partyType ? loadParty() : dispatch(fetchGeneralLedger({ range, account }))),
+    [dispatch, range, account, partyType, loadParty],
   );
   const isFirstFocus = React.useRef(true);
   useFocusEffect(
@@ -85,8 +188,13 @@ const GeneralLedgerScreen: React.FC = () => {
   );
 
   useEffect(() => {
+    if (partyType) return;
     dispatch(fetchGeneralLedger({ range: state.range, account: state.account }));
-  }, [dispatch, state.range.startDate, state.range.endDate, state.account]);
+  }, [dispatch, partyType, state.range.startDate, state.range.endDate, state.account]);
+
+  useEffect(() => {
+    if (partyType) void loadParty();
+  }, [partyType, loadParty]);
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -98,7 +206,12 @@ const GeneralLedgerScreen: React.FC = () => {
   // Newest first by default: the latest postings are what people check.
   const [newestFirst, setNewestFirst] = useState(true);
 
-  const { ledger, accounts } = state;
+  const { ledger: accountLedger, accounts } = state;
+  // The report on screen: the account ledger, or the party one.
+  const ledger: { entries: LedgerEntry[]; totals: { debit: number; credit: number } } | null =
+    partyType ? party.report : accountLedger;
+  const isLoading = partyType ? party.loading : state.isLoading;
+  const error = partyType ? party.error : state.error;
 
   // The most recent lines, never the oldest — see ledgerRows.ts for why that
   // distinction cost a week of apparently missing accounts.
@@ -111,15 +224,82 @@ const GeneralLedgerScreen: React.FC = () => {
     () => visibleLedgerRows(ledger ? ledger.entries : [], cap),
     [ledger, cap],
   );
-  const groups = useMemo(() => groupByAccount(rows), [rows]);
-  const openingByCode = useMemo(
-    () => new Map((ledger?.openingBalances ?? []).map(b => [b.accountCode, b.balance])),
-    [ledger],
-  );
-  const closingByCode = useMemo(
-    () => new Map((ledger?.closingBalances ?? []).map(b => [b.accountCode, b.balance])),
-    [ledger],
-  );
+
+  /** Where a party line opens: its document, or else its journal entry. */
+  const openPartyLine = useCallback((e: PartyLedgerEntry): (() => void) | undefined => {
+    if (e.documentId && e.documentType === 'invoice') return () => navigation.navigate('InvoiceDetail', { invoiceId: e.documentId! });
+    if (e.documentId && e.documentType === 'bill') return () => navigation.navigate('BillDetail', { billId: e.documentId! });
+    if (e.documentId && e.documentType === 'credit_memo') return () => navigation.navigate('CreditMemoDetail', { creditMemoId: e.documentId! });
+    if (e.documentId && e.documentType === 'vendor_credit') return () => navigation.navigate('VendorCreditDetail', { vendorCreditId: e.documentId! });
+    if (e.sourceId) return () => navigation.navigate('JournalEntryDetail', { entryId: e.sourceId });
+    return undefined;
+  }, [navigation]);
+
+  const groups: TableGroup[] = useMemo(() => {
+    if (partyType) {
+      const report = party.report;
+      const opening = new Map((report?.openingBalances ?? []).map(b => [b.partyId, b.balance]));
+      const closing = new Map((report?.closingBalances ?? []).map(b => [b.partyId, b.balance]));
+      return groupByParty(rows as PartyLedgerEntry[]).map(g => ({
+        key: g.id,
+        heading: g.heading,
+        opening: opening.get(g.id),
+        closing: closing.get(g.id) ?? g.rows[g.rows.length - 1]?.balance ?? 0,
+        rows: g.rows.map((e, i) => ({
+          key: `${e.sourceId}-${e.accountCode}-${i}`,
+          date: e.date,
+          postedAt: e.postedAt,
+          title: `${[e.label, e.documentNumber].filter(Boolean).join(' ')}${e.voided ? '  · Voided' : ''}`,
+          caption: `${e.accountCode} ${e.accountName} · ${e.reference}`,
+          debit: e.debit,
+          credit: e.credit,
+          balance: e.balance,
+          open: openPartyLine(e),
+        })),
+      }));
+    }
+    const opening = new Map((accountLedger?.openingBalances ?? []).map(b => [b.accountCode, b.balance]));
+    const closing = new Map((accountLedger?.closingBalances ?? []).map(b => [b.accountCode, b.balance]));
+    return groupByAccount(rows).map(g => ({
+      key: g.code,
+      heading: `${g.code} — ${g.name}`,
+      opening: opening.get(g.code),
+      // The API's own closing balance (or its balance on the account's last
+      // chronological entry) — never a running balance recomputed here.
+      closing: closing.get(g.code) ?? g.rows[g.rows.length - 1]?.balance ?? 0,
+      rows: g.rows.map((e, i) => ({
+        key: `${e.sourceId}-${e.accountCode}-${i}`,
+        date: e.date,
+        postedAt: e.postedAt,
+        title: `${e.reference}${e.voided ? '  · Voided' : ''}`,
+        caption: e.memo,
+        debit: e.debit,
+        credit: e.credit,
+        balance: e.balance,
+        // Every account line reads from a journal entry — the drill-through.
+        open: e.sourceId ? () => navigation.navigate('JournalEntryDetail', { entryId: e.sourceId }) : undefined,
+      })),
+    }));
+  }, [partyType, party.report, accountLedger, rows, navigation, openPartyLine]);
+
+  // The picker for a customer or vendor: every one, found by ID or name.
+  const partyOptions = useMemo(() => {
+    const options = [
+      { label: view === 'vendors' ? 'All vendors' : 'All customers', value: '' },
+      ...(party.parties?.parties ?? []).map(p => ({
+        label: `${partyLabel(p.partyCode, p.partyName)} — ${rs(p.closing)}`,
+        value: p.partyId,
+      })),
+    ];
+    const named = party.report?.party;
+    if (partyId && named?.id === partyId && !options.some(o => o.value === partyId)) {
+      options.push({ label: partyLabel(named.code, named.name ?? ''), value: partyId });
+    }
+    return options;
+  }, [party.parties, party.report, partyId, view]);
+  const selected = party.report?.party.id === partyId ? party.report.party : null;
+  const noun = view === 'vendors' ? 'vendor' : 'customer';
+  const control = partyType && !partyId ? party.report?.control : null;
 
   // Ledger rule: amounts are shown COMPLETE at full size. The Debit/Credit
   // columns are sized to the longest amount in the data; on narrow screens
@@ -134,7 +314,17 @@ const GeneralLedgerScreen: React.FC = () => {
 
   return (
     <ReportContainer>
-      <ReportHeader title="General Ledger" subtitle="Chronological account activity" onBack={() => navigation.goBack()} />
+      <ReportHeader
+        title="General Ledger"
+        subtitle={
+          !partyType
+            ? 'Chronological account activity'
+            : selected
+              ? `${partyLabel(selected.code, selected.name ?? '')} · ${noun} ledger`
+              : `Every ${noun}'s postings`
+        }
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView
         contentContainerStyle={reportContentStyle}
@@ -150,14 +340,31 @@ const GeneralLedgerScreen: React.FC = () => {
           </View>
         </Card>
 
-        {state.isLoading && !ledger && <LoadingBlock label="Loading ledger…" />}
-        {!!state.error && (
-          <ErrorBlock message={state.error}
-            onRetry={() => dispatch(fetchGeneralLedger({ range: state.range, account: state.account }))} />
-        )}
+        <Card>
+          <Segmented
+            options={VIEW_LABELS}
+            activeIndex={VIEWS.indexOf(view)}
+            onChange={i => { setView(VIEWS[i]); setPartyId(''); }}
+          />
+          {partyType && (
+            <View style={styles.partyPicker}>
+              <CustomDropdown
+                label={view === 'vendors' ? 'Vendor' : 'Customer'}
+                options={partyOptions}
+                value={partyId}
+                onChange={setPartyId}
+                placeholder={view === 'vendors' ? 'All vendors' : 'All customers'}
+                searchable
+              />
+            </View>
+          )}
+        </Card>
 
-        {ledger && !state.error && (
-          <RefreshFade busy={state.isLoading}>
+        {isLoading && !ledger && <LoadingBlock label="Loading ledger…" />}
+        {!!error && <ErrorBlock message={error} onRetry={() => void reload()} />}
+
+        {ledger && !error && (
+          <RefreshFade busy={isLoading}>
             <ReportTitleBlock
               company={company}
               report="General Ledger"
@@ -170,7 +377,7 @@ const GeneralLedgerScreen: React.FC = () => {
             ]} />
 
             {/* Account filter chips */}
-            {accounts && accounts.accounts.length > 0 && (
+            {!partyType && accounts && accounts.accounts.length > 0 && (
               <SectionCard title="Accounts" subtitle="Tap to filter the ledger" icon="folder">
                 <View style={styles.chipsRow}>
                   <Chip label="All" active={!state.account} onPress={() => dispatch(setLedgerAccount(null))} />
@@ -194,10 +401,20 @@ const GeneralLedgerScreen: React.FC = () => {
 
             <SectionCard
               title="Ledger Entries"
-              subtitle={state.account ? `Account ${state.account}` : 'All accounts'}
+              subtitle={
+                partyType
+                  ? selected
+                    ? partyLabel(selected.code, selected.name ?? '')
+                    : view === 'vendors' ? 'All vendors' : 'All customers'
+                  : state.account ? `Account ${state.account}` : 'All accounts'
+              }
               icon="list"
             >
-              {rows.length === 0 && <EmptyBlock title="No ledger activity for this period." />}
+              {rows.length === 0 && (
+                <EmptyBlock
+                  title={partyId ? `Nothing posted for this ${noun} in the period.` : 'No ledger activity for this period.'}
+                />
+              )}
 
               {rows.length > 0 && (
                 <View style={styles.chipsRow}>
@@ -239,55 +456,53 @@ const GeneralLedgerScreen: React.FC = () => {
                       // Display sums of exactly the rows above them.
                       const debit = group.rows.reduce((t, e) => t + (e.debit || 0), 0);
                       const credit = group.rows.reduce((t, e) => t + (e.credit || 0), 0);
-                      // The API's own closing balance (or its balance on the
-                      // account's last chronological entry) — never a running
-                      // balance recomputed on the client.
-                      const closing = closingByCode.get(group.code) ?? group.rows[group.rows.length - 1]?.balance ?? 0;
-                      const opening = openingByCode.get(group.code);
-                      const openingRow = opening !== undefined && hiddenCount === 0 ? (
+                      const openingRow = group.opening !== undefined && hiddenCount === 0 ? (
                         <View style={styles.bodyRow}>
                           <Text style={[styles.colDate, styles.refText]} />
                           <Text style={[styles.colAcct, styles.refText]}>Opening balance</Text>
                           <Text style={[{ width: valW }, styles.colVal, styles.refText]} />
                           <Text style={[{ width: valW }, styles.colVal, styles.refText]} />
-                          <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{rs(opening)}</Text>
+                          <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{rs(group.opening)}</Text>
                         </View>
                       ) : null;
-                      const heading = `${group.code} — ${group.name}`;
                       return (
-                        <View key={group.code}>
+                        <View key={group.key}>
                           <View style={styles.groupHead}>
-                            <Text style={styles.groupHeadText} numberOfLines={1}>{heading}</Text>
+                            <Text style={styles.groupHeadText} numberOfLines={1}>{group.heading}</Text>
                           </View>
 
                           {!newestFirst && openingRow}
-                          {displayOrder(group.rows, newestFirst).map((e, i) => (
-                            <View key={`${e.sourceId}-${e.accountCode}-${i}`} style={styles.bodyRow}>
+                          {displayOrder(group.rows, newestFirst).map(e => (
+                            <TouchableOpacity
+                              key={e.key}
+                              style={styles.bodyRow}
+                              onPress={e.open}
+                              disabled={!e.open}
+                              activeOpacity={0.6}
+                            >
                               <View style={styles.colDate}>
                                 <Text style={styles.bodyText}>{fmtLedgerDate(e.date)}</Text>
                                 <Text style={styles.refText}>{fmtLedgerTime(e.postedAt)}</Text>
                               </View>
                               <View style={styles.colAcct}>
-                                <Text style={styles.bodyText} numberOfLines={1}>
-                                  {e.reference}{e.voided ? '  · Voided' : ''}
-                                </Text>
-                                {!!e.memo && <Text style={styles.refText} numberOfLines={1}>{e.memo}</Text>}
+                                <Text style={styles.bodyText} numberOfLines={1}>{e.title}</Text>
+                                {!!e.caption && <Text style={styles.refText} numberOfLines={1}>{e.caption}</Text>}
                               </View>
                               <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{e.debit ? rs(e.debit) : '—'}</Text>
                               <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{e.credit ? rs(e.credit) : '—'}</Text>
                               <Text style={[{ width: valW }, styles.colVal, styles.bodyText]}>{rs(e.balance)}</Text>
-                            </View>
+                            </TouchableOpacity>
                           ))}
                           {newestFirst && openingRow}
 
                           <View style={styles.groupTotalRow}>
                             <Text style={[styles.colDate, styles.groupTotalText]} />
                             <Text style={[styles.colAcct, styles.groupTotalText]} numberOfLines={1}>
-                              Total for {heading}
+                              Total for {group.heading}
                             </Text>
                             <Text style={[{ width: valW }, styles.colVal, styles.groupTotalText]}>{rs(debit)}</Text>
                             <Text style={[{ width: valW }, styles.colVal, styles.groupTotalText]}>{rs(credit)}</Text>
-                            <Text style={[{ width: valW }, styles.colVal, styles.groupTotalText]}>{rs(closing)}</Text>
+                            <Text style={[{ width: valW }, styles.colVal, styles.groupTotalText]}>{rs(group.closing)}</Text>
                           </View>
                         </View>
                       );
@@ -310,6 +525,21 @@ const GeneralLedgerScreen: React.FC = () => {
                 </ScrollView>
               )}
             </SectionCard>
+
+            {partyType && (
+              <Text style={styles.footnote}>
+                {partyType === 'customer'
+                  ? 'Balance is what the customer owes, carried forward from before the period; below zero is credit in their favour. Tap a line to open its document.'
+                  : 'Balance is debit-positive like every account here: below zero is what you owe the vendor. Tap a line to open its document.'}
+              </Text>
+            )}
+            {control && (
+              <Text style={styles.footnote}>
+                {Math.abs(control.unlinked) < 0.005
+                  ? `Every ${noun}'s balance adds up to ${control.accounts.map(a => `${a.code} ${a.name}`).join(' and ')}: ${rs(control.balance)}.`
+                  : `${rs(control.unlinked)} on ${control.accounts.map(a => a.code).join(' and ')} belongs to no ${noun} — posted straight to the account by a journal entry. See the Accounts view.`}
+              </Text>
+            )}
           </RefreshFade>
         )}
       </ScrollView>
@@ -325,6 +555,8 @@ const Chip: React.FC<{ label: string; active: boolean; onPress: () => void }> = 
 
 const styles = StyleSheet.create({
   filterRow: { flexDirection: 'row', gap: THEME.spacing.sm },
+  partyPicker: { marginTop: THEME.spacing.md },
+  footnote: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginTop: THEME.spacing.sm, marginHorizontal: THEME.spacing.xs },
   truncationNotice: {
     backgroundColor: THEME.colors.warning + '14',
     borderWidth: 1,

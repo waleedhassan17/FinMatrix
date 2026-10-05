@@ -181,6 +181,8 @@ export interface CustomerAddress {
 export interface Customer {
   id: string;
   companyId: string;
+  /** The customer ID people search and print — C-0007. Empty only on a record that predates IDs. */
+  code: string;
   name: string;
   company: string;
   email: string;
@@ -217,6 +219,8 @@ export interface CustomerCredit {
 export interface Vendor {
   id: string;
   companyId: string;
+  /** The vendor ID people search and print — V-0003. Empty only on a record that predates IDs. */
+  code: string;
   name: string;
   email: string;
   phone: string;

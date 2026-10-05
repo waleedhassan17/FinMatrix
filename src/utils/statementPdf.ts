@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Customer Account Statement (PDF + share)
 // ═══════════════════════════════════════════════════════
-// Renders the response of GET /customers/:id/statement into a
-// professional account-statement PDF and opens the platform
-// share-sheet (same production pattern as invoiceShare.ts).
+// Renders the response of GET /customers/:id/ledger-statement (and the
+// vendor twin) into a professional account-statement PDF and opens the
+// platform share-sheet (same production pattern as invoiceShare.ts).
 //
 // Platform note: expo-print's printToFileAsync has no web
 // implementation, so on web we open the browser print dialog
@@ -35,6 +35,8 @@ export interface StatementData {
   party: 'customer' | 'vendor';
   customerName: string;
   customerEmail: string;
+  /** The party's ID (C-0007 / V-0003), printed under the name; empty when it has none. */
+  partyCode?: string;
   startDate: string;
   endDate: string;
   openingBalance: number;
@@ -59,56 +61,44 @@ const byDate = (a: StatementLine, b: StatementLine) => a.date.localeCompare(b.da
 const list = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 
 /**
- * Maps the raw /statement response (inside the API envelope) to StatementData.
+ * Maps the `…/ledger-statement` response (inside the API envelope) to
+ * StatementData.
  *
- * Credit memos bring the balance down and a cash refund of one puts it back —
- * the server has sent both since statements stopped leaving them out.
+ * The server reads the statement from the books — the same postings as the
+ * party's view in the General Ledger — and sends one signed line per
+ * transaction in date order, ready to print: an invoice, bill or refund raises
+ * the balance, a receipt, payment or credit lowers it. Customer and vendor
+ * statements share the shape; only the totals' names differ. (The old
+ * `/statement` sent document arrays to merge here, and missed what was posted
+ * without a document, such as a legacy prepaid delivery's advance.)
  */
 export function statementSerializer(payload: any): StatementData | null {
-  const d = payload?.data;
-  if (!d?.customer) return null;
-  const lines: StatementLine[] = [
-    ...list(d.invoices).map((i: any) => ({
-      date: i?.invoiceDate ?? '',
-      type: 'charge' as const,
-      label: 'Invoice',
-      reference: i?.invoiceNumber ?? 'Invoice',
-      amount: toNumber(i?.total),
-    })),
-    ...list(d.payments).map((p: any) => ({
-      date: p?.paymentDate ?? '',
-      type: 'credit' as const,
-      label: 'Payment',
-      reference: p?.paymentNumber || p?.reference || `Payment ${String(p?.id ?? '').slice(0, 8).toUpperCase()}`,
-      amount: toNumber(p?.amount),
-    })),
-    ...list(d.creditMemos).map((m: any) => ({
-      date: m?.date ?? '',
-      type: 'credit' as const,
-      label: 'Credit memo',
-      reference: m?.creditMemoNumber ?? 'Credit memo',
-      amount: toNumber(m?.total),
-    })),
-    ...list(d.refunds).map((r: any) => ({
-      date: r?.date ?? '',
-      type: 'charge' as const,
-      label: 'Refund',
-      reference: r?.creditMemoNumber ?? 'Refund',
-      amount: toNumber(r?.amount),
-    })),
-  ].sort(byDate);
+  const d = payload?.data ?? payload;
+  if (!d?.party || !Array.isArray(d?.lines)) return null;
+  const vendor = d.partyType === 'vendor';
+  const lines: StatementLine[] = list(d.lines).map((l: any) => {
+    const amount = toNumber(l?.amount);
+    return {
+      date: l?.date ?? '',
+      type: amount >= 0 ? ('charge' as const) : ('credit' as const),
+      label: l?.label || 'Posting',
+      reference: l?.reference || '—',
+      amount: Math.abs(amount),
+    };
+  });
   return {
-    party: 'customer',
-    customerName: d.customer.name ?? '',
-    customerEmail: d.customer.email ?? '',
+    party: vendor ? 'vendor' : 'customer',
+    customerName: d.party.name ?? '',
+    customerEmail: d.party.email ?? '',
+    partyCode: d.party.code ?? '',
     startDate: d.period?.startDate ?? '',
     endDate: d.period?.endDate ?? '',
     openingBalance: toNumber(d.openingBalance),
     lines,
-    totalInvoiced: toNumber(d.totals?.invoiced),
-    totalReceived: toNumber(d.totals?.received),
+    totalInvoiced: toNumber(vendor ? d.totals?.billed : d.totals?.invoiced),
+    totalReceived: toNumber(vendor ? d.totals?.paid : d.totals?.received),
     totalCredited: toNumber(d.totals?.credited),
-    totalRefunded: toNumber(d.totals?.refunded),
+    totalRefunded: vendor ? 0 : toNumber(d.totals?.refunded),
     closingBalance: toNumber(d.closingBalance),
   };
 }
@@ -163,7 +153,7 @@ export function buildStatementHtml(data: StatementData, company: CompanyInfo = D
       <div class="muted">${esc(formatDate(data.startDate))} — ${esc(formatDate(data.endDate))}</div>
     </div>
   </div>
-  <div><strong>${esc(data.customerName)}</strong>${data.customerEmail ? `<div class="muted">${esc(data.customerEmail)}</div>` : ''}</div>
+  <div><strong>${esc(data.customerName)}</strong>${data.partyCode ? `<div class="muted">${data.party === 'vendor' ? 'Vendor' : 'Customer'} ID ${esc(data.partyCode)}</div>` : ''}${data.customerEmail ? `<div class="muted">${esc(data.customerEmail)}</div>` : ''}</div>
   <table>
     <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th class="num">${vendor ? 'Billed' : 'Invoiced'}</th><th class="num">Paid &amp; credited</th><th class="num">Balance</th></tr></thead>
     <tbody>
@@ -182,51 +172,8 @@ export function buildStatementHtml(data: StatementData, company: CompanyInfo = D
 </body></html>`;
 }
 
-/**
- * Maps the raw /vendors/:id/statement response to StatementData so it can
- * reuse the same PDF template ("Invoiced" column reads as amounts billed).
- */
-export function vendorStatementSerializer(payload: any): StatementData | null {
-  const d = payload?.data;
-  if (!d?.vendor) return null;
-  const lines: StatementLine[] = [
-    ...list(d.bills).map((b: any) => ({
-      date: b?.billDate ?? '',
-      type: 'charge' as const,
-      label: 'Bill',
-      reference: b?.billNumber ?? 'Bill',
-      amount: toNumber(b?.total),
-    })),
-    ...list(d.payments).map((p: any) => ({
-      date: p?.paymentDate ?? '',
-      type: 'credit' as const,
-      label: 'Payment',
-      reference: p?.reference || `Payment ${String(p?.id ?? '').slice(0, 8).toUpperCase()}`,
-      amount: toNumber(p?.totalAmount ?? p?.amount),
-    })),
-    ...list(d.vendorCredits).map((c: any) => ({
-      date: c?.date ?? '',
-      type: 'credit' as const,
-      label: 'Vendor credit',
-      reference: c?.vendorCreditNumber ?? 'Vendor credit',
-      amount: toNumber(c?.total),
-    })),
-  ].sort(byDate);
-  return {
-    party: 'vendor',
-    customerName: d.vendor.name ?? '',
-    customerEmail: d.vendor.email ?? '',
-    startDate: d.period?.startDate ?? '',
-    endDate: d.period?.endDate ?? '',
-    openingBalance: toNumber(d.openingBalance),
-    lines,
-    totalInvoiced: toNumber(d.totals?.billed),
-    totalReceived: toNumber(d.totals?.paid),
-    totalCredited: toNumber(d.totals?.credited),
-    totalRefunded: 0,
-    closingBalance: toNumber(d.closingBalance),
-  };
-}
+/** The vendor statement reads the same shape as the customer's. */
+export const vendorStatementSerializer = statementSerializer;
 
 /** Vendor variant of shareStatementPdf — takes the raw API payload. */
 export async function shareVendorStatementPdf(

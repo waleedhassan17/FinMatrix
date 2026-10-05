@@ -7,6 +7,7 @@ import { createAppSlice } from '@store/createAppSlice';
 import type { PaymentTerms } from '../../../types';
 
 export interface CustomerFormSliceState {
+  code: string;
   name: string;
   company: string;
   email: string;
@@ -33,6 +34,7 @@ export interface CustomerFormSliceState {
 }
 
 const initialState: CustomerFormSliceState = {
+  code: '',
   name: '',
   company: '',
   email: '',

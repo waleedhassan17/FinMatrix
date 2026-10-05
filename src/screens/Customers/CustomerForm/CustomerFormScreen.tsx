@@ -2,7 +2,7 @@
 // FinMatrix — Customer Form Screen (Create / Edit)
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -43,6 +43,8 @@ import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { validateCustomer, PAYMENT_TERMS_OPTIONS } from '../../../models/customerModel';
 import { customerToFormData, formDataToCustomerPayload } from '../../../serializers/customerSerializer';
+import { getNextCustomerCodeAPI } from '../../../networks/sales/customerNetwork';
+import { isPartyCodeError } from '../../../models/partyCodeModel';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -73,6 +75,19 @@ const CustomerFormScreen: React.FC = () => {
   }, [editing, dispatch]);
   useEffect(() => () => { dispatch(resetCustomerForm()); }, [dispatch]);
 
+  // The ID a new customer gets if the field is left empty — a suggestion for
+  // the placeholder; the server assigns at save time.
+  const [nextCode, setNextCode] = useState('');
+  useEffect(() => {
+    if (isEditing) return;
+    let live = true;
+    getNextCustomerCodeAPI()
+      .then((code) => { if (live) setNextCode(code); })
+      // No suggestion is fine: the field still says the ID is automatic.
+      .catch((): void => undefined);
+    return () => { live = false; };
+  }, [isEditing]);
+
   // ── Field update helper ─────────────────────────
   const updateField = useCallback(
     (key: string, value: any) => dispatch(setField({ key: key as any, value })),
@@ -82,6 +97,7 @@ const CustomerFormScreen: React.FC = () => {
   // ── Save with validation ────────────────────────
   const handleSave = useCallback(async () => {
     const validationErrors = validateCustomer({
+      code: form.code,
       name: form.name,
       company: form.company,
       email: form.email,
@@ -114,6 +130,7 @@ const CustomerFormScreen: React.FC = () => {
     try {
       const payload = formDataToCustomerPayload(
         {
+          code: form.code,
           name: form.name,
           company: form.company,
           email: form.email,
@@ -152,6 +169,12 @@ const CustomerFormScreen: React.FC = () => {
         });
         navigation.goBack();
     } catch (e: any) {
+      // A taken or malformed ID belongs on its field, where it can be fixed.
+      if (isPartyCodeError(e, 'CUSTOMER')) {
+        dispatch(setErrors({ code: e.message }));
+        Toast.show({ type: 'error', text1: 'Customer ID', text2: e.message });
+        return;
+      }
       Toast.show({ type: 'error', text1: 'Error', text2: e?.message || 'Failed to save customer. Please try again.' });
     } finally {
       dispatch(setIsSaving(false));
@@ -178,6 +201,20 @@ const CustomerFormScreen: React.FC = () => {
           {/* ── Section: Basic Info ──────────────────── */}
           <Text style={styles.sectionTitle}>Basic Information</Text>
           <View style={styles.sectionCard}>
+            <CustomInput
+              label="Customer ID"
+              value={form.code}
+              onChangeText={v => updateField('code', v.toUpperCase())}
+              placeholder={isEditing ? 'Customer ID' : nextCode ? `${nextCode} (next)` : 'Next in the series'}
+              autoCapitalize="characters"
+              maxLength={20}
+              error={form.errors.code}
+            />
+            {!isEditing && !form.errors.code ? (
+              <Text style={styles.fieldHint}>
+                Leave empty for the next ID, or type your own (e.g. a Peachtree ID).
+              </Text>
+            ) : null}
             <CustomInput
               label="Name *"
               value={form.name}
@@ -392,6 +429,13 @@ const styles = StyleSheet.create({
   backIcon: { ...typography.h1, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
   scrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.xxl },
 
+  // Helper text under a field (theme: caption · textTertiary).
+  fieldHint: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
+  },
   sectionTitle: {
     ...typography.labelLg,
     color: colors.textPrimary,

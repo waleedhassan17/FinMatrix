@@ -41,6 +41,8 @@ export interface PartySummary {
   partyType: SummaryParty;
   party: {
     id: string;
+    /** The customer or vendor ID (C-0007); empty from a server that predates IDs. */
+    code: string;
     name: string;
     contactPerson: string;
     email: string;

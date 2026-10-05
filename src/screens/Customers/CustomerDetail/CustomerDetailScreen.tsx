@@ -40,7 +40,7 @@ import {
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { PAYMENT_TERMS_LABELS } from '../../../models/customerModel';
-import { getCustomerStatementAPI } from '../../../networks/sales/customerNetwork';
+import { getCustomerLedgerStatementAPI } from '../../../networks/sales/customerNetwork';
 import { SUMMARY_COPY } from '../../../models/partySummaryModel';
 import { statementSerializer, shareStatementPdf } from '../../../utils/statementPdf';
 import { useCompanyInfo } from '../../../utils/companyInfo';
@@ -200,6 +200,14 @@ const CustomerDetailScreen: React.FC = () => {
       partyName: customer.name,
     });
   };
+  // The customer's ledger is the General Ledger read by customer: one ledger,
+  // this customer selected, pushed onto the tab we are in.
+  const handleLedger = () => {
+    navigation.navigate('GeneralLedger', { partyType: 'customer', partyId: customer.id, partyName: customer.name });
+  };
+  const handleHistory = () => {
+    navigation.navigate('PartyHistory', { partyType: 'customer', partyId: customer.id, partyName: customer.name });
+  };
   const handleSendStatement = async () => {
     if (isSharingStatement) return;
     setIsSharingStatement(true);
@@ -208,7 +216,8 @@ const CustomerDetailScreen: React.FC = () => {
       const start = new Date(now.getFullYear(), 0, 1);
       const toIso = (d: Date) =>
         `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const payload = await getCustomerStatementAPI(customer.id, {
+      // Read from the books — the same postings as the customer's ledger.
+      const payload = await getCustomerLedgerStatementAPI(customer.id, {
         startDate: toIso(start),
         endDate: toIso(now),
       });
@@ -259,6 +268,7 @@ const CustomerDetailScreen: React.FC = () => {
             </TouchableOpacity>
             <Text style={styles.headerTitle} numberOfLines={1}>{customer.name}</Text>
           </View>
+          {!!customer.code && <Text style={styles.headerCode}>Customer ID {customer.code}</Text>}
         </View>
         <CustomButton
           title="Edit"
@@ -344,6 +354,10 @@ const CustomerDetailScreen: React.FC = () => {
             onPress={handleSendStatement}
             disabled={isSharingStatement}
           />
+        </View>
+        <View style={styles.actionRow}>
+          <ActionButton icon="book-open" label="Ledger" onPress={handleLedger} />
+          <ActionButton icon="clock" label="History" onPress={handleHistory} />
         </View>
 
         {/* ── Tabs ───────────────────────────────── */}
@@ -624,6 +638,7 @@ const styles = StyleSheet.create({
   headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
   backBtn: { marginRight: spacing.xxs, padding: spacing.xxs / 2 },
   headerTitle: { ...typography.h3, flex: 1, color: colors.textPrimary },
+  headerCode: { ...typography.labelMd, color: colors.textSecondary, marginTop: 2, marginLeft: 40 },
   scrollContent: { paddingBottom: spacing.xxl },
 
   // ── Top Card ───────────────────────────────────

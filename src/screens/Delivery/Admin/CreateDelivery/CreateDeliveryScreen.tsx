@@ -38,6 +38,7 @@ import { toIsoDate } from '../../../../models/reportModel';
 import { useCreditLimitPrompt } from '../../../../hooks/useCreditLimitPrompt';
 import { useIsOwner } from '../../../../hooks/useCapability';
 import { formatCurrency } from '../../../../utils/formatters';
+import { customerOptionLabel } from '../../../../models/partyCodeModel';
 
 /** What the customer has paid when the delivery is created. */
 type AdvanceMode = 'none' | 'full' | 'part';
@@ -114,7 +115,7 @@ const CreateDeliveryScreen: React.FC = () => {
 
   const customerOptions = useMemo(
     () => customers.map(c => ({
-      label: c.company ? `${c.name} — ${c.company}` : c.name,
+      label: customerOptionLabel(c),
       value: c.id
     })),
     [customers],

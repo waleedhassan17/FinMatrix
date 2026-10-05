@@ -63,6 +63,7 @@ export const partySummarySerializer = (payload: any): PartySummary | null => {
     partyType: raw.partyType === 'vendor' ? 'vendor' : 'customer',
     party: {
       id: s(party.id),
+      code: s(party.code),
       name: s(party.name) || 'Unknown',
       contactPerson: s(party.contactPerson),
       email: s(party.email),

@@ -18,7 +18,7 @@ import {
 } from '../../../serializers/customerSerializer';
 
 export type CustomerStatusFilter = 'all' | 'active' | 'inactive';
-export type CustomerSortField = 'name' | 'balance' | 'recent';
+export type CustomerSortField = 'name' | 'balance' | 'recent' | 'code';
 
 export interface CustomerListSliceState {
   customers: Customer[];
@@ -85,12 +85,18 @@ export const customerListSlice = createAppSlice({
 
     // ── Async thunks (flow: Network → Serializer → State) ──
     fetchCustomers: create.asyncThunk(
-      async (arg: FetchCustomersArg | void) => {
+      async (arg: FetchCustomersArg | void, thunkAPI) => {
         const a = (arg ?? {}) as FetchCustomersArg;
+        // Status and order are the server's, so they cover every customer —
+        // they used to sort and filter only the pages already loaded.
+        const { statusFilter, sortField } = (thunkAPI.getState() as { customerList: CustomerListSliceState })
+          .customerList;
         const payload = await getCustomersAPI({
           page: a.page ?? 1,
           limit: PAGE_SIZE,
           search: a.search?.trim() || undefined,
+          sort: sortField,
+          ...(statusFilter === 'all' ? {} : { isActive: statusFilter === 'active' }),
         });
         return { payload, append: a.append === true };
       },

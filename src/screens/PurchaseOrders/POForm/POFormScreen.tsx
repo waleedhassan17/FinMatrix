@@ -70,6 +70,7 @@ import { formatCurrency } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
 import type { PurchaseOrderWritePayload } from '../../../networks/purchases/purchaseOrderNetwork';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
+import { vendorOptionLabel } from '../../../models/partyCodeModel';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -116,7 +117,7 @@ const POFormScreen: React.FC = () => {
   const [rejectOpen, setRejectOpen] = useState(false);
 
   const vendorOptions = useMemo(
-    () => vendors.filter(v => v.isActive).map(v => ({ label: v.name, value: v.id })),
+    () => vendors.filter(v => v.isActive).map(v => ({ label: vendorOptionLabel(v), value: v.id })),
     [vendors],
   );
 

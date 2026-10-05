@@ -2,7 +2,7 @@
 // FinMatrix — Customer List Screen
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -63,6 +63,7 @@ const STATUS_FILTERS: { label: string; value: CustomerStatusFilter }[] = [
 
 const SORT_OPTIONS: { label: string; value: CustomerSortField }[] = [
   { label: 'A-Z', value: 'name' },
+  { label: 'ID', value: 'code' },
   { label: 'Balance', value: 'balance' },
   { label: 'Recent', value: 'recent' },
 ];
@@ -103,7 +104,8 @@ const CustomerListScreen: React.FC = () => {
     return () => {
       if (searchDebounce.current) clearTimeout(searchDebounce.current);
     };
-  }, [searchQuery, dispatch]);
+    // A status chip or an order asks the server again, as a search does.
+  }, [searchQuery, statusFilter, sortField, dispatch]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -116,26 +118,8 @@ const CustomerListScreen: React.FC = () => {
     dispatch(fetchCustomers({ page: page + 1, search: searchQuery, append: true }));
   }, [dispatch, isLoading, isLoadingMore, page, totalPages, searchQuery]);
 
-  // ── Filtered & sorted list (search happens server-side) ──
-  const filtered = useMemo(() => {
-    let list = customers;
-
-    // Status filter
-    if (statusFilter === 'active') list = list.filter(c => c.isActive);
-    else if (statusFilter === 'inactive') list = list.filter(c => !c.isActive);
-
-    // Sort
-    list = [...list].sort((a, b) => {
-      switch (sortField) {
-        case 'name': return a.name.localeCompare(b.name);
-        case 'balance': return b.balance - a.balance;
-        case 'recent': return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        default: return 0;
-      }
-    });
-
-    return list;
-  }, [customers, statusFilter, sortField]);
+  // Search, status and order all happen on the server; the list is what came back.
+  const filtered = customers;
 
   // ── Summary ─────────────────────────────────────
   const totalCustomers = serverTotal || customers.length;
@@ -160,6 +144,7 @@ const CustomerListScreen: React.FC = () => {
       <View style={styles.cardHeader}>
         <View style={{ flex: 1, marginRight: spacing.xs }}>
           <Text style={styles.cardName} numberOfLines={1}>{customer.name}</Text>
+          {!!customer.code && <Text style={styles.cardCode}>{customer.code}</Text>}
           {!!customer.company && (
             <Text style={styles.cardCompany} numberOfLines={1}>{customer.company}</Text>
           )}
@@ -250,7 +235,7 @@ const CustomerListScreen: React.FC = () => {
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={v => dispatch(setSearchQuery(v))}
-            placeholder="Search by name, company, email, phone…"
+            placeholder="Search by ID, name, company, email, phone…"
             placeholderTextColor={colors.textTertiary}
             autoFocus
           />
@@ -438,6 +423,7 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.xs },
   cardName: { ...typography.h4, color: colors.textPrimary },
+  cardCode: { ...typography.labelMd, color: colors.textSecondary, marginTop: 2 },
   cardCompany: { ...typography.bodySm, color: colors.textSecondary, marginTop: 2 },
   statusBadge: { paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs, borderRadius: 6 },
   statusBadgeText: { ...typography.overline },

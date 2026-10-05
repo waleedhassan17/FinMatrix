@@ -11,35 +11,36 @@ import { buildStatementHtml, statementSerializer, vendorStatementSerializer } fr
 
 const customerPayload = {
   data: {
-    customer: { id: 'c1', name: 'Madina Wholesale', email: 'm@x.pk' },
+    partyType: 'customer',
+    party: { id: 'c1', code: 'C-0007', name: 'Madina Wholesale', email: 'm@x.pk' },
     period: { startDate: '2026-02-01', endDate: '2026-02-28' },
-    openingBalance: '300.0000',
-    invoices: [{ id: 'i1', invoiceNumber: 'INV-1', invoiceDate: '2026-02-01', total: '1200.0000' }],
-    payments: [{ id: 'p1', paymentNumber: 'RCT-1', paymentDate: '2026-02-10', amount: '500.0000' }],
-    creditMemos: [{ id: 'm1', creditMemoNumber: 'CM-1', date: '2026-02-05', total: '200.0000' }],
-    refunds: [{ id: 'g1', creditMemoNumber: 'CM-1', date: '2026-02-06', amount: '50.0000' }],
-    totals: { invoiced: '1200', received: '500', credited: '200', refunded: '50' },
-    closingBalance: '850.0000',
+    openingBalance: 300,
+    lines: [
+      { id: 'g1', date: '2026-02-01', kind: 'invoice', label: 'Invoice', reference: 'INV-1', amount: 1200, balance: 1500 },
+      { id: 'g2', date: '2026-02-05', kind: 'credit_memo', label: 'Credit memo', reference: 'CM-1', amount: -200, balance: 1300 },
+      { id: 'g3', date: '2026-02-06', kind: 'refund', label: 'Refund', reference: 'CM-1', amount: 50, balance: 1350 },
+      { id: 'g4', date: '2026-02-10', kind: 'payment', label: 'Receipt', reference: 'RCT-1', amount: -500, balance: 850 },
+    ],
+    totals: { invoiced: 1200, received: 500, credited: 200, refunded: 50, other: 0 },
+    closingBalance: 850,
   },
 };
 
 describe('statementSerializer', () => {
-  it('reads every kind of event, in date order, each with its direction', () => {
+  it('reads every line in the server\'s order, each with its direction', () => {
     const s = statementSerializer(customerPayload)!;
     expect(s.lines.map(l => [l.label, l.type, l.reference, l.amount])).toEqual([
       ['Invoice', 'charge', 'INV-1', 1200],
       ['Credit memo', 'credit', 'CM-1', 200],
       ['Refund', 'charge', 'CM-1', 50],
-      ['Payment', 'credit', 'RCT-1', 500],
+      ['Receipt', 'credit', 'RCT-1', 500],
     ]);
     expect([s.totalCredited, s.totalRefunded, s.closingBalance]).toEqual([200, 50, 850]);
+    expect(s.partyCode).toBe('C-0007');
   });
 
-  it('reads an older server, with no credits, as having none', () => {
-    const { creditMemos: _c, refunds: _r, ...older } = customerPayload.data;
-    const s = statementSerializer({ data: { ...older, totals: { invoiced: '1200', received: '500' } } })!;
-    expect(s.lines.map(l => l.label)).toEqual(['Invoice', 'Payment']);
-    expect(s.totalCredited).toBe(0);
+  it('refuses a payload that is not a statement', () => {
+    expect(statementSerializer({ data: { customer: { id: 'c1' } } })).toBeNull();
   });
 });
 
@@ -52,6 +53,7 @@ describe('buildStatementHtml', () => {
     }
     expect(html).toContain('<td>Credit memo</td>');
     expect(html).toContain('<td>Refund</td>');
+    expect(html).toContain('Customer ID C-0007');
     expect(html).toContain('Credit memos');
     expect(html).toContain('Refunds paid');
   });
@@ -59,14 +61,17 @@ describe('buildStatementHtml', () => {
   it('speaks of bills and vendor credits on a vendor statement', () => {
     const s = vendorStatementSerializer({
       data: {
-        vendor: { id: 'v1', name: 'Habib Oil Mills', email: '' },
+        partyType: 'vendor',
+        party: { id: 'v1', code: 'V-0003', name: 'Habib Oil Mills', email: null },
         period: { startDate: '2026-03-01', endDate: '2026-03-31' },
         openingBalance: 0,
-        bills: [{ id: 'b1', billNumber: 'B-9', billDate: '2026-03-02', total: '5000' }],
-        payments: [{ id: 'p1', reference: 'CHQ 1', paymentDate: '2026-03-20', totalAmount: '1000' }],
-        vendorCredits: [{ id: 'c1', vendorCreditNumber: 'VC-3', date: '2026-03-09', total: '800' }],
-        totals: { billed: '5000', paid: '1000', credited: '800' },
-        closingBalance: '3200',
+        lines: [
+          { id: 'g1', date: '2026-03-02', kind: 'bill', label: 'Bill', reference: 'B-9', amount: 5000, balance: 5000 },
+          { id: 'g2', date: '2026-03-09', kind: 'vendor_credit', label: 'Vendor credit', reference: 'VC-3', amount: -800, balance: 4200 },
+          { id: 'g3', date: '2026-03-20', kind: 'payment', label: 'Payment', reference: 'CHQ 1', amount: -1000, balance: 3200 },
+        ],
+        totals: { billed: 5000, paid: 1000, credited: 800, other: 0 },
+        closingBalance: 3200,
       },
     })!;
     expect(s.lines.map(l => l.label)).toEqual(['Bill', 'Vendor credit', 'Payment']);

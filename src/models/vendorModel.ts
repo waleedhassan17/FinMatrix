@@ -8,6 +8,7 @@
 // Plus the existing form-validation helpers used by the form screen.
 
 import type { PaymentTerms, Vendor } from '../types';
+import { partyCodeProblem } from './partyCodeModel';
 
 // ─── Raw API entity (backend shape) ──────────────────
 // 1-to-1 with the `Vendor` UI type today; defined separately so
@@ -47,7 +48,8 @@ export interface VendorApiPagination {
 export interface VendorQueryParams {
   search?: string;
   status?: 'all' | 'active' | 'inactive';
-  sort?: 'name' | 'balance' | 'recent';
+  // Server order; `code` is natural (V-2 before V-10).
+  sort?: 'name' | 'balance' | 'recent' | 'code';
   page?: number;
   limit?: number;
 }
@@ -60,6 +62,8 @@ export interface ValidationErrors {
 }
 
 export interface VendorFormData {
+  /** Empty means "give it the next ID" on create, and "keep it" on an edit. */
+  code?: string;
   name: string;
   contactPerson: string;
   email: string;
@@ -97,6 +101,9 @@ export const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
 
 export const validateVendor = (data: VendorFormData): ValidationErrors => {
   const errors: ValidationErrors = {};
+
+  const codeProblem = partyCodeProblem(data.code ?? '', 'Vendor');
+  if (codeProblem) errors.code = codeProblem;
 
   if (!data.name.trim()) {
     errors.name = 'Company name is required';

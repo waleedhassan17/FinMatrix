@@ -19,7 +19,7 @@ import {
 import { vendorListSerializer, vendorSingleSerializer } from '../../../serializers/vendorSerializer';
 
 export type VendorStatusFilter = 'all' | 'active' | 'inactive';
-export type VendorSortField = 'name' | 'balance' | 'recent';
+export type VendorSortField = 'name' | 'balance' | 'recent' | 'code';
 
 export interface VendorListSliceState {
   vendors: Vendor[];
@@ -90,6 +90,8 @@ export const vendorListSlice = createAppSlice({
         const a = (arg ?? {}) as { page?: number; append?: boolean };
         const root = thunkAPI.getState() as { vendorList: VendorListSliceState };
         const { searchQuery, statusFilter, sortField } = root.vendorList;
+        // Status and order are the server's (`status`, `sort`), so they cover
+        // every vendor, not only the pages already loaded.
         const payload = await getVendorsAPI({
           ...(searchQuery ? { search: searchQuery } : {}),
           status: statusFilter,

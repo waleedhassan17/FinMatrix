@@ -12,7 +12,8 @@ export type ReportsStackParamList = {
   BalanceSheet: undefined;
   TrialBalance: undefined;
   CashFlow: undefined;
-  GeneralLedger: undefined;
+  // GeneralLedger is a shared record screen (sharedRecordParams): a customer's
+  // or vendor's page opens it with them selected, from any tab.
   BudgetList: undefined;
   BudgetForm: undefined;
   BudgetDetail: { budgetId: string };

@@ -36,6 +36,8 @@ export const SharedRecordRouteNames = {
   VendorDetail: 'VendorDetail',
   VendorForm: 'VendorForm',
   PartySummary: 'PartySummary',
+  PartyHistory: 'PartyHistory',
+  GeneralLedger: 'GeneralLedger',
   InventoryDetail: 'InventoryDetail',
   InventoryForm: 'InventoryForm',
   Adjustment: 'Adjustment',

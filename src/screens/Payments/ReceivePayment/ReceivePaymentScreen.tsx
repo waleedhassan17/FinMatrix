@@ -42,6 +42,8 @@ import {
   setPaymentField,
   setPaymentCustomer,
   openForCredit,
+  openForSummary,
+  setAllocatedAmount,
   setUseCredits,
   setCreditUse,
   toggleInvoiceCheck,
@@ -71,9 +73,10 @@ import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import { PrimaryButton, SecondaryButton } from '../../../components/form/FormUI';
 import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
-import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { formatCurrency, formatDate, lakhCroreWords } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
+import { customerOptionLabel } from '../../../models/partyCodeModel';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -98,6 +101,8 @@ const ReceivePaymentScreen: React.FC = () => {
   const preInvoiceId = route.params?.invoiceId;
   // "Use credit" on an invoice: credit on account switched on, that invoice first.
   const preUseCredits = !!route.params?.useCredits;
+  // From the outstanding summary: every invoice ticked, credit on (see openForSummary).
+  const fromSummary = !!route.params?.fromSummary;
   // Cash coming IN — the mirror of paying a bill, and gated the same way:
   // staff prepare it, the owner posts it.
   const payCap = useCapability('payment.receive');
@@ -133,12 +138,13 @@ const ReceivePaymentScreen: React.FC = () => {
     () =>
       customers
         .filter(c => c.isActive)
-        .map(c => ({ label: c.company ? `${c.name} — ${c.company}` : c.name, value: c.id })),
+        .map(c => ({ label: customerOptionLabel(c), value: c.id })),
     [customers],
   );
 
   useEffect(() => {
     if (preUseCredits && !isReviewing) dispatch(openForCredit({ invoiceId: preInvoiceId }));
+    else if (fromSummary && !isReviewing) dispatch(openForSummary());
     // No invented reference: the server numbers every receipt RCT-YYYY-NNNN.
     // The reference field is for the customer's own cheque or transfer id.
     return () => { dispatch(resetReceivePayment()); };
@@ -189,6 +195,21 @@ const ReceivePaymentScreen: React.FC = () => {
     [form.outstandingRows],
   );
 
+  // A row's amount as typed, kept until the field is left, so "10." or "10.5"
+  // is not rewritten to a number under the user's thumb.
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const setRowAmount = useCallback((invoiceId: string, text: string) => {
+    const clean = text.replace(/[^0-9.]/g, '');
+    setDrafts(d => ({ ...d, [invoiceId]: clean }));
+    dispatch(setAllocatedAmount({ invoiceId, amount: parseFloat(clean) || 0 }));
+  }, [dispatch]);
+  const endRowAmount = useCallback((invoiceId: string) => {
+    setDrafts(d => {
+      const { [invoiceId]: _, ...rest } = d;
+      return rest;
+    });
+  }, []);
+
   // Credit on account: what the customer holds, and what this payment spends.
   const spread = useMemo(
     () => creditSpreadOf(form),
@@ -228,7 +249,10 @@ const ReceivePaymentScreen: React.FC = () => {
         : 'Enter a positive amount';
     }
     if (creditOverUse) errs.credits = 'A credit is set to use more than it holds';
-    if (paymentAmount > 0) {
+    // Amounts typed on the invoices themselves cannot add up to more than came in.
+    if (totalAllocated > paymentAmount + 0.004) {
+      errs.allocations = `The invoices are allocated ${formatCurrency(totalAllocated, 'Rs ')} — more than the ${formatCurrency(paymentAmount, 'Rs ')} received.`;
+    } else if (paymentAmount > 0) {
       if (totalAllocated <= 0 && !(overpayment > 0 && form.saveOverpaymentAsCredit)) {
         errs.allocations = 'Allocate the payment to at least one invoice, or enable "Keep as customer advance".';
       }
@@ -552,6 +576,15 @@ const ReceivePaymentScreen: React.FC = () => {
                 keyboardType="decimal-pad"
                 error={form.errors.amount}
               />
+              {!!lakhCroreWords(form.amount) && (
+                <Text style={styles.fieldHint}>= {lakhCroreWords(form.amount)}</Text>
+              )}
+              {fromSummary && hasOutstanding && !isReviewing && (
+                <Text style={styles.fieldHint}>
+                  Every invoice in the summary is ticked: the amount is applied oldest first, and each invoice&apos;s
+                  amount can be changed below.
+                </Text>
+              )}
               {creditUsed > 0 && !isReviewing && (
                 <Text style={styles.fieldHint}>
                   Leave empty if credit on account covers what is being settled.
@@ -731,14 +764,36 @@ const ReceivePaymentScreen: React.FC = () => {
                       {row.credit > 0 && (
                         <Text style={styles.tdCredit}>{formatCurrency(row.credit, 'Rs ')} from credit</Text>
                       )}
+                      {/* What this payment leaves on the invoice. */}
+                      {(row.checked || covered) && (row.allocated > 0 || row.credit > 0) && (
+                        <Text style={styles.tdOutcome}>
+                          {cashCapOf(row) - row.allocated <= 0.004
+                            ? 'Paid in full'
+                            : `${formatCurrency(Math.round((cashCapOf(row) - row.allocated) * 100) / 100, 'Rs ')} left`}
+                        </Text>
+                      )}
                     </View>
-                    <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatDate(row.dueDate)}</Text>
-                    <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatCurrency(row.balance, 'Rs ')}</Text>
-                    <Text
-                      style={[styles.tdText, styles.tdRight, styles.tdStrong, { flex: 1 }, (row.allocated > 0 || covered) && { color: colors.success }]}
-                    >
-                      {covered ? 'By credit' : row.allocated > 0 ? formatCurrency(row.allocated, 'Rs ') : '—'}
-                    </Text>
+                    <Text style={[styles.tdText, styles.tdRight, styles.amountCell]}>{formatDate(row.dueDate)}</Text>
+                    <Text style={[styles.tdText, styles.tdRight, styles.amountCell]}>{formatCurrency(row.balance, 'Rs ')}</Text>
+                    {row.checked && !covered && !isReviewing ? (
+                      // Each ticked invoice's amount can be typed — two in full, the third in part.
+                      <TextInput
+                        value={drafts[row.invoiceId] ?? (row.allocated > 0 ? String(row.allocated) : '')}
+                        onChangeText={t => setRowAmount(row.invoiceId, t)}
+                        onBlur={() => endRowAmount(row.invoiceId)}
+                        keyboardType="decimal-pad"
+                        placeholder="0"
+                        placeholderTextColor={colors.textTertiary}
+                        style={[styles.appliedInput, { flex: 1 }]}
+                        accessibilityLabel={`Amount applied to ${row.invoiceNumber}`}
+                      />
+                    ) : (
+                      <Text
+                        style={[styles.tdText, styles.tdRight, styles.tdStrong, { flex: 1 }, (row.allocated > 0 || covered) && { color: colors.success }]}
+                      >
+                        {covered ? 'By credit' : row.allocated > 0 ? formatCurrency(row.allocated, 'Rs ') : '—'}
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -763,6 +818,12 @@ const ReceivePaymentScreen: React.FC = () => {
               )}
               <SummaryRow label={creditShown > 0 ? 'Money Received' : 'Payment Amount'} value={formatCurrency(paymentAmount, 'Rs ')} />
               <SummaryRow label={creditShown > 0 ? 'Money Applied to Invoices' : 'Applied to Invoices'} value={formatCurrency(totalAllocated, 'Rs ')} valueColor={totalAllocated > 0 ? PANEL.positive : undefined} />
+              {hasOutstanding && !isReviewing && (
+                <SummaryRow
+                  label="Still due after this payment"
+                  value={formatCurrency(Math.max(0, Math.round((totalOutstanding - totalAllocated) * 100) / 100), 'Rs ')}
+                />
+              )}
               {creditShown > 0 && (
                 <SummaryRow label="Credit + Money Received" value={formatCurrency(Math.round((creditShown + paymentAmount) * 100) / 100, 'Rs ')} />
               )}
@@ -942,6 +1003,25 @@ const styles = StyleSheet.create({
   creditTotal: { ...typography.labelSm, color: colors.textPrimary, textAlign: 'right', marginTop: spacing.xs },
   creditRequestAmount: { ...typography.labelMd, color: colors.textPrimary },
   tdCredit: { ...typography.caption, color: colors.success, marginTop: 1 },
+  tdOutcome: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
+  // A little air between figures that wrap, so a date and an amount never read as one number.
+  amountCell: { flex: 1, minWidth: 0, marginLeft: spacing.xxs },
+  // A text box sizes itself to ~20 characters on web; minWidth 0 lets it take
+  // the column's share like the figure it replaces.
+  appliedInput: {
+    ...typography.caption,
+    minWidth: 0,
+    width: 0,
+    color: colors.textPrimary,
+    textAlign: 'right',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    marginLeft: spacing.xxs,
+    backgroundColor: colors.surface,
+  },
   toggleSwitchLight: { backgroundColor: colors.neutral300 },
   container: { flex: 1, backgroundColor: colors.neutral100 },
   safeTop: { backgroundColor: HEADER_NAVY[0] },

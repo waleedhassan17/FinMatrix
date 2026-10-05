@@ -45,7 +45,7 @@ import {
   type VendorBillRow,
   type VendorPaymentRow
 } from '../../../serializers/vendorSerializer';
-import { getVendorStatementAPI } from '../../../networks/purchases/vendorNetwork';
+import { getVendorLedgerStatementAPI } from '../../../networks/purchases/vendorNetwork';
 import { shareVendorStatementPdf } from '../../../utils/statementPdf';
 import { SUMMARY_COPY } from '../../../models/partySummaryModel';
 import { useCompanyInfo } from '../../../utils/companyInfo';
@@ -172,6 +172,13 @@ const VendorDetailScreen: React.FC = () => {
       partyName: vendor.name,
     });
   };
+  // The vendor's ledger is the General Ledger read by vendor.
+  const handleLedger = () => {
+    navigation.navigate('GeneralLedger', { partyType: 'vendor', partyId: vendor.id, partyName: vendor.name });
+  };
+  const handleHistory = () => {
+    navigation.navigate('PartyHistory', { partyType: 'vendor', partyId: vendor.id, partyName: vendor.name });
+  };
   const handleSendStatement = async () => {
     if (isSharingStatement) return;
     setIsSharingStatement(true);
@@ -180,7 +187,8 @@ const VendorDetailScreen: React.FC = () => {
       const start = new Date(now.getFullYear(), 0, 1);
       const toIso = (d: Date) =>
         `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const payload = await getVendorStatementAPI(vendor.id, {
+      // Read from the books — the same postings as the vendor's ledger.
+      const payload = await getVendorLedgerStatementAPI(vendor.id, {
         startDate: toIso(start),
         endDate: toIso(now),
       });
@@ -211,7 +219,10 @@ const VendorDetailScreen: React.FC = () => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
             <Feather name="arrow-left" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>{vendor.name}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle} numberOfLines={1}>{vendor.name}</Text>
+            {!!vendor.code && <Text style={styles.headerCode}>Vendor ID {vendor.code}</Text>}
+          </View>
         </View>
         <CustomButton
           title="Edit"
@@ -267,6 +278,16 @@ const VendorDetailScreen: React.FC = () => {
           >
             <Feather name="send" size={20} color={colors.actionGreen} style={{ marginBottom: spacing.xxs }} />
             <Text style={styles.actionLabel}>{isSharingStatement ? 'Preparing…' : 'Send Statement'}</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.actionBtn} onPress={handleLedger} activeOpacity={0.7}>
+            <Feather name="book-open" size={20} color={colors.actionGreen} style={{ marginBottom: spacing.xxs }} />
+            <Text style={styles.actionLabel}>Ledger</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={handleHistory} activeOpacity={0.7}>
+            <Feather name="clock" size={20} color={colors.actionGreen} style={{ marginBottom: spacing.xxs }} />
+            <Text style={styles.actionLabel}>History</Text>
           </TouchableOpacity>
         </View>
 
@@ -528,7 +549,8 @@ const styles = StyleSheet.create({
   headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', marginRight: spacing.xs },
   backBtn: { marginRight: spacing.xxs, padding: spacing.xxs / 2 },
   backIcon: { ...typography.h1, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
-  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary, flex: 1 },
+  headerTitle: { ...THEME.typography.h2, color: colors.textPrimary },
+  headerCode: { ...THEME.typography.labelMd, color: colors.textSecondary, marginTop: 2 },
   scrollContent: { paddingBottom: spacing.xxl },
 
   // ── Top Card ───────────────────────────────────

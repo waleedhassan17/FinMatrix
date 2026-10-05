@@ -2,7 +2,7 @@
 // FinMatrix — Vendor Form Screen (Create / Edit)
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,8 @@ import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI'
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import { validateVendor, PAYMENT_TERMS_OPTIONS } from '../../../models/vendorModel';
+import { isPartyCodeError } from '../../../models/partyCodeModel';
+import { getNextVendorCodeAPI } from '../../../networks/purchases/vendorNetwork';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -85,6 +87,19 @@ const VendorFormScreen: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, editingId, dispatch]);
 
+  // The ID a new vendor gets if the field is left empty — a suggestion for the
+  // placeholder; the server assigns at save time.
+  const [nextCode, setNextCode] = useState('');
+  useEffect(() => {
+    if (isEditing) return;
+    let live = true;
+    getNextVendorCodeAPI()
+      .then((code) => { if (live) setNextCode(code); })
+      // No suggestion is fine: the field still says the ID is automatic.
+      .catch((): void => undefined);
+    return () => { live = false; };
+  }, [isEditing]);
+
   // ── Field update helper ─────────────────────────
   const updateField = useCallback(
     (key: string, value: any) => dispatch(setField({ key: key as any, value })),
@@ -94,6 +109,7 @@ const VendorFormScreen: React.FC = () => {
   // ── Save with validation ────────────────────────
   const handleSave = useCallback(async () => {
     const validationErrors = validateVendor({
+      code: form.code,
       name: form.name,
       contactPerson: form.contactPerson,
       email: form.email,
@@ -117,7 +133,15 @@ const VendorFormScreen: React.FC = () => {
 
     try {
       const result: any = await dispatch(saveVendor());
-      if (result.error) throw new Error(result.error.message);
+      if (result.error) {
+        // A taken or malformed ID belongs on its field, where it can be fixed.
+        if (isPartyCodeError(result.error, 'VENDOR')) {
+          dispatch(setErrors({ code: result.error.message }));
+          Toast.show({ type: 'error', text1: 'Vendor ID', text2: result.error.message });
+          return;
+        }
+        throw new Error(result.error.message);
+      }
       const saved = result.payload;
       if (saved) dispatch(upsertVendor(saved));
       await dispatch(fetchVendors());
@@ -158,6 +182,20 @@ const VendorFormScreen: React.FC = () => {
           {/* ── Section: Company Info ────────────────── */}
           <Text style={styles.sectionTitle}>Company Information</Text>
           <View style={styles.sectionCard}>
+            <CustomInput
+              label="Vendor ID"
+              value={form.code}
+              onChangeText={v => updateField('code', v.toUpperCase())}
+              placeholder={isEditing ? 'Vendor ID' : nextCode ? `${nextCode} (next)` : 'Next in the series'}
+              autoCapitalize="characters"
+              maxLength={20}
+              error={form.errors.code}
+            />
+            {!isEditing && !form.errors.code ? (
+              <Text style={styles.fieldHint}>
+                Leave empty for the next ID, or type your own (e.g. a Peachtree ID).
+              </Text>
+            ) : null}
             <CustomInput
               label="Company Name *"
               value={form.name}
@@ -309,6 +347,13 @@ const styles = StyleSheet.create({
   backIcon: { ...typography.h1, color: colors.secondary, fontWeight: typography.labelLg.fontWeight },
   scrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.xl },
 
+  // Helper text under a field (theme: caption · textTertiary).
+  fieldHint: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
+  },
   sectionTitle: {
     ...THEME.typography.h4,
     

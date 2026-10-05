@@ -46,12 +46,15 @@ export type TransactionsStackParamList = {
         fromApprovalRequestId?: string;
         /** "Use credit": credit on account on, `invoiceId` settled first. */
         useCredits?: boolean;
+        /** From the outstanding summary: every invoice ticked, credit on. */
+        fromSummary?: boolean;
       }
     | undefined;
   BillList: undefined;
   BillForm: { billId?: string; vendorId?: string } | undefined;
   BillDetail: { billId: string };
-  PayBills: { vendorId?: string; billId?: string } | undefined;
+  /** `fromSummary`: from the payables summary — every bill ticked, Done returns there. */
+  PayBills: { vendorId?: string; billId?: string; fromSummary?: boolean } | undefined;
   PaymentSuccess: {
     amount: number;
     /** Settled by vendor credit rather than cash — no money moved for this part. */
@@ -64,6 +67,8 @@ export type TransactionsStackParamList = {
     /** Where the user came from, so "View bill" returns there. */
     billId?: string;
     lines: { billNumber: string; applied: number; remaining: number }[];
+    /** Paid from the payables summary: Done returns there. */
+    fromSummary?: boolean;
   };
   POList: undefined;
   // prefillItemId seeds the first line from an inventory item, so "Create PO"

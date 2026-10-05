@@ -60,6 +60,7 @@ import { lineTaxError } from '../../../models/taxRate';
 import { formatCurrency } from '../../../utils/formatters';
 import type { BillStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
+import { vendorOptionLabel } from '../../../models/partyCodeModel';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -89,7 +90,7 @@ const BillFormScreen: React.FC = () => {
     () =>
       vendors
         .filter(v => v.isActive)
-        .map(v => ({ label: v.name, value: v.id })),
+        .map(v => ({ label: vendorOptionLabel(v), value: v.id })),
     [vendors],
   );
 

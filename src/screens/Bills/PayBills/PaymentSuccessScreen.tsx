@@ -38,7 +38,7 @@ const METHOD_LABEL: Record<string, string> = {
 const PaymentSuccessScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const { params } = useRoute<ScreenRoute>();
-  const { amount, creditApplied = 0, vendorName, accountName, paymentDate, reference, method, billId, lines } = params;
+  const { amount, creditApplied = 0, vendorName, accountName, paymentDate, reference, method, billId, lines, fromSummary } = params;
 
   const settled = lines.filter(l => l.remaining <= 0.005).length;
 
@@ -127,12 +127,16 @@ const PaymentSuccessScreen: React.FC = () => {
               This still cannot return to a filled-in Pay Bills form and post
               the payment twice: PayBills was replaced by this screen, so it is
               no longer in the stack to pop back to. */}
+          {/* From the payables summary, Done goes back to it: PayBills was
+              replaced by this screen, so the summary is right below. */}
           <CustomButton
-            title={billId ? 'View bill' : 'Done'}
+            title={billId ? 'View bill' : fromSummary ? 'Back to summary' : 'Done'}
             onPress={() =>
               billId
                 ? navigation.popTo('BillDetail', { billId })
-                : navigation.popTo('BillList')
+                : fromSummary
+                  ? navigation.goBack()
+                  : navigation.popTo('BillList')
             }
             variant="primary"
             size="sm"

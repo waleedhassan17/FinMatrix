@@ -45,6 +45,8 @@ import CustomerFormScreen from '../screens/Customers/CustomerForm/CustomerFormSc
 import VendorDetailScreen from '../screens/Vendors/VendorDetail/VendorDetailScreen';
 import VendorFormScreen from '../screens/Vendors/VendorForm/VendorFormScreen';
 import PartySummaryScreen from '../screens/Reports/PartySummary/PartySummaryScreen';
+import PartyHistoryScreen from '../screens/Parties/PartyHistory/PartyHistoryScreen';
+import GeneralLedgerScreen from '../screens/Reports/GeneralLedger/GeneralLedgerScreen';
 import InventoryDetailScreen from '../screens/Inventory/InventoryDetail/InventoryDetailScreen';
 import InventoryFormScreen from '../screens/Inventory/InventoryForm/InventoryFormScreen';
 import AdjustmentScreen from '../screens/Inventory/Adjustment/AdjustmentScreen';
@@ -79,6 +81,10 @@ export const SHARED_RECORD_ROUTES = [
   { title: N.VendorDetail, component: VendorDetailScreen },
   { title: N.VendorForm, component: VendorFormScreen },
   { title: N.PartySummary, component: PartySummaryScreen },
+  { title: N.PartyHistory, component: PartyHistoryScreen },
+  // The ledger a customer's or vendor's page opens with them selected — the
+  // same General Ledger the Reports tab shows, pushed onto whichever tab.
+  { title: N.GeneralLedger, component: GeneralLedgerScreen },
   // Inventory
   { title: N.InventoryDetail, component: InventoryDetailScreen },
   { title: N.InventoryForm, component: InventoryFormScreen },

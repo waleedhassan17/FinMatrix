@@ -173,8 +173,21 @@ const PartySummaryScreen: React.FC = () => {
     });
   };
 
+  /**
+   * Pay the summary: the payment screen with this party chosen and every open
+   * document ticked (`fromSummary`), so the amount received or paid is spread
+   * oldest first — two invoices in full, the third in part — and each figure
+   * can still be changed. Both screens are shared records: a push onto this tab.
+   */
+  const payable = Boolean(summary && summary.documents.length > 0);
+  const payNow = () => {
+    const nav = navigation as unknown as NativeStackNavigationProp<Record<string, object>>;
+    if (partyType === 'customer') nav.navigate('ReceivePayment', { customerId: partyId, fromSummary: true });
+    else nav.navigate('PayBills', { vendorId: partyId, fromSummary: true });
+  };
+
   const subtitle = summary
-    ? `${summary.party.name} · as of ${summaryDate(summary.asOfDate)}`
+    ? `${summary.party.code ? `${summary.party.code} · ` : ''}${summary.party.name} · as of ${summaryDate(summary.asOfDate)}`
     : partyName || undefined;
 
   return (
@@ -219,22 +232,54 @@ const PartySummaryScreen: React.FC = () => {
 
           {sendable ? (
             <View style={[styles.footer, { paddingBottom: spacing.sm + insets.bottom }]}>
-              <TouchableOpacity
-                style={[styles.primaryBtn, busy !== null && styles.dimmed]}
-                activeOpacity={0.85}
-                disabled={busy !== null}
-                onPress={() => run('share', sharePartySummaryPdf)}
-                accessibilityRole="button"
-                accessibilityLabel="Share PDF"
-              >
-                {busy === 'share' ? (
-                  <ActivityIndicator size="small" color={colors.textInverse} />
-                ) : (
-                  <Feather name="share-2" size={16} color={colors.textInverse} />
-                )}
-                <Text style={styles.primaryText}>Share PDF</Text>
-              </TouchableOpacity>
+              {payable ? (
+                <TouchableOpacity
+                  style={[styles.primaryBtn, busy !== null && styles.dimmed]}
+                  activeOpacity={0.85}
+                  disabled={busy !== null}
+                  onPress={payNow}
+                  accessibilityRole="button"
+                  accessibilityLabel={partyType === 'customer' ? 'Receive Payment' : 'Pay Bills'}
+                >
+                  <Feather name="dollar-sign" size={16} color={colors.textInverse} />
+                  <Text style={styles.primaryText}>{partyType === 'customer' ? 'Receive Payment' : 'Pay Bills'}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.primaryBtn, busy !== null && styles.dimmed]}
+                  activeOpacity={0.85}
+                  disabled={busy !== null}
+                  onPress={() => run('share', sharePartySummaryPdf)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share PDF"
+                >
+                  {busy === 'share' ? (
+                    <ActivityIndicator size="small" color={colors.textInverse} />
+                  ) : (
+                    <Feather name="share-2" size={16} color={colors.textInverse} />
+                  )}
+                  <Text style={styles.primaryText}>Share PDF</Text>
+                </TouchableOpacity>
+              )}
               <View style={styles.secondaryRow}>
+                {/* With a payment to take, Share PDF steps down beside the others. */}
+                {payable ? (
+                  <TouchableOpacity
+                    style={[styles.secondaryBtn, busy !== null && styles.dimmed]}
+                    activeOpacity={0.85}
+                    disabled={busy !== null}
+                    onPress={() => run('share', sharePartySummaryPdf)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Share PDF"
+                  >
+                    {busy === 'share' ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Feather name="share-2" size={16} color={colors.primary} />
+                    )}
+                    <Text style={styles.secondaryText}>Share</Text>
+                  </TouchableOpacity>
+                ) : null}
                 <TouchableOpacity
                   style={[styles.secondaryBtn, (busy !== null || !phone) && styles.dimmed]}
                   activeOpacity={0.85}

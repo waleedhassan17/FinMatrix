@@ -37,6 +37,9 @@ import {
   setPayBillField,
   setPayBillVendor,
   toggleBillCheck,
+  setPayAmount,
+  openForSummary,
+  maxCashOf,
   payAllBills,
   setBillAllocation,
   toggleAllBills,
@@ -62,12 +65,13 @@ import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import { PrimaryButton, SecondaryButton } from '../../../components/form/FormUI';
 import { DateField, ReportHeader, HEADER_NAVY, LoadingBlock } from '../../../components/reports/ReportUI';
-import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { formatCurrency, formatDate, lakhCroreWords } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 import { creditAvailable, isCreditOverUsed } from '../../../models/creditSpreadModel';
 import Toast from 'react-native-toast-message';
 import { useCapability } from '../../../hooks/useCapability';
+import { vendorOptionLabel } from '../../../models/partyCodeModel';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -90,6 +94,8 @@ const PayBillsScreen: React.FC = () => {
 
   const preVendorId = route.params?.vendorId;
   const preBillId = route.params?.billId;
+  // From the payables summary: every bill ticked (see openForSummary).
+  const fromSummary = !!route.params?.fromSummary;
 
   const form = useAppSelector(selectPayBillsState);
   const proof = useAppSelector(selectPayBillProof);
@@ -99,7 +105,7 @@ const PayBillsScreen: React.FC = () => {
   const accounts = useAppSelector(selectAccounts);
 
   const vendorOptions = useMemo(
-    () => vendors.filter(v => v.isActive).map(v => ({ label: v.name, value: v.id })),
+    () => vendors.filter(v => v.isActive).map(v => ({ label: vendorOptionLabel(v), value: v.id })),
     [vendors],
   );
 
@@ -158,6 +164,12 @@ const PayBillsScreen: React.FC = () => {
     if (preBillId && form.outstandingRows.length > 0) dispatch(preselectBill(preBillId));
   }, [preBillId, form.outstandingRows.length, dispatch]);
 
+  useEffect(() => {
+    if (fromSummary) dispatch(openForSummary());
+    // Once, on arrival from the summary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleVendorChange = useCallback(
     (vendorId: string) => {
       const vendor = vendors.find(v => v.id === vendorId);
@@ -214,6 +226,11 @@ const PayBillsScreen: React.FC = () => {
     if (needsProof && !form.bankAccountId) errs.bankAccountId = 'Select the account you are paying from';
     if (!form.paymentDate) errs.paymentDate = 'Payment date is required';
     if (creditOverUse) errs.credits = 'A credit is set to use more than it holds';
+    // A vendor has no advance account: a typed payment cannot be more than the
+    // ticked bills owe after credit.
+    if (form.payAmount.trim() && (parseFloat(form.payAmount) || 0) > maxCashOf(form) + 0.004) {
+      errs.payAmount = `More than the ticked bills owe after credit (${formatCurrency(maxCashOf(form), 'Rs ')}).`;
+    }
     // The total IS the sum of the rows, so there is no separate amount to
     // validate and no way to overpay.
     if (totalSettled <= 0) errs.allocations = 'Choose at least one bill to pay';
@@ -339,6 +356,7 @@ const PayBillsScreen: React.FC = () => {
         reference,
         method: form.method,
         billId: preBillId,
+        fromSummary,
         lines: settledRows.map(r => ({
           billNumber: r.billNumber,
           applied: r.allocated,
@@ -427,6 +445,23 @@ const PayBillsScreen: React.FC = () => {
                 onChangeText={v => dispatch(setPayBillField({ key: 'reference', value: v }))}
                 placeholder="e.g. CHQ-12345"
               />
+              {form.outstandingRows.length > 0 && (
+                <>
+                  <CustomInput
+                    label="Amount to pay (Rs)"
+                    value={form.payAmount}
+                    onChangeText={v => dispatch(setPayAmount(v))}
+                    placeholder="Each ticked bill in full"
+                    keyboardType="decimal-pad"
+                    error={form.errors.payAmount}
+                  />
+                  <Text style={styles.fieldHint}>
+                    {lakhCroreWords(form.payAmount)
+                      ? `= ${lakhCroreWords(form.payAmount)}`
+                      : 'Optional: type a sum and it is spread over the ticked bills, oldest first.'}
+                  </Text>
+                </>
+              )}
               <View style={styles.amountRow}>
                 <View style={{ flex: 1, marginRight: spacing.xs }}>
                   <View style={styles.totalReadout}>
@@ -529,9 +564,11 @@ const PayBillsScreen: React.FC = () => {
                         </Text>
                       )}
                     </View>
-                    <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>{formatCurrency(row.total, 'Rs ')}</Text>
-                    <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                      <Text style={styles.tdText}>{formatCurrency(row.balance, 'Rs ')}</Text>
+                    {/* minWidth 0 lets a crore-sized figure wrap inside its
+                        column instead of spilling over the one beside it. */}
+                    <Text style={[styles.tdText, styles.tdRight, styles.amountCell]}>{formatCurrency(row.total, 'Rs ')}</Text>
+                    <View style={styles.amountCell}>
+                      <Text style={[styles.tdText, styles.tdRight]}>{formatCurrency(row.balance, 'Rs ')}</Text>
                     </View>
                     {/* Editable per bill: what this bill is settled by, credit
                         and cash together — this is what lets you settle a newer
@@ -887,6 +924,7 @@ const styles = StyleSheet.create({
   // never reflows the column.
   tdStrong: { ...typography.labelSm },
   tdRight: { textAlign: 'right' },
+  amountCell: { flex: 1, minWidth: 0, marginLeft: spacing.xxs },
 
   checkboxWrap: { width: 32, alignItems: 'center' },
   checkbox: {

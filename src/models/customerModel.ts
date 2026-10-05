@@ -3,12 +3,15 @@
 // ═══════════════════════════════════════════════════════
 
 import type { PaymentTerms } from '../types';
+import { partyCodeProblem } from './partyCodeModel';
 
 export interface ValidationErrors {
   [key: string]: string;
 }
 
 export interface CustomerFormData {
+  /** Empty means "give it the next ID" on create, and "keep it" on an edit. */
+  code: string;
   name: string;
   company: string;
   email: string;
@@ -87,6 +90,9 @@ export const paymentTermsFromApi = (raw: unknown): PaymentTerms => {
 
 export const validateCustomer = (data: CustomerFormData): ValidationErrors => {
   const errors: ValidationErrors = {};
+
+  const codeProblem = partyCodeProblem(data.code ?? '', 'Customer');
+  if (codeProblem) errors.code = codeProblem;
 
   if (!data.name.trim()) {
     errors.name = 'Customer name is required';

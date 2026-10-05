@@ -15,8 +15,10 @@ import {
 } from '../../../networks/purchases/vendorNetwork';
 import { vendorSingleSerializer } from '../../../serializers/vendorSerializer';
 import { PAYMENT_TERMS_TO_API } from '../../../models/customerModel';
+import { normalizePartyCode } from '../../../models/partyCodeModel';
 
 export interface VendorFormSliceState {
+  code: string;
   name: string;
   contactPerson: string;
   email: string;
@@ -38,6 +40,7 @@ export interface VendorFormSliceState {
 }
 
 const initialState: VendorFormSliceState = {
+  code: '',
   name: '',
   contactPerson: '',
   email: '',
@@ -65,6 +68,9 @@ const initialState: VendorFormSliceState = {
 // stripped by DTO whitelisting or rejected by validation.
 const buildSavePayload = (state: VendorFormSliceState): Record<string, unknown> => {
   const payload: Record<string, unknown> = {
+    // Omitted when empty: the server assigns the next ID on create, and keeps
+    // the current one on an edit.
+    code: normalizePartyCode(state.code) || undefined,
     companyName: state.name.trim(),
     contactPerson: state.contactPerson.trim() || undefined,
     email: state.email.trim() || undefined,
@@ -112,6 +118,7 @@ export const vendorFormSlice = createAppSlice({
     loadVendorForEdit: create.reducer(
       (state, action: PayloadAction<Omit<VendorFormSliceState, 'errors' | 'isSaving' | 'saveError' | 'isEditMode' | 'editId'> & { editId?: string }>) => {
         const d = action.payload;
+        state.code = d.code ?? '';
         state.name = d.name;
         state.contactPerson = d.contactPerson;
         state.email = d.email;
@@ -173,6 +180,7 @@ export const vendorFormSlice = createAppSlice({
           if (!v) return;
           state.isEditMode = true;
           state.editId = v.id;
+          state.code = v.code;
           state.name = v.name;
           state.contactPerson = v.contactPerson;
           state.email = v.email;

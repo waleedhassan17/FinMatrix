@@ -9,6 +9,7 @@ import type { Customer, PaymentTerms } from '../types';
 import type { CustomerFormData } from '../models/customerModel';
 import { PAYMENT_TERMS_TO_API, paymentTermsFromApi } from '../models/customerModel';
 import { formatCurrency } from '../utils/formatters';
+import { normalizePartyCode } from '../models/partyCodeModel';
 
 // ─── Serialized outputs for the slice ────────────────
 
@@ -43,6 +44,7 @@ export const mapCustomer = (raw: any): Customer => {
   return {
     id: raw?.id ?? '',
     companyId: raw?.companyId ?? '',
+    code: raw?.code ?? '',
     name: raw?.name ?? '',
     company: raw?.company ?? '',
     email: raw?.email ?? '',
@@ -209,6 +211,7 @@ export const customerToFormData = (customer: Customer): CustomerFormData => {
     customer.billingAddress.country === customer.shippingAddress.country;
 
   return {
+    code: customer.code,
     name: customer.name,
     company: customer.company,
     email: customer.email,
@@ -258,6 +261,9 @@ export const formDataToCustomerPayload = (form: CustomerFormData) => {
       };
 
   return {
+    // Omitted: the server assigns the next ID on create, and keeps the
+    // current one on an edit.
+    code: normalizePartyCode(form.code) || undefined,
     name: form.name.trim(),
     company: form.company.trim() || undefined,
     email: form.email.trim() || undefined,
