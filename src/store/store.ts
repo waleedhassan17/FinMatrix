@@ -59,6 +59,7 @@ import { coaDetailSlice } from '../screens/ChartOfAccounts/COADetail/coaDetailSl
 import { inventoryListSlice } from '../screens/Inventory/InventoryList/inventoryListSlice';
 import { inventoryFormSlice } from '../screens/Inventory/InventoryForm/inventoryFormSlice';
 import { inventoryDetailSlice } from '../screens/Inventory/InventoryDetail/inventoryDetailSlice';
+import { inventoryImportSlice } from '../screens/Inventory/InventoryImport/inventoryImportSlice';
 import { agencyListSlice } from '../screens/Agency/AgencyList/agencyListSlice';
 import { agencyDetailSlice } from '../screens/Agency/AgencyDetail/agencyDetailSlice';
 import { agencyFormSlice } from '../screens/Agency/AgencyForm/agencyFormSlice';
@@ -175,6 +176,7 @@ const rootReducer = combineReducers({
   inventoryList: inventoryListSlice.reducer,
   inventoryForm: inventoryFormSlice.reducer,
   inventoryDetail: inventoryDetailSlice.reducer,
+  inventoryImport: inventoryImportSlice.reducer,
   agencyList: agencyListSlice.reducer,
   agencyDetail: agencyDetailSlice.reducer,
   agencyForm: agencyFormSlice.reducer,

@@ -319,9 +319,32 @@ export const toApiError = (error: any): ApiError =>
 // here so every upload in the app shares one correct implementation.
 
 /**
- * Append a picked image to a FormData under `field`.
+ * Append a picked file to a FormData under `field`.
  * Handles the web platform, where the RN `{uri,name,type}` trick serializes
  * to "[object Object]" — there the blob:/data: URI is resolved to a real Blob.
+ */
+export const appendFileToForm = async (
+  form: FormData,
+  field: string,
+  uri: string,
+  opts: { name: string; type: string },
+): Promise<void> => {
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(uri)).blob();
+    (form as any).append(field, blob, opts.name);
+  } else {
+    form.append(field, {
+      uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+      name: opts.name,
+      type: opts.type,
+    } as any);
+  }
+};
+
+/**
+ * Append a picked image to a FormData under `field`, guessing the MIME type
+ * from the extension when none is given (images only — pass `type` for
+ * anything else, or use appendFileToForm).
  */
 export const appendImageToForm = async (
   form: FormData,
@@ -333,48 +356,69 @@ export const appendImageToForm = async (
   const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg';
   const mime =
     opts.type ?? (ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg');
-  if (Platform.OS === 'web') {
-    const blob = await (await fetch(uri)).blob();
-    (form as any).append(field, blob, filename);
-  } else {
-    form.append(field, {
-      uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-      name: filename,
-      type: mime,
-    } as any);
-  }
+  await appendFileToForm(form, field, uri, { name: filename, type: mime });
 };
 
-/** POST a FormData with auth + company headers. Resolves to the parsed JSON body. */
-export const postMultipart = async (path: string, form: FormData): Promise<any> => {
-  const token = await getAccessToken();
-  const companyId = await getStoredCompanyId();
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(companyId ? { 'x-company-id': companyId } : {}),
-        // deliberately NO Content-Type — RN adds the multipart boundary itself
-      },
-      body: form as any,
-    });
-  } catch {
-    throw new Error('Network error. Please check your connection.');
+/**
+ * POST a FormData with auth + company headers. Resolves to the parsed JSON body.
+ *
+ * fetch has no interceptor, so the axios 401 path is done here by hand: one
+ * token refresh, one retry. Without it an expired access token (15 minutes)
+ * signed the user out mid-upload — exactly when someone has been sitting on
+ * an import preview or a photo picker. The FormData is re-sent as is; its
+ * file parts are read again from their URIs.
+ *
+ * Failures throw an ApiError, so a screen can branch on the server's `code`;
+ * `.response` is kept for retry helpers that tell HTTP failures from network
+ * ones by its presence.
+ */
+export const postMultipart = async (
+  path: string,
+  form: FormData,
+  opts: { headers?: Record<string, string> } = {},
+): Promise<any> => {
+  const send = async (): Promise<Response> => {
+    const token = await getAccessToken();
+    const companyId = await getStoredCompanyId();
+    try {
+      return await fetch(`${API_BASE_URL}${path}`, {
+        method: 'POST',
+        headers: {
+          ...opts.headers,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(companyId ? { 'x-company-id': companyId } : {}),
+          // deliberately NO Content-Type — RN adds the multipart boundary itself
+        },
+        body: form as any,
+      });
+    } catch {
+      throw new Error('Network error. Please check your connection.');
+    }
+  };
+
+  let res = await send();
+  if (res.status === 401 && !isIntentionalSignOut()) {
+    if (await refreshSessionTokens()) res = await send();
+    if (res.status === 401) {
+      await clearTokens();
+      emitSessionExpired();
+    }
   }
+
   let json: any = null;
   try {
     json = await res.json();
   } catch {
     /* non-JSON body */
   }
-  if (res.status === 401) emitSessionExpired();
   if (!res.ok) {
     const raw = json?.error?.message ?? json?.message;
     const msg = Array.isArray(raw) ? raw.join(', ') : raw;
-    const err: any = new Error(
+    const err: any = new ApiError(
       typeof msg === 'string' && msg ? msg : `Upload failed (${res.status}). Please try again.`,
+      json?.error?.code ?? json?.code,
+      res.status,
+      json?.error?.details ?? json?.details,
     );
     // Mark as an HTTP (not network) failure so retry helpers that check
     // `!error.response` don't replay 4xx/5xx responses.

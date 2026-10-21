@@ -7,11 +7,20 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAppSlice } from '@store/createAppSlice';
 import type { InventoryFormData } from '../../../models/inventoryModel';
+import type { PickedPhoto } from '../../../hooks/useItemPhotoPicker';
+
+/**
+ * A photo change waiting for Save: a newly picked photo, `'remove'`, or null
+ * for "leave the photo as it is". It is applied only AFTER the item saves —
+ * a new item has no id to attach a photo to until then.
+ */
+export type PendingPhoto = PickedPhoto | 'remove' | null;
 
 export interface InventoryFormSliceState {
   formData: InventoryFormData;
   errors: Record<string, string>;
   isSaving: boolean;
+  pendingPhoto: PendingPhoto;
   status: 'idle' | 'loading' | 'failed';
   error: string;
 }
@@ -40,6 +49,7 @@ const initialState: InventoryFormSliceState = {
   formData: initialFormData,
   errors: {},
   isSaving: false,
+  pendingPhoto: null,
   status: 'idle',
   error: '',
 };
@@ -68,10 +78,14 @@ export const inventoryFormSlice = createAppSlice({
     setIsSaving: create.reducer((state, action: PayloadAction<boolean>) => {
       state.isSaving = action.payload;
     }),
+    setPendingPhoto: create.reducer((state, action: PayloadAction<PendingPhoto>) => {
+      state.pendingPhoto = action.payload;
+    }),
     resetInventoryForm: create.reducer(state => {
       state.formData = initialFormData;
       state.errors = {};
       state.isSaving = false;
+      state.pendingPhoto = null;
       state.status = 'idle';
       state.error = '';
     }),
@@ -81,6 +95,7 @@ export const inventoryFormSlice = createAppSlice({
     selectInventoryFormData: state => state.formData,
     selectInventoryFormErrors: state => state.errors,
     selectInventoryIsSaving: state => state.isSaving,
+    selectPendingPhoto: state => state.pendingPhoto,
     selectInventoryFormStatus: state => state.status,
     selectInventoryFormError: state => state.error,
   },
@@ -91,6 +106,7 @@ export const {
   setFormData,
   setFormErrors,
   setIsSaving,
+  setPendingPhoto,
   resetInventoryForm,
 } = inventoryFormSlice.actions;
 
@@ -98,6 +114,7 @@ export const {
   selectInventoryFormData,
   selectInventoryFormErrors,
   selectInventoryIsSaving,
+  selectPendingPhoto,
   selectInventoryFormStatus,
   selectInventoryFormError,
 } = inventoryFormSlice.selectors;

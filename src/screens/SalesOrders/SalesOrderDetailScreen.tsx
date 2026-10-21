@@ -25,6 +25,9 @@ import { ReportContainer, ReportHeader, Card, SectionCard, Badge, ProgressBar, L
 import { txnStatusColor } from '../../components/transactions/txnStatus';
 import { titleCase } from '../../components/transactions/TxnListUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
+import { useCompanyInfo } from '../../utils/companyInfo';
+import { shareSalesOrderPdf } from '../../utils/salesOrderShare';
+import { salesOrderForPdf } from '../../utils/documentPdfAdapters';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'SalesOrderDetail'>;
@@ -47,6 +50,19 @@ const SalesOrderDetailScreen: React.FC = () => {
   // A refusal carries the breakdown; the retry is the same action with the
   // owner's reason.
   const [creditRefusal, setCreditRefusal] = useState<{ assessment: CreditAssessment; retry: (reason: string) => void } | null>(null);
+  const companyInfo = useCompanyInfo();
+  const [sharing, setSharing] = useState(false);
+
+  // The order confirmation a customer receives, item photos beside the lines.
+  const sharePdf = async () => {
+    if (!o) return;
+    setSharing(true);
+    try {
+      await shareSalesOrderPdf({ salesOrder: salesOrderForPdf(o), company: companyInfo });
+    } finally {
+      setSharing(false);
+    }
+  };
 
   const markFulfilled = async (overrideReason?: string) => {
     if (!o) return;
@@ -138,6 +154,7 @@ const SalesOrderDetailScreen: React.FC = () => {
         {!!o.notes && <Card><Text style={styles.notes}>{o.notes}</Text></Card>}
 
         <View style={styles.actions}>
+          <CustomButton title="Share PDF" variant="secondary" onPress={() => { void sharePdf(); }} isLoading={sharing} fullWidth />
           {o.status === 'open' && <CustomButton title="Edit Sales Order" variant="secondary" onPress={() => navigation.navigate('SalesOrderForm', { salesOrderId })} fullWidth />}
           {active && o.status !== 'fulfilled' && <CustomButton title="Mark Fully Fulfilled" variant="primary" onPress={() => { void markFulfilled(); }} isLoading={isSaving} fullWidth />}
           {canInvoice && <CustomButton title="Convert to Invoice" variant="primary" onPress={convert} isLoading={isSaving} fullWidth />}

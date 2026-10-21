@@ -32,7 +32,11 @@ export interface InventoryItemData {
   locationId: string;
   sourceAgencyId?: string;
   sourceAgencyName?: string;
+  /** Signed link to the item photo's large rendition; '' when it has none.
+   *  Loads without a token — see MediaUrlSigner on the API. */
   imageUrl: string;
+  /** Signed link to the ≤480 px rendition, for lists, grids and PDF lines. */
+  thumbnailUrl: string;
   lastUpdated: string;
   createdAt?: string;
   updatedAt?: string;

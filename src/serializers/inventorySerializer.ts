@@ -67,6 +67,7 @@ export const mapInventoryItem = (
   locationId: raw.locationId ?? '',
   sourceAgencyId: raw.sourceAgencyId,
   imageUrl: raw.imageUrl ?? '',
+  thumbnailUrl: raw.thumbnailUrl ?? '',
   lastUpdated: raw.updatedAt ?? raw.lastUpdated ?? '',
   createdAt: raw.createdAt,
   updatedAt: raw.updatedAt,

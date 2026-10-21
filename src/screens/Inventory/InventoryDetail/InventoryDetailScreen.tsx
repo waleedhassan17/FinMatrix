@@ -2,7 +2,7 @@
 // FinMatrix — Inventory Detail Screen
 // ═══════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -27,8 +27,13 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
   setOpeningStock,
-  toggleInventoryItem
+  toggleInventoryItem,
+  uploadItemImage,
+  removeItemImage,
 } from '../InventoryList/inventoryListSlice';
+import ItemThumbnail from '../../../components/shared/ItemThumbnail';
+import FullscreenImageModal from '../../../components/shared/FullscreenImageModal';
+import { useItemPhotoPicker } from '../../../hooks/useItemPhotoPicker';
 import {
   selectInventoryDetailTab,
   selectInventoryDetailMovements,
@@ -121,6 +126,12 @@ const InventoryDetailScreen: React.FC = () => {
   // rather than the 403 this screen used to assume (see utils/capabilities.ts).
   // The label says which of the two tapping will do.
   const poCap = useCapability('purchaseOrder.create');
+  // A photo is catalogue data, like the name: whoever may edit the item may
+  // change it. Viewing it needs nothing.
+  const canManage = useCapability('inventory.manageItems').allowed;
+  const { pickPhoto } = useItemPhotoPicker();
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
 
   const itemId = route.params.itemId;
 
@@ -149,6 +160,42 @@ const InventoryDetailScreen: React.FC = () => {
   const handleEdit = useCallback(() => {
     if (item) navigation.navigate('InventoryForm', { itemId: item.itemId });
   }, [item, navigation]);
+
+  const handleChangePhoto = useCallback(async () => {
+    if (!item) return;
+    const photo = await pickPhoto();
+    if (!photo) return;
+    setPhotoBusy(true);
+    try {
+      await dispatch(uploadItemImage({ itemId: item.itemId, photo })).unwrap();
+      Toast.show({ type: 'success', text1: 'Photo saved', text2: item.name });
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Photo not saved', text2: e?.message || 'Please try again.' });
+    } finally {
+      setPhotoBusy(false);
+    }
+  }, [item, pickPhoto, dispatch]);
+
+  const handleRemovePhoto = useCallback(() => {
+    if (!item) return;
+    Alert.alert('Remove photo', `Remove the photo of "${item.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          setPhotoBusy(true);
+          try {
+            await dispatch(removeItemImage(item.itemId)).unwrap();
+          } catch (e: any) {
+            Toast.show({ type: 'error', text1: 'Photo not removed', text2: e?.message || 'Please try again.' });
+          } finally {
+            setPhotoBusy(false);
+          }
+        },
+      },
+    ]);
+  }, [item, dispatch]);
 
   // Opening stock: what was already on the shelf when the company started using
   // FinMatrix. Offered only while the item has never held stock — after that a
@@ -322,6 +369,60 @@ const InventoryDetailScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Photo ── */}
+        {(!!item.imageUrl || canManage) && (
+          <View style={styles.photoCard}>
+            {item.imageUrl ? (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => setViewerOpen(true)}
+                accessibilityRole="imagebutton"
+                accessibilityLabel={`Photo of ${item.name}. Tap to view full screen.`}
+              >
+                <ItemThumbnail uri={item.imageUrl} style={styles.photo} resizeMode="contain" iconSize={36} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.photoEmpty}
+                activeOpacity={0.7}
+                onPress={handleChangePhoto}
+                disabled={photoBusy}
+                accessibilityRole="button"
+              >
+                <Feather name="camera" size={22} color={colors.primary} />
+                <Text style={styles.photoEmptyText}>Add a photo</Text>
+              </TouchableOpacity>
+            )}
+            {photoBusy && (
+              <View style={styles.photoBusy}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            )}
+            {!!item.imageUrl && canManage && (
+              <View style={styles.photoActions}>
+                <TouchableOpacity
+                  style={styles.photoAction}
+                  activeOpacity={0.7}
+                  onPress={handleChangePhoto}
+                  disabled={photoBusy}
+                >
+                  <Feather name="camera" size={14} color={colors.primary} />
+                  <Text style={styles.photoActionText}>Change</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.photoAction}
+                  activeOpacity={0.7}
+                  onPress={handleRemovePhoto}
+                  disabled={photoBusy}
+                >
+                  <Feather name="trash-2" size={14} color={colors.danger} />
+                  <Text style={[styles.photoActionText, { color: colors.danger }]}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* ── Top Card ── */}
         <View style={styles.topCard}>
           <View style={styles.topCardRow}>
@@ -628,6 +729,11 @@ const InventoryDetailScreen: React.FC = () => {
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
       </View>
+      <FullscreenImageModal
+        uri={viewerOpen ? item.imageUrl : null}
+        onClose={() => setViewerOpen(false)}
+        accessibilityLabel={`Photo of ${item.name}`}
+      />
     </SafeAreaView>
   );
 };
@@ -660,6 +766,39 @@ const styles = StyleSheet.create({
   scrollContent: { padding: spacing.xl },
 
   // ── Top Card ──────────────────────────────────────
+  photoCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  photo: { width: '100%', height: 240, backgroundColor: colors.neutral50 },
+  photoEmpty: {
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xxs,
+    backgroundColor: colors.primaryLight,
+  },
+  photoEmptyText: { ...typography.labelMd, color: colors.primary },
+  photoBusy: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.6)',
+  },
+  photoActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  photoAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
+  photoActionText: { ...typography.labelMd, color: colors.primary },
   topCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

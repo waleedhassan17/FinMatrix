@@ -25,6 +25,9 @@ import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, 
 import { txnStatusColor } from '../../components/transactions/txnStatus';
 import { titleCase } from '../../components/transactions/TxnListUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
+import { useCompanyInfo } from '../../utils/companyInfo';
+import { shareEstimatePdf } from '../../utils/estimateShare';
+import { estimateForPdf } from '../../utils/documentPdfAdapters';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 type Rt = RouteProp<TransactionsStackParamList, 'EstimateDetail'>;
@@ -43,6 +46,19 @@ const EstimateDetailScreen: React.FC = () => {
   useFocusEffect(useCallback(() => { dispatch(fetchEstimate(estimateId)); }, [dispatch, estimateId]));
 
   const [creditRefusal, setCreditRefusal] = useState<CreditAssessment | null>(null);
+  const companyInfo = useCompanyInfo();
+  const [sharing, setSharing] = useState(false);
+
+  // The quotation a customer receives — with each item's photo beside its line.
+  const sharePdf = async () => {
+    if (!e) return;
+    setSharing(true);
+    try {
+      await shareEstimatePdf({ estimate: estimateForPdf(e), company: companyInfo });
+    } finally {
+      setSharing(false);
+    }
+  };
 
   // Converting POSTS: it raises the invoice, moves stock and books COGS, so it
   // can be refused — short stock, a closed period, the credit limit.
@@ -124,6 +140,7 @@ const EstimateDetailScreen: React.FC = () => {
         {!!e.notes && <Card><Text style={styles.notes}>{e.notes}</Text></Card>}
 
         <View style={styles.actions}>
+          <CustomButton title="Share PDF" variant="secondary" onPress={() => { void sharePdf(); }} isLoading={sharing} fullWidth />
           {e.status === 'sent' && <CustomButton title="Mark Accepted" variant="primary" onPress={() => dispatch(changeEstimateStatus({ id: estimateId, status: 'accepted' }))} fullWidth />}
           {e.status === 'sent' && <CustomButton title="Mark Declined" variant="secondary" onPress={() => dispatch(changeEstimateStatus({ id: estimateId, status: 'declined' }))} fullWidth />}
           {canConvert && <CustomButton title="Convert to Invoice" variant="primary" onPress={doConvertInvoice} isLoading={isSaving} fullWidth />}

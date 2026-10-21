@@ -20,7 +20,13 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
 
 import { THEME } from '../../../utils/theme';
-import { ReportContainer, ReportHeader, HEADER_NAVY, HeaderAction } from '../../../components/reports/ReportUI';
+import {
+  ReportContainer,
+  ReportHeader,
+  HEADER_NAVY,
+  HeaderAction,
+  HeaderIconButton,
+} from '../../../components/reports/ReportUI';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchInventoryItems,
@@ -42,6 +48,8 @@ import type { InventoryItemData } from '../../../models/inventoryModel';
 import { warehouseAgencies } from '../../../models/agencyModel';
 import { isFeatureEnabled } from '../../../utils/featureGates';
 import EmptyState from '../../../components/shared/EmptyState';
+import ItemThumbnail from '../../../components/shared/ItemThumbnail';
+import { useCapability } from '../../../hooks/useCapability';
 import { formatCurrency } from '../../../utils/formatters';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -119,6 +127,8 @@ const InventoryListScreen: React.FC = () => {
   const viewMode = useAppSelector(selectInventoryViewMode);
   const isLoading = useAppSelector(selectInventoryIsLoading);
   const [activePicker, setActivePicker] = React.useState<PickerType>(null);
+  // Importing creates and edits items, so it follows the same permission.
+  const canManage = useCapability('inventory.manageItems').allowed;
 
   const items = useMemo(() => (Array.isArray(rawItems) ? rawItems : []), [rawItems]);
 
@@ -223,6 +233,7 @@ const InventoryListScreen: React.FC = () => {
           activeOpacity={0.6}
           onPress={() => navigation.navigate('InventoryDetail', { itemId: item.itemId })}
         >
+          <ItemThumbnail uri={item.thumbnailUrl} style={styles.listThumb} />
           <View style={styles.listRowLeft}>
             <Text style={styles.listName} numberOfLines={1}>{item.name}</Text>
             <Text style={styles.listSku}>{item.sku}</Text>
@@ -261,10 +272,7 @@ const InventoryListScreen: React.FC = () => {
           activeOpacity={0.6}
           onPress={() => navigation.navigate('InventoryDetail', { itemId: item.itemId })}
         >
-          {/* Placeholder image */}
-          <View style={styles.gridImagePlaceholder}>
-            <Text style={styles.gridImageText}>📦</Text>
-          </View>
+          <ItemThumbnail uri={item.thumbnailUrl} style={styles.gridImage} iconSize={28} />
           <View style={styles.gridCardBody}>
             <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.gridSku} numberOfLines={1}>{item.sku}</Text>
@@ -294,15 +302,17 @@ const InventoryListScreen: React.FC = () => {
   const ListEmptyComponent = useMemo(
     () => (
       <EmptyState
-        title="No Items Found"
+        title={items.length === 0 ? 'No items yet' : 'No Items Found'}
         message={
           searchQuery
             ? `No items match "${searchQuery}". Try a different search.`
-            : 'No inventory items match the current filters. Tap "+ Add Item" to create one.'
+            : items.length === 0 && canManage
+              ? 'Tap "New" to add an item, or the upload button to import your item list from Excel.'
+              : 'No inventory items match the current filters.'
         }
       />
     ),
-    [searchQuery],
+    [searchQuery, items.length, canManage],
   );
 
   // ═════════════════════════════════════════════════════
@@ -330,6 +340,9 @@ const InventoryListScreen: React.FC = () => {
                 <Feather name="grid" size={15} color={viewMode === 'grid' ? colors.neutral0 : 'rgba(255,255,255,0.7)'} />
               </TouchableOpacity>
             </View>
+            {canManage && (
+              <HeaderIconButton icon="upload" onPress={() => navigation.navigate('InventoryImport')} />
+            )}
             <HeaderAction label="New" onPress={() => navigation.navigate('InventoryForm')} />
           </>
         }
@@ -749,6 +762,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     ...shadows.xs,
   },
+  listThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    marginRight: spacing.sm,
+  },
   listRowLeft: { flex: 1, marginRight: spacing.xs },
   listName: {
     ...THEME.typography.h4,
@@ -809,19 +828,12 @@ const styles = StyleSheet.create({
     ...shadows.xs,
   },
   gridSpacer: { flex: 1 },
-  gridImagePlaceholder: {
+  // The photo, or a package icon on the brand tint when there is none.
+  gridImage: {
     width: '100%',
-    height: 90,
-    // Tinted, not the page colour, so the tile reads as part of the card.
-    backgroundColor: colors.primaryLight,
+    height: 120,
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gridImageText: {
-    ...typography.displayMd,
-    
   },
   gridCardBody: {
     padding: spacing.xs,

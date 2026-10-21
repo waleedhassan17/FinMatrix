@@ -10,6 +10,7 @@ import InventoryListScreen from '../screens/Inventory/InventoryList/InventoryLis
 import InventoryFormScreen from '../screens/Inventory/InventoryForm/InventoryFormScreen';
 import InventoryDetailScreen from '../screens/Inventory/InventoryDetail/InventoryDetailScreen';
 import AdjustmentScreen from '../screens/Inventory/Adjustment/AdjustmentScreen';
+import InventoryImportScreen from '../screens/Inventory/InventoryImport/InventoryImportScreen';
 
 // ── "Create PO" / "Request PO" from an item ──
 // POForm's own home is TransactionsStack; it is ALSO registered here, the same
@@ -28,6 +29,8 @@ import POFormScreen from '../screens/PurchaseOrders/POForm/POFormScreen';
 
 export const InventoryRouteNames = {
   InventoryList: 'InventoryList',
+  // Opened only from the list, so it is NOT a shared record screen.
+  InventoryImport: 'InventoryImport',
   InventoryForm: 'InventoryForm',
   InventoryDetail: 'InventoryDetail',
   Adjustment: 'Adjustment',
@@ -38,6 +41,7 @@ export type InventoryRouteName = typeof InventoryRouteNames[keyof typeof Invento
 
 export const INVENTORY_ROUTES: IRoute[] = withSharedRecords([
   { title: InventoryRouteNames.InventoryList, component: InventoryListScreen },
+  { title: InventoryRouteNames.InventoryImport, component: InventoryImportScreen },
   { title: InventoryRouteNames.InventoryForm, component: InventoryFormScreen },
   { title: InventoryRouteNames.InventoryDetail, component: InventoryDetailScreen },
   { title: InventoryRouteNames.Adjustment, component: AdjustmentScreen },

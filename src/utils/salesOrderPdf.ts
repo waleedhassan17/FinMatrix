@@ -9,6 +9,7 @@ import { File, Paths } from 'expo-file-system';
 
 import type { Customer, SalesOrder } from '../types';
 import { formatCurrency, formatDate } from './formatters';
+import { PHOTO_CSS, hasLinePhotos, photoCellHtml, type LinePhotos } from './pdfLinePhotos';
 
 // ─── Re-use company branding from invoicePdf ─────────
 import { DEFAULT_COMPANY, type CompanyInfo } from './invoicePdf';
@@ -38,6 +39,9 @@ const STATUS_META: Record<SalesOrder['status'], { label: string; color: string }
 // ═══════════════════════════════════════════════════════
 
 export interface BuildSOHtmlOptions {
+  /** Item photos by item id (data URIs). generate*Pdf loads them when omitted;
+   *  a line without one gets an empty cell, and no line with one, no column. */
+  photos?: LinePhotos;
   salesOrder: SalesOrder;
   customer?: Customer | null;
   company?: CompanyInfo;
@@ -47,7 +51,9 @@ export function buildSalesOrderHtml({
   salesOrder,
   customer,
   company = DEFAULT_COMPANY,
+  photos,
 }: BuildSOHtmlOptions): string {
+  const withPhotos = hasLinePhotos(photos, salesOrder.lines.map(l => l.itemId));
   const status = STATUS_META[salesOrder.status];
 
   const totalOrdered = salesOrder.lines.reduce((s, l) => s + l.quantity, 0);
@@ -58,7 +64,7 @@ export function buildSalesOrderHtml({
     .map(
       (l, idx) => `
         <tr class="${idx % 2 === 0 ? 'row-even' : ''}">
-          <td class="desc">${esc(l.description || l.itemName)}</td>
+          ${withPhotos ? photoCellHtml(photos, l.itemId) : ''}<td class="desc">${esc(l.description || l.itemName)}</td>
           <td class="right">${esc(l.quantity)}</td>
           <td class="right">${esc(l.fulfilledQuantity)}</td>
           <td class="right">${esc(formatCurrency(l.unitPrice, 'Rs '))}</td>
@@ -282,6 +288,7 @@ export function buildSalesOrderHtml({
         line-height: 1.5;
       }
       .footer strong { color: #475569; }
+      ${withPhotos ? PHOTO_CSS : ''}
     </style>
   </head>
   <body>
@@ -310,7 +317,7 @@ export function buildSalesOrderHtml({
       </div>
       <div class="meta-block">
         <div class="meta-label">Expected Date</div>
-        <div class="meta-value">${esc(formatDate(salesOrder.expectedDate))}</div>
+        <div class="meta-value">${esc(salesOrder.expectedDate ? formatDate(salesOrder.expectedDate) : '—')}</div>
       </div>
       <div class="meta-block">
         <div class="meta-label">Total</div>
@@ -337,7 +344,7 @@ export function buildSalesOrderHtml({
     <table class="items">
       <thead>
         <tr>
-          <th>Description</th>
+          ${withPhotos ? '<th class="photo"></th>' : ''}<th>Description</th>
           <th class="right">Ordered</th>
           <th class="right">Fulfilled</th>
           <th class="right">Rate</th>
@@ -399,7 +406,12 @@ export interface GenerateSOPdfResult {
 export async function generateSalesOrderPdf(
   options: BuildSOHtmlOptions,
 ): Promise<GenerateSOPdfResult> {
-  const html = buildSalesOrderHtml(options);
+  const html = buildSalesOrderHtml({
+    ...options,
+    photos:
+      options.photos ??
+      (await (await import('./loadLinePhotos')).loadLinePhotos(options.salesOrder.lines.map(l => l.itemId))),
+  });
 
   const { uri: tmpUri } = await Print.printToFileAsync({
     html,

@@ -21,7 +21,10 @@ import {
   adjustStockAPI,
   setOpeningStockAPI,
   toggleInventoryItemAPI,
+  uploadInventoryItemImageAPI,
+  deleteInventoryItemImageAPI,
 } from '../../../networks/inventory/inventoryNetwork';
+import type { PickedPhoto } from '../../../hooks/useItemPhotoPicker';
 import {
   inventoryListSerializer,
   inventorySingleSerializer,
@@ -204,6 +207,31 @@ export const inventoryListSlice = createAppSlice({
         },
       },
     ),
+    // Both answer with the item, carrying fresh signed photo links (or none),
+    // so the row is replaced and every screen showing it updates at once.
+    uploadItemImage: create.asyncThunk(
+      async ({ itemId, photo }: { itemId: string; photo: PickedPhoto }) =>
+        uploadInventoryItemImageAPI(itemId, photo),
+      {
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const item = inventorySingleSerializer(action.payload);
+          if (!item) return;
+          const idx = state.items.findIndex(i => i.itemId === item.itemId);
+          if (idx !== -1) state.items[idx] = item;
+        },
+      },
+    ),
+    removeItemImage: create.asyncThunk(
+      async (itemId: string) => deleteInventoryItemImageAPI(itemId),
+      {
+        fulfilled: (state, action: PayloadAction<any>) => {
+          const item = inventorySingleSerializer(action.payload);
+          if (!item) return;
+          const idx = state.items.findIndex(i => i.itemId === item.itemId);
+          if (idx !== -1) state.items[idx] = item;
+        },
+      },
+    ),
   }),
 
   selectors: {
@@ -235,6 +263,8 @@ export const {
   adjustStock,
   setOpeningStock,
   toggleInventoryItem,
+  uploadItemImage,
+  removeItemImage,
 } = inventoryListSlice.actions;
 
 export const {

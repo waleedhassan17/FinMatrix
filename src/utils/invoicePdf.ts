@@ -17,6 +17,7 @@ import { File, Paths } from 'expo-file-system';
 
 import type { Customer, Invoice } from '../types';
 import { formatCurrency, formatDate } from './formatters';
+import { PHOTO_CSS, hasLinePhotos, photoCellHtml, type LinePhotos } from './pdfLinePhotos';
 
 // ─── Company branding (header block) ─────────────────
 // In production these would come from the Company entity.
@@ -68,6 +69,9 @@ const STATUS_META: Record<Invoice['status'], { label: string; color: string }> =
 // ═══════════════════════════════════════════════════════
 
 export interface BuildInvoiceHtmlOptions {
+  /** Item photos by item id (data URIs). generate*Pdf loads them when omitted;
+   *  a line without one gets an empty cell, and no line with one, no column. */
+  photos?: LinePhotos;
   invoice: Invoice;
   customer?: Customer | null;
   company?: CompanyInfo;
@@ -77,7 +81,9 @@ export function buildInvoiceHtml({
   invoice,
   customer,
   company = DEFAULT_COMPANY,
+  photos,
 }: BuildInvoiceHtmlOptions): string {
+  const withPhotos = hasLinePhotos(photos, invoice.lines.map(l => l.itemId));
   const status = STATUS_META[invoice.status];
   const balance = invoice.total - invoice.amountPaid;
 
@@ -85,7 +91,7 @@ export function buildInvoiceHtml({
     .map(
       (l, idx) => `
         <tr class="${idx % 2 === 0 ? 'row-even' : ''}">
-          <td class="desc">${esc(l.description || l.itemName)}</td>
+          ${withPhotos ? photoCellHtml(photos, l.itemId) : ''}<td class="desc">${esc(l.description || l.itemName)}</td>
           <td class="right">${esc(l.quantity)}</td>
           <td class="right">${esc(formatCurrency(l.unitPrice, 'Rs '))}</td>
           <td class="right">${esc(l.taxRate)}%</td>
@@ -328,6 +334,7 @@ export function buildInvoiceHtml({
         line-height: 1.5;
       }
       .footer strong { color: #475569; }
+      ${withPhotos ? PHOTO_CSS : ''}
     </style>
   </head>
   <body>
@@ -376,7 +383,7 @@ export function buildInvoiceHtml({
     <table class="items">
       <thead>
         <tr>
-          <th>Description</th>
+          ${withPhotos ? '<th class="photo"></th>' : ''}<th>Description</th>
           <th class="right">Qty</th>
           <th class="right">Rate</th>
           <th class="right">Tax</th>
@@ -460,7 +467,12 @@ export interface GenerateInvoicePdfResult {
 export async function generateInvoicePdf(
   options: BuildInvoiceHtmlOptions,
 ): Promise<GenerateInvoicePdfResult> {
-  const html = buildInvoiceHtml(options);
+  const html = buildInvoiceHtml({
+    ...options,
+    photos:
+      options.photos ??
+      (await (await import('./loadLinePhotos')).loadLinePhotos(options.invoice.lines.map(l => l.itemId))),
+  });
 
   // Step 1 — render HTML → PDF using expo-print. Returns a
   // temp path like `file:///.../Print/<uuid>.pdf`.

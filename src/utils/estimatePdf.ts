@@ -12,6 +12,7 @@ import { File, Paths } from 'expo-file-system';
 
 import type { Customer, Estimate } from '../types';
 import { formatCurrency, formatDate } from './formatters';
+import { PHOTO_CSS, hasLinePhotos, photoCellHtml, type LinePhotos } from './pdfLinePhotos';
 
 // ─── Re-use company branding from invoicePdf ─────────
 import { DEFAULT_COMPANY, type CompanyInfo } from './invoicePdf';
@@ -42,6 +43,9 @@ const STATUS_META: Record<Estimate['status'], { label: string; color: string }> 
 // ═══════════════════════════════════════════════════════
 
 export interface BuildEstimateHtmlOptions {
+  /** Item photos by item id (data URIs). generate*Pdf loads them when omitted;
+   *  a line without one gets an empty cell, and no line with one, no column. */
+  photos?: LinePhotos;
   estimate: Estimate;
   customer?: Customer | null;
   company?: CompanyInfo;
@@ -51,14 +55,16 @@ export function buildEstimateHtml({
   estimate,
   customer,
   company = DEFAULT_COMPANY,
+  photos,
 }: BuildEstimateHtmlOptions): string {
+  const withPhotos = hasLinePhotos(photos, estimate.lines.map(l => l.itemId));
   const status = STATUS_META[estimate.status];
 
   const lineRows = estimate.lines
     .map(
       (l, idx) => `
         <tr class="${idx % 2 === 0 ? 'row-even' : ''}">
-          <td class="desc">${esc(l.description || l.itemName)}</td>
+          ${withPhotos ? photoCellHtml(photos, l.itemId) : ''}<td class="desc">${esc(l.description || l.itemName)}</td>
           <td class="right">${esc(l.quantity)}</td>
           <td class="right">${esc(formatCurrency(l.unitPrice, 'Rs '))}</td>
           <td class="right">${esc(l.taxRate)}%</td>
@@ -274,6 +280,7 @@ export function buildEstimateHtml({
         line-height: 1.5;
       }
       .footer strong { color: #475569; }
+      ${withPhotos ? PHOTO_CSS : ''}
     </style>
   </head>
   <body>
@@ -302,7 +309,7 @@ export function buildEstimateHtml({
       </div>
       <div class="meta-block">
         <div class="meta-label">Expiration Date</div>
-        <div class="meta-value">${esc(formatDate(estimate.expirationDate))}</div>
+        <div class="meta-value">${esc(estimate.expirationDate ? formatDate(estimate.expirationDate) : '—')}</div>
       </div>
       <div class="meta-block">
         <div class="meta-label">Total</div>
@@ -320,7 +327,7 @@ export function buildEstimateHtml({
     <table class="items">
       <thead>
         <tr>
-          <th>Description</th>
+          ${withPhotos ? '<th class="photo"></th>' : ''}<th>Description</th>
           <th class="right">Qty</th>
           <th class="right">Rate</th>
           <th class="right">Tax</th>
@@ -364,7 +371,7 @@ export function buildEstimateHtml({
 
     <!-- ────────── Footer ────────── -->
     <div class="footer">
-      This estimate is valid until ${esc(formatDate(estimate.expirationDate))}.<br/>
+      ${estimate.expirationDate ? `This estimate is valid until ${esc(formatDate(estimate.expirationDate))}.<br/>` : ''}
       <strong>${esc(company.name)}</strong>${company.website ? `  •  ${esc(company.website)}` : ''}
     </div>
   </body>
@@ -383,7 +390,12 @@ export interface GenerateEstimatePdfResult {
 export async function generateEstimatePdf(
   options: BuildEstimateHtmlOptions,
 ): Promise<GenerateEstimatePdfResult> {
-  const html = buildEstimateHtml(options);
+  const html = buildEstimateHtml({
+    ...options,
+    photos:
+      options.photos ??
+      (await (await import('./loadLinePhotos')).loadLinePhotos(options.estimate.lines.map(l => l.itemId))),
+  });
 
   const { uri: tmpUri } = await Print.printToFileAsync({
     html,

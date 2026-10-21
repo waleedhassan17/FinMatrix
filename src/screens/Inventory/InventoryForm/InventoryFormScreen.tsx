@@ -24,18 +24,24 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
   createInventoryItem,
-  editInventoryItem
+  editInventoryItem,
+  uploadItemImage,
+  removeItemImage,
 } from '../InventoryList/inventoryListSlice';
 import {
   selectInventoryFormData,
   selectInventoryFormErrors,
   selectInventoryIsSaving,
+  selectPendingPhoto,
   setFormField,
   setFormData,
   setFormErrors,
   setIsSaving,
+  setPendingPhoto,
   resetInventoryForm
 } from './inventoryFormSlice';
+import ItemThumbnail from '../../../components/shared/ItemThumbnail';
+import { useItemPhotoPicker } from '../../../hooks/useItemPhotoPicker';
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
@@ -49,7 +55,8 @@ import {
 } from '../../../models/inventoryModel';
 import {
   formDataToInventoryCreatePayload,
-  formDataToInventoryUpdatePayload
+  formDataToInventoryUpdatePayload,
+  inventorySingleSerializer,
 } from '../../../serializers/inventorySerializer';
 import { selectAgencies, fetchAgencies } from '../../Agency/AgencyList/agencyListSlice';
 import { isFeatureEnabled } from '../../../utils/featureGates';
@@ -62,7 +69,7 @@ type FormRoute = RouteProp<InventoryStackParamList, 'InventoryForm'>;
 type Nav = NativeStackNavigationProp<InventoryStackParamList>;
 
 // ── Section collapse state ──────────────────────────
-type SectionKey = 'basic' | 'pricing' | 'stock' | 'tracking' | 'location';
+type SectionKey = 'photo' | 'basic' | 'pricing' | 'stock' | 'tracking' | 'location';
 
 // ═══════════════════════════════════════════════════════
 // COMPONENT
@@ -76,6 +83,8 @@ const InventoryFormScreen: React.FC = () => {
   const form = useAppSelector(selectInventoryFormData);
   const errors = useAppSelector(selectInventoryFormErrors);
   const isSaving = useAppSelector(selectInventoryIsSaving);
+  const pendingPhoto = useAppSelector(selectPendingPhoto);
+  const { pickPhoto } = useItemPhotoPicker();
   const agencies = useAppSelector(selectAgencies);
   const agenciesEnabled = isFeatureEnabled('agencies');
 
@@ -86,6 +95,7 @@ const InventoryFormScreen: React.FC = () => {
   const costLocked = isEdit && (existing?.quantityOnHand ?? 0) > 0;
 
   const [collapsed, setCollapsed] = useState<Record<SectionKey, boolean>>({
+    photo: false,
     basic: false,
     pricing: false,
     stock: false,
@@ -172,6 +182,22 @@ const InventoryFormScreen: React.FC = () => {
     ...agencies.map(a => ({ label: a.name, value: a.id })),
   ], [agencies]);
 
+  // What the Photo section shows: the photo just picked (a local file), the
+  // item's current one, or nothing once Remove was tapped.
+  const shownPhoto =
+    pendingPhoto === 'remove' ? null : pendingPhoto?.uri ?? (existing?.imageUrl || null);
+
+  const choosePhoto = useCallback(async () => {
+    const photo = await pickPhoto();
+    if (photo) dispatch(setPendingPhoto(photo));
+  }, [pickPhoto, dispatch]);
+
+  const clearPhoto = useCallback(() => {
+    // Undoing a pick on a new item, or on an item that had no photo, is just
+    // "no change"; otherwise Save removes the photo the item has.
+    dispatch(setPendingPhoto(existing?.imageUrl ? 'remove' : null));
+  }, [existing?.imageUrl, dispatch]);
+
   // ── Handlers ──────────────────────────────────────
   const updateField = useCallback(
     (key: string, value: string | boolean) => {
@@ -193,6 +219,7 @@ const InventoryFormScreen: React.FC = () => {
     dispatch(setIsSaving(true));
 
     try {
+      let savedId = editingId;
       if (isEdit && editingId) {
         await dispatch(
           editInventoryItem({
@@ -202,8 +229,25 @@ const InventoryFormScreen: React.FC = () => {
         ).unwrap();
         Toast.show({ type: 'success', text1: 'Success', text2: 'Item updated successfully.' });
       } else {
-        await dispatch(createInventoryItem(formDataToInventoryCreatePayload(form))).unwrap();
+        const created = await dispatch(createInventoryItem(formDataToInventoryCreatePayload(form))).unwrap();
+        savedId = inventorySingleSerializer(created)?.itemId;
         Toast.show({ type: 'success', text1: 'Success', text2: 'Item created successfully.' });
+      }
+
+      // The photo goes second: a new item has no id to attach it to before
+      // this. The item is saved either way, so a failed upload is a warning
+      // that points at the item page, not a failed save.
+      if (pendingPhoto && savedId) {
+        try {
+          if (pendingPhoto === 'remove') await dispatch(removeItemImage(savedId)).unwrap();
+          else await dispatch(uploadItemImage({ itemId: savedId, photo: pendingPhoto })).unwrap();
+        } catch (e: any) {
+          Toast.show({
+            type: 'info',
+            text1: pendingPhoto === 'remove' ? 'Item saved, photo not removed' : 'Item saved, photo not uploaded',
+            text2: e?.message || 'Try again from the item page.',
+          });
+        }
       }
       navigation.goBack();
     } catch (e: any) {
@@ -213,7 +257,7 @@ const InventoryFormScreen: React.FC = () => {
     } finally {
       dispatch(setIsSaving(false));
     }
-  }, [form, existingSKUs, editingId, isEdit, costLocked, dispatch, navigation]);
+  }, [form, existingSKUs, editingId, isEdit, costLocked, pendingPhoto, dispatch, navigation]);
 
   // ── Section renderer ──────────────────────────────
   const renderSectionHeader = (key: SectionKey, title: string) => (
@@ -247,6 +291,31 @@ const InventoryFormScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* ── Photo Section ── */}
+          {renderSectionHeader('photo', '📷  Photo')}
+          {!collapsed.photo && (
+            <View style={[styles.sectionBody, styles.photoBody]}>
+              <ItemThumbnail uri={shownPhoto} style={styles.photo} iconSize={28} />
+              <View style={styles.photoSide}>
+                <Text style={styles.photoHint}>
+                  Optional. Shown in the item list and beside the item on quotations and invoices.
+                </Text>
+                <View style={styles.photoButtons}>
+                  <CustomButton
+                    title={shownPhoto ? 'Change' : 'Add photo'}
+                    variant="secondary"
+                    size="sm"
+                    onPress={choosePhoto}
+                    disabled={isSaving}
+                  />
+                  {!!shownPhoto && (
+                    <CustomButton title="Remove" variant="text" size="sm" onPress={clearPhoto} disabled={isSaving} />
+                  )}
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* ── Basic Info Section ── */}
           {renderSectionHeader('basic', '📦  Basic Info')}
           {!collapsed.basic && (
@@ -588,6 +657,11 @@ const styles = StyleSheet.create({
     ...typography.bodySm,
     color: colors.textTertiary,
   },
+  photoBody: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  photo: { width: 96, height: 96, borderRadius: radius.sm },
+  photoSide: { flex: 1 },
+  photoHint: { ...typography.caption, color: colors.textSecondary },
+  photoButtons: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
   sectionBody: {
     backgroundColor: colors.surface,
     padding: spacing.md,
