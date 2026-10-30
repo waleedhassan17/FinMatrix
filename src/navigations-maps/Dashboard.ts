@@ -61,6 +61,28 @@ import OpeningBalanceScreen from '../screens/GeneralJournal/OpeningBalance/Openi
 // restores whatever its stack was last showing. The screen only calls
 // goBack(), so it is safe to mount here.
 import AnalyticsDashboardScreen from '../screens/Reports/AnalyticsDashboard/AnalyticsDashboardScreen';
+// ── What the Owner Cockpit opens ──
+// Every cockpit card opens its source report for the same period, and the
+// cockpit lives in this stack too, so those reports are registered here for
+// the reason above: a cross-tab navigate would strand them on the Reports tab.
+// The closure is bounded:
+//   ProfitLoss       -> AccountRegister, documents (shared records)
+//   BalanceSheet     -> ProfitLoss, AccountRegister
+//   CashFlow         -> CashFlowLine -> documents
+//   AccountRegister  -> documents
+//   ARAging/APAging  -> InvoiceDetail / BillDetail (registered above)
+//   InventoryValuation -> InventoryItemReport -> documents
+//   BudgetDetail     -> goBack only
+import ProfitLossScreen from '../screens/Reports/ProfitLoss/ProfitLossScreen';
+import BalanceSheetScreen from '../screens/Reports/BalanceSheet/BalanceSheetScreen';
+import CashFlowScreen from '../screens/Reports/CashFlow/CashFlowScreen';
+import CashFlowLineScreen from '../screens/Reports/CashFlowLine/CashFlowLineScreen';
+import AccountRegisterScreen from '../screens/Reports/AccountRegister/AccountRegisterScreen';
+import ARAgingScreen from '../screens/Reports/ARAging/ARAgingScreen';
+import APAgingScreen from '../screens/Reports/APAging/APAgingScreen';
+import InventoryValuationScreen from '../screens/Reports/InventoryValuation/InventoryValuationScreen';
+import InventoryItemReportScreen from '../screens/Reports/InventoryItemReport/InventoryItemReportScreen';
+import BudgetDetailScreen from '../screens/Budgets/BudgetDetailScreen';
 // ── Opening a document from Recent transactions ──
 // Same reason as everything above, and the same symptom the Reports tab had:
 // navigate('TransactionsStack', { screen: 'InvoiceDetail' }) left that invoice
@@ -112,6 +134,17 @@ export const DashboardRouteNames = {
   // TaxSettings: 'TaxSettings',
   // dashboard drill-downs
   AnalyticsDashboard: 'AnalyticsDashboard',
+  // what the cockpit opens
+  ProfitLoss: 'ProfitLoss',
+  BalanceSheet: 'BalanceSheet',
+  CashFlow: 'CashFlow',
+  CashFlowLine: 'CashFlowLine',
+  AccountRegister: 'AccountRegister',
+  ARAging: 'ARAging',
+  APAging: 'APAging',
+  InventoryValuation: 'InventoryValuation',
+  InventoryItemReport: 'InventoryItemReport',
+  BudgetDetail: 'BudgetDetail',
   InvoiceDetail: 'InvoiceDetail',
   BillDetail: 'BillDetail',
   BillList: 'BillList',
@@ -151,6 +184,17 @@ export const DASHBOARD_ROUTES: IRoute[] = withSharedRecords([
   // SHELVED (Tax Management)
   // { title: DashboardRouteNames.TaxSettings, component: TaxSettingsScreen },
   { title: DashboardRouteNames.AnalyticsDashboard, component: AnalyticsDashboardScreen },
+  // what the cockpit opens — see the import block above
+  { title: DashboardRouteNames.ProfitLoss, component: ProfitLossScreen },
+  { title: DashboardRouteNames.BalanceSheet, component: BalanceSheetScreen },
+  { title: DashboardRouteNames.CashFlow, component: CashFlowScreen },
+  { title: DashboardRouteNames.CashFlowLine, component: CashFlowLineScreen },
+  { title: DashboardRouteNames.AccountRegister, component: AccountRegisterScreen },
+  { title: DashboardRouteNames.ARAging, component: ARAgingScreen },
+  { title: DashboardRouteNames.APAging, component: APAgingScreen },
+  { title: DashboardRouteNames.InventoryValuation, component: InventoryValuationScreen },
+  { title: DashboardRouteNames.InventoryItemReport, component: InventoryItemReportScreen },
+  { title: DashboardRouteNames.BudgetDetail, component: BudgetDetailScreen },
   // recent-transaction drill-down — see the import block above
   { title: DashboardRouteNames.InvoiceDetail, component: InvoiceDetailScreen },
   { title: DashboardRouteNames.BillDetail, component: BillDetailScreen },

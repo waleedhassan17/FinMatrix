@@ -1,0 +1,48 @@
+{
+  "_source": "Provisional: written to FinMatrix-Backend reports.service.ts withAgingInsights + reports.controller.ts ar-aging (working tree of 2026-10-26). Replace with a capture from the local v2 API (see fixtures/README.md).",
+  "asOfDate": "2026-10-26",
+  "preset": "monthly",
+  "buckets": [
+    { "key": "current", "label": "Current", "minDays": 0, "maxDays": 0 },
+    { "key": "d1to30", "label": "1–30", "minDays": 1, "maxDays": 30 },
+    { "key": "d31to60", "label": "31–60", "minDays": 31, "maxDays": 60 },
+    { "key": "d61to90", "label": "61–90", "minDays": 61, "maxDays": 90 },
+    { "key": "d91plus", "label": "91 and over", "minDays": 91, "maxDays": null }
+  ],
+  "rows": [
+    {
+      "customerId": "c1", "customerName": "Acme", "total": "1000.00",
+      "amounts": { "current": 100, "d1to30": 0, "d31to60": 0, "d61to90": 0, "d91plus": "900.00" },
+      "current": 100, "bucket1to30": 0, "bucket31to60": 0, "bucket61to90": 0, "bucket90Plus": 900,
+      "paymentTerms": "net_30", "creditLimit": 800, "overLimit": true, "creditUsedPct": 125,
+      "lastPaymentDate": "2026-09-15", "lastPaymentAmount": "250.00", "oldestDueDate": "2026-07-01"
+    },
+    {
+      "customerId": "c2", "customerName": "Beta", "total": 500,
+      "amounts": { "current": 500, "d1to30": 0, "d31to60": 0, "d61to90": 0, "d91plus": 0 },
+      "current": 500, "bucket1to30": 0, "bucket31to60": 0, "bucket61to90": 0, "bucket90Plus": 0,
+      "paymentTerms": null, "creditLimit": 0, "overLimit": false, "creditUsedPct": null,
+      "lastPaymentDate": null, "lastPaymentAmount": null, "oldestDueDate": "2026-11-05"
+    }
+  ],
+  "totals": {
+    "total": 1500, "amounts": { "current": 600, "d1to30": 0, "d31to60": 0, "d61to90": 0, "d91plus": 900 },
+    "current": 600, "bucket1to30": 0, "bucket31to60": 0, "bucket61to90": 0, "bucket90Plus": 900
+  },
+  "insights": {
+    "dso": { "key": "dso", "label": "Days sales outstanding", "value": 38.2, "unit": "days", "formula": "Receivables ÷ Operating revenue (trailing 90 days) × 90", "inputs": { "receivables": 1500, "revenue90": 3534.03 }, "asOfDate": "2026-10-26", "status": "ok" },
+    "totalOpen": 1500,
+    "overdue": 900,
+    "overduePct": 60,
+    "weightedAvgDaysOverdue": 47.5,
+    "top5SharePct": 100,
+    "schedule": [
+      { "key": "overdue", "label": "Overdue", "amount": 900, "count": 3 },
+      { "key": "d0_7", "label": "Due in 0–7 days", "amount": 100, "count": 1 },
+      { "key": "d8_14", "label": "Due in 8–14 days", "amount": 500, "count": 1 },
+      { "key": "d15_30", "label": "Due in 15–30 days", "amount": 0, "count": 0 },
+      { "key": "d31_60", "label": "Due in 31–60 days", "amount": 0, "count": 0 },
+      { "key": "d60_plus", "label": "Due in more than 60 days", "amount": 0, "count": 0 }
+    ]
+  }
+}

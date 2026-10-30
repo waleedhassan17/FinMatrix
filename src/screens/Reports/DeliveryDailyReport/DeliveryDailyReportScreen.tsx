@@ -13,6 +13,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { PieChart } from 'react-native-chart-kit';
 
 import { THEME } from '../../../utils/theme';
+import { CATEGORY_OTHER, CATEGORY_PALETTE, withAlpha } from '../../../theme/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchDeliveryDailyReport,
@@ -32,7 +33,6 @@ import {
   TCell,
   tableStyles,
   ACCENT,
-  CHART_SERIES,
   DateField,
   reportContentStyle
 } from '../../../components/reports/ReportUI';
@@ -84,17 +84,33 @@ const DeliveryDailyReportScreen: React.FC = () => {
     dispatch(fetchDeliveryDailyReport(date));
   }, [dispatch, date]);
 
-  const pieData = useMemo(
-    () =>
-      (report?.agencyDistribution ?? []).map((item, idx) => ({
+  // Six agencies by name in the categorical palette's order, the rest folded
+  // into a grey Other — a colour is never reused for a second agency.
+  const pieData = useMemo(() => {
+    const all = [...(report?.agencyDistribution ?? [])].sort((a, b) => b.count - a.count);
+    const named = all.slice(0, CATEGORY_PALETTE.length);
+    const rest = all.slice(CATEGORY_PALETTE.length);
+    return [
+      ...named.map((item, idx) => ({
         name: item.agencyName.split(' ').slice(0, 2).join(' '),
         population: item.count,
-        color: CHART_SERIES[idx % CHART_SERIES.length],
+        color: CATEGORY_PALETTE[idx],
         legendFontColor: THEME.colors.textSecondary,
-        legendFontSize: 11
+        legendFontSize: 11,
       })),
-    [report?.agencyDistribution],
-  );
+      ...(rest.length
+        ? [
+            {
+              name: `Other (${rest.length})`,
+              population: rest.reduce((t, x) => t + x.count, 0),
+              color: CATEGORY_OTHER,
+              legendFontColor: THEME.colors.textSecondary,
+              legendFontSize: 11,
+            },
+          ]
+        : []),
+    ];
+  }, [report?.agencyDistribution]);
 
   return (
     <ReportContainer>
@@ -165,7 +181,7 @@ const DeliveryDailyReportScreen: React.FC = () => {
                   width={chartWidth}
                   height={200}
                   chartConfig={{
-                    color: (opacity = 1) => `rgba(5,150,105,${opacity})`,
+                    color: (opacity = 1) => withAlpha(THEME.colors.primary, opacity),
                     labelColor: () => THEME.colors.textSecondary
                   }}
                   accessor="population"

@@ -5,6 +5,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DASHBOARD_ROUTES } from '../../navigations-maps/Dashboard';
 import type { SharedRecordParamList } from './sharedRecordParams';
+import type { ReportsStackParamList } from './ReportsStack';
 
 export type DashboardStackParamList = {
   AdminDashboard: undefined;
@@ -32,6 +33,17 @@ export type DashboardStackParamList = {
   // Revenue "View all" — mounted here so it does not strand Analytics on top
   // of the Reports tab.
   AnalyticsDashboard: undefined;
+  // The reports the cockpit opens, with the same params as in ReportsStack.
+  ProfitLoss: ReportsStackParamList['ProfitLoss'];
+  BalanceSheet: ReportsStackParamList['BalanceSheet'];
+  CashFlow: ReportsStackParamList['CashFlow'];
+  CashFlowLine: ReportsStackParamList['CashFlowLine'];
+  AccountRegister: ReportsStackParamList['AccountRegister'];
+  ARAging: undefined;
+  APAging: undefined;
+  InventoryValuation: ReportsStackParamList['InventoryValuation'];
+  InventoryItemReport: ReportsStackParamList['InventoryItemReport'];
+  BudgetDetail: { budgetId: string };
   // Documents, parties and items opened from the dashboard — recent
   // transactions, quick actions, the Receivables/Payables tiles, search — are
   // the shared record screens, so back returns to the dashboard instead of

@@ -85,34 +85,3 @@ export interface StatementLineEntry {
   counterpartyName: string;
 }
 
-export interface StatementLineEntries {
-  accountCode: string;
-  accountName: string;
-  accountType: string;
-  range: ReportDateRange;
-  /** The figure on the statement line, over the whole range. */
-  lineAmount: number;
-  entries: StatementLineEntry[];
-  /** Rows in the range, which may exceed what one page returned. */
-  total: number;
-  page: number;
-  limit: number;
-}
-
-export type StatementLineEntriesResponse = ApiEnvelope<StatementLineEntries>;
-
-/** Helper types for one line's fetch state inside the slice. */
-export interface LineEntriesState {
-  status: 'idle' | 'loading' | 'succeeded' | 'failed';
-  error: string;
-  /** Every page loaded so far; `entries` grows as more is loaded. */
-  data: StatementLineEntries | null;
-  /** The next page is on its way. */
-  loadingMore?: boolean;
-}
-
-export const emptyLineEntries: LineEntriesState = {
-  status: 'idle',
-  error: '',
-  data: null,
-};

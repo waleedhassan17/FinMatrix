@@ -39,6 +39,8 @@ interface Props {
    * "Other" row never responds: it is not one thing to open.
    */
   onSelect?: (key: string) => void;
+  /** Which bars lead somewhere — a sale with no customer has no record to open. */
+  canSelect?: (key: string) => boolean;
   /** A bar to mark as chosen (a filter it applies, say). */
   activeKey?: string | null;
   /** Whether a tap goes somewhere (a chevron) or toggles in place (none). */
@@ -51,6 +53,7 @@ const RankedBars: React.FC<Props> = ({
   format,
   emptyLabel = 'Nothing to rank yet.',
   onSelect,
+  canSelect,
   activeKey = null,
   navigates = false,
 }) => {
@@ -84,7 +87,7 @@ const RankedBars: React.FC<Props> = ({
       {rows.map(r => {
         const negative = r.value < 0;
         const pct = max > 0 ? Math.max(2, (Math.abs(r.value) / max) * 100) : 2;
-        const tappable = !!onSelect && r.key !== '__other__';
+        const tappable = !!onSelect && r.key !== '__other__' && (canSelect ? canSelect(r.key) : true);
         const active = activeKey !== null && r.key === activeKey;
         const body = (
           <>

@@ -1,0 +1,267 @@
+{
+  "_source": "Captured 2026-10-27 from the local v2 API (FinMatrix-Backend working tree), MetroMatrix, GET /reports/cash-flow?startDate=2026-01-01&endDate=2026-10-26",
+  "_status": 200,
+  "response": {
+    "range": {
+      "startDate": "2026-01-01",
+      "endDate": "2026-10-26"
+    },
+    "operating": {
+      "lines": [
+        {
+          "label": "Cash received from customers",
+          "amount": 1375655,
+          "lineKey": "op.customers",
+          "section": "operating"
+        },
+        {
+          "label": "Cash paid to suppliers",
+          "amount": -150000,
+          "lineKey": "op.suppliers",
+          "section": "operating"
+        },
+        {
+          "label": "Payroll paid",
+          "amount": -8333.33,
+          "lineKey": "op.payroll",
+          "section": "operating"
+        },
+        {
+          "label": "Tax payments",
+          "amount": -2500,
+          "lineKey": "op.tax",
+          "section": "operating"
+        }
+      ],
+      "total": 1214821.67
+    },
+    "investing": {
+      "lines": [],
+      "total": 0
+    },
+    "financing": {
+      "lines": [
+        {
+          "label": "Opening balance / owner funding",
+          "amount": 40000,
+          "lineKey": "fin.opening_balance",
+          "section": "financing"
+        }
+      ],
+      "total": 40000
+    },
+    "netChange": 1254821.67,
+    "beginningCash": 400000,
+    "endingCash": 1654821.67,
+    "monthlyTrend": [
+      {
+        "label": "Jan 26",
+        "value": 0,
+        "endingCash": 400000
+      },
+      {
+        "label": "Feb 26",
+        "value": 238250,
+        "endingCash": 638250
+      },
+      {
+        "label": "Mar 26",
+        "value": 168050,
+        "endingCash": 806300
+      },
+      {
+        "label": "Apr 26",
+        "value": 238250,
+        "endingCash": 1044550
+      },
+      {
+        "label": "May 26",
+        "value": 168050,
+        "endingCash": 1212600
+      },
+      {
+        "label": "Jun 26",
+        "value": 234171.67,
+        "endingCash": 1446771.67
+      },
+      {
+        "label": "Jul 26",
+        "value": 168050,
+        "endingCash": 1614821.67
+      },
+      {
+        "label": "Aug 26",
+        "value": 40000,
+        "endingCash": 1654821.67
+      },
+      {
+        "label": "Sep 26",
+        "value": 0,
+        "endingCash": 1654821.67
+      },
+      {
+        "label": "Oct 26",
+        "value": 0,
+        "endingCash": 1654821.67
+      }
+    ],
+    "operatingIndirect": {
+      "netIncome": 1183666.67,
+      "adjustments": [
+        {
+          "label": "Accounts Receivable",
+          "amount": -211100
+        },
+        {
+          "label": "Other current liabilities",
+          "amount": 242255
+        }
+      ],
+      "total": 1214821.67,
+      "excludedNonCash": []
+    },
+    "accounts": [
+      {
+        "accountCode": "1000",
+        "accountName": "Cash",
+        "beginning": 400000,
+        "ending": 1614821.67
+      },
+      {
+        "accountCode": "1099-23196",
+        "accountName": "Acceptance Opening",
+        "beginning": 0,
+        "ending": 5000
+      },
+      {
+        "accountCode": "1099-31080",
+        "accountName": "Acceptance Opening",
+        "beginning": 0,
+        "ending": 5000
+      },
+      {
+        "accountCode": "1099-39373",
+        "accountName": "Acceptance Opening",
+        "beginning": 0,
+        "ending": 5000
+      },
+      {
+        "accountCode": "1099-46538",
+        "accountName": "Acceptance Opening",
+        "beginning": 0,
+        "ending": 5000
+      },
+      {
+        "accountCode": "1099-47938",
+        "accountName": "Acceptance Opening",
+        "beginning": 0,
+        "ending": 5000
+      },
+      {
+        "accountCode": "1099-4956",
+        "accountName": "Acceptance Opening",
+        "beginning": 0,
+        "ending": 5000
+      },
+      {
+        "accountCode": "1099-50045",
+        "accountName": "Acceptance Opening",
+        "beginning": 0,
+        "ending": 5000
+      },
+      {
+        "accountCode": "1099-9300",
+        "accountName": "Acceptance Opening",
+        "beginning": 0,
+        "ending": 5000
+      }
+    ],
+    "cashTie": {
+      "endingCash": 1654821.67,
+      "balanceSheetCash": 1654821.67,
+      "ties": true
+    },
+    "monthly": [
+      {
+        "period": "2026-01",
+        "label": "Jan 26",
+        "inflow": 0,
+        "outflow": 0,
+        "net": 0,
+        "endingCash": 400000
+      },
+      {
+        "period": "2026-02",
+        "label": "Feb 26",
+        "inflow": 263250,
+        "outflow": 25000,
+        "net": 238250,
+        "endingCash": 638250
+      },
+      {
+        "period": "2026-03",
+        "label": "Mar 26",
+        "inflow": 193050,
+        "outflow": 25000,
+        "net": 168050,
+        "endingCash": 806300
+      },
+      {
+        "period": "2026-04",
+        "label": "Apr 26",
+        "inflow": 263250,
+        "outflow": 25000,
+        "net": 238250,
+        "endingCash": 1044550
+      },
+      {
+        "period": "2026-05",
+        "label": "May 26",
+        "inflow": 193050,
+        "outflow": 25000,
+        "net": 168050,
+        "endingCash": 1212600
+      },
+      {
+        "period": "2026-06",
+        "label": "Jun 26",
+        "inflow": 270005,
+        "outflow": 35833.33,
+        "net": 234171.67,
+        "endingCash": 1446771.67
+      },
+      {
+        "period": "2026-07",
+        "label": "Jul 26",
+        "inflow": 193050,
+        "outflow": 25000,
+        "net": 168050,
+        "endingCash": 1614821.67
+      },
+      {
+        "period": "2026-08",
+        "label": "Aug 26",
+        "inflow": 40000,
+        "outflow": 0,
+        "net": 40000,
+        "endingCash": 1654821.67
+      },
+      {
+        "period": "2026-09",
+        "label": "Sep 26",
+        "inflow": 0,
+        "outflow": 0,
+        "net": 0,
+        "endingCash": 1654821.67
+      },
+      {
+        "period": "2026-10",
+        "label": "Oct 26",
+        "inflow": 0,
+        "outflow": 0,
+        "net": 0,
+        "endingCash": 1654821.67
+      }
+    ]
+  }
+}

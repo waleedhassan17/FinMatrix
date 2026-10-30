@@ -1,20 +1,20 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Inventory Valuation
 // ═══════════════════════════════════════════════════════
-// What the stock is worth, and which of it earns — the phone's half of the web
-// report, laid out so the one thing a reader comes to do is the obvious thing:
-// the headline figures, then the items, each of which opens its explorer.
-// The rest is a tab away rather than stacked: Insights (who earns, where the
-// money sits, how stock has moved) and Tie-out (how the figures reconcile to
-// the ledger).
+// What the stock is worth, what it is made of, and which of it earns — the
+// website's report on a phone: the headline figures, one picture of the stock
+// (a ring by category, location or age, with bars and the month-end line a
+// tap away), then the items, each of which opens its explorer. The rest is a
+// tab away rather than stacked: Top sellers, Health and Reconciliation (how
+// the figures tie to the ledger).
 //
 // STOCK is as of now (quantity at average cost, which ties to Inventory 1200);
 // SALES cover the period chosen at the top.
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 
@@ -28,14 +28,19 @@ import {
   selectInventoryValuationState,
   setInventoryPerfRange,
   setInventoryRank,
+  setInventoryAsOf,
+  fetchInventoryHealth,
+  fetchDatedValuation,
   TREND_MONTHS,
 } from './inventoryValuationSlice';
+import InventoryHealthPanel from './InventoryHealthPanel';
+import DatedValuationCard from './DatedValuationCard';
+import StockComposition, { type CompositionDimension, type CompositionView } from './StockComposition';
 import {
   RANK_OPTIONS,
   STOCK_FILTERS,
   categoryShares,
   filterRows,
-  formatShare,
   ledgerTie,
   matchesFilter,
   rankFigure,
@@ -47,8 +52,7 @@ import {
   type StockFilter,
   type ValuationRow,
 } from '../../../models/inventoryValuationModel';
-import { SALES_PERIODS, matchSalesPeriod, salesPeriodRange } from '../../../models/reportModel';
-import MetricChart from '../shared/MetricChart';
+import { SALES_PERIODS, matchSalesPeriod, salesPeriodRange, toIsoDate } from '../../../models/reportModel';
 import RankedBars from '../shared/RankedBars';
 import PeriodSheet from '../shared/PeriodSheet';
 import { formatCurrency } from '../../../utils/formatters';
@@ -62,9 +66,11 @@ import {
   SummaryLine,
   TCell,
   tableStyles,
-  LoadingBlock,
+  ReportSkeleton,
   RefreshFade,
   ErrorBlock,
+  ErrorBanner,
+  DateField,
   EmptyBlock,
   Card,
   reportContentStyle,
@@ -81,19 +87,32 @@ const qty = (n: number) =>
 const PAGE = 25;
 /** Top items: enough to compare, few enough to read at a glance. */
 const TOP = 8;
-const TABS = ['Items', 'Insights', 'Tie-out'] as const;
+// The website's four tabs, by the website's names. `insights` and `tieout`
+// were this screen's old names for the second and fourth; links keep working.
+const TABS = ['Items', 'Top sellers', 'Health', 'Reconciliation'] as const;
+const TAB_FOR_PARAM = { items: 0, top: 1, insights: 1, health: 2, reconciliation: 3, tieout: 3 } as const;
 
 const InventoryValuationScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
+  const { params } = useRoute<RouteProp<ReportsStackParamList, 'InventoryValuation'>>();
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectInventoryValuationState);
 
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState<number>(params?.tab ? TAB_FOR_PARAM[params.tab] : 0);
+  const [refreshing, setRefreshing] = useState(false);
+  // A tab handed in again (the screen already open, a new link to Health)
+  // is adopted while rendering, React's pattern for state that follows a prop.
+  const [seenTab, setSeenTab] = useState(params?.tab);
+  if (params?.tab !== seenTab) {
+    setSeenTab(params?.tab);
+    if (params?.tab) setTab(TAB_FOR_PARAM[params.tab]);
+  }
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StockFilter>('all');
   const [category, setCategory] = useState('');
   const [shown, setShown] = useState(PAGE);
-  const [trendMonth, setTrendMonth] = useState<string | null>(null);
+  const [compView, setCompView] = useState<CompositionView>('pie');
+  const [compBy, setCompBy] = useState<CompositionDimension>('category');
 
   // The sales window follows the calendar unless the user chose one, the same
   // as every other dated report.
@@ -110,6 +129,26 @@ const InventoryValuationScreen: React.FC = () => {
     dispatch(fetchInventoryValuationTrend(TREND_MONTHS));
   }, [dispatch]);
 
+  // Stock health and the dated valuation follow the stock date: none is now.
+  const asOfDate = state.asOfDate;
+  useEffect(() => {
+    dispatch(fetchInventoryHealth(asOfDate));
+    if (asOfDate) dispatch(fetchDatedValuation(asOfDate));
+  }, [dispatch, asOfDate]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      dispatch(fetchInventoryValuationReport()),
+      dispatch(fetchInventoryValuationTrend(TREND_MONTHS)),
+      dispatch(fetchInventoryPerformance({ range: state.range })),
+      dispatch(fetchInventoryHealth(asOfDate)),
+      ...(asOfDate ? [dispatch(fetchDatedValuation(asOfDate))] : []),
+    ]);
+    setRefreshing(false);
+  };
+  const pickStockDate = (d: string) => dispatch(setInventoryAsOf(d === toIsoDate(new Date()) ? null : d));
+
   // Keyed on the dates, not the object: a focus re-seeds the same window as
   // a new object, and that must not refetch the whole report.
   const { startDate, endDate } = state.range;
@@ -121,10 +160,29 @@ const InventoryValuationScreen: React.FC = () => {
   const perf = state.performance;
   const rows = useMemo(() => valuationRows(report, perf), [report, perf]);
   const showSales = (perf?.rows.length ?? 0) > 0;
-  const stockValue = perf?.totals.stockValue ?? report?.totalValue ?? 0;
-  const tie = ledgerTie(stockValue, perf?.totals.ledgerValue ?? null);
+  // As of a past date the stock figures are that day's — the dated record's
+  // total and its own tie to 1200 — never today's under a past date.
+  const dated = asOfDate ? state.dated.data : null;
+  const stockValue = dated ? dated.totalValue : (perf?.totals.stockValue ?? report?.totalValue ?? 0);
+  const tie = dated
+    ? dated.ledgerTie
+      ? { ledgerValue: dated.ledgerTie.gl1200, difference: dated.ledgerTie.gap, ties: Math.abs(dated.ledgerTie.gap) < 1 }
+      : null
+    : ledgerTie(stockValue, perf?.totals.ledgerValue ?? null);
+  const stockItems = dated ? dated.rows.length : rows.length;
   const unsold = unsoldStock(rows);
-  const shares = useMemo(() => categoryShares(rows), [rows]);
+  const shares = useMemo(
+    () =>
+      dated
+        ? dated.byCategory.map(c => ({
+            category: c.category,
+            value: c.totalValue,
+            items: dated.rows.filter(r => r.category === c.category).length,
+            share: dated.totalValue > 0 ? c.totalValue / dated.totalValue : 0,
+          }))
+        : categoryShares(rows),
+    [dated, rows],
+  );
   const periodShort = `${dayjs(state.range.startDate).format('MMM D')} – ${dayjs(state.range.endDate).format('MMM D, YYYY')}`;
 
   const rank = state.rank;
@@ -161,14 +219,22 @@ const InventoryValuationScreen: React.FC = () => {
   const listTotals = rowTotals(listed);
   const narrowed = search.trim() !== '' || category !== '' || filter !== 'all';
 
-  const openItem = (itemId: string) => {
+  const openItem = (itemId: string, name?: string) => {
     const row = rows.find(r => r.itemId === itemId);
     navigation.navigate('InventoryItemReport', {
       itemId,
-      itemName: row?.itemName,
+      itemName: row?.itemName ?? name,
       range: showSales ? state.range : undefined,
     });
   };
+
+  // Where the list sits in the scroll content, so a drill-in from the ring or
+  // a figure brings the filtered list into view rather than leaving it below.
+  const scrollRef = useRef<ScrollView>(null);
+  const bodyY = useRef(0);
+  const tabsY = useRef(0);
+  const toList = () =>
+    setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, bodyY.current + tabsY.current - 8), animated: true }), 60);
 
   const showItems = (patch: { filter?: StockFilter; category?: string }) => {
     if (patch.filter !== undefined) setFilter(patch.filter);
@@ -177,8 +243,14 @@ const InventoryValuationScreen: React.FC = () => {
     setTab(0);
   };
 
+  /** A category picked from the ring: filter the list and bring it into view. */
+  const pickCategory = (key: string) => {
+    const next = key === category ? '' : key;
+    showItems({ category: next });
+    if (next) toList();
+  };
+
   const trendPoints = (state.trend?.points ?? []).map(p => ({ period: p.period, label: p.label, value: p.value }));
-  const trendSelected = trendPoints.find(p => p.period === trendMonth) ?? trendPoints[trendPoints.length - 1];
 
   const figures = [
     {
@@ -188,7 +260,7 @@ const InventoryValuationScreen: React.FC = () => {
         tie && !tie.ties ? (
           <Text style={styles.warn}>Differs from the ledger by {rs(Math.abs(tie.difference))}</Text>
         ) : (
-          `${rows.length} items${tie ? ' · matches the ledger' : ''}`
+          `${stockItems} items${tie ? ' · matches the ledger' : ''}${asOfDate ? ` · ${dayjs(asOfDate).format('D MMM YYYY')}` : ''}`
         ),
     },
     {
@@ -234,7 +306,30 @@ const InventoryValuationScreen: React.FC = () => {
     <ReportContainer>
       <ReportHeader title="Inventory Valuation" subtitle="Stock, and which of it earns" onBack={() => navigation.goBack()} />
 
-      <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={reportContentStyle}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
+        }
+      >
+        <Card>
+          <View style={styles.asOfRow}>
+            <DateField label="Stock as of" value={asOfDate ?? toIsoDate(new Date())} onChange={pickStockDate} />
+            {asOfDate ? (
+              <TouchableOpacity
+                style={styles.nowChip}
+                onPress={() => dispatch(setInventoryAsOf(null))}
+                accessibilityRole="button"
+                accessibilityLabel="Show stock as of now"
+              >
+                <Text style={styles.link}>Now</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </Card>
+
         <PeriodSheet
           label="Sales period"
           value={state.range}
@@ -249,19 +344,55 @@ const InventoryValuationScreen: React.FC = () => {
 
         {/* The spinner is for the first load only. A new period keeps the
             figures on screen, dimmed, until the answer lands. */}
-        {state.isLoading && !report && <LoadingBlock label="Valuing inventory…" />}
-        {!!state.error && (
+        {state.isLoading && !report && <ReportSkeleton variant="list" />}
+        {!!state.error && !report && (
           <ErrorBlock message={state.error} onRetry={() => dispatch(fetchInventoryValuationReport())} />
+        )}
+        {!!state.error && report && (
+          <ErrorBanner message={state.error} onRetry={() => dispatch(fetchInventoryValuationReport())} />
         )}
 
         {report && (
+          <View onLayout={e => (bodyY.current = e.nativeEvent.layout.y)}>
           <RefreshFade busy={state.isLoading || state.perfStatus === 'loading'}>
             <FigureStrip items={figures} />
 
-            <Segmented options={[...TABS]} activeIndex={tab} onChange={setTab} />
+            <StockComposition
+              view={compView}
+              dimension={compBy}
+              onView={setCompView}
+              onDimension={setCompBy}
+              categories={shares}
+              health={state.health}
+              onRetryHealth={() => dispatch(fetchInventoryHealth(asOfDate))}
+              trend={trendPoints}
+              asOfLabel={asOfDate ? `As of ${dayjs(asOfDate).format('D MMM YYYY')}` : 'As of today'}
+              selectedCategory={category}
+              onCategory={pickCategory}
+              onClearCategory={() => showItems({ category: '' })}
+              onHealth={() => {
+                setTab(2);
+                toList();
+              }}
+              format={rs}
+            />
+
+            <View onLayout={e => (tabsY.current = e.nativeEvent.layout.y)}>
+              <Segmented options={[...TABS]} activeIndex={tab} onChange={setTab} />
+            </View>
+
+            {/* ── Items as of a past date: the dated record ──────────────── */}
+            {tab === 0 && asOfDate && (
+              <DatedValuationCard
+                state={state.dated}
+                asOfDate={asOfDate}
+                onRetry={() => dispatch(fetchDatedValuation(asOfDate))}
+                onOpenItem={openItem}
+              />
+            )}
 
             {/* ── Items: the report, and the way into every item ─────────── */}
-            {tab === 0 && (
+            {tab === 0 && (!asOfDate || state.dated.notFound) && (
               <Card>
                 <View style={styles.hintRow}>
                   <Feather name="mouse-pointer" size={13} color={colors.primary} />
@@ -292,10 +423,12 @@ const InventoryValuationScreen: React.FC = () => {
                 </View>
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.chips, styles.gapTop]}>
+                  {/* The category picked from the ring comes first, so the way
+                      back to every item is in view, not scrolled off the row. */}
+                  {category ? chip('category', `${category} ✕`, true, () => showItems({ category: '' })) : null}
                   {filters.map(f =>
                     chip(f.key, `${f.label} ${counts[f.key]}`, f.key === filter, () => showItems({ filter: f.key })),
                   )}
-                  {category ? chip('category', `${category} ✕`, true, () => showItems({ category: '' })) : null}
                 </ScrollView>
 
                 {listed.length === 0 ? (
@@ -376,7 +509,7 @@ const InventoryValuationScreen: React.FC = () => {
               </Card>
             )}
 
-            {/* ── Insights: who earns, where the money sits, how it moved ── */}
+            {/* ── Top sellers: who earns ───────────────────────────────────── */}
             {tab === 1 && (
               <>
                 <SectionCard
@@ -406,48 +539,26 @@ const InventoryValuationScreen: React.FC = () => {
                   </View>
                 </SectionCard>
 
-                {shares.length > 0 && (
-                  <SectionCard title="Stock value by category" subtitle="As of today · tap one to list its items" icon="layers">
-                    <RankedBars
-                      points={shares.map(c => ({
-                        key: c.category,
-                        label: c.category,
-                        value: c.value,
-                        hint: `${c.items} item${c.items === 1 ? '' : 's'} · ${formatShare(c.share)} of stock`,
-                      }))}
-                      format={v => rs(v)}
-                      onSelect={key => showItems({ category: key })}
-                      navigates
-                    />
-                  </SectionCard>
-                )}
-
-                {trendPoints.length > 0 && (
-                  <SectionCard title="Stock value over time" subtitle="Inventory account 1200 at each month end" icon="trending-up">
-                    {trendSelected && (
-                      <View style={styles.readout}>
-                        <Text style={styles.readoutLabel}>{trendSelected.label}</Text>
-                        <Text style={[styles.readoutValue, (trendSelected.value ?? 0) < 0 && styles.bad]}>
-                          {rs(trendSelected.value ?? 0)}
-                        </Text>
-                      </View>
-                    )}
-                    <MetricChart
-                      metric="closingValue"
-                      type="bar"
-                      points={trendPoints}
-                      selected={trendMonth}
-                      onSelect={setTrendMonth}
-                    />
-                  </SectionCard>
-                )}
               </>
             )}
 
-            {/* ── Tie-out: how the figures reconcile, and to what ────────── */}
+            {/* ── Health: what needs a decision ──────────────────────────── */}
             {tab === 2 && (
+              <InventoryHealthPanel
+                state={state.health}
+                onRetry={() => dispatch(fetchInventoryHealth(asOfDate))}
+                onOpenItem={openItem}
+              />
+            )}
+
+            {/* ── Reconciliation: how the figures tie, and to what ───────── */}
+            {tab === 3 && (
               <>
-                <SectionCard title="Stock against the ledger" subtitle="As of today" icon="check-square">
+                <SectionCard
+                  title="Stock against the ledger"
+                  subtitle={asOfDate ? `As of ${dayjs(asOfDate).format('D MMM YYYY')}` : 'As of today'}
+                  icon="check-square"
+                >
                   {tie ? (
                     <>
                       <SummaryLine label="Stock value (this report)" value={rs(stockValue)} />
@@ -525,6 +636,7 @@ const InventoryValuationScreen: React.FC = () => {
               </>
             )}
           </RefreshFade>
+          </View>
         )}
       </ScrollView>
     </ReportContainer>
@@ -533,6 +645,8 @@ const InventoryValuationScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   warn: { color: colors.warning },
+  asOfRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
+  nowChip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.xs },
   bad: { color: colors.danger },
   link: { ...typography.labelSm, color: colors.primary },
   gapTop: { marginTop: spacing.sm },
@@ -550,9 +664,6 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { ...typography.labelSm, color: colors.textSecondary },
   chipTextOn: { color: colors.textInverse },
-  readout: { marginBottom: spacing.xs },
-  readoutLabel: { ...typography.labelSm, color: colors.textTertiary },
-  readoutValue: { ...typography.h4, color: colors.textPrimary },
   search: {
     flexDirection: 'row',
     alignItems: 'center',

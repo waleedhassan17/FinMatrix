@@ -51,6 +51,8 @@ import GeneralLedgerScreen from '../../screens/Reports/GeneralLedger/GeneralLedg
 import ARAgingScreen from '../../screens/Reports/ARAging/ARAgingScreen';
 import APAgingScreen from '../../screens/Reports/APAging/APAgingScreen';
 import AnalyticsDashboardScreen from '../../screens/Reports/AnalyticsDashboard/AnalyticsDashboardScreen';
+import AccountRegisterScreen from '../../screens/Reports/AccountRegister/AccountRegisterScreen';
+import CashFlowLineScreen from '../../screens/Reports/CashFlowLine/CashFlowLineScreen';
 
 import MoreHubScreen from '../../screens/More/MoreHubScreen';
 import COAListScreen from '../../screens/ChartOfAccounts/COAList/COAListScreen';
@@ -107,6 +109,17 @@ export const SB_DASHBOARD_ROUTES: TierRoute[] = [
   // navigations-maps/Dashboard: back returns to the dashboard, and the Reports
   // tab is left where the user put it.
   { name: 'AnalyticsDashboard', component: AnalyticsDashboardScreen },
+  // What Analytics opens, so a card tapped from the dashboard pushes onto
+  // this stack rather than naming a screen that is not here — which drops the
+  // navigation without an error. The same set navigations-maps/Dashboard
+  // mounts for the warehouse tier.
+  { name: 'ProfitLoss', component: ProfitLossScreen },
+  { name: 'BalanceSheet', component: BalanceSheetScreen },
+  { name: 'CashFlow', component: CashFlowScreen },
+  { name: 'CashFlowLine', component: CashFlowLineScreen },
+  { name: 'AccountRegister', component: AccountRegisterScreen },
+  { name: 'ARAging', component: ARAgingScreen },
+  { name: 'APAging', component: APAgingScreen },
   // First-run setup checklist destinations, mounted here as well as in their
   // own stacks so each step's back arrow returns to the dashboard rather than
   // stacking on another tab's history. Mirrors navigations-maps/Dashboard.
@@ -157,6 +170,10 @@ export const SB_REPORTS_ROUTES: TierRoute[] = [
   { name: 'ARAging', component: ARAgingScreen },
   { name: 'APAging', component: APAgingScreen },
   { name: 'AnalyticsDashboard', component: AnalyticsDashboardScreen },
+  // The statements' drill-downs: a cash-flow line's postings, an account's
+  // register. Without them a tap on a line names a screen that is not here.
+  { name: 'CashFlowLine', component: CashFlowLineScreen },
+  { name: 'AccountRegister', component: AccountRegisterScreen },
 ];
 
 export const SB_MORE_ROUTES: TierRoute[] = [
@@ -191,7 +208,8 @@ export const SB_MORE_ROUTES: TierRoute[] = [
 // (warehouse operations — inventory, delivery, purchase orders — are NEVER
 // available on this tier.)
 
-export const LO_DASHBOARD_ROUTES: TierRoute[] = SB_DASHBOARD_ROUTES;
+// Analytics' budget card opens the budget, so the dashboard stack carries it.
+export const LO_DASHBOARD_ROUTES: TierRoute[] = [...SB_DASHBOARD_ROUTES, { name: 'BudgetDetail', component: BudgetDetailScreen }];
 
 export const LO_TRANSACTIONS_ROUTES: TierRoute[] = SB_TRANSACTIONS_ROUTES;
 

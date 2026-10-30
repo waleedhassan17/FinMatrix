@@ -1,415 +1,486 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Analytics
+// FinMatrix — Analytics (the owner's business overview)
 // ═══════════════════════════════════════════════════════
-// Twelve months of trading, laid out the way the web's Analytics report is:
-// the headline figures, invoiced against billed by month, receivables by age,
-// who the money comes from and goes to, and the table behind the chart.
+// Read top to bottom the way an owner asks — the website's page, stacked for
+// a phone: four headline figures with their trends and moves, what stands
+// out, the months behind them, where the money went, then cash, the cash
+// cycle and customers, and last the balance-sheet health a lender asks about.
 //
-// Every section says what period it covers. The payload mixes them — the
-// monthly series are the last twelve months with invoices, the customer and
-// supplier rankings are all-time, receivables are today — and a screen that
-// lets those sit side by side unlabelled invites someone to add them up. The
-// old screen did worse: it called the months "last 6", a list of suppliers
-// "Expense Categories", a single snapshot a "Trend", and counted only 31+ days
-// as overdue.
+// One request (/reports/analytics, five expense accounts and five customers
+// named before Other); every figure, verdict and sentence is the server's,
+// and the comparison period is the server's choice. Each card opens the
+// report it comes from, for the same period. The screen is mounted in both
+// the Reports and the Dashboard stacks; every report it can open is
+// registered in both (navigations-maps/Dashboard).
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Feather } from '@expo/vector-icons';
+import dayjs from 'dayjs';
 
-import { THEME, AGING_RAMP, rampSteps } from '../../../theme';
+import { THEME } from '../../../theme';
+import { CATEGORY_PALETTE } from '../../../theme/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { fetchAnalyticsDashboard, selectAnalyticsDashboardState } from './analyticsDashboardSlice';
-import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
-import { formatCurrency } from '../../../utils/formatters';
 import {
-  analyticsMonths,
-  analyticsPeriodLabel,
-  analyticsSummary,
-  formatChange,
-} from '../../../models/analyticsModel';
-import { formatShare } from '../../../models/arAgingModel';
+  fetchOwnerCockpit,
+  refreshCockpitRange,
+  selectAnalyticsDashboardState,
+  setCockpitRange,
+} from './analyticsDashboardSlice';
+import { KPI_TARGET, type OwnerCockpit } from '../../../models/ownerCockpitModel';
+import { insightTarget, type BusinessInsight } from '../../../models/insightModel';
+import {
+  HEALTH_KPI_KEYS,
+  STATUS_CAPTION,
+  findKpi,
+  formatKpiChange,
+  formatKpiValue,
+  type Kpi,
+  type KpiWithChange,
+} from '../../../models/kpiModel';
+import { canDonut, OTHER_KEY, type SlicePoint } from '../../../models/chartSlicesModel';
+import { SALES_PERIODS, matchSalesPeriod, salesPeriodRange } from '../../../models/reportModel';
 import {
   ReportContainer,
   ReportHeader,
-  SectionCard,
-  FigureStrip,
-  RefreshFade,
-  LoadingBlock,
-  ErrorBlock,
-  EmptyBlock,
   Card,
-  TCell,
-  tableStyles,
-  amountColWidth,
-  reportContentStyle,
+  EmptyBlock,
+  ErrorBlock,
+  ErrorBanner,
+  KpiCard,
+  KpiCardGrid,
+  RefreshFade,
+  ReportSkeleton,
+  parenNegative,
 } from '../../../components/reports/ReportUI';
+import AssessmentPill from '../../../components/reports/AssessmentPill';
+import KpiCards from '../shared/KpiCards';
+import KpiInfoSheet from '../shared/KpiInfoSheet';
+import PeriodSheet, { rangeText } from '../shared/PeriodSheet';
 import RankedBars from '../shared/RankedBars';
-import InvoicedBilledChart, { ChartLegend, SERIES } from './InvoicedBilledChart';
+import DonutChart from '../shared/DonutChart';
+import InsightsList from '../shared/InsightsList';
+import CashCycle from '../shared/CashCycle';
+import { CashBalanceChart, ProfitChart } from '../shared/MonthCharts';
 
-const { colors, spacing, typography } = THEME;
+const { colors, radius, spacing, typography } = THEME;
 
-type AnalyticsDashboardScreenProps = NativeStackScreenProps<ReportsStackParamList, 'AnalyticsDashboard'>;
+type AnyNav = NativeStackNavigationProp<Record<string, object | undefined>>;
 
-const rs = (n: number) => formatCurrency(n, 'Rs ');
+const rs = (n: number) => parenNegative(n, 'Rs ');
 
-/** "Rs 1.2M" / "Rs 803K" — for captions, where the full figure is above. */
-const rsCompact = (amount: number): string => {
-  const abs = Math.abs(amount);
-  const sign = amount < 0 ? '−' : '';
-  if (abs >= 1_000_000) return `${sign}Rs ${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 10_000) return `${sign}Rs ${Math.round(abs / 1_000)}K`;
-  if (abs >= 1_000) return `${sign}Rs ${(abs / 1_000).toFixed(1)}K`;
-  return `${sign}Rs ${Math.round(abs)}`;
-};
+/** A card with a title, what it covers, and the report it opens. */
+const Panel: React.FC<{
+  title: string;
+  subtitle?: string;
+  onOpen?: () => void;
+  openLabel?: string;
+  children: React.ReactNode;
+}> = ({ title, subtitle, onOpen, openLabel = 'Open report', children }) => (
+  <View style={styles.panel}>
+    <View style={styles.panelHead}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.panelTitle}>{title}</Text>
+        {subtitle ? (
+          <Text style={styles.panelSub} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      {onOpen ? (
+        <TouchableOpacity
+          onPress={onOpen}
+          style={styles.open}
+          accessibilityRole="button"
+          accessibilityLabel={`${openLabel}: ${title}`}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <Text style={styles.openText}>{openLabel}</Text>
+          <Feather name="chevron-right" size={14} color={colors.primary} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
+    {children}
+  </View>
+);
 
-/** How many customers and suppliers get a bar before the rest fold into "Other". */
-const RANK_LIMIT = 5;
-
-const AGE_LABELS = ['Current', '1–30 days', '31–60 days', '61–90 days', '91+ days'];
-
-const MONTH_W = 76;
-const CHANGE_W = 76;
-
-const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({ navigation }) => {
+const AnalyticsDashboardScreen: React.FC = () => {
+  const navigation = useNavigation<AnyNav>();
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectAnalyticsDashboardState);
+  const [refreshing, setRefreshing] = useState(false);
+  const [info, setInfo] = useState<Kpi | null>(null);
 
-  useEffect(() => {
-    dispatch(fetchAnalyticsDashboard());
-  }, [dispatch]);
-
-  const data = state.data;
-
-  const months = useMemo(
-    () => analyticsMonths(data?.revenueTrend ?? [], data?.cashFlowTrend ?? []),
-    [data],
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(refreshCockpitRange());
+    }, [dispatch]),
   );
-  const summary = useMemo(() => analyticsSummary(months), [months]);
-  const period = analyticsPeriodLabel(months);
 
-  // The tapped month, defaulting to the latest.
-  const [picked, setPicked] = useState<number | null>(null);
-  const selected = picked !== null && picked < months.length ? picked : months.length - 1;
-  const focus = months[selected];
-  const focusChange = formatChange(focus?.change ?? null);
+  const { startDate, endDate } = state.range;
+  useEffect(() => {
+    dispatch(fetchOwnerCockpit({ startDate, endDate }));
+  }, [dispatch, startDate, endDate]);
 
-  // Receivables today, in the classic five buckets. Overdue is everything past
-  // "current" — the old screen started counting at 31 days.
-  const aging = data?.arAgingTrend?.[0];
-  const ageValues = aging
-    ? [aging.current, aging.bucket1to30, aging.bucket31to60, aging.bucket61to90, aging.bucket90Plus].map(v =>
-        Number.isFinite(v) ? Math.max(0, v) : 0,
-      )
-    : [];
-  const outstanding = ageValues.reduce((t, v) => t + v, 0);
-  const overdue = outstanding - (ageValues[0] ?? 0);
-  const ageRamp = rampSteps(AGE_LABELS.length, AGING_RAMP);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await dispatch(fetchOwnerCockpit(state.range));
+    setRefreshing(false);
+  }, [dispatch, state.range]);
 
-  const latestChange = formatChange(summary.latest?.change ?? null);
-  const hasAnything =
-    months.length > 0 ||
-    (data?.expenseCategories?.length ?? 0) > 0 ||
-    (data?.topCustomers?.length ?? 0) > 0;
+  const d: OwnerCockpit | null = state.data;
+  const range = d?.range ?? state.range;
+  const retry = () => dispatch(fetchOwnerCockpit(state.range));
 
-  const amountW = amountColWidth([
-    ...months.flatMap(m => [rs(m.invoiced), rs(m.billed), rs(m.net)]),
-    rs(summary.invoiced),
-  ]);
+  /** A report, for the period on screen. */
+  const open = useCallback(
+    (screen: string, params?: Record<string, unknown>) => {
+      switch (screen) {
+        case 'ProfitLoss':
+        case 'CashFlow':
+          navigation.navigate(screen, params ?? { range });
+          break;
+        case 'BalanceSheet':
+          navigation.navigate(screen, params ?? { asOfDate: range.endDate });
+          break;
+        case 'InventoryValuation':
+          navigation.navigate(screen, params ?? { tab: 'health' });
+          break;
+        default:
+          navigation.navigate(screen, params);
+      }
+    },
+    [navigation, range],
+  );
+  /**
+   * Whether this tier mounts a screen. A budget lives only on tiers that have
+   * budgets, and stock only on tiers with inventory: an insight or a panel
+   * that points elsewhere offers no link rather than one that does nothing.
+   */
+  const canNavigate = (screen: string) => !!navigation.getState()?.routeNames?.includes(screen as never);
+  const insightOpenable = (i: BusinessInsight) => {
+    const target = insightTarget(i.report, range);
+    return target !== null && canNavigate(target.screen);
+  };
+  const openInsight = (i: BusinessInsight) => {
+    const target = insightTarget(i.report, range);
+    if (target && canNavigate(target.screen)) open(target.screen, target.params);
+  };
+
+  const kpi = (key: string): KpiWithChange | undefined => (d ? findKpi(d.kpis, key) : undefined);
+  const margin = (key: string, label: string): string | null => {
+    const m = kpi(key);
+    if (!m || m.value === null) return null;
+    const move = m.change ? ` · ${formatKpiChange(m.change, 'percent')}` : '';
+    return `${formatKpiValue(m.value, 'percent')} ${label}${move}`;
+  };
+  const runway = kpi('runwayMonths');
+  const runwayText = runway
+    ? runway.value !== null
+      ? `${formatKpiValue(runway.value, 'months')} of runway`
+      : STATUS_CAPTION[runway.status]
+    : null;
+  const series = d?.series ?? [];
+
+  const expenseSlices: SlicePoint[] = (d?.expenseByAccount ?? []).map(e => ({
+    key: e.accountCode || OTHER_KEY,
+    label: e.accountCode ? e.accountName : 'Other accounts',
+    value: e.amount,
+    sharePct: e.sharePct,
+  }));
+  const sales = d?.salesByCustomer ?? null;
+  const health = d?.health ?? null;
+  const healthKpis = health ? HEALTH_KPI_KEYS.map(k => findKpi(health.kpis, k)).filter((k): k is Kpi => !!k) : [];
+
+  const hero: { key: string; label?: string; trend: (number | null)[]; context?: string | null; assessment?: Kpi['assessment'] }[] = [
+    { key: 'revenue', trend: series.map(p => p.revenue), context: null },
+    { key: 'grossProfit', trend: series.map(p => p.grossProfit), context: margin('grossMarginPct', 'gross margin') },
+    { key: 'netIncome', trend: series.map(p => p.netIncome), context: margin('netMarginPct', 'net margin') },
+    {
+      key: 'endingCash',
+      label: 'Cash and bank',
+      trend: series.map(p => p.endingCash),
+      context: runwayText,
+      // How long the cash lasts says more than whether there is any.
+      assessment: runway?.assessment ?? kpi('endingCash')?.assessment ?? null,
+    },
+  ];
 
   return (
     <ReportContainer>
-      <ReportHeader
-        title="Analytics"
-        subtitle={period ? `${period} · invoice and bill totals` : 'Invoiced and billed, month by month'}
-        onBack={() => navigation.goBack()}
-      />
+      <ReportHeader title="Analytics" subtitle="How the business is doing" onBack={() => navigation.goBack()} />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
+        <PeriodSheet
+          label="Period"
+          value={state.range}
+          options={SALES_PERIODS}
+          rangeFor={key => salesPeriodRange(key)}
+          match={r => matchSalesPeriod(r)}
+          onChange={r => dispatch(setCockpitRange(r))}
+        />
+        {d?.comparisonRange ? <Text style={styles.compare}>Compared with {rangeText(d.comparisonRange)}</Text> : null}
 
-      <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
-        {state.isLoading && !data && <LoadingBlock label="Loading analytics…" />}
-        {!!state.error && (
-          <ErrorBlock message={state.error} onRetry={() => dispatch(fetchAnalyticsDashboard())} />
-        )}
-
-        {data && !state.error && !hasAnything && (
+        {state.isLoading && !d ? (
+          <>
+            <ReportSkeleton variant="kpis" rows={2} />
+            <ReportSkeleton variant="statement" />
+          </>
+        ) : null}
+        {state.notFound && !d ? (
           <Card>
-            <EmptyBlock
-              icon="bar-chart-2"
-              title="Nothing to analyse yet"
-              hint="Trends appear once there are invoices and bills to chart."
-            />
+            <EmptyBlock icon="activity" title="Analytics is not available" hint="This server predates the business overview." />
           </Card>
-        )}
+        ) : null}
+        {!!state.error && !d && !state.notFound ? <ErrorBlock message={state.error} onRetry={retry} /> : null}
+        {!!state.error && d ? <ErrorBanner message={state.error} onRetry={retry} /> : null}
 
-        {data && !state.error && hasAnything && (
+        {d ? (
           <RefreshFade busy={state.isLoading}>
-            <FigureStrip
-              items={[
-                {
-                  label: 'Invoiced',
-                  value: rs(summary.invoiced),
-                  caption:
-                    months.length > 0
-                      ? `${months.length} month${months.length === 1 ? '' : 's'} · ${rsCompact(summary.averageInvoiced)} a month`
-                      : 'No invoices yet',
-                },
-                {
-                  label: summary.latest ? `Invoiced in ${summary.latest.label}` : 'Latest month',
-                  value: rs(summary.latest?.invoiced ?? 0),
-                  caption:
-                    latestChange && summary.previous ? (
-                      <Text>
-                        <Text
-                          style={{
-                            color:
-                              (summary.latest?.change?.delta ?? 0) >= 0 ? colors.success : colors.danger,
-                          }}
-                        >
-                          {(summary.latest?.change?.delta ?? 0) >= 0 ? '▲' : '▼'} {latestChange}
-                        </Text>
-                        {` on ${summary.previous.label}`}
-                      </Text>
-                    ) : (
-                      'No earlier month to compare'
-                    ),
-                },
-                {
-                  label: 'Invoiced less billed',
-                  value: rs(summary.net),
-                  tone: summary.net < 0 ? 'danger' : 'default',
-                  caption: `Billed ${rsCompact(summary.billed)} over the same months`,
-                },
-                {
-                  label: 'Overdue receivables',
-                  value: rs(overdue),
-                  tone: overdue > 0 ? 'warning' : 'default',
-                  caption:
-                    outstanding > 0
-                      ? `${formatShare(overdue / outstanding)} of ${rsCompact(outstanding)} owed today`
-                      : 'Nothing owed today',
-                },
-              ]}
-            />
+            {/* ── The four headline figures ─────────────────────────── */}
+            <KpiCardGrid>
+              {hero.map(h => {
+                const k = kpi(h.key);
+                if (!k) return null;
+                return (
+                  <KpiCard
+                    key={h.key}
+                    kpi={h.label ? { ...k, label: h.label } : k}
+                    hero
+                    trend={h.trend}
+                    context={h.context}
+                    assessment={h.assessment}
+                    onInfo={() => setInfo(k)}
+                    onPress={() => open(KPI_TARGET[h.key] ?? 'ProfitLoss')}
+                  />
+                );
+              })}
+            </KpiCardGrid>
 
-            <SectionCard
-              title="Invoiced and billed"
-              subtitle={period ? `${period} · months with invoices · tap a month` : undefined}
-              icon="bar-chart-2"
+            {/* ── What stands out ───────────────────────────────────── */}
+            {d.insights.length > 0 ? (
+              <Panel
+                title="What stands out"
+                subtitle={d.comparisonRange ? `${rangeText(range)}, against ${rangeText(d.comparisonRange)}` : rangeText(range)}
+              >
+                <InsightsList insights={d.insights} onOpen={openInsight} canOpen={insightOpenable} />
+              </Panel>
+            ) : null}
+
+            {/* ── The months ────────────────────────────────────────── */}
+            <Panel
+              title="Revenue and profit by month"
+              subtitle="Revenue and gross profit as columns, net profit as the line"
+              onOpen={() => open('ProfitLoss')}
+              openLabel="Profit & Loss"
             >
-              {months.length > 0 ? (
-                <>
-                  <ChartLegend />
-                  <InvoicedBilledChart months={months} selected={selected} onSelect={setPicked} />
-                  {focus && (
-                    <View style={styles.readout}>
-                      <Text style={styles.readoutTitle}>{focus.label}</Text>
-                      {(
-                        [
-                          ['invoiced', focus.invoiced],
-                          ['billed', focus.billed],
-                          ['net', focus.net],
-                        ] as const
-                      ).map(([k, v]) => (
-                        <View key={k} style={styles.readoutRow}>
-                          <View style={[styles.swatch, { backgroundColor: SERIES[k].color }]} />
-                          <Text style={styles.readoutLabel}>
-                            {k === 'net' ? 'Difference' : SERIES[k].label}
-                          </Text>
-                          <Text style={[styles.readoutValue, v < 0 && styles.negative]}>{rs(v)}</Text>
-                        </View>
-                      ))}
-                      {focusChange && (
-                        <Text style={styles.readoutNote}>
-                          Invoiced {focusChange} on the month before
-                        </Text>
-                      )}
-                    </View>
-                  )}
-                </>
-              ) : (
-                <Text style={styles.empty}>No invoices in the last twelve months.</Text>
-              )}
-            </SectionCard>
+              <ProfitChart
+                months={series.map(p => ({
+                  key: p.period,
+                  label: p.label,
+                  revenue: p.revenue,
+                  grossProfit: p.grossProfit,
+                  netIncome: p.netIncome,
+                }))}
+              />
+            </Panel>
 
-            <SectionCard
-              title="Receivables by age"
-              subtitle={
-                outstanding > 0
-                  ? `${rsCompact(outstanding)} outstanding · ${rsCompact(overdue)} overdue`
-                  : 'As of today'
-              }
-              icon="clock"
+            {/* ── Where the money went ──────────────────────────────── */}
+            <Panel
+              title="Where the money went"
+              subtitle="Operating expenses by account — the five largest, then the rest"
+              onOpen={() => open('ProfitLoss')}
+              openLabel="Profit & Loss"
             >
-              {outstanding > 0 ? (
-                <>
-                  <View style={styles.stack}>
-                    {ageValues.map((v, i) =>
-                      v > 0 ? (
-                        <View
-                          key={AGE_LABELS[i]}
-                          style={{ width: `${(v / outstanding) * 100}%`, backgroundColor: ageRamp[i] }}
-                        />
-                      ) : null,
-                    )}
-                  </View>
-                  <View style={styles.ageRows}>
-                    {AGE_LABELS.map((label, i) => (
-                      <View key={label} style={styles.ageRow}>
-                        <View style={[styles.swatch, { backgroundColor: ageRamp[i] }]} />
-                        <Text style={styles.ageLabel}>{label}</Text>
-                        <Text style={styles.ageValue}>{rs(ageValues[i] ?? 0)}</Text>
-                        <Text style={styles.ageShare}>
-                          {formatShare((ageValues[i] ?? 0) / outstanding)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
+              {canDonut(expenseSlices) ? (
+                <DonutChart
+                  title="Operating expenses by account"
+                  slices={expenseSlices}
+                  palette={CATEGORY_PALETTE}
+                  total={kpi('operatingExpenses')?.value ?? undefined}
+                  centerLabel="Operating expenses"
+                  labelHeader="Account"
+                />
               ) : (
-                <Text style={styles.empty}>No receivables outstanding.</Text>
-              )}
-            </SectionCard>
-
-            <SectionCard title="Top customers" subtitle="All time · invoice totals" icon="award">
-              <RankedBars
-                points={(data.topCustomers ?? []).map((p, i) => ({
-                  key: `${p.label}-${i}`,
-                  label: p.label || '(no name)',
-                  value: p.value,
-                }))}
-                limit={RANK_LIMIT}
-                format={rs}
-                emptyLabel="No customer has been invoiced yet."
-              />
-            </SectionCard>
-
-            {/* Named for what it is. The API calls this `expenseCategories`, but
-                the query groups bills by VENDOR — there is no expense account in
-                it. The old pie chart repeated the API's wording. */}
-            <SectionCard title="Spend by supplier" subtitle="All time · bill totals" icon="truck">
-              <RankedBars
-                points={(data.expenseCategories ?? []).map((p, i) => ({
-                  key: `${p.label}-${i}`,
-                  label: p.label || '(no name)',
-                  value: p.value,
-                }))}
-                limit={RANK_LIMIT}
-                format={rs}
-                emptyLabel="No supplier has billed yet."
-              />
-            </SectionCard>
-
-            {months.length > 0 && (
-              <SectionCard title="Monthly detail" subtitle="The figures behind the chart" icon="list">
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View>
-                    <View style={tableStyles.head}>
-                      <TCell width={MONTH_W} head>Month</TCell>
-                      <TCell width={amountW} head align="right">Invoiced</TCell>
-                      <TCell width={amountW} head align="right">Billed</TCell>
-                      <TCell width={amountW} head align="right">Difference</TCell>
-                      <TCell width={CHANGE_W} head align="right">vs prior</TCell>
+                <>
+                  <RankedBars
+                    points={expenseSlices.map(s => ({ key: s.key, label: s.label, value: s.value }))}
+                    limit={Math.max(1, expenseSlices.length)}
+                    format={rs}
+                    emptyLabel="No operating expenses in this period."
+                  />
+                  {kpi('operatingExpenses') ? (
+                    <View style={styles.totalRow}>
+                      <Text style={styles.totalText}>Operating expenses</Text>
+                      <Text style={styles.totalText}>{rs(kpi('operatingExpenses')!.value ?? 0)}</Text>
                     </View>
-                    {months.map((m, i) => {
-                      const c = formatChange(m.change);
-                      return (
-                        <View key={m.label} style={[tableStyles.row, i % 2 === 1 && tableStyles.rowAlt]}>
-                          <TCell width={MONTH_W}>{m.label}</TCell>
-                          <TCell width={amountW} align="right">{rs(m.invoiced)}</TCell>
-                          <TCell
-                            width={amountW}
-                            align="right"
-                            color={m.billed === 0 ? colors.textTertiary : undefined}
-                          >
-                            {m.billed === 0 ? '—' : rs(m.billed)}
-                          </TCell>
-                          <TCell width={amountW} align="right" color={m.net < 0 ? colors.danger : undefined}>
-                            {rs(m.net)}
-                          </TCell>
-                          <TCell
-                            width={CHANGE_W}
-                            align="right"
-                            color={
-                              !c
-                                ? colors.textTertiary
-                                : (m.change?.delta ?? 0) >= 0
-                                  ? colors.success
-                                  : colors.danger
-                            }
-                          >
-                            {c ?? '—'}
-                          </TCell>
-                        </View>
-                      );
-                    })}
-                    <View style={tableStyles.totalRow}>
-                      <TCell width={MONTH_W} strong>Total</TCell>
-                      <TCell width={amountW} align="right" strong>{rs(summary.invoiced)}</TCell>
-                      <TCell width={amountW} align="right" strong>{rs(summary.billed)}</TCell>
-                      <TCell
-                        width={amountW}
-                        align="right"
-                        strong
-                        color={summary.net < 0 ? colors.danger : undefined}
-                      >
-                        {rs(summary.net)}
-                      </TCell>
-                      <TCell width={CHANGE_W} align="right">{''}</TCell>
+                  ) : null}
+                  {expenseSlices.some(s => s.value < 0) ? (
+                    <Text style={styles.note}>
+                      An account ran a credit this period, so the accounts are shown as bars rather than shares of a whole.
+                    </Text>
+                  ) : null}
+                </>
+              )}
+            </Panel>
+
+            {/* ── Cash ──────────────────────────────────────────────── */}
+            <Panel title="Cash" subtitle="Cash and bank at each month end" onOpen={() => open('CashFlow')} openLabel="Cash Flow">
+              <CashBalanceChart months={series.map(p => ({ key: p.period, label: p.label, endingCash: p.endingCash }))} height={110} />
+              {(['operatingCashFlow', 'runwayMonths'] as const).map(key => {
+                const k = kpi(key);
+                if (!k) return null;
+                const shown = k.value === null ? STATUS_CAPTION[k.status] : formatKpiValue(k.value, k.unit);
+                return (
+                  <View key={key} style={styles.fact} accessible accessibilityLabel={`${k.label}, ${shown}`}>
+                    <Text style={styles.factLabel}>{k.label}</Text>
+                    <View style={styles.factRow}>
+                      <Text style={styles.factValue}>{shown}</Text>
+                      <AssessmentPill assessment={k.assessment} />
                     </View>
                   </View>
-                </ScrollView>
-              </SectionCard>
-            )}
+                );
+              })}
+            </Panel>
+
+            {/* ── The cash cycle ────────────────────────────────────── */}
+            <Panel
+              title="Cash cycle"
+              subtitle={`Days cash is tied up, as of ${dayjs(range.endDate).format('D MMM YYYY')}`}
+              onOpen={() => open('ARAging')}
+              openLabel="AR Aging"
+            >
+              <CashCycle kpis={{ dso: kpi('dso'), dio: kpi('dio'), dpo: kpi('dpo'), ccc: kpi('ccc') }} />
+            </Panel>
+
+            {/* ── Customers ─────────────────────────────────────────── */}
+            {sales ? (
+              <Panel title="Customers" subtitle={`Top five by sales · ${sales.label}`} onOpen={() => open('ARAging')} openLabel="AR Aging">
+                {sales.top5SharePct !== null ? (
+                  <View style={styles.factRow}>
+                    <Text style={styles.concentration}>The top five hold {sales.top5SharePct.toFixed(1)}% of sales</Text>
+                    <AssessmentPill assessment={sales.assessment} />
+                  </View>
+                ) : null}
+                <RankedBars
+                  points={[
+                    ...sales.customers.map(c => ({
+                      key: c.customerId || c.name,
+                      label: c.name,
+                      value: c.amount,
+                      hint: [
+                        c.sharePct !== null ? `${c.sharePct.toFixed(1)}% of sales` : null,
+                        c.invoices ? `${c.invoices} invoice${c.invoices === 1 ? '' : 's'}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · '),
+                    })),
+                    ...(sales.other.count > 0
+                      ? [{ key: '__rest__', label: `Other customers (${sales.other.count})`, value: sales.other.amount }]
+                      : []),
+                  ]}
+                  limit={6}
+                  format={rs}
+                  emptyLabel="No invoiced sales in this period."
+                />
+              </Panel>
+            ) : null}
+
+            {/* ── Balance-sheet health ──────────────────────────────── */}
+            {healthKpis.length > 0 ? (
+              <>
+                <View style={styles.sectionHead}>
+                  <Text style={styles.sectionTitle}>Business health</Text>
+                  <TouchableOpacity
+                    onPress={() => open('BalanceSheet')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open the Balance Sheet"
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={styles.openText}>Balance Sheet ›</Text>
+                  </TouchableOpacity>
+                </View>
+                <KpiCards state={{ status: 'succeeded', error: '' }} kpis={healthKpis} onRetry={retry} onOpen={() => open('BalanceSheet')} />
+              </>
+            ) : null}
+
+            {/* ── Budget ────────────────────────────────────────────── */}
+            {d.budgetVsActual ? (
+              <Panel
+                title="Budget against actual"
+                subtitle={`${d.budgetVsActual.budget.name} · calendar year ${d.budgetVsActual.budget.fiscalYear}`}
+                onOpen={
+                  canNavigate('BudgetDetail')
+                    ? () => navigation.navigate('BudgetDetail', { budgetId: d.budgetVsActual!.budget.id })
+                    : undefined
+                }
+                openLabel="Budget"
+              >
+                <RankedBars
+                  points={d.budgetVsActual.rows.map(r => ({
+                    key: r.accountId || r.accountCode,
+                    label: `${r.accountCode} ${r.accountName}`,
+                    value: r.actual,
+                    hint: `of ${rs(r.budgeted)} budgeted · ${r.percentUsed.toFixed(1)}% used`,
+                  }))}
+                  limit={Math.max(1, d.budgetVsActual.rows.length)}
+                  format={rs}
+                  emptyLabel="The budget has no lines."
+                />
+              </Panel>
+            ) : null}
 
             <Text style={styles.footnote}>
-              Monthly figures are invoice and bill totals by document date, tax included, over the
-              last twelve months that have invoices — a month with none is not shown. Invoiced less
-              billed is not cash: nothing here says what was collected or paid. Profit &amp; Loss is
-              the statement for earned revenue net of tax.
+              Ledger figures by the statements’ own rules, as of {dayjs(range.endDate).format('D MMM YYYY')}. Sales by customer are on
+              the invoice basis.
             </Text>
           </RefreshFade>
-        )}
+        ) : null}
       </ScrollView>
+      <KpiInfoSheet kpi={info} onClose={() => setInfo(null)} />
     </ReportContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  empty: { ...typography.bodySm, color: colors.textTertiary, textAlign: 'center', paddingVertical: spacing.md },
-  readout: {
+  content: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.xxxl },
+  compare: { ...typography.caption, color: colors.textTertiary, marginTop: -spacing.xxs },
+  panel: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.xs,
     marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-    gap: 6,
   },
-  readoutTitle: { ...typography.labelMd, color: colors.textPrimary },
-  readoutRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  readoutLabel: { ...typography.caption, color: colors.textSecondary, flex: 1 },
-  readoutValue: { ...typography.labelMd, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
-  readoutNote: { ...typography.caption, color: colors.textTertiary },
-  negative: { color: colors.danger },
-  swatch: { width: 9, height: 9, borderRadius: 2 },
-  stack: {
+  panelHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  panelTitle: { ...typography.h5, color: colors.textPrimary },
+  panelSub: { ...typography.caption, color: colors.textTertiary },
+  open: { flexDirection: 'row', alignItems: 'center', minHeight: 32 },
+  openText: { ...typography.labelSm, color: colors.primary },
+  totalRow: {
     flexDirection: 'row',
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
-    backgroundColor: colors.neutral100,
-    gap: 1,
+    justifyContent: 'space-between',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: spacing.xs,
   },
-  ageRows: { marginTop: spacing.md, gap: spacing.xs + 2 },
-  ageRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  ageLabel: { ...typography.bodySm, color: colors.textSecondary, flex: 1 },
-  ageValue: { ...typography.labelMd, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
-  ageShare: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    width: 40,
-    textAlign: 'right',
-    fontVariant: ['tabular-nums'],
-  },
-  footnote: { ...typography.caption, color: colors.textTertiary, paddingHorizontal: spacing.xxs },
+  totalText: { ...typography.labelMd, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
+  note: { ...typography.caption, color: colors.textTertiary },
+  fact: { paddingTop: spacing.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight, gap: 2 },
+  factLabel: { ...typography.caption, color: colors.textTertiary },
+  factRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  factValue: { ...typography.labelLg, color: colors.textPrimary, fontVariant: ['tabular-nums'], flexShrink: 1 },
+  concentration: { ...typography.bodySm, color: colors.textSecondary, flex: 1 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.md },
+  sectionTitle: { ...typography.h5, color: colors.textPrimary },
+  footnote: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.md },
 });
 
 export default AnalyticsDashboardScreen;

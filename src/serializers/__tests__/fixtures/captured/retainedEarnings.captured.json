@@ -1,0 +1,26 @@
+{
+  "_source": "Captured 2026-10-27 from the local v2 API (FinMatrix-Backend working tree), MetroMatrix, GET /reports/balance-sheet/retained-earnings?asOfDate=2026-10-26",
+  "_status": 200,
+  "response": {
+    "success": true,
+    "data": {
+      "asOfDate": "2026-10-26",
+      "fiscalYearStart": "2026-01-01",
+      "retainedEarningsAccount": {
+        "accountCode": "3100",
+        "accountName": "Retained Earnings"
+      },
+      "postedTo3100": 0,
+      "priorYearsEarnings": 200,
+      "byFiscalYear": [
+        {
+          "fiscalYear": 2025,
+          "startDate": "2025-01-01",
+          "endDate": "2025-12-31",
+          "netIncome": 200
+        }
+      ],
+      "total": 200
+    }
+  }
+}

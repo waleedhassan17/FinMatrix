@@ -263,7 +263,9 @@ const CustomerDetailScreen: React.FC = () => {
             <TouchableOpacity
               onPress={() => navigation.goBack()}
               style={styles.backBtn}
-              activeOpacity={0.7}>
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Go back">
               <Feather name="arrow-left" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle} numberOfLines={1}>{customer.name}</Text>
@@ -482,7 +484,12 @@ const ScreenHeader: React.FC<{ title: string; onBack: () => void }> = ({ title, 
   <View style={styles.header}>
     <View style={styles.headerLeft}>
       <View style={styles.headerTitleRow}>
-        <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={onBack}
+          style={styles.backBtn}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Go back">
           <Feather name="arrow-left" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>

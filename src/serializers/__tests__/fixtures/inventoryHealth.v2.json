@@ -1,0 +1,33 @@
+{
+  "_source": "Provisional: written to FinMatrix-Backend reports-kpi.service.ts inventoryHealth (working tree of 2026-10-26). Replace with a capture from the local v2 API (see fixtures/README.md).",
+  "asOfDate": "2026-10-26",
+  "basis": "onHandAtAverageCost",
+  "belowReorder": [
+    { "itemId": "i1", "name": "Bolt M8", "sku": "B-8", "qtyOnHand": "4", "reorderPoint": 10, "reorderQuantity": 50, "suggestedOrderQty": 50, "stockValue": "40.00" }
+  ],
+  "aging": {
+    "byLastInbound": [
+      { "key": "d0_30", "label": "0–30 days", "count": 3, "value": 1200 },
+      { "key": "d31_90", "label": "31–90 days", "count": 1, "value": 300 },
+      { "key": "d91_180", "label": "91–180 days", "count": 0, "value": 0 },
+      { "key": "d180_plus", "label": "More than 180 days", "count": 1, "value": 500 },
+      { "key": "noMovement", "label": "No movement recorded", "count": 0, "value": 0 }
+    ],
+    "byLastOutbound": [
+      { "key": "d0_30", "label": "0–30 days", "count": 2, "value": 900 },
+      { "key": "d31_90", "label": "31–90 days", "count": 0, "value": 0 },
+      { "key": "d91_180", "label": "91–180 days", "count": 1, "value": 600 },
+      { "key": "d180_plus", "label": "More than 180 days", "count": 1, "value": 500 },
+      { "key": "noMovement", "label": "No movement recorded", "count": 1, "value": 0 }
+    ]
+  },
+  "deadStock": {
+    "thresholdDays": 180,
+    "items": [{ "itemId": "i9", "name": "Old Lamp", "sku": "L-1", "qtyOnHand": 5, "stockValue": 500, "lastOutboundDate": "2026-01-02", "daysSinceOutbound": 297 }],
+    "totalValue": 500
+  },
+  "turnover": { "key": "inventoryTurnover", "label": "Inventory turnover", "value": 4.2, "unit": "ratio", "formula": "COGS (trailing 12 months) ÷ average month-end inventory (GL 1200, 12 months)", "inputs": { "cogs12": 8400, "averageInventory": 2000 }, "asOfDate": "2026-10-26", "status": "ok" },
+  "dio": { "key": "dio12", "label": "Days inventory outstanding (12 months)", "value": 86.9, "unit": "days", "formula": "Average month-end inventory ÷ COGS (trailing 12 months) × 365", "inputs": { "cogs12": 8400, "averageInventory": 2000 }, "asOfDate": "2026-10-26", "status": "ok" },
+  "byLocation": [{ "location": "Main", "value": 1500 }, { "location": "Unassigned", "value": 500 }],
+  "totals": { "itemCount": 6, "itemsOnHand": 5, "stockValue": 2000, "valuationTotal": 2000 }
+}

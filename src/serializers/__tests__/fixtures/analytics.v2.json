@@ -1,0 +1,30 @@
+{
+  "_source": "Provisional: written to FinMatrix-Backend reports-kpi.service.ts analytics() and docs/reports-api-v2.md (working tree of 2026-10-26). Replace with a capture from the local v2 API (see fixtures/README.md).",
+  "range": { "startDate": "2026-07-01", "endDate": "2026-09-30" },
+  "comparisonRange": { "startDate": "2026-04-01", "endDate": "2026-06-30" },
+  "fiscalYearStart": "2026-01-01",
+  "series": [
+    { "period": "2026-07", "label": "Jul 26", "revenue": "1000.00", "cogs": 600, "grossProfit": 400, "operatingExpenses": 150, "netIncome": 250, "operatingCashFlow": 200, "endingCash": 5000 },
+    { "period": "2026-08", "label": "Aug 26", "revenue": 0, "cogs": 0, "grossProfit": 0, "operatingExpenses": 50, "netIncome": -50, "operatingCashFlow": -60, "endingCash": 4940 },
+    { "period": "2026-09", "label": "Sep 26", "revenue": 2000, "cogs": 1100, "grossProfit": 900, "operatingExpenses": 200, "netIncome": 700, "operatingCashFlow": 500, "endingCash": null }
+  ],
+  "kpis": [
+    { "key": "revenue", "label": "Revenue", "value": 3000, "current": 3000, "prior": 2500, "change": 500, "changePct": 20, "unit": "money", "formula": "All revenue (P&L)", "inputs": { "revenue": 3000 }, "asOfDate": "2026-09-30", "status": "ok" },
+    { "key": "grossMarginPct", "label": "Gross margin", "value": 43.33, "current": 43.33, "prior": 40, "change": 3.33, "changePct": 8.33, "unit": "percent", "formula": "Gross profit ÷ Revenue × 100", "inputs": { "grossProfit": 1300, "revenue": 3000 }, "asOfDate": "2026-09-30", "status": "ok" },
+    { "key": "runwayMonths", "label": "Cash runway", "value": null, "current": null, "prior": 6.1, "change": null, "changePct": null, "unit": "months", "formula": "Cash and bank ÷ average monthly net cash outflow (last 3 full months)", "inputs": { "cashAndBank": 4940, "avgMonthlyNetCash": 60 }, "asOfDate": "2026-09-30", "status": "cash_positive" },
+    { "key": "dso", "label": "Days sales outstanding", "value": 41, "current": 41, "prior": 45, "change": -4, "changePct": -8.89, "unit": "days", "formula": "Receivables ÷ Operating revenue (trailing 90 days) × 90", "inputs": { "receivables": 1366.67, "revenue90": 3000 }, "asOfDate": "2026-09-30", "status": "ok" }
+  ],
+  "expenseByAccount": [
+    { "accountCode": "6000", "accountName": "Rent", "amount": 300 },
+    { "accountCode": "", "accountName": "Other", "amount": 100 }
+  ],
+  "salesByCustomer": {
+    "basis": "invoice", "label": "invoice basis", "note": "Invoiced sales excluding tax, net of invoice discounts; drafts and voids excluded. Credit memos are not netted.",
+    "total": 3000,
+    "customers": [{ "customerId": "c1", "name": "Acme", "amount": 2000, "invoices": 3 }, { "customerId": "c2", "name": "", "amount": 1000, "invoices": 1 }],
+    "other": { "count": 0, "amount": 0 },
+    "top5SharePct": 100
+  },
+  "budgetVsActual": null,
+  "health": { "asOfDate": "2026-09-30", "kpis": [{ "key": "currentRatio", "label": "Current ratio", "value": 1.8, "unit": "ratio", "formula": "Current assets ÷ Current liabilities", "inputs": { "currentAssets": 1800, "currentLiabilities": 1000 }, "asOfDate": "2026-09-30", "status": "ok" }] }
+}

@@ -1,3 +1,4 @@
+import type { KpiAssessment } from './kpiModel';
 import type { ApiEnvelope, ReportDateRange } from './reportModel';
 
 export interface InventoryValuationRow {
@@ -101,6 +102,9 @@ export interface ItemPerformancePoint {
   costKnown: boolean;
 }
 
+/** 'ok' | 'low' | 'out' — the Health tab's reorder rule, applied to one item. */
+export type ItemStockStatus = 'ok' | 'low' | 'out';
+
 /** The item as it stands today — stock figures are AS OF NOW. */
 export interface ItemFacts {
   category: string;
@@ -113,6 +117,25 @@ export interface ItemFacts {
   isActive: boolean;
   /** The last sale of any date, not only in the range. Null: never sold. */
   lastSoldDate: string | null;
+  /** Signed links to the item's photo; null without one, or from an older server. */
+  imageUrl: string | null;
+  thumbnailUrl: string | null;
+  /** Where the item is kept; null when it has no location. */
+  location: string | null;
+  /** Null from a server that predates it — the screen then works it out from the figures. */
+  stockStatus: ItemStockStatus | null;
+  /** What the reorder list suggests ordering; null when no reorder is due. */
+  suggestedOrderQty: number | null;
+  /**
+   * The server's days of cover. Undefined from an older server (the screen
+   * then works it out); null when nothing sold to measure against.
+   */
+  daysOfCover?: number | null;
+  /** Its verdict — the rule lives on the server, never guessed here. */
+  cover: KpiAssessment | null;
+  /** On hand, with nothing out in 180 days — the Health tab's dead stock. */
+  deadStock: boolean;
+  lastOutboundDate: string | null;
 }
 
 /** One buyer of the item over the range. */
@@ -122,6 +145,28 @@ export interface ItemCustomer {
   unitsSold: number;
   revenue: number;
   grossProfit: number;
+  /** Share of the window's revenue, 0–100; null for a negative part. */
+  sharePct: number | null;
+}
+
+/** How the item went out: invoiced directly, or on a delivery. */
+export interface ItemChannel {
+  key: 'invoice' | 'delivery';
+  unitsSold: number;
+  revenue: number;
+  grossProfit: number;
+  /** Invoices — a delivery is sold on the invoice it raised. */
+  documents: number;
+  /** Share of what went out before returns, 0–100. */
+  sharePct: number | null;
+}
+
+/** What came back on credit notes: every figure is negative. */
+export interface ItemReturns {
+  unitsSold: number;
+  revenue: number;
+  grossProfit: number;
+  documents: number;
 }
 
 export interface ItemPerformance {
@@ -147,7 +192,19 @@ export interface ItemPerformance {
   /** The top buyers over the range, largest first. */
   customers: ItemCustomer[];
   /** Everyone after the top few, folded. */
-  otherCustomers: { count: number; unitsSold: number; revenue: number; grossProfit: number };
+  otherCustomers: {
+    count: number;
+    unitsSold: number;
+    revenue: number;
+    grossProfit: number;
+    sharePct: number | null;
+  };
+  /**
+   * The same lines by document type; with `returns` they add up to `totals`.
+   * Null from a server that predates them.
+   */
+  channels: ItemChannel[] | null;
+  returns: ItemReturns | null;
 }
 
 export type ItemPerformanceResponse = ApiEnvelope<ItemPerformance>;

@@ -20,6 +20,8 @@ import APAgingScreen from '../screens/Reports/APAging/APAgingScreen';
 import InventoryValuationScreen from '../screens/Reports/InventoryValuation/InventoryValuationScreen';
 import InventoryItemReportScreen from '../screens/Reports/InventoryItemReport/InventoryItemReportScreen';
 import AnalyticsDashboardScreen from '../screens/Reports/AnalyticsDashboard/AnalyticsDashboardScreen';
+import AccountRegisterScreen from '../screens/Reports/AccountRegister/AccountRegisterScreen';
+import CashFlowLineScreen from '../screens/Reports/CashFlowLine/CashFlowLineScreen';
 import DeliveryDailyReportScreen from '../screens/Reports/DeliveryDailyReport/DeliveryDailyReportScreen';
 import DeliveryPerformanceScreen from '../screens/Reports/DeliveryPerformance/DeliveryPerformanceScreen';
 
@@ -38,6 +40,8 @@ export const ReportsRouteNames = {
   InventoryValuation: 'InventoryValuation',
   InventoryItemReport: 'InventoryItemReport',
   AnalyticsDashboard: 'AnalyticsDashboard',
+  AccountRegister: 'AccountRegister',
+  CashFlowLine: 'CashFlowLine',
   DeliveryDailyReport: 'DeliveryDailyReport',
   DeliveryPerformance: 'DeliveryPerformance',
 } as const;
@@ -59,6 +63,8 @@ export const REPORTS_ROUTES: IRoute[] = withSharedRecords([
   { title: ReportsRouteNames.InventoryValuation, component: InventoryValuationScreen },
   { title: ReportsRouteNames.InventoryItemReport, component: InventoryItemReportScreen },
   { title: ReportsRouteNames.AnalyticsDashboard, component: AnalyticsDashboardScreen },
+  { title: ReportsRouteNames.AccountRegister, component: AccountRegisterScreen },
+  { title: ReportsRouteNames.CashFlowLine, component: CashFlowLineScreen },
   { title: ReportsRouteNames.DeliveryDailyReport, component: DeliveryDailyReportScreen },
   { title: ReportsRouteNames.DeliveryPerformance, component: DeliveryPerformanceScreen },
 ]);

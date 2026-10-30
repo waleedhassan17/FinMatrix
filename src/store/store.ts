@@ -100,6 +100,8 @@ import { apAgingSlice } from '../screens/Reports/APAging/apAgingSlice';
 import { inventoryValuationSlice } from '../screens/Reports/InventoryValuation/inventoryValuationSlice';
 import { inventoryItemReportSlice } from '../screens/Reports/InventoryItemReport/inventoryItemReportSlice';
 import { analyticsDashboardSlice } from '../screens/Reports/AnalyticsDashboard/analyticsDashboardSlice';
+import { accountRegisterSlice } from '../screens/Reports/AccountRegister/accountRegisterSlice';
+import { inlineEntriesSlice } from '../screens/Reports/shared/inlineEntriesSlice';
 import { deliveryDailyReportSlice } from '../screens/Reports/DeliveryDailyReport/deliveryDailyReportSlice';
 import { deliveryPerformanceSlice } from '../screens/Reports/DeliveryPerformance/deliveryPerformanceSlice';
 import { taxSettingsSlice } from '../screens/Tax/TaxSettings/taxSettingsSlice';
@@ -126,6 +128,8 @@ const rootReducer = combineReducers({
   inventoryValuation: inventoryValuationSlice.reducer,
   inventoryItemReport: inventoryItemReportSlice.reducer,
   analyticsDashboard: analyticsDashboardSlice.reducer,
+  accountRegister: accountRegisterSlice.reducer,
+  reportDrill: inlineEntriesSlice.reducer,
     deliveryDailyReport: deliveryDailyReportSlice.reducer,
     deliveryPerformance: deliveryPerformanceSlice.reducer,
     taxSettings: taxSettingsSlice.reducer,

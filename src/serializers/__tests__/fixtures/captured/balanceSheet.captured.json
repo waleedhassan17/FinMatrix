@@ -1,0 +1,388 @@
+{
+  "_source": "Captured 2026-10-27 from the local v2 API (FinMatrix-Backend working tree), MetroMatrix, GET /reports/balance-sheet?asOfDate=2026-10-26&compareTo=2026-09-30",
+  "_status": 200,
+  "response": {
+    "asOfDate": "2026-10-26",
+    "assets": [
+      {
+        "accountCode": "1000",
+        "accountName": "Cash",
+        "amount": 1614821.67
+      },
+      {
+        "accountCode": "1099-23196",
+        "accountName": "Acceptance Opening",
+        "amount": 5000
+      },
+      {
+        "accountCode": "1099-31080",
+        "accountName": "Acceptance Opening",
+        "amount": 5000
+      },
+      {
+        "accountCode": "1099-39373",
+        "accountName": "Acceptance Opening",
+        "amount": 5000
+      },
+      {
+        "accountCode": "1099-46538",
+        "accountName": "Acceptance Opening",
+        "amount": 5000
+      },
+      {
+        "accountCode": "1099-47938",
+        "accountName": "Acceptance Opening",
+        "amount": 5000
+      },
+      {
+        "accountCode": "1099-4956",
+        "accountName": "Acceptance Opening",
+        "amount": 5000
+      },
+      {
+        "accountCode": "1099-50045",
+        "accountName": "Acceptance Opening",
+        "amount": 5000
+      },
+      {
+        "accountCode": "1099-9300",
+        "accountName": "Acceptance Opening",
+        "amount": 5000
+      },
+      {
+        "accountCode": "1100",
+        "accountName": "Accounts Receivable",
+        "amount": 211300
+      }
+    ],
+    "liabilities": [
+      {
+        "accountCode": "2300",
+        "accountName": "Sales Tax Payable",
+        "amount": 242255
+      }
+    ],
+    "equity": [
+      {
+        "accountCode": "3100",
+        "accountName": "Retained Earnings",
+        "amount": 200,
+        "composite": {
+          "postedBalance": 0,
+          "priorYearsEarnings": 200
+        }
+      },
+      {
+        "accountCode": "3900",
+        "accountName": "Opening Balance Equity",
+        "amount": 440000
+      },
+      {
+        "accountCode": "",
+        "accountName": "Net Income (current fiscal year)",
+        "amount": 1183666.67,
+        "synthetic": "currentYearEarnings"
+      }
+    ],
+    "totalAssets": 1866121.67,
+    "totalLiabilities": 242255,
+    "totalEquity": 1623866.67,
+    "isBalanced": true,
+    "fiscalYearStart": "2026-01-01",
+    "totalLiabilitiesAndEquity": 1866121.67,
+    "gap": 0,
+    "sections": [
+      {
+        "key": "cashAndBank",
+        "label": "Cash and Bank",
+        "lines": [
+          {
+            "accountCode": "1000",
+            "accountName": "Cash",
+            "subType": "Cash",
+            "amount": 1614821.67,
+            "priorAmount": 1614821.67,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 86.53
+          },
+          {
+            "accountCode": "1099-23196",
+            "accountName": "Acceptance Opening",
+            "subType": "Cash",
+            "amount": 5000,
+            "priorAmount": 5000,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 0.27
+          },
+          {
+            "accountCode": "1099-31080",
+            "accountName": "Acceptance Opening",
+            "subType": "Cash",
+            "amount": 5000,
+            "priorAmount": 5000,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 0.27
+          },
+          {
+            "accountCode": "1099-39373",
+            "accountName": "Acceptance Opening",
+            "subType": "Cash",
+            "amount": 5000,
+            "priorAmount": 5000,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 0.27
+          },
+          {
+            "accountCode": "1099-46538",
+            "accountName": "Acceptance Opening",
+            "subType": "Cash",
+            "amount": 5000,
+            "priorAmount": 5000,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 0.27
+          },
+          {
+            "accountCode": "1099-47938",
+            "accountName": "Acceptance Opening",
+            "subType": "Cash",
+            "amount": 5000,
+            "priorAmount": 5000,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 0.27
+          },
+          {
+            "accountCode": "1099-4956",
+            "accountName": "Acceptance Opening",
+            "subType": "Cash",
+            "amount": 5000,
+            "priorAmount": 5000,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 0.27
+          },
+          {
+            "accountCode": "1099-50045",
+            "accountName": "Acceptance Opening",
+            "subType": "Cash",
+            "amount": 5000,
+            "priorAmount": 5000,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 0.27
+          },
+          {
+            "accountCode": "1099-9300",
+            "accountName": "Acceptance Opening",
+            "subType": "Cash",
+            "amount": 5000,
+            "priorAmount": 5000,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 0.27
+          }
+        ],
+        "subtotal": 1654821.67,
+        "priorSubtotal": 1654821.67,
+        "change": 0,
+        "changePct": 0,
+        "subtotalPctOfTotalAssets": 88.68
+      },
+      {
+        "key": "receivables",
+        "label": "Accounts Receivable",
+        "lines": [
+          {
+            "accountCode": "1100",
+            "accountName": "Accounts Receivable",
+            "subType": "Accounts Receivable",
+            "amount": 211300,
+            "priorAmount": 211300,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 11.32
+          }
+        ],
+        "subtotal": 211300,
+        "priorSubtotal": 211300,
+        "change": 0,
+        "changePct": 0,
+        "subtotalPctOfTotalAssets": 11.32
+      },
+      {
+        "key": "inventory",
+        "label": "Inventory",
+        "lines": [],
+        "subtotal": 0,
+        "priorSubtotal": 0,
+        "change": 0,
+        "changePct": null,
+        "subtotalPctOfTotalAssets": 0
+      },
+      {
+        "key": "otherCurrentAssets",
+        "label": "Other Current Assets",
+        "lines": [],
+        "subtotal": 0,
+        "priorSubtotal": 0,
+        "change": 0,
+        "changePct": null,
+        "subtotalPctOfTotalAssets": 0
+      },
+      {
+        "key": "fixedAssets",
+        "label": "Fixed Assets",
+        "lines": [],
+        "subtotal": 0,
+        "priorSubtotal": 0,
+        "change": 0,
+        "changePct": null,
+        "subtotalPctOfTotalAssets": 0
+      },
+      {
+        "key": "currentLiabilities",
+        "label": "Current Liabilities",
+        "lines": [
+          {
+            "accountCode": "2300",
+            "accountName": "Sales Tax Payable",
+            "subType": "Tax Payable",
+            "amount": 242255,
+            "priorAmount": 242255,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 12.98
+          }
+        ],
+        "subtotal": 242255,
+        "priorSubtotal": 242255,
+        "change": 0,
+        "changePct": 0,
+        "subtotalPctOfTotalAssets": 12.98
+      },
+      {
+        "key": "longTermLiabilities",
+        "label": "Long-term Liabilities",
+        "lines": [],
+        "subtotal": 0,
+        "priorSubtotal": 0,
+        "change": 0,
+        "changePct": null,
+        "subtotalPctOfTotalAssets": 0
+      },
+      {
+        "key": "equity",
+        "label": "Equity",
+        "lines": [
+          {
+            "accountCode": "",
+            "accountName": "Net Income (current fiscal year)",
+            "subType": null,
+            "amount": 1183666.67,
+            "priorAmount": 1183666.67,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 63.43,
+            "synthetic": "currentYearEarnings"
+          },
+          {
+            "accountCode": "3100",
+            "accountName": "Retained Earnings",
+            "subType": "Retained Earnings",
+            "amount": 200,
+            "priorAmount": 200,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 0.01,
+            "composite": {
+              "postedBalance": 0,
+              "priorYearsEarnings": 200
+            }
+          },
+          {
+            "accountCode": "3900",
+            "accountName": "Opening Balance Equity",
+            "subType": "Opening Balance Equity",
+            "amount": 440000,
+            "priorAmount": 440000,
+            "change": 0,
+            "changePct": 0,
+            "pctOfTotalAssets": 23.58
+          }
+        ],
+        "subtotal": 1623866.67,
+        "priorSubtotal": 1623866.67,
+        "change": 0,
+        "changePct": 0,
+        "subtotalPctOfTotalAssets": 87.02
+      }
+    ],
+    "subtotals": [
+      {
+        "key": "totalCurrentAssets",
+        "label": "Total Current Assets",
+        "amount": 1866121.67,
+        "priorAmount": 1866121.67,
+        "change": 0,
+        "changePct": 0,
+        "pctOfTotalAssets": 100
+      },
+      {
+        "key": "totalAssets",
+        "label": "Total Assets",
+        "amount": 1866121.67,
+        "priorAmount": 1866121.67,
+        "change": 0,
+        "changePct": 0,
+        "pctOfTotalAssets": 100
+      },
+      {
+        "key": "totalCurrentLiabilities",
+        "label": "Total Current Liabilities",
+        "amount": 242255,
+        "priorAmount": 242255,
+        "change": 0,
+        "changePct": 0,
+        "pctOfTotalAssets": 12.98
+      },
+      {
+        "key": "totalLiabilities",
+        "label": "Total Liabilities",
+        "amount": 242255,
+        "priorAmount": 242255,
+        "change": 0,
+        "changePct": 0,
+        "pctOfTotalAssets": 12.98
+      },
+      {
+        "key": "totalEquity",
+        "label": "Total Equity",
+        "amount": 1623866.67,
+        "priorAmount": 1623866.67,
+        "change": 0,
+        "changePct": 0,
+        "pctOfTotalAssets": 87.02
+      },
+      {
+        "key": "totalLiabilitiesAndEquity",
+        "label": "Total Liabilities and Equity",
+        "amount": 1866121.67,
+        "priorAmount": 1866121.67,
+        "change": 0,
+        "changePct": 0,
+        "pctOfTotalAssets": 100
+      }
+    ],
+    "comparison": {
+      "asOfDate": "2026-09-30",
+      "totalAssets": 1866121.67,
+      "totalLiabilities": 242255,
+      "totalEquity": 1623866.67
+    }
+  }
+}

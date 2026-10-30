@@ -457,6 +457,43 @@ export const AGING_RAMP = [
 ] as const;
 
 /**
+ * Categorical palette, for slices and series that have an IDENTITY — expense
+ * accounts, stock categories and locations, customers, cash in against cash
+ * out. Built from the brand: it leads with the brand's navy and teal (each
+ * lifted just enough to read as a colour in a chart), keeps to their cool
+ * family — a sky blue, a slate indigo, a mint — and allows one warm accent, a
+ * muted gold, which three-series charts give their line. Six hues, assigned in
+ * this order and never cycled: a seventh category folds into "Other".
+ *
+ * Validated with the dataviz validator on white, light mode: every slot in the
+ * lightness band and over the chroma floor, worst adjacent pair ΔE 12.0 under
+ * protanopia (target 8) and 17.2 for normal vision (floor 15), the
+ * wrap-around pair included. Gold, sky and mint sit below 3:1 on white, so
+ * every chart that uses them names each slice in a legend with its value.
+ *
+ * Identical to CATEGORY_PALETTE in the website's theme/tokens.ts.
+ */
+export const CATEGORY_PALETTE = ['#235E93', '#079487', '#C3963B', '#6BB6EE', '#505BA7', '#54C8B1'] as const;
+
+/**
+ * The pale grey "Other" takes — the tail of a ranked list, never a category of
+ * its own. It recedes, and sits at least ΔE 15 from every slot above.
+ */
+export const CATEGORY_OTHER = colors.neutral300;
+
+/**
+ * A token colour at an opacity, for a chart library that asks for
+ * `rgba(…, opacity)` — so its marks stay on the palette instead of a hand-typed
+ * rgba that drifts when the palette moves (react-native-chart-kit's `color`).
+ */
+export const withAlpha = (hex: string, opacity = 1): string => {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h.slice(0, 6);
+  const n = parseInt(full, 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${opacity})`;
+};
+
+/**
  * `count` colours spread evenly across a ramp, always including both ends.
  *
  * Fewer buckets than steps takes a subset; more repeats intermediate steps

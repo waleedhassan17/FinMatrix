@@ -2,8 +2,7 @@
 // FinMatrix — One metric over the months, as columns or a line
 // ═══════════════════════════════════════════════════════
 // The phone's half of the web's MetricChart, hand-drawn in react-native-svg
-// like InvoicedBilledChart (same axis rule, same web font fallback, same
-// whole-month tap bands).
+// (one axis rule, the web font fallback, whole-month tap bands).
 //
 // One series, one scale: the explorer charts one metric at a time and lists
 // the rest underneath, because two metrics on one frame would need two axes.

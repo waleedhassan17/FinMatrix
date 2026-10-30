@@ -38,7 +38,9 @@ describe('item explorer slice', () => {
     estimatedCogsShare: 0,
     item: null,
     customers: [],
-    otherCustomers: { count: 0, unitsSold: 0, revenue: 0, grossProfit: 0 },
+    otherCustomers: { count: 0, unitsSold: 0, revenue: 0, grossProfit: 0, sharePct: null },
+    channels: [],
+    returns: null,
   });
 
   const page = (n: number, ids: string[], total: number): ItemSalesEntries => ({

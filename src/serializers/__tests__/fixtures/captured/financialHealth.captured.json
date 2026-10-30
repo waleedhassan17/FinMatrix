@@ -1,0 +1,183 @@
+{
+  "_source": "Captured 2026-10-27 from the local v2 API (FinMatrix-Backend working tree), MetroMatrix, GET /reports/financial-health?asOfDate=2026-10-26",
+  "_status": 200,
+  "response": {
+    "success": true,
+    "data": {
+      "asOfDate": "2026-10-26",
+      "kpis": [
+        {
+          "key": "cashAndBank",
+          "label": "Cash and bank",
+          "value": 1654821.67,
+          "unit": "money",
+          "formula": "Cash + Bank account balances",
+          "inputs": {
+            "cashAndBank": 1654821.67
+          },
+          "asOfDate": "2026-10-26",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "What the cash and bank accounts hold; below zero means the business is overdrawn."
+          }
+        },
+        {
+          "key": "workingCapital",
+          "label": "Working capital",
+          "value": 1623866.67,
+          "unit": "money",
+          "formula": "Current assets − Current liabilities",
+          "inputs": {
+            "currentAssets": 1866121.67,
+            "currentLiabilities": 242255
+          },
+          "asOfDate": "2026-10-26",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "Positive means current assets cover everything falling due within a year."
+          }
+        },
+        {
+          "key": "currentRatio",
+          "label": "Current ratio",
+          "value": 7.7,
+          "unit": "ratio",
+          "formula": "Current assets ÷ Current liabilities",
+          "inputs": {
+            "currentAssets": 1866121.67,
+            "currentLiabilities": 242255
+          },
+          "asOfDate": "2026-10-26",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "Above 1.5× is generally comfortable; below 1×, current debts exceed current assets."
+          }
+        },
+        {
+          "key": "quickRatio",
+          "label": "Quick ratio",
+          "value": 7.7,
+          "unit": "ratio",
+          "formula": "(Cash and bank + Receivables) ÷ Current liabilities",
+          "inputs": {
+            "cashAndBank": 1654821.67,
+            "receivables": 211300,
+            "currentLiabilities": 242255
+          },
+          "asOfDate": "2026-10-26",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "Above 1× means cash and receivables alone cover current debts, without selling stock."
+          }
+        },
+        {
+          "key": "debtToEquity",
+          "label": "Debt to equity",
+          "value": 0.15,
+          "unit": "ratio",
+          "formula": "Total liabilities ÷ Total equity",
+          "inputs": {
+            "totalLiabilities": 242255,
+            "totalEquity": 1623866.67
+          },
+          "asOfDate": "2026-10-26",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "Below 1× means the owners fund more of the business than creditors do; above 2× is highly leveraged."
+          }
+        },
+        {
+          "key": "dso",
+          "label": "Days sales outstanding",
+          "value": null,
+          "unit": "days",
+          "formula": "Receivables ÷ Operating revenue (trailing 90 days) × 90",
+          "inputs": {
+            "receivables": 211300,
+            "revenue90": -1000
+          },
+          "asOfDate": "2026-10-26",
+          "status": "no_denominator",
+          "assessment": {
+            "level": "neutral",
+            "guide": "Under 45 days suits 30-day terms; above 75 days, customers are paying slowly."
+          }
+        },
+        {
+          "key": "dpo",
+          "label": "Days payables outstanding",
+          "value": null,
+          "unit": "days",
+          "formula": "Accounts payable ÷ COGS (trailing 90 days) × 90",
+          "inputs": {
+            "accountsPayable": 0,
+            "cogs90": 0
+          },
+          "asOfDate": "2026-10-26",
+          "status": "no_denominator",
+          "assessment": {
+            "level": "neutral",
+            "guide": "How long you take to pay suppliers. Longer helps cash, but past agreed terms it strains suppliers."
+          }
+        },
+        {
+          "key": "dio",
+          "label": "Days inventory outstanding",
+          "value": null,
+          "unit": "days",
+          "formula": "Inventory ÷ COGS (trailing 90 days) × 90",
+          "inputs": {
+            "inventory": 0,
+            "cogs90": 0
+          },
+          "asOfDate": "2026-10-26",
+          "status": "no_denominator",
+          "assessment": {
+            "level": "neutral",
+            "guide": "Under 60 days of stock on hand is lean; above 120 days, stock is moving slowly."
+          }
+        },
+        {
+          "key": "ccc",
+          "label": "Cash conversion cycle",
+          "value": null,
+          "unit": "days",
+          "formula": "DSO + DIO − DPO",
+          "inputs": {
+            "dso": null,
+            "dio": null,
+            "dpo": null
+          },
+          "asOfDate": "2026-10-26",
+          "status": "no_denominator",
+          "assessment": {
+            "level": "neutral",
+            "guide": "Days cash is tied up between paying for stock and collecting from customers; shorter is better."
+          }
+        },
+        {
+          "key": "runwayMonths",
+          "label": "Cash runway",
+          "value": null,
+          "unit": "months",
+          "formula": "Cash and bank ÷ average monthly net cash outflow (last 3 full months)",
+          "inputs": {
+            "cashAndBank": 1654821.67,
+            "avgMonthlyNetCash": 69350
+          },
+          "asOfDate": "2026-10-26",
+          "status": "cash_positive",
+          "assessment": {
+            "level": "healthy",
+            "guide": "Months the cash lasts at the recent rate of spending; under 3 months needs action now."
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "_source": "Captured 2026-10-27 from the local v2 API (FinMatrix-Backend working tree), MetroMatrix, GET /reports/trial-balance?startDate=2026-01-01&endDate=2026-10-26&mode=movement",
+  "_status": 200,
+  "response": {
+    "range": {
+      "startDate": "2026-01-01",
+      "endDate": "2026-10-26"
+    },
+    "mode": "movement",
+    "rows": [
+      {
+        "accountCode": "1000",
+        "accountName": "Cash",
+        "debit": 1214821.67,
+        "credit": 0,
+        "accountType": "asset",
+        "subType": "Cash",
+        "group": "cashAndBank",
+        "flags": []
+      },
+      {
+        "accountCode": "1099-23196",
+        "accountName": "Acceptance Opening",
+        "debit": 5000,
+        "credit": 0,
+        "accountType": "asset",
+        "subType": "Cash",
+        "group": "cashAndBank",
+        "flags": []
+      },
+      {
+        "accountCode": "1099-31080",
+        "accountName": "Acceptance Opening",
+        "debit": 5000,
+        "credit": 0,
+        "accountType": "asset",
+        "subType": "Cash",
+        "group": "cashAndBank",
+        "flags": []
+      },
+      {
+        "accountCode": "1099-39373",
+        "accountName": "Acceptance Opening",
+        "debit": 5000,
+        "credit": 0,
+        "accountType": "asset",
+        "subType": "Cash",
+        "group": "cashAndBank",
+        "flags": []
+      },
+      {
+        "accountCode": "1099-46538",
+        "accountName": "Acceptance Opening",
+        "debit": 5000,
+        "credit": 0,
+        "accountType": "asset",
+        "subType": "Cash",
+        "group": "cashAndBank",
+        "flags": []
+      },
+      {
+        "accountCode": "1099-47938",
+        "accountName": "Acceptance Opening",
+        "debit": 5000,
+        "credit": 0,
+        "accountType": "asset",
+        "subType": "Cash",
+        "group": "cashAndBank",
+        "flags": []
+      },
+      {
+        "accountCode": "1099-4956",
+        "accountName": "Acceptance Opening",
+        "debit": 5000,
+        "credit": 0,
+        "accountType": "asset",
+        "subType": "Cash",
+        "group": "cashAndBank",
+        "flags": []
+      },
+      {
+        "accountCode": "1099-50045",
+        "accountName": "Acceptance Opening",
+        "debit": 5000,
+        "credit": 0,
+        "accountType": "asset",
+        "subType": "Cash",
+        "group": "cashAndBank",
+        "flags": []
+      },
+      {
+        "accountCode": "1099-9300",
+        "accountName": "Acceptance Opening",
+        "debit": 5000,
+        "credit": 0,
+        "accountType": "asset",
+        "subType": "Cash",
+        "group": "cashAndBank",
+        "flags": []
+      },
+      {
+        "accountCode": "1100",
+        "accountName": "Accounts Receivable",
+        "debit": 211100,
+        "credit": 0,
+        "accountType": "asset",
+        "subType": "Accounts Receivable",
+        "group": "receivables",
+        "flags": []
+      },
+      {
+        "accountCode": "2300",
+        "accountName": "Sales Tax Payable",
+        "debit": 0,
+        "credit": 242255,
+        "accountType": "liability",
+        "subType": "Tax Payable",
+        "group": "currentLiabilities",
+        "flags": []
+      },
+      {
+        "accountCode": "3900",
+        "accountName": "Opening Balance Equity",
+        "debit": 0,
+        "credit": 40000,
+        "accountType": "equity",
+        "subType": "Opening Balance Equity",
+        "group": "equity",
+        "flags": [
+          "obe_nonzero"
+        ]
+      },
+      {
+        "accountCode": "4000",
+        "accountName": "Sales Revenue",
+        "debit": 0,
+        "credit": 1357000,
+        "accountType": "revenue",
+        "subType": "Sales",
+        "group": "income",
+        "flags": []
+      },
+      {
+        "accountCode": "6000",
+        "accountName": "Rent Expense",
+        "debit": 75000,
+        "credit": 0,
+        "accountType": "expense",
+        "subType": "Operating",
+        "group": "expenses",
+        "flags": []
+      },
+      {
+        "accountCode": "6100",
+        "accountName": "Utilities Expense",
+        "debit": 75000,
+        "credit": 0,
+        "accountType": "expense",
+        "subType": "Operating",
+        "group": "expenses",
+        "flags": []
+      },
+      {
+        "accountCode": "6200",
+        "accountName": "Salary Expense",
+        "debit": 23333.33,
+        "credit": 0,
+        "accountType": "expense",
+        "subType": "Payroll",
+        "group": "expenses",
+        "flags": []
+      }
+    ],
+    "totalDebits": 1639255,
+    "totalCredits": 1639255,
+    "isBalanced": true,
+    "groups": [
+      {
+        "key": "cashAndBank",
+        "label": "Cash and Bank",
+        "debit": 1254821.67,
+        "credit": 0
+      },
+      {
+        "key": "receivables",
+        "label": "Accounts Receivable",
+        "debit": 211100,
+        "credit": 0
+      },
+      {
+        "key": "currentLiabilities",
+        "label": "Current Liabilities",
+        "debit": 0,
+        "credit": 242255
+      },
+      {
+        "key": "equity",
+        "label": "Equity",
+        "debit": 0,
+        "credit": 40000
+      },
+      {
+        "key": "income",
+        "label": "Income",
+        "debit": 0,
+        "credit": 1357000
+      },
+      {
+        "key": "expenses",
+        "label": "Expenses",
+        "debit": 173333.33,
+        "credit": 0
+      }
+    ]
+  }
+}

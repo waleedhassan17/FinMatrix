@@ -1,0 +1,876 @@
+{
+  "_source": "Captured 2026-10-27 from the local v2 API (FinMatrix-Backend working tree), MetroMatrix, GET /reports/analytics?startDate=2026-07-01&endDate=2026-09-30",
+  "_status": 200,
+  "response": {
+    "success": true,
+    "data": {
+      "range": {
+        "startDate": "2026-07-01",
+        "endDate": "2026-09-30"
+      },
+      "comparisonRange": {
+        "startDate": "2026-04-01",
+        "endDate": "2026-06-30"
+      },
+      "fiscalYearStart": "2026-01-01",
+      "series": [
+        {
+          "period": "2026-07",
+          "label": "Jul 26",
+          "revenue": 225000,
+          "cogs": 0,
+          "grossProfit": 225000,
+          "operatingExpenses": 25000,
+          "netIncome": 200000,
+          "operatingCashFlow": 168050,
+          "endingCash": 1614821.67
+        },
+        {
+          "period": "2026-08",
+          "label": "Aug 26",
+          "revenue": -1000,
+          "cogs": 0,
+          "grossProfit": -1000,
+          "operatingExpenses": 0,
+          "netIncome": -1000,
+          "operatingCashFlow": 0,
+          "endingCash": 1654821.67
+        },
+        {
+          "period": "2026-09",
+          "label": "Sep 26",
+          "revenue": 0,
+          "cogs": 0,
+          "grossProfit": 0,
+          "operatingExpenses": 0,
+          "netIncome": 0,
+          "operatingCashFlow": 0,
+          "endingCash": 1654821.67
+        }
+      ],
+      "kpis": [
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "value": 224000,
+          "unit": "money",
+          "formula": "All revenue (P&L)",
+          "inputs": {
+            "revenue": 224000
+          },
+          "asOfDate": "2026-09-30",
+          "status": "ok",
+          "assessment": {
+            "level": "neutral",
+            "guide": "All revenue posted in the period."
+          },
+          "current": 224000,
+          "prior": 683000,
+          "change": -459000,
+          "changePct": -67.2
+        },
+        {
+          "key": "grossProfit",
+          "label": "Gross profit",
+          "value": 224000,
+          "unit": "money",
+          "formula": "Revenue − Cost of goods sold (P&L)",
+          "inputs": {
+            "revenue": 224000,
+            "cogs": 0
+          },
+          "asOfDate": "2026-09-30",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "What sales earned over what the goods sold cost; at or below zero, every sale loses money."
+          },
+          "current": 224000,
+          "prior": 683000,
+          "change": -459000,
+          "changePct": -67.2
+        },
+        {
+          "key": "grossMarginPct",
+          "label": "Gross margin",
+          "value": 100,
+          "unit": "percent",
+          "formula": "Gross profit ÷ Revenue × 100",
+          "inputs": {
+            "grossProfit": 224000,
+            "revenue": 224000
+          },
+          "asOfDate": "2026-09-30",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "The share of revenue left after the cost of goods sold."
+          },
+          "current": 100,
+          "prior": 100,
+          "change": 0,
+          "changePct": 0
+        },
+        {
+          "key": "netIncome",
+          "label": "Net profit",
+          "value": 199000,
+          "unit": "money",
+          "formula": "Revenue − Cost of goods sold − Expenses (P&L)",
+          "inputs": {
+            "grossProfit": 224000,
+            "operatingExpenses": 25000
+          },
+          "asOfDate": "2026-09-30",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "What is left after every cost of the period; below zero is a loss."
+          },
+          "current": 199000,
+          "prior": 584666.67,
+          "change": -385666.67,
+          "changePct": -65.96
+        },
+        {
+          "key": "netMarginPct",
+          "label": "Net margin",
+          "value": 88.84,
+          "unit": "percent",
+          "formula": "Net income ÷ Revenue × 100",
+          "inputs": {
+            "netIncome": 199000,
+            "revenue": 224000
+          },
+          "asOfDate": "2026-09-30",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "The share of revenue kept as profit after every expense."
+          },
+          "current": 88.84,
+          "prior": 85.6,
+          "change": 3.24,
+          "changePct": 3.79
+        },
+        {
+          "key": "operatingExpenses",
+          "label": "Operating expenses",
+          "value": 25000,
+          "unit": "money",
+          "formula": "Operating expenses (P&L, excludes COGS and non-operating)",
+          "inputs": {
+            "operatingExpenses": 25000
+          },
+          "asOfDate": "2026-09-30",
+          "status": "ok",
+          "assessment": {
+            "level": "neutral",
+            "guide": "Running costs, excluding the cost of goods sold and non-operating items."
+          },
+          "current": 25000,
+          "prior": 98333.33,
+          "change": -73333.33,
+          "changePct": -74.58
+        },
+        {
+          "key": "operatingCashFlow",
+          "label": "Operating cash flow",
+          "value": 168050,
+          "unit": "money",
+          "formula": "Direct-method operating cash (cash-flow statement)",
+          "inputs": {
+            "operatingCashFlow": 168050
+          },
+          "asOfDate": "2026-09-30",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "Cash the day-to-day business brought in; below zero, trading is using cash rather than making it."
+          },
+          "current": 168050,
+          "prior": 640471.67,
+          "change": -472421.67,
+          "changePct": -73.76
+        },
+        {
+          "key": "endingCash",
+          "label": "Ending cash",
+          "value": 1654821.67,
+          "unit": "money",
+          "formula": "Cash + Bank at the end of the period",
+          "inputs": {
+            "endingCash": 1654821.67
+          },
+          "asOfDate": "2026-09-30",
+          "status": "ok",
+          "assessment": {
+            "level": "healthy",
+            "guide": "Cash and bank at the end of the period; below zero means overdrawn."
+          },
+          "current": 1654821.67,
+          "prior": 1446771.67,
+          "change": 208050,
+          "changePct": 14.38
+        },
+        {
+          "key": "runwayMonths",
+          "label": "Cash runway",
+          "value": null,
+          "unit": "months",
+          "formula": "Cash and bank ÷ average monthly net cash outflow (last 3 full months)",
+          "inputs": {
+            "cashAndBank": 1654821.67,
+            "avgMonthlyNetCash": 147407.22
+          },
+          "asOfDate": "2026-09-30",
+          "status": "cash_positive",
+          "assessment": {
+            "level": "healthy",
+            "guide": "Months the cash lasts at the recent rate of spending; under 3 months needs action now."
+          },
+          "current": null,
+          "prior": null,
+          "change": null,
+          "changePct": null
+        },
+        {
+          "key": "dso",
+          "label": "Days sales outstanding",
+          "value": 84.9,
+          "unit": "days",
+          "formula": "Receivables ÷ Operating revenue (trailing 90 days) × 90",
+          "inputs": {
+            "receivables": 211300,
+            "revenue90": 224000
+          },
+          "asOfDate": "2026-09-30",
+          "status": "ok",
+          "assessment": {
+            "level": "risk",
+            "guide": "Under 45 days suits 30-day terms; above 75 days, customers are paying slowly."
+          },
+          "current": 84.9,
+          "prior": 18.72,
+          "change": 66.18,
+          "changePct": 353.53
+        },
+        {
+          "key": "dpo",
+          "label": "Days payables outstanding",
+          "value": null,
+          "unit": "days",
+          "formula": "Accounts payable ÷ COGS (trailing 90 days) × 90",
+          "inputs": {
+            "accountsPayable": 0,
+            "cogs90": 0
+          },
+          "asOfDate": "2026-09-30",
+          "status": "no_denominator",
+          "assessment": {
+            "level": "neutral",
+            "guide": "How long you take to pay suppliers. Longer helps cash, but past agreed terms it strains suppliers."
+          },
+          "current": null,
+          "prior": null,
+          "change": null,
+          "changePct": null
+        },
+        {
+          "key": "dio",
+          "label": "Days inventory outstanding",
+          "value": null,
+          "unit": "days",
+          "formula": "Inventory ÷ COGS (trailing 90 days) × 90",
+          "inputs": {
+            "inventory": 0,
+            "cogs90": 0
+          },
+          "asOfDate": "2026-09-30",
+          "status": "no_denominator",
+          "assessment": {
+            "level": "neutral",
+            "guide": "Under 60 days of stock on hand is lean; above 120 days, stock is moving slowly."
+          },
+          "current": null,
+          "prior": null,
+          "change": null,
+          "changePct": null
+        },
+        {
+          "key": "ccc",
+          "label": "Cash conversion cycle",
+          "value": null,
+          "unit": "days",
+          "formula": "DSO + DIO − DPO",
+          "inputs": {
+            "dso": 84.9,
+            "dio": null,
+            "dpo": null
+          },
+          "asOfDate": "2026-09-30",
+          "status": "no_denominator",
+          "assessment": {
+            "level": "neutral",
+            "guide": "Days cash is tied up between paying for stock and collecting from customers; shorter is better."
+          },
+          "current": null,
+          "prior": null,
+          "change": null,
+          "changePct": null
+        }
+      ],
+      "expenseByAccount": [
+        {
+          "accountCode": "6000",
+          "accountName": "Rent Expense",
+          "amount": 25000,
+          "sharePct": 100
+        }
+      ],
+      "salesByCustomer": {
+        "basis": "invoice",
+        "label": "invoice basis",
+        "note": "Invoiced sales excluding tax, net of invoice discounts; drafts and voids excluded. Credit memos are not netted.",
+        "total": 225000,
+        "customers": [
+          {
+            "customerId": "6b3c6a84-70b2-4e90-8108-377fe4f725e2",
+            "name": "Iqbal Grocery",
+            "amount": 90000,
+            "invoices": 1,
+            "sharePct": 40
+          },
+          {
+            "customerId": "5c6e0187-c13a-47ed-8fdf-6b014094c8c9",
+            "name": "Al-Madina Mart",
+            "amount": 75000,
+            "invoices": 1,
+            "sharePct": 33.33
+          },
+          {
+            "customerId": "e6751d06-8679-48b0-b4ce-3224873a0022",
+            "name": "Tariq General Store",
+            "amount": 60000,
+            "invoices": 1,
+            "sharePct": 26.67
+          }
+        ],
+        "other": {
+          "count": 0,
+          "amount": 0,
+          "sharePct": null
+        },
+        "top5SharePct": 100,
+        "assessment": {
+          "level": "risk",
+          "guide": "How much of the total five parties hold; above 50%, losing one would be felt."
+        }
+      },
+      "budgetVsActual": {
+        "basis": "calendarYear",
+        "budget": {
+          "id": "763dfebb-a212-492b-9012-12696ce0a4df",
+          "name": "FY2026 Operating Budget",
+          "fiscalYear": 2026,
+          "status": "active"
+        },
+        "rows": [
+          {
+            "accountId": "f2850e99-7330-4065-884f-42e91e85d938",
+            "accountCode": "6000",
+            "accountName": "Rent Expense",
+            "accountType": "expense",
+            "budgeted": 300000,
+            "actual": 75000,
+            "variance": 225000,
+            "percentUsed": 25,
+            "months": [
+              {
+                "month": 1,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 2,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 3,
+                "budgeted": 25000,
+                "actual": 25000,
+                "variance": 0
+              },
+              {
+                "month": 4,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 5,
+                "budgeted": 25000,
+                "actual": 25000,
+                "variance": 0
+              },
+              {
+                "month": 6,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 7,
+                "budgeted": 25000,
+                "actual": 25000,
+                "variance": 0
+              },
+              {
+                "month": 8,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 9,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 10,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 11,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 12,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              }
+            ]
+          },
+          {
+            "accountId": "e23b2ac6-bb5b-44b8-b194-26611795b24b",
+            "accountCode": "6100",
+            "accountName": "Utilities Expense",
+            "accountType": "expense",
+            "budgeted": 300000,
+            "actual": 75000,
+            "variance": 225000,
+            "percentUsed": 25,
+            "months": [
+              {
+                "month": 1,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 2,
+                "budgeted": 25000,
+                "actual": 25000,
+                "variance": 0
+              },
+              {
+                "month": 3,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 4,
+                "budgeted": 25000,
+                "actual": 25000,
+                "variance": 0
+              },
+              {
+                "month": 5,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 6,
+                "budgeted": 25000,
+                "actual": 25000,
+                "variance": 0
+              },
+              {
+                "month": 7,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 8,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 9,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 10,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 11,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              },
+              {
+                "month": 12,
+                "budgeted": 25000,
+                "actual": 0,
+                "variance": 25000
+              }
+            ]
+          },
+          {
+            "accountId": "c94fa1fe-279a-4796-9e46-f42ec4225d8c",
+            "accountCode": "6200",
+            "accountName": "Salary Expense",
+            "accountType": "expense",
+            "budgeted": 3480000,
+            "actual": 23333.33,
+            "variance": 3456666.67,
+            "percentUsed": 0.7,
+            "months": [
+              {
+                "month": 1,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              },
+              {
+                "month": 2,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              },
+              {
+                "month": 3,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              },
+              {
+                "month": 4,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              },
+              {
+                "month": 5,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              },
+              {
+                "month": 6,
+                "budgeted": 290000,
+                "actual": 23333.33,
+                "variance": 266666.67
+              },
+              {
+                "month": 7,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              },
+              {
+                "month": 8,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              },
+              {
+                "month": 9,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              },
+              {
+                "month": 10,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              },
+              {
+                "month": 11,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              },
+              {
+                "month": 12,
+                "budgeted": 290000,
+                "actual": 0,
+                "variance": 290000
+              }
+            ]
+          }
+        ],
+        "totals": {
+          "budgeted": 4080000,
+          "actual": 173333.33,
+          "variance": 3906666.67
+        }
+      },
+      "health": {
+        "asOfDate": "2026-09-30",
+        "kpis": [
+          {
+            "key": "cashAndBank",
+            "label": "Cash and bank",
+            "value": 1654821.67,
+            "unit": "money",
+            "formula": "Cash + Bank account balances",
+            "inputs": {
+              "cashAndBank": 1654821.67
+            },
+            "asOfDate": "2026-09-30",
+            "status": "ok",
+            "assessment": {
+              "level": "healthy",
+              "guide": "What the cash and bank accounts hold; below zero means the business is overdrawn."
+            }
+          },
+          {
+            "key": "workingCapital",
+            "label": "Working capital",
+            "value": 1623866.67,
+            "unit": "money",
+            "formula": "Current assets − Current liabilities",
+            "inputs": {
+              "currentAssets": 1866121.67,
+              "currentLiabilities": 242255
+            },
+            "asOfDate": "2026-09-30",
+            "status": "ok",
+            "assessment": {
+              "level": "healthy",
+              "guide": "Positive means current assets cover everything falling due within a year."
+            }
+          },
+          {
+            "key": "currentRatio",
+            "label": "Current ratio",
+            "value": 7.7,
+            "unit": "ratio",
+            "formula": "Current assets ÷ Current liabilities",
+            "inputs": {
+              "currentAssets": 1866121.67,
+              "currentLiabilities": 242255
+            },
+            "asOfDate": "2026-09-30",
+            "status": "ok",
+            "assessment": {
+              "level": "healthy",
+              "guide": "Above 1.5× is generally comfortable; below 1×, current debts exceed current assets."
+            }
+          },
+          {
+            "key": "quickRatio",
+            "label": "Quick ratio",
+            "value": 7.7,
+            "unit": "ratio",
+            "formula": "(Cash and bank + Receivables) ÷ Current liabilities",
+            "inputs": {
+              "cashAndBank": 1654821.67,
+              "receivables": 211300,
+              "currentLiabilities": 242255
+            },
+            "asOfDate": "2026-09-30",
+            "status": "ok",
+            "assessment": {
+              "level": "healthy",
+              "guide": "Above 1× means cash and receivables alone cover current debts, without selling stock."
+            }
+          },
+          {
+            "key": "debtToEquity",
+            "label": "Debt to equity",
+            "value": 0.15,
+            "unit": "ratio",
+            "formula": "Total liabilities ÷ Total equity",
+            "inputs": {
+              "totalLiabilities": 242255,
+              "totalEquity": 1623866.67
+            },
+            "asOfDate": "2026-09-30",
+            "status": "ok",
+            "assessment": {
+              "level": "healthy",
+              "guide": "Below 1× means the owners fund more of the business than creditors do; above 2× is highly leveraged."
+            }
+          },
+          {
+            "key": "dso",
+            "label": "Days sales outstanding",
+            "value": 84.9,
+            "unit": "days",
+            "formula": "Receivables ÷ Operating revenue (trailing 90 days) × 90",
+            "inputs": {
+              "receivables": 211300,
+              "revenue90": 224000
+            },
+            "asOfDate": "2026-09-30",
+            "status": "ok",
+            "assessment": {
+              "level": "risk",
+              "guide": "Under 45 days suits 30-day terms; above 75 days, customers are paying slowly."
+            }
+          },
+          {
+            "key": "dpo",
+            "label": "Days payables outstanding",
+            "value": null,
+            "unit": "days",
+            "formula": "Accounts payable ÷ COGS (trailing 90 days) × 90",
+            "inputs": {
+              "accountsPayable": 0,
+              "cogs90": 0
+            },
+            "asOfDate": "2026-09-30",
+            "status": "no_denominator",
+            "assessment": {
+              "level": "neutral",
+              "guide": "How long you take to pay suppliers. Longer helps cash, but past agreed terms it strains suppliers."
+            }
+          },
+          {
+            "key": "dio",
+            "label": "Days inventory outstanding",
+            "value": null,
+            "unit": "days",
+            "formula": "Inventory ÷ COGS (trailing 90 days) × 90",
+            "inputs": {
+              "inventory": 0,
+              "cogs90": 0
+            },
+            "asOfDate": "2026-09-30",
+            "status": "no_denominator",
+            "assessment": {
+              "level": "neutral",
+              "guide": "Under 60 days of stock on hand is lean; above 120 days, stock is moving slowly."
+            }
+          },
+          {
+            "key": "ccc",
+            "label": "Cash conversion cycle",
+            "value": null,
+            "unit": "days",
+            "formula": "DSO + DIO − DPO",
+            "inputs": {
+              "dso": 84.9,
+              "dio": null,
+              "dpo": null
+            },
+            "asOfDate": "2026-09-30",
+            "status": "no_denominator",
+            "assessment": {
+              "level": "neutral",
+              "guide": "Days cash is tied up between paying for stock and collecting from customers; shorter is better."
+            }
+          },
+          {
+            "key": "runwayMonths",
+            "label": "Cash runway",
+            "value": null,
+            "unit": "months",
+            "formula": "Cash and bank ÷ average monthly net cash outflow (last 3 full months)",
+            "inputs": {
+              "cashAndBank": 1654821.67,
+              "avgMonthlyNetCash": 147407.22
+            },
+            "asOfDate": "2026-09-30",
+            "status": "cash_positive",
+            "assessment": {
+              "level": "healthy",
+              "guide": "Months the cash lasts at the recent rate of spending; under 3 months needs action now."
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "key": "revenue",
+          "tone": "negative",
+          "title": "Revenue down 67.2%",
+          "detail": "Rs 224,000 this period, against Rs 683,000 in the previous one.",
+          "report": {
+            "key": "profitLoss",
+            "params": {
+              "startDate": "2026-07-01",
+              "endDate": "2026-09-30"
+            }
+          }
+        },
+        {
+          "key": "collections",
+          "tone": "negative",
+          "title": "Customers take 85 days to pay",
+          "detail": "Receivables against the last 90 days of sales. The aging report shows who to chase first.",
+          "report": {
+            "key": "arAging",
+            "params": {}
+          }
+        },
+        {
+          "key": "concentration",
+          "tone": "negative",
+          "title": "Top 5 customers are 100.0% of sales",
+          "detail": "Losing any one of them would be felt; a wider customer base spreads the risk.",
+          "report": {
+            "key": "arAging",
+            "params": {}
+          }
+        },
+        {
+          "key": "budget",
+          "tone": "positive",
+          "title": "Spending within budget",
+          "detail": "Rs 25,000 spent against Rs 1,020,000 budgeted for the same months.",
+          "report": {
+            "key": "budgets",
+            "params": {
+              "budgetId": "763dfebb-a212-492b-9012-12696ce0a4df"
+            }
+          }
+        },
+        {
+          "key": "margins",
+          "tone": "neutral",
+          "title": "Keeping 88.8% of revenue as profit",
+          "detail": "Gross margin 100.0%; net profit Rs 199,000.",
+          "report": {
+            "key": "profitLoss",
+            "params": {
+              "startDate": "2026-07-01",
+              "endDate": "2026-09-30"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

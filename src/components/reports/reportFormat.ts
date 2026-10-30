@@ -32,47 +32,6 @@ export const asOfLabel = (date: string): string => `As of ${dayjs(date).format('
 export const rangeLabel = (start: string, end: string): string =>
   `${dayjs(start).format('MMMM D, YYYY')} – ${dayjs(end).format('MMMM D, YYYY')}`;
 
-/** Where an account sits on the statements, by its number. */
-export type AccountGroup =
-  | 'bank'
-  | 'ar'
-  | 'otherCurrentAsset'
-  | 'fixedAsset'
-  | 'currentLiability'
-  | 'longTermLiability'
-  | 'equity'
-  | 'income'
-  | 'cogs'
-  | 'expense'
-  | 'other';
-
-/**
- * Standard chart-of-accounts numbering → statement group. Pure.
- *
- * Note 1200–1499 deliberately covers Inventory (1200) AND Goods in Transit
- * (1250): both are other current assets, and the delivery flow routes stock
- * through 1250 between dispatch and approval. 2000–2399 likewise covers A/P
- * (2000) and GRNI (2050).
- *
- * A code that is not a number falls to 'other' rather than throwing — the
- * statements must still render for a hand-edited chart.
- */
-export const classifyAccount = (code: string): AccountGroup => {
-  const n = parseInt(code, 10);
-  if (!Number.isFinite(n)) return 'other';
-  if (n >= 1000 && n <= 1099) return 'bank';
-  if (n >= 1100 && n <= 1199) return 'ar';
-  if (n >= 1200 && n <= 1499) return 'otherCurrentAsset';
-  if (n >= 1500 && n <= 1999) return 'fixedAsset';
-  if (n >= 2000 && n <= 2399) return 'currentLiability';
-  if (n >= 2400 && n <= 2999) return 'longTermLiability';
-  if (n >= 3000 && n <= 3999) return 'equity';
-  if (n >= 4000 && n <= 4999) return 'income';
-  if (n >= 5000 && n <= 5999) return 'cogs';
-  if (n >= 6000 && n <= 7999) return 'expense';
-  return 'other';
-};
-
 /**
  * Guard for a rendered subtotal against the server's authoritative figure.
  * The server total is ALWAYS what gets displayed; this only surfaces a

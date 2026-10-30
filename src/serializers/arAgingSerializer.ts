@@ -6,8 +6,11 @@ import {
   type ARAgingReportResponse,
   type ARAgingRow,
   type ARAgingTotals,
+  type AgingInsights,
 } from '../models/arAgingModel';
 import { unwrapEnvelope } from '../networks/reports/reportHelpers';
+import { assessmentFrom, kpiFrom } from './kpiSerializer';
+import { arr, numOrNull, str, strOrNull } from './reportValues';
 
 const n = (v: unknown): number => {
   const x = typeof v === 'string' ? parseFloat(v) : (v as number);
@@ -60,6 +63,13 @@ export const arAgingSerializer = (
     bucket31to60: n(row.bucket31to60),
     bucket61to90: n(row.bucket61to90),
     bucket90Plus: n(row.bucket90Plus),
+    paymentTerms: strOrNull(row.paymentTerms),
+    creditLimit: numOrNull(row.creditLimit),
+    overLimit: row.overLimit === true,
+    creditUsedPct: numOrNull(row.creditUsedPct),
+    lastPaymentDate: strOrNull(row.lastPaymentDate),
+    lastPaymentAmount: numOrNull(row.lastPaymentAmount),
+    oldestDueDate: strOrNull(row.oldestDueDate),
   }));
 
   const t = raw.totals ?? {};
@@ -73,12 +83,38 @@ export const arAgingSerializer = (
     bucket90Plus: n(t.bucket90Plus),
   };
 
+  const ins = raw.insights;
+  const insights: AgingInsights | null =
+    ins && typeof ins === 'object'
+      ? {
+          dso: ins.dso && typeof ins.dso === 'object' ? kpiFrom(ins.dso, 'dso') : null,
+          dpo: ins.dpo && typeof ins.dpo === 'object' ? kpiFrom(ins.dpo, 'dpo') : null,
+          totalOpen: n(ins.totalOpen),
+          overdue: n(ins.overdue),
+          overduePct: numOrNull(ins.overduePct),
+          weightedAvgDaysOverdue: numOrNull(ins.weightedAvgDaysOverdue),
+          top5SharePct: numOrNull(ins.top5SharePct),
+          schedule: arr(ins.schedule).map((x: any) => ({
+            key: str(x?.key),
+            label: str(x?.label),
+            amount: n(x?.amount),
+            count: n(x?.count),
+          })),
+          assessments: {
+            overduePct: assessmentFrom(ins.assessments?.overduePct),
+            weightedAvgDaysOverdue: assessmentFrom(ins.assessments?.weightedAvgDaysOverdue),
+            top5SharePct: assessmentFrom(ins.assessments?.top5SharePct),
+          },
+        }
+      : null;
+
   return {
     asOfDate: raw.asOfDate ?? '',
     preset: raw.preset ?? 'monthly',
     buckets,
     rows,
     totals,
+    insights,
   };
 };
 

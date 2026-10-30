@@ -1,0 +1,32 @@
+{
+  "_source": "Provisional: written to FinMatrix-Backend reports.types.ts CashFlowReport (working tree of 2026-10-26). Replace with a capture from the local v2 API (see fixtures/README.md).",
+  "range": { "startDate": "2026-01-01", "endDate": "2026-03-31" },
+  "operating": {
+    "lines": [
+      { "label": "Cash received from customers", "amount": "90000.00", "lineKey": "op.customers", "section": "operating" },
+      { "label": "Cash paid to suppliers", "amount": -40000, "lineKey": "op.suppliers", "section": "operating" }
+    ],
+    "total": 50000
+  },
+  "investing": { "lines": [{ "label": "Purchase / sale of fixed assets", "amount": -20000, "lineKey": "inv.fixed_assets", "section": "investing" }], "total": -20000 },
+  "financing": { "lines": [{ "label": "Loan proceeds / repayments", "amount": 10000, "lineKey": "fin.loans", "section": "financing" }], "total": 10000 },
+  "netChange": 40000,
+  "beginningCash": 10000,
+  "endingCash": 50000,
+  "monthlyTrend": [
+    { "label": "Jan 26", "value": 15000, "endingCash": 25000 },
+    { "label": "Feb 26", "value": 0, "endingCash": 25000 },
+    { "label": "Mar 26", "value": 25000, "endingCash": "50000.00" }
+  ],
+  "operatingIndirect": {
+    "netIncome": 45000,
+    "adjustments": [{ "label": "Increase in accounts receivable", "amount": -5000 }, { "label": "Increase in accounts payable", "amount": 10000 }],
+    "total": 50000,
+    "excludedNonCash": [{ "label": "Equipment bought on credit", "amount": 8000 }]
+  },
+  "accounts": [
+    { "accountCode": "1000", "accountName": "Cash", "beginning": 4000, "ending": 20000 },
+    { "accountCode": "1010", "accountName": "Bank", "beginning": 6000, "ending": 30000 }
+  ],
+  "cashTie": { "endingCash": 50000, "balanceSheetCash": 50000, "ties": true }
+}

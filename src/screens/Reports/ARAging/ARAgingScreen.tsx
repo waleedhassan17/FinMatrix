@@ -93,7 +93,7 @@ const ARAgingScreen: React.FC = () => {
 
   return (
     <AgingReportView
-      title="A/R Aging"
+      title="AR Aging"
       subtitle="Outstanding receivables"
       counterpartyHeader="Customer"
       sectionTitle="By Customer"
@@ -101,7 +101,7 @@ const ARAgingScreen: React.FC = () => {
       loadingLabel="Aging receivables…"
       emptyTitle="No outstanding receivables"
       emptyHint="All customer invoices are settled."
-      statementTitle="A/R Aging Summary"
+      statementTitle="AR Aging Summary"
       report={state.report}
       isLoading={state.isLoading}
       error={state.error}

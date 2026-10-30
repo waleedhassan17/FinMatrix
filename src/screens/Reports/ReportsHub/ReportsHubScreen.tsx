@@ -1,12 +1,18 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../utils/theme';
-import { useAppSelector } from '../../../hooks/useReduxHooks';
-import { selectVisibleReportCategories } from './reportsHubSlice';
+import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
+import {
+  HUB_TODAY_KEYS,
+  fetchHubToday,
+  selectHubToday,
+  selectVisibleReportCategories,
+} from './reportsHubSlice';
+import TodayRow from './TodayRow';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import {
   ReportContainer,
@@ -30,8 +36,28 @@ const getCatIcon = (key: string): keyof typeof Feather.glyphMap => CATEGORY_ICON
 
 const ReportsHubScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
+  const dispatch = useAppDispatch();
   const categories = useAppSelector(selectVisibleReportCategories);
+  const today = useAppSelector(selectHubToday);
   const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Today's figures are refreshed each time the hub comes back into view:
+  // they are the reason to glance at it.
+  const loadToday = useCallback(
+    () => Promise.all(HUB_TODAY_KEYS.map(k => dispatch(fetchHubToday(k)))),
+    [dispatch],
+  );
+  useFocusEffect(
+    useCallback(() => {
+      loadToday();
+    }, [loadToday]),
+  );
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadToday();
+    setRefreshing(false);
+  }, [loadToday]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -63,7 +89,23 @@ const ReportsHubScreen: React.FC = () => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[THEME.colors.primary]} tintColor={THEME.colors.primary} />
+        }
       >
+        {/* Today, before any report */}
+        {!search ? (
+          <View style={styles.today}>
+            <Text style={styles.todayTitle}>Today</Text>
+            <TodayRow
+              today={today}
+              onOpen={(target, params) => navigation.navigate(target as any, params as any)}
+              onRetry={key => dispatch(fetchHubToday(key))}
+              canOpen={target => !!navigation.getState()?.routeNames?.includes(target as never)}
+            />
+          </View>
+        ) : null}
+
         {/* Search */}
         <View style={styles.searchWrap}>
           <Feather name="search" size={16} color={THEME.colors.textTertiary} style={{ marginRight: 8 }} />
@@ -125,6 +167,8 @@ const ReportsHubScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  today: { gap: THEME.spacing.xs, marginBottom: THEME.spacing.sm },
+  todayTitle: { ...THEME.typography.overline, color: THEME.colors.textTertiary },
   content: { padding: THEME.spacing.md, gap: THEME.spacing.sm + 2, paddingBottom: THEME.spacing.xl },
 
   searchWrap: {

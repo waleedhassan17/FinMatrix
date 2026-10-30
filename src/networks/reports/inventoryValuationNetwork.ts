@@ -82,3 +82,17 @@ export const getInventoryPerformanceAPI = async (
   sort = 'grossProfit',
 ): Promise<any> =>
   fetchReport('/reports/inventory-performance', { ...range, sort });
+
+/**
+ * What to reorder, how long stock has sat, what has stopped selling, turnover
+ * and value by location (reports v2). Without a date, as of today.
+ */
+export const getInventoryHealthAPI = async (asOfDate?: string | null): Promise<any> =>
+  fetchReportWithStatus('/reports/inventory-health', asOfDate ? { asOfDate } : {});
+
+/**
+ * The valuation as of a past date, from the dated movement record, with its
+ * tie to GL 1200 and how much of the record carries a value (reports v2).
+ */
+export const getDatedInventoryValuationAPI = async (asOfDate: string): Promise<any> =>
+  fetchReportWithStatus('/reports/inventory-valuation', { asOfDate });

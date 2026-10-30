@@ -1,12 +1,11 @@
-import React, { useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import React, { useEffect, useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Switch, RefreshControl } from 'react-native';
+import { useNavigation, useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
-  fetchProfitLossLineEntries,
   fetchProfitLossReport,
   selectProfitLossState,
   setProfitLossComparisonEnabled,
@@ -15,7 +14,17 @@ import {
 } from './profitLossSlice';
 import { formatCurrency } from '../../../utils/formatters';
 import type { PnlLine, ProfitLossReport } from '../../../models/profitLossModel';
-import LineEntries from './LineEntries';
+import { getComparisonRange } from '../../../models/reportModel';
+import InlineEntries from '../shared/InlineEntries';
+import {
+  clearInlineEntries,
+  fetchInlineEntries,
+  needsInlineFetch,
+  selectInlineEntriesMap,
+} from '../shared/inlineEntriesSlice';
+import { useOpenSource } from '../shared/sourceRoutes';
+import { rangeKey, useAdoptParam } from '../shared/useAdoptParam';
+import { registerKey } from '../../../models/accountRegisterModel';
 import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsStack';
 import {
   ReportContainer,
@@ -25,8 +34,9 @@ import {
   FigureStrip,
   RefreshFade,
   DateField,
-  LoadingBlock,
+  ReportSkeleton,
   ErrorBlock,
+  ErrorBanner,
   reportContentStyle,
   formatRatio,
   ReportTitleBlock,
@@ -51,33 +61,20 @@ const lines = (v: PnlLine[] | undefined): PnlLine[] => (Array.isArray(v) ? v : [
 const sum = (v: PnlLine[]): number => v.reduce((t, l) => t + (l.amount || 0), 0);
 
 
-/**
- * Which screen shows the record behind a ledger row, and what it calls its id.
- *
- * Only documents that HAVE a detail screen appear here. A source with no entry
- * — a payment, a delivery leg, an inventory adjustment — leaves the row inert
- * rather than navigating somewhere that cannot show it.
- */
-const SOURCE_ROUTES: Record<string, { screen: string; param: string }> = {
-  invoice: { screen: 'InvoiceDetail', param: 'invoiceId' },
-  invoice_void: { screen: 'InvoiceDetail', param: 'invoiceId' },
-  bill: { screen: 'BillDetail', param: 'billId' },
-  bill_void: { screen: 'BillDetail', param: 'billId' },
-  credit_memo: { screen: 'CreditMemoDetail', param: 'creditMemoId' },
-  credit_memo_void: { screen: 'CreditMemoDetail', param: 'creditMemoId' },
-  credit_memo_refund: { screen: 'CreditMemoDetail', param: 'creditMemoId' },
-  vendor_credit: { screen: 'VendorCreditDetail', param: 'vendorCreditId' },
-  vendor_credit_void: { screen: 'VendorCreditDetail', param: 'vendorCreditId' },
-  purchase_order: { screen: 'PODetail', param: 'poId' },
-  po_receipt: { screen: 'PODetail', param: 'poId' },
-  journal_entry: { screen: 'JournalEntryDetail', param: 'entryId' },
-};
-
 const ProfitLossScreen: React.FC = () => {
   const navigation = useNavigation<ReportsNav>();
+  const { params } = useRoute<RouteProp<ReportsStackParamList, 'ProfitLoss'>>();
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectProfitLossState);
+  const drill = useAppSelector(selectInlineEntriesMap);
   const company = useStatementCompany();
+  const openSource = useOpenSource();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // A period handed in by another report is adopted as the user's own choice.
+  const ready = useAdoptParam(rangeKey(params?.range), rangeKey(state.range)!, () => {
+    if (params?.range) dispatch(setProfitLossRange(params.range));
+  });
 
   // Bring the window up to today every time the screen is opened.
   //
@@ -92,7 +89,9 @@ const ProfitLossScreen: React.FC = () => {
   );
 
   useEffect(() => {
+    if (!ready(rangeKey(state.range)!)) return;
     dispatch(fetchProfitLossReport({ range: state.range, comparisonEnabled: state.comparisonEnabled }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, state.range.startDate, state.range.endDate, state.comparisonEnabled]);
 
   const report: ProfitLossReport | null = state.report;
@@ -100,47 +99,33 @@ const ProfitLossScreen: React.FC = () => {
   const showPrior = state.comparisonEnabled;
 
   /**
-   * Open or close one account line, fetching its transactions the first time.
-   *
-   * Once per line per period: the slice keys them by account code and clears
-   * the map when the range changes, so reopening a line already loaded is
-   * instant and changing the period cannot leave last period's rows behind.
+   * Open or close one account line, fetching its latest postings the first
+   * time. The cache is keyed by account AND period, so reopening a line is
+   * instant and a new period can never show the old one's rows.
    */
   const openLine = useCallback(
     (accountCode: string) => {
       const willOpen = !state.expanded[accountCode];
       dispatch(toggleProfitLossLine(accountCode));
-      // Refetch when there is nothing cached OR the last attempt failed. A
-      // failed entry is still truthy, so checking only for presence cached a
-      // transient network error for the life of the screen — reopening the row
-      // showed the same stale message and never tried again.
-      const cached = state.entries[accountCode];
-      if (willOpen && (!cached || cached.status === 'failed')) {
-        dispatch(fetchProfitLossLineEntries({ accountCode, range: state.range }));
+      const cached = drill[registerKey(accountCode, state.range.startDate, state.range.endDate)];
+      if (willOpen && needsInlineFetch(cached)) {
+        dispatch(fetchInlineEntries({ accountCode, ...state.range }));
       }
     },
-    [dispatch, state.expanded, state.entries, state.range],
+    [dispatch, state.expanded, drill, state.range],
   );
 
-  /**
-   * Open the record behind a ledger row.
-   *
-   * The documents are shared record screens, registered in ReportsStack too
-   * (navigations-maps/sharedRecords), so this is a push onto the Reports tab:
-   * back returns to this report, open line and all. It used to hop into the
-   * Transactions tab, where back popped to that tab's hub instead.
-   */
-  const openSource = useCallback(
-    (sourceType: string, sourceId: string) => {
-      const route = SOURCE_ROUTES[sourceType];
-      if (!route || !sourceId) return;
-      (navigation as unknown as NativeStackNavigationProp<Record<string, object>>).navigate(
-        route.screen,
-        { [route.param]: sourceId },
-      );
-    },
-    [navigation],
+  const reload = useCallback(
+    () => dispatch(fetchProfitLossReport({ range: state.range, comparisonEnabled: state.comparisonEnabled })),
+    [dispatch, state.range, state.comparisonEnabled],
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    dispatch(clearInlineEntries());
+    await reload();
+    setRefreshing(false);
+  }, [dispatch, reload]);
 
   /**
    * One account line, expandable into the transactions behind it.
@@ -157,26 +142,22 @@ const ProfitLossScreen: React.FC = () => {
       expanded={!!state.expanded[l.accountCode]}
       onToggle={() => openLine(l.accountCode)}
     >
-      <LineEntries
-        state={state.entries[l.accountCode]}
-        lineAmount={l.amount}
+      <InlineEntries
+        state={drill[registerKey(l.accountCode, state.range.startDate, state.range.endDate)]}
         onOpenSource={openSource}
-        onRetry={() =>
-          dispatch(
-            fetchProfitLossLineEntries({ accountCode: l.accountCode, range: state.range }),
-          )
+        onRetry={() => dispatch(fetchInlineEntries({ accountCode: l.accountCode, ...state.range }))}
+        onOpenRegister={() =>
+          navigation.navigate('AccountRegister', {
+            accountCode: l.accountCode,
+            title: l.accountName,
+            ...state.range,
+            // "What changed" reads the same prior period the statement's
+            // comparison column does.
+            compare: state.comparisonEnabled ? getComparisonRange(state.range) : undefined,
+            // A P&L line is the period's movement, not a balance.
+            tie: { amount: l.amount, basis: 'movement' },
+          })
         }
-        onMore={() => {
-          const d = state.entries[l.accountCode]?.data;
-          if (!d || state.entries[l.accountCode]?.loadingMore) return;
-          dispatch(
-            fetchProfitLossLineEntries({
-              accountCode: l.accountCode,
-              range: state.range,
-              page: (d.page || 1) + 1,
-            }),
-          );
-        }}
       />
     </StatementRow>
   );
@@ -197,7 +178,13 @@ const ProfitLossScreen: React.FC = () => {
         onBack={() => navigation.goBack()}
       />
 
-      <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={reportContentStyle}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[THEME.colors.primary]} tintColor={THEME.colors.primary} />
+        }
+      >
         {/* Filter */}
         <Card>
           <View style={styles.filterRow}>
@@ -225,17 +212,13 @@ const ProfitLossScreen: React.FC = () => {
           </View>
         </Card>
 
-        {state.isLoading && !report && <LoadingBlock label="Calculating profit & loss…" />}
-        {!!state.error && (
-          <ErrorBlock
-            message={state.error}
-            onRetry={() =>
-              dispatch(fetchProfitLossReport({ range: state.range, comparisonEnabled: state.comparisonEnabled }))
-            }
-          />
-        )}
+        {state.isLoading && !report && <ReportSkeleton variant="statement" />}
+        {/* A failed refresh keeps the last statement on screen under a banner;
+            only a first load that fails has nothing to keep. */}
+        {!!state.error && !report && <ErrorBlock message={state.error} onRetry={reload} />}
+        {!!state.error && report && <ErrorBanner message={state.error} onRetry={reload} />}
 
-        {report && !state.error && (
+        {report && (
           <RefreshFade busy={state.isLoading}>
             {/* Headline KPIs */}
             <FigureStrip

@@ -1,0 +1,124 @@
+{
+  "_source": "Captured 2026-10-27 from the local v2 API (FinMatrix-Backend working tree), MetroMatrix, GET /reports/inventory-health",
+  "_status": 200,
+  "response": {
+    "success": true,
+    "data": {
+      "asOfDate": "2026-10-27",
+      "basis": "onHandAtAverageCost",
+      "belowReorder": [],
+      "aging": {
+        "byLastInbound": [
+          {
+            "key": "d0_30",
+            "label": "0–30 days",
+            "count": 0,
+            "value": 0
+          },
+          {
+            "key": "d31_90",
+            "label": "31–90 days",
+            "count": 0,
+            "value": 0
+          },
+          {
+            "key": "d91_180",
+            "label": "91–180 days",
+            "count": 0,
+            "value": 0
+          },
+          {
+            "key": "d180_plus",
+            "label": "More than 180 days",
+            "count": 0,
+            "value": 0
+          },
+          {
+            "key": "noMovement",
+            "label": "No movement recorded",
+            "count": 0,
+            "value": 0
+          }
+        ],
+        "byLastOutbound": [
+          {
+            "key": "d0_30",
+            "label": "0–30 days",
+            "count": 0,
+            "value": 0
+          },
+          {
+            "key": "d31_90",
+            "label": "31–90 days",
+            "count": 0,
+            "value": 0
+          },
+          {
+            "key": "d91_180",
+            "label": "91–180 days",
+            "count": 0,
+            "value": 0
+          },
+          {
+            "key": "d180_plus",
+            "label": "More than 180 days",
+            "count": 0,
+            "value": 0
+          },
+          {
+            "key": "noMovement",
+            "label": "No movement recorded",
+            "count": 0,
+            "value": 0
+          }
+        ]
+      },
+      "deadStock": {
+        "thresholdDays": 180,
+        "items": [],
+        "totalValue": 0
+      },
+      "turnover": {
+        "key": "inventoryTurnover",
+        "label": "Inventory turnover",
+        "value": null,
+        "unit": "ratio",
+        "formula": "COGS (trailing 12 months) ÷ average month-end inventory (GL 1200, 12 months)",
+        "inputs": {
+          "cogs12": 0,
+          "averageInventory": 0
+        },
+        "asOfDate": "2026-10-27",
+        "status": "no_denominator",
+        "assessment": {
+          "level": "neutral",
+          "guide": "Times the stock sold through in 12 months; under 3× ties up cash in slow stock."
+        }
+      },
+      "dio": {
+        "key": "dio12",
+        "label": "Days inventory outstanding (12 months)",
+        "value": null,
+        "unit": "days",
+        "formula": "Average month-end inventory ÷ COGS (trailing 12 months) × 365",
+        "inputs": {
+          "cogs12": 0,
+          "averageInventory": 0
+        },
+        "asOfDate": "2026-10-27",
+        "status": "no_denominator",
+        "assessment": {
+          "level": "neutral",
+          "guide": "Under 60 days of stock on hand is lean; above 120 days, stock is moving slowly."
+        }
+      },
+      "byLocation": [],
+      "totals": {
+        "itemCount": 0,
+        "itemsOnHand": 0,
+        "stockValue": 0,
+        "valuationTotal": 0
+      }
+    }
+  }
+}

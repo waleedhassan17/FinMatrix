@@ -7,10 +7,23 @@ import type {
   RankKey,
 } from '../../../models/inventoryValuationModel';
 import {
+  getDatedInventoryValuationAPI,
+  getInventoryHealthAPI,
   getInventoryPerformanceAPI,
   getInventoryValuationReportAPI,
   getInventoryValuationTrendAPI,
 } from '../../../networks/reports/inventoryValuationNetwork';
+import type { DatedValuation, InventoryHealth } from '../../../models/inventoryHealthModel';
+import { remoteDone, remoteFailed, remoteIdle, remoteLoading, type Remote } from '../../../models/remoteModel';
+import {
+  isFinalRejection,
+  toReportRejection,
+  type ReportRejection,
+} from '../../../networks/reports/reportHelpers';
+import {
+  datedValuationSerializer,
+  inventoryHealthSerializer,
+} from '../../../serializers/inventoryHealthSerializer';
 import {
   inventoryPerformanceSerializer,
   inventoryValuationSerializer,
@@ -52,7 +65,19 @@ interface InventoryValuationState {
    * every item comes back, so changing it costs no request.
    */
   rank: RankKey;
+  /**
+   * The stock date. Null is "now" — the snapshot as it has always been read;
+   * a date reads the dated movement record instead (reports v2).
+   */
+  asOfDate: string | null;
+  dated: Remote<DatedValuation>;
+  health: Remote<InventoryHealth>;
 }
+
+const rejection = (action: { payload?: unknown; error?: { message?: string } }, fallback: string) => {
+  const r = action.payload as ReportRejection | undefined;
+  return { message: r?.message ?? action.error?.message ?? fallback, final: isFinalRejection(r) };
+};
 
 const initialState: InventoryValuationState = {
   report: null,
@@ -67,6 +92,9 @@ const initialState: InventoryValuationState = {
   range: getDefaultReportRange(),
   isCustomRange: false,
   rank: 'grossProfit',
+  asOfDate: null,
+  dated: remoteIdle(),
+  health: remoteIdle(),
 };
 
 export const inventoryValuationSlice = createAppSlice({
@@ -89,6 +117,58 @@ export const inventoryValuationSlice = createAppSlice({
     setInventoryRank: create.reducer((state, action: PayloadAction<RankKey>) => {
       state.rank = action.payload;
     }),
+    /** Pick a stock date, or null to go back to now. */
+    setInventoryAsOf: create.reducer((state, action: PayloadAction<string | null>) => {
+      state.asOfDate = action.payload;
+      // Another date's figures must not show under this one.
+      state.dated = remoteIdle();
+    }),
+
+    /** Reorder, aging, dead stock, turnover, locations — fails on its own. */
+    fetchInventoryHealth: create.asyncThunk(
+      async (asOfDate: string | null, thunkAPI) => {
+        try {
+          return inventoryHealthSerializer(await getInventoryHealthAPI(asOfDate));
+        } catch (e) {
+          return thunkAPI.rejectWithValue(toReportRejection(e));
+        }
+      },
+      {
+        pending: state => {
+          state.health = remoteLoading(state.health);
+        },
+        fulfilled: (state, action) => {
+          state.health = remoteDone(action.payload);
+        },
+        rejected: (state, action) => {
+          const r = rejection(action, 'Failed to load stock health');
+          state.health = remoteFailed(state.health, r.message, r.final);
+        },
+      },
+    ),
+
+    /** The valuation as of a past date, with its ledger tie and coverage. */
+    fetchDatedValuation: create.asyncThunk(
+      async (asOfDate: string, thunkAPI) => {
+        try {
+          return datedValuationSerializer(await getDatedInventoryValuationAPI(asOfDate));
+        } catch (e) {
+          return thunkAPI.rejectWithValue(toReportRejection(e));
+        }
+      },
+      {
+        pending: state => {
+          state.dated = remoteLoading(state.dated);
+        },
+        fulfilled: (state, action) => {
+          state.dated = remoteDone(action.payload);
+        },
+        rejected: (state, action) => {
+          const r = rejection(action, 'Failed to load the dated valuation');
+          state.dated = remoteFailed(state.dated, r.message, r.final);
+        },
+      },
+    ),
 
     /**
      * Sales, cost and margin per item.
@@ -171,6 +251,9 @@ export const {
   setInventoryPerfRange,
   refreshInventoryPerfRange,
   setInventoryRank,
+  setInventoryAsOf,
+  fetchInventoryHealth,
+  fetchDatedValuation,
 } = inventoryValuationSlice.actions;
 export const selectInventoryValuationState = (rootState: { inventoryValuation?: InventoryValuationState }) =>
   rootState.inventoryValuation ?? initialState;

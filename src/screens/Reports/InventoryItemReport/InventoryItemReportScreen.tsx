@@ -2,15 +2,20 @@
 // FinMatrix — Item explorer
 // ═══════════════════════════════════════════════════════
 // Reached by tapping an item in Inventory Valuation. One item, every figure it
-// has, month by month — the phone's half of the web's explorer, built as one
-// chart card the way a dashboard reads:
+// has, month by month — the phone's half of the web's explorer, laid out as
+// the web's record page is, top to bottom:
 //
-//   · the window: 6M / 12M / 24M / YTD chips, or any two dates in a sheet;
+//   · who the item is: its photo, one badge for its stock, its facts;
+//   · the window: 6M / 12M / 24M / YTD chips, or any two dates in a sheet,
+//     with what the figures are compared with said once;
 //   · the four headline figures ARE the chart's tabs — tap one and the chart
-//     draws it — with the other six metrics in one short row;
-//   · tap a month for the documents behind it, in a sheet over the screen;
-//   · then the metric month by month, where the stock stands today, who buys
-//     it, and anything worth knowing about the figures.
+//     draws it — each with its move and its shape, the other six metrics in
+//     one short row; tap a month for the documents behind it, in a sheet;
+//   · under the chart, two views: the revenue broken down (by customer, or
+//     by channel when the item went out both ways, as a ring or bars) and the
+//     metric month by month;
+//   · where the stock stands today, what a unit earns, and anything worth
+//     knowing about the figures.
 //
 // Sales and stock come from two endpoints over the same window and are joined
 // by month; each fails on its own, so an older server or one failed request
@@ -30,42 +35,46 @@ import type { ReportsStackParamList } from '../../../navigators/stacks/ReportsSt
 import {
   ReportContainer,
   ReportHeader,
+  HeaderIconButton,
   Card,
   SectionCard,
   RefreshFade,
   Segmented,
-  SummaryLine,
   LoadingBlock,
   ErrorBlock,
   EmptyBlock,
   reportContentStyle,
 } from '../../../components/reports/ReportUI';
+import FullscreenImageModal from '../../../components/shared/FullscreenImageModal';
 import MetricChart, { type ChartType } from '../shared/MetricChart';
-import MetricTiles from '../shared/MetricTiles';
+import MetricTiles, { type MetricTile } from '../shared/MetricTiles';
 import { ChartTypeToggle, MetricChips } from '../shared/ExplorerControls';
 import ItemSalesEntriesList from '../shared/ItemSalesEntriesList';
 import BottomSheet from '../shared/BottomSheet';
 import PeriodSheet, { rangeText } from '../shared/PeriodSheet';
-import RankedBars from '../shared/RankedBars';
 import {
   EXPLORER_METRICS,
   buildExplorerMonths,
   changeTone,
-  daysOfCover,
+  comparisonCaption,
   daysSince,
   defaultMetric,
   explorerMetric,
   formatChange,
   formatMetric,
+  hasChannelBreakdown,
+  itemCover,
   metricChange,
   monthOnMonth,
+  monthsWithSales,
+  stockBadge,
   summarizeMetric,
+  type BreakdownDimension,
   type ExplorerMetricKey,
 } from '../../../models/itemExplorerModel';
 import {
   TREND_WINDOWS,
   matchTrendWindow,
-  monthsSpanned,
   priorWindow,
   toIsoDate,
   trendWindowRange,
@@ -73,6 +82,10 @@ import {
   type TrendWindowKey,
 } from '../../../models/reportModel';
 import type { ItemSalesEntry } from '../../../models/inventoryValuationModel';
+import ItemIdentityCard from './ItemIdentityCard';
+import ItemRevenueBreakdown, { type BreakdownView } from './ItemRevenueBreakdown';
+import ItemStockPosition from './ItemStockPosition';
+import ItemPriceMargin from './ItemPriceMargin';
 import {
   clearItemSalesEntries,
   fetchInventoryItemHistory,
@@ -83,7 +96,7 @@ import {
   selectInventoryItemReportState,
 } from './inventoryItemReportSlice';
 
-const { colors, spacing, typography, radius } = THEME;
+const { colors, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<ReportsStackParamList>;
 type ItemRoute = RouteProp<ReportsStackParamList, 'InventoryItemReport'>;
@@ -103,6 +116,15 @@ const WINDOW_OPTIONS: { key: TrendWindowKey; label: string }[] = [
   { key: 'ytd', label: 'Year to date' },
 ];
 
+/** Under the chart: what the revenue is made of, or the metric month by month. */
+const VIEWS = [
+  { key: 'revenue', label: 'Revenue breakdown' },
+  { key: 'months', label: 'Monthly breakdown' },
+] as const;
+
+/** Months the list shows before "Show all" — the newest, which are asked about most. */
+const RECENT_MONTHS = 6;
+
 /** One month, clipped to the window — the first and last may be partial. */
 const monthRange = (period: string, window: ReportDateRange): ReportDateRange => {
   const first = `${period}-01`;
@@ -113,8 +135,6 @@ const monthRange = (period: string, window: ReportDateRange): ReportDateRange =>
     endDate: last > window.endDate ? window.endDate : last,
   };
 };
-
-const unitWord = (uom: string, qty: number) => (uom === 'unit' && qty !== 1 ? 'units' : uom);
 
 const InventoryItemReportScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -129,6 +149,11 @@ const InventoryItemReportScreen: React.FC = () => {
   const [chart, setChart] = useState<ChartType>('bar');
   const [selected, setSelected] = useState<string | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
+  const [view, setView] = useState<(typeof VIEWS)[number]['key']>('revenue');
+  const [mix, setMix] = useState<BreakdownDimension>('customer');
+  const [mixChart, setMixChart] = useState<BreakdownView>('pie');
+  const [allMonths, setAllMonths] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const prior = useMemo(() => priorWindow(range), [range]);
 
   const load = useCallback(() => {
@@ -166,6 +191,13 @@ const InventoryItemReportScreen: React.FC = () => {
   const selectedIndex = months.findIndex(m => m.period === selected);
   const selectedMonth = selectedIndex >= 0 ? months[selectedIndex] : null;
 
+  // Shared record screens (navigations-maps/sharedRecords) are registered on
+  // every stack this screen lives in; a name a stack does not register would
+  // be a dead tap, so ask first.
+  const canNavigate = (screen: string) => !!navigation.getState()?.routeNames?.includes(screen as never);
+  const openRecord = (screen: string, param: object) =>
+    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>).navigate(screen, param);
+
   // Opening a month loads its documents into a sheet; closing it drops them.
   const selectMonth = (period: string | null) => {
     setSelected(period);
@@ -192,63 +224,42 @@ const InventoryItemReportScreen: React.FC = () => {
     selectMonth(null);
     const screen = e.docType === 'credit_memo' ? 'CreditMemoDetail' : 'InvoiceDetail';
     const param = e.docType === 'credit_memo' ? { creditMemoId: e.docId } : { invoiceId: e.docId };
-    (navigation as unknown as NativeStackNavigationProp<Record<string, object>>).navigate(
-      screen,
-      param,
-    );
+    openRecord(screen, param);
   };
 
-  // ── The figure tiles, each against the window before ────────────────────
+  // ── The comparison, said once under the window ──────────────────────────
   const t = perf?.totals;
   const p = state.prior?.totals;
-  const priorWords = range.startDate.endsWith('-01')
-    ? `prior ${monthsSpanned(range)} month${monthsSpanned(range) === 1 ? '' : 's'}`
-    : 'prior period';
-  const priorEmpty = !!p && p.revenue === 0 && p.unitsSold === 0;
-  const caption = (
-    key: ExplorerMetricKey,
-    current: number | null,
-    before: number | null | undefined,
-  ): React.ReactNode => {
-    if (current === null) return 'No sales in this window';
-    if (before === undefined) return undefined;
-    // Nothing sold before: "+Rs 82K" against it says nothing. Said once.
-    if (priorEmpty) return key === 'revenue' ? `No sales in the ${priorWords}` : ' ';
-    const change = metricChange(key, current, before);
+  const priorEmpty = p ? p.revenue === 0 && p.unitsSold === 0 : null;
+  const comparison = comparisonCaption(range, state.priorStatus === 'failed' ? null : priorEmpty);
+
+  // ── The figure tiles: value, move against the window before, shape ──────
+  const tiles: MetricTile<ExplorerMetricKey>[] = HEADLINE.map(key => {
+    const pick = (x: typeof t) =>
+      x ? (key === 'marginPct' ? x.marginPct : x[key as 'revenue' | 'grossProfit' | 'unitsSold']) : null;
+    const current = pick(t);
+    const change = !priorEmpty && p ? metricChange(key, current, pick(p)) : null;
     const text = formatChange(key, change);
-    if (!text) return before === null ? ' ' : `Unchanged on the ${priorWords}`;
-    const tone = changeTone(key, change);
-    return (
-      <Text>
-        <Text style={tone === 'good' ? styles.good : tone === 'bad' ? styles.bad : undefined}>
-          {tone === 'good' ? '▲ ' : tone === 'bad' ? '▼ ' : ''}
-          {text}
-        </Text>{' '}
-        vs {priorWords}
-      </Text>
-    );
-  };
-  const tiles = HEADLINE.map(key => {
-    const current = t ? (key === 'marginPct' ? t.marginPct : t[key as 'revenue' | 'grossProfit' | 'unitsSold']) : null;
-    const before = p === undefined ? undefined : key === 'marginPct' ? p.marginPct : p[key as 'revenue' | 'grossProfit' | 'unitsSold'];
     return {
       key,
       label: explorerMetric(key).label,
       value: formatMetric(key, current),
       danger: current !== null && current < 0,
-      caption: t ? caption(key, current, before) : 'Not available',
+      change: text ? { text, tone: changeTone(key, change) } : null,
+      caption: !t ? 'Not available' : current === null ? 'No sales in this window' : undefined,
+      // A run of zeros has no shape to show — only a line along the floor.
+      trend: months.some(m => (m.values[key] ?? 0) !== 0) ? months.map(m => m.values[key]) : undefined,
     };
   });
 
-  // ── Stock position ──────────────────────────────────────────────────────
+  // ── The item, today ─────────────────────────────────────────────────────
   const facts = perf?.item ?? null;
+  const uom = facts?.unitOfMeasure ?? 'unit';
   const onHand =
     facts?.qtyOnHand ?? [...months].reverse().find(m => m.values.closingQty !== null)?.values.closingQty ?? null;
-  const cover = facts && t ? daysOfCover(facts.qtyOnHand, t.unitsSold, range) : null;
+  const cover = facts && t ? itemCover(facts, t.unitsSold, range) : null;
   const sinceSold = daysSince(facts?.lastSoldDate ?? null);
-  const belowReorder = !!facts && facts.reorderPoint > 0 && facts.qtyOnHand <= facts.reorderPoint;
-  const listMargin =
-    facts && facts.sellingPrice > 0 ? ((facts.sellingPrice - facts.unitCost) / facts.sellingPrice) * 100 : null;
+  const badge = facts ? stockBadge(facts) : null;
 
   const notes: string[] = [];
   if (perf && perf.estimatedCogsShare > 0) {
@@ -266,6 +277,14 @@ const InventoryItemReportScreen: React.FC = () => {
   const readoutChange = selectedMonth ? monthOnMonth(months, metric, selectedIndex) : null;
   const readoutChangeText = formatChange(metric, readoutChange);
   const readoutTone = changeTone(metric, readoutChange);
+  const legend = [
+    summary.average !== null && summary.readings > 1 && def.kind !== 'ratio'
+      ? `dashed line: average ${formatMetric(metric, summary.average)}`
+      : null,
+    def.group === 'sales' && perf && months.length > 0
+      ? `sold in ${monthsWithSales(months)} of ${months.length} month${months.length === 1 ? '' : 's'}`
+      : null,
+  ].filter(Boolean);
 
   const windowKey = matchTrendWindow(range);
   const windowIndex = windowKey ? TREND_WINDOWS.findIndex(w => w.key === windowKey) : -1;
@@ -281,21 +300,24 @@ const InventoryItemReportScreen: React.FC = () => {
   const title = perf?.itemName || history?.itemName || params.itemName || 'Item';
   const sku = perf?.sku || history?.sku || '';
   const monthLong = selectedMonth ? dayjs(`${selectedMonth.period}-01`).format('MMMM YYYY') : '';
+  const newestFirst = [...months].reverse();
+  const listed = allMonths ? newestFirst : newestFirst.slice(0, RECENT_MONTHS);
 
   return (
     <ReportContainer>
       <ReportHeader
         title={title}
-        subtitle={
-          [
-            sku,
-            facts?.category,
-            onHand !== null && facts ? `${formatMetric('closingQty', onHand)} ${unitWord(facts.unitOfMeasure, onHand)} on hand` : null,
-          ]
-            .filter(Boolean)
-            .join(' · ') || 'Item explorer'
-        }
         onBack={() => navigation.goBack()}
+        backLabel="Inventory Valuation"
+        right={
+          canNavigate('InventoryDetail') ? (
+            <HeaderIconButton
+              icon="external-link"
+              accessibilityLabel="Open item"
+              onPress={() => openRecord('InventoryDetail', { itemId: params.itemId })}
+            />
+          ) : undefined
+        }
       />
 
       <ScrollView contentContainerStyle={reportContentStyle} showsVerticalScrollIndicator={false}>
@@ -309,6 +331,16 @@ const InventoryItemReportScreen: React.FC = () => {
           </Card>
         ) : (
           <>
+            {(perf || history) && (
+              <ItemIdentityCard
+                name={title}
+                sku={sku}
+                facts={facts}
+                badge={badge}
+                onOpenPhoto={() => setPhotoOpen(true)}
+              />
+            )}
+
             {/* The window: four chips, and any two dates one tap away. */}
             <View>
               <Segmented
@@ -328,6 +360,7 @@ const InventoryItemReportScreen: React.FC = () => {
                   <Text style={styles.link}>{windowKey ? 'Custom dates' : 'Custom · change'}</Text>
                 </TouchableOpacity>
               </View>
+              {comparison ? <Text style={styles.comparison}>{comparison}</Text> : null}
               <PeriodSheet
                 sheetOnly
                 open={customOpen}
@@ -404,137 +437,91 @@ const InventoryItemReportScreen: React.FC = () => {
                       />
                     )}
 
-                    <View style={styles.hintRow}>
-                      <Feather name="mouse-pointer" size={12} color={colors.primary} />
-                      <Text style={styles.hint}>
-                        Tap a month for its documents
-                        {summary.average !== null && summary.readings > 1 && def.kind !== 'ratio'
-                          ? ` · dashed line: average ${formatMetric(metric, summary.average)}`
-                          : ''}
-                      </Text>
-                    </View>
+                    {summary.readings > 0 ? (
+                      <View style={styles.hintRow}>
+                        <Feather name="mouse-pointer" size={12} color={colors.primary} />
+                        <Text style={styles.hint}>
+                          Tap a month for its documents
+                          {legend.length ? ` · ${legend.join(' · ')}` : ''}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                 </Card>
 
-                <SectionCard title={`${def.label} by month`} subtitle="Newest first · tap a month" icon="list">
-                  {[...months].reverse().map((m, ri) => {
-                    const i = months.length - 1 - ri;
-                    const v = m.values[metric];
-                    const change = monthOnMonth(months, metric, i);
-                    const text = formatChange(metric, change);
-                    const tone = changeTone(metric, change);
-                    return (
-                      <TouchableOpacity
-                        key={m.period}
-                        style={[styles.monthRow, ri > 0 && styles.monthRule]}
-                        activeOpacity={0.6}
-                        onPress={() => selectMonth(m.period)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${m.label}: ${formatMetric(metric, v)}. Show its documents`}
-                      >
-                        <Text style={styles.monthLabel}>{m.label}</Text>
-                        <Text style={[styles.monthChange, tone === 'good' && styles.good, tone === 'bad' && styles.bad]}>
-                          {text ?? ''}
-                        </Text>
-                        <Text style={[styles.monthValue, v !== null && v < 0 && styles.bad, v === null && styles.mutedValue]}>
-                          {formatMetric(metric, v)}
-                        </Text>
-                        <Feather name="chevron-right" size={14} color={colors.textTertiary} />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </SectionCard>
+                {/* Under the chart: what the revenue is made of, or every month. */}
+                <Segmented
+                  options={VIEWS.map(v => v.label)}
+                  activeIndex={VIEWS.findIndex(v => v.key === view)}
+                  onChange={i => setView(VIEWS[i].key)}
+                />
 
-                <SectionCard
-                  title="Stock position"
-                  subtitle="As of today, at weighted-average cost"
-                  icon="package"
-                  right={
-                    belowReorder ? (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>Below reorder point</Text>
-                      </View>
-                    ) : undefined
-                  }
-                >
-                  <SummaryLine
-                    label="On hand"
-                    value={
-                      onHand === null
-                        ? '—'
-                        : `${formatMetric('closingQty', onHand)}${facts ? ` ${unitWord(facts.unitOfMeasure, onHand)}` : ''}`
-                    }
-                    strong
-                  />
-                  {facts && (
-                    <>
-                      <SummaryLine label="Stock value" value={rs(facts.stockValue)} />
-                      <SummaryLine label="Average cost" value={rs(facts.unitCost)} />
-                      {facts.sellingPrice > 0 && (
-                        <SummaryLine
-                          label="Selling price"
-                          value={`${rs(facts.sellingPrice)}${
-                            listMargin !== null
-                              ? listMargin < 0
-                                ? ` · ${Math.abs(listMargin).toFixed(1)}% below cost`
-                                : ` · ${listMargin.toFixed(1)}% margin`
-                              : ''
-                          }`}
-                          valueColor={listMargin !== null && listMargin < 0 ? colors.danger : undefined}
-                        />
-                      )}
-                      {facts.reorderPoint > 0 && (
-                        <SummaryLine label="Reorder point" value={formatMetric('closingQty', facts.reorderPoint)} />
-                      )}
-                      <SummaryLine
-                        label="Days of cover"
-                        value={
-                          cover === null
-                            ? 'No recent sales'
-                            : cover === 0
-                              ? 'Out of stock'
-                              : cover > 365
-                                ? 'Over a year'
-                                : `${cover} day${cover === 1 ? '' : 's'}`
-                        }
-                        valueColor={cover !== null && cover > 0 && cover <= 14 ? colors.warning : undefined}
-                      />
-                      <SummaryLine
-                        label="Last sold"
-                        value={
-                          facts.lastSoldDate
-                            ? `${dayjs(facts.lastSoldDate).format('MMM D, YYYY')}${
-                                sinceSold !== null ? ` · ${sinceSold === 0 ? 'today' : `${sinceSold}d ago`}` : ''
-                              }`
-                            : 'Never'
-                        }
-                      />
-                    </>
-                  )}
-                </SectionCard>
-
-                {perf && (
-                  <SectionCard title="Top customers" subtitle="Over this window" icon="users">
-                    <RankedBars
-                      points={perf.customers.map((c, i) => ({
-                        key: c.customerId ?? `none-${i}`,
-                        label: c.customerName,
-                        value: c.revenue,
-                        hint: `${formatMetric('unitsSold', c.unitsSold)} units · GP ${rs(c.grossProfit)}`,
-                      }))}
-                      format={v => rs(v)}
-                      emptyLabel="Nobody bought it in this window."
+                {view === 'revenue' ? (
+                  perf ? (
+                    <ItemRevenueBreakdown
+                      perf={perf}
+                      dimension={hasChannelBreakdown(perf) ? mix : 'customer'}
+                      view={mixChart}
+                      onDimension={setMix}
+                      onView={setMixChart}
+                      windowLabel={rangeText(range)}
+                      unitOfMeasure={uom}
+                      onCustomer={
+                        canNavigate('CustomerDetail') ? id => openRecord('CustomerDetail', { customerId: id }) : undefined
+                      }
                     />
-                    {perf.otherCustomers.count > 0 && (
-                      <Text style={styles.muted}>
-                        And {perf.otherCustomers.count} more · {rs(perf.otherCustomers.revenue)}
-                      </Text>
-                    )}
+                  ) : (
+                    <Card>
+                      <Text style={styles.muted}>The sales behind this item could not be loaded.</Text>
+                    </Card>
+                  )
+                ) : (
+                  <SectionCard title={`${def.label} by month`} subtitle="Newest first · tap a month" icon="list">
+                    {listed.map((m, ri) => {
+                      const i = months.length - 1 - ri;
+                      const v = m.values[metric];
+                      const change = monthOnMonth(months, metric, i);
+                      const text = formatChange(metric, change);
+                      const tone = changeTone(metric, change);
+                      return (
+                        <TouchableOpacity
+                          key={m.period}
+                          style={[styles.monthRow, ri > 0 && styles.monthRule]}
+                          activeOpacity={0.6}
+                          onPress={() => selectMonth(m.period)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${m.label}: ${formatMetric(metric, v)}. Show its documents`}
+                        >
+                          <Text style={styles.monthLabel}>{m.label}</Text>
+                          <Text style={[styles.monthChange, tone === 'good' && styles.good, tone === 'bad' && styles.bad]}>
+                            {text ?? ''}
+                          </Text>
+                          <Text style={[styles.monthValue, v !== null && v < 0 && styles.bad, v === null && styles.mutedValue]}>
+                            {formatMetric(metric, v)}
+                          </Text>
+                          <Feather name="chevron-right" size={14} color={colors.textTertiary} />
+                        </TouchableOpacity>
+                      );
+                    })}
+                    {newestFirst.length > RECENT_MONTHS ? (
+                      <TouchableOpacity
+                        style={styles.more}
+                        onPress={() => setAllMonths(v => !v)}
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.link}>
+                          {allMonths ? 'Show the newest 6' : `Show all ${newestFirst.length} months`}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
                   </SectionCard>
                 )}
 
+                <ItemStockPosition facts={facts} onHand={onHand} cover={cover} sinceSold={sinceSold} />
+                {facts && facts.sellingPrice > 0 ? <ItemPriceMargin facts={facts} totals={t} /> : null}
+
                 {notes.length > 0 && (
-                  <SectionCard title="Notes" icon="info">
+                  <SectionCard title="About these figures" icon="info">
                     {notes.map(n => (
                       <View key={n} style={styles.note}>
                         <Feather name="info" size={13} color={colors.textTertiary} />
@@ -579,6 +566,12 @@ const InventoryItemReportScreen: React.FC = () => {
           />
         ) : null}
       </BottomSheet>
+
+      <FullscreenImageModal
+        uri={photoOpen ? (facts?.imageUrl ?? null) : null}
+        onClose={() => setPhotoOpen(false)}
+        accessibilityLabel={`Photo of ${title}`}
+      />
     </ReportContainer>
   );
 };
@@ -593,6 +586,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xxs,
   },
   windowNote: { ...typography.caption, color: colors.textTertiary, flex: 1 },
+  comparison: { ...typography.caption, color: colors.textTertiary, marginTop: 2, paddingHorizontal: spacing.xxs },
   link: { ...typography.labelSm, color: colors.primary },
   good: { color: colors.success },
   bad: { color: colors.danger },
@@ -622,13 +616,7 @@ const styles = StyleSheet.create({
   monthLabel: { ...typography.bodySm, color: colors.textPrimary, width: 64 },
   monthChange: { ...typography.caption, color: colors.textTertiary, flex: 1 },
   monthValue: { ...typography.labelMd, color: colors.textPrimary },
-  badge: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-    backgroundColor: colors.warningLight,
-  },
-  badgeText: { ...typography.overline, color: colors.warning },
+  more: { paddingTop: spacing.sm, alignItems: 'center' },
   note: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
   noteText: { ...typography.caption, color: colors.textSecondary, flex: 1 },
 });

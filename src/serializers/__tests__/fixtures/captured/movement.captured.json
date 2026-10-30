@@ -1,0 +1,73 @@
+{
+  "_source": "Captured 2026-10-27 from the local v2 API (FinMatrix-Backend working tree), MetroMatrix, GET /reports/accounts/4000/movement?startDate=2026-07-01&endDate=2026-09-30",
+  "_status": 200,
+  "response": {
+    "success": true,
+    "data": {
+      "account": {
+        "accountCode": "4000",
+        "accountName": "Sales Revenue",
+        "accountType": "revenue",
+        "subType": "Sales"
+      },
+      "range": {
+        "startDate": "2026-07-01",
+        "endDate": "2026-09-30"
+      },
+      "compareRange": {
+        "startDate": "2026-04-01",
+        "endDate": "2026-06-30"
+      },
+      "current": 224000,
+      "prior": 683000,
+      "change": -459000,
+      "changePct": -67.2,
+      "byCounterparty": [
+        {
+          "name": "Rehman Superstore",
+          "current": -1000,
+          "prior": 233000,
+          "change": -234000
+        },
+        {
+          "name": "City Wholesale",
+          "current": 0,
+          "prior": 165000,
+          "change": -165000
+        },
+        {
+          "name": "Iqbal Grocery",
+          "current": 90000,
+          "prior": 135000,
+          "change": -45000
+        },
+        {
+          "name": "Tariq General Store",
+          "current": 60000,
+          "prior": 90000,
+          "change": -30000
+        },
+        {
+          "name": "Al-Madina Mart",
+          "current": 75000,
+          "prior": 60000,
+          "change": 15000
+        }
+      ],
+      "bySourceType": [
+        {
+          "sourceLabel": "Invoice",
+          "current": 225000,
+          "prior": 683000,
+          "change": -458000
+        },
+        {
+          "sourceLabel": "Invoice (voided)",
+          "current": -1000,
+          "prior": 0,
+          "change": -1000
+        }
+      ]
+    }
+  }
+}

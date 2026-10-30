@@ -1,4 +1,5 @@
 import type { ApiEnvelope } from './reportModel';
+import type { Kpi, KpiAssessment } from './kpiModel';
 
 /**
  * One aging column, as the server describes it.
@@ -50,6 +51,51 @@ export interface ARAgingRow extends ARAgingLegacyBuckets {
   /** Keyed by `AgingBucketDef.key`. */
   amounts: Record<string, number>;
   total: number;
+  // ── v2, JSON only (undefined from a server that predates them) ──
+  paymentTerms?: string | null;
+  /** Customers only. 0 means no limit, never a limit of zero. */
+  creditLimit?: number | null;
+  overLimit?: boolean;
+  /** total ÷ creditLimit × 100 — the server's; null without a limit. */
+  creditUsedPct?: number | null;
+  lastPaymentDate?: string | null;
+  lastPaymentAmount?: number | null;
+  oldestDueDate?: string | null;
+}
+
+/** One slot of what falls due when, from today, by due date. */
+export interface AgingScheduleSlot {
+  /** overdue | d0_7 | d8_14 | d15_30 | d31_60 | d60_plus */
+  key: string;
+  label: string;
+  amount: number;
+  count: number;
+}
+
+/**
+ * What the report means, from the server: how much is late, how late
+ * (weighted by balance), how concentrated the book is, and what falls due
+ * when. DSO (AR) or DPO (AP) is the financial-health KPI at the same date.
+ */
+export interface AgingInsights {
+  dso: Kpi | null;
+  dpo: Kpi | null;
+  totalOpen: number;
+  overdue: number;
+  overduePct: number | null;
+  weightedAvgDaysOverdue: number | null;
+  top5SharePct: number | null;
+  /** Σ amount = totalOpen = the report's grand total. */
+  schedule: AgingScheduleSlot[];
+  /**
+   * Each ratio against its rule of thumb, from the server (reports v2). On
+   * payables the concentration is stated, never judged (neutral).
+   */
+  assessments: {
+    overduePct: KpiAssessment | null;
+    weightedAvgDaysOverdue: KpiAssessment | null;
+    top5SharePct: KpiAssessment | null;
+  };
 }
 
 export interface ARAgingTotals extends ARAgingLegacyBuckets {
@@ -63,6 +109,8 @@ export interface ARAgingReport {
   buckets: AgingBucketDef[];
   rows: ARAgingRow[];
   totals: ARAgingTotals;
+  /** v2 — null from a server that predates insights. */
+  insights?: AgingInsights | null;
 }
 
 export type ARAgingReportResponse = ApiEnvelope<ARAgingReport>;
@@ -443,4 +491,78 @@ export const emptyPartyDocs: PartyDocsState = {
   status: 'idle',
   error: '',
   data: null,
+};
+
+// ═══════════════════════════════════════════════════════
+// Reports v2 — the questions a collector asks of the list
+// ═══════════════════════════════════════════════════════
+
+export type AgingRowFilter = 'overdue' | 'overLimit' | 'over90';
+
+export const AGING_ROW_FILTERS: { key: AgingRowFilter; label: string }[] = [
+  { key: 'overdue', label: 'Overdue' },
+  { key: 'overLimit', label: 'Over limit' },
+  { key: 'over90', label: '90+ days' },
+];
+
+const DAY_MS = 86_400_000;
+
+/** Whole days from `from` to `to`, both YYYY-MM-DD, read as calendar dates. */
+const daysBetween = (from: string, to: string): number => {
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / DAY_MS);
+};
+
+/**
+ * Whether a party has something 90 or more days past due. The server's oldest
+ * due date answers it under any preset; a server without one answers it from
+ * a bucket that starts at 90 days or later, when the preset has one.
+ */
+const hasOver90 = (row: ARAgingRow, buckets: AgingBucketDef[], asOfDate: string): boolean => {
+  if (row.oldestDueDate && asOfDate) return daysBetween(row.oldestDueDate, asOfDate) >= 90;
+  return buckets.some(b => b.minDays >= 90 && (row.amounts[b.key] ?? 0) > 0);
+};
+
+/** Narrow the party list to one question. Filtering only — nothing is added up. */
+export const filterAgingRows = (
+  rows: ARAgingRow[],
+  filter: AgingRowFilter | null,
+  buckets: AgingBucketDef[],
+  asOfDate: string,
+): ARAgingRow[] => {
+  if (!filter) return rows;
+  if (filter === 'overLimit') return rows.filter(r => r.overLimit === true);
+  if (filter === 'over90') return rows.filter(r => hasOver90(r, buckets, asOfDate));
+  return rows.filter(r => buckets.some(b => b.minDays > 0 && (r.amounts[b.key] ?? 0) > 0));
+};
+
+/** Where a party stands, for the chip beside its name — the website's three. */
+export type AgingStatus = 'current' | 'overdue' | '90plus';
+
+export const AGING_STATUS_LABEL: Record<AgingStatus, string> = {
+  current: 'Current',
+  overdue: 'Overdue',
+  '90plus': '90+ days',
+};
+
+/**
+ * Current when nothing is past due; 90+ when something is 90 or more days
+ * late; overdue otherwise — the quick filters' own tests, so a chip and a
+ * filter can never disagree about a party.
+ */
+export const agingStatus = (row: ARAgingRow, buckets: AgingBucketDef[], asOfDate: string): AgingStatus => {
+  if (hasOver90(row, buckets, asOfDate)) return '90plus';
+  return buckets.some(b => b.minDays > 0 && (row.amounts[b.key] ?? 0) > 0) ? 'overdue' : 'current';
+};
+
+/** Parties shown before "Show more" — the website's page of 25. */
+export const AGING_PAGE_SIZE = 25;
+
+/** Payment terms as the API spells them ('net_30') in words ("Net 30"). */
+export const termsText = (terms: string | null | undefined): string | null => {
+  if (!terms) return null;
+  const t = terms.replace(/_/g, ' ').trim();
+  if (/^due on receipt$/i.test(t)) return 'Due on receipt';
+  return t.replace(/\b\w/g, c => c.toUpperCase());
 };

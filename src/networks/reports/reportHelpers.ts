@@ -42,6 +42,25 @@ export const fetchReportWithStatus = async (
   }
 };
 
+/**
+ * What a slice's `rejectWithValue` carries for a report request. Redux
+ * serializes a thrown Error down to its message, so the status has to travel
+ * as the payload or a 404 arrives as just another failure.
+ */
+export interface ReportRejection {
+  message: string;
+  status?: number;
+}
+
+export const toReportRejection = (e: unknown): ReportRejection => {
+  const err = e as { message?: string; status?: number } | null;
+  return { message: err?.message || 'Request failed', status: err?.status };
+};
+
+/** A 404 or 400 is an answer — the route or the record is not there — not a hiccup. */
+export const isFinalRejection = (r: ReportRejection | undefined): boolean =>
+  r?.status === 404 || r?.status === 400;
+
 export const unwrapEnvelope = <T = any>(response: any): T => {
   if (response?.success && response?.data !== undefined) return response.data;
   if (response?.data?.success && response?.data?.data !== undefined) return response.data.data;

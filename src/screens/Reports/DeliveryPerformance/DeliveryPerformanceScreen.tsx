@@ -10,6 +10,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { BarChart } from 'react-native-chart-kit';
 
 import { THEME } from '../../../utils/theme';
+import { withAlpha } from '../../../theme/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchDeliveryPerformance,
@@ -145,7 +146,9 @@ const DeliveryPerformanceScreen: React.FC = () => {
                     backgroundGradientFrom: THEME.colors.surface,
                     backgroundGradientTo: THEME.colors.surface,
                     decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(5,150,105,${opacity})`,
+                    // The navy every report's columns are drawn in, not the
+                    // emerald the brand moved off.
+                    color: (opacity = 1) => withAlpha(THEME.colors.primary, opacity),
                     labelColor: () => THEME.colors.textSecondary,
                     barPercentage: 0.6
                   }}

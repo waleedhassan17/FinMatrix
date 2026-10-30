@@ -1,0 +1,22 @@
+{
+  "_source": "Captured 2026-10-27 from the local v2 API (FinMatrix-Backend working tree), MetroMatrix, GET /reports/inventory-valuation?asOfDate=2026-06-30",
+  "_status": 200,
+  "response": {
+    "asOfDate": "2026-06-30",
+    "rows": [],
+    "byCategory": [],
+    "totalValue": 0,
+    "coverage": {
+      "movements": 0,
+      "valued": 0,
+      "pct": 100,
+      "unvaluedItems": 0
+    },
+    "ledgerTie": {
+      "gl1200": 0,
+      "valuation": 0,
+      "gap": 0,
+      "includesGoodsInTransit": false
+    }
+  }
+}

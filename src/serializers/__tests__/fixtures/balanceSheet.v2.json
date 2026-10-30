@@ -1,0 +1,64 @@
+{
+  "_source": "Provisional: written to FinMatrix-Backend src/modules/reports/reports.types.ts (BalanceSheetReport, working tree of 2026-10-26). Replace with a capture from the local v2 API (see fixtures/README.md).",
+  "asOfDate": "2026-10-26",
+  "assets": [
+    { "accountCode": "1000", "accountName": "Cash", "amount": "50000.00" },
+    { "accountCode": "1100", "accountName": "Accounts Receivable", "amount": 30000 },
+    { "accountCode": "1200", "accountName": "Inventory", "amount": 45000 },
+    { "accountCode": "1500", "accountName": "Equipment", "amount": 80000 }
+  ],
+  "liabilities": [{ "accountCode": "2000", "accountName": "Accounts Payable", "amount": 60000 }],
+  "equity": [
+    { "accountCode": "3000", "accountName": "Owner's Capital", "amount": 100000 },
+    { "accountCode": "3100", "accountName": "Retained Earnings", "amount": 25000, "composite": { "postedBalance": 5000, "priorYearsEarnings": 20000 } },
+    { "accountCode": "", "accountName": "Net Income (current fiscal year)", "amount": 20000, "synthetic": "currentYearEarnings" }
+  ],
+  "totalAssets": 205000,
+  "totalLiabilities": 60000,
+  "totalEquity": 145000,
+  "isBalanced": true,
+  "fiscalYearStart": "2026-01-01",
+  "totalLiabilitiesAndEquity": 205000,
+  "gap": 0,
+  "sections": [
+    {
+      "key": "cashAndBank", "label": "Cash and Bank", "subtotal": 50000, "priorSubtotal": 40000,
+      "lines": [{ "accountCode": "1000", "accountName": "Cash", "amount": "50000.00", "subType": "Cash", "priorAmount": "40000.00", "change": 10000, "changePct": 25, "pctOfTotalAssets": 24.39 }]
+    },
+    {
+      "key": "receivables", "label": "Accounts Receivable", "subtotal": 30000, "priorSubtotal": 25000,
+      "lines": [{ "accountCode": "1100", "accountName": "Accounts Receivable", "amount": 30000, "subType": "Accounts Receivable", "priorAmount": 25000, "change": 5000, "changePct": 20, "pctOfTotalAssets": 14.63 }]
+    },
+    {
+      "key": "inventory", "label": "Inventory", "subtotal": 45000, "priorSubtotal": 45000,
+      "lines": [{ "accountCode": "1200", "accountName": "Inventory", "amount": 45000, "subType": "Inventory", "priorAmount": 45000, "change": 0, "changePct": 0, "pctOfTotalAssets": 21.95 }]
+    },
+    { "key": "otherCurrentAssets", "label": "Other Current Assets", "subtotal": 0, "priorSubtotal": 0, "lines": [] },
+    {
+      "key": "fixedAssets", "label": "Fixed Assets", "subtotal": 80000, "priorSubtotal": 80000,
+      "lines": [{ "accountCode": "1500", "accountName": "Equipment", "amount": 80000, "subType": "Fixed Asset", "priorAmount": 80000, "change": 0, "changePct": 0, "pctOfTotalAssets": 39.02 }]
+    },
+    {
+      "key": "currentLiabilities", "label": "Current Liabilities", "subtotal": 60000, "priorSubtotal": 50000,
+      "lines": [{ "accountCode": "2000", "accountName": "Accounts Payable", "amount": 60000, "subType": "Accounts Payable", "priorAmount": 50000, "change": 10000, "changePct": 20, "pctOfTotalAssets": 29.27 }]
+    },
+    { "key": "longTermLiabilities", "label": "Long-term Liabilities", "subtotal": 0, "priorSubtotal": 0, "lines": [] },
+    {
+      "key": "equity", "label": "Equity", "subtotal": 145000, "priorSubtotal": 140000,
+      "lines": [
+        { "accountCode": "3000", "accountName": "Owner's Capital", "amount": 100000, "subType": "Owner Equity", "priorAmount": 100000, "change": 0, "changePct": 0, "pctOfTotalAssets": 48.78 },
+        { "accountCode": "3100", "accountName": "Retained Earnings", "amount": 25000, "subType": "Retained Earnings", "priorAmount": 25000, "change": 0, "changePct": 0, "pctOfTotalAssets": 12.2, "composite": { "postedBalance": 5000, "priorYearsEarnings": 20000 } },
+        { "accountCode": "", "accountName": "Net Income (current fiscal year)", "amount": 20000, "subType": null, "priorAmount": 15000, "change": 5000, "changePct": 33.33, "pctOfTotalAssets": 9.76, "synthetic": "currentYearEarnings" }
+      ]
+    }
+  ],
+  "subtotals": [
+    { "key": "totalCurrentAssets", "label": "Total Current Assets", "amount": 125000, "priorAmount": 110000 },
+    { "key": "totalAssets", "label": "TOTAL ASSETS", "amount": 205000, "priorAmount": 190000 },
+    { "key": "totalCurrentLiabilities", "label": "Total Current Liabilities", "amount": 60000, "priorAmount": 50000 },
+    { "key": "totalLiabilities", "label": "Total Liabilities", "amount": 60000, "priorAmount": 50000 },
+    { "key": "totalEquity", "label": "Total Equity", "amount": 145000, "priorAmount": 140000 },
+    { "key": "totalLiabilitiesAndEquity", "label": "TOTAL LIABILITIES AND EQUITY", "amount": 205000, "priorAmount": 190000 }
+  ],
+  "comparison": { "asOfDate": "2026-09-30", "totalAssets": 190000, "totalLiabilities": 50000, "totalEquity": 140000 }
+}

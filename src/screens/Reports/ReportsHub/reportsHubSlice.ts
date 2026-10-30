@@ -1,7 +1,21 @@
 import { createAppSlice } from '@store/createAppSlice';
 import { createSelector } from '@reduxjs/toolkit';
-import type { ReportHubCategory } from '../../../models/reportModel';
+import { toIsoDate, type ReportHubCategory } from '../../../models/reportModel';
 import { isFeatureVisible } from '../../../utils/featureGates';
+import { findKpi } from '../../../models/kpiModel';
+import { remoteDone, remoteFailed, remoteIdle, remoteLoading, type Remote } from '../../../models/remoteModel';
+import { getFinancialHealthAPI } from '../../../networks/reports/balanceSheetNetwork';
+import { getARAgingReportAPI } from '../../../networks/reports/arAgingNetwork';
+import { getAPAgingReportAPI } from '../../../networks/reports/apAgingNetwork';
+import { getInventoryHealthAPI } from '../../../networks/reports/inventoryValuationNetwork';
+import {
+  isFinalRejection,
+  toReportRejection,
+  type ReportRejection,
+} from '../../../networks/reports/reportHelpers';
+import { financialHealthSerializer } from '../../../serializers/kpiSerializer';
+import { arAgingSerializer } from '../../../serializers/arAgingSerializer';
+import { inventoryHealthSerializer } from '../../../serializers/inventoryHealthSerializer';
 
 const initialCategories: ReportHubCategory[] = [
   {
@@ -55,12 +69,42 @@ const initialCategories: ReportHubCategory[] = [
   },
 ];
 
+/**
+ * The hub's "Today" row: four figures an owner looks for before opening any
+ * report. Each is fetched on its own and fails on its own — a tile says "—"
+ * rather than taking the hub down — and each is the server's: cash from the
+ * financial-health KPI, overdue and due-this-week from the aging insights,
+ * the reorder count from inventory health.
+ */
+export interface HubToday {
+  cash: Remote<number | null>;
+  overdueAr: Remote<{ overdue: number; parties: number }>;
+  apDue: Remote<{ dueThisWeek: number; overdue: number }>;
+  belowReorder: Remote<number>;
+}
+
 interface ReportsHubState {
   categories: ReportHubCategory[];
+  today: HubToday;
 }
 
 const initialState: ReportsHubState = {
   categories: initialCategories,
+  today: {
+    cash: remoteIdle(),
+    overdueAr: remoteIdle(),
+    apDue: remoteIdle(),
+    belowReorder: remoteIdle(),
+  },
+};
+
+type TodayKey = keyof HubToday;
+
+const failed = (
+  action: { payload?: unknown; error?: { message?: string } },
+): { message: string; final: boolean } => {
+  const r = action.payload as ReportRejection | undefined;
+  return { message: r?.message ?? action.error?.message ?? 'Unavailable', final: isFinalRejection(r) };
 };
 
 export const reportsHubSlice = createAppSlice({
@@ -72,13 +116,62 @@ export const reportsHubSlice = createAppSlice({
         state.categories = action.payload;
       },
     ),
+    fetchHubToday: create.asyncThunk(
+      async (key: TodayKey, thunkAPI) => {
+        try {
+          switch (key) {
+            case 'cash': {
+              const h = financialHealthSerializer(await getFinancialHealthAPI(toIsoDate(new Date())));
+              return findKpi(h?.kpis ?? [], 'cashAndBank')?.value ?? null;
+            }
+            case 'overdueAr': {
+              const r = arAgingSerializer(await getARAgingReportAPI({}));
+              const late = (r?.rows ?? []).filter(row =>
+                (r?.buckets ?? []).some(b => b.minDays > 0 && (row.amounts[b.key] ?? 0) > 0),
+              ).length;
+              return { overdue: r?.insights?.overdue ?? 0, parties: late };
+            }
+            case 'apDue': {
+              const r = arAgingSerializer(await getAPAgingReportAPI({}));
+              const slot = (k: string) => r?.insights?.schedule.find(x => x.key === k)?.amount ?? 0;
+              return { dueThisWeek: slot('d0_7'), overdue: slot('overdue') };
+            }
+            case 'belowReorder': {
+              const h = inventoryHealthSerializer(await getInventoryHealthAPI(null));
+              return h?.belowReorder.length ?? 0;
+            }
+            default:
+              return null;
+          }
+        } catch (e) {
+          return thunkAPI.rejectWithValue(toReportRejection(e));
+        }
+      },
+      {
+        pending: (state, action) => {
+          const k = action.meta.arg;
+          (state.today[k] as Remote<unknown>) = remoteLoading(state.today[k] as Remote<unknown>);
+        },
+        fulfilled: (state, action) => {
+          (state.today[action.meta.arg] as Remote<unknown>) = remoteDone(action.payload);
+        },
+        rejected: (state, action) => {
+          const k = action.meta.arg;
+          const f = failed(action);
+          (state.today[k] as Remote<unknown>) = remoteFailed(state.today[k] as Remote<unknown>, f.message, f.final);
+        },
+      },
+    ),
   }),
   selectors: {
     selectReportCategories: state => state.categories,
   },
 });
 
-export const { setReportCategories } = reportsHubSlice.actions;
+export const { setReportCategories, fetchHubToday } = reportsHubSlice.actions;
+export const HUB_TODAY_KEYS: TodayKey[] = ['cash', 'overdueAr', 'apDue', 'belowReorder'];
+export const selectHubToday = (rootState: { reportsHub?: ReportsHubState }) =>
+  (rootState.reportsHub ?? initialState).today;
 export const selectReportCategories = (rootState: { reportsHub?: ReportsHubState }) =>
   (rootState.reportsHub ?? initialState).categories;
 

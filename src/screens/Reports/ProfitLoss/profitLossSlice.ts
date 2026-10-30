@@ -5,22 +5,9 @@ import {
   getComparisonRange,
   getDefaultReportRange,
 } from '../../../models/reportModel';
-import {
-  emptyLineEntries,
-  type LineEntriesState,
-  type ProfitLossReport,
-} from '../../../models/profitLossModel';
-import {
-  getProfitLossReportAPI,
-  getStatementLineEntriesAPI,
-} from '../../../networks/reports/profitLossNetwork';
-import {
-  profitLossSerializer,
-  statementLineEntriesSerializer,
-} from '../../../serializers/profitLossSerializer';
-
-/** How many ledger rows one expanded line pulls. */
-export const LINE_ENTRY_LIMIT = 50;
+import type { ProfitLossReport } from '../../../models/profitLossModel';
+import { getProfitLossReportAPI } from '../../../networks/reports/profitLossNetwork';
+import { profitLossSerializer } from '../../../serializers/profitLossSerializer';
 
 interface ProfitLossState {
   range: ReportDateRange;
@@ -30,10 +17,12 @@ interface ProfitLossState {
   report: ProfitLossReport | null;
   isLoading: boolean;
   error: string;
-  /** Which account lines are open, keyed by account code. */
+  /**
+   * Which account lines are open, keyed by account code. The postings under
+   * them live in the shared drill cache (shared/inlineEntriesSlice), keyed by
+   * account AND period, so a new period can never show last period's rows.
+   */
   expanded: Record<string, boolean>;
-  /** The transactions behind each opened line, keyed by account code. */
-  entries: Record<string, LineEntriesState>;
 }
 
 const initialState: ProfitLossState = {
@@ -44,7 +33,6 @@ const initialState: ProfitLossState = {
   isLoading: false,
   error: '',
   expanded: {},
-  entries: {},
 };
 
 export const profitLossSlice = createAppSlice({
@@ -87,11 +75,10 @@ export const profitLossSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.isLoading = false;
           state.report = action.payload;
-          // A new period means the cached transactions describe the old one.
-          // Collapsing rather than refetching keeps the reload to one request;
-          // the user reopens the lines they still care about.
+          // A new period: collapse rather than refetch every open line, so the
+          // reload stays one request; the user reopens the lines they still
+          // care about.
           state.expanded = {};
-          state.entries = {};
         },
         rejected: (state, action) => {
           state.isLoading = false;
@@ -104,66 +91,6 @@ export const profitLossSlice = createAppSlice({
       const code = action.payload;
       state.expanded[code] = !state.expanded[code];
     }),
-
-    /**
-     * The posted transactions behind one account line.
-     *
-     * Keyed by account code in a map rather than held as a single "open line",
-     * so several lines can stay open at once and a row that has already been
-     * fetched reopens instantly.
-     */
-    // `page` > 1 appends ("Load more"): a busy line used to stop at the
-    // first 50 transactions.
-    fetchProfitLossLineEntries: create.asyncThunk(
-      async (payload: { accountCode: string; range: ReportDateRange; page?: number }) =>
-        statementLineEntriesSerializer(
-          await getStatementLineEntriesAPI(payload.accountCode, {
-            ...payload.range,
-            limit: LINE_ENTRY_LIMIT,
-            page: payload.page ?? 1,
-          }),
-        ),
-      {
-        pending: (state, action) => {
-          const code = action.meta.arg.accountCode;
-          if ((action.meta.arg.page ?? 1) > 1 && state.entries[code]) {
-            state.entries[code].loadingMore = true;
-            return;
-          }
-          state.entries[code] = { ...emptyLineEntries, status: 'loading' };
-        },
-        fulfilled: (state, action) => {
-          const code = action.meta.arg.accountCode;
-          const prev = state.entries[code]?.data;
-          if ((action.meta.arg.page ?? 1) > 1 && prev) {
-            const seen = new Set(prev.entries.map(e => e.id));
-            state.entries[code] = {
-              status: 'succeeded',
-              error: '',
-              loadingMore: false,
-              data: {
-                ...action.payload,
-                entries: [...prev.entries, ...action.payload.entries.filter(e => !seen.has(e.id))],
-              },
-            };
-            return;
-          }
-          state.entries[code] = { status: 'succeeded', error: '', data: action.payload };
-        },
-        rejected: (state, action) => {
-          const code = action.meta.arg.accountCode;
-          if ((action.meta.arg.page ?? 1) > 1 && state.entries[code]) {
-            state.entries[code].loadingMore = false;
-            return;
-          }
-          state.entries[code] = {
-            status: 'failed',
-            error: action.error?.message ?? 'Failed to load transactions',
-            data: null,
-          };
-        },
-      },
-    ),
   }),
   selectors: {
     selectProfitLossState: state => state,
@@ -176,7 +103,6 @@ export const {
   setProfitLossComparisonEnabled,
   fetchProfitLossReport,
   toggleProfitLossLine,
-  fetchProfitLossLineEntries,
 } = profitLossSlice.actions;
 
 export const selectProfitLossState = (rootState: { profitLoss?: ProfitLossState }) =>

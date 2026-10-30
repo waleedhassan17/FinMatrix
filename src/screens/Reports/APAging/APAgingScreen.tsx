@@ -93,7 +93,7 @@ const APAgingScreen: React.FC = () => {
 
   return (
     <AgingReportView
-      title="A/P Aging"
+      title="AP Aging"
       subtitle="Outstanding payables"
       // The payload keys are customerId/customerName on both sides — the server
       // builds them with one helper — but on this side they hold a vendor.
@@ -103,7 +103,7 @@ const APAgingScreen: React.FC = () => {
       loadingLabel="Aging payables…"
       emptyTitle="No outstanding payables"
       emptyHint="All vendor bills are settled."
-      statementTitle="A/P Aging Summary"
+      statementTitle="AP Aging Summary"
       report={state.report}
       isLoading={state.isLoading}
       error={state.error}

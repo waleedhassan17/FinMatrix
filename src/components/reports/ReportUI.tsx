@@ -27,14 +27,27 @@ import { Feather } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { THEME } from '../../utils/theme';
 import { HEADER_NAVY, HEADER_RADIUS } from '../../theme';
+import { CATEGORY_PALETTE } from '../../theme/theme';
 import { useAppSelector } from '../../hooks/useReduxHooks';
 import { selectActiveCompany } from '../../screens/Auth/companySlice';
 import { DEFAULT_COMPANY } from '../../utils/invoicePdf';
+import {
+  STATUS_CAPTION,
+  assessmentLabel,
+  formatKpiValue,
+  kpiContext,
+  kpiDelta,
+  type DeltaTone,
+  type Kpi,
+  type KpiAssessment,
+  type KpiWithChange,
+} from '../../models/kpiModel';
+import AssessmentPill from './AssessmentPill';
+import Sparkline from './Sparkline';
 import { parenNegative } from './reportFormat';
 
 // Re-exported so every screen has one import site for the reports kit.
-export { parenNegative, asOfLabel, rangeLabel, classifyAccount, reconcile, formatRatio, refreshingOverContent } from './reportFormat';
-export type { AccountGroup } from './reportFormat';
+export { parenNegative, asOfLabel, rangeLabel, reconcile, formatRatio, refreshingOverContent } from './reportFormat';
 
 const T = THEME;
 
@@ -54,14 +67,13 @@ export const ACCENT = {
   teal: T.colors.primary,
 };
 
-export const CHART_SERIES = [
-  ACCENT.brand,
-  ACCENT.blue,
-  ACCENT.violet,
-  ACCENT.amber,
-  ACCENT.teal,
-  ACCENT.red,
-];
+/**
+ * Series colours for charts with more than one series — the validated
+ * CATEGORY_PALETTE (theme.ts), the website's too. The old list repeated the
+ * brand navy twice (brand and "teal" were the same token) and put violet
+ * beside blue, a pair colour-blind readers cannot tell apart.
+ */
+export const CHART_SERIES = [...CATEGORY_PALETTE];
 
 // ── Screen container ──────────────────────────────────
 export const ReportContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -77,12 +89,19 @@ export const ReportContainer: React.FC<{ children: React.ReactNode }> = ({ child
 // Omit `onBack` for tab-root screens (Reports/Transactions hubs).
 // Canonical app-wide back button — a plain `arrow-left` (no box), matching the
 // Transactions screens. White on the navy header; `dark` for light surfaces.
-export const BackButton: React.FC<{ onPress: () => void; dark?: boolean }> = ({ onPress, dark }) => (
+export const BackButton: React.FC<{ onPress: () => void; dark?: boolean; label?: string }> = ({
+  onPress,
+  dark,
+  label = 'Go back',
+}) => (
+  // Named for a screen reader: an unlabelled arrow is read as "button".
   <TouchableOpacity
     onPress={onPress}
     activeOpacity={0.7}
     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     style={S.backBtn}
+    accessibilityRole="button"
+    accessibilityLabel={label}
   >
     <Feather name="arrow-left" size={24} color={dark ? T.colors.textPrimary : T.colors.neutral0} />
   </TouchableOpacity>
@@ -94,11 +113,13 @@ export const ReportHeader: React.FC<{
   onBack?: () => void;
   backLabel?: string;
   right?: React.ReactNode;
-}> = ({ title, subtitle, onBack, right }) => (
+}> = ({ title, subtitle, onBack, backLabel, right }) => (
   <LinearGradient colors={HEADER_NAVY} style={S.header}>
     <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
     <View style={S.headerRow}>
-      {onBack ? <BackButton onPress={onBack} /> : null}
+      {onBack ? (
+        <BackButton onPress={onBack} label={backLabel && backLabel !== 'Back' ? `Back to ${backLabel}` : 'Go back'} />
+      ) : null}
       <View style={{ flex: 1 }}>
         <Text style={S.headerTitle}>{title}</Text>
         {subtitle ? <Text style={S.headerSub}>{subtitle}</Text> : null}
@@ -109,11 +130,22 @@ export const ReportHeader: React.FC<{
 );
 
 // Circular icon action used in headers (translucent white on the navy header).
-export const HeaderIconButton: React.FC<{ icon: keyof typeof Feather.glyphMap; onPress?: () => void }> = ({
-  icon,
-  onPress,
-}) => (
-  <TouchableOpacity style={S.headerBtn} activeOpacity={0.7} onPress={onPress}>
+// The button draws at 36pt; the hit slop takes the touch target to 44.
+export const HeaderIconButton: React.FC<{
+  icon: keyof typeof Feather.glyphMap;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+  disabled?: boolean;
+}> = ({ icon, onPress, accessibilityLabel, disabled }) => (
+  <TouchableOpacity
+    style={[S.headerBtn, disabled && { opacity: 0.5 }]}
+    activeOpacity={0.7}
+    onPress={onPress}
+    disabled={disabled}
+    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+    accessibilityRole="button"
+    accessibilityLabel={accessibilityLabel}
+  >
     <Feather name={icon} size={16} color={T.colors.neutral0} />
   </TouchableOpacity>
 );
@@ -247,6 +279,222 @@ export const KpiGrid: React.FC<{ items: KpiItem[] }> = ({ items }) => (
       <KpiTile key={`${it.label}-${i}`} {...it} />
     ))}
   </View>
+);
+
+// ── KPI card (server KPIs) ────────────────────────────
+// A business KPI as reports-kpi.service returns it: the value in its unit,
+// the figures it was worked out from, how it reads (Healthy / Watch / At
+// risk — the server's verdict), the move against the prior period coloured by
+// whether that move is good news for THIS figure, and an ⓘ that opens the
+// rule of thumb, the formula and its inputs. Nothing here computes a KPI; it
+// formats one — the same anatomy as the website's KpiCard.
+
+export type KpiCardData = Pick<Kpi, 'key' | 'label' | 'value' | 'unit' | 'status'> &
+  Partial<Pick<Kpi, 'inputs' | 'assessment'>> &
+  Partial<Pick<KpiWithChange, 'prior' | 'change' | 'changePct'>>;
+
+const DELTA_TONE: Record<DeltaTone, { fg: string; bg: string }> = {
+  good: { fg: T.colors.success, bg: T.colors.successLighter },
+  bad: { fg: T.colors.danger, bg: T.colors.dangerLighter },
+  neutral: { fg: T.colors.textSecondary, bg: T.colors.neutral100 },
+};
+
+export const KpiCard: React.FC<{
+  kpi: KpiCardData;
+  onInfo?: () => void;
+  /** Open the report the figure comes from. */
+  onPress?: () => void;
+  /** Full width and a larger value, for the headline figures. */
+  hero?: boolean;
+  /** The line of figures under the value; defaults to the KPI's inputs, null hides it. */
+  context?: string | null;
+  /** A verdict other than the KPI's own — the cash card wears the runway's. */
+  assessment?: KpiAssessment | null;
+  /** The figure month by month, oldest first, for a sparkline. */
+  trend?: (number | null)[];
+  /** A small picture of the figure's make-up in the sparkline's place — the aging's age bar. */
+  footer?: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}> = ({ kpi, onInfo, onPress, hero, context, assessment, trend, footer, style }) => {
+  const value = formatKpiValue(kpi.value, kpi.unit);
+  // A KPI with no value says why in the value's place ("Cash-positive — no
+  // burn"); the line under it keeps the figures it was judged on.
+  const status = kpi.value === null ? STATUS_CAPTION[kpi.status] : null;
+  const figures = context === undefined ? (kpi.inputs ? kpiContext({ key: kpi.key, inputs: kpi.inputs }) : null) : context;
+  const verdict = assessment === undefined ? (kpi.assessment ?? null) : assessment;
+  const pill = assessmentLabel(verdict);
+  const delta = kpiDelta({
+    key: kpi.key,
+    unit: kpi.unit,
+    change: kpi.change ?? null,
+    changePct: kpi.changePct ?? null,
+  });
+  const tone = delta ? DELTA_TONE[delta.tone] : null;
+  const prior =
+    kpi.prior !== undefined && kpi.prior !== null ? formatKpiValue(kpi.prior, kpi.unit) : null;
+  const a11y = [
+    `${kpi.label}, ${status ?? value}`,
+    pill,
+    figures,
+    delta ? `${delta.text} against the prior period` : null,
+    prior ? `prior ${prior}` : null,
+  ]
+    .filter(Boolean)
+    .join('. ');
+
+  const body = (
+    <>
+      <View style={S.kpiCardHead}>
+        <Text style={S.kpiCardLabel} numberOfLines={2}>
+          {kpi.label}
+        </Text>
+        {onInfo ? (
+          <TouchableOpacity
+            onPress={onInfo}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel={`How ${kpi.label} is worked out`}
+          >
+            <Feather name="info" size={14} color={T.colors.textTertiary} />
+          </TouchableOpacity>
+        ) : null}
+        {/* Beside the label on a full-width card; under it on a narrow one. */}
+        {hero ? <AssessmentPill assessment={verdict} /> : null}
+      </View>
+      {!hero && pill ? (
+        <View style={S.kpiCardPillRow}>
+          <AssessmentPill assessment={verdict} />
+        </View>
+      ) : null}
+      {status ? (
+        <Text style={[hero ? S.kpiCardHeroStatus : S.kpiCardStatus]} numberOfLines={2}>
+          {status}
+        </Text>
+      ) : (
+        <Text
+          style={hero ? S.kpiCardHero : S.kpiCardValue}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {value}
+        </Text>
+      )}
+      {figures ? (
+        <Text style={S.kpiCardFigures} numberOfLines={2}>
+          {figures}
+        </Text>
+      ) : null}
+      {delta && tone ? (
+        <View style={S.kpiCardDeltaRow}>
+          <View style={[S.kpiCardChip, { backgroundColor: tone.bg }]}>
+            <Feather
+              name={delta.rising ? 'arrow-up-right' : 'arrow-down-right'}
+              size={11}
+              color={tone.fg}
+            />
+            <Text style={[S.kpiCardChipText, { color: tone.fg }]}>{delta.text}</Text>
+          </View>
+          {prior ? (
+            <Text style={S.kpiCardCaption} numberOfLines={1}>
+              vs {prior}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+      {trend ? <Sparkline values={trend} label={`${kpi.label} by month`} /> : null}
+      {footer ? <View style={S.kpiCardFooter}>{footer}</View> : null}
+    </>
+  );
+
+  const cardStyle = [S.kpiCard, hero && S.kpiCardWide, style];
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        style={cardStyle}
+        onPress={onPress}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`${a11y}. Opens the report`}
+      >
+        {body}
+      </TouchableOpacity>
+    );
+  }
+  return (
+    <View style={cardStyle} accessible accessibilityLabel={a11y}>
+      {body}
+    </View>
+  );
+};
+
+/** Two KPI cards across a phone. */
+export const KpiCardGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <View style={S.kpiCardGrid}>{children}</View>
+);
+
+// ── Tie-out badge ─────────────────────────────────────
+// The answer to "does this agree with the rest of the books", in the report's
+// own header: A = L + E, ending cash = balance-sheet cash, a register that
+// lands on the statement line. The verdict is the server's (taken on raw
+// figures) or an equality between two server figures — never a sum.
+
+export type TieState = 'balanced' | 'ties' | 'gap';
+
+export const TieOutBadge: React.FC<{
+  state: TieState;
+  /** What ties to what — "Ending cash = Balance Sheet cash". */
+  label?: string;
+  /** The difference, when the server sends it. */
+  gap?: number | null;
+}> = ({ state, label, gap }) => {
+  const ok = state !== 'gap';
+  const color = ok ? T.colors.success : T.colors.danger;
+  const text =
+    state === 'balanced'
+      ? label ?? 'Balanced'
+      : state === 'ties'
+        ? label ?? 'Ties'
+        : gap !== undefined && gap !== null && gap !== 0
+          ? `${label ? `${label} — ` : ''}Gap ${parenNegative(gap, 'Rs ')}`
+          : label
+            ? `${label} — does not tie`
+            : 'Out of balance';
+  return (
+    <View
+      style={[S.tie, { backgroundColor: ok ? T.colors.successLighter : T.colors.dangerLighter }]}
+      accessible
+      accessibilityLabel={text}
+    >
+      <Feather name={ok ? 'check-circle' : 'alert-triangle'} size={13} color={color} />
+      <Text style={[S.tieText, { color }]} numberOfLines={2}>
+        {text}
+      </Text>
+    </View>
+  );
+};
+
+// ── Filter chip ───────────────────────────────────────
+export const FilterChip: React.FC<{
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  icon?: keyof typeof Feather.glyphMap;
+}> = ({ label, active, onPress, icon }) => (
+  <TouchableOpacity
+    style={[S.chip, active && S.chipOn]}
+    onPress={onPress}
+    activeOpacity={0.7}
+    hitSlop={{ top: 8, bottom: 8 }}
+    accessibilityRole="button"
+    accessibilityState={{ selected: active }}
+    accessibilityLabel={label}
+  >
+    {icon ? (
+      <Feather name={icon} size={12} color={active ? T.colors.textInverse : T.colors.textSecondary} />
+    ) : null}
+    <Text style={[S.chipText, active && S.chipTextOn]}>{label}</Text>
+  </TouchableOpacity>
 );
 
 // ── Figure strip ──────────────────────────────────────
@@ -460,6 +708,10 @@ export const Segmented: React.FC<{
           style={[S.segmentBtn, active && S.segmentBtnActive]}
           activeOpacity={0.8}
           onPress={() => onChange(i)}
+          // A screen reader hears which of the views is on, not just a word.
+          accessibilityRole="button"
+          accessibilityState={{ selected: active }}
+          accessibilityLabel={`${opt}, ${i + 1} of ${options.length}`}
         >
           <Text style={[S.segmentText, active && S.segmentTextActive]}>{opt}</Text>
         </TouchableOpacity>
@@ -643,6 +895,136 @@ export const ErrorBlock: React.FC<{ message: string; onRetry?: () => void }> = (
   </View>
 );
 
+/**
+ * A failed refetch over figures still on screen. The full ErrorBlock replaced
+ * the report, so one dropped request threw away a statement the user was
+ * reading; this says the refresh failed and leaves the last good figures.
+ */
+export const ErrorBanner: React.FC<{ message: string; onRetry?: () => void }> = ({ message, onRetry }) => (
+  <View style={S.banner} accessibilityRole="alert">
+    <Feather name="alert-triangle" size={14} color={T.colors.danger} />
+    <Text style={S.bannerText} numberOfLines={3}>
+      {message}
+    </Text>
+    {onRetry ? (
+      <TouchableOpacity
+        onPress={onRetry}
+        hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel="Retry"
+      >
+        <Text style={S.retryText}>Retry</Text>
+      </TouchableOpacity>
+    ) : null}
+  </View>
+);
+
+/** A notice that is not an error — a fiscal-year crossing, partial cost history. */
+export const NoticeBanner: React.FC<{ message: string; icon?: keyof typeof Feather.glyphMap }> = ({
+  message,
+  icon = 'info',
+}) => (
+  <View style={S.notice}>
+    <Feather name={icon} size={14} color={T.colors.warning} />
+    <Text style={S.noticeText}>{message}</Text>
+  </View>
+);
+
+// ── Skeleton ──────────────────────────────────────────
+// Grey shapes where the report will be, so the first load reads as "this
+// statement, filling in" rather than a spinner in a blank screen. One pulse
+// drives every bar; the native driver carries it where there is one.
+
+const usePulse = (): Animated.Value => {
+  const [v] = useState(() => new Animated.Value(0.55));
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(v, { toValue: 1, duration: 650, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(v, { toValue: 0.55, duration: 650, useNativeDriver: Platform.OS !== 'web' }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [v]);
+  return v;
+};
+
+const Bar: React.FC<{ width?: ViewStyle['width']; height?: number; style?: StyleProp<ViewStyle> }> = ({
+  width = '100%',
+  height = 10,
+  style,
+}) => <View style={[S.skelBar, { width, height }, style]} />;
+
+export type SkeletonVariant = 'statement' | 'kpis' | 'list' | 'inline';
+
+export const ReportSkeleton: React.FC<{ variant?: SkeletonVariant; rows?: number }> = ({
+  variant = 'statement',
+  rows,
+}) => {
+  const opacity = usePulse();
+  const n = rows ?? (variant === 'inline' ? 3 : variant === 'list' ? 6 : 8);
+  let body: React.ReactNode;
+  if (variant === 'kpis') {
+    body = (
+      <View style={S.kpiCardGrid}>
+        {Array.from({ length: n > 6 ? 4 : n }, (_, i) => (
+          <View key={i} style={[S.kpiCard, S.skelTile]}>
+            <Bar width="60%" height={9} />
+            <Bar width="80%" height={18} style={{ marginTop: T.spacing.xs }} />
+            <Bar width="40%" height={9} style={{ marginTop: T.spacing.xs }} />
+          </View>
+        ))}
+      </View>
+    );
+  } else if (variant === 'inline') {
+    body = (
+      <View style={S.skelInline}>
+        {Array.from({ length: n }, (_, i) => (
+          <View key={i} style={S.skelRow}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Bar width="70%" height={9} />
+              <Bar width="45%" height={7} />
+            </View>
+            <Bar width={64} height={9} />
+          </View>
+        ))}
+      </View>
+    );
+  } else {
+    body = (
+      <Card>
+        {variant === 'statement' ? (
+          <View style={S.skelTitle}>
+            <Bar width="45%" height={12} />
+            <Bar width="35%" height={10} />
+            <Bar width="55%" height={8} />
+          </View>
+        ) : null}
+        {Array.from({ length: n }, (_, i) => (
+          <View key={i} style={[S.skelRow, variant === 'list' && S.skelListRow]}>
+            <View style={{ flex: 1, gap: 5 }}>
+              <Bar width={i % 3 === 0 ? '55%' : '72%'} height={10} />
+              {variant === 'list' ? <Bar width="40%" height={8} /> : null}
+            </View>
+            <Bar width={86} height={10} />
+          </View>
+        ))}
+      </Card>
+    );
+  }
+  return (
+    <Animated.View
+      style={{ opacity }}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading"
+    >
+      {body}
+    </Animated.View>
+  );
+};
+
 // `actionLabel`/`onAction` render a centred call-to-action, for the genuine
 // first-run zero-state where the empty block is the user's primary route
 // forward. Optional — existing callers are unaffected.
@@ -770,6 +1152,23 @@ export const StatementRow: React.FC<{
   /** Supplying this makes the row expandable. */
   onToggle?: () => void;
   expanded?: boolean;
+  /**
+   * Supplying this makes the row open something else — a rollforward, another
+   * report — and it takes a chevron rather than the +/−.
+   */
+  onPress?: () => void;
+  /** What a tap opens, for the screen reader ("Opens the profit and loss"). */
+  pressHint?: string;
+  /**
+   * A second line under the amount: the prior figure and the change, or the
+   * amount behind a percentage. Comparison goes here rather than in a second
+   * column, which a phone has no room for.
+   */
+  detail?: string;
+  /** Colours `detail` — for a variance that is a warning. */
+  detailTone?: 'default' | 'success' | 'warning' | 'danger';
+  /** Replaces the formatted amount — a common-size percentage, say. */
+  display?: string;
   children?: React.ReactNode;
 }> = ({
   label,
@@ -784,12 +1183,26 @@ export const StatementRow: React.FC<{
   currency = 'Rs ',
   onToggle,
   expanded,
+  onPress,
+  pressHint,
+  detail,
+  detailTone = 'default',
+  display,
   children,
 }) => {
   const emphasise = bold || isGrand;
+  const touchable = !!(onToggle || onPress);
+  const shown = display ?? (amount === undefined ? '' : parenNegative(amount, currency));
 
   const body = (
-    <View style={[S.stRow, isTotal && S.stRowTotal, isGrand && S.stRowGrand]}>
+    <View
+      style={[
+        S.stRow,
+        touchable && S.stRowTouchable,
+        isTotal && S.stRowTotal,
+        isGrand && S.stRowGrand,
+      ]}
+    >
       {/* The affordance sits in the indent rather than beside the label, so
           expandable and plain rows keep their labels on the same x. */}
       {onToggle ? (
@@ -811,18 +1224,56 @@ export const StatementRow: React.FC<{
         numberOfLines={2}>
         {label}
       </Text>
-      <Text style={[S.stAmount, emphasise && S.stEmphasis]}>
-        {amount === undefined ? '' : parenNegative(amount, currency)}
-      </Text>
+      <View style={S.stAmountCol}>
+        <Text style={[S.stAmount, emphasise && S.stEmphasis]}>{shown}</Text>
+        {detail ? (
+          <Text
+            style={[
+              S.stDetail,
+              detailTone === 'danger' && { color: T.colors.danger },
+              detailTone === 'warning' && { color: T.colors.warningHover },
+              detailTone === 'success' && { color: T.colors.success },
+            ]}
+            numberOfLines={1}
+          >
+            {detail}
+          </Text>
+        ) : null}
+      </View>
       {showPrior ? (
         <Text style={[S.stAmount, emphasise && S.stEmphasis]}>
           {prior === undefined ? '—' : parenNegative(prior, currency)}
         </Text>
       ) : null}
+      {onPress && !onToggle ? (
+        <Feather name="chevron-right" size={14} color={T.colors.textDisabled} />
+      ) : null}
     </View>
   );
 
-  if (!onToggle) return body;
+  const spoken = `${label}, ${shown}${detail ? `, ${detail}` : ''}`;
+
+  if (!touchable) {
+    return shown ? (
+      <View accessible accessibilityLabel={spoken}>
+        {body}
+      </View>
+    ) : (
+      body
+    );
+  }
+
+  if (onPress && !onToggle) {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.6}
+        accessibilityRole="button"
+        accessibilityLabel={`${spoken}. ${pressHint ?? 'Opens the detail'}`}>
+        {body}
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View>
@@ -831,7 +1282,7 @@ export const StatementRow: React.FC<{
         activeOpacity={0.6}
         accessibilityRole="button"
         accessibilityState={{ expanded: !!expanded }}
-        accessibilityLabel={`${label}. ${expanded ? 'Hide' : 'Show'} transactions`}>
+        accessibilityLabel={`${spoken}. ${expanded ? 'Hide' : 'Show'} transactions`}>
         {body}
       </TouchableOpacity>
       {expanded ? children : null}
@@ -969,6 +1420,134 @@ const S = StyleSheet.create({
   kpiDeltaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 6 },
   kpiDelta: { ...T.typography.labelSm, letterSpacing: 0 },
 
+  // KPI card (server KPIs)
+  kpiCardGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: T.spacing.xs },
+  kpiCard: {
+    flexGrow: 1,
+    flexBasis: '46%',
+    minWidth: 140,
+    minHeight: 88,
+    backgroundColor: T.colors.surface,
+    borderRadius: T.radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: T.colors.border,
+    padding: T.spacing.sm,
+    ...T.shadows.xs,
+  },
+  kpiCardWide: { flexBasis: '100%' },
+  kpiCardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: T.spacing.xxs },
+  kpiCardPillRow: { marginTop: T.spacing.xxs },
+  kpiCardStatus: { ...T.typography.labelLg, color: T.colors.textPrimary, marginTop: T.spacing.xxs },
+  kpiCardHeroStatus: { ...T.typography.h4, color: T.colors.textPrimary, marginTop: T.spacing.xxs },
+  kpiCardFigures: { ...T.typography.caption, color: T.colors.textSecondary, marginTop: 2 },
+  kpiCardFooter: { marginTop: T.spacing.xs },
+  kpiCardLabel: { ...T.typography.labelSm, color: T.colors.textSecondary, flex: 1 },
+  kpiCardValue: {
+    ...T.typography.h4,
+    color: T.colors.textPrimary,
+    marginTop: T.spacing.xxs,
+    fontVariant: ['tabular-nums'],
+  },
+  kpiCardHero: {
+    ...T.typography.h2,
+    color: T.colors.textPrimary,
+    marginTop: T.spacing.xxs,
+    fontVariant: ['tabular-nums'],
+  },
+  kpiCardMuted: { color: T.colors.textTertiary },
+  kpiCardCaption: { ...T.typography.caption, color: T.colors.textTertiary, marginTop: 2 },
+  kpiCardDeltaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: T.spacing.xxs,
+    marginTop: T.spacing.xxs,
+  },
+  kpiCardChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: T.radius.full,
+  },
+  kpiCardChipText: { ...T.typography.labelSm, fontVariant: ['tabular-nums'] },
+
+  // Tie-out badge
+  tie: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    paddingHorizontal: T.spacing.xs,
+    paddingVertical: 4,
+    borderRadius: T.radius.full,
+    maxWidth: '100%',
+  },
+  tieText: { ...T.typography.labelSm, flexShrink: 1, fontVariant: ['tabular-nums'] },
+
+  // Filter chip — the spec the inventory filters already use.
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: T.spacing.sm,
+    paddingVertical: T.spacing.xxs + 2,
+    borderRadius: T.radius.full,
+    borderWidth: 1,
+    borderColor: T.colors.border,
+    backgroundColor: T.colors.surface,
+  },
+  chipOn: { backgroundColor: T.colors.primary, borderColor: T.colors.primary },
+  chipText: { ...T.typography.labelSm, color: T.colors.textSecondary },
+  chipTextOn: { color: T.colors.textInverse },
+
+  // Banners
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: T.spacing.xs,
+    padding: T.spacing.sm,
+    borderRadius: T.radius.md,
+    backgroundColor: T.colors.dangerLighter,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: T.colors.dangerLight,
+  },
+  bannerText: { ...T.typography.bodySm, color: T.colors.textPrimary, flex: 1 },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: T.spacing.xs,
+    padding: T.spacing.sm,
+    borderRadius: T.radius.md,
+    backgroundColor: T.colors.warningLighter,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: T.colors.warningLight,
+  },
+  noticeText: { ...T.typography.bodySm, color: T.colors.textPrimary, flex: 1 },
+
+  // Skeleton
+  skelBar: { backgroundColor: T.colors.neutral100, borderRadius: T.radius.xs },
+  skelTile: { gap: 0 },
+  skelTitle: { alignItems: 'center', gap: 6, paddingBottom: T.spacing.sm },
+  skelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: T.spacing.sm,
+    paddingVertical: T.spacing.xs,
+  },
+  skelListRow: {
+    paddingVertical: T.spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: T.colors.borderLight,
+  },
+  skelInline: {
+    marginLeft: T.spacing.lg,
+    paddingLeft: T.spacing.sm,
+    borderLeftWidth: 2,
+    borderLeftColor: T.colors.borderLight,
+  },
+
   // Summary line
   summaryLine: {
     flexDirection: 'row',
@@ -1043,7 +1622,22 @@ const S = StyleSheet.create({
   // Fixed width so an expandable row's label starts where a plain row's does.
   stToggle: { width: 16, alignItems: 'center', paddingTop: 2 },
   stLabel: { ...T.typography.bodySm, color: T.colors.textPrimary, flex: 1 },
-  stAmount: { ...T.typography.bodySm, color: T.colors.textPrimary, width: 118, textAlign: 'right' },
+  // A tappable row meets the 44pt touch target.
+  stRowTouchable: { minHeight: 44, alignItems: 'center' },
+  stAmountCol: { width: 118, alignItems: 'flex-end' },
+  stAmount: {
+    ...T.typography.bodySm,
+    color: T.colors.textPrimary,
+    width: 118,
+    textAlign: 'right',
+    fontVariant: ['tabular-nums'],
+  },
+  stDetail: {
+    ...T.typography.caption,
+    color: T.colors.textTertiary,
+    textAlign: 'right',
+    fontVariant: ['tabular-nums'],
+  },
   stEmphasis: { fontWeight: T.typography.h1.fontWeight },
   stItalic: { fontStyle: 'italic', color: T.colors.textSecondary },
 

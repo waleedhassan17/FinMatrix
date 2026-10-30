@@ -11,8 +11,11 @@ import type {
   InventoryValuationReportResponse,
   InventoryValuationTrend,
   InventoryValuationTrendResponse,
+  ItemChannel,
+  ItemStockStatus,
 } from '../models/inventoryValuationModel';
 import { unwrapEnvelope } from '../networks/reports/reportHelpers';
+import { assessmentFrom } from './kpiSerializer';
 
 const n = (v: unknown): number => {
   const x = typeof v === 'string' ? parseFloat(v) : (v as number);
@@ -136,6 +139,17 @@ export const itemPerformanceSerializer = (
           reorderPoint: n(item.reorderPoint),
           isActive: item.isActive !== false,
           lastSoldDate: item.lastSoldDate ?? null,
+          imageUrl: item.imageUrl || null,
+          thumbnailUrl: item.thumbnailUrl || null,
+          location: item.location || null,
+          stockStatus: ITEM_STOCK_STATUSES.includes(item.stockStatus) ? item.stockStatus : null,
+          suggestedOrderQty: nOrNull(item.suggestedOrderQty),
+          // Absent (an older server) stays undefined, so the screen can tell it
+          // from "nothing sold" and work the figure out itself.
+          ...('daysOfCover' in item ? { daysOfCover: nOrNull(item.daysOfCover) } : {}),
+          cover: assessmentFrom(item.cover),
+          deadStock: item.deadStock === true,
+          lastOutboundDate: item.lastOutboundDate ?? null,
         }
       : null,
     customers: (raw.customers ?? []).map((c: any) => ({
@@ -144,15 +158,41 @@ export const itemPerformanceSerializer = (
       unitsSold: n(c.unitsSold),
       revenue: n(c.revenue),
       grossProfit: n(c.grossProfit),
+      sharePct: nOrNull(c.sharePct),
     })),
     otherCustomers: {
       count: n(others.count),
       unitsSold: n(others.unitsSold),
       revenue: n(others.revenue),
       grossProfit: n(others.grossProfit),
+      sharePct: nOrNull(others.sharePct),
     },
+    // A channel the client does not know is left out, never drawn as a guess.
+    channels: Array.isArray(raw.channels)
+      ? raw.channels
+          .map((c: any) => ({
+            key: c.key,
+            unitsSold: n(c.unitsSold),
+            revenue: n(c.revenue),
+            grossProfit: n(c.grossProfit),
+            documents: n(c.documents),
+            sharePct: nOrNull(c.sharePct),
+          }))
+          .filter((c: ItemChannel) => ITEM_CHANNELS.includes(c.key))
+      : null,
+    returns: raw.returns
+      ? {
+          unitsSold: n(raw.returns.unitsSold),
+          revenue: n(raw.returns.revenue),
+          grossProfit: n(raw.returns.grossProfit),
+          documents: n(raw.returns.documents),
+        }
+      : null,
   };
 };
+
+const ITEM_STOCK_STATUSES: readonly ItemStockStatus[] = ['ok', 'low', 'out'];
+const ITEM_CHANNELS: readonly ItemChannel['key'][] = ['invoice', 'delivery'];
 
 const DOC_TYPES: ItemSalesEntry['docType'][] = ['invoice', 'delivery', 'credit_memo'];
 

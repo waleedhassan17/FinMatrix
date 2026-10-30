@@ -309,3 +309,28 @@ describe('topAgingParties', () => {
     expect(top.moreAmount).toBe(350 + 90);
   });
 });
+
+describe('agingStatus — the chip beside a party', () => {
+  const { agingStatus, AGING_STATUS_LABEL } = jest.requireActual('../arAgingModel');
+  const buckets = [
+    { key: 'current', label: 'Current', minDays: 0, maxDays: 0 },
+    { key: 'd1to30', label: '1–30', minDays: 1, maxDays: 30 },
+    { key: 'd91plus', label: '91 and over', minDays: 91, maxDays: null },
+  ];
+  const party = (amounts: Record<string, number>, oldestDueDate: string | null = null) => ({
+    customerId: 'c',
+    customerName: 'C',
+    amounts,
+    total: 10,
+    oldestDueDate,
+  });
+
+  it('reads current, overdue or 90+ by the quick filters’ own tests', () => {
+    expect(agingStatus(party({ current: 10 }), buckets, '2026-09-30')).toBe('current');
+    expect(agingStatus(party({ d1to30: 10 }), buckets, '2026-09-30')).toBe('overdue');
+    expect(agingStatus(party({ d91plus: 10 }), buckets, '2026-09-30')).toBe('90plus');
+    // Ninety days or more by the oldest due date, under any preset.
+    expect(agingStatus(party({ d1to30: 10 }, '2026-07-02'), buckets, '2026-09-30')).toBe('90plus');
+    expect(AGING_STATUS_LABEL['90plus']).toBe('90+ days');
+  });
+});

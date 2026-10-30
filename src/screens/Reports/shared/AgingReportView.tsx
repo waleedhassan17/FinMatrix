@@ -9,7 +9,8 @@
 // true of one is true of the other by construction.
 
 import React, { useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, RefreshControl, TouchableOpacity } from 'react-native';
+import dayjs from 'dayjs';
 import { Feather } from '@expo/vector-icons';
 
 import { formatCurrency } from '../../../utils/formatters';
@@ -20,9 +21,16 @@ import {
   SectionCard,
   FigureStrip,
   RefreshFade,
-  LoadingBlock,
+  ReportSkeleton,
   ErrorBlock,
+  ErrorBanner,
   EmptyBlock,
+  Badge,
+  ProgressBar,
+  FilterChip,
+  KpiCard,
+  KpiCardGrid,
+  parenNegative,
   TCell,
   tableStyles,
   ACCENT,
@@ -33,10 +41,18 @@ import {
   asOfLabel,
   Segmented,
   StatementRow,
+  LoadMoreFooter,
 } from '../../../components/reports/ReportUI';
 import {
   agingPartyLabel,
+  agingStatus,
+  AGING_PAGE_SIZE,
+  AGING_STATUS_LABEL,
+  AGING_ROW_FILTERS,
   AGING_SORT_LABELS,
+  filterAgingRows,
+  termsText,
+  type AgingRowFilter,
   bucketShares,
   canDrillParty,
   defaultAgingSort,
@@ -52,13 +68,20 @@ import {
   type AgingSort,
   type ARAgingReport,
   type ARAgingRow,
+  type AgingStatus,
   type PartyDocsState,
 } from '../../../models/arAgingModel';
 import { THEME } from '../../../theme';
+import { AGING_RAMP, rampSteps } from '../../../theme/theme';
+import AgingAgeBar from './AgingAgeBar';
 import AgingBucketChart from './AgingBucketChart';
+import DonutChart from './DonutChart';
 import AgingPartyDocuments from './AgingPartyDocuments';
 import AgingTopParties from './AgingTopParties';
 import BucketPresetControl from './BucketPresetControl';
+import KpiInfoSheet from './KpiInfoSheet';
+import ScheduleBars from './ScheduleBars';
+import type { Kpi } from '../../../models/kpiModel';
 
 const { colors, spacing, typography } = THEME;
 
@@ -133,7 +156,74 @@ const styles = StyleSheet.create({
   },
   searchInput: { ...typography.bodySm, color: colors.textPrimary, flex: 1, paddingVertical: 0 },
   footnote: { ...typography.caption, color: colors.textTertiary, paddingHorizontal: spacing.xxs },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm },
+  party: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight, paddingBottom: spacing.xxs },
+  partyMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs, paddingLeft: 22 },
+  partyMetaText: { ...typography.caption, color: colors.textTertiary, flexShrink: 1 },
+  limit: { paddingLeft: 22, paddingRight: spacing.xxs, marginTop: 4, gap: 2 },
+  limitText: { ...typography.caption, color: colors.textTertiary, fontVariant: ['tabular-nums'] },
+  views: { marginTop: spacing.sm },
+  matrixToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xxs,
+  },
+  matrixToggleText: { ...typography.labelMd, color: colors.primary },
 });
+
+/** The status's colour only repeats what its word says. */
+const STATUS_TONE: Record<AgingStatus, 'success' | 'warning' | 'danger'> = {
+  current: 'success',
+  overdue: 'warning',
+  '90plus': 'danger',
+};
+
+const pct1 = (v: number | null): string => (v === null ? '—' : `${v.toFixed(1)}%`);
+const shortDate = (d: string) => dayjs(d).format('D MMM YYYY');
+
+/**
+ * What the row says about the party besides how much: terms, the last
+ * payment, the oldest due date, and — for a customer with a limit — how much
+ * of it is used. Every figure is the server's; the bar is drawn only from the
+ * server's percentage.
+ */
+const PartyDetails: React.FC<{ row: ARAgingRow; partyType: 'customer' | 'vendor' }> = ({ row, partyType }) => {
+  const bits = [
+    termsText(row.paymentTerms),
+    row.lastPaymentDate
+      ? `last ${partyType === 'vendor' ? 'paid' : 'paid you'} ${row.lastPaymentAmount !== null && row.lastPaymentAmount !== undefined ? `${parenNegative(row.lastPaymentAmount, 'Rs ')} ` : ''}on ${shortDate(row.lastPaymentDate)}`
+      : row.lastPaymentDate === null
+        ? 'no payment yet'
+        : null,
+    row.oldestDueDate ? `oldest due ${shortDate(row.oldestDueDate)}` : null,
+  ].filter(Boolean);
+  const hasLimit = partyType === 'customer' && (row.creditLimit ?? 0) > 0;
+  if (bits.length === 0 && !hasLimit && !row.overLimit) return null;
+  return (
+    <>
+      {bits.length > 0 || row.overLimit ? (
+        <View style={styles.partyMeta}>
+          {row.overLimit ? <Badge label="Over limit" color={colors.danger} /> : null}
+          {bits.length > 0 ? <Text style={styles.partyMetaText}>{bits.join(' · ')}</Text> : null}
+        </View>
+      ) : null}
+      {hasLimit ? (
+        <View style={styles.limit} accessible accessibilityLabel={`Credit limit ${parenNegative(row.creditLimit!, 'Rs ')}${row.creditUsedPct !== null && row.creditUsedPct !== undefined ? `, ${pct1(row.creditUsedPct)} used` : ''}`}>
+          {row.creditUsedPct !== null && row.creditUsedPct !== undefined ? (
+            <ProgressBar pct={row.creditUsedPct} color={row.overLimit ? colors.danger : row.creditUsedPct >= 80 ? colors.warning : colors.primary} />
+          ) : null}
+          <Text style={styles.limitText}>
+            {row.creditUsedPct !== null && row.creditUsedPct !== undefined ? `${pct1(row.creditUsedPct)} of ` : 'Limit '}
+            {parenNegative(row.creditLimit!, 'Rs ')}
+            {row.creditUsedPct !== null && row.creditUsedPct !== undefined ? ' limit' : ''}
+          </Text>
+        </View>
+      ) : null}
+    </>
+  );
+};
 
 const AgingReportView: React.FC<AgingReportViewProps> = ({
   title,
@@ -197,11 +287,41 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
 
   const allRows = report?.rows ?? NO_ROWS;
   const [search, setSearch] = useState('');
+  const [rowFilter, setRowFilter] = useState<AgingRowFilter | null>(null);
+  const [info, setInfo] = useState<Kpi | null>(null);
+  const [chartView, setChartView] = useState<'age' | 'schedule'>('age');
+  const [ageChart, setAgeChart] = useState<'donut' | 'bars'>('donut');
+  const [showMatrix, setShowMatrix] = useState(false);
+  // 25 parties at a time; any change to what is listed starts again at 25.
+  const [shown, setShown] = useState(AGING_PAGE_SIZE);
+  const listedBy = [search, rowFilter, selectedBucket, sort].join('|');
+  const [shownFor, setShownFor] = useState(listedBy);
+  if (shownFor !== listedBy) {
+    setShownFor(listedBy);
+    setShown(AGING_PAGE_SIZE);
+  }
   const visibleRows = useMemo(
-    () => visibleAgingRows({ rows: allRows, buckets, selectedBucket, sort, search }),
-    [allRows, buckets, selectedBucket, sort, search],
+    () =>
+      filterAgingRows(
+        visibleAgingRows({ rows: allRows, buckets, selectedBucket, sort, search }),
+        rowFilter,
+        buckets,
+        report?.asOfDate ?? '',
+      ),
+    [allRows, buckets, selectedBucket, sort, search, rowFilter, report?.asOfDate],
   );
-  const narrowed = Boolean(selectedBucket) || search.trim().length > 0;
+  const narrowed = Boolean(selectedBucket) || search.trim().length > 0 || rowFilter !== null;
+  const insights = report?.insights ?? null;
+  const daysKpi = partyType === 'vendor' ? insights?.dpo : insights?.dso;
+  const hasLimits = allRows.some(r => r.overLimit !== undefined);
+
+  // Pull to refresh: the spinner shows until the reload it started lands.
+  const [pulled, setPulled] = useState(false);
+  const [wasLoading, setWasLoading] = useState(isLoading);
+  if (wasLoading !== isLoading) {
+    setWasLoading(isLoading);
+    if (!isLoading) setPulled(false);
+  }
 
   // The headline figures. Shares and counts only; every amount is the server's.
   const total = totals?.total ?? 0;
@@ -234,6 +354,17 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
         contentContainerStyle={reportContentStyle}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={pulled && isLoading}
+            onRefresh={() => {
+              setPulled(true);
+              onRetry();
+            }}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
       >
         <Card>
           <BucketPresetControl
@@ -246,10 +377,11 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
 
         {/* The spinner is for the first load only. A reload keeps the report
             on screen, dimmed, until the new one lands — see RefreshFade. */}
-        {isLoading && !report && <LoadingBlock label={loadingLabel} />}
-        {!!error && <ErrorBlock message={error} onRetry={onRetry} />}
+        {isLoading && !report && <ReportSkeleton variant="list" />}
+        {!!error && !report && <ErrorBlock message={error} onRetry={onRetry} />}
+        {!!error && report && <ErrorBanner message={error} onRetry={onRetry} />}
 
-        {report && !error && (
+        {report && (
           <View onLayout={e => (bodyY.current = e.nativeEvent.layout.y)}>
             <RefreshFade busy={isLoading}>
               <ReportTitleBlock
@@ -258,28 +390,75 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
                 periodLabel={asOfLabel(report.asOfDate)}
               />
 
-              <FigureStrip
-                items={[
-                  { label: 'Total outstanding', value: rs(total), caption: plural(allRows.length) },
-                  {
-                    label: 'Not yet due',
-                    value: rs(notDue),
-                    caption: `${formatShare(total > 0 ? notDue / total : 0)} of the total`,
-                  },
-                  {
-                    label: 'Overdue',
-                    value: rs(overdue),
-                    tone: overdue > 0 ? 'warning' : 'default',
-                    caption: `${formatShare(total > 0 ? overdue / total : 0)} · ${lateParties} of ${plural(allRows.length)}`,
-                  },
-                  {
-                    label: 'Most overdue',
-                    value: rs(oldest?.amount ?? 0),
-                    tone: (oldest?.amount ?? 0) > 0 ? 'danger' : 'default',
-                    caption: oldest ? `${oldest.label} · ${formatShare(oldest.share)}` : '—',
-                  },
-                ]}
-              />
+              {insights ? (
+                <>
+                  {/* The server's figures, each judged on the server against
+                      its rule of thumb — the website's four cards. */}
+                  <KpiCardGrid>
+                    <KpiCard
+                      kpi={{
+                        key: 'totalOpen',
+                        label: 'Total outstanding',
+                        value: insights.totalOpen,
+                        unit: 'money',
+                        status: 'ok',
+                        assessment: insights.assessments.overduePct,
+                      }}
+                      context={`${rs(insights.overdue)} overdue${
+                        insights.overduePct !== null ? ` (${pct1(insights.overduePct)})` : ''
+                      } · ${plural(allRows.length)}`}
+                      footer={<AgingAgeBar buckets={buckets} amounts={totals?.amounts ?? {}} total={totals?.total ?? 0} />}
+                    />
+                    {daysKpi ? <KpiCard kpi={daysKpi} onInfo={() => setInfo(daysKpi)} /> : null}
+                    <KpiCard
+                      kpi={{
+                        key: 'weightedAvgDaysOverdue',
+                        label: 'Average days overdue',
+                        value: insights.weightedAvgDaysOverdue,
+                        unit: 'days',
+                        status: 'ok',
+                        assessment: insights.assessments.weightedAvgDaysOverdue,
+                      }}
+                      context={insights.weightedAvgDaysOverdue === null ? 'Nothing is overdue' : 'Weighted by the balance overdue'}
+                    />
+                    <KpiCard
+                      kpi={{
+                        key: 'top5SharePct',
+                        label: `Top 5 ${partyType}s`,
+                        value: insights.top5SharePct,
+                        unit: 'percent',
+                        status: 'ok',
+                        assessment: insights.assessments.top5SharePct,
+                      }}
+                      context={partyType === 'vendor' ? 'Share of what you owe' : 'Share of what customers owe'}
+                    />
+                  </KpiCardGrid>
+                  <KpiInfoSheet kpi={info} onClose={() => setInfo(null)} />
+                </>
+              ) : (
+                <FigureStrip
+                  items={[
+                    { label: 'Total outstanding', value: rs(total), caption: plural(allRows.length) },
+                    {
+                      label: 'Not yet due',
+                      value: rs(notDue),
+                      caption: `${formatShare(total > 0 ? notDue / total : 0)} of the total`,
+                    },
+                    {
+                      label: 'Overdue',
+                      value: rs(overdue),
+                      tone: overdue > 0 ? 'warning' : 'default',
+                      caption: `${formatShare(total > 0 ? overdue / total : 0)} · ${lateParties} of ${plural(allRows.length)}`,
+                    },
+                    {
+                      label: 'Most overdue',
+                      value: rs(oldest?.amount ?? 0),
+                      tone: (oldest?.amount ?? 0) > 0 ? 'danger' : 'default',
+                      caption: oldest ? `${oldest.label} · ${formatShare(oldest.share)}` : '—',
+                    },
+                  ]}
+                />
+              )}
 
               {!hasRows ? (
                 <Card>
@@ -287,24 +466,69 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
                 </Card>
               ) : (
                 <>
-                  <SectionCard
-                    title="Outstanding by period"
-                    subtitle={
-                      selectedLabel
-                        ? 'The list below shows this period only'
-                        : 'Tap a bar to filter the list'
-                    }
-                    icon="bar-chart-2"
-                  >
-                    <AgingBucketChart
-                      buckets={buckets}
-                      amounts={totals?.amounts ?? {}}
-                      total={totals?.total}
-                      rows={allRows}
-                      selectedBucketKey={selectedBucket}
-                      onSelectBucket={onSelectBucket}
-                    />
-                  </SectionCard>
+                  {insights && insights.schedule.length > 0 ? (
+                    <View style={styles.views}>
+                      <Segmented
+                        options={['By age', partyType === 'vendor' ? 'Cash required' : 'Expected collections']}
+                        activeIndex={chartView === 'age' ? 0 : 1}
+                        onChange={i => setChartView(i === 0 ? 'age' : 'schedule')}
+                      />
+                    </View>
+                  ) : null}
+                  {chartView === 'schedule' && insights && insights.schedule.length > 0 ? (
+                    <SectionCard
+                      title={partyType === 'vendor' ? 'Cash required' : 'Expected collections'}
+                      subtitle={
+                        partyType === 'vendor'
+                          ? 'What you owe suppliers, by when it falls due — overdue first'
+                          : 'What customers owe, by when it falls due — overdue first'
+                      }
+                      icon="calendar"
+                    >
+                      <ScheduleBars slots={insights.schedule} noun={documentNoun.replace(/s$/, '')} />
+                    </SectionCard>
+                  ) : (
+                    <SectionCard
+                      title={selectedLabel ? `Outstanding by age · ${selectedLabel}` : 'Outstanding by age'}
+                      subtitle={selectedLabel ? 'The list below shows this period only' : 'Tap a period to filter the list'}
+                      icon="pie-chart"
+                    >
+                      <Segmented
+                        options={['Ring', 'Bars']}
+                        activeIndex={ageChart === 'donut' ? 0 : 1}
+                        onChange={i => setAgeChart(i === 0 ? 'donut' : 'bars')}
+                      />
+                      {ageChart === 'donut' ? (
+                        <DonutChart
+                          title={`What ${partyType === 'vendor' ? 'you owe' : 'customers owe'}, by age`}
+                          slices={buckets.map(b => ({
+                            key: b.key,
+                            label: b.label,
+                            value: totals?.amounts[b.key] ?? 0,
+                            count: allRows.filter(r => (r.amounts[b.key] ?? 0) > 0).length,
+                          }))}
+                          palette={rampSteps(buckets.length, AGING_RAMP)}
+                          total={totals?.total}
+                          centerLabel="Outstanding"
+                          labelHeader="Age"
+                          format={rs}
+                          countLabel={plural}
+                          selectedKey={selectedBucket}
+                          onSelect={key => onSelectBucket(key === selectedBucket ? null : key)}
+                          selectVerb="Show only"
+                        />
+                      ) : (
+                        <AgingBucketChart
+                          buckets={buckets}
+                          amounts={totals?.amounts ?? {}}
+                          total={totals?.total}
+                          rows={allRows}
+                          selectedBucketKey={selectedBucket}
+                          onSelectBucket={onSelectBucket}
+                        />
+                      )}
+                    </SectionCard>
+                  )}
 
                   <AgingTopParties
                     buckets={buckets}
@@ -314,6 +538,20 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
                     onFindParty={findParty}
                   />
 
+                  {/* The full bucket table, one tap away: the list below already
+                      names every party, so the matrix is not a third copy of
+                      it on the page. */}
+                  <TouchableOpacity
+                    style={styles.matrixToggle}
+                    onPress={() => setShowMatrix(v => !v)}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: showMatrix }}
+                    accessibilityLabel={showMatrix ? 'Hide the bucket table' : 'Show the bucket table'}
+                  >
+                    <Feather name={showMatrix ? 'chevron-down' : 'chevron-right'} size={15} color={colors.primary} />
+                    <Text style={styles.matrixToggleText}>{showMatrix ? 'Hide the bucket table' : 'Show the bucket table'}</Text>
+                  </TouchableOpacity>
+                  {showMatrix ? (
                   <SectionCard title={sectionTitle} icon={sectionIcon}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View>
@@ -374,6 +612,7 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
                       </View>
                     </ScrollView>
                   </SectionCard>
+                  ) : null}
 
                   {/* ── The investigation ────────────────────────────────────
                       A SECOND section rather than expansion inside the matrix
@@ -432,6 +671,17 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
                         )}
                       </View>
 
+                      <View style={styles.chips}>
+                        {AGING_ROW_FILTERS.filter(f => f.key !== 'overLimit' || (partyType === 'customer' && hasLimits)).map(f => (
+                          <FilterChip
+                            key={f.key}
+                            label={f.label}
+                            active={rowFilter === f.key}
+                            onPress={() => setRowFilter(cur => (cur === f.key ? null : f.key))}
+                          />
+                        ))}
+                      </View>
+
                       <Text style={styles.count}>
                         {narrowed
                           ? `${visibleRows.length} of ${plural(allRows.length)}`
@@ -442,10 +692,12 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
                         <Text style={styles.none}>
                           {search.trim()
                             ? `No ${partyType} matches “${search.trim()}”${selectedLabel ? ` in ${selectedLabel}` : ''}.`
-                            : `Nobody has anything in ${selectedLabel}.`}
+                            : selectedLabel
+                              ? `Nobody has anything in ${selectedLabel}.`
+                              : `No ${partyType} fits that filter.`}
                         </Text>
                       ) : (
-                        visibleRows.map(row => {
+                        visibleRows.slice(0, shown).map(row => {
                           // The figure this panel has to reconcile against.
                           const rowAmount = selectedBucket
                             ? (row.amounts[selectedBucket] ?? 0)
@@ -453,12 +705,17 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
                           // No party id, nothing to address the request with — so
                           // no tap target that could only fail.
                           const drillable = canDrillParty(row);
+                          const status = insights ? agingStatus(row, buckets, report.asOfDate) : null;
                           const open = !!expanded[row.customerId];
                           return (
+                            <View key={row.customerId || row.customerName} style={styles.party}>
                             <StatementRow
-                              key={row.customerId || row.customerName}
                               label={agingPartyLabel(row)}
                               amount={rowAmount}
+                              // Where the party stands, under its amount — the
+                              // website's chip, in the space a phone has.
+                              detail={status ? AGING_STATUS_LABEL[status] : undefined}
+                              detailTone={status ? STATUS_TONE[status] : undefined}
                               onToggle={
                                 drillable ? () => onToggleParty(row.customerId) : undefined
                               }
@@ -473,9 +730,18 @@ const AgingReportView: React.FC<AgingReportViewProps> = ({
                                 onOpenDocument={onOpenDocument}
                               />
                             </StatementRow>
+                            <PartyDetails row={row} partyType={partyType} />
+                            </View>
                           );
                         })
                       )}
+                      <LoadMoreFooter
+                        shown={Math.min(shown, visibleRows.length)}
+                        total={visibleRows.length}
+                        hasMore={visibleRows.length > shown}
+                        loading={false}
+                        onMore={() => setShown(n => n + AGING_PAGE_SIZE)}
+                      />
                     </SectionCard>
                   </View>
                 </>
