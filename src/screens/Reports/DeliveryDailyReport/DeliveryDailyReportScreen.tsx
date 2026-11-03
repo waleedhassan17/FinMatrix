@@ -5,15 +5,14 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  useWindowDimensions
+  TouchableOpacity
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { PieChart } from 'react-native-chart-kit';
 
 import { THEME } from '../../../utils/theme';
-import { CATEGORY_OTHER, CATEGORY_PALETTE, withAlpha } from '../../../theme/theme';
+import { CATEGORY_PALETTE } from '../../../theme/theme';
+import { foldSlices } from '../../../models/chartSlicesModel';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchDeliveryDailyReport,
@@ -36,6 +35,7 @@ import {
   DateField,
   reportContentStyle
 } from '../../../components/reports/ReportUI';
+import DonutChart from '../shared/DonutChart';
 
 // Deliveries are scheduled ahead, so the picker, like the arrows, can go past
 // today (DateField stops at today by default).
@@ -64,9 +64,6 @@ const DeliveryDailyReportScreen: React.FC = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const { report, date, isLoading, error } = useAppSelector(selectDeliveryDailyReportState);
-  // The window's current width, not a snapshot from when the module loaded.
-  const { width } = useWindowDimensions();
-  const chartWidth = width - THEME.spacing.md * 4;
 
   // Bring the window up to today every time the screen is opened.
   //
@@ -85,32 +82,15 @@ const DeliveryDailyReportScreen: React.FC = () => {
   }, [dispatch, date]);
 
   // Six agencies by name in the categorical palette's order, the rest folded
-  // into a grey Other — a colour is never reused for a second agency.
-  const pieData = useMemo(() => {
-    const all = [...(report?.agencyDistribution ?? [])].sort((a, b) => b.count - a.count);
-    const named = all.slice(0, CATEGORY_PALETTE.length);
-    const rest = all.slice(CATEGORY_PALETTE.length);
-    return [
-      ...named.map((item, idx) => ({
-        name: item.agencyName.split(' ').slice(0, 2).join(' '),
-        population: item.count,
-        color: CATEGORY_PALETTE[idx],
-        legendFontColor: THEME.colors.textSecondary,
-        legendFontSize: 11,
-      })),
-      ...(rest.length
-        ? [
-            {
-              name: `Other (${rest.length})`,
-              population: rest.reduce((t, x) => t + x.count, 0),
-              color: CATEGORY_OTHER,
-              legendFontColor: THEME.colors.textSecondary,
-              legendFontSize: 11,
-            },
-          ]
-        : []),
-    ];
-  }, [report?.agencyDistribution]);
+  // into a grey Other — a colour is never reused for a second agency. The
+  // same ring, centre and table as every other part-to-whole report.
+  const agencySlices = useMemo(
+    () =>
+      foldSlices(
+        (report?.agencyDistribution ?? []).map(a => ({ key: a.agencyId, label: a.agencyName, value: a.count }))
+      ),
+    [report?.agencyDistribution]
+  );
 
   return (
     <ReportContainer>
@@ -176,18 +156,15 @@ const DeliveryDailyReportScreen: React.FC = () => {
 
             {(report.agencyDistribution?.length ?? 0) > 0 && (
               <SectionCard title="Agency Distribution" icon="pie-chart">
-                <PieChart
-                  data={pieData}
-                  width={chartWidth}
-                  height={200}
-                  chartConfig={{
-                    color: (opacity = 1) => withAlpha(THEME.colors.primary, opacity),
-                    labelColor: () => THEME.colors.textSecondary
-                  }}
-                  accessor="population"
-                  backgroundColor="transparent"
-                  paddingLeft="10"
-                  absolute
+                <DonutChart
+                  title="Deliveries by agency"
+                  slices={agencySlices}
+                  palette={CATEGORY_PALETTE}
+                  centerLabel="Deliveries"
+                  labelHeader="Agency"
+                  valueHeader="Deliveries"
+                  format={String}
+                  formatCenter={String}
                 />
               </SectionCard>
             )}

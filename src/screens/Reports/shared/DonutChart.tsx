@@ -22,19 +22,25 @@ import { parenNegative } from '../../../components/reports/reportFormat';
 const { colors, radius, spacing, typography } = THEME;
 
 const SIZE = 180;
-const OUTER = SIZE / 2;
-const INNER = OUTER * 0.64;
+const MID = SIZE / 2;
+// The ring stops short of its box so the slice in focus can stand proud of it
+// — it grows to the edge — and still read when its colour is the palest.
+const OUTER = MID * 0.95;
+const INNER = MID * 0.64;
+// The centre's text block: the hole is 64% of the ring, and a block 48% wide
+// keeps even a two-line name clear of it.
+const CENTER_WIDTH = Math.round(SIZE * 0.48);
 
-const point = (r: number, a: number) => [OUTER + r * Math.cos(a), OUTER + r * Math.sin(a)];
+const point = (r: number, a: number) => [MID + r * Math.cos(a), MID + r * Math.sin(a)];
 
 /** One ring segment from angle a0 to a1 (radians, clockwise from 12 o'clock). */
-const arc = (a0: number, a1: number): string => {
+const arc = (a0: number, a1: number, outer = OUTER): string => {
   const large = a1 - a0 > Math.PI ? 1 : 0;
-  const [x0, y0] = point(OUTER, a0);
-  const [x1, y1] = point(OUTER, a1);
+  const [x0, y0] = point(outer, a0);
+  const [x1, y1] = point(outer, a1);
   const [x2, y2] = point(INNER, a1);
   const [x3, y3] = point(INNER, a0);
-  return `M${x0},${y0} A${OUTER},${OUTER} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${INNER},${INNER} 0 ${large} 0 ${x3},${y3} Z`;
+  return `M${x0},${y0} A${outer},${outer} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${INNER},${INNER} 0 ${large} 0 ${x3},${y3} Z`;
 };
 
 /** Each drawn slice's start and end angle, clockwise from 12 o'clock. */
@@ -122,8 +128,8 @@ const DonutChart: React.FC<Props> = ({
         <Svg width={SIZE} height={SIZE}>
           {segments.length === 1 ? (
             <Circle
-              cx={OUTER}
-              cy={OUTER}
+              cx={MID}
+              cy={MID}
               r={(OUTER + INNER) / 2}
               stroke={colorOf.get(segments[0].slice.key)}
               strokeWidth={OUTER - INNER}
@@ -133,7 +139,7 @@ const DonutChart: React.FC<Props> = ({
             segments.map(({ slice, a0, a1 }) => (
               <Path
                 key={slice.key}
-                d={arc(a0, a1)}
+                d={arc(a0, a1, focus === slice.key ? MID : OUTER)}
                 fill={colorOf.get(slice.key)}
                 opacity={focus && focus !== slice.key ? 0.3 : 1}
                 stroke={colors.surface}
@@ -144,12 +150,15 @@ const DonutChart: React.FC<Props> = ({
           )}
         </Svg>
         <View style={styles.center} pointerEvents="none">
-          <Text style={styles.centerValue} numberOfLines={1}>
-            {formatCenter(focused ? focused.value : whole)}
-          </Text>
-          <Text style={styles.centerLabel} numberOfLines={2}>
-            {focused ? `${focused.label} · ${formatSliceShare(sliceShare(focused, whole))}` : centerLabel}
-          </Text>
+          <View style={styles.centerBlock}>
+            <Text style={styles.centerValue} numberOfLines={1}>
+              {formatCenter(focused ? focused.value : whole)}
+            </Text>
+            <Text style={styles.centerLabel} numberOfLines={2}>
+              {focused ? focused.label : centerLabel}
+            </Text>
+            {focused ? <Text style={styles.centerShare}>{formatSliceShare(sliceShare(focused, whole))}</Text> : null}
+          </View>
         </View>
       </View>
 
@@ -197,7 +206,7 @@ const DonutChart: React.FC<Props> = ({
           return choosable(s) ? (
             <Pressable
               key={s.key}
-              style={[styles.row, selected && styles.rowOn]}
+              style={[styles.row, (selected || focus === s.key) && styles.rowOn]}
               onPress={() => onSelect?.(s.key)}
               accessibilityRole="button"
               accessibilityState={{ selected }}
@@ -208,7 +217,7 @@ const DonutChart: React.FC<Props> = ({
           ) : (
             <View
               key={s.key}
-              style={styles.row}
+              style={[styles.row, focus === s.key && styles.rowOn]}
               accessible
               accessibilityLabel={`${s.label}: ${format(s.value)}, ${share}`}
             >
@@ -237,10 +246,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
   },
+  centerBlock: { width: CENTER_WIDTH, alignItems: 'center' },
   centerValue: { ...typography.h4, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
-  centerLabel: { ...typography.caption, color: colors.textTertiary, textAlign: 'center' },
+  centerLabel: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
+  centerShare: { ...typography.caption, color: colors.textTertiary, fontVariant: ['tabular-nums'] },
   table: { marginTop: spacing.xs },
   headRow: {
     flexDirection: 'row',

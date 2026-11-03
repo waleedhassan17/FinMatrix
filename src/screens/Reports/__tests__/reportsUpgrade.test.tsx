@@ -109,6 +109,31 @@ describe('DonutChart', () => {
     expect(text).toContain('Rs 10K');
   });
 
+  it('reads a tapped slice in the centre, a line each, and lifts it out of the ring', () => {
+    const tree = render(
+      <DonutChart
+        title="Stock value by category"
+        slices={slices}
+        palette={CATEGORY_PALETTE}
+        centerLabel="Stock value"
+        labelHeader="Category"
+      />,
+    );
+    const segments = () =>
+      tree.root.findAll(n => typeof n.props?.d === 'string' && typeof n.props?.onPress === 'function');
+    const edge = (d: string) => Number(/A([\d.]+),/.exec(d)?.[1]);
+    const ring = edge(segments()[0].props.d);
+    act(() => segments()[1].props.onPress());
+    const centre = tree.root
+      .findAll(n => n.props?.pointerEvents === 'none')[0]
+      .findAll(n => typeof n.props?.children === 'string')
+      .map(n => n.props.children as string);
+    // Its name and share on lines of their own, never "Tools · 20%".
+    expect([...new Set(centre)]).toEqual(['Rs 2.0K', 'Tools', '20%']);
+    expect(edge(segments()[1].props.d)).toBeGreaterThan(ring);
+    expect(edge(segments()[0].props.d)).toBe(ring);
+  });
+
   it('makes each named slice a choice, and never Other', () => {
     const onSelect = jest.fn();
     const tree = render(
