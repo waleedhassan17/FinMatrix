@@ -6,6 +6,11 @@
 // and ink scale as every other card on the dashboard. Tapping a month
 // promotes it into the headline figure.
 //
+// Each month is a step darker than the one before it, on the same navy ramp
+// the website's dashboard uses, so the eye travels to the newest. Colour is
+// recency, so the picked month is marked by a band behind its column rather
+// than by recolouring its bar.
+//
 // Lifted out of AdminDashboardScreen (which was over a thousand lines) so it
 // can be rendered on its own in a test — importing the whole screen pulled in
 // expo-font, react-redux and immer, none of which transform under this repo's
@@ -16,8 +21,8 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 import type { TrendPoint } from '../../models/analyticsDashboardModel';
-import { C, FONT, card, compactRs } from './dashboardTheme';
-import { THEME } from '../../theme';
+import { C, FONT, TINT, card, compactRs } from './dashboardTheme';
+import { AGING_RAMP, THEME, rampSteps } from '../../theme';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { typography } = THEME;
@@ -92,6 +97,18 @@ export const buildRevenueWindow = (points: TrendPoint[]): RevenueSlot[] => {
   });
 };
 
+/**
+ * One fill per slot, stepping light → dark along the navy ramp, oldest first.
+ * Sampled with `rampSteps`, so the oldest month keeps the palest step and the
+ * newest the darkest whatever the window — the same ends as the website. A
+ * month with nothing in it is a quiet stub in the line colour instead, present
+ * on the axis but plainly empty.
+ */
+export const revenueBarShades = (slots: RevenueSlot[]): string[] => {
+  const ramp = rampSteps(slots.length, AGING_RAMP);
+  return slots.map((sl, i) => (sl.point && sl.point.value > 0 ? ramp[i] : C.line));
+};
+
 export const RevenueTrendCard: React.FC<{ points: TrendPoint[] | null }> = ({ points }) => {
   const [picked, setPicked] = useState<number | null>(null);
 
@@ -103,6 +120,7 @@ export const RevenueTrendCard: React.FC<{ points: TrendPoint[] | null }> = ({ po
   // width from day one: a month with no revenue is a stub on the axis, and the
   // window slides as time passes.
   const slots = useMemo(() => buildRevenueWindow(points ?? []), [points]);
+  const shades = useMemo(() => revenueBarShades(slots), [slots]);
   const newestWithData = useMemo(() => {
     for (let i = slots.length - 1; i >= 0; i--) if (slots[i].point) return i;
     return slots.length - 1;
@@ -207,11 +225,12 @@ export const RevenueTrendCard: React.FC<{ points: TrendPoint[] | null }> = ({ po
           const h = sl.point && max > 0
             ? Math.max(3, Math.round((Math.max(value, 0) / max) * BAR_AREA))
             : 3;
-          const tint = !sl.point ? C.line : on ? C.brand : C.bar;
+          // The window always ends at the current month, still accruing.
+          const mtd = i === slots.length - 1 ? ', month to date' : '';
           return (
             <TouchableOpacity
               key={sl.key}
-              style={s.revCol}
+              style={[s.revCol, on && s.revColOn]}
               activeOpacity={sl.point ? 0.75 : 1}
               // An empty month has nothing to promote into the headline, so it
               // is inert rather than a tap that appears to do nothing.
@@ -220,10 +239,10 @@ export const RevenueTrendCard: React.FC<{ points: TrendPoint[] | null }> = ({ po
               accessibilityRole="button"
               accessibilityState={{ selected: on, disabled: !sl.point }}
               accessibilityLabel={
-                sl.point ? `${sl.label}: ${compactRs(value)}` : `${sl.label}: no revenue`
+                sl.point ? `${sl.label}: ${compactRs(value)}${mtd}` : `${sl.label}: no revenue${mtd}`
               }
             >
-              <View style={[s.revBar, { height: h, backgroundColor: tint }]} />
+              <View style={[s.revBar, { height: h, backgroundColor: shades[i] }]} />
             </TouchableOpacity>
           );
         })}
@@ -234,10 +253,19 @@ export const RevenueTrendCard: React.FC<{ points: TrendPoint[] | null }> = ({ po
         {slots.map((sl, i) => (
           <Text
             key={`${sl.key}-label`}
-            style={[s.revLabel, !sl.point && s.revLabelOff, i === idx && s.revLabelOn]}
-            numberOfLines={1}
+            // The month to date is not an empty month, only an early one, so it
+            // keeps full ink even before its first invoice.
+            style={[
+              s.revLabel,
+              !sl.point && i !== slots.length - 1 && s.revLabelOff,
+              i === idx && s.revLabelOn,
+            ]}
+            numberOfLines={i === slots.length - 1 ? 2 : 1}
           >
             {sl.short}
+            {/* Under the month still accruing, so a short bar there is not
+                misread as a bad month. */}
+            {i === slots.length - 1 && <Text style={s.revLabelMtd}>{'\nMTD'}</Text>}
           </Text>
         ))}
       </View>
@@ -292,8 +320,12 @@ const s = StyleSheet.create({
   // the company has one month of history or five, and the newest sits hard
   // against the right edge where the calendar puts it.
   revChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: BAR_AREA, marginTop: 18 },
-  revCol: { flex: 1, height: BAR_AREA, justifyContent: 'flex-end' },
-  revBar: { width: '100%', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  revCol: { flex: 1, height: BAR_AREA, justifyContent: 'flex-end', borderTopLeftRadius: 6, borderTopRightRadius: 6 },
+  /** The picked month: a soft band behind its column, the bar's colour untouched. */
+  revColOn: { backgroundColor: TINT.brand },
+  // Narrower than its column, so a bar is wider than the space between bars
+  // but never a slab, and the picked month's band shows either side of it.
+  revBar: { width: '72%', alignSelf: 'center', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
   revBaseline: { height: 1, backgroundColor: C.line },
   // Mirrors revChart exactly — same flex and gap — or the month labels drift
   // out from under their bars.
@@ -302,6 +334,7 @@ const s = StyleSheet.create({
   revLabelOn: { color: C.ink, fontWeight: typography.labelLg.fontWeight },
   /** A month the company earned nothing in — present on the axis, but quiet. */
   revLabelOff: { color: C.ink3, opacity: 0.45, fontWeight: typography.labelLg.fontWeight },
+  revLabelMtd: { color: C.ink3, fontWeight: typography.caption.fontWeight },
   revFooter: {
     flexDirection: 'row', alignItems: 'center',
     marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: C.lineSoft,

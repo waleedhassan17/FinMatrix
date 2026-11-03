@@ -33,7 +33,6 @@ export const C = {
   info: T.colors.info,
   indigo: T.colors.secondary,
   slate: T.colors.textSecondary,
-  bar: T.colors.neutral300, // quiet slate for past months in the revenue chart
   navy: HEADER_NAVY,
 };
 

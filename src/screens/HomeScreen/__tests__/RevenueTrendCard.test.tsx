@@ -5,10 +5,14 @@ jest.mock('@expo/vector-icons', () => ({ Feather: 'Feather' }));
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
+import { StyleSheet } from 'react-native';
 import RevenueTrendCard, {
   buildRevenueWindow,
+  revenueBarShades,
   WINDOW_MONTHS,
 } from '../RevenueTrendCard';
+import { C, TINT } from '../dashboardTheme';
+import { AGING_RAMP } from '../../../theme';
 import type { TrendPoint } from '../../../models/analyticsDashboardModel';
 
 /**
@@ -201,5 +205,57 @@ describe('buildRevenueWindow — placement', () => {
       [{ label: 'Dec 25', value: 4 }, { label: 'Jan 26', value: 6 }],
       new Date(2026, 0, 10),
     )).toBe('Sep· Oct· Nov· Dec=4 Jan=6');
+  });
+});
+
+describe('RevenueTrendCard — each month a step darker than the last', () => {
+  // The five months ending today, whatever today is, so the suite does not
+  // break when the calendar moves on.
+  const fullWindow = (): TrendPoint[] =>
+    buildRevenueWindow([]).map((sl, i) => ({ label: sl.label, value: (i + 1) * 1000 }));
+
+  // The column has a numeric height too, so take the deepest match: the bar.
+  const barFill = (col: renderer.ReactTestInstance): string | undefined =>
+    col.findAll(n => typeof StyleSheet.flatten(n.props?.style)?.height === 'number')
+      .map(n => StyleSheet.flatten(n.props.style).backgroundColor as string | undefined)
+      .pop();
+
+  it('steps from the palest navy to the darkest, oldest first', () => {
+    const shades = revenueBarShades(buildRevenueWindow(fullWindow()));
+    expect(shades[0]).toBe(AGING_RAMP[0]);
+    expect(shades[WINDOW_MONTHS - 1]).toBe(AGING_RAMP[AGING_RAMP.length - 1]);
+    expect(new Set(shades).size).toBe(WINDOW_MONTHS);
+  });
+
+  it('draws an empty or zero month as a quiet stub, not a dark bar', () => {
+    const slots = buildRevenueWindow([{ label: buildRevenueWindow([])[1].label, value: 0 }]);
+    expect(revenueBarShades(slots).every(c => c === C.line)).toBe(true);
+  });
+
+  it('marks the picked month with a band and leaves its colour alone', () => {
+    const tree = render(fullWindow());
+    const before = columns(tree).map(barFill);
+    expect(before).toEqual(revenueBarShades(buildRevenueWindow(fullWindow())));
+
+    const band = (col: renderer.ReactTestInstance) =>
+      StyleSheet.flatten(col.props.style)?.backgroundColor;
+    // The newest month is picked to begin with.
+    expect(columns(tree).map(band)).toEqual([
+      undefined, undefined, undefined, undefined, TINT.brand,
+    ]);
+
+    act(() => { columns(tree)[1].props.onPress(); });
+    expect(columns(tree).map(band)).toEqual([
+      undefined, TINT.brand, undefined, undefined, undefined,
+    ]);
+    expect(columns(tree).map(barFill)).toEqual(before);
+  });
+
+  it('labels the month still accruing as month to date', () => {
+    const tree = render(fullWindow());
+    expect(drawnText(tree)).toContain('MTD');
+    const cols = columns(tree);
+    expect(cols[WINDOW_MONTHS - 1].props.accessibilityLabel).toMatch(/month to date$/);
+    expect(cols[0].props.accessibilityLabel).not.toMatch(/month to date/);
   });
 });
