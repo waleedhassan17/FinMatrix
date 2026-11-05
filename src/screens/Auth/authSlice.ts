@@ -50,6 +50,19 @@ export const authSlice = createAppSlice({
       state.selectedRole = null;
     }),
     signOut: create.reducer(state => {
+      // Ending a session sends the app back through onboarding: AppContainer
+      // replays the splash, and the signed-out stack behind it now starts on
+      // the onboarding slides instead of role selection. Every way a session
+      // ends counts — the Sign Out button, an expired session, a locked rider
+      // seat, an invalid token found on cold start.
+      //
+      // Only a REAL session, though. bootstrapSession also dispatches signOut
+      // on every cold start with no stored token, as a reconciliation; on a
+      // device that is simply signed out, that must not restart the carousel
+      // each time the app is opened.
+      if (state.isAuthenticated || state.user) {
+        state.hasSeenOnboarding = false;
+      }
       state.user = null;
       state.pendingUser = null;
       state.isAuthenticated = false;

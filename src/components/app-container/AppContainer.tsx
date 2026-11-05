@@ -66,8 +66,9 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 };
 
-// Splash plays only once per app cold start (module-level flag survives
-// AppContainer remounts, resets on process restart).
+// The splash plays once per cold start (module-level flag survives
+// AppContainer remounts, resets on process restart), and again every time a
+// session ends — see the effect below.
 let splashHasPlayed = false;
 
 export const AppContainer: React.FC = () => {
@@ -76,6 +77,23 @@ export const AppContainer: React.FC = () => {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const user = useAppSelector(selectUser);
   const [showSplash, setShowSplash] = React.useState(!splashHasPlayed);
+
+  // ─── Sign-out replays the splash. When a session ends while the app is in
+  // use (Sign Out, an expired session, a locked rider seat), the splash plays
+  // over the signed-out stack, which authSlice.signOut has already pointed at
+  // the onboarding slides — so every sign-out reads splash → onboarding.
+  // `isAppReady` keeps this off the cold-start path: there, a stale session is
+  // cleared by bootstrapSession while the first splash is still the one on
+  // screen, and replaying it would play the splash twice. Safe to read the
+  // initial value from Redux: App.tsx mounts this behind PersistGate, so it
+  // is already the rehydrated one.
+  const wasAuthenticated = React.useRef(isAuthenticated);
+  useEffect(() => {
+    if (wasAuthenticated.current && !isAuthenticated && isAppReady) {
+      setShowSplash(true);
+    }
+    wasAuthenticated.current = isAuthenticated;
+  }, [isAuthenticated, isAppReady]);
 
   // ─── Session restore on cold start (Consultant_Mobile fetchMe pattern):
   // stored token → GET /auth/me refreshes the user and the app opens on

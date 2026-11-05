@@ -216,8 +216,9 @@ const rootReducer = combineReducers({
 // previous user's data (invoices, payroll, dashboards, …) — none of it may
 // leak into the next session. Handing combineReducers only the auth slice
 // resets every other slice to its initial state, while authSlice's own
-// signOut reducer still runs (it deliberately keeps hasSeenOnboarding so a
-// returning user doesn't see onboarding again). redux-persist then flushes
+// signOut reducer still runs (it resets hasSeenOnboarding when a real session
+// ends, so every sign-out leads back through the splash and onboarding).
+// redux-persist then flushes
 // the reset whitelist slices back to AsyncStorage.
 // `appContainer` must SURVIVE the wipe alongside `auth`. It holds no user data
 // — only app-shell readiness — and AppContainer dispatches bootstrapSession()
