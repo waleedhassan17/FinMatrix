@@ -112,10 +112,14 @@ export const poDetailSlice = createAppSlice({
 
     /** PATCH status — for Send / Close / Cancel transitions. */
     updatePOStatus: create.asyncThunk(
-      async ({ id, status }: { id: string; status: PurchaseOrderStatus }) =>
+      async ({ id, status, deliverWhatsapp }: { id: string; status: PurchaseOrderStatus; deliverWhatsapp?: boolean }) =>
         // Translate to the API's vocabulary — its column is varchar(16), so
         // 'partially_received' would be a Postgres 22001.
-        updatePOStatusAPI(id, toApiPOStatus(status) ?? 'draft'),
+        updatePOStatusAPI(
+          id,
+          toApiPOStatus(status) ?? 'draft',
+          deliverWhatsapp === undefined ? undefined : { whatsapp: deliverWhatsapp },
+        ),
       {
         pending: state => { state.isUpdatingStatus = true; },
         fulfilled: (state, action: PayloadAction<any>) => {

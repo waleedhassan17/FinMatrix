@@ -62,6 +62,12 @@ export const mapCustomer = (raw: any): Customer => {
     isActive: raw?.isActive ?? true,
     createdAt: raw?.createdAt ?? '',
     updatedAt: raw?.updatedAt ?? '',
+    whatsappE164: raw?.whatsappE164 ?? null,
+    whatsappOptInAt: raw?.whatsappOptInAt ?? null,
+    whatsappOptOut: raw?.whatsappOptOut === true,
+    whatsappVerifiedAt: raw?.whatsappVerifiedAt ?? null,
+    preferredLanguage: raw?.preferredLanguage === 'ur' ? 'ur' : raw?.preferredLanguage === 'en' ? 'en' : null,
+    collectionsPaused: raw?.collectionsPaused === true,
     ...(raw?.credit
       ? {
           credit: {

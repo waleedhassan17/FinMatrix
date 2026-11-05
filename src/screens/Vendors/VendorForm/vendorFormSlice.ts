@@ -146,10 +146,11 @@ export const vendorFormSlice = createAppSlice({
 
     /** Activity diagram step: "Save — vendor available for Bills & POs" */
     saveVendor: create.asyncThunk(
-      async (_arg, thunkAPI) => {
+      /** `extra`: fields kept outside this slice (FinMatrix Connect's WhatsApp block). */
+      async (extra: Record<string, unknown> | void, thunkAPI) => {
         const root = thunkAPI.getState() as { vendorForm: VendorFormSliceState };
         const f = root.vendorForm;
-        const payload = buildSavePayload(f);
+        const payload = { ...buildSavePayload(f), ...(extra ?? {}) };
         const envelope = f.isEditMode && f.editId
           ? await updateVendorAPI(f.editId, payload)
           : await createVendorAPI(payload);

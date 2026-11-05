@@ -6,6 +6,7 @@
 // UI-ready data structure with inline field mapping.
 // Mirrors `glSerializer.ts`.
 
+import { lastMessageStatusSerializer } from './messagingSerializer';
 import type { Bill, BillLine, BillPayment, BillStatus } from '../types';
 import type {
   BillApiEntity,
@@ -163,5 +164,6 @@ export function billPaymentsSerializer(payload: any): BillPayment[] {
     allocations: Array.isArray(p.allocations)
       ? p.allocations.map((a: any) => ({ ...a, amount: toNum(a.amount) }))
       : [],
+    lastMessageStatus: lastMessageStatusSerializer(p.lastMessageStatus),
   }));
 }

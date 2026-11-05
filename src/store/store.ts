@@ -108,6 +108,7 @@ import { taxSettingsSlice } from '../screens/Tax/TaxSettings/taxSettingsSlice';
 import { taxLiabilitySlice } from '../screens/Tax/TaxLiability/taxLiabilitySlice';
 import { taxPaymentSlice } from '../screens/Tax/TaxPayment/taxPaymentSlice';
 import { settingsSlice } from '../screens/Settings/SettingsMain/settingsSlice';
+import { whatsAppConnectSlice } from '../screens/Settings/WhatsAppConnect/whatsAppConnectSlice';
 import { companyProfileSlice } from '../screens/Settings/CompanyProfile/companyProfileSlice';
 import { userManagementSlice } from '../screens/Settings/UserManagement/userManagementSlice';
 import { companySwitcherSlice } from '../screens/Settings/CompanySwitcher/companySwitcherSlice';
@@ -136,6 +137,7 @@ const rootReducer = combineReducers({
     taxLiability: taxLiabilitySlice.reducer,
     taxPayment: taxPaymentSlice.reducer,
     settings: settingsSlice.reducer,
+    whatsAppConnect: whatsAppConnectSlice.reducer,
     companyProfile: companyProfileSlice.reducer,
     userManagement: userManagementSlice.reducer,
     companySwitcher: companySwitcherSlice.reducer,

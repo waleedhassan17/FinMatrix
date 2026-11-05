@@ -45,6 +45,8 @@ export type MoreStackParamList = {
   StaffApprovals: undefined;
   CompanySwitcher: undefined;
   GlobalSearch: undefined;
+  WhatsAppConnect: undefined;
+  FixContacts: undefined;
   // BILLING-DISABLED BUILD. Commented with the registrations, for the same
   // reason as TaxSettings above: leaving these params declared would let
   // navigate('RenewSubscription') compile against a route that is no longer

@@ -2,6 +2,14 @@
 // FinMatrix — Customer Form Screen (Create / Edit)
 // ═══════════════════════════════════════════════════════
 
+import { useWhatsappConnect } from '../../../hooks/useWhatsappConnect';
+import WhatsappContactFields, {
+  emptyWhatsappFields,
+  whatsappFieldError,
+  whatsappFieldsFrom,
+  whatsappPayload,
+  type WhatsappFieldsState,
+} from '../../../components/shared/messaging/WhatsappContactFields';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
@@ -73,6 +81,17 @@ const CustomerFormScreen: React.FC = () => {
   useEffect(() => {
     if (editing) dispatch(loadCustomerForEdit(customerToFormData(editing)));
   }, [editing, dispatch]);
+
+  // FinMatrix Connect: WhatsApp number, consent and language, shown when the
+  // plan has it. Kept beside the form slice; merged into the payload on save.
+  const { featureOn: whatsappOn } = useWhatsappConnect();
+  const [whatsapp, setWhatsapp] = useState<WhatsappFieldsState>(emptyWhatsappFields);
+  // Seeded once the customer arrives (state adjusted during render, not in an effect).
+  const [whatsappSeededFor, setWhatsappSeededFor] = useState<string | null>(null);
+  if (editing && whatsappSeededFor !== editing.id) {
+    setWhatsappSeededFor(editing.id);
+    setWhatsapp(whatsappFieldsFrom(editing));
+  }
   useEffect(() => () => { dispatch(resetCustomerForm()); }, [dispatch]);
 
   // The ID a new customer gets if the field is left empty — a suggestion for
@@ -125,6 +144,11 @@ const CustomerFormScreen: React.FC = () => {
       Toast.show({ type: 'error', text1: 'Validation Error', text2: Object.values(validationErrors)[0] });
       return;
     }
+    const whatsappError = whatsappOn ? whatsappFieldError(whatsapp, form.phone) : null;
+    if (whatsappError) {
+      Toast.show({ type: 'error', text1: 'WhatsApp number', text2: whatsappError });
+      return;
+    }
 
     dispatch(setIsSaving(true));
     try {
@@ -153,11 +177,12 @@ const CustomerFormScreen: React.FC = () => {
           notes: form.notes
         },
       );
+      const body = whatsappOn ? { ...payload, ...whatsappPayload(whatsapp) } : payload;
 
       if (isEditing) {
-        await dispatch(editCustomer({ id: editingId!, data: payload })).unwrap();
+        await dispatch(editCustomer({ id: editingId!, data: body })).unwrap();
       } else {
-        await dispatch(createCustomer(payload)).unwrap();
+        await dispatch(createCustomer(body)).unwrap();
       }
 
       await dispatch(fetchCustomers());
@@ -179,7 +204,7 @@ const CustomerFormScreen: React.FC = () => {
     } finally {
       dispatch(setIsSaving(false));
     }
-  }, [form, isEditing, editingId, dispatch, navigation]);
+  }, [form, isEditing, editingId, dispatch, navigation, whatsappOn, whatsapp]);
 
   // ═════════════════════════════════════════════════════
   // RENDER
@@ -244,6 +269,9 @@ const CustomerFormScreen: React.FC = () => {
               keyboardType="phone-pad"
               error={form.errors.phone}
             />
+            {whatsappOn && (
+              <WhatsappContactFields party="customer" phone={form.phone} state={whatsapp} onChange={setWhatsapp} />
+            )}
             <CustomInput
               label="Contact Person"
               value={form.contactPerson}

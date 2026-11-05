@@ -5,6 +5,7 @@
 // Takes the raw API envelope ({ success, data: { ... } })
 // and returns a clean, UI-ready data structure.
 
+import { lastMessageStatusSerializer } from './messagingSerializer';
 import type {
   DiscountType,
   Invoice,
@@ -70,6 +71,7 @@ export const mapInvoice = (raw: any): Invoice => ({
   createdBy: raw.createdBy ?? '',
   createdAt: raw.createdAt ?? '',
   updatedAt: raw.updatedAt ?? '',
+  lastMessageStatus: lastMessageStatusSerializer(raw.lastMessageStatus),
 });
 
 // ─── Envelope serializers ────────────────────────────

@@ -112,9 +112,14 @@ export const convertPOToBillAPI = async (
 /** Status lives on its own route with a `{ status }` body. This used to PATCH
  *  the PO itself with a bare string, which the body parser rejected — so
  *  "Send to Vendor" and "Close" never worked. */
-export const updatePOStatusAPI = async (id: string, status: ApiPOStatus): Promise<any> => {
+export const updatePOStatusAPI = async (
+  id: string,
+  status: ApiPOStatus,
+  /** FinMatrix Connect: { whatsapp: false } marks it sent without messaging the vendor. */
+  deliver?: { whatsapp: boolean },
+): Promise<any> => {
   try {
-    const response = await api.patch(`/purchase-orders/${id}/status`, { status });
+    const response = await api.patch(`/purchase-orders/${id}/status`, deliver ? { status, deliver } : { status });
     return response.data;
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));

@@ -6,6 +6,8 @@
 // tiles are the server's, over every invoice the search matches.
 // ═══════════════════════════════════════════════════════
 
+import MessageStatusTicks from '../../../components/shared/messaging/MessageStatusTicks';
+import { useWhatsappConnect } from '../../../hooks/useWhatsappConnect';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -175,6 +177,9 @@ const InvoiceListScreen: React.FC = () => {
     return { totalOutstanding: outstanding, overdueAmount: overdue, invoiceCount: invoices.length };
   }, [summary, invoices]);
 
+  // FinMatrix Connect: WhatsApp ticks beside each invoice's status.
+  const { enabled: connectEnabled } = useWhatsappConnect();
+
   // ── Render invoice card ─────────────────────────
   const renderCard = ({ item: inv }: { item: Invoice }) => {
     const balance = inv.total - inv.amountPaid;
@@ -192,6 +197,11 @@ const InvoiceListScreen: React.FC = () => {
         secondaryLabel="Balance"
         secondaryValue={formatCurrency(balance, 'Rs ')}
         secondaryColor={balance > 0 ? colors.danger : colors.success}
+        trailing={
+          connectEnabled && inv.lastMessageStatus ? (
+            <MessageStatusTicks status={inv.lastMessageStatus.status} size={13} />
+          ) : undefined
+        }
         onPress={() => navigation.navigate('InvoiceDetail', { invoiceId: inv.id })}
       />
     );

@@ -29,6 +29,8 @@ export type TxnCardProps = {
   secondaryLabel?: string;
   secondaryValue?: string;
   secondaryColor?: string;
+  /** Small status beside the badge, e.g. WhatsApp delivery ticks. */
+  trailing?: React.ReactNode;
   onPress: () => void;
 };
 
@@ -44,6 +46,7 @@ export const TxnCard: React.FC<TxnCardProps> = ({
   secondaryLabel,
   secondaryValue,
   secondaryColor,
+  trailing,
   onPress,
 }) => (
   <TouchableOpacity
@@ -56,6 +59,7 @@ export const TxnCard: React.FC<TxnCardProps> = ({
         <Text style={s.cardNumber}>{number}</Text>
         {subtitle ? <Text style={s.cardSub} numberOfLines={1}>{subtitle}</Text> : null}
       </View>
+      {trailing ? <View style={s.trailing}>{trailing}</View> : null}
       <View style={[s.badge, { backgroundColor: statusColor + '18' }]}>
         <Text style={[s.badgeText, { color: statusColor }]}>{statusLabel}</Text>
       </View>
@@ -84,6 +88,7 @@ export const TxnCard: React.FC<TxnCardProps> = ({
 );
 
 const s = StyleSheet.create({
+  trailing: { marginRight: spacing.xs },
   // Card — matches ReportUI's Card surface (radius, border, elevation).
   card: {
     backgroundColor: colors.surface,

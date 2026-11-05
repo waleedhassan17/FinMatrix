@@ -6,6 +6,7 @@
 // UI-ready data structure with inline field mapping.
 // Mirrors `billSerializer.ts` / `glSerializer.ts`.
 
+import { lastMessageStatusSerializer } from './messagingSerializer';
 import type { PurchaseOrder, PurchaseOrderLine, PurchaseOrderStatus } from '../types';
 import type {
   PurchaseOrderApiEntity,
@@ -78,6 +79,7 @@ export const mapPO = (raw: Partial<PurchaseOrderApiEntity>): PurchaseOrder => ({
   receivedValueGross: toNum(raw.receivedValueGross),
   billedValueGross: toNum(raw.billedValueGross),
   unbilledValueGross: toNum(raw.unbilledValueGross),
+  lastMessageStatus: lastMessageStatusSerializer((raw as { lastMessageStatus?: unknown }).lastMessageStatus),
   createdBy: '',
   createdAt: raw.createdAt ?? '',
   updatedAt: raw.updatedAt ?? '',

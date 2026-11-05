@@ -8,6 +8,9 @@
 //   • Bill created — JE: DR Inventory, CR AP
 // ═══════════════════════════════════════════════════════
 
+import { useContactWhatsapp, useWhatsappConnect } from '../../../hooks/useWhatsappConnect';
+import MessageTimeline from '../../../components/shared/messaging/MessageTimeline';
+import { maskWhatsapp } from '../../../utils/whatsappPreview';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   View,
@@ -121,6 +124,11 @@ const PODetailScreen: React.FC = () => {
     [po?.vendorName, po?.vendorId, vendors],
   );
 
+  // FinMatrix Connect: the vendor's WhatsApp status, and the PO's messages.
+  const connect = useWhatsappConnect();
+  const [messagesKey, setMessagesKey] = React.useState(0);
+  const vendorContact = useContactWhatsapp('vendor', po?.vendorId, connect.enabled, messagesKey);
+
   /** After a receipt has moved an item's average cost, offer to carry the same
    *  proportion onto its selling price. Cost is read back from the server
    *  rather than recomputed locally: a concurrent receipt would make a local
@@ -181,9 +189,9 @@ const PODetailScreen: React.FC = () => {
 
   // ── Status transition helper ────────────────
   const transitionStatus = useCallback(
-    async (status: PurchaseOrderStatus, message: string) => {
+    async (status: PurchaseOrderStatus, message: string, deliverWhatsapp?: boolean) => {
       if (!po) return;
-      const result: any = await dispatch(updatePOStatus({ id: po.id, status }));
+      const result: any = await dispatch(updatePOStatus({ id: po.id, status, deliverWhatsapp }));
       if (result.error) {
         // What the server said, not a generic stand-in: this path spent its
         // life reporting "Failed to update purchase order." for a permission
@@ -195,6 +203,7 @@ const PODetailScreen: React.FC = () => {
       }
       const updated = purchaseOrderSingleSerializer(result.payload);
       if (updated) dispatch(upsertPurchaseOrder(updated));
+      setMessagesKey(k => k + 1);
       Alert.alert('Success', message);
     },
     [po, dispatch],
@@ -202,10 +211,38 @@ const PODetailScreen: React.FC = () => {
 
   // A draft is a purchase requisition: approving it issues the order to the
   // vendor, and only an issued order can be received or billed.
-  const handleSend = useCallback(
-    () => po && transitionStatus('sent', `Requisition ${po.poNumber} approved and sent to ${vendorName}.`),
-    [po, vendorName, transitionStatus],
-  );
+  const handleSend = useCallback(() => {
+    if (!po) return;
+    const done = `Requisition ${po.poNumber} approved and sent to ${vendorName}.`;
+    // FinMatrix Connect: say who gets the PO on WhatsApp, and let the owner
+    // keep it off WhatsApp ("Don't send") for this one.
+    const canSend =
+      connect.enabled &&
+      connect.ruleFor('po_issued') === 'auto' &&
+      !!vendorContact?.whatsappE164 &&
+      vendorContact.status !== 'opted_out' &&
+      vendorContact.status !== 'not_on_whatsapp';
+    if (!canSend) {
+      void transitionStatus('sent', done);
+      return;
+    }
+    const who = [vendorContact?.name || vendorName, maskWhatsapp(vendorContact?.whatsappE164)].filter(Boolean).join(' · ');
+    Alert.alert('Approve and send?', `${po.poNumber} goes to ${who} on WhatsApp with its PDF.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: "Don't send",
+        onPress: () => {
+          void transitionStatus('sent', `${po.poNumber} approved. Nothing was sent on WhatsApp.`, false);
+        },
+      },
+      {
+        text: 'Send on WhatsApp',
+        onPress: () => {
+          void transitionStatus('sent', `${done} It goes out on WhatsApp in a few seconds.`);
+        },
+      },
+    ]);
+  }, [po, vendorName, transitionStatus, connect, vendorContact]);
 
   const handleClose = useCallback(() => {
     if (!po) return;
@@ -567,6 +604,10 @@ const PODetailScreen: React.FC = () => {
             </>
           )}
         </View>
+
+        {connect.enabled && !receivingMode && (
+          <MessageTimeline docType="purchase_order" docId={po.id} refreshKey={messagesKey} />
+        )}
 
         <View style={{ height: spacing.xl * 3 }} />
       </ScrollView>

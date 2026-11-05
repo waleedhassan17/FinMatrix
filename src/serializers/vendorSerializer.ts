@@ -54,6 +54,12 @@ export const mapVendor = (raw: Partial<VendorApiEntity> & { companyName?: string
     isActive: typeof raw.isActive === 'boolean' ? raw.isActive : true,
     createdAt: raw.createdAt ?? '',
     updatedAt: raw.updatedAt ?? '',
+    whatsappE164: (raw as any)?.whatsappE164 ?? null,
+    whatsappOptInAt: (raw as any)?.whatsappOptInAt ?? null,
+    whatsappOptOut: (raw as any)?.whatsappOptOut === true,
+    whatsappVerifiedAt: (raw as any)?.whatsappVerifiedAt ?? null,
+    preferredLanguage: (raw as any)?.preferredLanguage === 'ur' ? 'ur' : (raw as any)?.preferredLanguage === 'en' ? 'en' : null,
+
   };
 };
 

@@ -2,6 +2,16 @@
 // FinMatrix — Vendor Form Screen (Create / Edit)
 // ═══════════════════════════════════════════════════════
 
+import { useWhatsappConnect } from '../../../hooks/useWhatsappConnect';
+import WhatsappContactFields, {
+  emptyWhatsappFields,
+  whatsappFieldError,
+  whatsappFieldsFrom,
+  whatsappPayload,
+  type WhatsappFieldsState,
+} from '../../../components/shared/messaging/WhatsappContactFields';
+import { getVendorByIdAPI } from '../../../networks/purchases/vendorNetwork';
+import { vendorSingleSerializer } from '../../../serializers/vendorSerializer';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -100,6 +110,24 @@ const VendorFormScreen: React.FC = () => {
     return () => { live = false; };
   }, [isEditing]);
 
+  // FinMatrix Connect: WhatsApp number, consent and language (when the plan
+  // has it), kept beside the form slice and sent with the save.
+  const { featureOn: whatsappOn } = useWhatsappConnect();
+  const [whatsapp, setWhatsapp] = useState<WhatsappFieldsState>(emptyWhatsappFields);
+  useEffect(() => {
+    if (!isEditing || !editingId || !whatsappOn) return undefined;
+    let live = true;
+    getVendorByIdAPI(editingId)
+      .then(env => {
+        const v = vendorSingleSerializer(env);
+        if (live && v) setWhatsapp(whatsappFieldsFrom(v));
+      })
+      .catch((): void => undefined);
+    return () => {
+      live = false;
+    };
+  }, [isEditing, editingId, whatsappOn]);
+
   // ── Field update helper ─────────────────────────
   const updateField = useCallback(
     (key: string, value: any) => dispatch(setField({ key: key as any, value })),
@@ -130,9 +158,14 @@ const VendorFormScreen: React.FC = () => {
       Toast.show({ type: 'error', text1: 'Validation Error', text2: Object.values(validationErrors)[0] });
       return;
     }
+    const whatsappError = whatsappOn ? whatsappFieldError(whatsapp, form.phone) : null;
+    if (whatsappError) {
+      Toast.show({ type: 'error', text1: 'WhatsApp number', text2: whatsappError });
+      return;
+    }
 
     try {
-      const result: any = await dispatch(saveVendor());
+      const result: any = await dispatch(saveVendor(whatsappOn ? whatsappPayload(whatsapp) : undefined));
       if (result.error) {
         // A taken or malformed ID belongs on its field, where it can be fixed.
         if (isPartyCodeError(result.error, 'VENDOR')) {
@@ -160,7 +193,7 @@ const VendorFormScreen: React.FC = () => {
         text2: e?.message || 'Failed to save vendor. Please try again.',
       });
     }
-  }, [form, isEditing, dispatch, navigation]);
+  }, [form, isEditing, dispatch, navigation, whatsappOn, whatsapp]);
 
   // ═════════════════════════════════════════════════════
   // RENDER
@@ -225,6 +258,9 @@ const VendorFormScreen: React.FC = () => {
               keyboardType="phone-pad"
               error={form.errors.phone}
             />
+            {whatsappOn && (
+              <WhatsappContactFields party="vendor" phone={form.phone} state={whatsapp} onChange={setWhatsapp} />
+            )}
           </View>
 
           {/* ── Section: Address ─────────────────────── */}

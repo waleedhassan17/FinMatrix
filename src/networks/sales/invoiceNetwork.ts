@@ -68,7 +68,8 @@ export const deleteInvoiceAPI = async (id: string): Promise<any> => {
 
 export const sendInvoiceAPI = async (
   id: string,
-  meta?: { channel?: string; toPhone?: string },
+  /** `deliver` is FinMatrix Connect: { whatsapp: false } posts without sending. */
+  meta?: { channel?: string; toPhone?: string; deliver?: { whatsapp: boolean } },
   overrideReason?: string,
 ): Promise<any> => {
   try {

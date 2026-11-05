@@ -2,6 +2,7 @@
 // FinMatrix — Vendor Detail Screen
 // ═══════════════════════════════════════════════════════
 
+import ContactWhatsappRow from '../../../components/shared/messaging/ContactWhatsappRow';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
@@ -347,6 +348,7 @@ const OverviewTab: React.FC<{
       <Text style={styles.infoCardTitle}>Contact Information</Text>
       <InfoRow icon="✉️" label="Email" value={vendor.email} />
       <InfoRow icon="📞" label="Phone" value={vendor.phone} />
+      <ContactWhatsappRow partyType="vendor" partyId={vendor.id} refreshKey={vendor.updatedAt} />
       {!!vendor.contactPerson && <InfoRow icon="👤" label="Contact" value={vendor.contactPerson} />}
       {!!vendor.taxId && <InfoRow icon="🆔" label="Tax ID" value={vendor.taxId} />}
     </View>

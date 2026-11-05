@@ -9,6 +9,10 @@
 // Reached via navigation.replace, so Back cannot return to a filled-in Pay
 // Bills form and post the same payment twice.
 
+import { useWhatsappConnect } from '../../../hooks/useWhatsappConnect';
+import MessageTimeline from '../../../components/shared/messaging/MessageTimeline';
+import MessageStatusTicks from '../../../components/shared/messaging/MessageStatusTicks';
+import type { TimelineMessage } from '../../../models/messagingModel';
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -38,7 +42,10 @@ const METHOD_LABEL: Record<string, string> = {
 const PaymentSuccessScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const { params } = useRoute<ScreenRoute>();
-  const { amount, creditApplied = 0, vendorName, accountName, paymentDate, reference, method, billId, lines, fromSummary } = params;
+  const { amount, creditApplied = 0, vendorName, accountName, paymentDate, reference, method, billId, lines, fromSummary, paymentId } = params;
+  // FinMatrix Connect: the remittance advice that went to the vendor.
+  const connect = useWhatsappConnect();
+  const [remittance, setRemittance] = React.useState<TimelineMessage | null>(null);
 
   const settled = lines.filter(l => l.remaining <= 0.005).length;
 
@@ -78,6 +85,17 @@ const PaymentSuccessScreen: React.FC = () => {
           </Text>
         </View>
 
+        {connect.enabled && !!paymentId && remittance && (
+          <View style={[styles.card, styles.remitRow]} accessibilityLiveRegion="polite">
+            <Text style={styles.remitText} numberOfLines={2}>
+              {remittance.status === 'skipped' || remittance.status === 'cancelled'
+                ? `Remittance not sent: ${remittance.reason ?? 'see below'}`
+                : `Remittance sent to ${remittance.recipientName || vendorName}`}
+            </Text>
+            <MessageStatusTicks status={remittance.status} showLabel />
+          </View>
+        )}
+
         <Text style={styles.sectionTitle}>APPLIED TO</Text>
         <View style={styles.card}>
           {lines.map((l, i) => (
@@ -99,6 +117,10 @@ const PaymentSuccessScreen: React.FC = () => {
             </Text>
           )}
         </View>
+
+        {connect.enabled && !!paymentId && (
+          <MessageTimeline docType="bill_payment" docId={paymentId} onLatest={setRemittance} />
+        )}
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
@@ -158,6 +180,8 @@ const Row: React.FC<{ label: string; value: string }> = ({ label, value }) => (
 export default PaymentSuccessScreen;
 
 const styles = StyleSheet.create({
+  remitRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  remitText: { ...THEME.typography.labelMd, color: colors.textPrimary, flex: 1, marginRight: spacing.xs },
   content: { padding: spacing.md, paddingBottom: spacing.xxl },
   hero: { alignItems: 'center', paddingVertical: spacing.xxl },
   tick: {

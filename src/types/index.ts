@@ -197,6 +197,13 @@ export interface Customer {
   updatedAt: string;
   /** Detail responses only: what the credit limit is checked against. */
   credit?: CustomerCredit;
+  /** FinMatrix Connect: the number WhatsApp messages go to (E.164), and consent. */
+  whatsappE164?: string | null;
+  whatsappOptInAt?: string | null;
+  whatsappOptOut?: boolean;
+  whatsappVerifiedAt?: string | null;
+  preferredLanguage?: 'en' | 'ur' | null;
+  collectionsPaused?: boolean;
 }
 
 export interface CustomerCredit {
@@ -233,6 +240,12 @@ export interface Vendor {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  /** FinMatrix Connect: the number WhatsApp messages go to (E.164), and consent. */
+  whatsappE164?: string | null;
+  whatsappOptInAt?: string | null;
+  whatsappOptOut?: boolean;
+  whatsappVerifiedAt?: string | null;
+  preferredLanguage?: 'en' | 'ur' | null;
 }
 
 // ─── Invoice ──────────────────────────────────────────
@@ -270,6 +283,8 @@ export interface Invoice {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  /** FinMatrix Connect: the newest WhatsApp message about this invoice. */
+  lastMessageStatus?: import('../models/messagingModel').LastMessageStatus | null;
 }
 
 // ─── Payment ──────────────────────────────────────────
@@ -356,6 +371,8 @@ export interface BillPayment {
    */
   proofUrl?: string | null;
   allocations: BillPaymentAllocation[];
+  /** FinMatrix Connect: the remittance advice's newest WhatsApp status. */
+  lastMessageStatus?: import('../models/messagingModel').LastMessageStatus | null;
   notes: string;
   createdBy: string;
   createdAt: string;
@@ -441,6 +458,8 @@ export interface PurchaseOrder {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  /** FinMatrix Connect: the newest WhatsApp message about this PO. */
+  lastMessageStatus?: import('../models/messagingModel').LastMessageStatus | null;
 }
 
 // ─── Sales Order ──────────────────────────────────────

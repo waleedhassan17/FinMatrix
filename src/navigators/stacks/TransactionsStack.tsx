@@ -69,6 +69,8 @@ export type TransactionsStackParamList = {
     lines: { billNumber: string; applied: number; remaining: number }[];
     /** Paid from the payables summary: Done returns there. */
     fromSummary?: boolean;
+    /** The bill payment recorded (none for a credit-only settlement) — its remittance on WhatsApp. */
+    paymentId?: string;
   };
   POList: undefined;
   // prefillItemId seeds the first line from an inventory item, so "Create PO"

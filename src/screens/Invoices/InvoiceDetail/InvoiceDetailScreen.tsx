@@ -51,7 +51,12 @@ import {
   EmptyBlock,
   LoadingBlock,
   ErrorBlock,
+  HeaderAction,
 } from '../../../components/reports/ReportUI';
+import { useContactWhatsapp, useWhatsappConnect } from '../../../hooks/useWhatsappConnect';
+import MessageTimeline from '../../../components/shared/messaging/MessageTimeline';
+import SendOnWhatsAppButton from '../../../components/shared/messaging/SendOnWhatsAppButton';
+import { maskWhatsapp } from '../../../utils/whatsappPreview';
 import { txnStatusColor } from '../../../components/transactions/txnStatus';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import {
@@ -156,6 +161,18 @@ const InvoiceDetailScreen: React.FC = () => {
   const customerHasWhatsApp = !!sanitizePhoneForWhatsApp(customer?.phone);
   void invoicesList;
 
+  // FinMatrix Connect: the server sends documents itself when the owner has
+  // switched it on; otherwise everything below behaves exactly as before.
+  const connect = useWhatsappConnect();
+  const [messagesKey, setMessagesKey] = React.useState(0);
+  const contact = useContactWhatsapp('customer', invoice?.customerId, connect.enabled, messagesKey);
+  const whatsappNumber = contact?.whatsappE164 ?? customer?.phone ?? null;
+  const contactOptedOut = contact?.status === 'opted_out';
+  const canMessageCustomer =
+    !!sanitizePhoneForWhatsApp(whatsappNumber) && !contactOptedOut && contact?.status !== 'not_on_whatsapp';
+  const offerPostAndSend =
+    connect.enabled && connect.ruleFor('invoice_issued') === 'auto' && canMessageCustomer;
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
@@ -190,7 +207,8 @@ const InvoiceDetailScreen: React.FC = () => {
     async (channel: 'whatsapp' | 'email' | 'share', toPhone?: string) => {
       if (!invoice) return;
       const action = await dispatch(
-        sendInvoice({ id: invoice.id, channel, toPhone }),
+        // A PDF someone already shared by hand is not sent again by Connect.
+        sendInvoice({ id: invoice.id, channel, toPhone, deliverWhatsapp: connect.enabled ? false : undefined }),
       );
       const refused = creditAssessmentFrom((action as any)?.payload);
       if (refused) {
@@ -203,7 +221,7 @@ const InvoiceDetailScreen: React.FC = () => {
       if (updated) dispatch(upsertInvoice(updated));
       else dispatch(fetchInvoices());
     },
-    [dispatch, invoice],
+    [dispatch, invoice, connect.enabled],
   );
 
   const handleSharePdf = useCallback(async () => {
@@ -239,19 +257,35 @@ const InvoiceDetailScreen: React.FC = () => {
     [dispatch, invoice],
   );
 
-  const handlePostToBooks = useCallback(() => {
+  /**
+   * `deliver`: undefined = the company's rule (Connect off: nothing is sent),
+   * true = post and send on WhatsApp now, false = post only.
+   */
+  const handlePostToBooks = useCallback((deliver?: boolean) => {
     if (!invoice) return;
+    const to = [contact?.name || invoice.customerName || customer?.name, maskWhatsapp(whatsappNumber)]
+      .filter(Boolean)
+      .join(' · ');
     Alert.alert(
-      'Post to books?',
-      `Invoice ${invoice.invoiceNumber} will be recorded as sent and posted to the general ledger. This is what makes it show up in your reports.`,
+      deliver ? 'Post and send on WhatsApp?' : 'Post to books?',
+      deliver
+        ? `Invoice ${invoice.invoiceNumber} will be posted to the general ledger and sent with its PDF to ${to} on WhatsApp.`
+        : `Invoice ${invoice.invoiceNumber} will be recorded as sent and posted to the general ledger. This is what makes it show up in your reports.${deliver === false ? ' Nothing is sent on WhatsApp.' : ''}`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Post',
+          text: deliver ? 'Post & send' : 'Post',
           onPress: async () => {
             try {
-              await dispatch(sendInvoice({ id: invoice.id, channel: 'share' })).unwrap();
+              await dispatch(
+                sendInvoice({
+                  id: invoice.id,
+                  channel: 'share',
+                  deliverWhatsapp: connect.enabled ? deliver : undefined,
+                }),
+              ).unwrap();
               dispatch(fetchInvoices());
+              setMessagesKey(k => k + 1);
             } catch (e: any) {
               const refused = creditAssessmentFrom(e);
               if (refused) {
@@ -265,15 +299,13 @@ const InvoiceDetailScreen: React.FC = () => {
         },
       ],
     );
-  }, [dispatch, invoice]);
+  }, [dispatch, invoice, connect.enabled, contact?.name, customer?.name, whatsappNumber]);
 
-  const handleOpenWhatsAppChat = useCallback(async () => {
-    if (!invoice) return;
-    const result = await openWhatsAppChat({ invoice, customer });
-    if (!result.opened) {
-      Alert.alert('WhatsApp', result.reason || 'Could not open WhatsApp.');
-    }
-  }, [invoice, customer]);
+  /** The wa.me hand-off (Connect off). SendOnWhatsAppButton logs it. */
+  const openReminderChat = useCallback(
+    async () => (invoice ? openWhatsAppChat({ invoice, customer }) : { opened: false }),
+    [invoice, customer],
+  );
 
   // ── Loading / Error states ──────────────────────
   // Both keep the header, so the back affordance never disappears.
@@ -337,6 +369,16 @@ const InvoiceDetailScreen: React.FC = () => {
         title={invoice.invoiceNumber}
         subtitle={invoice.customerName || customer?.name}
         onBack={() => navigation.goBack()}
+        right={
+          // With "Post only" / "Post & send" in the bar, Edit moves up here.
+          invoice.status === 'draft' && offerPostAndSend ? (
+            <HeaderAction
+              label="Edit"
+              icon="edit-2"
+              onPress={() => navigation.navigate('InvoiceForm', { invoiceId: invoice.id })}
+            />
+          ) : undefined
+        }
       />
 
       <ScrollView
@@ -503,6 +545,11 @@ const InvoiceDetailScreen: React.FC = () => {
           )}
         </View>
 
+        {/* ── WhatsApp (FinMatrix Connect) ──────────── */}
+        {connect.enabled && (
+          <MessageTimeline docType="invoice" docId={invoice.id} refreshKey={messagesKey} />
+        )}
+
         {/* ── Payment History ─────────────────────── */}
         <Text style={styles.outerSectionTitle}>Payment History</Text>
         {payments.length === 0 ? (
@@ -551,7 +598,41 @@ const InvoiceDetailScreen: React.FC = () => {
             what puts the invoice in the ledger, so it gets the primary slot;
             sharing a PDF is a separate decision and no longer the only route
             out of draft. */}
-        {invoice.status === 'draft' && (
+        {invoice.status === 'draft' && offerPostAndSend && (
+          <>
+            <View style={styles.actionShare}>
+              <CustomButton
+                title="Share"
+                onPress={handleSharePdf}
+                variant="text"
+                size="sm"
+                fullWidth
+                disabled={isSending}
+              />
+            </View>
+            <View style={styles.actionSecondary}>
+              <CustomButton
+                title="Post only"
+                onPress={() => handlePostToBooks(false)}
+                variant="secondary"
+                size="sm"
+                fullWidth
+                disabled={isSending}
+              />
+            </View>
+            <View style={styles.actionPrimary}>
+              <CustomButton
+                title={isSending ? 'Posting…' : 'Post & send on WhatsApp'}
+                onPress={() => handlePostToBooks(true)}
+                variant="primary"
+                size="sm"
+                fullWidth
+                disabled={isSending}
+              />
+            </View>
+          </>
+        )}
+        {invoice.status === 'draft' && !offerPostAndSend && (
           <>
             <View style={styles.actionShare}>
               <CustomButton
@@ -575,7 +656,7 @@ const InvoiceDetailScreen: React.FC = () => {
             <View style={styles.actionPrimary}>
               <CustomButton
                 title={isSending ? 'Posting…' : 'Post'}
-                onPress={handlePostToBooks}
+                onPress={() => handlePostToBooks()}
                 variant="primary"
                 size="sm"
                 fullWidth
@@ -597,16 +678,20 @@ const InvoiceDetailScreen: React.FC = () => {
                 fullWidth
               />
             </View>
-            {/* Only when it genuinely opens the customer's chat. The old
-                fallback here was a second Share PDF wearing a WhatsApp label. */}
-            {customerHasWhatsApp && (
+            {/* Only when it genuinely reaches the customer's chat. With
+                Connect on the server sends the reminder (and the overdue one
+                carries the PDF); off, it opens the wa.me chat as before. */}
+            {(customerHasWhatsApp || (connect.enabled && !!contact)) && (
               <View style={styles.actionSecondary}>
-                <CustomButton
-                  title="Remind"
-                  onPress={handleOpenWhatsAppChat}
-                  variant="secondary"
-                  size="sm"
-                  fullWidth
+                <SendOnWhatsAppButton
+                  title={connect.enabled ? 'Send reminder' : 'Remind'}
+                  docType="invoice"
+                  docId={invoice.id}
+                  event="reminder"
+                  phone={whatsappNumber}
+                  optedOut={contactOptedOut}
+                  fallback={openReminderChat}
+                  onSent={() => setMessagesKey(k => k + 1)}
                 />
               </View>
             )}
@@ -626,16 +711,20 @@ const InvoiceDetailScreen: React.FC = () => {
                 fullWidth
               />
             </View>
-            {/* Only when it genuinely opens the customer's chat. The old
-                fallback here was a second Share PDF wearing a WhatsApp label. */}
-            {customerHasWhatsApp && (
+            {/* Only when it genuinely reaches the customer's chat. With
+                Connect on the server sends the reminder (and the overdue one
+                carries the PDF); off, it opens the wa.me chat as before. */}
+            {(customerHasWhatsApp || (connect.enabled && !!contact)) && (
               <View style={styles.actionSecondary}>
-                <CustomButton
-                  title="Remind"
-                  onPress={handleOpenWhatsAppChat}
-                  variant="secondary"
-                  size="sm"
-                  fullWidth
+                <SendOnWhatsAppButton
+                  title={connect.enabled ? 'Send reminder' : 'Remind'}
+                  docType="invoice"
+                  docId={invoice.id}
+                  event="reminder"
+                  phone={whatsappNumber}
+                  optedOut={contactOptedOut}
+                  fallback={openReminderChat}
+                  onSent={() => setMessagesKey(k => k + 1)}
                 />
               </View>
             )}

@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
+import { hasWhatsappConnectFeature } from '../../../utils/featureGates';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
   ActivityIndicator
@@ -209,6 +210,8 @@ const SettingsScreen: React.FC = () => {
   // Three-tier model: team management is large_org+ (multiUser flag).
   const features = useAppSelector(selectFeatures);
   const showUserManagement = !features || !!features.multiUser;
+  // FinMatrix Connect: only when the plan has it (strict — see featureGates).
+  const showWhatsApp = hasWhatsappConnectFeature(features);
   const loading = useAppSelector(selectSettingsLoading);
   const saving = useAppSelector(selectSettingsSaving);
 
@@ -254,6 +257,18 @@ const SettingsScreen: React.FC = () => {
             </>
           )}
         </View>
+
+        {/* Communication (FinMatrix Connect) */}
+        {showWhatsApp && (
+          <>
+            <SectionHeader title="COMMUNICATION" />
+            <View style={s.card}>
+              <NavRow icon="message-circle" label="WhatsApp Connect" onPress={() => nav.navigate('WhatsAppConnect')} />
+              <View style={s.divider} />
+              <NavRow icon="user-check" label="Fix contacts" onPress={() => nav.navigate('FixContacts')} />
+            </View>
+          </>
+        )}
 
         {/* Notifications */}
         <SectionHeader title="NOTIFICATIONS" />

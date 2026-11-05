@@ -7,6 +7,8 @@
 //   • Pill status tabs, summary cards, FAB, "+ New" sm button
 // ═══════════════════════════════════════════════════════
 
+import MessageStatusTicks from '../../../components/shared/messaging/MessageStatusTicks';
+import { useWhatsappConnect } from '../../../hooks/useWhatsappConnect';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
@@ -147,6 +149,9 @@ const POListScreen: React.FC = () => {
     { label: 'Closed', value: 'closed', count: counts.closed },
   ];
 
+  // FinMatrix Connect: WhatsApp ticks beside each PO's status.
+  const { enabled: connectEnabled } = useWhatsappConnect();
+
   // ── Render card ─────────────────────────────────
   const renderCard = useCallback(
     ({ item }: { item: PurchaseOrder }) => {
@@ -173,11 +178,16 @@ const POListScreen: React.FC = () => {
           secondaryLabel="Received"
           secondaryValue={`${totalReceived} / ${totalQty}`}
           secondaryColor={receivedColor}
+          trailing={
+            connectEnabled && item.lastMessageStatus ? (
+              <MessageStatusTicks status={item.lastMessageStatus.status} size={13} />
+            ) : undefined
+          }
           onPress={() => navigation.push('PODetail', { poId: item.id })}
         />
       );
     },
-    [navigation],
+    [navigation, connectEnabled],
   );
 
   /**

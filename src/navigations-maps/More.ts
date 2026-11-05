@@ -48,6 +48,8 @@ import UserManagementScreen from '../screens/Settings/UserManagement/UserManagem
 import StaffApprovalsScreen from '../screens/Approvals/StaffApprovalsScreen';
 import CompanySwitcherScreen from '../screens/Settings/CompanySwitcher/CompanySwitcherScreen';
 import GlobalSearchScreen from '../screens/GlobalSearch/GlobalSearchScreen';
+import WhatsAppConnectScreen from '../screens/Settings/WhatsAppConnect/WhatsAppConnectScreen';
+import FixContactsScreen from '../screens/Settings/WhatsAppConnect/FixContactsScreen';
 // BILLING-DISABLED BUILD: un-comment with the registrations at the bottom.
 // import RenewSubscriptionScreen from '../screens/Subscription/RenewSubscriptionScreen';
 // import SubscriptionPayScreen from '../screens/Subscription/SubscriptionPayScreen';
@@ -94,6 +96,9 @@ export const MoreRouteNames = {
   StaffApprovals: 'StaffApprovals',
   CompanySwitcher: 'CompanySwitcher',
   GlobalSearch: 'GlobalSearch',
+  // FinMatrix Connect (WhatsApp)
+  WhatsAppConnect: 'WhatsAppConnect',
+  FixContacts: 'FixContacts',
   // BILLING-DISABLED BUILD: un-comment with the registrations below and the
   // MoreStackParamList entries in navigators/stacks/MoreStack.tsx.
   // RenewSubscription: 'RenewSubscription',
@@ -151,6 +156,8 @@ export const MORE_ROUTES: IRoute[] = withSharedRecords([
   { title: MoreRouteNames.StaffApprovals, component: StaffApprovalsScreen },
   { title: MoreRouteNames.CompanySwitcher, component: CompanySwitcherScreen },
   { title: MoreRouteNames.GlobalSearch, component: GlobalSearchScreen },
+  { title: MoreRouteNames.WhatsAppConnect, component: WhatsAppConnectScreen },
+  { title: MoreRouteNames.FixContacts, component: FixContactsScreen },
   // BILLING-DISABLED BUILD
   // { title: MoreRouteNames.RenewSubscription, component: RenewSubscriptionScreen },
   // { title: MoreRouteNames.SubscriptionPay, component: SubscriptionPayScreen },

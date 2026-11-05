@@ -6,6 +6,9 @@
 // Actions: Edit, Pay, Void.
 // ═══════════════════════════════════════════════════════
 
+import { useWhatsappConnect } from '../../../hooks/useWhatsappConnect';
+import MessageTimeline from '../../../components/shared/messaging/MessageTimeline';
+import MessageStatusTicks from '../../../components/shared/messaging/MessageStatusTicks';
 import React, { useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   View,
@@ -72,6 +75,8 @@ const METHOD_LABEL: Record<string, string> = {
 // ═══════════════════════════════════════════════════════
 const BillDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  // FinMatrix Connect: remittance ticks on each payment.
+  const connect = useWhatsappConnect();
   const route = useRoute<DetailRoute>();
   const dispatch = useAppDispatch();
   const companyInfo = useCompanyInfo();
@@ -336,6 +341,12 @@ const BillDetailScreen: React.FC = () => {
               {!!pmt.reference && (
                 <Text style={styles.paymentRef}>Ref: {pmt.reference}</Text>
               )}
+              {connect.enabled && pmt.lastMessageStatus && (
+                <View style={styles.remitTicks}>
+                  <Text style={styles.paymentRef}>Remittance on WhatsApp</Text>
+                  <MessageStatusTicks status={pmt.lastMessageStatus.status} showLabel />
+                </View>
+              )}
               {/* Only payments recorded since proof became mandatory carry one;
                   older rows simply show nothing here. */}
               {!!proofIdFromUrl(pmt.proofUrl) && (
@@ -355,6 +366,11 @@ const BillDetailScreen: React.FC = () => {
               )}
             </View>
           ))
+        )}
+
+        {/* The newest payment's remittance advice, message by message. */}
+        {connect.enabled && payments.length > 0 && (
+          <MessageTimeline docType="bill_payment" docId={payments[0].id} title="Remittance on WhatsApp" />
         )}
 
         <View style={{ height: spacing.xl * 3 }} />
@@ -451,6 +467,7 @@ const TotalsRow: React.FC<{
 // this is what gets shared as a PDF -- so the structure stays; only the values
 // move onto the design system. Mirrors InvoiceDetail exactly.
 const styles = StyleSheet.create({
+  remitTicks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xxs },
   proofLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.xs },
   proofLinkText: { ...typography.labelSm, color: colors.secondary },
 

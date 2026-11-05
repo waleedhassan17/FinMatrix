@@ -56,14 +56,19 @@ const navigationRef = createNavigationContainerRef<RootStackParamList>();
 // ─── Deep linking (Stage 1) ──────────────────────────
 // finmatrix://verify-email?token=...  → Email verification screen
 // finmatrix://reset-password          → Forgot-password (OTP) screen
+// finmatrix://approvals → the owner's approvals queue (FinMatrix Connect
+// approval alerts). The admin tabs render straight inside this container, so
+// that path lives under MoreStack, which RootStackParamList does not describe —
+// hence the one cast.
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['finmatrix://'],
   config: {
     screens: {
       EmailVerification: 'verify-email',
       ForgotPassword: 'reset-password',
+      MoreStack: { screens: { StaffApprovals: 'approvals' } },
     },
-  },
+  } as unknown as NonNullable<LinkingOptions<RootStackParamList>['config']>,
 };
 
 // The splash plays once per cold start (module-level flag survives

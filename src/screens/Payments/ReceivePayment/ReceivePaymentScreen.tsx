@@ -3,6 +3,8 @@
 // Premium Enterprise UI
 // ═══════════════════════════════════════════════════════
 
+import { useWhatsappConnect } from '../../../hooks/useWhatsappConnect';
+import MessageTimeline from '../../../components/shared/messaging/MessageTimeline';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -405,6 +407,10 @@ const ReceivePaymentScreen: React.FC = () => {
     [decide, navigation],
   );
 
+  // FinMatrix Connect: the receipt's WhatsApp status on the success sheet.
+  const connect = useWhatsappConnect();
+  const [receiptId, setReceiptId] = useState<string | null>(null);
+
   const handleSave = useCallback(async () => {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -438,6 +444,10 @@ const ReceivePaymentScreen: React.FC = () => {
       }
 
       dispatch(fetchInvoices());
+      // The receipt that FinMatrix Connect sends: `receive` answers with the
+      // payment, `settle` with { payment } (null when credit covered it all).
+      const saved = result.payload?.data ?? result.payload;
+      setReceiptId(paymentAmount > 0 ? (saved?.payment?.id ?? saved?.id ?? null) : null);
 
       const amt = formatCurrency(paymentAmount, 'Rs ');
       const creditNote = creditUsed > 0 ? `${formatCurrency(creditUsed, 'Rs ')} of credit on account applied` : '';
@@ -966,6 +976,9 @@ const ReceivePaymentScreen: React.FC = () => {
             <Text style={sStyles.title}>{successTitle}</Text>
             <Text style={sStyles.amount}>{successMsg}</Text>
             <Text style={sStyles.sub}>{successSub}</Text>
+            {connect.enabled && !!receiptId && (
+              <MessageTimeline docType="payment" docId={receiptId} variant="latest" latestLabel="Receipt" />
+            )}
             <View style={sStyles.divider} />
             <TouchableOpacity style={sStyles.btn} onPress={handleSuccessDismiss} activeOpacity={0.8}>
               <LinearGradient colors={[colors.actionGreen, colors.actionGreenDark]} style={sStyles.btnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>

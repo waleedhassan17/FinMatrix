@@ -4,6 +4,8 @@
 // Benchmarked against QuickBooks / Sage 50 dashboards
 // ═══════════════════════════════════════════════════════
 
+import { useWhatsappConnect } from '../../hooks/useWhatsappConnect';
+import CollectionsWhatsAppCard from './CollectionsWhatsAppCard';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -114,6 +116,8 @@ const AdminDashboardScreen: React.FC = () => {
   const features = useAppSelector(selectFeatures);
   const showDelivery = isFeatureVisible('delivery', features, user?.companyType);
   const showInventory = isFeatureVisible('inventory', features, user?.companyType);
+  // FinMatrix Connect: the collections card shows only while it is switched on.
+  const { enabled: whatsappConnectOn } = useWhatsappConnect();
   const alerts = useAppSelector(selectDashboardAlerts);
   const isRefreshing = useAppSelector(selectIsRefreshing);
   const status = useAppSelector(selectDashboardStatus);
@@ -386,6 +390,23 @@ const AdminDashboardScreen: React.FC = () => {
             {showDelivery && (
               <Section title="Deliveries" action="View all" onAction={() => navigation.navigate('DeliveryMonitor')}>
                 <DeliveryProgressCard delivery={delivery} completedPct={completedPct} />
+              </Section>
+            )}
+
+            {/* ── Collections on WhatsApp (FinMatrix Connect) ── */}
+            {whatsappConnectOn && (
+              <Section
+                title="Collections on WhatsApp"
+                action="Settings"
+                onAction={() =>
+                  (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('MoreStack', {
+                    screen: 'WhatsAppConnect',
+                    // Back returns to the More hub, not straight to the Dashboard.
+                    initial: false,
+                  })
+                }
+              >
+                <CollectionsWhatsAppCard />
               </Section>
             )}
 

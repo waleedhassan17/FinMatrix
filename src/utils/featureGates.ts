@@ -124,3 +124,17 @@ export const isFeatureVisible = (
   if (!isWarehouseTier(companyType) && WAREHOUSE_ONLY_FEATURES.includes(feature)) return false;
   return !features || !!features[feature];
 };
+
+/**
+ * FinMatrix Connect (server-sent WhatsApp). STRICT, unlike isFeatureVisible:
+ * an absent key or no settings means "not on", so a build talking to a server
+ * that predates Connect never offers a control the server refuses. On only
+ * when the tier has the feature AND the owner switched it on.
+ */
+export const hasWhatsappConnectFeature = (features: Record<string, boolean> | null | undefined): boolean =>
+  features?.whatsappConnect === true;
+
+export const canUseWhatsappConnect = (
+  features: Record<string, boolean> | null | undefined,
+  settings: { enabled: boolean } | null | undefined,
+): boolean => hasWhatsappConnectFeature(features) && settings?.enabled === true;

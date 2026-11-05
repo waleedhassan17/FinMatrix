@@ -77,10 +77,20 @@ export const invoiceDetailSlice = createAppSlice({
           toPhone?: string;
           /** Owner only: past the customer's credit limit, with a reason. */
           overrideReason?: string;
+          /** FinMatrix Connect: false = post only; true = post and send now. */
+          deliverWhatsapp?: boolean;
         },
         thunkAPI,
       ) =>
-        sendInvoiceAPI(args.id, { channel: args.channel, toPhone: args.toPhone }, args.overrideReason).catch(
+        sendInvoiceAPI(
+          args.id,
+          {
+            channel: args.channel,
+            toPhone: args.toPhone,
+            ...(args.deliverWhatsapp === undefined ? {} : { deliver: { whatsapp: args.deliverWhatsapp } }),
+          },
+          args.overrideReason,
+        ).catch(
           (e: any) => thunkAPI.rejectWithValue({ message: e?.message, code: e?.code, details: e?.details }),
         ),
       {

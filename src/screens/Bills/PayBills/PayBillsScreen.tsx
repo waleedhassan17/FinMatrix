@@ -344,6 +344,8 @@ const PayBillsScreen: React.FC = () => {
         method: form.method,
         billId: preBillId,
         fromSummary,
+        // `pay` answers with the payment; `settle` with { payment } (null when credit alone).
+        paymentId: saved?.data?.payment?.id ?? (saved?.data?.payment === null ? undefined : saved?.data?.id),
         lines: settledRows.map(r => ({
           billNumber: r.billNumber,
           applied: r.allocated,
