@@ -166,6 +166,14 @@ const WhatsAppConnectScreen: React.FC = () => {
         onBack={() => navigation.goBack()}
       />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {!settings.available ? (
+          <View style={[styles.card, { marginBottom: spacing.md }]}>
+            <Text style={styles.rowTitle}>WhatsApp sending is being set up</Text>
+            <Text style={styles.rowSub}>
+              {"It can be switched on as soon as FinMatrix's WhatsApp number is ready. Until then, the WhatsApp button on each document opens a chat on your own phone, as before."}
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.card}>
           <View style={styles.switchRow}>
             <View style={{ flex: 1 }}>
@@ -176,7 +184,7 @@ const WhatsAppConnectScreen: React.FC = () => {
             </View>
             <Switch
               value={settings.enabled}
-              disabled={readOnly || saving}
+              disabled={readOnly || saving || (!settings.available && !settings.enabled)}
               onValueChange={v => void save({ enabled: v }, v ? 'WhatsApp Connect is on' : 'WhatsApp Connect is off')}
               trackColor={{ false: colors.neutral300, true: colors.primary }}
               thumbColor={colors.surface}
