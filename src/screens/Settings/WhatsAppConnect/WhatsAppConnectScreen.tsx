@@ -158,7 +158,11 @@ const WhatsAppConnectScreen: React.FC = () => {
     <ReportContainer>
       <ReportHeader
         title="WhatsApp Connect"
-        subtitle={settings.providerMode === 'simulated' ? 'Simulated — nothing reaches WhatsApp yet' : 'Sending from your WhatsApp number'}
+        subtitle={
+          settings.providerMode === 'simulated'
+            ? 'Simulated — nothing reaches WhatsApp yet'
+            : "Sent from FinMatrix's WhatsApp number, in your company's name"
+        }
         onBack={() => navigation.goBack()}
       />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -278,6 +282,7 @@ const WhatsAppConnectScreen: React.FC = () => {
 
         <Text style={styles.section}>THIS MONTH</Text>
         <View style={styles.card}>
+          {settings.allowance ? <AllowanceBar limit={settings.allowance.limit} used={settings.allowance.used} /> : null}
           {stats ? (
             <>
               <Text style={styles.rowTitle}>
@@ -329,8 +334,45 @@ const WhatsAppConnectScreen: React.FC = () => {
   );
 };
 
+/**
+ * The plan's WhatsApp allowance: FinMatrix pays Meta for these messages, so at
+ * the limit automatic sending pauses until next month (sharing by hand still works).
+ */
+function AllowanceBar({ limit, used }: { limit: number; used: number }) {
+  const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 100;
+  const full = used >= limit;
+  const fill = full ? colors.danger : pct >= 80 ? colors.warning : colors.primary;
+  return (
+    <View style={styles.allowance} accessibilityLabel={`${used} of ${limit} WhatsApp messages used this month`}>
+      <Text style={styles.rowTitle}>
+        {used} of {limit}
+        <Text style={styles.rowSubInline}> WhatsApp messages included in your plan</Text>
+      </Text>
+      <View style={styles.allowanceTrack}>
+        <View style={[styles.allowanceFill, { width: `${pct}%`, backgroundColor: fill }]} />
+      </View>
+      {full ? (
+        <Text style={styles.allowanceFull}>
+          Used up: documents go out on WhatsApp again next month. You can still share them by hand.
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   scroll: { padding: spacing.md },
+  allowance: { marginBottom: spacing.sm },
+  rowSubInline: { ...typography.bodySm, color: colors.textSecondary },
+  allowanceTrack: {
+    height: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.neutral100,
+    overflow: 'hidden',
+    marginTop: spacing.xs,
+  },
+  allowanceFill: { height: '100%', borderRadius: radius.full },
+  allowanceFull: { ...typography.caption, color: colors.danger, marginTop: spacing.xs },
   section: { ...typography.overline, color: colors.textSecondary, marginTop: spacing.lg, marginBottom: spacing.xs },
   card: {
     backgroundColor: colors.surface,
