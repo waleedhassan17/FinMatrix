@@ -44,6 +44,12 @@
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "microphonePermission": false
+        }
       ]
     ]
   }
