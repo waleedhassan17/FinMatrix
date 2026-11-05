@@ -22,6 +22,7 @@ import { selectDPSettings, setPushNotifications, setSmsNotifications, setEmailNo
 import NotificationIcon from '../../../../components/shared/NotificationIcon';
 import { THEME } from '../../../../utils/theme';
 import { DP_BRAND } from '../../../../utils/deliveryTheme';
+import BrandMark from '../../../../Custom-Components/BrandMark';
 
 type Props = NativeStackScreenProps<DPProfileStackParamList, 'DPSettings'>;
 
@@ -274,8 +275,9 @@ const DPSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* App Info Footer */}
         <View style={styles.appInfo}>
+          {/* The launcher icon in miniature: the mark on the logo's canvas. */}
           <View style={styles.appInfoLogo}>
-            <Text style={styles.appInfoLogoText}>FM</Text>
+            <BrandMark size={30} />
           </View>
           <Text style={styles.appInfoName}>FinMatrix Delivery</Text>
           <Text style={styles.appInfoVersion}>Version 1.0.0 (Build 2026.03)</Text>
@@ -516,15 +518,13 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: THEME.radius.lg,
-    backgroundColor: DP_BRAND.primary,
+    backgroundColor: THEME.colors.brandCanvas,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
     ...THEME.shadows.sm,
-  },
-  appInfoLogoText: {
-    ...THEME.typography.h3,
-    color: THEME.colors.textInverse,
   },
   appInfoName: {
     ...THEME.typography.labelLg,

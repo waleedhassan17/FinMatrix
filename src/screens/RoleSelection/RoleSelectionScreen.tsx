@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../../utils/theme';
+import BrandMark from '../../Custom-Components/BrandMark';
 import { ROUTES } from '../../navigations-maps/Base';
 import { useAppDispatch } from '../../hooks/useReduxHooks';
 import { setRole } from './roleSelectionSlice';
@@ -118,10 +119,8 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}>
         {/* Logo Section */}
         <View style={styles.logoSection}>
-          <Text style={styles.logoTitle}>
-            <Text style={styles.logoFin}>Fin</Text>
-            <Text style={styles.logoMatrix}>Matrix</Text>
-          </Text>
+          <BrandMark size={64} />
+          <Text style={styles.logoTitle}>FinMatrix</Text>
           <Text style={styles.logoSubtitle}>
             Enterprise Accounting & Delivery Platform
           </Text>
@@ -266,13 +265,9 @@ const styles = StyleSheet.create({
   },
   logoTitle: {
     ...typography.displayMd,
+    color: colors.brandInk,
+    marginTop: 16,
     marginBottom: 6,
-  },
-  logoFin: {
-    color: colors.success,
-  },
-  logoMatrix: {
-    color: BRAND.textDark,
   },
   logoSubtitle: {
     ...typography.bodySm,

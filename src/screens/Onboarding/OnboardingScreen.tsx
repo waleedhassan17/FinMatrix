@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { THEME } from '../../utils/theme';
+import BrandMark from '../../Custom-Components/BrandMark';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { setCurrentPage, selectCurrentPage } from './onboardingSlice';
 import { setOnboardingSeen } from '../Auth/authSlice';
@@ -333,8 +334,9 @@ const OnboardingScreen: React.FC<{ navigation: Nav }> = ({ navigation }) => {
               <View style={ms.cardHeader}>
                 {isDashboard ? (
                   <View style={ms.cardHeaderLeft}>
+                    {/* On the dark glass the mark's ink is white, as on any dark ground. */}
                     <View style={[ms.cardLogo, { backgroundColor: item.accent + '18' }]}>
-                      <Text style={[ms.cardLogoText, { color: item.accent }]}>F</Text>
+                      <BrandMark size={18} color={colors.textInverse} />
                     </View>
                     <View>
                       <Text style={ms.cardTitle}>{item.cardTitle}</Text>
@@ -503,7 +505,6 @@ const ms = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardLogo: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  cardLogoText: { ...typography.overline, letterSpacing: 0.5 },
   cardTitle: { ...typography.overline, color: B.w95 },
   cardTitleSub: { ...typography.overline, color: B.w50, marginTop: 1 },
   cardBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
