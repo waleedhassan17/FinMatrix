@@ -5,7 +5,7 @@ Operational checklist for running FinMatrix in production (FinMatrixGuide §6, �
 ## Deployment
 - **Backend:** NestJS on Heroku app `finmatrix-api-prod` (Basic dyno, no sleep).
   Deploy = `git push heroku main` from `FinMatrix-Backend/FinMatrix-Backend`.
-  Base URL `https://finmatrix-api-prod-665c6b5cb6a1.herokuapp.com/api/v1`.
+  Base URL `https://finmatrix-api.duckdns.org/api/v1`.
 - **DB:** Heroku Postgres (essential-0). `DATABASE_URL` auto-set.
 - **Frontend:** Expo / React Native; `src/network/apiHelpers.ts` → the base URL.
 
