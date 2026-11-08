@@ -4,12 +4,23 @@ import { authLogin, authDeliveryLogin, AuthError } from '@networks/auth/authNetw
 import type { SignInPayload, DeliverySignInPayload } from '@networks/auth/authNetwork';
 import type { User } from '@/types';
 
+/** What a failed sign-in hands the screen, beyond the message. */
+interface SignInRejection {
+  code?: string;
+  message?: string;
+  accountType?: string | null;
+}
+
 export interface SignInSliceState {
   email: string;
   username: string;
   password: string;
   rememberMe: boolean;
   error: string;
+  /** The server's refusal code (WRONG_PORTAL, RATE_LIMITED, …), when it gave one. */
+  errorCode: string | null;
+  /** WRONG_PORTAL only: the kind of account it was, so the screen can name its door. */
+  wrongPortalAccount: string | null;
   status: 'idle' | 'loading' | 'failed';
 }
 
@@ -19,7 +30,26 @@ const initialState: SignInSliceState = {
   password: '',
   rememberMe: false,
   error: '',
+  errorCode: null,
+  wrongPortalAccount: null,
   status: 'idle',
+};
+
+const clearError = (state: SignInSliceState) => {
+  state.error = '';
+  state.errorCode = null;
+  state.wrongPortalAccount = null;
+};
+
+const applyRejection = (
+  state: SignInSliceState,
+  payload: SignInRejection | undefined,
+  fallback: string | undefined,
+) => {
+  state.status = 'failed';
+  state.error = payload?.message ?? fallback ?? 'Sign in failed';
+  state.errorCode = payload?.code ?? null;
+  state.wrongPortalAccount = payload?.code === 'WRONG_PORTAL' ? payload.accountType ?? null : null;
 };
 
 export const signInSlice = createAppSlice({
@@ -39,14 +69,14 @@ export const signInSlice = createAppSlice({
       state.rememberMe = action.payload;
     }),
     clearSignInError: create.reducer(state => {
-      state.error = '';
+      clearError(state);
     }),
     resetSignInForm: create.reducer(state => {
       state.email = '';
       state.username = '';
       state.password = '';
       state.rememberMe = false;
-      state.error = '';
+      clearError(state);
       state.status = 'idle';
     }),
 
@@ -70,6 +100,7 @@ export const signInSlice = createAppSlice({
               companyStatus: e.companyStatus,
               rejectionReason: e.rejectionReason,
               pendingKind: e.pendingKind,
+              accountType: e.accountType,
             });
           }
           return rejectWithValue({ message: e?.message ?? 'Sign in failed' });
@@ -78,38 +109,47 @@ export const signInSlice = createAppSlice({
       {
         pending: state => {
           state.status = 'loading';
-          state.error = '';
+          clearError(state);
         },
         fulfilled: (state, _action) => {
           state.status = 'idle';
-          state.error = '';
+          clearError(state);
         },
         rejected: (state, action) => {
-          state.status = 'failed';
-          const payload = action.payload as { message?: string } | undefined;
-          state.error = payload?.message ?? action.error.message ?? 'Sign in failed';
+          applyRejection(state, action.payload as SignInRejection | undefined, action.error.message);
         },
       },
     ),
 
+    // Staff and riders: a username, and the exact door they chose — the server
+    // refuses a staff account on the Delivery Portal and the reverse.
     submitDeliverySignInAsync: create.asyncThunk(
-      async ({ username, password }: { username: string; password: string }) => {
-        const payload: DeliverySignInPayload = { username, password };
-        const result = await authDeliveryLogin({ signInInfo: payload });
-        return result?.data;
+      async (payload: DeliverySignInPayload, { rejectWithValue }) => {
+        try {
+          const result = await authDeliveryLogin({ signInInfo: payload });
+          return result?.data;
+        } catch (e: any) {
+          if (e instanceof AuthError) {
+            return rejectWithValue({
+              code: e.code,
+              message: e.message,
+              accountType: e.accountType,
+            });
+          }
+          return rejectWithValue({ message: e?.message ?? 'Sign in failed' });
+        }
       },
       {
         pending: state => {
           state.status = 'loading';
-          state.error = '';
+          clearError(state);
         },
         fulfilled: (state, _action) => {
           state.status = 'idle';
-          state.error = '';
+          clearError(state);
         },
         rejected: (state, action) => {
-          state.status = 'failed';
-          state.error = action.error.message ?? 'Sign in failed';
+          applyRejection(state, action.payload as SignInRejection | undefined, action.error.message);
         },
       },
     ),
@@ -122,6 +162,8 @@ export const signInSlice = createAppSlice({
     selectSignInRememberMe: state => state.rememberMe,
     selectSignInStatus: state => state.status,
     selectSignInError: state => state.error,
+    selectSignInErrorCode: state => state.errorCode,
+    selectWrongPortalAccount: state => state.wrongPortalAccount,
   },
 });
 
@@ -143,4 +185,6 @@ export const {
   selectSignInRememberMe,
   selectSignInStatus,
   selectSignInError,
+  selectSignInErrorCode,
+  selectWrongPortalAccount,
 } = signInSlice.selectors;

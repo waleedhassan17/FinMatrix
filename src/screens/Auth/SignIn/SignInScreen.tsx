@@ -1,18 +1,23 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Sign In
 // ═══════════════════════════════════════════════════════
-// Serves both portals: `role === 'delivery'` signs in with a username against
-// the delivery endpoint, everyone else with an email. The server's gate codes
-// (unverified email, pending/rejected/inactive company) route to the matching
-// screen rather than surfacing as a generic error.
+// Serves all three portals (models/signInPortalModel). The Business Portal
+// signs in with an email; the Staff and Delivery Portals with the username the
+// company issued. The portal is posted with the credentials and the server
+// refuses an account that belongs on another door (WRONG_PORTAL) before any
+// token exists — the notice then names the right door and switches to it in
+// one tap, carrying what was typed. The server's other gate codes (unverified
+// email, pending/rejected/inactive company) route to the matching screen
+// rather than surfacing as a generic error.
 
 import React, { useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { ROUTES } from '../../../navigations-maps/Base';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
-import { setUser, selectSelectedRole } from '../authSlice';
+import { setUser, selectSelectedRole, setSelectedRole } from '../authSlice';
+import { setRole } from '../../RoleSelection/roleSelectionSlice';
 import {
   setEmail,
   setUsername,
@@ -26,10 +31,18 @@ import {
   selectSignInPassword,
   selectSignInRememberMe,
   selectSignInStatus,
-  selectSignInError
+  selectSignInError,
+  selectSignInErrorCode,
+  selectWrongPortalAccount
 } from './signInSlice';
+import {
+  SIGN_IN_PORTALS,
+  portalForRole,
+  wrongPortalNotice,
+  type SignInPortal,
+} from '../../../models/signInPortalModel';
 import { validateSignIn, validateDeliverySignIn } from '../../../models/authModel';
-import type { RootStackParamList, UserRole } from '../../../types';
+import type { RootStackParamList } from '../../../types';
 import { THEME } from '../../../theme';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -40,6 +53,8 @@ import {
   AuthFooterBar,
   AuthField,
   AuthNotice,
+  AuthHelpCard,
+  AuthPrompt,
   AUTH
 } from '../../../components/auth/AuthUI';
 
@@ -50,10 +65,12 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   // Never destructure route.params directly: screens that send the user back
   // here (password reset, "Back to Sign In") pass no params, and RN v7 pushes
   // a fresh route rather than reusing the one RoleSelection created. Fall back
-  // to the role the user picked on RoleSelection so a delivery user isn't
-  // silently downgraded to the admin portal.
+  // to the portal the user picked on RoleSelection so a rider isn't silently
+  // moved to the Business Portal.
   const selectedRole = useAppSelector(selectSelectedRole);
-  const role: UserRole = route.params?.role ?? selectedRole ?? 'admin';
+  const portal: SignInPortal = portalForRole(route.params?.role ?? selectedRole);
+  const door = SIGN_IN_PORTALS[portal];
+  const isUsernamePortal = door.credential === 'username';
 
   const email = useAppSelector(selectSignInEmail);
   const username = useAppSelector(selectSignInUsername);
@@ -61,6 +78,8 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   const rememberMe = useAppSelector(selectSignInRememberMe);
   const status = useAppSelector(selectSignInStatus);
   const signInError = useAppSelector(selectSignInError);
+  const signInErrorCode = useAppSelector(selectSignInErrorCode);
+  const wrongPortalAccount = useAppSelector(selectWrongPortalAccount);
 
   const [errors, setErrors] = React.useState<Record<string, string>>({});
 
@@ -68,17 +87,13 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   // refs lint rule forbids, and the value is create-once either way.
   const shakeAnim = useMemo(() => new Animated.Value(0), []);
 
-  // Owner-created accounts — staff and riders — both sign in with a username
-  // and a password their company handed them, against the same endpoint. The
-  // tab below only sets expectations and wording: the SERVER decides the
-  // actual role from the account, so picking the wrong tab still signs the
-  // user into the right app.
-  const isUserPortal = role === 'delivery' || role === 'staff';
-  const [portalTab, setPortalTab] = React.useState<'staff' | 'delivery'>(
-    role === 'delivery' ? 'delivery' : 'staff',
-  );
-  const isDelivery = isUserPortal;
-  const roleLabel = isUserPortal ? 'User Portal' : 'Business Portal';
+  // Back to the door choice. A route pushed fresh (after a password reset)
+  // has nothing under it, so it goes to RoleSelection by name.
+  const handleBack = () => {
+    dispatch(clearSignInError());
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate(ROUTES.ROLE_SELECTION);
+  };
 
   // A short nudge on validation failure — the one motion in the flow, and it
   // carries meaning rather than decorating the entrance.
@@ -94,7 +109,7 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSignIn = async () => {
     dispatch(clearSignInError());
 
-    if (isDelivery) {
+    if (isUsernamePortal) {
       const validationErrors = validateDeliverySignIn({ username, password });
       setErrors(validationErrors);
       if (Object.keys(validationErrors).length > 0) {
@@ -103,7 +118,11 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       try {
         const user = await dispatch(
-          submitDeliverySignInAsync({ username: username.trim(), password }),
+          submitDeliverySignInAsync({
+            username: username.trim(),
+            password,
+            portal: portal === 'delivery' ? 'delivery' : 'staff',
+          }),
         ).unwrap();
         dispatch(setUser(user));
       } catch {
@@ -152,17 +171,34 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const isLoading = status === 'loading';
 
+  // The password was right but the account belongs on another door. Switch to
+  // it here rather than sending the user back to RoleSelection, carrying what
+  // they typed: an owner who typed their email on the Staff Portal lands on
+  // the Business Portal with it already in the email field.
+  const wrongPortal =
+    signInErrorCode === 'WRONG_PORTAL' ? wrongPortalNotice(wrongPortalAccount) : null;
+  const switchPortal = (target: SignInPortal) => {
+    const typed = (isUsernamePortal ? username : email).trim();
+    if (SIGN_IN_PORTALS[target].credential === 'email') {
+      if (typed.includes('@')) dispatch(setEmail(typed));
+    } else if (!typed.includes('@')) {
+      dispatch(setUsername(typed));
+    }
+    dispatch(setRole(target));
+    dispatch(setSelectedRole(target));
+    dispatch(clearSignInError());
+    setErrors({});
+    navigation.setParams({ role: target });
+  };
+
   return (
     <AuthLayout
       header={
         <AuthHeader
-          pill={roleLabel}
+          pill={door.title}
           title="Welcome back"
-          subtitle={
-            isDelivery
-              ? 'Sign in with your company credentials'
-              : 'Sign in to manage your business'
-          }
+          subtitle={door.signInSubtitle}
+          onBack={handleBack}
         />
       }
       footer={
@@ -177,41 +213,30 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
         />
       }>
       <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-        {signInError ? (
-          <AuthNotice tone="error" title="Authentication failed" message={signInError} />
+        {wrongPortal ? (
+          <AuthNotice
+            tone="warning"
+            icon="alert-triangle"
+            title={wrongPortal.title}
+            message={wrongPortal.message}
+            action={
+              wrongPortal.switchTo && wrongPortal.switchLabel
+                ? {
+                    label: wrongPortal.switchLabel,
+                    onPress: () => switchPortal(wrongPortal.switchTo as SignInPortal),
+                  }
+                : undefined
+            }
+          />
+        ) : signInError ? (
+          <AuthNotice
+            tone={signInErrorCode === 'RATE_LIMITED' ? 'warning' : 'error'}
+            title={signInErrorCode === 'RATE_LIMITED' ? 'Please wait' : 'Authentication failed'}
+            message={signInError}
+          />
         ) : null}
 
-        {isUserPortal ? (
-          <View style={s.portalTabs}>
-            {(
-              [
-                { key: 'staff' as const, label: 'Staff' },
-                { key: 'delivery' as const, label: 'Delivery Personnel' },
-              ]
-            ).map(t => (
-              <TouchableOpacity
-                key={t.key}
-                style={[
-                  s.portalTab,
-                  portalTab === t.key && s.portalTabActive,
-                ]}
-                onPress={() => setPortalTab(t.key)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    s.portalTabText,
-                    portalTab === t.key && s.portalTabTextActive,
-                  ]}
-                >
-                  {t.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : null}
-
-        {isDelivery ? (
+        {isUsernamePortal ? (
           <AuthField
             label="Username"
             value={username}
@@ -268,7 +293,7 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={s.remLabel}>Remember me</Text>
           </Pressable>
 
-          {!isDelivery && (
+          {!isUsernamePortal && (
             <Text
               style={s.link}
               onPress={() => navigation.navigate(ROUTES.FORGOT_PASSWORD)}
@@ -278,16 +303,20 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
         </View>
 
-        {!isDelivery && (
-          <View style={s.bottomRow}>
-            <Text style={s.bottomText}>Don&apos;t have an account? </Text>
-            <Text
-              style={s.link}
-              onPress={() => navigation.navigate(ROUTES.SIGN_UP, { role })}
-              accessibilityRole="button">
-              Create account
-            </Text>
+        {/* Staff and rider accounts have no inbox to reset through: only the
+            owner can reset them (AuthService.forgotPassword refuses them), so
+            say who to ask instead of offering a link that would fail. */}
+        {isUsernamePortal ? (
+          <View style={s.helpGap}>
+            <AuthHelpCard message="Forgot your username or password? Ask your company's FinMatrix administrator to reset it." />
           </View>
+        ) : (
+          <AuthPrompt
+            text="Don't have an account?"
+            action="Create account"
+            onPress={() => navigation.navigate(ROUTES.SIGN_UP, { role: portal })}
+            style={s.bottomRow}
+          />
         )}
       </Animated.View>
     </AuthLayout>
@@ -295,28 +324,6 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
 };
 
 const s = StyleSheet.create({
-  // Which portal the user is signing into. Cosmetic: the server resolves the
-  // real role from the account either way.
-  portalTabs: {
-    flexDirection: 'row',
-    gap: AUTH.space.sm,
-    marginBottom: AUTH.space.lg,
-  },
-  portalTab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: AUTH.space.md,
-    borderRadius: AUTH.radius.md,
-    borderWidth: 1,
-    borderColor: AUTH.line,
-    backgroundColor: AUTH.surface,
-  },
-  portalTabActive: {
-    borderColor: AUTH.mintBorder,
-    backgroundColor: AUTH.mint,
-  },
-  portalTabText: { ...THEME.typography.labelMd, color: AUTH.ink[500] },
-  portalTabTextActive: { color: AUTH.brandDark },
   optRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -340,14 +347,8 @@ const s = StyleSheet.create({
     fontFamily: AUTH.font,
     color: AUTH.brand,
   },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    marginTop: AUTH.space.xxl,
-  },
-  bottomText: { ...THEME.typography.bodySm, fontFamily: AUTH.font, color: AUTH.ink[500] }
+  bottomRow: { marginTop: AUTH.space.xxl },
+  helpGap: { marginTop: AUTH.space.xxl }
 });
 
 export default SignInScreen;

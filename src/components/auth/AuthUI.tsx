@@ -95,7 +95,11 @@ export const AuthHeader: React.FC<{
   brand?: boolean;
 }> = ({ title, subtitle, pill, onBack, step, brand = true }) => (
   <View style={s.header}>
-    <SafeAreaView edges={['top']} style={s.headerInner}>
+    <SafeAreaView
+      edges={['top']}
+      // With no back chip and no pill there is no top row, and the first line
+      // (the wordmark) would sit against the status bar.
+      style={[s.headerInner, !onBack && !pill && s.headerInnerBare]}>
       {(onBack || pill) && (
         <View style={s.headerTop}>
           {onBack ? (
@@ -161,43 +165,48 @@ export interface FooterAction {
 }
 
 export const AuthFooterBar: React.FC<{
-  primary: FooterAction;
+  /** Omit on a screen whose body holds its actions (e.g. tap-to-open cards). */
+  primary?: FooterAction;
   secondary?: { label: string; onPress: () => void; disabled?: boolean };
+  /** "New here? Register" — a way into the other path, above the note. */
+  prompt?: AuthPromptProps;
   note?: string;
   /** Suppress the trailing arrow on the primary button. */
   noArrow?: boolean;
-}> = ({ primary, secondary, note, noArrow = false }) => (
+}> = ({ primary, secondary, prompt, note, noArrow = false }) => (
   <View style={s.footer}>
     <SafeAreaView edges={['bottom']}>
-      <Pressable
-        onPress={primary.onPress}
-        disabled={primary.disabled || primary.loading}
-        accessibilityRole="button"
-        accessibilityState={{
-          disabled: primary.disabled || primary.loading,
-          busy: primary.loading,
-        }}
-        style={({ pressed }) => [
-          s.primaryBtn,
-          pressed && s.primaryBtnPressed,
-          (primary.disabled || primary.loading) && s.primaryBtnDisabled,
-        ]}>
-        {primary.loading ? (
-          <>
-            <ActivityIndicator size="small" color={AUTH.header.title} />
-            {primary.loadingLabel ? (
-              <Text style={s.primaryLabel}>{primary.loadingLabel}</Text>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <Text style={s.primaryLabel}>{primary.label}</Text>
-            {!noArrow ? (
-              <Feather name="arrow-right" size={18} color={AUTH.header.title} />
-            ) : null}
-          </>
-        )}
-      </Pressable>
+      {primary ? (
+        <Pressable
+          onPress={primary.onPress}
+          disabled={primary.disabled || primary.loading}
+          accessibilityRole="button"
+          accessibilityState={{
+            disabled: primary.disabled || primary.loading,
+            busy: primary.loading,
+          }}
+          style={({ pressed }) => [
+            s.primaryBtn,
+            pressed && s.primaryBtnPressed,
+            (primary.disabled || primary.loading) && s.primaryBtnDisabled,
+          ]}>
+          {primary.loading ? (
+            <>
+              <ActivityIndicator size="small" color={AUTH.header.title} />
+              {primary.loadingLabel ? (
+                <Text style={s.primaryLabel}>{primary.loadingLabel}</Text>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <Text style={s.primaryLabel}>{primary.label}</Text>
+              {!noArrow ? (
+                <Feather name="arrow-right" size={18} color={AUTH.header.title} />
+              ) : null}
+            </>
+          )}
+        </Pressable>
+      ) : null}
 
       {secondary ? (
         <Pressable
@@ -216,6 +225,13 @@ export const AuthFooterBar: React.FC<{
         </Pressable>
       ) : null}
 
+      {prompt ? (
+        <AuthPrompt
+          {...prompt}
+          style={[s.footerPrompt, !!primary && s.footerPromptAfterButton]}
+        />
+      ) : null}
+
       {note ? (
         <View style={s.footerNote}>
           <Feather name="lock" size={11} color={AUTH.ink[400]} />
@@ -223,6 +239,28 @@ export const AuthFooterBar: React.FC<{
         </View>
       ) : null}
     </SafeAreaView>
+  </View>
+);
+
+// ───────────────────────────────────────────────
+// Prompt — "Don't have an account? Create account"
+// ───────────────────────────────────────────────
+// One line that points at the flow's other path. Every screen that offers one
+// says it this way, so the link is always the same weight in the same place.
+
+export interface AuthPromptProps {
+  text: string;
+  action: string;
+  onPress: () => void;
+  style?: StyleProp<ViewStyle>;
+}
+
+export const AuthPrompt: React.FC<AuthPromptProps> = ({ text, action, onPress, style }) => (
+  <View style={[s.prompt, style]}>
+    <Text style={s.promptText}>{text} </Text>
+    <Text style={s.promptLink} onPress={onPress} accessibilityRole="button">
+      {action}
+    </Text>
   </View>
 );
 
@@ -409,18 +447,22 @@ export const AuthNotice: React.FC<{
   tone?: AuthTone;
   message: string;
   title?: string;
+  /** The one thing to do about it, e.g. "Go to Staff Portal". */
+  action?: { label: string; onPress: () => void };
+  /** Overrides the tone's icon when the tone's default would mislead. */
+  icon?: FeatherName;
   onDismiss?: () => void;
   style?: StyleProp<ViewStyle>;
-}> = ({ tone = 'info', message, title, onDismiss, style }) => {
+}> = ({ tone = 'info', message, title, action, icon: iconOverride, onDismiss, style }) => {
   const t = AUTH.status[tone];
-  const icon: FeatherName =
-    tone === 'error'
+  const icon: FeatherName = iconOverride ??
+    (tone === 'error'
       ? 'alert-circle'
       : tone === 'warning'
       ? 'clock'
       : tone === 'success'
       ? 'check-circle'
-      : 'info';
+      : 'info');
   return (
     <View
       style={[s.notice, { backgroundColor: t.bg, borderColor: t.border }, style]}
@@ -430,6 +472,16 @@ export const AuthNotice: React.FC<{
       <View style={s.noticeBody}>
         {title ? <Text style={[s.noticeTitle, { color: t.fg }]}>{title}</Text> : null}
         <Text style={[s.noticeText, { color: t.fg }]}>{message}</Text>
+        {action ? (
+          <Pressable
+            onPress={action.onPress}
+            hitSlop={8}
+            accessibilityRole="button"
+            style={({ pressed }) => [s.noticeAction, pressed && s.pressed]}>
+            <Text style={[s.noticeActionText, { color: t.fg }]}>{action.label}</Text>
+            <Feather name="arrow-right" size={14} color={t.fg} />
+          </Pressable>
+        ) : null}
       </View>
       {onDismiss ? (
         <Pressable onPress={onDismiss} hitSlop={10} accessibilityLabel="Dismiss">
@@ -530,16 +582,25 @@ export const StatusPill: React.FC<{ label: string; tone?: AuthTone }> = ({
   );
 };
 
-/** Selectable option card with a radio and a feature list. */
+/**
+ * Option card: a radio to pick one of several before a Continue button, or —
+ * with `trailing="chevron"` — a door that opens on tap, with no Continue.
+ */
 export const AuthOptionCard: React.FC<{
   title: string;
   tagline?: string;
   icon?: FeatherName;
   badge?: string;
   features?: string[];
+  /** One line under a hairline, e.g. which credential this door takes. */
+  footnote?: { icon: FeatherName; text: string };
   selected?: boolean;
-  /** Renders the radio control. Omit for a plain card. */
+  /** Renders the trailing control. False for a plain card. */
   selectable?: boolean;
+  /** 'radio' picks; 'chevron' navigates on press. */
+  trailing?: 'radio' | 'chevron';
+  /** Read by screen readers after the title, e.g. "Opens sign-in". */
+  accessibilityHint?: string;
   /**
    * Omit to render a non-interactive card. Use that when a separate primary
    * button already performs the action — two tap targets for one outcome
@@ -552,10 +613,14 @@ export const AuthOptionCard: React.FC<{
   icon,
   badge,
   features,
+  footnote,
   selected = false,
   selectable = true,
+  trailing = 'radio',
+  accessibilityHint,
   onPress,
 }) => {
+  const isDoor = trailing === 'chevron';
   const Body = (
     <>
     <View style={s.optionHead}>
@@ -571,7 +636,11 @@ export const AuthOptionCard: React.FC<{
         </View>
         {tagline ? <Text style={s.optionTagline}>{tagline}</Text> : null}
       </View>
-      {selectable ? (
+      {selectable && isDoor ? (
+        <View style={s.chevron}>
+          <Feather name="chevron-right" size={18} color={AUTH.brand} />
+        </View>
+      ) : selectable ? (
         <View style={[s.radio, selected && s.radioOn]}>
           {selected ? <View style={s.radioInner} /> : null}
         </View>
@@ -588,6 +657,13 @@ export const AuthOptionCard: React.FC<{
           ))}
         </View>
       ) : null}
+
+      {footnote ? (
+        <View style={s.optionFootnote}>
+          <Feather name={footnote.icon} size={14} color={AUTH.ink[500]} />
+          <Text style={s.optionFootnoteText}>{footnote.text}</Text>
+        </View>
+      ) : null}
     </>
   );
 
@@ -598,11 +674,14 @@ export const AuthOptionCard: React.FC<{
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityLabel={tagline ? `${title}. ${tagline}` : title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={isDoor ? undefined : { selected }}
       style={({ pressed }) => [
         s.option,
         selected && s.optionSelected,
         pressed && s.optionPressed,
+        pressed && isDoor && s.optionDoorPressed,
       ]}>
       {Body}
     </Pressable>
@@ -721,6 +800,7 @@ const s = StyleSheet.create({
     paddingTop: AUTH.space.md,
     paddingBottom: AUTH.space.xxl,
   },
+  headerInnerBare: { paddingTop: AUTH.space.xxl },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -833,9 +913,22 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+    paddingTop: AUTH.space.sm,
     paddingBottom: AUTH.space.md,
   },
   footerNoteText: { ...typography.caption, fontFamily: AUTH.font, color: AUTH.ink[400], },
+  footerPrompt: { marginBottom: AUTH.space.xs },
+  footerPromptAfterButton: { marginTop: AUTH.space.lg },
+
+  // ── Prompt ──
+  prompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  promptText: { ...typography.bodySm, fontFamily: AUTH.font, color: AUTH.ink[500] },
+  promptLink: { ...typography.h5, fontFamily: AUTH.font, color: AUTH.brand },
 
   // ── Blocks ──
   tile: {
@@ -977,6 +1070,14 @@ const s = StyleSheet.create({
   noticeBody: { flex: 1, gap: 2 },
   noticeTitle: { ...typography.bodySm, fontFamily: AUTH.font, fontWeight: typography.labelLg.fontWeight, },
   noticeText: { ...typography.bodySm, fontFamily: AUTH.font, lineHeight: 20, },
+  noticeAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: AUTH.space.xs,
+    marginTop: AUTH.space.sm,
+  },
+  noticeActionText: { ...typography.h5, fontFamily: AUTH.font },
   helpCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1130,6 +1231,7 @@ const s = StyleSheet.create({
   },
   optionSelected: { borderColor: AUTH.brand, borderWidth: 1.5 },
   optionPressed: { backgroundColor: AUTH.sunken },
+  optionDoorPressed: { borderColor: AUTH.brand },
   optionHead: { flexDirection: 'row', alignItems: 'flex-start', gap: AUTH.space.lg },
   optionTile: { width: 44, height: 44 },
   optionHeadText: { flex: 1, gap: 3 },
@@ -1175,6 +1277,15 @@ const s = StyleSheet.create({
     marginTop: 2,
   },
   radioOn: { borderColor: AUTH.brand },
+  chevron: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: AUTH.sunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
   radioInner: {
     width: 11,
     height: 11,
@@ -1194,6 +1305,21 @@ const s = StyleSheet.create({
     flex: 1,
     fontFamily: AUTH.font,
     color: AUTH.ink[700],
+  },
+  optionFootnote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AUTH.space.sm,
+    marginTop: AUTH.space.lg,
+    paddingTop: AUTH.space.md,
+    borderTopWidth: 1,
+    borderTopColor: AUTH.line,
+  },
+  optionFootnoteText: {
+    ...typography.caption,
+    flex: 1,
+    fontFamily: AUTH.font,
+    color: AUTH.ink[500],
   },
 
   // ── Strength ──

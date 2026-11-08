@@ -28,6 +28,11 @@ export interface ForgotPasswordPayload {
 export interface DeliverySignInPayload {
   username: string;
   password: string;
+  /**
+   * The exact door: the server admits only staff on 'staff' and only riders on
+   * 'delivery', and answers anything else with WRONG_PORTAL.
+   */
+  portal: 'staff' | 'delivery';
 }
 
 export interface VerifyEmailPayload {
@@ -53,6 +58,8 @@ export class AuthError extends Error {
   rejectionReason?: string | null;
   /** COMPANY_PENDING only: what is in review — a free-trial request or a payment. */
   pendingKind?: 'trial' | 'payment' | null;
+  /** WRONG_PORTAL only: the kind of account it is, so the UI can name its door. */
+  accountType?: string | null;
   constructor(
     message: string,
     code?: string,
@@ -61,6 +68,7 @@ export class AuthError extends Error {
       companyStatus?: string | null;
       rejectionReason?: string | null;
       pendingKind?: 'trial' | 'payment' | null;
+      accountType?: string | null;
     },
   ) {
     super(message);
@@ -69,11 +77,45 @@ export class AuthError extends Error {
     this.companyStatus = extra?.companyStatus ?? null;
     this.rejectionReason = extra?.rejectionReason ?? null;
     this.pendingKind = extra?.pendingKind ?? null;
+    this.accountType = extra?.accountType ?? null;
   }
 }
 
 // Login-gate codes the server returns when a company is not active.
 const LOGIN_GATE_CODES = ['COMPANY_PENDING', 'COMPANY_INACTIVE', 'COMPANY_REJECTED'];
+
+export const RATE_LIMITED_MESSAGE =
+  'Too many sign-in attempts. Wait a few minutes and try again.';
+
+/**
+ * The refusals every sign-in door shares, as typed errors the screen can act
+ * on. Returns null for anything else, which each caller then handles its own
+ * way.
+ *
+ * - WRONG_PORTAL: the password was right but the account belongs on another
+ *   door. `details.accountType` says which; the message is the server's, and
+ *   the screen replaces it with the app's own wording.
+ * - 429: the server's throttler (per IP, and per account). Its body is the
+ *   framework's "ThrottlerException: Too Many Requests", which explains
+ *   nothing, so the message is written here.
+ */
+const doorRefusal = (e: any): AuthError | null => {
+  const body = e?.response?.data;
+  const err = body?.error ?? body ?? {};
+  const code = err.code ?? body?.code;
+  if (code === 'WRONG_PORTAL') {
+    return new AuthError(
+      err.message ?? 'This account signs in on a different portal.',
+      'WRONG_PORTAL',
+      undefined,
+      { accountType: err.details?.accountType ?? null },
+    );
+  }
+  if (e?.response?.status === 429) {
+    return new AuthError(RATE_LIMITED_MESSAGE, 'RATE_LIMITED');
+  }
+  return null;
+};
 
 // ─── Login ────────────────────────────────────────────
 
@@ -136,6 +178,8 @@ export const authLogin = async ({
     // "Request failed", because the error carries no e.response to read.
     if (e instanceof AuthError) throw e;
     console.warn('[authLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
+    const refusal = doorRefusal(e);
+    if (refusal) throw refusal;
     // Surface the EMAIL_NOT_VERIFIED gate so the UI can route to verification.
     const body = e?.response?.data;
     const err = body?.error ?? body ?? {};
@@ -169,9 +213,11 @@ export const authLogin = async ({
 //
 // Owner-created accounts sign in with a username, never an email: the owner
 // creates them and hands the credentials over, so there is no inbox involved.
-// Same endpoint and same response shape as the owner's email login — the
-// SERVER decides the role from the account, so the tab the user picked on the
-// sign-in screen sets expectations but never authority.
+// Same endpoint and same response shape as the owner's email login. The door
+// is posted as-is ('staff' or 'delivery') and the server checks it against
+// the account: a rider on the Staff Portal is refused with WRONG_PORTAL
+// before any token exists. ('team', the old shared door, is still accepted by
+// the server for app builds already installed; this build no longer sends it.)
 
 export const authDeliveryLogin = async ({
   signInInfo,
@@ -184,9 +230,7 @@ export const authDeliveryLogin = async ({
       identifier,
       email: identifier,
       password: signInInfo.password,
-      // The User Portal admits staff and riders; an owner's email typed in here
-      // is refused with WRONG_PORTAL and pointed at the Business Portal.
-      portal: 'team',
+      portal: signInInfo.portal,
     });
     const responseData = response.data?.data ?? response.data;
     const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription } =
@@ -207,6 +251,8 @@ export const authDeliveryLogin = async ({
     return { data: user };
   } catch (e: any) {
     console.warn('[authDeliveryLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
+    const refusal = doorRefusal(e);
+    if (refusal) throw refusal;
     throw new Error(extractErrorMessage(e));
   }
 };

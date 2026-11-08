@@ -82,6 +82,11 @@ export const validateSignIn = (data: SignInData): ValidationErrors => {
 
   if (!data.email.trim()) {
     errors.email = 'Email is required';
+  } else if (!data.email.includes('@')) {
+    // No '@' at all is a username, not a mistyped email: a staff member or
+    // rider on the owner's door. Point them at theirs rather than at a format.
+    errors.email =
+      'The Business Portal uses an email address. Staff and riders sign in on the Staff or Delivery Portal.';
   } else if (!EMAIL_REGEX.test(data.email.trim())) {
     errors.email = 'Please enter a valid email address';
   }

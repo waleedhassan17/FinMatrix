@@ -42,6 +42,7 @@ import {
   AuthField,
   AuthNotice,
   AuthChecklist,
+  AuthPrompt,
   PasswordStrength,
   AUTH
 } from '../../../components/auth/AuthUI';
@@ -242,15 +243,12 @@ const SignUpScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={s.termsError}>{errors.acceptedTerms}</Text>
         ) : null}
 
-        <View style={s.bottomRow}>
-          <Text style={s.bottomText}>Already have an account? </Text>
-          <Text
-            style={s.link}
-            onPress={() => navigation.navigate(ROUTES.SIGN_IN, { role })}
-            accessibilityRole="button">
-            Sign in
-          </Text>
-        </View>
+        <AuthPrompt
+          text="Already have an account?"
+          action="Sign in"
+          onPress={() => navigation.navigate(ROUTES.SIGN_IN, { role })}
+          style={s.bottomRow}
+        />
       </Animated.View>
     </AuthLayout>
   );
@@ -289,19 +287,7 @@ const s = StyleSheet.create({
     color: AUTH.status.error.fg,
     marginTop: AUTH.space.sm,
   },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    marginTop: AUTH.space.xxl,
-  },
-  bottomText: { ...THEME.typography.bodySm, fontFamily: AUTH.font, color: AUTH.ink[500] },
-  link: {
-    ...THEME.typography.h5,
-    fontFamily: AUTH.font,
-    color: AUTH.brand,
-  }
+  bottomRow: { marginTop: AUTH.space.xxl }
 });
 
 export default SignUpScreen;

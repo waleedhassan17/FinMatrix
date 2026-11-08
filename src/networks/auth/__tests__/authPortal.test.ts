@@ -11,7 +11,7 @@ jest.mock('../../network/apiHelpers', () => ({
 }));
 
 import { api } from '../../network/apiHelpers';
-import { authDeliveryLogin, authLogin } from '../authNetwork';
+import { authDeliveryLogin, authLogin, RATE_LIMITED_MESSAGE } from '../authNetwork';
 
 const post = api.post as jest.Mock;
 
@@ -42,25 +42,62 @@ describe('sign-in portals', () => {
     });
   });
 
-  it('the User Portal signs in as the team door (staff and riders)', async () => {
-    post.mockResolvedValueOnce(ok('staff'));
-    await authDeliveryLogin({ signInInfo: { username: 'verify.staff', password: 'pw' } });
-    expect(post).toHaveBeenCalledWith('/auth/signin', {
-      identifier: 'verify.staff',
-      email: 'verify.staff',
-      password: 'pw',
-      portal: 'team',
-    });
+  // Each username door posts itself, so the server checks the account against
+  // exactly the portal picked: a rider on the Staff Portal is refused.
+  it.each(['staff', 'delivery'] as const)(
+    'the %s portal posts its own door, not the shared team door',
+    async portal => {
+      post.mockResolvedValueOnce(ok(portal));
+      await authDeliveryLogin({
+        signInInfo: { username: 'verify.staff', password: 'pw', portal },
+      });
+      expect(post).toHaveBeenCalledWith('/auth/signin', {
+        identifier: 'verify.staff',
+        email: 'verify.staff',
+        password: 'pw',
+        portal,
+      });
+    },
+  );
+
+  const wrongPortal = (accountType: string) => ({
+    response: {
+      status: 403,
+      data: {
+        error: {
+          code: 'WRONG_PORTAL',
+          message: 'This is a business owner account.',
+          details: { accountType, portal: 'staff' },
+        },
+      },
+    },
   });
 
-  it('surfaces the server’s wrong-door message on the User Portal', async () => {
-    const serverError = { response: { status: 403, data: { error: { code: 'WRONG_PORTAL', message: 'This is a business owner account.' } } } };
-    post.mockRejectedValueOnce(serverError);
-    const { extractErrorMessage } = jest.requireMock('../../network/apiHelpers');
-    (extractErrorMessage as jest.Mock).mockReturnValueOnce('This is a business owner account.');
+  it('turns WRONG_PORTAL on a username door into a typed error naming the account', async () => {
+    post.mockRejectedValueOnce(wrongPortal('delivery'));
     await expect(
-      authDeliveryLogin({ signInInfo: { username: 'owner@x.z', password: 'pw' } }),
-    ).rejects.toThrow('This is a business owner account.');
+      authDeliveryLogin({ signInInfo: { username: 'acme.imran', password: 'pw', portal: 'staff' } }),
+    ).rejects.toMatchObject({ code: 'WRONG_PORTAL', accountType: 'delivery' });
+  });
+
+  it('turns WRONG_PORTAL on the Business Portal into the same typed error', async () => {
+    post.mockRejectedValueOnce(wrongPortal('staff'));
+    await expect(
+      authLogin({ signInInfo: { email: 'manager', password: 'pw' } }),
+    ).rejects.toMatchObject({ code: 'WRONG_PORTAL', accountType: 'staff' });
+  });
+
+  it.each([
+    ['username door', () => authDeliveryLogin({ signInInfo: { username: 'u', password: 'pw', portal: 'delivery' } })],
+    ['Business Portal', () => authLogin({ signInInfo: { email: 'o@x.z', password: 'pw' } })],
+  ])('says plainly when the %s is rate-limited', async (_door, call) => {
+    post.mockRejectedValueOnce({
+      response: { status: 429, data: { statusCode: 429, message: 'ThrottlerException: Too Many Requests' } },
+    });
+    await expect(call()).rejects.toMatchObject({
+      code: 'RATE_LIMITED',
+      message: RATE_LIMITED_MESSAGE,
+    });
   });
 
   // The platform console moved to its own app, but the server still admits it
