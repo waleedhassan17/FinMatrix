@@ -10,6 +10,8 @@ import type { ReportsStackParamList } from './ReportsStack';
 export type DashboardStackParamList = {
   AdminDashboard: undefined;
   GlobalSearch: undefined;
+  // The bell on the dashboard header: things needing attention + the server feed.
+  Notifications: undefined;
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;
   DeliveryPersonnelDetail: { userId: string };

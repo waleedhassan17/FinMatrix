@@ -55,7 +55,8 @@ export interface AdminDashboardData {
     amount: number;
     status: string;
   }[];
-  alerts: { id: string; message: string; severity: 'red' | 'amber' | 'blue' }[];
+  // `count` / `amount` arrived after `message`; an older server sends neither.
+  alerts: { id: string; message: string; severity: 'red' | 'amber' | 'blue'; count?: number; amount?: number }[];
   setup?: SetupStatus;
   // Window the summary figures cover (month-to-date on the server), so the
   // screen can label them "as of <date>" instead of implying a full month.

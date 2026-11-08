@@ -166,12 +166,34 @@ export function deliveryOverviewSerializer(data: AdminDashboardData): DeliveryOv
   };
 }
 
+const finiteOrUndefined = (v: unknown): number | undefined => {
+  const n = typeof v === 'string' ? Number(v) : v;
+  return typeof n === 'number' && Number.isFinite(n) ? n : undefined;
+};
+
+/**
+ * The count an alert is about. The server sends it as `count`; a server from
+ * before that field existed only put it at the front of the sentence ("1
+ * overdue invoice(s) require attention."), so read it from there rather than
+ * show the item without its number. A message that does not start with a
+ * number (the bills one leads with "You have…") yields undefined.
+ */
+const alertCount = (a: { count?: unknown; message?: string }): number | undefined => {
+  const explicit = finiteOrUndefined(a.count);
+  if (explicit !== undefined) return explicit;
+  const lead = /^\s*(\d+)\b/.exec(a.message ?? '');
+  return lead ? Number(lead[1]) : undefined;
+};
+
 export function dashboardAlertsSerializer(data: AdminDashboardData): DashboardAlert[] {
-  return (data.alerts ?? []).map(a => ({
-    id: a.id,
-    message: a.message,
-    severity: a.severity,
-  }));
+  return (data.alerts ?? []).map(a => {
+    const alert: DashboardAlert = { id: a.id, message: a.message, severity: a.severity };
+    const count = alertCount(a);
+    const amount = finiteOrUndefined(a.amount);
+    if (count !== undefined) alert.count = count;
+    if (amount !== undefined) alert.amount = amount;
+    return alert;
+  });
 }
 
 export const dashboardSetupSerializer = (

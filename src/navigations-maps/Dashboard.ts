@@ -17,6 +17,7 @@ import DeliveryMonitorScreen from '../screens/Delivery/Admin/DeliveryMonitor/Del
 import AdminDeliveryDetailScreen from '../screens/Delivery/Admin/AdminDeliveryDetail/AdminDeliveryDetailScreen';
 import InventoryApprovalScreen from '../screens/Delivery/Admin/InventoryApproval/InventoryApprovalScreen';
 import GlobalSearchScreen from '../screens/GlobalSearch/GlobalSearchScreen';
+import NotificationsScreen from '../screens/Notifications/NotificationsScreen';
 
 // ── First-run setup checklist destinations (FinMatrixGuide §5.7) ──
 // These screens are ALSO registered in their own feature stacks; they are
@@ -121,6 +122,8 @@ export const DashboardRouteNames = {
   AdminDeliveryDetail: 'AdminDeliveryDetail',
   InventoryApproval: 'InventoryApproval',
   GlobalSearch: 'GlobalSearch',
+  // the bell on the dashboard header
+  Notifications: 'Notifications',
   // setup checklist
   OpeningBalance: 'OpeningBalance',
   JournalEntryForm: 'JournalEntryForm',
@@ -172,6 +175,7 @@ export const DASHBOARD_ROUTES: IRoute[] = withSharedRecords([
   { title: DashboardRouteNames.AdminDeliveryDetail, component: AdminDeliveryDetailScreen },
   { title: DashboardRouteNames.InventoryApproval, component: InventoryApprovalScreen },
   { title: DashboardRouteNames.GlobalSearch, component: GlobalSearchScreen },
+  { title: DashboardRouteNames.Notifications, component: NotificationsScreen },
   // setup checklist — see the import block above for why these are duplicated
   { title: DashboardRouteNames.OpeningBalance, component: OpeningBalanceScreen },
   { title: DashboardRouteNames.JournalEntryForm, component: GeneralJournalFormScreen },

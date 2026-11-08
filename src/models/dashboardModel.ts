@@ -44,6 +44,10 @@ export interface DashboardAlert {
   id: string;
   message: string;
   severity: 'amber' | 'red' | 'blue';
+  /** How many documents the item is about (invoices, deliveries). */
+  count?: number;
+  /** The money the item is about, in rupees. */
+  amount?: number;
 }
 
 // ─── Empty defaults for initial state ────────────────

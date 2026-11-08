@@ -7,15 +7,24 @@ const { colors } = THEME;
 
 interface NotificationBadgeProps {
   count: number;
+  /**
+   * The ring that separates the badge from what it sits on. It should be the
+   * colour BEHIND the icon: white on the tab bar (the default), the header
+   * navy on the dashboard bell, where a white ring would read as a halo.
+   */
+  ringColor?: string;
 }
 
-const NotificationBadge: React.FC<NotificationBadgeProps> = ({ count }) => {
+const NotificationBadge: React.FC<NotificationBadgeProps> = ({ count, ringColor }) => {
   if (count <= 0) return null;
 
   const displayCount = count > 99 ? '99+' : count.toString();
 
   return (
-    <View style={[styles.badge, displayCount.length > 2 && styles.badgeWide]}>
+    <View
+      style={[styles.badge, displayCount.length > 2 && styles.badgeWide, ringColor ? { borderColor: ringColor } : null]}
+      pointerEvents="none"
+    >
       <Text style={styles.text}>{displayCount}</Text>
     </View>
   );

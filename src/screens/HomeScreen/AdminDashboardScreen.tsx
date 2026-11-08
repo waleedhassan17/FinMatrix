@@ -41,11 +41,13 @@ import {
   loadDashboard
 } from './adminDashboardSlice';
 import SetupChecklist, { SETUP_STEPS, type SetupStep } from './SetupChecklist';
+import NotificationBadge from '../../components/shared/NotificationBadge';
+import { fetchUnreadCount, selectUnreadCount } from '../Notifications/notificationsSlice';
+import { attentionItems, overdueInvoiceCount } from '../Notifications/attentionItems';
 import type { DashboardStackParamList } from '../../navigators/stacks/DashboardStack';
 import type {
   DashboardStat,
   RecentTransaction,
-  DashboardAlert,
   DeliveryOverviewData
 } from '../../models/dashboardModel';
 import { isFeatureVisible } from '../../utils/featureGates';
@@ -63,8 +65,10 @@ type Nav = NativeStackNavigationProp<DashboardStackParamList>;
  *  "View all", which is the whole point of that action. */
 const RECENT_TX_LIMIT = 4;
 
+// "Monday, November 9": written out, because it is a line of the header now
+// rather than an uppercase chip that had to stay short.
 const todayLabel = (): string =>
-  new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
 // 'YYYY-MM-DD' → 'as of Aug 15'. Parsed field by field on purpose: `new
 // Date('2026-08-15')` is read as UTC midnight and slips a day behind in
@@ -124,6 +128,7 @@ const AdminDashboardScreen: React.FC = () => {
   const rawData = useAppSelector(selectRawDashboardData);
   const setup = useAppSelector(selectDashboardSetup);
   const revenueTrend = useAppSelector(selectRevenueTrend);
+  const unreadNotifications = useAppSelector(selectUnreadCount);
 
   // Dismiss/finish the first-run checklist (FinMatrixGuide §5.7). Marks the
   // company setupCompleted; the checklist then hides but every flow it links to
@@ -164,6 +169,7 @@ const AdminDashboardScreen: React.FC = () => {
 
   useEffect(() => {
     dispatch(loadDashboard());
+    dispatch(fetchUnreadCount());
   }, [dispatch]);
 
   // Refetch whenever the dashboard regains focus.
@@ -183,6 +189,9 @@ const AdminDashboardScreen: React.FC = () => {
         return;
       }
       dispatch(refreshDashboard());
+      // Coming back from the Notifications screen is the common case here:
+      // whatever was read there should already be off the badge.
+      dispatch(fetchUnreadCount());
     }, [dispatch]),
   );
 
@@ -221,6 +230,7 @@ const AdminDashboardScreen: React.FC = () => {
 
   const onRefresh = useCallback(() => {
     dispatch(refreshDashboard());
+    dispatch(fetchUnreadCount());
   }, [dispatch]);
 
   const isInitialLoading = status === 'loading' && stats.length === 0;
@@ -235,12 +245,19 @@ const AdminDashboardScreen: React.FC = () => {
   const completedPct =
     delivery.total > 0 ? Math.round((delivery.delivered / delivery.total) * 100) : 0;
 
-  // The header pill used to read "Books up to date" unconditionally — a green
-  // claim about the books that was rendered even with a red alert banner
-  // directly beneath it saying otherwise. It now reports what the dashboard
-  // already knows. Same selector the banners use, so the two cannot disagree.
-  const openAlerts = alerts.length;
-  const booksClear = openAlerts === 0;
+  // The bell. Its count is what the Notifications screen it opens will list:
+  // the open attention items (same filter, so the two cannot disagree) plus
+  // unread notifications from the server.
+  //
+  // This replaces two things. Tinted banners with a coloured left edge stacked
+  // at the top of the body, which made routine work (a delivery without a
+  // rider) look like an error. And a header chip, "2 items need attention",
+  // that gave a count without saying of what. The facts each banner carried
+  // are still on the cards they belong to: overdue on Receivables, pending on
+  // Deliveries, the amount on Payables.
+  const attention = useMemo(() => attentionItems(alerts, { showDelivery }), [alerts, showDelivery]);
+  const bellCount = attention.length + unreadNotifications;
+  const overdueCount = overdueInvoiceCount(alerts);
 
   // Four, not the eight the slice holds. This was the longest block on the
   // dashboard and pushed Revenue and everything under it off-screen. Capped
@@ -281,39 +298,36 @@ const AdminDashboardScreen: React.FC = () => {
       <LinearGradient colors={C.navy} style={s.header}>
 
         <View style={s.headerTopRow}>
-          <View style={s.headerLeft}>
-            <View style={s.headerTextBlock}>
-              <Text style={s.companyName} numberOfLines={1}>{companyLabel}</Text>
-            </View>
+          <View style={s.headerTextBlock}>
+            <Text style={s.companyName} numberOfLines={1}>{companyLabel}</Text>
+            <Text style={s.headerDate} numberOfLines={1}>{todayLabel()}</Text>
           </View>
-          {/* Global search lives here rather than in the action grid. It is not
-              a "create something" action, and the owner's More hub has no
-              Search row — so with the grid trimmed to four documents this is
-              the only way in. */}
-          <TouchableOpacity
-            style={s.headerIconBtn}
-            onPress={() => navigation.navigate('GlobalSearch')}
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="Search"
-          >
-            <Feather name="search" size={19} color={colors.neutral0} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={s.headerMetaRow}>
-          <View style={[s.statusPill, !booksClear && s.statusPillWarn]}>
-            <View style={[s.statusDot, !booksClear && s.statusDotWarn]} />
-            <Text style={[s.statusPillText, !booksClear && s.statusPillTextWarn]}>
-              {booksClear
-                ? 'Books up to date'
-                : `${openAlerts} ${openAlerts === 1 ? 'item needs' : 'items need'} attention`}
-            </Text>
-          </View>
-          <View style={s.datePill}>
-            <Feather name="calendar" size={11} color="rgba(255,255,255,0.82)" />
-            <Text style={s.datePillText}>{todayLabel()}</Text>
+          <View style={s.headerActions}>
+            {/* Global search lives here rather than in the action grid. It is
+                not a "create something" action, and the owner's More hub has
+                no Search row — so with the grid trimmed to four documents this
+                is the only way in. */}
+            <TouchableOpacity
+              style={s.headerIconBtn}
+              onPress={() => navigation.navigate('GlobalSearch')}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel="Search"
+            >
+              <Feather name="search" size={19} color={colors.neutral0} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.headerIconBtn}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel={bellCount > 0 ? `Notifications, ${bellCount} new` : 'Notifications'}
+            >
+              <Feather name="bell" size={19} color={colors.neutral0} />
+              <NotificationBadge count={bellCount} ringColor={C.navy[0]} />
+            </TouchableOpacity>
           </View>
         </View>
       </LinearGradient>
@@ -329,12 +343,6 @@ const AdminDashboardScreen: React.FC = () => {
           <DashboardSkeleton />
         ) : (
           <>
-            {alerts.length > 0 && (
-              <View style={s.alertsWrap}>
-                {alerts.map(a => <AlertBanner key={a.id} alert={a} />)}
-              </View>
-            )}
-
             {/* ── Guided first-run setup checklist (§5.7) ─ */}
             {setup && !setup.completed && setupSteps.length > 0 && (
               <SetupChecklist
@@ -366,7 +374,8 @@ const AdminDashboardScreen: React.FC = () => {
                   tintBg={TINT.info}
                   value={statById.ar?.value ?? 'Rs 0'}
                   label="Receivables"
-                  sub="Due from customers"
+                  sub={overdueCount > 0 ? `${overdueCount} overdue` : 'Due from customers'}
+                  subTone={overdueCount > 0 ? C.neg : undefined}
                   onPress={() => (navigation as NativeStackNavigationProp<Record<string, object>>).navigate('InvoiceList')}
                 />
                 <StatCard
@@ -551,8 +560,10 @@ const StatCard: React.FC<{
   value: string;
   label: string;
   sub: string;
+  /** Colours the sub line when it carries a fact worth noticing (e.g. "2 overdue"). */
+  subTone?: string;
   onPress?: () => void;
-}> = ({ icon, tint, tintBg, value, label, sub, onPress }) => (
+}> = ({ icon, tint, tintBg, value, label, sub, subTone, onPress }) => (
   <TouchableOpacity style={s.statCard} activeOpacity={0.8} onPress={onPress}>
     <View style={s.statTopRow}>
       <View style={[s.statIcon, { backgroundColor: tintBg }]}>
@@ -562,7 +573,7 @@ const StatCard: React.FC<{
     </View>
     <Text style={s.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{value}</Text>
     <Text style={s.statLabel}>{label}</Text>
-    <Text style={s.statSub}>{sub}</Text>
+    <Text style={[s.statSub, subTone ? { color: subTone } : null]}>{sub}</Text>
   </TouchableOpacity>
 );
 
@@ -698,21 +709,6 @@ const TransactionRow: React.FC<{
   );
 };
 
-// ── Alert banner ──────────────────────────────────────
-const AlertBanner: React.FC<{ alert: DashboardAlert }> = ({ alert }) => {
-  const cfg = {
-    red: { tint: C.neg, bg: TINT.neg, icon: 'alert-circle' },
-    amber: { tint: C.warn, bg: TINT.warn, icon: 'alert-triangle' },
-    blue: { tint: C.info, bg: TINT.info, icon: 'info' }
-  }[alert.severity];
-  return (
-    <View style={[s.alertBanner, { backgroundColor: cfg.bg, borderLeftColor: cfg.tint }]}>
-      <Feather name={cfg.icon as keyof typeof Feather.glyphMap} size={14} color={cfg.tint} />
-      <Text style={[s.alertText, { color: C.ink }]}>{alert.message}</Text>
-    </View>
-  );
-};
-
 // ── Skeleton ──────────────────────────────────────────
 const Skel: React.FC<{ w: number | string; h: number; r?: number; style?: Record<string, string | number> }> = ({ w, h, r = 8, style }) => {
   const opacity = usePulse();
@@ -795,8 +791,7 @@ const s = StyleSheet.create({
     borderBottomRightRadius: HEADER_RADIUS,
     overflow: 'hidden',
   },
-  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 11 },
+  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   headerTextBlock: { flex: 1 },
   // h2, the same role ReportHeader gives its title, so the dashboard heading
   // matches Transactions / Reports / Inventory / More. It was h3 — 19px against
@@ -805,6 +800,10 @@ const s = StyleSheet.create({
   // its own (-0.3), and repeating a different value here is what let the two
   // drift apart.
   companyName: { ...THEME.typography.h2, color: colors.neutral0, fontFamily: FONT },
+  // The screen-subtitle role from the type scale (bodySm, white at 62%) — the
+  // same line ReportHeader puts under every other screen's title.
+  headerDate: { ...THEME.typography.bodySm, color: 'rgba(255,255,255,0.62)', fontFamily: FONT, marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   // 38px square: the 44pt minimum target is met by the hitSlop, so the visible
   // button can stay small enough not to compete with the company name.
   headerIconBtn: {
@@ -812,37 +811,12 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.10)',
   },
-  headerMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
-  statusPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: 'rgba(16,185,129,0.14)',
-    borderWidth: 1, borderColor: 'rgba(16,185,129,0.28)',
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
-  },
-  // Amber when something is open. Written as rgba rather than a token because
-  // these sit on the navy header, where a solid tint would read as a block of
-  // colour rather than a wash — the same reason the date pill is a white alpha.
-  statusPillWarn: {
-    backgroundColor: 'rgba(245,158,11,0.16)',
-    borderColor: 'rgba(245,158,11,0.32)',
-  },
-  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: THEME.colors.success },
-  statusDotWarn: { backgroundColor: THEME.colors.warning },
-  statusPillText: { ...THEME.typography.overline, color: colors.successLight, fontFamily: FONT },
-  statusPillTextWarn: { color: colors.warningLight },
-  datePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
-  },
-  datePillText: { ...THEME.typography.overline, color: 'rgba(255,255,255,0.88)', fontFamily: FONT },
 
   // Body
   // 22 between sections against 10 inside one (see `section`). The two numbers
   // are what separate the blocks; when they were 16 and 10 the whole screen
   // read as a single list.
   body: { paddingTop: 16, paddingBottom: 28, gap: 22 },
-  alertsWrap: { paddingHorizontal: 16, gap: 8 },
 
   // Section
   section: { gap: 10 },
@@ -921,10 +895,6 @@ const s = StyleSheet.create({
   emptySub: { ...THEME.typography.caption, color: C.ink3, textAlign: 'center', fontFamily: FONT, lineHeight: 17 },
   emptyCta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 9, backgroundColor: TINT.brand },
   emptyCtaText: { ...THEME.typography.labelSm, color: C.brand, fontFamily: FONT },
-
-  // Alerts
-  alertBanner: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 11, borderRadius: 10, borderLeftWidth: 3 },
-  alertText: { ...THEME.typography.caption, flex: 1, fontFamily: FONT }
 });
 
 export default AdminDashboardScreen;
