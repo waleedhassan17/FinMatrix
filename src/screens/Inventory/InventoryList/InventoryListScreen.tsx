@@ -11,7 +11,9 @@ import {
   TextInput,
   TouchableOpacity,
   RefreshControl,
-  Modal
+  Modal,
+  Pressable,
+  ScrollView,
 } from 'react-native';
 
 import { Feather } from '@expo/vector-icons';
@@ -23,10 +25,10 @@ import { THEME } from '../../../utils/theme';
 import {
   ReportContainer,
   ReportHeader,
-  HEADER_NAVY,
   HeaderAction,
   HeaderIconButton,
 } from '../../../components/reports/ReportUI';
+import { FilterTabs, type TabItem } from '../../../components/shared/Tabs';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   fetchInventoryItems,
@@ -43,17 +45,23 @@ import {
   setAgencyFilter,
   setViewMode
 } from './inventoryListSlice';
-import type { StockFilter, ViewMode } from './inventoryListSlice';
-import type { InventoryItemData } from '../../../models/inventoryModel';
+import type { StockFilter } from './inventoryListSlice';
+import { itemStockStatus, type InventoryItemData, type ItemStockStatus } from '../../../models/inventoryModel';
+import { STOCK_STATUS_DISPLAY, itemRowStatus, unitSuffix } from '../stockStatusDisplay';
 import { warehouseAgencies } from '../../../models/agencyModel';
 import { isFeatureEnabled } from '../../../utils/featureGates';
 import EmptyState from '../../../components/shared/EmptyState';
 import ItemThumbnail from '../../../components/shared/ItemThumbnail';
 import { useCapability } from '../../../hooks/useCapability';
-import { formatCurrency } from '../../../utils/formatters';
+import { formatCurrency, formatQty } from '../../../utils/formatters';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
+
+// The screen's side gutter. FilterTabs pads its scrolling row by spacing.lg and
+// cannot be told otherwise, so everything else lines up to it: search,
+// dropdowns, summary card and list share one left edge.
+const GUTTER = spacing.lg;
 
 // The grid sizes its cards with flex, not from the window's width. That width
 // was read once when the module loaded, so a window resized afterwards — the
@@ -63,38 +71,17 @@ const { colors, radius, shadows, spacing, typography } = THEME;
 const GRID_SPACER_ID = '__grid-spacer__';
 type PickerType = 'category' | 'agency' | null;
 
-// ── Constants ─────────────────────────────────────────
-type FilterChip = { key: StockFilter; label: string; color: string };
-const STOCK_FILTER_CHIPS: FilterChip[] = [
-  { key: 'all', label: 'All', color: colors.actionGreen },
-  { key: 'in_stock', label: 'In Stock', color: colors.success },
-  { key: 'low_stock', label: 'Low Stock', color: colors.warning },
-  { key: 'out_of_stock', label: 'Out of Stock', color: colors.danger },
-];
+// ── Stock status ──────────────────────────────────────
+// The rule and its wording are shared with the detail screen. An inactive item
+// is listed under "All" only, and used to look exactly like an active one; its
+// row now says so.
+type ItemStatus = ItemStockStatus;
+const STATUS_DISPLAY = STOCK_STATUS_DISPLAY;
+const getStockStatus = itemStockStatus;
+const getRowStatus = itemRowStatus;
 
-const getStockStatus = (item: InventoryItemData): StockFilter => {
-  if (item.quantityOnHand <= 0) return 'out_of_stock';
-  if (item.quantityOnHand <= item.reorderPoint) return 'low_stock';
-  return 'in_stock';
-};
-
-const getStockColor = (status: StockFilter): string => {
-  switch (status) {
-    case 'in_stock': return colors.success;
-    case 'low_stock': return colors.warning;
-    case 'out_of_stock': return colors.danger;
-    default: return colors.textSecondary;
-  }
-};
-
-const getStockLabel = (status: StockFilter): string => {
-  switch (status) {
-    case 'in_stock': return 'In Stock';
-    case 'low_stock': return 'Low Stock';
-    case 'out_of_stock': return 'Out of Stock';
-    default: return '';
-  }
-};
+const qtyWithUnit = (item: InventoryItemData): string =>
+  `${formatQty(item.quantityOnHand)}${unitSuffix(item)}`;
 
 // ── Category options ────────────────────────────────
 const buildCategoryOptions = (items: InventoryItemData[] | undefined | null) => {
@@ -179,17 +166,37 @@ const InventoryListScreen: React.FC = () => {
     }
 
     return result.sort((a, b) => a.name.localeCompare(b.name));
-  }, [items, searchQuery, activeFilter, categoryFilter, agencyFilter]);
+  }, [items, searchQuery, activeFilter, categoryFilter, agencyFilter, agenciesEnabled]);
 
-  // ── Summary stats ─────────────────────────────────
-  const summary = useMemo(() => {
-    const activeItems = items.filter(i => i.isActive);
-    const totalItems = activeItems.length;
-    const totalValue = activeItems.reduce((sum, i) => sum + i.unitCost * i.quantityOnHand, 0);
-    const lowStock = activeItems.filter(i => i.quantityOnHand > 0 && i.quantityOnHand <= i.reorderPoint).length;
-    const outOfStock = activeItems.filter(i => i.quantityOnHand <= 0).length;
-    return { totalItems, totalValue, lowStock, outOfStock };
+  // ── Stock value ───────────────────────────────────
+  // EVERY item, inactive ones included: deactivating an item hides it from
+  // pickers but its stock is still on the balance sheet. This used to count
+  // active items only, so the app and the website showed different totals for
+  // the same company (web: inventoryTotals in models/inventory.ts).
+  const totalValue = useMemo(
+    () => items.reduce((sum, i) => sum + i.unitCost * i.quantityOnHand, 0),
+    [items],
+  );
+
+  // ── Tab counts ────────────────────────────────────
+  // Worked out by the same rule as the filter itself, so a badge is the
+  // number of rows its tab lists: "All" lists inactive items too, the stock
+  // tabs only active ones. Search and category do not narrow them — the same
+  // as the website's chips.
+  const stockTabs = useMemo<TabItem<StockFilter>[]>(() => {
+    const counts: Record<ItemStatus, number> = { in_stock: 0, low_stock: 0, out_of_stock: 0 };
+    for (const item of items) {
+      if (item.isActive) counts[getStockStatus(item)] += 1;
+    }
+    return [
+      { label: 'All', value: 'all', count: items.length },
+      { label: 'In stock', value: 'in_stock', count: counts.in_stock },
+      { label: 'Low stock', value: 'low_stock', count: counts.low_stock },
+      { label: 'Out of stock', value: 'out_of_stock', count: counts.out_of_stock },
+    ];
   }, [items]);
+
+  const onTab = useCallback((value: StockFilter) => dispatch(setActiveFilter(value)), [dispatch]);
 
   const categoryOptions = useMemo(() => buildCategoryOptions(items), [items]);
   const agencyOptions = useMemo(() => buildAgencyOptions(), []);
@@ -220,38 +227,69 @@ const InventoryListScreen: React.FC = () => {
   }, [agenciesEnabled]);
 
   // ── List View Row ─────────────────────────────────
+  // Quantity leads — this is a stock screen — with the status in words beside
+  // it, not colour alone. The two amounts sit in a labelled footer: they used
+  // to stack unlabelled under the quantity, where "Rs 10,000.00" over
+  // "Rs 30,000.00" left the reader to guess which was the unit cost.
   const renderListItem = useCallback(
     ({ item }: { item: InventoryItemData }) => {
-      const status = getStockStatus(item);
-      const stockColor = getStockColor(status);
+      const status = getRowStatus(item);
+      const display = STATUS_DISPLAY[status];
+      const qtyColor = status === 'inactive' ? colors.textSecondary : display.color;
       const agencyName = getAgencyName(item.sourceAgencyId);
-      const totalVal = item.unitCost * item.quantityOnHand;
+      const unit = item.unitOfMeasure?.trim();
+      const value = formatCurrency(item.unitCost * item.quantityOnHand);
+      const meta = [item.sku, item.category].filter(Boolean).join(' · ');
 
       return (
         <TouchableOpacity
-          style={styles.listRow}
+          style={styles.row}
           activeOpacity={0.6}
           onPress={() => navigation.navigate('InventoryDetail', { itemId: item.itemId })}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.name}, ${qtyWithUnit(item)}, ${display.label}, value ${value}`}
         >
-          <ItemThumbnail uri={item.thumbnailUrl} style={styles.listThumb} />
-          <View style={styles.listRowLeft}>
-            <Text style={styles.listName} numberOfLines={1}>{item.name}</Text>
-            <Text style={styles.listSku}>{item.sku}</Text>
-            <View style={styles.listMeta}>
-              <Text style={styles.listCategory}>{item.category}</Text>
+          <View style={styles.rowTop}>
+            <ItemThumbnail uri={item.thumbnailUrl} style={styles.listThumb} />
+            <View style={styles.rowMain}>
+              <Text style={styles.listName} numberOfLines={1}>{item.name}</Text>
+              {meta ? <Text style={styles.listMeta} numberOfLines={1}>{meta}</Text> : null}
               {agencyName && (
                 <View style={styles.agencyBadge}>
-                  <Text style={styles.agencyBadgeText}>{agencyName}</Text>
+                  <Text style={styles.agencyBadgeText} numberOfLines={1}>{agencyName}</Text>
                 </View>
               )}
             </View>
+            <View style={styles.rowStock}>
+              <Text style={styles.qtyLine} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                <Text style={[styles.qty, { color: qtyColor }]}>{formatQty(item.quantityOnHand)}</Text>
+                {unit ? <Text style={styles.qtyUnit}>{` ${unit}`}</Text> : null}
+              </Text>
+              <View style={styles.statusRow}>
+                <View style={[styles.statusDot, { backgroundColor: display.color }]} />
+                <Text style={[styles.statusText, { color: display.color }]} numberOfLines={1}>
+                  {display.label}
+                </Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.listRowRight}>
-            <Text style={[styles.listQty, { color: stockColor }]}>
-              {item.quantityOnHand}
-            </Text>
-            <Text style={styles.listUnitCost}>{formatCurrency(item.unitCost)}</Text>
-            <Text style={styles.listTotalVal}>{formatCurrency(totalVal)}</Text>
+
+          {/* Wraps rather than shrinking: when both amounts cannot share one
+              line — a billion-rupee item on a narrow phone — Value drops to a
+              line of its own, still right-aligned and at full size. */}
+          <View style={styles.rowFooter}>
+            <View style={styles.footerGroup}>
+              <Text style={styles.footerLabel}>Avg. cost</Text>
+              <Text style={styles.footerAvg} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                {formatCurrency(item.unitCost)}
+              </Text>
+            </View>
+            <View style={[styles.footerGroup, styles.footerGroupEnd]}>
+              <Text style={styles.footerLabel}>Value</Text>
+              <Text style={styles.footerValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                {value}
+              </Text>
+            </View>
           </View>
         </TouchableOpacity>
       );
@@ -263,24 +301,26 @@ const InventoryListScreen: React.FC = () => {
   const renderGridItem = useCallback(
     ({ item }: { item: InventoryItemData }) => {
       if (item.itemId === GRID_SPACER_ID) return <View style={styles.gridSpacer} />;
-      const status = getStockStatus(item);
-      const stockColor = getStockColor(status);
+      const display = STATUS_DISPLAY[getRowStatus(item)];
 
       return (
         <TouchableOpacity
           style={styles.gridCard}
           activeOpacity={0.6}
           onPress={() => navigation.navigate('InventoryDetail', { itemId: item.itemId })}
+          accessibilityRole="button"
+          // The dot carries the status by colour; the label says it in words.
+          accessibilityLabel={`${item.name}, ${qtyWithUnit(item)}, ${display.label}`}
         >
           <ItemThumbnail uri={item.thumbnailUrl} style={styles.gridImage} iconSize={28} />
           <View style={styles.gridCardBody}>
             <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.gridSku} numberOfLines={1}>{item.sku}</Text>
             <View style={styles.gridBottom}>
-              <Text style={[styles.gridQty, { color: stockColor }]} numberOfLines={1}>
-                Qty: {Number(item.quantityOnHand).toLocaleString()}
+              <Text style={[styles.gridQty, { color: display.color }]} numberOfLines={1}>
+                Qty: {qtyWithUnit(item)}
               </Text>
-              <View style={[styles.statusDot, { backgroundColor: stockColor }]} />
+              <View style={[styles.gridDot, { backgroundColor: display.color }]} />
             </View>
           </View>
         </TouchableOpacity>
@@ -299,6 +339,37 @@ const InventoryListScreen: React.FC = () => {
     [filteredItems],
   );
 
+  // ── Summary card ──────────────────────────────────
+  // The list's header, so it scrolls away and leaves the screen to the rows.
+  // The figure is always shown whole: it has the card's full width, which
+  // holds Rs 99,999,999,999.99 at full size on a 360pt phone, and only shrinks
+  // past that. It used to share a row with three counts in quarter-width
+  // columns and broke mid-number ("Rs 1,395,31" / "6.45"). The counts now ride
+  // on the filter tabs.
+  const totalValueText = formatCurrency(totalValue);
+  const SummaryCard = useMemo(
+    () =>
+      items.length === 0 ? null : (
+        <View
+          style={styles.summaryCard}
+          accessible
+          accessibilityLabel={`Total stock value, ${totalValueText}, at weighted-average cost`}
+        >
+          <Text style={styles.summaryLabel}>Total stock value</Text>
+          <Text
+            style={styles.summaryValue}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {totalValueText}
+          </Text>
+          <Text style={styles.summaryCaption}>At weighted-average cost</Text>
+        </View>
+      ),
+    [items.length, totalValueText],
+  );
+
   const ListEmptyComponent = useMemo(
     () => (
       <EmptyState
@@ -313,6 +384,15 @@ const InventoryListScreen: React.FC = () => {
       />
     ),
     [searchQuery, items.length, canManage],
+  );
+
+  const refreshControl = (
+    <RefreshControl
+      refreshing={isLoading}
+      onRefresh={onRefresh}
+      colors={[colors.actionGreen]}
+      tintColor={colors.actionGreen}
+    />
   );
 
   // ═════════════════════════════════════════════════════
@@ -330,18 +410,28 @@ const InventoryListScreen: React.FC = () => {
               <TouchableOpacity
                 style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
                 onPress={() => dispatch(setViewMode('list'))}
+                accessibilityRole="button"
+                accessibilityState={{ selected: viewMode === 'list' }}
+                accessibilityLabel="List view"
               >
                 <Feather name="list" size={16} color={viewMode === 'list' ? colors.neutral0 : 'rgba(255,255,255,0.7)'} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.viewToggleBtn, viewMode === 'grid' && styles.viewToggleBtnActive]}
                 onPress={() => dispatch(setViewMode('grid'))}
+                accessibilityRole="button"
+                accessibilityState={{ selected: viewMode === 'grid' }}
+                accessibilityLabel="Grid view"
               >
                 <Feather name="grid" size={15} color={viewMode === 'grid' ? colors.neutral0 : 'rgba(255,255,255,0.7)'} />
               </TouchableOpacity>
             </View>
             {canManage && (
-              <HeaderIconButton icon="upload" onPress={() => navigation.navigate('InventoryImport')} />
+              <HeaderIconButton
+                icon="upload"
+                onPress={() => navigation.navigate('InventoryImport')}
+                accessibilityLabel="Import items from Excel"
+              />
             )}
             <HeaderAction label="New" onPress={() => navigation.navigate('InventoryForm')} />
           </>
@@ -349,12 +439,12 @@ const InventoryListScreen: React.FC = () => {
       />
 
       {/* ── Body content ── */}
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={styles.body}>
 
       {/* ── Search Bar ── */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Feather name="search" size={16} color={THEME.colors.textTertiary} style={{ marginRight: 8 }} />
+          <Feather name="search" size={16} color={colors.textTertiary} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search by name, SKU, or barcode..."
@@ -365,34 +455,23 @@ const InventoryListScreen: React.FC = () => {
             returnKeyType="search"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => dispatch(setSearchQuery(''))} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Feather name="x-circle" size={16} color={THEME.colors.textTertiary} />
+            <TouchableOpacity
+              onPress={() => dispatch(setSearchQuery(''))}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <Feather name="x-circle" size={16} color={colors.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* ── Stock Filter Chips ── */}
-      <View style={styles.chipRow}>
-        {STOCK_FILTER_CHIPS.map(chip => {
-          const selected = activeFilter === chip.key;
-          return (
-            <TouchableOpacity
-              key={chip.key}
-              style={[
-                styles.chip,
-                selected && { backgroundColor: chip.color, borderColor: chip.color },
-              ]}
-              activeOpacity={0.7}
-              onPress={() => dispatch(setActiveFilter(chip.key))}
-            >
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                {chip.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {/* ── Stock filter tabs ── */}
+      {/* One scrolling line, the same control every Transactions list uses.
+          The hand-built chips wrapped "Out of Stock" onto a second line and
+          jumped in width when one was selected and turned bold. */}
+      <FilterTabs tabs={stockTabs} active={activeFilter} onChange={onTab} />
 
       {/* ── Category & Agency Dropdowns ── */}
       <View style={styles.dropdownRow}>
@@ -400,11 +479,17 @@ const InventoryListScreen: React.FC = () => {
           style={styles.dropdownBtn}
           activeOpacity={0.7}
           onPress={() => setActivePicker('category')}
+          accessibilityRole="button"
+          accessibilityLabel={`Category: ${selectedCategoryLabel}`}
         >
-          <Text style={styles.dropdownBtnText} numberOfLines={1}>
+          <Feather name="tag" size={14} color={colors.textTertiary} />
+          <Text
+            style={[styles.dropdownBtnText, categoryFilter !== 'all' && styles.dropdownBtnTextSet]}
+            numberOfLines={1}
+          >
             {selectedCategoryLabel}
           </Text>
-          <Text style={styles.dropdownArrow}>▾</Text>
+          <Feather name="chevron-down" size={16} color={colors.textTertiary} />
         </TouchableOpacity>
 
         {agenciesEnabled && (
@@ -412,11 +497,17 @@ const InventoryListScreen: React.FC = () => {
             style={styles.dropdownBtn}
             activeOpacity={0.7}
             onPress={() => setActivePicker('agency')}
+            accessibilityRole="button"
+            accessibilityLabel={`Source: ${selectedAgencyLabel}`}
           >
-            <Text style={styles.dropdownBtnText} numberOfLines={1}>
+            <Feather name="briefcase" size={14} color={colors.textTertiary} />
+            <Text
+              style={[styles.dropdownBtnText, agencyFilter !== 'all' && styles.dropdownBtnTextSet]}
+              numberOfLines={1}
+            >
               {selectedAgencyLabel}
             </Text>
-            <Text style={styles.dropdownArrow}>▾</Text>
+            <Feather name="chevron-down" size={16} color={colors.textTertiary} />
           </TouchableOpacity>
         )}
       </View>
@@ -427,68 +518,62 @@ const InventoryListScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={() => setActivePicker(null)}
       >
-        <TouchableOpacity
-          style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setActivePicker(null)}
-        >
+        <View style={styles.pickerOverlay}>
+          {/* The backdrop is a sibling of the sheet, not its parent, so a
+              scroll or tap inside the sheet can never fall through and close it. */}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setActivePicker(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          />
           <View style={styles.pickerModal}>
             <View style={styles.pickerHeader}>
               <Text style={styles.pickerTitle}>{pickerTitle}</Text>
-              <TouchableOpacity onPress={() => setActivePicker(null)}>
-                <Text style={styles.pickerClose}>X</Text>
+              <TouchableOpacity
+                style={styles.pickerCloseBtn}
+                onPress={() => setActivePicker(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+              >
+                <Feather name="x" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            {pickerOptions.map(option => {
-              const isSelected =
-                (activePicker === 'category' && option.value === categoryFilter) ||
-                (activePicker === 'agency' && option.value === agencyFilter);
+            {/* Scrolls: a company with more categories than fit in 70% of the
+                screen could not reach the ones past the bottom edge. */}
+            <ScrollView style={styles.pickerList} bounces={false}>
+              {pickerOptions.map(option => {
+                const isSelected =
+                  (activePicker === 'category' && option.value === categoryFilter) ||
+                  (activePicker === 'agency' && option.value === agencyFilter);
 
-              return (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
-                  activeOpacity={0.7}
-                  onPress={() => handlePickerSelection(option.value)}
-                >
-                  <Text
-                    style={[
-                      styles.pickerOptionText,
-                      isSelected && styles.pickerOptionTextSelected,
-                    ]}
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
+                    activeOpacity={0.7}
+                    onPress={() => handlePickerSelection(option.value)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                   >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+                    <Text
+                      style={[
+                        styles.pickerOptionText,
+                        isSelected && styles.pickerOptionTextSelected,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {option.label}
+                    </Text>
+                    {isSelected ? <Feather name="check" size={18} color={colors.actionGreen} /> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
-
-      {/* ── Summary Bar ── */}
-      <View style={styles.summaryBar}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{summary.totalItems}</Text>
-          <Text style={styles.summaryLabel}>Total Items</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{formatCurrency(summary.totalValue)}</Text>
-          <Text style={styles.summaryLabel}>Total Value</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: colors.warning }]}>{summary.lowStock}</Text>
-          <Text style={styles.summaryLabel}>Low Stock</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: colors.danger }]}>{summary.outOfStock}</Text>
-          <Text style={styles.summaryLabel}>Out of Stock</Text>
-        </View>
-      </View>
 
       {/* ── List / Grid ── */}
       {viewMode === 'list' ? (
@@ -497,17 +582,11 @@ const InventoryListScreen: React.FC = () => {
           data={filteredItems}
           keyExtractor={keyExtractor}
           renderItem={renderListItem}
+          ListHeaderComponent={SummaryCard}
           ListEmptyComponent={ListEmptyComponent}
           contentContainerStyle={filteredItems.length === 0 ? styles.emptyContainer : styles.listContent}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoading}
-              onRefresh={onRefresh}
-              colors={[colors.actionGreen]}
-              tintColor={colors.actionGreen}
-            />
-          }
+          refreshControl={refreshControl}
         />
       ) : (
         <FlatList
@@ -517,17 +596,11 @@ const InventoryListScreen: React.FC = () => {
           renderItem={renderGridItem}
           numColumns={2}
           columnWrapperStyle={styles.gridRow}
+          ListHeaderComponent={SummaryCard}
           ListEmptyComponent={ListEmptyComponent}
-          contentContainerStyle={filteredItems.length === 0 ? styles.emptyContainer : styles.gridContent}
+          contentContainerStyle={filteredItems.length === 0 ? styles.emptyContainer : styles.listContent}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoading}
-              onRefresh={onRefresh}
-              colors={[colors.actionGreen]}
-              tintColor={colors.actionGreen}
-            />
-          }
+          refreshControl={refreshControl}
         />
       )}
       </View>
@@ -538,29 +611,26 @@ const InventoryListScreen: React.FC = () => {
 // ═══════════════════════════════════════════════════════
 // STYLES
 // ═══════════════════════════════════════════════════════
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+// The app's card: white, 12pt corners, a hairline border doing the separating
+// and a light shadow lifting it (ReportUI's S.card).
+const card = {
+  backgroundColor: colors.surface,
+  borderRadius: radius.lg,
+  borderWidth: StyleSheet.hairlineWidth,
+  borderColor: colors.border,
+  ...shadows.xs,
+} as const;
 
-  // ── Header ────────────────────────────────────────
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
-    backgroundColor: colors.surface,
-  },
-  headerTitle: {
-    ...THEME.typography.h2,
-    color: colors.textPrimary,
-  },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+const styles = StyleSheet.create({
+  // One grey surface under search, tabs and list — the Transactions screens'
+  // layout. FilterTabs fades its edges into colors.background, so the row it
+  // sits on has to be that colour too.
+  body: { flex: 1, backgroundColor: colors.background },
 
   // ── View Toggle ───────────────────────────────────
   viewToggle: {
     flexDirection: 'row',
-    borderRadius: THEME.radius.md,
+    borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.18)',
     overflow: 'hidden',
@@ -573,132 +643,105 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   viewToggleBtnActive: {
-    backgroundColor: THEME.colors.actionGreen,
+    backgroundColor: colors.actionGreen,
   },
 
   // ── Search ────────────────────────────────────────
   searchContainer: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surface,
+    paddingHorizontal: GUTTER,
+    paddingTop: spacing.sm,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs + 4,
+    paddingHorizontal: spacing.sm,
     height: 42,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  searchIcon: { ...typography.bodySm, marginRight: spacing.xs },
+  searchIcon: { marginRight: spacing.xs },
   searchInput: {
-    ...THEME.typography.bodyMd,
+    ...typography.bodyMd,
     flex: 1,
     color: colors.textPrimary,
     paddingVertical: 0,
-  },
-  clearBtn: {
-    ...typography.bodyLg,
-    color: colors.textTertiary,
-    paddingHorizontal: spacing.xxs,
-  },
-
-  // ── Filter Chips ──────────────────────────────────
-  chipRow: {
-    flexDirection: 'row',
-    // Wraps rather than overflowing: four chips need more than a 393pt
-    // phone's width once the selected one turns bold.
-    flexWrap: 'wrap',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surface,
-    gap: spacing.xs,
-  },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xxs + 2,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  chipText: {
-    ...typography.bodySm,
-    color: colors.textSecondary,
-  },
-  chipTextSelected: {
-    ...typography.h5,
-    color: colors.surface,
   },
 
   // ── Dropdown Row ──────────────────────────────────
   dropdownRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: GUTTER,
     paddingBottom: spacing.xs,
-    backgroundColor: colors.surface,
     gap: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   dropdownBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xs + 4,
-    paddingVertical: spacing.xxs + 4,
+    gap: spacing.xs,
+    height: 42,
+    paddingHorizontal: spacing.sm,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   dropdownBtnText: {
-    ...THEME.typography.caption,
+    ...typography.bodySm,
     flex: 1,
     color: colors.textSecondary,
   },
-  dropdownArrow: {
-    ...typography.overline,
-    color: colors.textTertiary,
-    marginLeft: spacing.xxs,
+  // A filter that is narrowing the list reads darker than the "All …" default.
+  dropdownBtnTextSet: {
+    ...typography.labelMd,
+    color: colors.textPrimary,
   },
 
+  // ── Picker ────────────────────────────────────────
   pickerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(15,23,42,0.35)',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: GUTTER,
   },
   pickerModal: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     maxHeight: '70%',
+    overflow: 'hidden',
     ...shadows.sm,
   },
   pickerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.xxs,
+    paddingVertical: spacing.xxs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   pickerTitle: {
-    ...THEME.typography.h5,
-    
+    ...typography.h5,
     color: colors.textPrimary,
   },
-  pickerClose: {
-    ...typography.h5,
-    color: colors.textSecondary,
+  pickerCloseBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  // Sizes to its options and stops at the sheet's max height, then scrolls.
+  pickerList: { flexGrow: 0, flexShrink: 1 },
   pickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    minHeight: 48,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
@@ -706,61 +749,51 @@ const styles = StyleSheet.create({
     backgroundColor: colors.actionGreen + '12',
   },
   pickerOptionText: {
-    ...THEME.typography.bodyMd,
+    ...typography.bodyMd,
+    flex: 1,
     color: colors.textPrimary,
   },
   pickerOptionTextSelected: {
-    ...typography.h5,
+    ...typography.labelLg,
     color: colors.actionGreen,
   },
 
-  // ── Summary Bar ───────────────────────────────────
-  summaryBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xxs,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.xs,
-    ...shadows.sm,
-  },
-  summaryItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  summaryValue: {
-    ...THEME.typography.h5,
-    
-    color: colors.textPrimary,
+  // ── Summary card ──────────────────────────────────
+  summaryCard: {
+    ...card,
+    padding: spacing.md,
+    marginTop: spacing.xxs,
   },
   summaryLabel: {
     ...typography.overline,
-    color: colors.textTertiary,
-    marginTop: 1,
+    color: colors.textSecondary,
   },
-  summaryDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: colors.border,
+  summaryValue: {
+    ...typography.h2,
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+    marginTop: spacing.xxs,
+  },
+  summaryCaption: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 2,
   },
 
   // ── List View ─────────────────────────────────────
-  listContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxl },
-  emptyContainer: { flexGrow: 1 },
+  listContent: { paddingHorizontal: GUTTER, paddingTop: spacing.xxs, paddingBottom: spacing.xxl },
+  emptyContainer: { flexGrow: 1, paddingHorizontal: GUTTER, paddingTop: spacing.xxs },
 
-  listRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 4,
-    borderRadius: radius.sm,
+  row: {
+    ...card,
     marginTop: spacing.xs,
-    ...shadows.xs,
+  },
+  rowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
   },
   listThumb: {
     width: 44,
@@ -768,53 +801,91 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     marginRight: spacing.sm,
   },
-  listRowLeft: { flex: 1, marginRight: spacing.xs },
+  // minWidth 0 lets a long name ellipsize instead of pushing the quantity off.
+  rowMain: { flex: 1, minWidth: 0, marginRight: spacing.sm },
   listName: {
-    ...THEME.typography.h4,
-    
+    ...typography.h4,
     color: colors.textPrimary,
   },
-  listSku: {
-    ...THEME.typography.caption,
-    marginTop: 1,
-  },
   listMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xxs,
-    gap: spacing.xxs,
-  },
-  listCategory: {
     ...typography.caption,
     color: colors.textSecondary,
+    marginTop: 2,
   },
   agencyBadge: {
+    alignSelf: 'flex-start',
     backgroundColor: colors.secondary + '15',
     paddingHorizontal: spacing.xxs + 4,
     paddingVertical: 1,
-    borderRadius: 8,
+    borderRadius: radius.sm,
+    marginTop: spacing.xxs,
   },
   agencyBadgeText: {
     ...typography.overline,
     color: colors.secondary,
   },
-  listRowRight: { alignItems: 'flex-end' },
-  listQty: {
-    ...THEME.typography.h2,
-    
+
+  // Never more than half the row, so even a seven-figure quantity leaves the
+  // name room to read.
+  rowStock: { alignItems: 'flex-end', flexShrink: 0, maxWidth: '50%' },
+  qtyLine: { textAlign: 'right' },
+  qty: {
+    ...typography.h3,
+    fontVariant: ['tabular-nums'],
   },
-  listUnitCost: {
+  qtyUnit: {
     ...typography.caption,
     color: colors.textTertiary,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs + 1,
     marginTop: 1,
   },
-  listTotalVal: {
-    ...THEME.typography.labelMd,
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { ...typography.labelSm },
+
+  rowFooter: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: spacing.sm,
+    rowGap: 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderLight,
+  },
+  footerGroup: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.xxs + 2,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  // Takes the rest of the line, so Value sits at the right edge whether it
+  // shares the line with Avg. cost or has wrapped onto its own.
+  footerGroupEnd: { flexGrow: 1, justifyContent: 'flex-end' },
+  footerLabel: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    flexShrink: 0,
+  },
+  footerAvg: {
+    ...typography.caption,
     color: colors.textSecondary,
+    fontVariant: ['tabular-nums'],
+    flexShrink: 1,
+  },
+  footerValue: {
+    ...typography.labelMd,
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+    flexShrink: 1,
   },
 
   // ── Grid View ─────────────────────────────────────
-  gridContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxs, paddingBottom: spacing.xxl },
   gridRow: {
     gap: spacing.xs,
     marginTop: spacing.xs,
@@ -822,10 +893,8 @@ const styles = StyleSheet.create({
   // No overflow: 'hidden' here — on iOS it clips the card's own shadow. The
   // image tile rounds its own top corners instead.
   gridCard: {
+    ...card,
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    ...shadows.xs,
   },
   gridSpacer: { flex: 1 },
   // The photo, or a package icon on the brand tint when there is none.
@@ -839,8 +908,7 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   gridName: {
-    ...THEME.typography.labelMd,
-    
+    ...typography.labelMd,
     color: colors.textPrimary,
     marginBottom: 2,
   },
@@ -853,12 +921,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.xxs,
   },
   gridQty: {
     ...typography.labelMd,
-    
+    flexShrink: 1,
+    fontVariant: ['tabular-nums'],
   },
-  statusDot: {
+  gridDot: {
     width: 8,
     height: 8,
     borderRadius: 4,

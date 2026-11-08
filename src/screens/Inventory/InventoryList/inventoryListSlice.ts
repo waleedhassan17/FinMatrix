@@ -157,9 +157,12 @@ export const inventoryListSlice = createAppSlice({
     // correction and hits shrinkage 6400, whereas opening stock is a balance
     // sheet event and hits Opening Balance Equity 3900, leaving the P&L alone.
     setOpeningStock: create.asyncThunk(
-      async (arg: { itemId: string; quantity: number; notes?: string }) =>
+      // asOfDate is the day the stock was held (YYYY-MM-DD); the server
+      // defaults it to today when it is left out.
+      async (arg: { itemId: string; quantity: number | string; asOfDate?: string; notes?: string }) =>
         setOpeningStockAPI(arg.itemId, {
           quantity: String(arg.quantity),
+          asOfDate: arg.asOfDate,
           notes: arg.notes,
         }),
       {

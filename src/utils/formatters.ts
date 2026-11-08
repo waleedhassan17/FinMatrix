@@ -9,6 +9,16 @@ export const formatCurrency = (amount: number, currency = 'Rs '): string => {
   return `${sign}${currency}${formatted}`;
 };
 
+const QTY_FORMAT = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 });
+
+/**
+ * A stock quantity: `12,500`, `2.5`, `0.125`. Grouped like money, but with no
+ * fixed decimals — "3.00 Unit" reads as a price. Mirrors the web's formatQty
+ * (models/inventory.ts).
+ */
+export const formatQty = (qty: number): string =>
+  QTY_FORMAT.format(Number.isFinite(qty) ? qty : 0);
+
 export const formatDate = (date: string | Date): string =>
   dayjs(date).format('MMM D, YYYY');
 

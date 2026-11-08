@@ -1,6 +1,10 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Inventory Detail Screen
 // ═══════════════════════════════════════════════════════
+// One item: who it is, how much is on hand and what it is worth, what can be
+// done with it, then its details, movements and purchase orders. Laid out to
+// match the website's item page (InventoryDetailPage): the same figures, the
+// same opening-stock rule, the same owner-only actions.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -10,23 +14,26 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
-  StatusBar
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import Toast from 'react-native-toast-message';
 import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { HEADER_NAVY } from '../../../components/reports/ReportUI';
+import {
+  ReportContainer,
+  ReportHeader,
+  Badge,
+  ErrorBlock,
+  FigureStrip,
+  Segmented,
+  type FigureItem,
+} from '../../../components/reports/ReportUI';
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import {
   selectInventoryItems,
-  setOpeningStock,
   toggleInventoryItem,
   uploadItemImage,
   removeItemImage,
@@ -49,14 +56,22 @@ import {
   fetchItemPurchaseOrders,
 } from './inventoryDetailSlice';
 import type { InventoryDetailTab } from './inventoryDetailSlice';
-import { movementLabel } from '../../../models/inventoryModel';
+import {
+  canSetOpeningStock,
+  itemStockStatus,
+  marginAtAverageCost,
+  movementLabel,
+  onOrderForItem,
+} from '../../../models/inventoryModel';
 import { PO_STATUS_COLORS, PO_STATUS_LABELS } from '../../../models/purchaseOrderModel';
-import { useCapability } from '../../../hooks/useCapability';
+import { useCapability, useIsOwner } from '../../../hooks/useCapability';
 import type { PurchaseOrderStatus } from '../../../types';
 import { isFeatureEnabled } from '../../../utils/featureGates';
 import { warehouseAgencies } from '../../../models/agencyModel';
-import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { formatCurrency, formatDate, formatQty } from '../../../utils/formatters';
 import type { InventoryStackParamList } from '../../../navigators/stacks/InventoryStack';
+import { STOCK_STATUS_DISPLAY, itemRowStatus, unitSuffix } from '../stockStatusDisplay';
+import OpeningStockSheet from './OpeningStockSheet';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, radius, shadows, spacing, typography } = THEME;
@@ -65,20 +80,10 @@ type DetailRoute = RouteProp<InventoryStackParamList, 'InventoryDetail'>;
 type Nav = NativeStackNavigationProp<InventoryStackParamList>;
 
 // ── Helpers ───────────────────────────────────────────
-const getStockStatusLabel = (qty: number, reorder: number) => {
-  if (qty <= 0) return { label: 'Out of Stock', color: colors.danger };
-  if (qty <= reorder) return { label: 'Low Stock', color: colors.warning };
-  return { label: 'In Stock', color: colors.success };
-};
-
 // PO_STATUS_LABELS is the canonical vocabulary, but "Partially Received" and
 // "Fully Received" are list-screen widths — in a badge sharing a row with a PO
 // number, a vendor and a quantity they squeeze the number to an ellipsis. Only
 // the two long ones are shortened; the colours stay canonical.
-//
-// These render uppercased: styles.poStatusText spreads typography.overline,
-// which carries textTransform. The casing here is the source string, not what
-// the badge shows.
 const shortPOStatus = (status: PurchaseOrderStatus) => {
   if (status === 'partially_received') return 'Partial';
   if (status === 'fully_received') return 'Received';
@@ -99,6 +104,55 @@ const getMovementColor = (type: string) => {
     default: return colors.textSecondary;
   }
 };
+
+/** "+20", "−5" — a real minus sign, which a hyphen only imitates. */
+const signedQty = (n: number): string =>
+  `${n > 0 ? '+' : n < 0 ? '−' : ''}${formatQty(Math.abs(n))}`;
+
+// ── Pieces ────────────────────────────────────────────
+const ActionButton: React.FC<{
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  onPress: () => void;
+}> = ({ icon, label, onPress }) => (
+  <TouchableOpacity
+    style={[styles.card, styles.actionBtn]}
+    activeOpacity={0.7}
+    onPress={onPress}
+    accessibilityRole="button"
+    accessibilityLabel={label}
+  >
+    <View style={styles.actionIcon}>
+      <Feather name={icon} size={18} color={colors.primary} />
+    </View>
+    {/* Wraps rather than truncating: on a 320pt phone "Adjust stock" does
+        not fit a third of the row, and an ellipsis would hide the verb. */}
+    <Text style={styles.actionText} numberOfLines={2}>
+      {label}
+    </Text>
+  </TouchableOpacity>
+);
+
+type DetailRow = { label: string; value: string };
+
+const DetailSection: React.FC<{ title: string; rows: DetailRow[]; first?: boolean }> = ({
+  title,
+  rows,
+  first,
+}) => (
+  <View style={[styles.section, !first && styles.sectionBelow]}>
+    <Text style={styles.sectionTitle}>{title}</Text>
+    {rows.map(row => (
+      <View key={row.label} style={styles.detailRow}>
+        <Text style={styles.detailLabel}>{row.label}</Text>
+        <Text style={styles.detailValue}>{row.value}</Text>
+      </View>
+    ))}
+  </View>
+);
+
+/** "40", or "Not set" for a stock rule left at zero — not a literal 0. */
+const ruleQty = (n: number): string => (n ? formatQty(n) : 'Not set');
 
 // ═══════════════════════════════════════════════════════
 // COMPONENT
@@ -126,12 +180,20 @@ const InventoryDetailScreen: React.FC = () => {
   // rather than the 403 this screen used to assume (see utils/capabilities.ts).
   // The label says which of the two tapping will do.
   const poCap = useCapability('purchaseOrder.create');
+  const canAdjust = useCapability('inventory.adjust').allowed;
   // A photo is catalogue data, like the name: whoever may edit the item may
   // change it. Viewing it needs nothing.
   const canManage = useCapability('inventory.manageItems').allowed;
+  // Recording opening stock and (de)activating an item are the owner's, as on
+  // the website. Both used to be offered to everyone, and a staff member's tap
+  // ended in the server's refusal.
+  const isOwner = useIsOwner();
+  const posEnabled = isFeatureEnabled('purchaseOrders');
+  const agenciesEnabled = isFeatureEnabled('agencies');
   const { pickPhoto } = useItemPhotoPicker();
   const [viewerOpen, setViewerOpen] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [openingOpen, setOpeningOpen] = useState(false);
 
   const itemId = route.params.itemId;
 
@@ -142,8 +204,10 @@ const InventoryDetailScreen: React.FC = () => {
   const loadDetailData = useCallback(() => {
     if (!itemId) return;
     dispatch(fetchItemMovements(itemId));
-    dispatch(fetchItemPurchaseOrders({ itemId, includePending: poCap.needsApproval }));
-  }, [dispatch, itemId, poCap.needsApproval]);
+    if (posEnabled) {
+      dispatch(fetchItemPurchaseOrders({ itemId, includePending: poCap.needsApproval }));
+    }
+  }, [dispatch, itemId, poCap.needsApproval, posEnabled]);
 
   // On focus, not on mount. Both lists live in one shared slice, so opening a
   // second item overwrites them and unmounting that item clears them — coming
@@ -153,9 +217,16 @@ const InventoryDetailScreen: React.FC = () => {
   useFocusEffect(loadDetailData);
 
   const agencyName = useMemo(() => {
-    if (!item?.sourceAgencyId) return null;
+    if (!agenciesEnabled || !item?.sourceAgencyId) return null;
     return warehouseAgencies.find(a => a.id === item.sourceAgencyId)?.name ?? null;
-  }, [item]);
+  }, [item, agenciesEnabled]);
+
+  // Still to arrive from suppliers, counted from the open orders loaded for
+  // the Purchase orders tab (the item's own on-order column is always zero).
+  const onOrder = useMemo(
+    () => (posEnabled ? onOrderForItem(purchaseOrders, itemId) : { quantity: 0, orders: 0 }),
+    [posEnabled, purchaseOrders, itemId],
+  );
 
   const handleEdit = useCallback(() => {
     if (item) navigation.navigate('InventoryForm', { itemId: item.itemId });
@@ -195,53 +266,6 @@ const InventoryDetailScreen: React.FC = () => {
         },
       },
     ]);
-  }, [item, dispatch]);
-
-  // Opening stock: what was already on the shelf when the company started using
-  // FinMatrix. Offered only while the item has never held stock — after that a
-  // correction is an adjustment, and the server enforces the same rule.
-  const handleOpeningStock = useCallback(() => {
-    if (!item) return;
-    if (!Alert.prompt) {
-      Alert.alert(
-        'Opening Stock',
-        'Recording opening stock needs text entry, which this platform does not support in a dialog. Use a Purchase Order to bring the stock in instead.',
-      );
-      return;
-    }
-    Alert.prompt(
-          'Opening Stock',
-          `How many ${item.name} did you already own?\n\nThis records existing stock against Opening Balance Equity. It does not affect profit.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Record',
-              onPress: async (val?: string) => {
-                const qty = parseFloat(val ?? '');
-                if (isNaN(qty) || qty <= 0) return;
-                try {
-                  await dispatch(
-                    setOpeningStock({ itemId: item.itemId, quantity: qty, notes: 'Opening stock' }),
-                  ).unwrap();
-                  Toast.show({
-                    type: 'success',
-                    text1: 'Opening stock recorded',
-                    text2: `${item.name}: ${qty} on hand`
-                  });
-                } catch (e: any) {
-                  Toast.show({
-                    type: 'error',
-                    text1: 'Could not record opening stock',
-                    text2: e?.message || 'Please try again.',
-                  });
-                }
-              },
-            },
-          ],
-          'plain-text',
-          '',
-          'numeric',
-        );
   }, [item, dispatch]);
 
   // The full Adjustment screen, not an inline prompt. The old quick action
@@ -286,7 +310,7 @@ const InventoryDetailScreen: React.FC = () => {
     if (item.isActive && item.quantityOnHand !== 0) {
       Alert.alert(
         'Stock still on hand',
-        `This item still holds ${item.quantityOnHand} units (${formatCurrency(
+        `This item still holds ${formatQty(item.quantityOnHand)}${unitSuffix(item)} (${formatCurrency(
           item.quantityOnHand * item.unitCost,
         )}). Clear the stock with an adjustment before deactivating.`,
         [
@@ -328,237 +352,261 @@ const InventoryDetailScreen: React.FC = () => {
 
   if (!item) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-        <View style={styles.centered}>
-          <Text style={styles.notFound}>Item not found</Text>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}><Feather name="arrow-left" size={17} color={colors.secondary} style={{ marginRight: 2 }} /><Text style={styles.goBack}>Go Back</Text></View>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <ReportContainer>
+        <ReportHeader title="Item details" onBack={() => navigation.goBack()} backLabel="Inventory" />
+        <ErrorBlock message="This item could not be found. It may have been removed." />
+      </ReportContainer>
     );
   }
 
-  const status = getStockStatusLabel(item.quantityOnHand, item.reorderPoint);
+  // ── Derived ───────────────────────────────────────
+  const display = STOCK_STATUS_DISPLAY[itemRowStatus(item)];
+  const stock = itemStockStatus(item);
+  const unit = unitSuffix(item);
+  const photoUri = item.thumbnailUrl || item.imageUrl;
+  const meta = [item.sku, item.category].filter(Boolean).join(' · ');
+  const margin = marginAtAverageCost(item.sellingPrice, item.unitCost);
+
+  // The figures, as the website's tiles have them. On hand is toned only when
+  // the stock is short; the value has a row of its own so even a billion-rupee
+  // figure is shown whole. The old row put all three in equal thirds, where
+  // "Rs 30,000.00" already broke onto two lines.
+  const onHandCaption = [
+    item.reorderPoint > 0 ? `Reorder at ${formatQty(item.reorderPoint)}` : null,
+    onOrder.quantity > 0 ? `${formatQty(onOrder.quantity)} on order` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const figures: FigureItem[] = [
+    {
+      label: 'On hand',
+      value: `${formatQty(item.quantityOnHand)}${unit}`,
+      tone: !item.isActive ? 'default' : stock === 'out_of_stock' ? 'danger' : stock === 'low_stock' ? 'warning' : 'default',
+      caption: onHandCaption || undefined,
+    },
+    { label: 'Avg. unit cost', value: formatCurrency(item.unitCost), caption: 'Weighted average' },
+    {
+      label: 'Stock value',
+      value: formatCurrency(item.quantityOnHand * item.unitCost),
+      caption: 'On hand × average cost',
+    },
+  ];
+
+  // Opening stock is a one-time entry for an item that has never moved —
+  // the server refuses it otherwise. It used to be offered whenever the
+  // quantity was zero, including after the item had sold out.
+  const openingAvailable =
+    movementsStatus === 'succeeded' && canSetOpeningStock(item, movements.length);
 
   // ── Tabs ──────────────────────────────────────────
   const TABS: { key: InventoryDetailTab; label: string }[] = [
-    { key: 'stock', label: 'Stock Info' },
-    { key: 'transactions', label: 'Transactions' },
-    { key: 'purchaseOrders', label: 'POs' },
+    { key: 'stock', label: 'Details' },
+    { key: 'transactions', label: 'Movements' },
+    ...(posEnabled ? [{ key: 'purchaseOrders' as const, label: 'Purchase orders' }] : []),
+  ];
+  const tabIndex = Math.max(0, TABS.findIndex(t => t.key === activeTab));
+  const tab = TABS[tabIndex].key;
+
+  const detailSections: { title: string; rows: DetailRow[] }[] = [
+    {
+      title: 'Pricing',
+      rows: [
+        { label: 'Selling price', value: formatCurrency(item.sellingPrice) },
+        { label: 'Margin at average cost', value: margin === null ? '—' : `${margin.toFixed(1)}%` },
+        { label: 'Cost method', value: 'Weighted average' },
+      ],
+    },
+    {
+      title: 'Stock rules',
+      rows: [
+        { label: 'Unit', value: item.unitOfMeasure?.trim() || '—' },
+        { label: 'Reorder point', value: ruleQty(item.reorderPoint) },
+        { label: 'Reorder quantity', value: ruleQty(item.reorderQuantity) },
+        {
+          label: 'Min / max stock',
+          value:
+            item.minStock || item.maxStock
+              ? `${formatQty(item.minStock)} / ${item.maxStock ? formatQty(item.maxStock) : '—'}`
+              : 'Not set',
+        },
+      ],
+    },
+    {
+      title: 'Identification',
+      rows: [
+        { label: 'Barcode', value: item.barcodeData || '—' },
+        // Dropped entirely, not blanked, while the agencies feature is off.
+        ...(agenciesEnabled ? [{ label: 'Source agency', value: agencyName || '—' }] : []),
+        { label: 'Last updated', value: item.lastUpdated ? formatDate(item.lastUpdated) : '—' },
+      ],
+    },
   ];
 
   // ═════════════════════════════════════════════════════
   // RENDER
   // ═════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={[styles.container, styles.safeTop]} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={HEADER_NAVY[0]} />
-      <View style={styles.body}>
-      {/* Header */}
-      <LinearGradient colors={HEADER_NAVY} style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={24} color={colors.neutral0} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Item Detail</Text>
-      </LinearGradient>
+    <ReportContainer>
+      <ReportHeader title="Item details" onBack={() => navigation.goBack()} backLabel="Inventory" />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Photo ── */}
-        {(!!item.imageUrl || canManage) && (
-          <View style={styles.photoCard}>
-            {item.imageUrl ? (
+        {/* ── Identity, with the photo ──
+            The photo used to fill 280pt above everything else, pushing the
+            stock figures and actions off the first screen. It is a thumbnail
+            now; tapping it opens the full photo. */}
+        <View style={[styles.card, styles.identity]}>
+          <View style={styles.photoTile}>
+            {photoUri ? (
               <TouchableOpacity
-                activeOpacity={0.9}
+                activeOpacity={0.85}
                 onPress={() => setViewerOpen(true)}
                 accessibilityRole="imagebutton"
                 accessibilityLabel={`Photo of ${item.name}. Tap to view full screen.`}
               >
-                <ItemThumbnail uri={item.imageUrl} style={styles.photo} resizeMode="contain" iconSize={36} />
+                <ItemThumbnail uri={photoUri} style={styles.photoImg} resizeMode="cover" iconSize={24} />
               </TouchableOpacity>
-            ) : (
+            ) : canManage ? (
               <TouchableOpacity
-                style={styles.photoEmpty}
+                style={styles.photoAdd}
                 activeOpacity={0.7}
                 onPress={handleChangePhoto}
                 disabled={photoBusy}
                 accessibilityRole="button"
+                accessibilityLabel="Add a photo"
               >
-                <Feather name="camera" size={22} color={colors.primary} />
-                <Text style={styles.photoEmptyText}>Add a photo</Text>
+                <Feather name="camera" size={18} color={colors.primary} />
+                <Text style={styles.photoAddText}>Add photo</Text>
               </TouchableOpacity>
+            ) : (
+              <ItemThumbnail uri={null} style={styles.photoImg} iconSize={24} />
             )}
             {photoBusy && (
               <View style={styles.photoBusy}>
                 <ActivityIndicator color={colors.primary} />
               </View>
             )}
-            {!!item.imageUrl && canManage && (
+          </View>
+
+          <View style={styles.identityText}>
+            <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+            {meta ? <Text style={styles.itemMeta} numberOfLines={1}>{meta}</Text> : null}
+            <View style={styles.badgeRow}>
+              <Badge label={display.label} color={display.color} />
+              {agencyName ? <Badge label={agencyName} color={colors.secondary} dot={false} /> : null}
+            </View>
+            {/* Two plain buttons, not a menu: on the web build a three-way
+                Alert becomes a single OK/Cancel confirm whose OK runs the
+                last option — which would have been Remove. */}
+            {!!photoUri && canManage && (
               <View style={styles.photoActions}>
                 <TouchableOpacity
                   style={styles.photoAction}
-                  activeOpacity={0.7}
                   onPress={handleChangePhoto}
                   disabled={photoBusy}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                  accessibilityRole="button"
                 >
-                  <Feather name="camera" size={14} color={colors.primary} />
-                  <Text style={styles.photoActionText}>Change</Text>
+                  <Feather name="camera" size={13} color={colors.primary} />
+                  <Text style={styles.photoActionText}>Change photo</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.photoAction}
-                  activeOpacity={0.7}
                   onPress={handleRemovePhoto}
                   disabled={photoBusy}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove photo"
                 >
-                  <Feather name="trash-2" size={14} color={colors.danger} />
+                  <Feather name="trash-2" size={13} color={colors.danger} />
                   <Text style={[styles.photoActionText, { color: colors.danger }]}>Remove</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
-        )}
-
-        {/* ── Top Card ── */}
-        <View style={styles.topCard}>
-          <View style={styles.topCardRow}>
-            <View style={styles.topCardLeft}>
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.itemSku}>{item.sku}</Text>
-              <Text style={styles.itemCategory}>{item.category}</Text>
-            </View>
-            <View style={styles.topCardRight}>
-              <View style={[styles.statusBadge, { backgroundColor: status.color + '15' }]}>
-                <View style={[styles.statusDot, { backgroundColor: status.color }]} />
-                <Text style={[styles.statusText, { color: status.color }]}>
-                  {status.label}
-                </Text>
-              </View>
-              {agencyName && (
-                <View style={styles.agencyBadge}>
-                  <Text style={styles.agencyBadgeText}>{agencyName}</Text>
-                </View>
-              )}
-            </View>
-          </View>
         </View>
 
-        {/* ── Metrics Row ──
+        {/* ── Figures ──
             On Order and Committed used to sit here. Both read real columns
             that the backend only ever writes '0' to — nothing increments
             quantity_on_order on a PO, and quantity_committed is unused
-            entirely — so they were permanent zeros, and "Available"
-            (onHand − committed) was On Hand under another name. */}
-        <View style={styles.metricsRow}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{item.quantityOnHand}</Text>
-            <Text style={styles.metricLabel}>On Hand</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={[styles.metricValue, { color: colors.secondary }]}>
-              {formatCurrency(item.quantityOnHand * item.unitCost)}
-            </Text>
-            <Text style={styles.metricLabel}>Total Value</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={[styles.metricValue, { color: colors.warning }]}>
-              {item.reorderPoint}
-            </Text>
-            <Text style={styles.metricLabel}>Reorder Point</Text>
-          </View>
-        </View>
+            entirely. What is on order is counted from the open purchase
+            orders instead, under On hand. */}
+        <FigureStrip items={figures} />
 
-        {/* ── Action Buttons ── */}
-        <View style={styles.actionRow}>
-          {item.quantityOnHand === 0 ? (
-            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={handleOpeningStock}>
-              <Text style={styles.actionBtnIcon}>🏷️</Text>
-              <Text style={styles.actionBtnText}>Opening</Text>
-            </TouchableOpacity>
-          ) : null}
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={handleAdjust}>
-            <Text style={styles.actionBtnIcon}>📊</Text>
-            <Text style={styles.actionBtnText}>Adjust</Text>
-          </TouchableOpacity>
-          {poCap.allowed && (
-            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={handleCreatePO}>
-              <Text style={styles.actionBtnIcon}>📝</Text>
-              <Text style={styles.actionBtnText}>
-                {poCap.needsApproval ? 'Request PO' : 'Create PO'}
+        {/* ── Opening stock ── */}
+        {openingAvailable && (
+          <View style={[styles.card, styles.openingCard]}>
+            <View style={styles.openingIcon}>
+              <Feather name="package" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.openingTextCol}>
+              <Text style={styles.openingTitle}>No stock recorded yet</Text>
+              <Text style={styles.openingBody}>
+                {isOwner
+                  ? 'If you already held this item before using FinMatrix, record it as opening stock. Otherwise it arrives when a purchase order is received.'
+                  : 'Stock arrives when a purchase order is received, or when the owner records the opening stock.'}
               </Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={handleEdit}>
-            <Text style={styles.actionBtnIcon}>✏️</Text>
-            <Text style={styles.actionBtnText}>Edit</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Tabs ── */}
-        <View style={styles.tabBar}>
-          {TABS.map(tab => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              activeOpacity={0.7}
-              onPress={() => dispatch(setActiveTab(tab.key))}
-            >
-              <Text
-                style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* ── Tab Content ── */}
-        {activeTab === 'stock' && (
-          <View style={styles.infoCard}>
-            {[
-              { label: 'Cost Method', value: 'Weighted Average' },
-              { label: 'Unit Cost', value: formatCurrency(item.unitCost) },
-              { label: 'Selling Price', value: formatCurrency(item.sellingPrice) },
-              { label: 'Markup', value: item.unitCost > 0 ? `${(((item.sellingPrice - item.unitCost) / item.unitCost) * 100).toFixed(1)}%` : '—' },
-              { label: 'Total Value', value: formatCurrency(item.unitCost * item.quantityOnHand) },
-              { label: 'Reorder Point', value: item.reorderPoint.toString() },
-              { label: 'Reorder Quantity', value: item.reorderQuantity.toString() },
-              { label: 'Min Stock', value: item.minStock.toString() },
-              { label: 'Max Stock', value: item.maxStock.toString() },
-              { label: 'Barcode', value: item.barcodeData || '—' },
-              // Was its own Locations tab. The app has no location concept —
-              // no endpoint exposes inventory_locations — so a source agency
-              // is all there is, and it is one row, not a tab. Dropped
-              // entirely, not blanked, while the agencies feature is off.
-              ...(isFeatureEnabled('agencies')
-                ? [{ label: 'Source Agency', value: agencyName || '—' }]
-                : []),
-              { label: 'Unit of Measure', value: item.unitOfMeasure },
-              { label: 'Status', value: item.isActive ? 'Active' : 'Inactive' },
-              { label: 'Last Updated', value: formatDate(item.lastUpdated) },
-            ].map(row => (
-              <View key={row.label} style={styles.infoRow}>
-                <Text style={styles.infoLabel}>{row.label}</Text>
-                <Text style={styles.infoValue}>{row.value}</Text>
-              </View>
-            ))}
+              {isOwner && (
+                <TouchableOpacity
+                  style={styles.openingBtn}
+                  activeOpacity={0.8}
+                  onPress={() => setOpeningOpen(true)}
+                  accessibilityRole="button"
+                >
+                  <Feather name="plus" size={15} color={colors.primary} />
+                  <Text style={styles.openingBtnText}>Record opening stock</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         )}
 
-        {activeTab === 'transactions' && (
-          <View style={styles.txnCard}>
-            <View style={styles.txnHeaderRow}>
-              <Text style={[styles.txnHeaderText, { flex: 1 }]}>Date</Text>
-              <Text style={[styles.txnHeaderText, { width: 70 }]}>Type</Text>
-              <Text style={[styles.txnHeaderText, { width: 55, textAlign: 'right' }]}>Qty</Text>
-              <Text style={[styles.txnHeaderText, { width: 55, textAlign: 'right' }]}>Bal</Text>
-              <Text style={[styles.txnHeaderText, { flex: 1.2, textAlign: 'right' }]}>Reference</Text>
-            </View>
+        {/* ── Actions ── */}
+        {(canAdjust || poCap.allowed || canManage) && (
+          <View style={styles.actionRow}>
+            {canAdjust && <ActionButton icon="sliders" label="Adjust stock" onPress={handleAdjust} />}
+            {poCap.allowed && (
+              <ActionButton
+                icon="file-plus"
+                label={poCap.needsApproval ? 'Request PO' : 'Create PO'}
+                onPress={handleCreatePO}
+              />
+            )}
+            {canManage && <ActionButton icon="edit-2" label="Edit" onPress={handleEdit} />}
+          </View>
+        )}
 
+        {/* ── Tabs ── */}
+        <Segmented
+          options={TABS.map(t => t.label)}
+          activeIndex={tabIndex}
+          onChange={i => dispatch(setActiveTab(TABS[i].key))}
+        />
+
+        {/* ── Details ── */}
+        {tab === 'stock' && (
+          <View style={styles.card}>
+            {detailSections.map((section, i) => (
+              <DetailSection key={section.title} title={section.title} rows={section.rows} first={i === 0} />
+            ))}
+            {item.description ? (
+              <View style={[styles.section, styles.sectionBelow]}>
+                <Text style={styles.sectionTitle}>Description</Text>
+                <Text style={styles.description}>{item.description}</Text>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {/* ── Movements ──
+            Rows, not a table: five columns in a phone's width wrapped every
+            date and cut every reference down to a few letters. */}
+        {tab === 'transactions' && (
+          <View style={styles.card}>
             {movementsStatus === 'loading' && (
               <View style={styles.emptyTab}>
                 <ActivityIndicator color={colors.actionGreen} />
@@ -585,36 +633,41 @@ const InventoryDetailScreen: React.FC = () => {
               </View>
             )}
 
-            {movements.map((mv, idx) => (
-              <View
-                key={mv.id}
-                style={[styles.txnRow, idx % 2 === 0 && styles.txnRowAlt]}
-              >
-                <Text style={[styles.txnDate, { flex: 1 }]}>{formatDate(mv.date)}</Text>
-                <View style={[styles.mvTypeBadge, { backgroundColor: getMovementColor(mv.type) + '15' }]}>
-                  <Text style={[styles.mvTypeText, { color: getMovementColor(mv.type) }]}>
-                    {movementLabel(mv)}
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    styles.mvQty,
-                    { color: mv.quantityChange >= 0 ? colors.success : colors.danger },
-                  ]}
+            {movements.map((mv, idx) => {
+              const typeColor = getMovementColor(mv.type);
+              const qtyColor =
+                mv.quantityChange > 0 ? colors.success : mv.quantityChange < 0 ? colors.danger : colors.textSecondary;
+              const mvMeta = [mv.date ? formatDate(mv.date) : '', mv.reference || mv.description]
+                .filter(Boolean)
+                .join(' · ');
+              return (
+                <View
+                  key={mv.id}
+                  style={[styles.mvRow, idx > 0 && styles.rowDivider]}
+                  accessible
+                  accessibilityLabel={`${movementLabel(mv)}, ${signedQty(mv.quantityChange)}, balance ${formatQty(
+                    mv.balanceAfter,
+                  )}, ${mvMeta}`}
                 >
-                  {mv.quantityChange > 0 ? '+' : ''}{mv.quantityChange}
-                </Text>
-                <Text style={styles.mvBalance}>{mv.balanceAfter}</Text>
-                <Text style={[styles.txnRef, { flex: 1.2, textAlign: 'right' }]} numberOfLines={1}>
-                  {mv.reference || mv.description || '—'}
-                </Text>
-              </View>
-            ))}
+                  <View style={styles.mvMain}>
+                    <View style={[styles.mvType, { backgroundColor: typeColor + '14' }]}>
+                      <Text style={[styles.mvTypeText, { color: typeColor }]}>{movementLabel(mv)}</Text>
+                    </View>
+                    {mvMeta ? <Text style={styles.mvMeta} numberOfLines={1}>{mvMeta}</Text> : null}
+                  </View>
+                  <View style={styles.mvRight}>
+                    <Text style={[styles.mvQty, { color: qtyColor }]}>{signedQty(mv.quantityChange)}</Text>
+                    <Text style={styles.mvBalance}>Bal {formatQty(mv.balanceAfter)}</Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         )}
 
-        {activeTab === 'purchaseOrders' && (
-          <View style={styles.txnCard}>
+        {/* ── Purchase orders ── */}
+        {tab === 'purchaseOrders' && (
+          <View style={styles.card}>
             {/* Only the FIRST load takes over the tab; a background re-fetch
                 must never replace rows that are already on screen. Coming back
                 from a PO refires the focus effect, and gating the rows on
@@ -641,27 +694,26 @@ const InventoryDetailScreen: React.FC = () => {
                 the owner. Without it, raising one from this screen and coming
                 back to an empty tab reads as "my request vanished" — the same
                 gap the PO list closes with its pending strip. */}
-            {pendingPORequests.map(req => (
+            {pendingPORequests.map((req, idx) => (
               <TouchableOpacity
                 key={req.id}
-                style={styles.poRow}
+                style={[styles.poRow, idx > 0 && styles.rowDivider]}
                 activeOpacity={0.7}
                 onPress={handleOpenMyRequests}
+                accessibilityRole="button"
               >
-                <Feather name="clock" size={15} color={colors.warning} style={{ marginRight: spacing.xs }} />
-                <View style={{ flex: 1 }}>
+                <Feather name="clock" size={15} color={colors.warning} style={styles.poClock} />
+                <View style={styles.poMain}>
                   <Text style={styles.poNumber} numberOfLines={1}>
                     {req.summary || 'Purchase order request'}
                   </Text>
                   <Text style={styles.poMeta}>Sent to the owner · not a purchase order yet</Text>
                 </View>
-                <View style={[styles.poStatusBadge, { backgroundColor: colors.warning + '15' }]}>
-                  <Text style={[styles.poStatusText, { color: colors.warning }]}>Pending</Text>
-                </View>
+                <Badge label="Pending" color={colors.warning} dot={false} />
               </TouchableOpacity>
             ))}
 
-            {purchaseOrders.map(po => {
+            {purchaseOrders.map((po, idx) => {
               // The tab is about THIS item, so the quantity shown is this
               // item's lines, not the PO total.
               const lines = po.lines.filter(l => l.itemId === itemId);
@@ -671,11 +723,12 @@ const InventoryDetailScreen: React.FC = () => {
               return (
                 <TouchableOpacity
                   key={po.id}
-                  style={styles.poRow}
+                  style={[styles.poRow, (idx > 0 || pendingPORequests.length > 0) && styles.rowDivider]}
                   activeOpacity={0.7}
                   onPress={() => handleOpenPO(po.id)}
+                  accessibilityRole="button"
                 >
-                  <View style={{ flex: 1 }}>
+                  <View style={styles.poMain}>
                     <Text style={styles.poNumber} numberOfLines={1}>
                       {po.poNumber || 'Purchase order'}
                     </Text>
@@ -686,19 +739,15 @@ const InventoryDetailScreen: React.FC = () => {
                     </Text>
                   </View>
                   <View style={styles.poQtyBlock}>
-                    <Text style={styles.poQty}>{ordered}</Text>
+                    <Text style={styles.poQty}>{formatQty(ordered)}</Text>
                     {/* Report receipts whenever there are any — the old test
                         also required received < ordered, so the count vanished
                         exactly when the receipt completed. */}
                     <Text style={styles.poQtyLabel}>
-                      {received > 0 ? `${received} recvd` : 'ordered'}
+                      {received > 0 ? `${formatQty(received)} received` : 'ordered'}
                     </Text>
                   </View>
-                  <View style={[styles.poStatusBadge, { backgroundColor: statusColor + '15' }]}>
-                    <Text style={[styles.poStatusText, { color: statusColor }]} numberOfLines={1}>
-                      {shortPOStatus(po.status)}
-                    </Text>
-                  </View>
+                  <Badge label={shortPOStatus(po.status)} color={statusColor} dot={false} />
                 </TouchableOpacity>
               );
             })}
@@ -715,26 +764,48 @@ const InventoryDetailScreen: React.FC = () => {
           </View>
         )}
 
-        {/* ── Deactivate / Activate ── */}
-        <TouchableOpacity
-          style={[styles.toggleBtn, !item.isActive && styles.toggleBtnActive]}
-          activeOpacity={0.7}
-          onPress={handleToggle}
-        >
-          <Text style={[styles.toggleBtnText, !item.isActive && styles.toggleBtnTextActive]}>
-            {item.isActive ? '⛔ Deactivate Item' : '✅ Activate Item'}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={{ height: spacing.xxl }} />
+        {/* ── Activate / Deactivate (owner) ── */}
+        {isOwner && (
+          <View style={[styles.card, styles.toggleCard]}>
+            <Text style={styles.toggleBody}>
+              {item.isActive
+                ? 'Deactivating hides the item from invoice, order and delivery pickers. Its stock and history stay.'
+                : 'Reactivating makes it selectable again.'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.toggleBtn, item.isActive ? styles.toggleBtnDanger : styles.toggleBtnPrimary]}
+              activeOpacity={0.8}
+              onPress={handleToggle}
+              accessibilityRole="button"
+            >
+              <Feather
+                name={item.isActive ? 'slash' : 'check-circle'}
+                size={15}
+                color={item.isActive ? colors.danger : colors.neutral0}
+              />
+              <Text style={[styles.toggleBtnText, { color: item.isActive ? colors.danger : colors.neutral0 }]}>
+                {item.isActive ? 'Deactivate item' : 'Activate item'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
-      </View>
+
       <FullscreenImageModal
-        uri={viewerOpen ? item.imageUrl : null}
+        uri={viewerOpen ? item.imageUrl || item.thumbnailUrl : null}
         onClose={() => setViewerOpen(false)}
         accessibilityLabel={`Photo of ${item.name}`}
       />
-    </SafeAreaView>
+      {openingOpen && (
+        <OpeningStockSheet
+          visible
+          item={item}
+          onClose={() => setOpeningOpen(false)}
+          onRecorded={loadDetailData}
+          onSetUnitCost={handleEdit}
+        />
+      )}
+    </ReportContainer>
   );
 };
 
@@ -742,271 +813,172 @@ const InventoryDetailScreen: React.FC = () => {
 // STYLES
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  safeTop: { backgroundColor: HEADER_NAVY[0] },
-  body: { flex: 1, backgroundColor: colors.background },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  notFound: { ...typography.bodyLg, color: colors.textSecondary, marginBottom: spacing.md },
-  goBack: { ...typography.labelLg, color: colors.secondary },
-
-  // ── Header ────────────────────────────────────────
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.md,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+  scroll: { flex: 1, backgroundColor: colors.background },
+  // The inventory list's gutter, so the two screens share a left edge.
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxl,
+    gap: spacing.sm,
   },
-  backBtn: { marginRight: spacing.xxs, padding: spacing.xxs / 2 },
-  headerTitle: { ...typography.h3, color: colors.neutral0 },
 
-  scroll: { flex: 1 },
-  scrollContent: { padding: spacing.xl },
-
-  // ── Top Card ──────────────────────────────────────
-  photoCard: {
+  // The app's card: white, 12pt corners, a hairline border doing the
+  // separating and a light shadow lifting it (ReportUI's S.card).
+  card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    marginBottom: spacing.md,
-    overflow: 'hidden',
-    ...shadows.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    ...shadows.xs,
   },
-  photo: { width: '100%', height: 240, backgroundColor: colors.neutral50 },
-  photoEmpty: {
-    height: 120,
+
+  // ── Identity ──────────────────────────────────────
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  photoTile: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    backgroundColor: colors.neutral50,
+  },
+  photoImg: { width: 72, height: 72, borderRadius: radius.md },
+  photoAdd: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.primary + '66',
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xxs,
-    backgroundColor: colors.primaryLight,
+    gap: 2,
   },
-  photoEmptyText: { ...typography.labelMd, color: colors.primary },
+  photoAddText: { ...typography.labelSm, color: colors.primary },
   photoBusy: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: 'rgba(255,255,255,0.65)',
   },
-  photoActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
+  identityText: { flex: 1, minWidth: 0 },
+  itemName: { ...typography.h3, color: colors.textPrimary },
+  itemMeta: { ...typography.bodySm, color: colors.textSecondary, marginTop: 2 },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xxs + 2, marginTop: spacing.xs },
+  photoActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
   photoAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
-  photoActionText: { ...typography.labelMd, color: colors.primary },
-  topCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadows.sm,
+  photoActionText: { ...typography.labelSm, color: colors.primary },
+
+  // ── Opening stock ─────────────────────────────────
+  openingCard: { flexDirection: 'row', padding: spacing.md, gap: spacing.sm },
+  openingIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  topCardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  topCardLeft: { flex: 1, marginRight: spacing.xs },
-  topCardRight: { alignItems: 'flex-end' },
-  itemName: {
-    ...typography.h3,
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  itemSku: {
-    ...typography.bodySm,
-    color: colors.textTertiary,
-    marginBottom: 4,
-  },
-  itemCategory: {
-    ...typography.bodySm,
-    color: colors.textSecondary,
-  },
-  statusBadge: {
+  openingTextCol: { flex: 1, minWidth: 0 },
+  openingTitle: { ...typography.labelLg, color: colors.textPrimary },
+  openingBody: { ...typography.bodySm, color: colors.textSecondary, marginTop: 2 },
+  openingBtn: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.xs + 2,
-    paddingVertical: spacing.xxs,
-    borderRadius: 12,
-    marginBottom: spacing.xxs,
-  },
-  statusDot: { width: 7, height: 7, borderRadius: 4, marginRight: spacing.xxs },
-  statusText: { ...typography.labelSm },
-  agencyBadge: {
-    backgroundColor: colors.secondary + '15',
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  agencyBadgeText: {
-    ...typography.overline,
-    color: colors.secondary,
-  },
-
-  // ── Metrics ───────────────────────────────────────
-  metricsRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  metricCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
+    gap: spacing.xxs,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    minHeight: 36,
     borderRadius: radius.sm,
-    padding: spacing.xs,
-    alignItems: 'center',
-    ...shadows.xs,
+    borderWidth: 1,
+    borderColor: colors.primary + '40',
+    backgroundColor: colors.primaryLight,
   },
-  metricValue: {
-    ...typography.h3,
-    color: colors.textPrimary,
-  },
-  metricLabel: {
-    ...typography.overline,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
+  openingBtnText: { ...typography.labelMd, color: colors.primary },
 
-  // ── Action Buttons ────────────────────────────────
-  actionRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
+  // ── Actions ───────────────────────────────────────
+  actionRow: { flexDirection: 'row', gap: spacing.xs },
   actionBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: spacing.xxs + 2,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xxs,
+    minHeight: 76,
   },
-  actionBtnIcon: { ...typography.h3, marginBottom: 2 },
-  actionBtnText: { ...typography.overline, color: colors.textPrimary },
-
-  // ── Tabs ──────────────────────────────────────────
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    padding: 3,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: spacing.xs,
+  actionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
-    borderRadius: radius.sm - 2,
+    justifyContent: 'center',
   },
-  tabActive: { backgroundColor: colors.actionGreen },
-  tabText: { ...typography.bodySm, color: colors.textSecondary },
-  tabTextActive: { color: colors.surface, fontWeight: typography.labelLg.fontWeight },
+  // Stretched to the button's width so a long label has a width to wrap
+  // within; centred children otherwise size to their text and never wrap.
+  actionText: { ...typography.labelMd, color: colors.textPrimary, textAlign: 'center', alignSelf: 'stretch' },
 
-  // ── Info Card ─────────────────────────────────────
-  infoCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    ...shadows.sm,
-  },
-  infoRow: {
+  // ── Details ───────────────────────────────────────
+  section: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  sectionBelow: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight },
+  sectionTitle: { ...typography.overline, color: colors.textTertiary, marginBottom: spacing.xxs },
+  detailRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  infoLabel: { ...typography.bodySm, color: colors.textSecondary },
-  infoValue: { ...typography.labelMd, color: colors.textPrimary, maxWidth: '55%', textAlign: 'right' },
-
-  // ── Transactions ──────────────────────────────────
-  txnCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    ...shadows.sm,
-  },
-  txnHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: spacing.sm,
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.xs,
-    backgroundColor: colors.actionGreen + '08',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  txnHeaderText: {
-    ...typography.overline,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-  },
-  txnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  txnRowAlt: { backgroundColor: colors.backgroundAlt },
-  txnDate: { ...typography.caption, color: colors.textPrimary },
-  txnRef: { ...typography.caption, color: colors.textSecondary },
-  mvTypeBadge: {
-    width: 70,
-    paddingHorizontal: spacing.xxs + 2,
-    paddingVertical: 2,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  mvTypeText: {
-    ...typography.overline,
-    
-  },
-  mvQty: {
+  detailLabel: { ...typography.bodySm, color: colors.textSecondary, flex: 1 },
+  detailValue: {
     ...typography.labelMd,
-    width: 55,
+    color: colors.textPrimary,
     textAlign: 'right',
-    marginRight: spacing.xs,
+    flexShrink: 1,
+    maxWidth: '60%',
+    fontVariant: ['tabular-nums'],
   },
-  mvBalance: {
-    ...typography.labelSm,
-    width: 55,
-    textAlign: 'right',
-    color: colors.textSecondary,
-    marginRight: spacing.xs,
+  description: { ...typography.bodySm, color: colors.textPrimary, paddingBottom: spacing.xs },
+
+  // ── Movements ─────────────────────────────────────
+  mvRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  // ── Purchase Orders tab ───────────────────────────
+  rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight },
+  mvMain: { flex: 1, minWidth: 0, alignItems: 'flex-start' },
+  mvType: { paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.xs },
+  mvTypeText: { ...typography.labelSm },
+  mvMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 4, alignSelf: 'stretch' },
+  mvRight: { alignItems: 'flex-end', flexShrink: 0 },
+  mvQty: { ...typography.labelLg, fontVariant: ['tabular-nums'] },
+  mvBalance: { ...typography.caption, color: colors.textTertiary, fontVariant: ['tabular-nums'], marginTop: 1 },
+
+  // ── Purchase orders ───────────────────────────────
   poRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs + 2,
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
   },
+  poClock: { marginRight: 2 },
+  poMain: { flex: 1, minWidth: 0 },
   poNumber: { ...typography.labelMd, color: colors.textPrimary },
   poMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
-  poQtyBlock: { alignItems: 'flex-end', marginHorizontal: spacing.xs },
-  poQty: { ...typography.labelMd, color: colors.textPrimary },
-  poQtyLabel: { ...typography.overline, color: colors.textTertiary },
-  poStatusBadge: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: 8,
-    minWidth: 62,
-    alignItems: 'center',
-  },
-  poStatusText: { ...typography.overline },
+  poQtyBlock: { alignItems: 'flex-end' },
+  poQty: { ...typography.labelMd, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
+  poQtyLabel: { ...typography.caption, color: colors.textTertiary },
 
   emptyTab: {
     padding: spacing.xxl,
@@ -1030,26 +1002,23 @@ const styles = StyleSheet.create({
     color: colors.secondary,
   },
 
-  // ── Toggle Button ─────────────────────────────────
+  // ── Activate / Deactivate ─────────────────────────
+  toggleCard: { padding: spacing.md, marginTop: spacing.xs },
+  toggleBody: { ...typography.bodySm, color: colors.textSecondary },
   toggleBtn: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.xs + 4,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs + 2,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minHeight: 40,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.danger + '40',
-    alignItems: 'center',
   },
-  toggleBtnActive: {
-    borderColor: colors.success + '40',
-    backgroundColor: colors.success + '08',
-  },
-  toggleBtnText: {
-    ...typography.h5,
-    color: colors.danger,
-  },
-  toggleBtnTextActive: {
-    color: colors.success,
-  }
+  toggleBtnDanger: { borderColor: colors.danger + '55', backgroundColor: colors.surface },
+  toggleBtnPrimary: { borderColor: colors.primary, backgroundColor: colors.primary },
+  toggleBtnText: { ...typography.labelMd },
 });
 
 export default InventoryDetailScreen;

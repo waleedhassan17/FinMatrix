@@ -321,3 +321,111 @@ export const movementLabel = (mv: Pick<StockMovement, 'type' | 'sourceType'>): s
       return mv.type ? mv.type.charAt(0).toUpperCase() + mv.type.slice(1) : '—';
   }
 };
+
+// ─── Stock status ────────────────────────────────────
+export type ItemStockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
+
+/**
+ * Where an item's stock stands against its reorder point. One rule for the
+ * list, the detail screen and the filters: at or below the reorder point is
+ * low, nothing left is out.
+ */
+export const itemStockStatus = (
+  item: Pick<InventoryItemData, 'quantityOnHand' | 'reorderPoint'>,
+): ItemStockStatus => {
+  if (item.quantityOnHand <= 0) return 'out_of_stock';
+  if (item.quantityOnHand <= item.reorderPoint) return 'low_stock';
+  return 'in_stock';
+};
+
+// ─── On order ────────────────────────────────────────
+type OrderLine = { itemId?: string; quantity: number; receivedQuantity: number };
+type OrderForItem = { status: string; lines: OrderLine[] };
+
+// Still expecting stock from the supplier. A draft has not been sent; a fully
+// received or closed order has nothing left to arrive. Mirrors the web's
+// OPEN_STATUSES (models/itemPurchaseOrders.ts), whose 'partial' is this app's
+// 'partially_received'.
+const OPEN_ORDER_STATUSES: ReadonlySet<string> = new Set(['sent', 'partially_received']);
+
+/**
+ * What is still to arrive for one item across its open purchase orders: the
+ * ordered quantity less what has been received, on this item's lines only.
+ * Counted from the orders because the item's own quantity_on_order column is
+ * only ever written as zero. Mirrors the web's onOrderForItem.
+ */
+export const onOrderForItem = (
+  orders: OrderForItem[],
+  itemId: string,
+): { quantity: number; orders: number } => {
+  let quantity = 0;
+  let count = 0;
+  for (const order of orders) {
+    if (!OPEN_ORDER_STATUSES.has(order.status)) continue;
+    let remaining = 0;
+    for (const line of order.lines ?? []) {
+      if (line.itemId !== itemId) continue;
+      remaining += (Number(line.quantity) || 0) - (Number(line.receivedQuantity) || 0);
+    }
+    if (remaining > 0) {
+      quantity += remaining;
+      count += 1;
+    }
+  }
+  // Quantities carry up to four decimals; summing them as floats can leave a
+  // tail like 2.30000000004.
+  return { quantity: Math.round(quantity * 10_000) / 10_000, orders: count };
+};
+
+// ─── Opening stock ───────────────────────────────────
+export interface OpeningStockForm {
+  /** As typed: may carry thousands separators. */
+  quantity: string;
+  /** YYYY-MM-DD. */
+  asOfDate: string;
+}
+
+/**
+ * Opening stock is a one-time entry for stock held before the company used
+ * FinMatrix, so it is offered only while the item has never moved: nothing on
+ * hand and no movements at all. Once anything has happened, a correction is an
+ * adjustment — and the server refuses a second opening entry. Mirrors the
+ * web's canSetOpeningStock.
+ */
+export const canSetOpeningStock = (
+  item: Pick<InventoryItemData, 'quantityOnHand'>,
+  movementCount: number,
+): boolean => item.quantityOnHand === 0 && movementCount === 0;
+
+/** The quantity as the server takes it: no separators, up to four decimals. */
+export const openingStockQuantity = (raw: string): string | null => {
+  const text = raw.replace(/,/g, '').trim();
+  if (!/^\d+(\.\d{1,4})?$/.test(text)) return null;
+  return text;
+};
+
+/**
+ * Errors keyed by field; empty when the form can be sent. Mirrors the web's
+ * validateOpeningStock, plus a future-date check the date picker also makes.
+ */
+export const validateOpeningStock = (
+  form: OpeningStockForm,
+  unitCost: number,
+  today: string,
+): Partial<Record<keyof OpeningStockForm | 'unitCost', string>> => {
+  const errors: Partial<Record<keyof OpeningStockForm | 'unitCost', string>> = {};
+  const qty = openingStockQuantity(form.quantity);
+  if (qty === null || !(Number(qty) > 0)) errors.quantity = 'Enter a quantity above 0, with up to 4 decimals.';
+  if (!form.asOfDate) errors.asOfDate = 'Choose the date the stock was held on.';
+  else if (form.asOfDate > today) errors.asOfDate = 'The date cannot be in the future.';
+  if (!(unitCost > 0)) errors.unitCost = 'Set a unit cost on the item first.';
+  return errors;
+};
+
+/**
+ * Margin at average cost, as the website shows it: what the selling price
+ * keeps after the average cost, as a share of the price. Null when there is
+ * no price to take a share of.
+ */
+export const marginAtAverageCost = (sellingPrice: number, unitCost: number): number | null =>
+  sellingPrice > 0 ? Math.round(((sellingPrice - unitCost) / sellingPrice) * 1000) / 10 : null;
