@@ -23,12 +23,13 @@ const initialCategories: ReportHubCategory[] = [
     title: 'Financial',
     icon: 'FIN',
     items: [
-      // Descriptions follow the website's report subtitles, cut to one line.
+      // Descriptions follow the website's report subtitles, cut to the one line a
+      // hub row has (HUB_SUBTITLE_MAX, components/shared/HubList).
       { key: 'pl', title: 'P&L', description: 'What you earned and what it cost', icon: 'PL', target: 'ProfitLoss' },
       { key: 'bs', title: 'Balance Sheet', description: 'What the business owns and owes', icon: 'BS', target: 'BalanceSheet' },
-      { key: 'tb', title: 'Trial Balance', description: 'Every account, debits against credits', icon: 'TB', target: 'TrialBalance' },
-      { key: 'cf', title: 'Cash Flow', description: 'Where the money came from and went', icon: 'CF', target: 'CashFlow' },
-      { key: 'gl', title: 'General Ledger', description: 'Every posting, with a running balance', icon: 'GL', target: 'GeneralLedger' },
+      { key: 'tb', title: 'Trial Balance', description: 'Debits against credits, by account', icon: 'TB', target: 'TrialBalance' },
+      { key: 'cf', title: 'Cash Flow', description: 'Where money came from and went', icon: 'CF', target: 'CashFlow' },
+      { key: 'gl', title: 'General Ledger', description: 'Every posting and running balance', icon: 'GL', target: 'GeneralLedger' },
       { key: 'budgets', title: 'Budgets', description: 'Plan and track by fiscal year', icon: 'BUD', target: 'BudgetList', feature: 'budgets' },
       { key: 'analytics', title: 'Analytics', description: 'How the business is doing', icon: 'ANL', target: 'AnalyticsDashboard' },
     ],
@@ -55,7 +56,7 @@ const initialCategories: ReportHubCategory[] = [
     icon: 'INV',
     feature: 'inventory',
     items: [
-      { key: 'inv-valuation', title: 'Valuation', description: 'Stock at cost, and which of it earns', icon: 'VAL', target: 'InventoryValuation' },
+      { key: 'inv-valuation', title: 'Valuation', description: 'Stock at cost, and what it earns', icon: 'VAL', target: 'InventoryValuation' },
     ],
   },
   {

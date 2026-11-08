@@ -1,14 +1,13 @@
-import React, { useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useCallback } from 'react';
+import { ScrollView } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
-import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { selectFeatures, selectUser } from '../Auth/authSlice';
 import { isFeatureVisible } from '../../utils/featureGates';
-import NotificationBadge from '../../components/shared/NotificationBadge';
 import { ReportContainer, ReportHeader } from '../../components/reports/ReportUI';
+import { HubRow, HubSection, hubContentStyle, type HubCountTone } from '../../components/shared/HubList';
 import {
   fetchPendingCount,
   selectPendingApprovalCount,
@@ -16,34 +15,33 @@ import {
 import { selectUnassignedDeliveries } from '../Delivery/Admin/AssignDeliveries/deliverySlice';
 import type { StaffMoreRouteName } from '../../navigations-maps/StaffMore';
 
-const { colors, radius, shadows, spacing, typography } = THEME;
-
 type Nav = NativeStackNavigationProp<Record<string, undefined>>;
 
-interface StaffRow {
+export interface StaffRow {
   key: string;
   icon: keyof typeof Feather.glyphMap;
-  iconBg: string;
-  iconColor: string;
   label: string;
+  /** One line, at most HUB_SUBTITLE_MAX characters. */
   subtitle: string;
   route: StaffMoreRouteName;
   badge?: 'requests' | 'deliveries';
   feature?: string;
 }
 
+/**
+ * A request the staff member sent is waiting on the owner, so its count is a
+ * plain figure; a delivery nobody has assigned is this person's job, so it is
+ * the one count drawn red.
+ */
+const BADGE_TONE: Record<NonNullable<StaffRow['badge']>, HubCountTone> = {
+  requests: 'neutral',
+  deliveries: 'alert',
+};
+
 interface StaffSection {
   title: string;
   rows: StaffRow[];
 }
-
-const IC = {
-  green: { bg: colors.successLighter, fg: colors.success },
-  blue: { bg: colors.actionGreenLighter, fg: colors.actionGreen },
-  amber: { bg: colors.warningLighter, fg: colors.warning },
-  purple: { bg: colors.secondaryLight, fg: colors.secondary },
-  gray: { bg: colors.neutral100, fg: colors.textSecondary },
-};
 
 /**
  * The staff "More" hub.
@@ -57,17 +55,15 @@ const IC = {
  * approvals-inbox row — those routes are not even registered in the staff
  * navigator (see navigations-maps/StaffMore.ts).
  */
-const SECTIONS: StaffSection[] = [
+export const STAFF_SECTIONS: StaffSection[] = [
   {
     title: 'MY WORK',
     rows: [
       {
         key: 'my-requests',
         icon: 'send',
-        iconBg: IC.amber.bg,
-        iconColor: IC.amber.fg,
-        label: 'My requests',
-        subtitle: 'What you have sent the owner to approve',
+        label: 'My Requests',
+        subtitle: 'Sent to the owner for approval',
         route: 'MyRequests',
         badge: 'requests',
       },
@@ -79,10 +75,8 @@ const SECTIONS: StaffSection[] = [
       {
         key: 'assign',
         icon: 'truck',
-        iconBg: IC.blue.bg,
-        iconColor: IC.blue.fg,
-        label: 'Assign deliveries',
-        subtitle: 'Plan a delivery and put it on a rider',
+        label: 'Assign Deliveries',
+        subtitle: 'Plan one and put it on a rider',
         route: 'AssignDeliveries',
         badge: 'deliveries',
         feature: 'delivery',
@@ -90,19 +84,15 @@ const SECTIONS: StaffSection[] = [
       {
         key: 'approvals',
         icon: 'check-square',
-        iconBg: IC.green.bg,
-        iconColor: IC.green.fg,
-        label: 'Approve completions',
-        subtitle: 'Sign off deliveries the rider has finished',
+        label: 'Approve Completions',
+        subtitle: 'Sign off finished deliveries',
         route: 'InventoryApproval',
         feature: 'delivery',
       },
       {
         key: 'monitor',
         icon: 'map',
-        iconBg: IC.purple.bg,
-        iconColor: IC.purple.fg,
-        label: 'Delivery monitor',
+        label: 'Delivery Monitor',
         subtitle: 'Where everything is right now',
         route: 'DeliveryMonitor',
         feature: 'delivery',
@@ -110,10 +100,8 @@ const SECTIONS: StaffSection[] = [
       {
         key: 'personnel',
         icon: 'user-plus',
-        iconBg: IC.purple.bg,
-        iconColor: IC.purple.fg,
-        label: 'Delivery personnel',
-        subtitle: 'Add riders and share their login',
+        label: 'Delivery Personnel',
+        subtitle: 'Riders and their logins',
         route: 'DeliveryPersonnelList',
         feature: 'delivery',
       },
@@ -125,19 +113,15 @@ const SECTIONS: StaffSection[] = [
       {
         key: 'customers',
         icon: 'users',
-        iconBg: IC.green.bg,
-        iconColor: IC.green.fg,
         label: 'Customers',
-        subtitle: 'Manage customers and their balances',
+        subtitle: 'Customers and their balances',
         route: 'CustomerList',
       },
       {
         key: 'vendors',
         icon: 'shopping-bag',
-        iconBg: IC.amber.bg,
-        iconColor: IC.amber.fg,
         label: 'Vendors',
-        subtitle: 'Suppliers you raise purchase orders against',
+        subtitle: 'Suppliers you order from',
         route: 'VendorList',
       },
     ],
@@ -148,9 +132,7 @@ const SECTIONS: StaffSection[] = [
       {
         key: 'tax',
         icon: 'percent',
-        iconBg: IC.gray.bg,
-        iconColor: IC.gray.fg,
-        label: 'Tax liability',
+        label: 'Tax Liability',
         subtitle: 'What is owed this period',
         route: 'TaxLiability',
       },
@@ -165,8 +147,6 @@ const SECTIONS: StaffSection[] = [
       {
         key: 'settings',
         icon: 'settings',
-        iconBg: IC.gray.bg,
-        iconColor: IC.gray.fg,
         label: 'Settings',
         subtitle: 'Your account and sign out',
         route: 'StaffSettings',
@@ -191,7 +171,7 @@ const StaffMoreHubScreen: React.FC = () => {
     }, [dispatch]),
   );
 
-  const sections = SECTIONS.map(section => ({
+  const sections = STAFF_SECTIONS.map(section => ({
     ...section,
     rows: section.rows.filter(r => isFeatureVisible(r.feature, features, companyType)),
   })).filter(section => section.rows.length > 0);
@@ -205,85 +185,26 @@ const StaffMoreHubScreen: React.FC = () => {
   return (
     <ReportContainer>
       <ReportHeader title="More" subtitle="Your tools and requests" />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        style={{ backgroundColor: colors.background }}
-      >
+      <ScrollView contentContainerStyle={hubContentStyle} showsVerticalScrollIndicator={false}>
         {sections.map(section => (
-          <View key={section.title}>
-            <Text style={styles.sectionHeader}>{section.title}</Text>
-            <View style={styles.sectionCard}>
-              {section.rows.map((row, idx) => {
-                const badge = badgeFor(row);
-                return (
-                  <React.Fragment key={row.key}>
-                    {idx > 0 && <View style={styles.divider} />}
-                    <TouchableOpacity
-                      style={styles.row}
-                      activeOpacity={0.6}
-                      onPress={() => navigation.navigate(row.route as never)}
-                    >
-                      <View style={[styles.rowIcon, { backgroundColor: row.iconBg }]}>
-                        <Feather name={row.icon} size={20} color={row.iconColor} />
-                        {badge > 0 && <NotificationBadge count={badge} />}
-                      </View>
-                      <View style={styles.rowContent}>
-                        <Text style={styles.rowLabel}>{row.label}</Text>
-                        <Text style={styles.rowSubtitle}>{row.subtitle}</Text>
-                      </View>
-                      <Feather
-                        name="chevron-right"
-                        size={20}
-                        color={colors.textTertiary}
-                      />
-                    </TouchableOpacity>
-                  </React.Fragment>
-                );
-              })}
-            </View>
-          </View>
+          <HubSection key={section.title} title={section.title}>
+            {section.rows.map((row, idx) => (
+              <HubRow
+                key={row.key}
+                icon={row.icon}
+                title={row.label}
+                subtitle={row.subtitle}
+                count={badgeFor(row)}
+                countTone={row.badge ? BADGE_TONE[row.badge] : 'neutral'}
+                onPress={() => navigation.navigate(row.route as never)}
+                last={idx === section.rows.length - 1}
+              />
+            ))}
+          </HubSection>
         ))}
       </ScrollView>
     </ReportContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl },
-  sectionHeader: {
-    ...typography.labelSm,
-    color: colors.textTertiary,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-    marginLeft: spacing.xs,
-  },
-  sectionCard: {
-    backgroundColor: colors.neutral0,
-    borderRadius: radius.lg,
-    ...shadows.xs,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginLeft: 64,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-  },
-  rowIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  rowContent: { flex: 1 },
-  rowLabel: { ...typography.labelMd, color: colors.textPrimary },
-  rowSubtitle: { ...typography.bodySm, color: colors.textSecondary, marginTop: 2 },
-});
 
 export default StaffMoreHubScreen;

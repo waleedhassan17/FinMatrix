@@ -1,10 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { ScrollView } from 'react-native';
 
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
-import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { selectFeatures, selectUser } from '../Auth/authSlice';
 import { isFeatureVisible } from '../../utils/featureGates';
@@ -16,23 +15,24 @@ import {
   fetchPendingCount,
   selectPendingApprovalCount,
 } from '../Approvals/approvalsSlice';
-import NotificationBadge from '../../components/shared/NotificationBadge';
-import { ReportContainer, ReportHeader, HEADER_NAVY } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader } from '../../components/reports/ReportUI';
+import { HubRow, HubSection, hubContentStyle, type HubCountTone } from '../../components/shared/HubList';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
-
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
-interface MoreRow {
+export interface MoreRow {
   key: string;
   icon: keyof typeof Feather.glyphMap;
-  iconBg: string;
-  iconColor: string;
   label: string;
+  /** One line, at most HUB_SUBTITLE_MAX characters. */
   subtitle: string;
-  badgeSelector?: string;
+  /**
+   * Shows a count before the chevron. `neutral` is a plain total; `alert` is
+   * work waiting on the owner. Only an alert is red: Customers "8" in a red
+   * dot read as eight problems when it was eight customers.
+   */
+  count?: HubCountTone;
   onPress: (nav: Nav) => void;
   /** Three-tier model: row only shows when this feature is on (undefined = always). */
   feature?: string;
@@ -43,34 +43,20 @@ interface MoreSection {
   rows: MoreRow[];
 }
 
-/* ───────────── colour tokens for icon circles ───────────── */
-const IC = {
-  blueBg: colors.actionGreenLighter, blue: colors.actionGreen,
-  greenBg: colors.successLighter, green: colors.success,
-  amberBg: colors.warningLighter, amber: colors.warning,
-  tealBg: colors.actionGreenLighter, teal: colors.info,
-  purpleBg: colors.secondaryLight, purple: colors.secondary,
-  redBg: colors.dangerLighter, red: colors.danger,
-  indigoBg: colors.infoLight, indigo: colors.info,
-  cyanBg: colors.actionGreenLighter, cyan: colors.info,
-  orangeBg: colors.warningLighter, orange: colors.warning,
-  grayBg: colors.neutral100, gray: colors.textSecondary
-};
-
-const SECTIONS: MoreSection[] = [
+export const SECTIONS: MoreSection[] = [
   {
     title: 'ACCOUNTING',
     rows: [
       {
-        key: 'coa', icon: 'book-open', iconBg: IC.blueBg, iconColor: IC.blue,
+        key: 'coa', icon: 'list',
         label: 'Chart of Accounts',
-        subtitle: 'Manage accounts, balances & categories',
+        subtitle: 'Accounts, balances and categories',
         onPress: nav => nav.navigate('COAList'),
       },
       {
-        key: 'reconcile', icon: 'check-square', iconBg: IC.tealBg, iconColor: IC.teal,
+        key: 'reconcile', icon: 'check-square',
         label: 'Bank Reconciliation',
-        subtitle: 'Match cash/bank ledger to a statement',
+        subtitle: 'Match books to a bank statement',
         onPress: nav => nav.navigate('BankReconciliationList'),
         feature: 'bankReconciliation',
       },
@@ -80,23 +66,23 @@ const SECTIONS: MoreSection[] = [
     title: 'PEOPLE',
     rows: [
       {
-        key: 'customers', icon: 'users', iconBg: IC.greenBg, iconColor: IC.green,
+        key: 'customers', icon: 'users',
         label: 'Customers',
-        subtitle: 'Manage customers, balances & invoices',
-        badgeSelector: 'customers',
+        subtitle: 'Balances, invoices and contacts',
+        count: 'neutral',
         onPress: nav => nav.navigate('CustomerList'),
       },
       {
-        key: 'vendors', icon: 'shopping-bag', iconBg: IC.orangeBg, iconColor: IC.orange,
+        key: 'vendors', icon: 'shopping-bag',
         label: 'Vendors',
-        subtitle: 'Manage vendors, bills & payments',
-        badgeSelector: 'vendors',
+        subtitle: 'Balances, bills and payments',
+        count: 'neutral',
         onPress: nav => nav.navigate('VendorList'),
       },
       {
-        key: 'payroll', icon: 'briefcase', iconBg: IC.purpleBg, iconColor: IC.purple,
+        key: 'payroll', icon: 'briefcase',
         label: 'Employees & Payroll',
-        subtitle: 'Staff, run payroll & pay stubs',
+        subtitle: 'Staff, payroll runs and pay stubs',
         onPress: nav => nav.navigate('EmployeeList'),
         feature: 'payroll',
       },
@@ -115,7 +101,7 @@ const SECTIONS: MoreSection[] = [
       // frozen at its current value. It drives whether input tax on bills is
       // reclaimed to 1300 Sales Tax Recoverable.
       // {
-      //   key: 'tax', icon: 'percent', iconBg: IC.amberBg, iconColor: IC.amber,
+      //   key: 'tax', icon: 'percent',
       //   label: 'Tax Management',
       //   subtitle: 'Tax rates, liability report & payments',
       //   onPress: nav => nav.navigate('TaxSettings'),
@@ -124,9 +110,9 @@ const SECTIONS: MoreSection[] = [
       // carry real unremitted sales tax on 2300. Without this row the OWNER
       // could not see or settle a liability that staff can still see.
       {
-        key: 'taxLiability', icon: 'percent', iconBg: IC.amberBg, iconColor: IC.amber,
-        label: 'Tax liability',
-        subtitle: 'What is owed this period, and record a payment',
+        key: 'taxLiability', icon: 'percent',
+        label: 'Tax Liability',
+        subtitle: 'Tax owed, and record a payment',
         onPress: nav => nav.navigate('TaxLiability'),
       },
     ]
@@ -135,24 +121,24 @@ const SECTIONS: MoreSection[] = [
     title: 'OPERATIONS',
     rows: [
       {
-        key: 'delivery', icon: 'truck', iconBg: IC.blueBg, iconColor: IC.blue,
+        key: 'delivery', icon: 'truck',
         label: 'Delivery Management',
-        subtitle: 'Assign, monitor & approve deliveries',
-        badgeSelector: 'delivery',
+        subtitle: 'Assign, track and approve',
+        count: 'alert',
         onPress: nav => nav.navigate('AssignDeliveries'),
         feature: 'delivery',
       },
       {
-        key: 'personnel', icon: 'user-plus', iconBg: IC.purpleBg, iconColor: IC.purple,
+        key: 'personnel', icon: 'user-plus',
         label: 'Delivery Personnel',
-        subtitle: 'Add riders & assign login credentials',
+        subtitle: 'Riders and their logins',
         onPress: nav => nav.navigate('DeliveryPersonnelList'),
         feature: 'delivery',
       },
       {
-        key: 'agencies', icon: 'box', iconBg: IC.amberBg, iconColor: IC.amber,
+        key: 'agencies', icon: 'box',
         label: 'Warehouse Agencies',
-        subtitle: 'Manage agencies, inventory & sync',
+        subtitle: 'Agencies, stock and sync',
         onPress: nav => nav.navigate('AgencyList'),
         feature: 'agencies',
       },
@@ -162,17 +148,17 @@ const SECTIONS: MoreSection[] = [
     title: 'TEAM',
     rows: [
       {
-        key: 'approvals', icon: 'check-square', iconBg: IC.amberBg, iconColor: IC.amber,
-        label: 'Staff approvals',
-        subtitle: 'Decide what your staff have sent you',
-        badgeSelector: 'approvals',
+        key: 'approvals', icon: 'inbox',
+        label: 'Staff Approvals',
+        subtitle: 'Requests waiting on you',
+        count: 'alert',
         onPress: nav => nav.navigate('StaffApprovals'),
         feature: 'multiUser',
       },
       {
-        key: 'users', icon: 'user-check', iconBg: IC.indigoBg, iconColor: IC.indigo,
-        label: 'User management',
-        subtitle: 'Add staff, set roles & share logins',
+        key: 'users', icon: 'user-check',
+        label: 'User Management',
+        subtitle: 'Staff, roles and logins',
         onPress: nav => nav.navigate('UserManagement'),
         feature: 'multiUser',
       },
@@ -182,9 +168,9 @@ const SECTIONS: MoreSection[] = [
     title: 'SYSTEM',
     rows: [
       {
-        key: 'settings', icon: 'settings', iconBg: IC.grayBg, iconColor: IC.gray,
+        key: 'settings', icon: 'settings',
         label: 'Settings',
-        subtitle: 'Company, users, preferences & app config',
+        subtitle: 'Company and app preferences',
         onPress: nav => nav.navigate('Settings'),
       },
     ]
@@ -247,103 +233,26 @@ const MoreHubScreen: React.FC = () => {
   return (
     <ReportContainer>
       <ReportHeader title="More" subtitle="Tools, modules & settings" />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} style={{ backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={hubContentStyle} showsVerticalScrollIndicator={false}>
         {sections.map(section => (
-          <View key={section.title}>
-            <Text style={styles.sectionHeader}>{section.title}</Text>
-            <View style={styles.sectionCard}>
-              {section.rows.map((row, idx) => {
-                const badge = row.badgeSelector ? getBadge(row.key) : 0;
-                return (
-                  <React.Fragment key={row.key}>
-                    {idx > 0 && <View style={styles.divider} />}
-                    <TouchableOpacity
-                      style={styles.row}
-                      activeOpacity={0.6}
-                      onPress={() => row.onPress(navigation)}
-                    >
-                      <View style={[styles.rowIcon, { backgroundColor: row.iconBg }]}>
-                        <Feather name={row.icon} size={20} color={row.iconColor} />
-                        {badge > 0 && <NotificationBadge count={badge} />}
-                      </View>
-                      <View style={styles.rowContent}>
-                        <Text style={styles.rowLabel}>{row.label}</Text>
-                        <Text style={styles.rowSubtitle}>{row.subtitle}</Text>
-                      </View>
-                      <Feather name="chevron-right" size={18} color={colors.textTertiary} />
-                    </TouchableOpacity>
-                  </React.Fragment>
-                );
-              })}
-            </View>
-          </View>
+          <HubSection key={section.title} title={section.title}>
+            {section.rows.map((row, idx) => (
+              <HubRow
+                key={row.key}
+                icon={row.icon}
+                title={row.label}
+                subtitle={row.subtitle}
+                count={row.count ? getBadge(row.key) : 0}
+                countTone={row.count}
+                onPress={() => row.onPress(navigation)}
+                last={idx === section.rows.length - 1}
+              />
+            ))}
+          </HubSection>
         ))}
       </ScrollView>
     </ReportContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-    title: { ...THEME.typography.h2, color: colors.textPrimary },
-  scrollContent: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.xxl,
-  },
-  sectionHeader: {
-    ...THEME.typography.labelSm,
-    
-    color: colors.textSecondary,
-    letterSpacing: 0.8,
-    marginTop: spacing.xl,
-    marginBottom: spacing.xxs,
-    marginLeft: spacing.xxs,
-  },
-  sectionCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    ...shadows.sm,
-    overflow: 'hidden',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginLeft: 68,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  rowIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  rowContent: { flex: 1, marginRight: spacing.xs },
-  rowLabel: {
-    ...THEME.typography.h4,
-    
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  rowSubtitle: {
-    ...THEME.typography.caption,
-    color: colors.textSecondary,
-  }
-});
 
 export default MoreHubScreen;

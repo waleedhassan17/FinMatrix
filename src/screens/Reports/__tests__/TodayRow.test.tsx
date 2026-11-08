@@ -42,8 +42,8 @@ describe('TodayRow', () => {
     const tree = render(<TodayRow today={TODAY} onOpen={jest.fn()} onRetry={jest.fn()} />);
     expect(labels(tree)).toEqual([
       'Cash on hand',
-      'Overdue from customers',
-      'Due to suppliers this week',
+      'Customers overdue',
+      'Bills due this week',
       'Below reorder point',
     ]);
     act(() => tree.unmount());

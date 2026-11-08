@@ -1,121 +1,112 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Transactions Hub
-// Sales + Purchases entry points (enterprise-consistent UI)
+// Sales, purchases and journal entry points, drawn with the shared hub list
+// (components/shared/HubList) so this tab reads like Reports and More.
 // ═══════════════════════════════════════════════════════
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { ScrollView } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { THEME } from '../../utils/theme';
 import { useAppSelector } from '../../hooks/useReduxHooks';
 import { selectFeatures, selectUser } from '../Auth/authSlice';
 import { isFeatureVisible } from '../../utils/featureGates';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
-import { ReportContainer, ReportHeader, SectionCard, ACCENT } from '../../components/reports/ReportUI';
+import { ReportContainer, ReportHeader } from '../../components/reports/ReportUI';
+import { HubRow, HubSection, hubContentStyle } from '../../components/shared/HubList';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
 
-interface HubRow {
+export interface TransactionHubRow {
   key: string;
   icon: keyof typeof Feather.glyphMap;
-  accent: string;
   label: string;
+  /** One line, at most HUB_SUBTITLE_MAX characters. */
   subtitle: string;
   onPress: (nav: Nav) => void;
   /** Three-tier model: row only shows when this feature is on (undefined = always). */
   feature?: string;
 }
 
-const SALES_ROWS: HubRow[] = [
+export const SALES_ROWS: TransactionHubRow[] = [
   {
     key: 'estimates',
     icon: 'edit-3',
-    accent: ACCENT.blue,
     label: 'Estimates',
-    subtitle: 'Create quotes; convert to invoice or sales order',
+    subtitle: 'Quotes you can convert to a sale',
     onPress: nav => nav.navigate('EstimateList'),
   },
   {
     key: 'salesOrders',
     icon: 'clipboard',
-    accent: ACCENT.amber,
     label: 'Sales Orders',
-    subtitle: 'Track fulfillment and invoice orders',
+    subtitle: 'Orders to fulfil and invoice',
     onPress: nav => nav.navigate('SalesOrderList'),
     feature: 'salesOrders',
   },
   {
     key: 'invoices',
     icon: 'file-text',
-    accent: ACCENT.brand,
     label: 'Invoices',
-    subtitle: 'Create, send, and track customer invoices',
+    subtitle: "Bill customers, track what's paid",
     onPress: nav => nav.navigate('InvoiceList'),
   },
   {
     key: 'payments',
     icon: 'dollar-sign',
-    accent: ACCENT.green,
     label: 'Receive Payments',
-    subtitle: 'Record and allocate customer payments',
+    subtitle: 'Record money from customers',
     onPress: nav => nav.navigate('ReceivePayment'),
   },
   {
     key: 'creditMemos',
     icon: 'rotate-ccw',
-    accent: ACCENT.red,
     label: 'Credit Memos',
-    subtitle: 'Issue customer credits; apply or refund',
+    subtitle: 'Credits and refunds to customers',
     onPress: nav => nav.navigate('CreditMemoList'),
   },
 ];
 
-const PURCHASE_ROWS: HubRow[] = [
+export const PURCHASE_ROWS: TransactionHubRow[] = [
   {
     key: 'bills',
     icon: 'file',
-    accent: ACCENT.blue,
     label: 'Bills',
-    subtitle: 'Manage vendor bills and expenses',
+    subtitle: 'Vendor bills and expenses',
     onPress: nav => nav.navigate('BillList'),
   },
   {
     key: 'payBills',
     icon: 'credit-card',
-    accent: ACCENT.violet,
     label: 'Pay Bills',
     subtitle: 'Record payments to vendors',
     onPress: nav => nav.navigate('PayBills'),
   },
   {
     key: 'purchaseOrders',
-    icon: 'clipboard',
-    accent: ACCENT.amber,
+    icon: 'shopping-cart',
     label: 'Purchase Orders',
-    subtitle: 'Create and track vendor purchase orders',
+    subtitle: 'Order stock from vendors',
     onPress: nav => nav.navigate('POList'),
     feature: 'purchaseOrders',
   },
   {
     key: 'vendorCredits',
     icon: 'corner-up-left',
-    accent: ACCENT.teal,
     label: 'Vendor Credits',
-    subtitle: 'Record vendor returns; apply to bills',
+    subtitle: 'Returns and credits from vendors',
     onPress: nav => nav.navigate('VendorCreditList'),
   },
 ];
 
-const ACCOUNTING_ROWS: HubRow[] = [
+export const ACCOUNTING_ROWS: TransactionHubRow[] = [
   {
     key: 'generalJournal',
     icon: 'book-open',
-    accent: ACCENT.violet,
     label: 'General Journal',
-    subtitle: 'Record manual double-entry journal entries',
+    subtitle: 'Manual double-entry postings',
     onPress: nav => nav.navigate('JournalEntryList'),
   },
 ];
@@ -127,73 +118,35 @@ const TransactionsHubScreen: React.FC = () => {
   // warehouse-only rows are hard-gated by company type (featureGates.ts).
   const features = useAppSelector(selectFeatures);
   const companyType = useAppSelector(selectUser)?.companyType;
-  const visible = (rows: HubRow[]) =>
-    rows.filter(r => isFeatureVisible(r.feature, features, companyType));
-  const salesRows = visible(SALES_ROWS);
-  const purchaseRows = visible(PURCHASE_ROWS);
-  const accountingRows = visible(ACCOUNTING_ROWS);
-
-  const renderRow = (row: HubRow, last: boolean) => (
-    <TouchableOpacity
-      key={row.key}
-      style={[styles.row, !last && styles.rowBordered]}
-      activeOpacity={0.6}
-      onPress={() => row.onPress(navigation)}
-    >
-      <View style={[styles.rowIcon, { backgroundColor: `${row.accent}14` }]}>
-        <Feather name={row.icon} size={18} color={row.accent} />
-      </View>
-      <View style={styles.rowContent}>
-        <Text style={styles.rowLabel}>{row.label}</Text>
-        <Text style={styles.rowSubtitle}>{row.subtitle}</Text>
-      </View>
-      <Feather name="chevron-right" size={18} color={THEME.colors.textTertiary} />
-    </TouchableOpacity>
-  );
+  const sections = [
+    { title: 'Sales', rows: SALES_ROWS },
+    { title: 'Purchases', rows: PURCHASE_ROWS },
+    { title: 'Accounting', rows: ACCOUNTING_ROWS },
+  ]
+    .map(s => ({ ...s, rows: s.rows.filter(r => isFeatureVisible(r.feature, features, companyType)) }))
+    .filter(s => s.rows.length > 0);
 
   return (
     <ReportContainer>
       <ReportHeader title="Transactions" subtitle="Sales & purchases" />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <SectionCard title="Sales" icon="trending-up">
-          <View style={styles.list}>{salesRows.map((r, i) => renderRow(r, i === salesRows.length - 1))}</View>
-        </SectionCard>
-
-        <SectionCard title="Purchases" icon="shopping-cart">
-          <View style={styles.list}>{purchaseRows.map((r, i) => renderRow(r, i === purchaseRows.length - 1))}</View>
-        </SectionCard>
-
-        <SectionCard title="Accounting" icon="book">
-          <View style={styles.list}>{accountingRows.map((r, i) => renderRow(r, i === accountingRows.length - 1))}</View>
-        </SectionCard>
-
-        <View style={{ height: THEME.spacing.xl }} />
+      <ScrollView contentContainerStyle={hubContentStyle} showsVerticalScrollIndicator={false}>
+        {sections.map(section => (
+          <HubSection key={section.title} title={section.title}>
+            {section.rows.map((row, i) => (
+              <HubRow
+                key={row.key}
+                icon={row.icon}
+                title={row.label}
+                subtitle={row.subtitle}
+                onPress={() => row.onPress(navigation)}
+                last={i === section.rows.length - 1}
+              />
+            ))}
+          </HubSection>
+        ))}
       </ScrollView>
     </ReportContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  content: { padding: THEME.spacing.md, gap: THEME.spacing.sm + 2 },
-  list: { marginHorizontal: -THEME.spacing.md, marginVertical: -THEME.spacing.md },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: THEME.spacing.md,
-    paddingVertical: 13,
-  },
-  rowBordered: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.borderLight },
-  rowIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: THEME.radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: THEME.spacing.sm,
-  },
-  rowContent: { flex: 1, marginRight: THEME.spacing.sm },
-  rowLabel: { ...THEME.typography.h5, color: THEME.colors.textPrimary, marginBottom: 1 },
-  rowSubtitle: { ...THEME.typography.caption, color: THEME.colors.textSecondary },
-});
 
 export default TransactionsHubScreen;

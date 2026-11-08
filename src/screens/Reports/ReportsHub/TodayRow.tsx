@@ -15,7 +15,7 @@ import { compactMoney } from '../../../models/itemExplorerModel';
 import type { Remote } from '../../../models/remoteModel';
 import type { HubToday } from './reportsHubSlice';
 
-const { colors, radius, spacing, typography } = THEME;
+const { colors, radius, shadows, spacing, typography } = THEME;
 
 interface Tile {
   key: keyof HubToday;
@@ -39,7 +39,7 @@ const TILES: Tile[] = [
   },
   {
     key: 'overdueAr',
-    label: 'Overdue from customers',
+    label: 'Customers overdue',
     icon: 'arrow-down-left',
     target: 'ARAging',
     value: t => (t.overdueAr.data ? compactMoney(t.overdueAr.data.overdue) : null),
@@ -49,7 +49,7 @@ const TILES: Tile[] = [
   },
   {
     key: 'apDue',
-    label: 'Due to suppliers this week',
+    label: 'Bills due this week',
     icon: 'arrow-up-right',
     target: 'APAging',
     value: t => (t.apDue.data ? compactMoney(t.apDue.data.dueThisWeek) : null),
@@ -132,6 +132,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     padding: spacing.sm,
+    // The hub card's elevation, so a tile and the report cards below it are
+    // the same surface.
+    ...shadows.xs,
   },
   head: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   label: { ...typography.labelSm, color: colors.textSecondary, flex: 1 },
