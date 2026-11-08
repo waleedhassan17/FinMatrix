@@ -17,6 +17,8 @@ export interface ReportDateRange {
 export interface ReportHubItem {
   key: string;
   title: string;
+  /** One line under the title in the hub: what the report answers. */
+  description: string;
   icon: string;
   /** Three-tier model: item only shows when this feature is on. */
   feature?: string;

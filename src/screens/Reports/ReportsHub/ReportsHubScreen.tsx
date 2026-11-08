@@ -18,7 +18,6 @@ import {
   ReportContainer,
   ReportHeader,
   SectionCard,
-  Badge,
   EmptyBlock
 } from '../../../components/reports/ReportUI';
 
@@ -65,7 +64,12 @@ const ReportsHubScreen: React.FC = () => {
     return categories
       .map(c => ({
         ...c,
-        items: c.items.filter(i => i.title.toLowerCase().includes(q) || c.title.toLowerCase().includes(q)),
+        items: c.items.filter(
+          i =>
+            i.title.toLowerCase().includes(q) ||
+            i.description.toLowerCase().includes(q) ||
+            c.title.toLowerCase().includes(q),
+        ),
       }))
       .filter(c => c.items.length > 0);
   }, [categories, search]);
@@ -139,21 +143,32 @@ const ReportsHubScreen: React.FC = () => {
             icon={getCatIcon(category.key)}
             style={styles.catCard}
           >
+            {/* A plain grouped list: what the report is, what it answers, and
+                a chevron. Every report is always available, so a "Ready" badge
+                on each row said nothing, and the coloured bar beside every row
+                was decoration that competed with the figures above. */}
             <View style={styles.itemList}>
               {category.items.map((item, idx) => (
                 <TouchableOpacity
                   key={item.key}
                   activeOpacity={0.6}
-                  style={[styles.itemRow, idx < category.items.length - 1 && styles.itemRowBordered]}
+                  style={styles.itemRow}
                   onPress={() => handlePress(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.title}. ${item.description}`}
                 >
-                  <View style={styles.itemAccent} />
-                  <View style={styles.itemContent}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.itemSub}>View report</Text>
+                  {/* The rule starts at the text, not the card edge. */}
+                  <View style={[styles.itemContent, idx < category.items.length - 1 && styles.itemContentBordered]}>
+                    <View style={styles.itemText}>
+                      <Text style={styles.itemTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={styles.itemSub} numberOfLines={1}>
+                        {item.description}
+                      </Text>
+                    </View>
+                    <Feather name="chevron-right" size={18} color={THEME.colors.textTertiary} />
                   </View>
-                  <Badge label="Ready" />
-                  <Feather name="chevron-right" size={18} color={THEME.colors.textTertiary} style={{ marginLeft: 8 }} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -188,12 +203,19 @@ const styles = StyleSheet.create({
   catCard: { marginTop: 0 },
 
   itemList: { marginHorizontal: -THEME.spacing.md, marginVertical: -THEME.spacing.md },
-  itemRow: { flexDirection: 'row', alignItems: 'center', paddingRight: THEME.spacing.md },
-  itemRowBordered: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.borderLight },
-  itemAccent: { width: 3, alignSelf: 'stretch', backgroundColor: THEME.colors.primary, opacity: 0.85 },
-  itemContent: { flex: 1, paddingVertical: 13, paddingLeft: 13 },
-  itemTitle: { ...THEME.typography.labelLg,  color: THEME.colors.textPrimary },
-  itemSub: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginTop: 1 }
+  itemRow: { paddingLeft: THEME.spacing.md },
+  itemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.sm,
+    minHeight: 56,
+    paddingVertical: THEME.spacing.sm,
+    paddingRight: THEME.spacing.md,
+  },
+  itemContentBordered: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.borderLight },
+  itemText: { flex: 1 },
+  itemTitle: { ...THEME.typography.labelLg, color: THEME.colors.textPrimary },
+  itemSub: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginTop: 2 }
 });
 
 export default ReportsHubScreen;

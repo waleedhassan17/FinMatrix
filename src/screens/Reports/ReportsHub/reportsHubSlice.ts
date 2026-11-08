@@ -23,13 +23,14 @@ const initialCategories: ReportHubCategory[] = [
     title: 'Financial',
     icon: 'FIN',
     items: [
-      { key: 'pl', title: 'P&L', icon: 'PL', target: 'ProfitLoss' },
-      { key: 'bs', title: 'Balance Sheet', icon: 'BS', target: 'BalanceSheet' },
-      { key: 'tb', title: 'Trial Balance', icon: 'TB', target: 'TrialBalance' },
-      { key: 'cf', title: 'Cash Flow', icon: 'CF', target: 'CashFlow' },
-      { key: 'gl', title: 'General Ledger', icon: 'GL', target: 'GeneralLedger' },
-      { key: 'budgets', title: 'Budgets', icon: 'BUD', target: 'BudgetList', feature: 'budgets' },
-      { key: 'analytics', title: 'Analytics', icon: 'ANL', target: 'AnalyticsDashboard' },
+      // Descriptions follow the website's report subtitles, cut to one line.
+      { key: 'pl', title: 'P&L', description: 'What you earned and what it cost', icon: 'PL', target: 'ProfitLoss' },
+      { key: 'bs', title: 'Balance Sheet', description: 'What the business owns and owes', icon: 'BS', target: 'BalanceSheet' },
+      { key: 'tb', title: 'Trial Balance', description: 'Every account, debits against credits', icon: 'TB', target: 'TrialBalance' },
+      { key: 'cf', title: 'Cash Flow', description: 'Where the money came from and went', icon: 'CF', target: 'CashFlow' },
+      { key: 'gl', title: 'General Ledger', description: 'Every posting, with a running balance', icon: 'GL', target: 'GeneralLedger' },
+      { key: 'budgets', title: 'Budgets', description: 'Plan and track by fiscal year', icon: 'BUD', target: 'BudgetList', feature: 'budgets' },
+      { key: 'analytics', title: 'Analytics', description: 'How the business is doing', icon: 'ANL', target: 'AnalyticsDashboard' },
     ],
   },
   {
@@ -37,7 +38,7 @@ const initialCategories: ReportHubCategory[] = [
     title: 'Accounts Receivable',
     icon: 'AR',
     items: [
-      { key: 'ar-aging', title: 'Aging', icon: 'AG', target: 'ARAging' },
+      { key: 'ar-aging', title: 'Aging', description: 'Who owes you, and how overdue', icon: 'AG', target: 'ARAging' },
     ],
   },
   {
@@ -45,7 +46,7 @@ const initialCategories: ReportHubCategory[] = [
     title: 'Accounts Payable',
     icon: 'AP',
     items: [
-      { key: 'ap-aging', title: 'Aging', icon: 'AG', target: 'APAging' },
+      { key: 'ap-aging', title: 'Aging', description: 'Who you owe, and how late you are', icon: 'AG', target: 'APAging' },
     ],
   },
   {
@@ -54,7 +55,7 @@ const initialCategories: ReportHubCategory[] = [
     icon: 'INV',
     feature: 'inventory',
     items: [
-      { key: 'inv-valuation', title: 'Valuation', icon: 'VAL', target: 'InventoryValuation' },
+      { key: 'inv-valuation', title: 'Valuation', description: 'Stock at cost, and which of it earns', icon: 'VAL', target: 'InventoryValuation' },
     ],
   },
   {
@@ -63,8 +64,8 @@ const initialCategories: ReportHubCategory[] = [
     icon: 'DEL',
     feature: 'delivery',
     items: [
-      { key: 'delivery-daily', title: 'Daily Report', icon: 'DR', target: 'DeliveryDailyReport' },
-      { key: 'delivery-performance', title: 'Performance', icon: 'DP', target: 'DeliveryPerformance' },
+      { key: 'delivery-daily', title: 'Daily Report', description: "The day's delivery operations", icon: 'DR', target: 'DeliveryDailyReport' },
+      { key: 'delivery-performance', title: 'Performance', description: 'Rider productivity', icon: 'DP', target: 'DeliveryPerformance' },
     ],
   },
 ];

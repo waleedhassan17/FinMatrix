@@ -5,7 +5,7 @@
 // All tokens come from utils/theme (THEME) — single source of truth.
 // ═══════════════════════════════════════════════════════
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import {
   StyleProp,
   TextStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import dayjs from 'dayjs';
@@ -76,13 +76,21 @@ export const ACCENT = {
 export const CHART_SERIES = [...CATEGORY_PALETTE];
 
 // ── Screen container ──────────────────────────────────
-export const ReportContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <SafeAreaView style={[S.container, { backgroundColor: HEADER_NAVY[0] }]} edges={['top']}>
-    <View style={S.container}>
-      {children}
+// The top inset is the root SafeAreaProvider's (the hook), not a SafeAreaView
+// per screen. A SafeAreaView works its inset out from where the view sits on
+// screen at the moment it measures, so a screen measured mid-transition came
+// out at 0 and drew its header under the status bar — the General Ledger, the
+// heaviest report to mount, did exactly that. The provider measures the window
+// once; nothing a screen does can move it. React Navigation's own header
+// takes its inset the same way.
+export const ReportContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[S.container, { paddingTop: insets.top, backgroundColor: HEADER_NAVY[0] }]}>
+      <View style={S.container}>{children}</View>
     </View>
-  </SafeAreaView>
-);
+  );
+};
 
 // ── Unified header ────────────────────────────────────
 // `onBack` → renders the back row (used by detail screens).
@@ -693,32 +701,137 @@ export const ProgressBar: React.FC<{ pct: number; color?: string }> = ({ pct, co
   </View>
 );
 
-// ── Segmented control (period pickers) ────────────────
+// ── Segmented control (views, modes, report tabs) ─────
+/**
+ * A label is never broken across lines. Split into equal quarters, four tabs
+ * on a phone — Items, Top sellers, Health, Reconciliation — left
+ * "Reconciliation" too narrow, and it wrapped mid-word under the others. The
+ * control measures its labels and lays itself out the way iOS apportions
+ * segments:
+ *
+ *   • equal    every label fits an equal share: equal segments, as before;
+ *   • content  one does not: each segment gets its label's width plus an
+ *              equal part of the room left, so a long label gets what it needs;
+ *   • scroll   even that overflows (a large system font): the strip scrolls
+ *              sideways and keeps the active segment in view, as the web's
+ *              tab list does on a phone.
+ *
+ * Until the labels are measured it draws equal, single-line segments.
+ */
+type SegmentFit = 'equal' | 'content' | 'scroll';
+const SEG_PAD_X = 10;
+const SEG_GAP = 3;
+const SEG_TRACK_PAD = 3;
+
+export const segmentFit = (labelWidths: number[], trackWidth: number): SegmentFit => {
+  const n = labelWidths.length;
+  if (n === 0 || trackWidth <= 0) return 'equal';
+  const gaps = SEG_GAP * (n - 1);
+  const need = labelWidths.map(w => w + SEG_PAD_X * 2);
+  if (Math.max(...need) <= (trackWidth - gaps) / n) return 'equal';
+  return need.reduce((sum, w) => sum + w, 0) + gaps <= trackWidth ? 'content' : 'scroll';
+};
+
 export const Segmented: React.FC<{
   options: string[];
   activeIndex: number;
   onChange: (i: number) => void;
-}> = ({ options, activeIndex, onChange }) => (
-  <View style={S.segment}>
-    {options.map((opt, i) => {
-      const active = i === activeIndex;
-      return (
-        <TouchableOpacity
-          key={opt}
-          style={[S.segmentBtn, active && S.segmentBtnActive]}
-          activeOpacity={0.8}
-          onPress={() => onChange(i)}
-          // A screen reader hears which of the views is on, not just a word.
-          accessibilityRole="button"
-          accessibilityState={{ selected: active }}
-          accessibilityLabel={`${opt}, ${i + 1} of ${options.length}`}
+}> = ({ options, activeIndex, onChange }) => {
+  // The track's inner width, and each label's width on one line.
+  const [track, setTrack] = useState(0);
+  const [natural, setNatural] = useState<Record<string, number>>({});
+  const scrollRef = useRef<ScrollView>(null);
+  const spans = useRef<Record<number, { x: number; width: number }>>({});
+
+  const widths = options.map(o => natural[o]);
+  const fit: SegmentFit = widths.every(w => w !== undefined) ? segmentFit(widths as number[], track) : 'equal';
+
+  const recordLabel = (opt: string, width: number) => {
+    const w = Math.ceil(width) + 1; // sub-pixel widths round down on some devices
+    setNatural(prev => (prev[opt] === w ? prev : { ...prev, [opt]: w }));
+  };
+
+  const centre = (i: number, animated: boolean) => {
+    const s = spans.current[i];
+    if (!s) return;
+    scrollRef.current?.scrollTo({ x: Math.max(0, s.x - (track - s.width) / 2), animated });
+  };
+
+  useEffect(() => {
+    if (fit === 'scroll') centre(activeIndex, true);
+    // `centre` reads refs; re-running on its identity would scroll every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fit, activeIndex, track]);
+
+  const buttons = options.map((opt, i) => {
+    const active = i === activeIndex;
+    return (
+      <TouchableOpacity
+        key={opt}
+        style={[S.segmentBtn, fit === 'equal' ? S.segmentEqual : S.segmentContent, active && S.segmentBtnActive]}
+        activeOpacity={0.8}
+        onPress={() => onChange(i)}
+        onLayout={
+          fit === 'scroll'
+            ? e => {
+                const { x, width } = e.nativeEvent.layout;
+                spans.current[i] = { x, width };
+                if (active) centre(i, false);
+              }
+            : undefined
+        }
+        hitSlop={{ top: 4, bottom: 4 }}
+        // A screen reader hears which of the views is on, not just a word.
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
+        accessibilityLabel={`${opt}, ${i + 1} of ${options.length}`}
+      >
+        <Text style={[S.segmentText, active && S.segmentTextActive]} numberOfLines={1}>
+          {opt}
+        </Text>
+      </TouchableOpacity>
+    );
+  });
+
+  return (
+    <View
+      style={S.segment}
+      onLayout={e => setTrack(Math.max(0, e.nativeEvent.layout.width - SEG_TRACK_PAD * 2))}
+    >
+      {/* Each label at its natural width, unseen and unheard: what decides the fit. */}
+      <View
+        style={S.segmentMeasure}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {options.map(opt => (
+          <Text
+            key={opt}
+            style={[S.segmentText, S.segmentTextActive]}
+            numberOfLines={1}
+            onLayout={e => recordLabel(opt, e.nativeEvent.layout.width)}
+          >
+            {opt}
+          </Text>
+        ))}
+      </View>
+      {fit === 'scroll' ? (
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={S.segmentFill}
+          contentContainerStyle={S.segmentRow}
         >
-          <Text style={[S.segmentText, active && S.segmentTextActive]}>{opt}</Text>
-        </TouchableOpacity>
-      );
-    })}
-  </View>
-);
+          {buttons}
+        </ScrollView>
+      ) : (
+        <View style={[S.segmentFill, S.segmentRow]}>{buttons}</View>
+      )}
+    </View>
+  );
+};
 
 // ── Date field (custom calendar — web · iOS · Android) ────────────
 // Tapping the field opens an in-app calendar built purely from RN primitives,
@@ -1650,10 +1763,20 @@ const S = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: T.colors.neutral100,
     borderRadius: T.radius.md,
-    padding: 3,
-    gap: 3,
+    padding: SEG_TRACK_PAD,
   },
-  segmentBtn: { flex: 1, paddingVertical: 7, borderRadius: T.radius.sm, alignItems: 'center' },
+  segmentFill: { flex: 1 },
+  segmentRow: { flexDirection: 'row', gap: SEG_GAP },
+  // Absolute and content-sized: each label measures at its natural width.
+  segmentMeasure: { position: 'absolute', left: 0, top: 0, opacity: 0, alignItems: 'flex-start' },
+  segmentBtn: {
+    paddingVertical: 7,
+    paddingHorizontal: SEG_PAD_X,
+    borderRadius: T.radius.sm,
+    alignItems: 'center',
+  },
+  segmentEqual: { flex: 1 },
+  segmentContent: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' },
   segmentBtnActive: { backgroundColor: T.colors.surface, ...T.shadows.xs },
   segmentText: { ...T.typography.labelMd, color: T.colors.textSecondary },
   segmentTextActive: { color: T.colors.primary },
