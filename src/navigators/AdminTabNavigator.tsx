@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../utils/theme';
+import { tabLabel } from './tabLabel';
 import NotificationBadge from '../components/shared/NotificationBadge';
 
 import DashboardStack from './stacks/DashboardStack';
@@ -72,14 +73,8 @@ const AdminTabNavigator: React.FC = () => {
         // Every form now has a fixed action bar. With the tabs under it as well,
         // the keyboard left a small phone almost no room for the field in use.
         tabBarHideOnKeyboard: true,
-        // At 12px "Transactions" did not fit a fifth of a 360dp phone and every
-        // tab bar read "Transacti…". 11px, tracked in slightly, it fits.
-        tabBarLabelStyle: {
-          ...THEME.typography.labelSm,
-          fontSize: THEME.typography.overline.fontSize,
-          letterSpacing: -0.1,
-          marginTop: 2
-        },
+        // Labels come from tabLabel(): 11px, and they shrink a little rather
+        // than cut off where a fifth of the screen is too narrow for the word.
         tabBarItemStyle: {
           paddingTop: 2
         },
@@ -88,7 +83,7 @@ const AdminTabNavigator: React.FC = () => {
         name="DashboardStack"
         component={DashboardStack}
         options={{
-          tabBarLabel: 'Dashboard',
+          ...tabLabel('Dashboard', 1, 5),
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="grid" focused={focused} />
           )
@@ -98,7 +93,7 @@ const AdminTabNavigator: React.FC = () => {
         name="TransactionsStack"
         component={TransactionsStack}
         options={{
-          tabBarLabel: 'Transactions',
+          ...tabLabel('Transactions', 2, 5),
           tabBarIcon: ({ focused }) => <TabIcon icon="repeat" focused={focused} />
         }}
       />
@@ -106,7 +101,7 @@ const AdminTabNavigator: React.FC = () => {
         name="ReportsStack"
         component={ReportsStack}
         options={{
-          tabBarLabel: 'Reports',
+          ...tabLabel('Reports', 3, 5),
           tabBarIcon: ({ focused }) => <TabIcon icon="bar-chart-2" focused={focused} />
         }}
       />
@@ -114,7 +109,7 @@ const AdminTabNavigator: React.FC = () => {
         name="InventoryStack"
         component={InventoryStack}
         options={{
-          tabBarLabel: 'Inventory',
+          ...tabLabel('Inventory', 4, 5),
           tabBarIcon: ({ focused }) => <TabIcon icon="archive" focused={focused} />
         }}
       />
@@ -122,7 +117,7 @@ const AdminTabNavigator: React.FC = () => {
         name="MoreStack"
         component={MoreStack}
         options={{
-          tabBarLabel: 'More',
+          ...tabLabel('More', 5, 5),
           tabBarIcon: ({ focused }) => <TabIcon icon="menu" focused={focused} />
         }}
       />
