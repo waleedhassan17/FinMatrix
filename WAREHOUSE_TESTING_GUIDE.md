@@ -114,9 +114,9 @@ Learn this table once and you will never hunt for a screen again.
 
 | Tab | What it does |
 |---|---|
-| **Assign** | Lists unassigned deliveries with checkboxes → *Assign Selected (n)* → pick a rider. Also links to the full **Create Delivery** form and the three-panel **Assign Work** screen. |
-| **Monitor** | Live status counts and the list of active deliveries → links to the full **Delivery Monitor** (map, filters, sort). |
-| **Approvals** | **Open Inventory Approval Queue (n pending)** — this is where deliveries become sales. Also lists failed/returned deliveries. |
+| **Assign** | Lists unassigned deliveries with checkboxes and each one's date → tick some → *Assign to rider* → pick a rider. The header's **New** button opens the full **Create Delivery** form, and **Plan by rider** opens the three-panel **Assign Work** screen. |
+| **Monitor** | The list of active deliveries → **Open monitor** for the full **Delivery Monitor** (map, filters, sort). |
+| **Approvals** | **Inventory approvals** (with the pending count) — this is where deliveries become sales. Also lists failed/returned deliveries. |
 
 ### Rider — bottom tabs
 
@@ -488,7 +488,7 @@ contract this step verifies.
 **Check now, before assigning:** Trial Balance must be **completely unchanged**. Creating a delivery
 posts nothing.
 
-**4b. Assign** — back on the Assign tab, tick the new delivery → **Assign Selected (1)** → pick
+**4b. Assign** — back on the Assign tab, tick the new delivery → **Assign to rider** → pick
 **Saim Raza**.
 
 Read the success alert — it should name a **Sales Order number** and report

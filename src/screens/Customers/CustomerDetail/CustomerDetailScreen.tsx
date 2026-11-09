@@ -15,7 +15,14 @@ import {
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
 import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  Badge,
+  Card,
+  HeaderAction,
+  ReportContainer,
+  ReportHeader,
+  Segmented
+} from '../../../components/reports/ReportUI';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -50,7 +57,7 @@ import type { PaymentTerms, Customer } from '../../../types';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
+const { colors, radius, spacing, typography } = THEME;
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 type DetailRoute = RouteProp<MoreStackParamList, 'CustomerDetail'>;
@@ -130,20 +137,20 @@ const CustomerDetailScreen: React.FC = () => {
   // ── Loading / error states for the record itself ──
   if (!customer && status === 'loading') {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <ScreenHeader title="Customer" onBack={() => navigation.goBack()} />
+      <ReportContainer>
+        <ReportHeader title="Customer" onBack={() => navigation.goBack()} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.actionGreen} />
           <Text style={styles.emptyText}>Loading customer…</Text>
         </View>
-      </SafeAreaView>
+      </ReportContainer>
     );
   }
 
   if (!customer) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <ScreenHeader title="Customer" onBack={() => navigation.goBack()} />
+      <ReportContainer>
+        <ReportHeader title="Customer" onBack={() => navigation.goBack()} />
         <View style={styles.center}>
           <Feather name="user-x" size={40} color={colors.textTertiary} />
           <Text style={styles.emptyText}>{error || 'Customer not found'}</Text>
@@ -155,7 +162,7 @@ const CustomerDetailScreen: React.FC = () => {
           />
           <CustomButton title="Go Back" onPress={() => navigation.goBack()} variant="secondary" size="md" />
         </View>
-      </SafeAreaView>
+      </ReportContainer>
     );
   }
 
@@ -256,30 +263,21 @@ const CustomerDetailScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerTitleRow}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backBtn}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Go back">
-              <Feather name="arrow-left" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle} numberOfLines={1}>{customer.name}</Text>
-          </View>
-          {!!customer.code && <Text style={styles.headerCode}>Customer ID {customer.code}</Text>}
-        </View>
-        <CustomButton
-          title="Edit"
-          onPress={() => navigation.navigate('CustomerForm', { customerId: customer.id })}
-          variant="secondary"
-          size="sm"
-        />
-      </View>
+    <ReportContainer>
+      {/* The navy header every other screen has. This was the one white header
+          in the flow, so opening a customer looked like leaving the app. */}
+      <ReportHeader
+        title={customer.name}
+        subtitle={customer.code || undefined}
+        onBack={() => navigation.goBack()}
+        right={
+          <HeaderAction
+            label="Edit"
+            icon="edit-2"
+            onPress={() => navigation.navigate('CustomerForm', { customerId: customer.id })}
+          />
+        }
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -288,97 +286,99 @@ const CustomerDetailScreen: React.FC = () => {
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.actionGreen} />
         }
       >
-        {/* ── Top Card: Balance + Credit Usage ────── */}
-        <View style={styles.topCard}>
-          <View style={styles.topCardRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.topCardLabel}>Outstanding Balance</Text>
-              <Text style={styles.topCardBalance}>{formatCurrency(customer.balance, 'Rs ')}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.topCardLabel}>Total Purchases</Text>
-              <Text style={styles.topCardPurchases}>{formatCurrency(customer.totalPurchases, 'Rs ')}</Text>
-            </View>
+        {/* ── Balance + credit ────────────────────── */}
+        <Card>
+          <View style={styles.balanceHead}>
+            <Text style={styles.topCardLabel}>Outstanding balance</Text>
+            {/* Only the exception is marked: "Active" on every customer said nothing. */}
+            {!customer.isActive && (
+              <View>
+                <Badge label="Inactive" color={colors.neutral500} dot={false} />
+              </View>
+            )}
           </View>
+          <Text style={styles.topCardBalance}>{formatCurrency(customer.balance, 'Rs ')}</Text>
 
-          {/* Credit Usage Bar */}
-          {customer.creditLimit > 0 && (
-            <View style={styles.creditSection}>
-              <View style={styles.creditHeader}>
-                <Text style={styles.creditLabel}>Credit Usage</Text>
-                <Text style={styles.creditPercent}>{creditUsagePercent.toFixed(0)}%</Text>
+          <View style={styles.summaryRows}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Total purchases</Text>
+              <Text style={styles.summaryValue}>{formatCurrency(customer.totalPurchases, 'Rs ')}</Text>
+            </View>
+            {customer.creditLimit <= 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Credit limit</Text>
+                <Text style={styles.summaryValue}>No limit</Text>
               </View>
-              <View style={styles.creditBarTrack}>
-                <View
-                  style={[styles.creditBarFill, { width: `${creditUsagePercent}%`, backgroundColor: creditBarColor }]}
-                />
-              </View>
-              <View style={styles.creditFooter}>
+            )}
+
+            {/* Credit Usage Bar */}
+            {customer.creditLimit > 0 && (
+              <View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Credit used</Text>
+                  <Text style={styles.summaryValue}>{creditUsagePercent.toFixed(0)}%</Text>
+                </View>
+                <View style={styles.creditBarTrack}>
+                  <View
+                    style={[styles.creditBarFill, { width: `${creditUsagePercent}%`, backgroundColor: creditBarColor }]}
+                  />
+                </View>
                 <Text style={styles.creditFooterText}>
                   {formatCurrency(exposure, 'Rs ')} of {formatCurrency(customer.creditLimit, 'Rs ')}
                   {customer.credit?.available != null ? ` · ${formatCurrency(Math.max(0, customer.credit.available), 'Rs ')} available` : ''}
                 </Text>
               </View>
-            </View>
-          )}
-          {customer.creditLimit <= 0 && (
-            <Text style={styles.creditFooterText}>Credit limit: no limit</Text>
-          )}
+            )}
 
-          {/* Advances: money already paid, waiting to be set against an
-              invoice. Applying it settles invoices without recording new
-              cash — recording the cash again is how a payment gets doubled. */}
-          {advancesHeld > 0 && (
-            <View style={styles.creditSection}>
-              <View style={styles.creditHeader}>
-                <Text style={styles.creditLabel}>Advances held</Text>
-                <Text style={styles.creditPercent}>{formatCurrency(advancesHeld, 'Rs ')}</Text>
+            {/* Advances: money already paid, waiting to be set against an
+                invoice. Applying it settles invoices without recording new
+                cash — recording the cash again is how a payment gets doubled. */}
+            {advancesHeld > 0 && (
+              <View style={styles.advances}>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Advances held</Text>
+                  <Text style={styles.summaryValue}>{formatCurrency(advancesHeld, 'Rs ')}</Text>
+                </View>
+                <CustomButton title="Apply to invoices" variant="secondary" size="sm" onPress={handleUseCredit} />
               </View>
-              <CustomButton title="Apply to invoices" variant="secondary" size="sm" onPress={handleUseCredit} />
-            </View>
-          )}
+            )}
+          </View>
+        </Card>
 
-          {/* Status Badge */}
-          <View style={[styles.statusBadge, { backgroundColor: customer.isActive ? colors.success + '18' : colors.textTertiary + '18' }]}>
-            <Text style={[styles.statusBadgeText, { color: customer.isActive ? colors.success : colors.textTertiary }]}>
-              {customer.isActive ? '● Active' : '● Inactive'}
-            </Text>
+        {/* ── Actions ────────────────────────────────
+            The two things done most, as buttons; the four things looked up,
+            as one quiet row. They were six equal tiles with uppercase labels,
+            which gave a ledger the same weight as taking a payment and left
+            "SEND STATEMENT" pressed against its box. */}
+        <View style={styles.primaryActions}>
+          <View style={styles.primaryAction}>
+            {/* compact, and each button sized from its label rather than an
+                equal half: on a small phone an even split cut the longer one off
+                to "Record paym…", though both fit side by side. */}
+            <CustomButton title="Create invoice" onPress={handleCreateInvoice} compact />
+          </View>
+          <View style={styles.primaryAction}>
+            <CustomButton title="Record payment" variant="secondary" onPress={handleRecordPayment} compact />
           </View>
         </View>
-
-        {/* ── Action Buttons ─────────────────────── */}
-        <View style={styles.actionRow}>
-          <ActionButton icon="file-text" label="Create Invoice" onPress={handleCreateInvoice} />
-          <ActionButton icon="dollar-sign" label="Record Payment" onPress={handleRecordPayment} />
-          <ActionButton icon="list" label={SUMMARY_COPY.customer.action} onPress={handleOutstandingSummary} />
-          <ActionButton
+        <Card padded={false} style={styles.quickRow}>
+          <QuickAction icon="list" label={SUMMARY_COPY.customer.documentsTitle} onPress={handleOutstandingSummary} />
+          <QuickAction
             icon="send"
-            label={isSharingStatement ? 'Preparing…' : 'Send Statement'}
+            label={isSharingStatement ? 'Preparing…' : 'Send statement'}
             onPress={handleSendStatement}
             disabled={isSharingStatement}
           />
-        </View>
-        <View style={styles.actionRow}>
-          <ActionButton icon="book-open" label="Ledger" onPress={handleLedger} />
-          <ActionButton icon="clock" label="History" onPress={handleHistory} />
-        </View>
+          <QuickAction icon="book-open" label="Ledger" onPress={handleLedger} />
+          <QuickAction icon="clock" label="History" onPress={handleHistory} />
+        </Card>
 
         {/* ── Tabs ───────────────────────────────── */}
-        <View style={styles.tabRow}>
-          {TABS.map(t => {
-            const isActive = activeTab === t.key;
-            return (
-              <TouchableOpacity
-                key={t.key}
-                style={[styles.tab, isActive && styles.tabActive]}
-                activeOpacity={0.7}
-                onPress={() => dispatch(setActiveTab(t.key))}
-              >
-                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{t.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <Segmented
+          options={TABS.map(t => t.label)}
+          activeIndex={TABS.findIndex(t => t.key === activeTab)}
+          onChange={i => dispatch(setActiveTab(TABS[i].key))}
+        />
 
         {/* ── Tab Content ────────────────────────── */}
         {activeTab === 'overview' && (
@@ -408,19 +408,27 @@ const CustomerDetailScreen: React.FC = () => {
                       <Text style={styles.listCardTitle}>{inv.invoiceNumber}</Text>
                       <Text style={styles.listCardSub}>{formatDate(inv.date)}</Text>
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
+                    <View style={styles.listCardEnd}>
                       <Text style={styles.listCardAmount}>{formatCurrency(inv.amount, 'Rs ')}</Text>
-                      <View style={[styles.miniStatusBadge, { backgroundColor: (INVOICE_STATUS_COLORS[inv.status] ?? colors.textTertiary) + '18' }]}>
-                        <Text style={[styles.miniStatusText, { color: INVOICE_STATUS_COLORS[inv.status] ?? colors.textTertiary }]}>
-                          {INVOICE_STATUS_LABELS[inv.status] ?? inv.status}
-                        </Text>
+                      {/* Wrapped: Badge pins itself to flex-start, which would
+                          send it to the left of this right-aligned column. */}
+                      <View>
+                        <Badge
+                          label={INVOICE_STATUS_LABELS[inv.status] ?? inv.status}
+                          color={INVOICE_STATUS_COLORS[inv.status] ?? colors.textTertiary}
+                          dot={false}
+                        />
                       </View>
                     </View>
                   </View>
-                  <Text style={styles.listCardDetail}>
-                    {inv.dueDate ? `Due: ${formatDate(inv.dueDate)}` : ''}
-                    {inv.balance > 0 ? `  ·  Balance: ${formatCurrency(inv.balance, 'Rs ')}` : ''}
-                  </Text>
+                  {(!!inv.dueDate || inv.balance > 0) && (
+                    <Text style={styles.listCardDetail}>
+                      {[
+                        inv.dueDate ? `Due ${formatDate(inv.dueDate)}` : '',
+                        inv.balance > 0 ? `Balance ${formatCurrency(inv.balance, 'Rs ')}` : '',
+                      ].filter(Boolean).join(' · ')}
+                    </Text>
+                  )}
                 </TouchableOpacity>
               ))}
               {invoicesTab.page < invoicesTab.totalPages && (
@@ -473,7 +481,7 @@ const CustomerDetailScreen: React.FC = () => {
           </ListTabState>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ReportContainer>
   );
 };
 
@@ -481,38 +489,22 @@ const CustomerDetailScreen: React.FC = () => {
 // SUB-COMPONENTS
 // ═══════════════════════════════════════════════════════
 
-const ScreenHeader: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
-  <View style={styles.header}>
-    <View style={styles.headerLeft}>
-      <View style={styles.headerTitleRow}>
-        <TouchableOpacity
-          onPress={onBack}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Go back">
-          <Feather name="arrow-left" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
-      </View>
-    </View>
-  </View>
-);
-
-const ActionButton: React.FC<{
+const QuickAction: React.FC<{
   icon: keyof typeof Feather.glyphMap;
   label: string;
   onPress: () => void;
   disabled?: boolean;
 }> = ({ icon, label, onPress, disabled }) => (
   <TouchableOpacity
-    style={[styles.actionBtn, disabled && { opacity: 0.5 }]}
+    style={[styles.quickAction, disabled && styles.quickActionDisabled]}
     onPress={onPress}
-    activeOpacity={0.7}
+    activeOpacity={0.6}
     disabled={disabled}
+    accessibilityRole="button"
+    accessibilityLabel={label}
   >
-    <Feather name={icon} size={20} color={colors.actionGreen} style={{ marginBottom: spacing.xxs }} />
-    <Text style={styles.actionLabel}>{label}</Text>
+    <Feather name={icon} size={20} color={colors.primary} />
+    <Text style={styles.quickLabel} numberOfLines={2}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -558,46 +550,55 @@ const OverviewTab: React.FC<{
   customer: Customer;
   onToggleActive: () => void;
   isToggling: boolean;
-}> = ({ customer, onToggleActive, isToggling }) => (
+}> = ({ customer, onToggleActive, isToggling }) => {
+  const billing = formatAddress(customer.billingAddress);
+  const shipping = formatAddress(customer.shippingAddress);
+  return (
   <View style={styles.tabContent}>
     {/* Contact Info */}
-    <View style={styles.infoCard}>
-      <Text style={styles.infoCardTitle}>Contact Information</Text>
+    <Card>
+      <Text style={styles.infoCardTitle}>Contact</Text>
       <InfoRow icon="mail" label="Email" value={customer.email || '—'} />
       <InfoRow icon="phone" label="Phone" value={customer.phone || '—'} />
       <ContactWhatsappRow partyType="customer" partyId={customer.id} refreshKey={customer.updatedAt} />
       {!!customer.contactPerson && <InfoRow icon="user" label="Contact" value={customer.contactPerson} />}
       {!!customer.company && <InfoRow icon="briefcase" label="Company" value={customer.company} />}
       {!!customer.taxId && <InfoRow icon="hash" label="Tax ID" value={customer.taxId} />}
-    </View>
+    </Card>
 
-    {/* Billing Address */}
-    <View style={styles.infoCard}>
-      <Text style={styles.infoCardTitle}>Billing Address</Text>
-      <Text style={styles.addressText}>{formatAddress(customer.billingAddress)}</Text>
-    </View>
+    {/* Addresses: one card when they are the same address, which they usually are. */}
+    {billing === shipping ? (
+      <Card>
+        <Text style={styles.infoCardTitle}>Billing and shipping address</Text>
+        <Text style={styles.addressText}>{billing}</Text>
+      </Card>
+    ) : (
+      <>
+        <Card>
+          <Text style={styles.infoCardTitle}>Billing address</Text>
+          <Text style={styles.addressText}>{billing}</Text>
+        </Card>
+        <Card>
+          <Text style={styles.infoCardTitle}>Shipping address</Text>
+          <Text style={styles.addressText}>{shipping}</Text>
+        </Card>
+      </>
+    )}
 
-    {/* Shipping Address */}
-    <View style={styles.infoCard}>
-      <Text style={styles.infoCardTitle}>Shipping Address</Text>
-      <Text style={styles.addressText}>{formatAddress(customer.shippingAddress)}</Text>
-    </View>
-
-    {/* Terms & Dates */}
-    <View style={styles.infoCard}>
-      <Text style={styles.infoCardTitle}>Terms & Details</Text>
-      <InfoRow icon="clipboard" label="Payment Terms" value={PAYMENT_TERMS_LABELS[customer.paymentTerms as PaymentTerms] ?? customer.paymentTerms} />
-      <InfoRow icon="credit-card" label="Credit Limit" value={formatCurrency(customer.creditLimit, 'Rs ')} />
-      <InfoRow icon="calendar" label="Customer Since" value={formatDate(customer.createdAt)} />
-      <InfoRow icon="refresh-cw" label="Last Updated" value={formatDate(customer.updatedAt)} />
-    </View>
+    {/* Terms & Dates. The credit limit is on the balance card at the top. */}
+    <Card>
+      <Text style={styles.infoCardTitle}>Terms</Text>
+      <InfoRow icon="clipboard" label="Payment terms" value={PAYMENT_TERMS_LABELS[customer.paymentTerms as PaymentTerms] ?? customer.paymentTerms} />
+      <InfoRow icon="calendar" label="Customer since" value={formatDate(customer.createdAt)} />
+      <InfoRow icon="refresh-cw" label="Last updated" value={formatDate(customer.updatedAt)} />
+    </Card>
 
     {/* Notes */}
     {!!customer.notes && (
-      <View style={styles.infoCard}>
+      <Card>
         <Text style={styles.infoCardTitle}>Notes</Text>
         <Text style={styles.notesText}>{customer.notes}</Text>
-      </View>
+      </Card>
     )}
 
     {/* Toggle Active */}
@@ -610,7 +611,8 @@ const OverviewTab: React.FC<{
       disabled={isToggling}
     />
   </View>
-);
+  );
+};
 
 function formatAddress(addr: Customer['billingAddress']): string {
   const line1 = addr.street;
@@ -623,7 +625,8 @@ const InfoRow: React.FC<{ icon: keyof typeof Feather.glyphMap; label: string; va
   <View style={styles.infoRow}>
     <Feather name={icon} size={14} color={colors.textSecondary} style={styles.infoIcon} />
     <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>
+    {/* No line limit: an email cut off with an ellipsis is an email nobody can read. */}
+    <Text style={styles.infoValue}>{value}</Text>
   </View>
 );
 
@@ -631,97 +634,47 @@ const InfoRow: React.FC<{ icon: keyof typeof Feather.glyphMap; label: string; va
 // STYLES
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerLeft: { flex: 1, marginRight: spacing.xs },
-  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
-  backBtn: { marginRight: spacing.xxs, padding: spacing.xxs / 2 },
-  headerTitle: { ...typography.h3, flex: 1, color: colors.textPrimary },
-  headerCode: { ...typography.labelMd, color: colors.textSecondary, marginTop: 2, marginLeft: 40 },
-  scrollContent: { paddingBottom: spacing.xxl },
+  scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
 
-  // ── Top Card ───────────────────────────────────
-  topCard: {
-    backgroundColor: colors.surface,
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.md,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    ...shadows.sm,
-  },
-  topCardRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
-  topCardLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: 2 },
-  topCardBalance: { ...typography.displaySm, color: colors.actionGreen },
-  topCardPurchases: { ...typography.h4, color: colors.textPrimary },
+  // ── Balance ────────────────────────────────────
+  balanceHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs },
+  topCardLabel: { ...typography.labelSm, color: colors.textSecondary },
+  // Ink, as every figure on the dashboard is. Colour on an amount states a fact.
+  topCardBalance: { ...typography.displaySm, color: colors.textPrimary, marginTop: 2, fontVariant: ['tabular-nums'] },
 
-  creditSection: { marginBottom: spacing.xs },
-  creditHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xxs },
-  creditLabel: { ...typography.labelMd, color: colors.textSecondary },
-  creditPercent: { ...typography.labelMd, color: colors.textPrimary },
+  summaryRows: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    gap: spacing.xs + 2,
+  },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  summaryLabel: { ...typography.bodySm, color: colors.textSecondary },
+  summaryValue: { ...typography.labelMd, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
+
   creditBarTrack: {
-    height: 8,
-    backgroundColor: colors.border,
-    borderRadius: 4,
+    height: 6,
+    backgroundColor: colors.neutral100,
+    borderRadius: 3,
     overflow: 'hidden',
+    marginTop: spacing.xs,
   },
-  creditBarFill: { height: '100%', borderRadius: 4 },
-  creditFooter: { marginTop: spacing.xxs },
-  creditFooterText: { ...typography.caption, color: colors.textTertiary },
+  creditBarFill: { height: '100%', borderRadius: 3 },
+  creditFooterText: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xs },
+  advances: { gap: spacing.xs, alignItems: 'stretch' },
 
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.xs + 2,
-    paddingVertical: spacing.xxs,
-    borderRadius: 6,
-    marginTop: spacing.xxs,
-  },
-  statusBadgeText: { ...typography.labelSm },
-
-  // ── Action Buttons ─────────────────────────────
-  actionRow: {
-    flexDirection: 'row',
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.md,
-    gap: spacing.xs,
-  },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    ...shadows.xs,
-  },
-  actionLabel: { ...typography.overline, color: colors.textPrimary, textAlign: 'center' },
-
-  // ── Tabs ───────────────────────────────────────
-  tabRow: {
-    flexDirection: 'row',
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.xl,
-    marginBottom: spacing.xs,
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    padding: spacing.xxs,
-    ...shadows.xs,
-  },
-  tab: { flex: 1, paddingVertical: spacing.xs, alignItems: 'center', borderRadius: 6 },
-  tabActive: { backgroundColor: colors.actionGreen },
-  tabText: { ...typography.h5, color: colors.textSecondary },
-  tabTextActive: { color: colors.surface },
+  // ── Actions ────────────────────────────────────
+  primaryActions: { flexDirection: 'row', gap: spacing.xs + 2 },
+  primaryAction: { flexGrow: 1, flexBasis: 'auto' },
+  quickRow: { flexDirection: 'row', paddingVertical: spacing.xs },
+  quickAction: { flex: 1, alignItems: 'center', gap: spacing.xxs + 2, paddingVertical: spacing.xs, paddingHorizontal: spacing.xxs },
+  quickActionDisabled: { opacity: 0.5 },
+  // minHeight is two lines, so "Ledger" and "Send statement" keep their icons level.
+  quickLabel: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', minHeight: 32 },
 
   // ── Tab Content ────────────────────────────────
-  tabContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs, gap: 0 },
+  tabContent: { gap: spacing.sm },
   tabStateBlock: {
     alignItems: 'center',
     paddingVertical: spacing.xxl,
@@ -731,13 +684,6 @@ const styles = StyleSheet.create({
   tabStateText: { ...typography.bodySm, color: colors.textSecondary, textAlign: 'center' },
 
   // ── Info Cards ─────────────────────────────────
-  infoCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.xs,
-    ...shadows.xs,
-  },
   infoCardTitle: {
     ...typography.labelLg,
     color: colors.textPrimary,
@@ -745,32 +691,33 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: spacing.xxs + 1,
   },
-  infoIcon: { marginRight: spacing.xs, width: 22 },
-  infoLabel: { ...typography.bodySm, color: colors.textSecondary, width: 100 },
-  infoValue: { ...typography.labelMd, color: colors.textPrimary, flex: 1 },
+  infoIcon: { marginRight: spacing.xs, width: 22, flexShrink: 0 },
+  infoLabel: { ...typography.bodySm, color: colors.textSecondary, width: 108, flexShrink: 0 },
+  // minWidth: without it an unbroken email sets the row's minimum width, runs
+  // out of the card and squeezes the label into it.
+  infoValue: { ...typography.labelMd, color: colors.textPrimary, flex: 1, minWidth: 0 },
 
   addressText: { ...typography.bodySm, color: colors.textPrimary, lineHeight: 22 },
   notesText: { ...typography.bodySm, color: colors.textSecondary, lineHeight: 21 },
 
   // ── List Cards (Invoices / Payments) ───────────
+  // The same surface as Card, so the rows match the cards above them.
   listCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     padding: spacing.md,
-    marginBottom: spacing.xs,
-    ...shadows.xs,
   },
-  listCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  listCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm },
+  listCardEnd: { alignItems: 'flex-end', gap: spacing.xxs },
   listCardTitle: { ...typography.labelLg, color: colors.textPrimary },
   listCardSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  listCardAmount: { ...typography.h4, color: colors.textPrimary },
+  listCardAmount: { ...typography.labelLg, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
   listCardDetail: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xs },
-
-  miniStatusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginTop: 4 },
-  miniStatusText: { ...typography.overline },
 
   // ── Empty / Center ─────────────────────────────
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xxl },

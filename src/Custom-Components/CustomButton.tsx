@@ -21,6 +21,11 @@ interface CustomButtonProps {
   disabled?: boolean;
   icon?: React.ReactNode;
   fullWidth?: boolean;
+  /**
+   * Tighter side padding, for a button sharing a row with another: the label
+   * gets the width instead of the padding.
+   */
+  compact?: boolean;
 }
 
 const CustomButton: React.FC<CustomButtonProps> = ({
@@ -32,6 +37,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   disabled = false,
   icon,
   fullWidth = false,
+  compact = false,
 }) => {
   const isDisabled = disabled || isLoading;
 
@@ -70,6 +76,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
         styles.base,
         variantStyles[variant],
         sizeStyles[size],
+        compact && styles.compact,
         fullWidth ? styles.fullWidth : undefined,
         isDisabled ? styles.disabled : undefined,
       ]}
@@ -155,6 +162,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 16,
     minHeight: 56,
+  },
+
+  compact: {
+    paddingHorizontal: 12,
   },
 
   // ── Text ──

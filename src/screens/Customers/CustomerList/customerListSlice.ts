@@ -15,6 +15,7 @@ import {
 import {
   customerListSerializer,
   customerSingleSerializer,
+  type CustomerListSummary,
 } from '../../../serializers/customerSerializer';
 
 export type CustomerStatusFilter = 'all' | 'active' | 'inactive';
@@ -31,6 +32,7 @@ export interface CustomerListSliceState {
   page: number;
   totalPages: number;
   totalCustomers: number;
+  summary: CustomerListSummary | null;
 }
 
 const initialState: CustomerListSliceState = {
@@ -44,6 +46,7 @@ const initialState: CustomerListSliceState = {
   page: 1,
   totalPages: 1,
   totalCustomers: 0,
+  summary: null,
 };
 
 const PAGE_SIZE = 50;
@@ -118,6 +121,7 @@ export const customerListSlice = createAppSlice({
           state.page = data.page;
           state.totalPages = data.totalPages;
           state.totalCustomers = data.totalCustomers;
+          state.summary = data.summary;
           state.isLoading = false;
           state.isLoadingMore = false;
         },
@@ -184,6 +188,7 @@ export const customerListSlice = createAppSlice({
     selectCustomerPage: state => state.page,
     selectCustomerTotalPages: state => state.totalPages,
     selectCustomerTotal: state => state.totalCustomers,
+    selectCustomerSummary: state => state.summary,
   },
 });
 
@@ -212,4 +217,5 @@ export const {
   selectCustomerPage,
   selectCustomerTotalPages,
   selectCustomerTotal,
+  selectCustomerSummary,
 } = customerListSlice.selectors;

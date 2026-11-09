@@ -13,12 +13,12 @@ import {
   Share
 } from 'react-native';
 import { Alert } from '../../../../utils/alert';
-import { ReportContainer, ReportHeader } from '../../../../components/reports/ReportUI';
+import { Badge, Card, ReportContainer, ReportHeader, Segmented } from '../../../../components/reports/ReportUI';
 import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CustomButton from '../../../../Custom-Components/CustomButton';
-import { THEME, statusStyle } from '../../../../utils/theme';
+import { THEME, STATUS_CONFIG, statusStyle } from '../../../../utils/theme';
 import {
   getPersonnelDetailAPI,
   getDeliveriesAPI,
@@ -30,15 +30,9 @@ import type { RootStackParamList } from '../../../../types';
 import { fetchAllPages } from '../../../../models/documentListModel';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
+const { colors, radius, spacing, typography } = THEME;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryPersonnelDetail'>;
-
-// Availability states resolve through the app-wide status palette:
-// available/active are success, busy is warning, on_leave/inactive neutral.
-const STATUS_COLORS: Record<string, string> = new Proxy({}, {
-  get: (_, k: string) => statusStyle(k).fg
-}) as Record<string, string>;
 
 const VEHICLE_LABELS: Record<string, string> = {
   motorcycle: 'Motorcycle',
@@ -179,7 +173,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
   if (loadState === 'loading' && !person) {
     return (
       <ReportContainer>
-        <ReportHeader title="Personnel Details" onBack={() => navigation.goBack()} />
+        <ReportHeader title="Rider details" onBack={() => navigation.goBack()} />
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={colors.actionGreen} />
           <Text style={styles.emptyText}>Loading rider…</Text>
@@ -191,7 +185,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
   if (!person) {
     return (
       <ReportContainer>
-        <ReportHeader title="Personnel Details" onBack={() => navigation.goBack()} />
+        <ReportHeader title="Rider details" onBack={() => navigation.goBack()} />
         <View style={styles.centerContent}>
           <Feather name="user-x" size={40} color={colors.textTertiary} />
           <Text style={styles.emptyText}>{loadError || 'Personnel not found'}</Text>
@@ -209,12 +203,28 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
   // Paused by the plan's rider limit (not by the owner). Activating takes a
   // seat, which the server refuses while every seat is in use.
   const isPlanLocked = person.status === 'plan_locked';
-  const statusColor = person.isAvailable && person.status === 'active'
-    ? colors.success
-    : STATUS_COLORS[person.status] || colors.neutral400;
+  // Availability states resolve through the app-wide status palette:
+  // available is success, busy warning, on leave and deactivated neutral.
+  const availability = isDeactivated
+    ? { key: 'inactive', label: 'Deactivated' }
+    : isPlanLocked
+      ? { key: 'plan_locked', label: 'Paused, plan limit' }
+      : person.status === 'on_leave'
+        ? { key: 'on_leave', label: 'On leave' }
+        : person.isAvailable
+          ? { key: 'available', label: 'Available' }
+          : { key: 'busy', label: 'Busy' };
 
   // Whether there is anything to compute a rate or a rating FROM.
   const hasHistory = person.totalDeliveries > 0;
+  // Counted from the rider's own deliveries. The profile's totalDeliveries is
+  // set to 0 when a rider is created and the server never updates it, so on its
+  // own it read "0 delivered, no completed deliveries yet" above a list of
+  // Delivered rows.
+  const deliveredCount = Math.max(
+    person.totalDeliveries,
+    deliveries.filter(d => d.status === 'delivered').length,
+  );
   const activeDeliveries = deliveries.filter(d => ACTIVE_STATUSES.includes(d.status));
   const completedDeliveries = deliveries.filter(d => !ACTIVE_STATUSES.includes(d.status) && d.status !== 'unassigned');
 
@@ -295,24 +305,17 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
     },
   };
 
-  const deliveryStatusColors: Record<string, string> = {
-    delivered: colors.success,
-    in_transit: colors.secondary,
-    arrived: colors.secondary,
-    picked_up: colors.secondary,
-    pending: colors.warning,
-    failed: colors.danger,
-    cancelled: colors.textTertiary,
-    returned: colors.warning
-  };
+  const onTimeColor = person.onTimeRate >= 90 ? colors.success : person.onTimeRate >= 70 ? colors.warning : colors.danger;
+  const vehicle = [VEHICLE_LABELS[person.vehicleType] || person.vehicleType, person.vehicleNumber]
+    .filter(Boolean)
+    .join(' · ');
+  const deliveryRows = activeSection === 'assignments' ? activeDeliveries : completedDeliveries.slice(0, 15);
 
   return (
     <ReportContainer>
-      <ReportHeader
-        title="Personnel Details"
-        subtitle={person.displayName}
-        onBack={() => navigation.goBack()}
-      />
+      {/* No subtitle: the rider's name is the first thing on the screen, and
+          it used to appear in the header, then twice more in the card. */}
+      <ReportHeader title="Rider details" onBack={() => navigation.goBack()} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -321,230 +324,163 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.actionGreen} />
         }
       >
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={[styles.largeAvatar, { backgroundColor: statusColor + '10' }]}>
-            <Text style={[styles.largeAvatarText, { color: statusColor }]}>{getInitials(person.displayName)}</Text>
+        {/* Who they are, and whether they can take work */}
+        <Card style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{getInitials(person.displayName)}</Text>
           </View>
-          <Text style={styles.personName}>{person.displayName}</Text>
-          {/* The username, not the email: this is what the rider types to sign in. */}
-          {!!person.username && <Text style={styles.personEmail}>{person.username}</Text>}
-          {!!person.email && <Text style={styles.personEmail}>{person.email}</Text>}
+          <View style={styles.profileText}>
+            <Text style={styles.personName} numberOfLines={1}>{person.displayName}</Text>
+            <Badge label={availability.label} color={statusStyle(availability.key).fg} />
+          </View>
           {!!person.phone && (
-            <TouchableOpacity onPress={handleCallPhone}>
-              <Text style={styles.personPhone}>{person.phone}</Text>
-            </TouchableOpacity>
-          )}
-          <View style={[styles.profileStatusBadge, { backgroundColor: statusColor + '10' }]}>
-            <View style={[styles.profileStatusDot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.profileStatusText, { color: statusColor }]}>
-              {isDeactivated
-                ? 'Deactivated'
-                : isPlanLocked
-                  ? 'Paused — plan limit'
-                  : person.status === 'on_leave'
-                  ? 'On Leave'
-                  : person.isAvailable
-                    ? 'Available'
-                    : 'Busy'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Vehicle Card */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Vehicle & Assignment</Text>
-          <View style={styles.vehicleInfo}>
-            <View style={styles.vehicleIconBox}>
-              <Feather name="truck" size={18} color={colors.actionGreen} />
-            </View>
-            <View style={styles.vehicleDetails}>
-              <Text style={styles.vehicleType}>
-                {VEHICLE_LABELS[person.vehicleType] || person.vehicleType || 'Not set'}
-              </Text>
-              <Text style={styles.vehiclePlate}>{person.vehicleNumber || '—'}</Text>
-            </View>
-          </View>
-          {person.zones.length > 0 && (
-            <View style={styles.zonesRow}>
-              {person.zones.map(zone => (
-                <View key={zone} style={styles.zoneTag}><Text style={styles.zoneTagText}>{zone}</Text></View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Metrics */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Performance</Text>
-          <View style={styles.metricsGrid}>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricNumber}>{person.totalDeliveries}</Text>
-              <Text style={styles.metricLabel}>Total</Text>
-            </View>
-            {/* A rider with no completed deliveries has no on-time rate and no
-                rating -- 100% and 5.0 were a zero denominator and a default
-                being read as measurements. */}
-            <View style={styles.metricItem}>
-              <Text style={styles.metricNumber}>
-                {hasHistory ? `${person.onTimeRate.toFixed(0)}%` : '—'}
-              </Text>
-              <Text style={styles.metricLabel}>On-Time</Text>
-            </View>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricNumber}>
-                {hasHistory ? person.rating.toFixed(1) : '—'}
-              </Text>
-              <Text style={styles.metricLabel}>Rating</Text>
-            </View>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricNumber}>{activeDeliveries.length}</Text>
-              <Text style={styles.metricLabel}>Active Now</Text>
-            </View>
-          </View>
-          <View style={styles.progressWrapper}>
-            {hasHistory ? (
-              <>
-                <Text style={styles.progressLabel}>On-Time Rate</Text>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, {
-                    width: `${Math.min(person.onTimeRate, 100)}%`,
-                    backgroundColor: person.onTimeRate >= 90 ? colors.success : person.onTimeRate >= 70 ? colors.warning : colors.danger
-                  }]} />
-                </View>
-              </>
-            ) : (
-              // A full green bar for a rider who has delivered nothing reads as
-              // a perfect record rather than an absent one.
-              <Text style={styles.progressLabel}>No completed deliveries yet</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Toggle */}
-        <View style={styles.toggleRow}>
-          {(['assignments', 'history'] as const).map(section => (
             <TouchableOpacity
-              key={section}
-              style={[styles.toggleBtn, activeSection === section && styles.toggleActive]}
-              onPress={() => setActiveSection(section)}>
-              <Text style={[styles.toggleText, activeSection === section && styles.toggleTextActive]}>
-                {section === 'assignments' ? `Current (${activeDeliveries.length})` : 'Recent'}
-              </Text>
+              style={styles.callBtn}
+              onPress={handleCallPhone}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Call ${person.displayName}`}
+            >
+              <Feather name="phone" size={16} color={colors.primary} />
             </TouchableOpacity>
-          ))}
-        </View>
+          )}
+        </Card>
 
-        <View style={styles.sectionCard}>
-          {deliveriesState === 'loading' && deliveries.length === 0 ? (
-            <View style={styles.listStateBlock}>
-              <ActivityIndicator size="small" color={colors.actionGreen} />
+        {/* Performance: four figures on one surface, divided by hairlines. They
+            were four bordered boxes inside a card, in a percentage grid that
+            never reached the card's right edge. */}
+        <Section title="Performance">
+          <Card padded={false}>
+            <View style={styles.statRow}>
+              <Stat value={String(deliveredCount)} label="Delivered" first />
+              {/* A rider with no completed deliveries has no on-time rate and no
+                  rating -- 100% and 5.0 were a zero denominator and a default
+                  being read as measurements. */}
+              <Stat
+                value={hasHistory ? `${person.onTimeRate.toFixed(0)}%` : '—'}
+                label="On time"
+                color={hasHistory ? onTimeColor : undefined}
+              />
+              <Stat value={hasHistory ? person.rating.toFixed(1) : '—'} label="Rating" />
+              <Stat value={String(activeDeliveries.length)} label="Active" />
             </View>
-          ) : deliveriesState === 'failed' && deliveries.length === 0 ? (
-            <View style={styles.listStateBlock}>
-              <Text style={styles.listStateText}>Could not load deliveries.</Text>
-              <CustomButton title="Retry" onPress={fetchAll} variant="secondary" size="sm" />
-            </View>
-          ) : (
-            (() => {
-              const rows = activeSection === 'assignments' ? activeDeliveries : completedDeliveries.slice(0, 15);
-              if (rows.length === 0) {
-                return (
-                  <View style={styles.listStateBlock}>
-                    <Feather name="inbox" size={24} color={colors.textTertiary} />
-                    <Text style={styles.listStateText}>
-                      {activeSection === 'assignments'
-                        ? 'No active deliveries assigned right now.'
-                        : 'No completed deliveries yet.'}
-                    </Text>
-                  </View>
-                );
-              }
-              return rows.map(d => (
+            {deliveredCount === 0 && deliveriesState === 'loaded' && (
+              <Text style={styles.statNote}>No completed deliveries yet</Text>
+            )}
+          </Card>
+        </Section>
+
+        <Section title="Deliveries">
+          <Segmented
+            options={[activeDeliveries.length > 0 ? `Current (${activeDeliveries.length})` : 'Current', 'Recent']}
+            activeIndex={activeSection === 'assignments' ? 0 : 1}
+            onChange={i => setActiveSection(i === 0 ? 'assignments' : 'history')}
+          />
+          <Card padded={false}>
+            {deliveriesState === 'loading' && deliveries.length === 0 ? (
+              <View style={styles.listStateBlock}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : deliveriesState === 'failed' && deliveries.length === 0 ? (
+              <View style={styles.listStateBlock}>
+                <Text style={styles.listStateText}>Could not load deliveries.</Text>
+                <CustomButton title="Retry" onPress={fetchAll} variant="secondary" size="sm" />
+              </View>
+            ) : deliveryRows.length === 0 ? (
+              // One quiet line: an empty sub-list should not push Details and
+              // Manage a screen further down.
+              <View style={styles.listStateBlock}>
+                <Text style={styles.listStateText}>
+                  {activeSection === 'assignments' ? 'Nothing assigned right now' : 'No completed deliveries yet'}
+                </Text>
+              </View>
+            ) : (
+              deliveryRows.map((d, i) => (
                 <TouchableOpacity
                   key={d.id}
-                  style={styles.deliveryRow}
-                  activeOpacity={0.7}
+                  style={[styles.deliveryRow, i < deliveryRows.length - 1 && styles.rowDivider]}
+                  activeOpacity={0.6}
+                  accessibilityRole="button"
                   onPress={() => (navigation as any).navigate('AdminDeliveryDetail', { deliveryId: d.id })}
                 >
                   <View style={styles.deliveryInfo}>
-                    <Text style={styles.deliveryCustomer}>{d.customerName}</Text>
-                    <Text style={styles.deliveryTime}>
+                    <Text style={styles.deliveryCustomer} numberOfLines={1}>{d.customerName}</Text>
+                    {/* Two lines: the date comes last, and it is what this list is read for. */}
+                    <Text style={styles.deliveryTime} numberOfLines={2}>
                       {d.referenceNo}
                       {d.itemCount ? ` · ${d.itemCount} item${d.itemCount === 1 ? '' : 's'}` : ''}
                       {d.date ? ` · ${new Date(d.date).toLocaleDateString('en-PK', { month: 'short', day: 'numeric' })}` : ''}
                     </Text>
                   </View>
-                  <View style={[styles.deliveryStatusBadge, { backgroundColor: (deliveryStatusColors[d.status] || colors.textTertiary) + '10' }]}>
-                    <Text style={[styles.deliveryStatusText, { color: deliveryStatusColors[d.status] || colors.textTertiary }]}>
-                      {d.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                    </Text>
+                  {/* Wrapped: Badge pins itself to flex-start, and this row centres its items. */}
+                  <View>
+                    <Badge
+                      label={STATUS_CONFIG[d.status]?.label ?? d.status}
+                      color={STATUS_CONFIG[d.status]?.color ?? colors.textTertiary}
+                      dot={false}
+                    />
                   </View>
+                  <Feather name="chevron-right" size={16} color={colors.textTertiary} />
                 </TouchableOpacity>
-              ));
-            })()
-          )}
-        </View>
+              ))
+            )}
+          </Card>
+        </Section>
 
-        {/* Actions */}
-        <View style={styles.actionsCard}>
-          <Text style={styles.sectionTitle}>Actions</Text>
-          <View style={styles.actionsGrid}>
+        {/* One list, so a missing vehicle reads as one quiet "Not set" among
+            the rest rather than a card of its own with a truck and a dash. */}
+        <Section title="Details">
+          <Card padded={false}>
+            {/* The username, not the email: this is what the rider types to sign in. */}
+            {!!person.username && <DetailRow label="Username" value={person.username} />}
+            <DetailRow label="Phone" value={person.phone} />
+            {!!person.email && <DetailRow label="Email" value={person.email} />}
+            <DetailRow label="Vehicle" value={vehicle} />
+            <DetailRow label="Zones" value={person.zones.join(', ')} last />
+          </Card>
+        </Section>
+
+        <Section title="Manage">
+          <Card padded={false}>
             {/* No "Monitor Deliveries" here. It opened the GLOBAL monitor
                 rather than this rider's, and their Current and Recent
-                deliveries are listed directly above these buttons -- so it
-                was both redundant and pointing somewhere else. Three actions
-                also gives the labels room to sit on one or two clean lines
-                instead of breaking mid-word. */}
-            {[
-              {
-                label: person.isAvailable ? 'Set unavailable' : 'Set available',
-                icon: (person.isAvailable ? 'pause-circle' : 'play-circle') as 'pause-circle' | 'play-circle',
-                onPress: handleToggleAvailability,
-                color: colors.secondary,
-                disabled: isActing || isDeactivated || isPlanLocked
-              },
-              {
-                label: 'Reset password',
-                icon: 'key' as const,
-                onPress: () => setConfirm('reset'),
-                color: colors.actionGreen,
-                disabled: isActing
-              },
-              isDeactivated || isPlanLocked
-                ? {
-                    label: isPlanLocked ? 'Activate' : 'Reactivate',
-                    icon: 'user-check' as const,
-                    onPress: () => setConfirm('reactivate'),
-                    color: colors.success,
-                    disabled: isActing
-                  }
-                : {
-                    label: 'Deactivate',
-                    icon: 'user-x' as const,
-                    onPress: () => setConfirm('deactivate'),
-                    color: colors.danger,
-                    disabled: isActing
-                  },
-            ].map((action, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[styles.actionBtn, action.disabled && { opacity: 0.5 }]}
-                onPress={action.onPress}
-                disabled={action.disabled}
-              >
-                <View style={[styles.actionIconCircle, { backgroundColor: action.color + '0A' }]}>
-                  <Feather name={action.icon} size={16} color={action.color} />
-                </View>
-                <Text
-                  style={[styles.actionLabel, action.color === colors.danger && { color: colors.danger }]}
-                  numberOfLines={2}
-                >
-                  {action.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                deliveries are listed directly above -- so it was both redundant
+                and pointing somewhere else. */}
+            <ManageRow
+              icon={person.isAvailable ? 'pause-circle' : 'play-circle'}
+              title={person.isAvailable ? 'Set unavailable' : 'Set available'}
+              subtitle={person.isAvailable ? 'No new deliveries until set back' : 'Can receive deliveries again'}
+              onPress={handleToggleAvailability}
+              disabled={isActing || isDeactivated || isPlanLocked}
+            />
+            <ManageRow
+              icon="key"
+              title="Reset password"
+              subtitle="Issues a new temporary password"
+              onPress={() => setConfirm('reset')}
+              disabled={isActing}
+            />
+            {isDeactivated || isPlanLocked ? (
+              <ManageRow
+                icon="user-check"
+                title={isPlanLocked ? 'Activate' : 'Reactivate'}
+                subtitle={isPlanLocked ? 'Takes a seat on your plan' : 'Allows sign-in and deliveries again'}
+                onPress={() => setConfirm('reactivate')}
+                disabled={isActing}
+                last
+              />
+            ) : (
+              <ManageRow
+                icon="user-x"
+                title="Deactivate"
+                subtitle="Blocks sign-in and keeps their records"
+                onPress={() => setConfirm('deactivate')}
+                disabled={isActing}
+                danger
+                last
+              />
+            )}
+          </Card>
           {isDeactivated && (
             <Text style={styles.deactivatedNote}>
               This rider is deactivated: they cannot sign in or be assigned deliveries. All their
@@ -559,7 +495,7 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
               preserved.
             </Text>
           )}
-        </View>
+        </Section>
       </ScrollView>
 
       {/* Confirm modal (web-safe — Alert.alert buttons don't fire on web) */}
@@ -623,134 +559,130 @@ const DeliveryPersonnelDetailScreen: React.FC<Props> = ({ navigation, route }) =
   );
 };
 
-// The local ScreenHeader that used to live here -- a white bar with a circled
-// back button -- was the only header of its kind in the delivery flow; the
-// personnel list one tap away uses the app's navy header. ReportHeader is that
-// header.
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle} accessibilityRole="header">{title}</Text>
+    {children}
+  </View>
+);
+
+const Stat: React.FC<{ value: string; label: string; color?: string; first?: boolean }> = ({
+  value,
+  label,
+  color,
+  first,
+}) => (
+  <View style={[styles.stat, !first && styles.statDivider]} accessible accessibilityLabel={`${label}, ${value}`}>
+    <Text style={[styles.statValue, color ? { color } : null]}>{value}</Text>
+    <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
+  </View>
+);
+
+const DetailRow: React.FC<{ label: string; value: string; last?: boolean }> = ({ label, value, last }) => (
+  <View style={[styles.detailRow, !last && styles.rowDivider]}>
+    <Text style={styles.detailLabel}>{label}</Text>
+    <Text style={[styles.detailValue, !value && styles.detailValueUnset]} numberOfLines={1}>
+      {value || 'Not set'}
+    </Text>
+  </View>
+);
+
+const ManageRow: React.FC<{
+  icon: keyof typeof Feather.glyphMap;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+  last?: boolean;
+}> = ({ icon, title, subtitle, onPress, disabled, danger, last }) => (
+  <TouchableOpacity
+    style={[styles.manageRow, !last && styles.rowDivider, disabled && styles.manageRowDisabled]}
+    onPress={onPress}
+    disabled={disabled}
+    activeOpacity={0.6}
+    accessibilityRole="button"
+    accessibilityLabel={`${title}. ${subtitle}`}
+    accessibilityState={{ disabled: !!disabled }}
+  >
+    <Feather name={icon} size={18} color={danger ? colors.danger : colors.primary} />
+    <View style={styles.deliveryInfo}>
+      <Text style={[styles.manageTitle, danger && styles.manageTitleDanger]}>{title}</Text>
+      <Text style={styles.deliveryTime} numberOfLines={1}>{subtitle}</Text>
+    </View>
+    <Feather name="chevron-right" size={16} color={colors.textTertiary} />
+  </TouchableOpacity>
+);
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
   centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, gap: spacing.md },
   emptyText: { ...typography.bodyLg, color: colors.textSecondary, textAlign: 'center' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xs + 4, backgroundColor: colors.surface,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  backIconContainer: {
-    width: 36, height: 36, borderRadius: 10, backgroundColor: colors.background,
-    borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center',
-  },
-  headerTitle: {
-    ...typography.h3,
-    flex: 1, textAlign: 'center', color: colors.textPrimary,
-  },
-  headerSpacer: { width: 36 },
-  scrollContent: { padding: spacing.xl, paddingBottom: spacing.xxl + 40 },
+  scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg },
 
-  profileCard: {
-    backgroundColor: colors.surface, borderRadius: radius.lg + 4, padding: spacing.xl,
-    alignItems: 'center', marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
-  },
-  largeAvatar: {
-    width: 72, height: 72, borderRadius: 20, alignItems: 'center',
-    justifyContent: 'center', marginBottom: spacing.md,
-  },
-  largeAvatarText: { ...typography.h1 },
-  personName: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.xxs },
-  personEmail: { ...typography.bodyMd, color: colors.textSecondary, marginBottom: spacing.xxs },
-  personPhone: { ...typography.bodyMd, color: colors.secondary, marginBottom: spacing.xs },
-  profileStatusBadge: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xxs, borderRadius: 8, gap: 6,
-  },
-  profileStatusDot: { width: 8, height: 8, borderRadius: 4 },
-  profileStatusText: { ...typography.labelLg },
+  section: { gap: spacing.xs + 2 },
+  sectionTitle: { ...typography.labelLg, color: colors.textPrimary },
+  rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight },
 
-  // The app's card: radius.lg and the one shared elevation, rather than a
-  // locally-invented radius.lg + 2 with no shadow.
-  sectionCard: {
-    backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
-    marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
-    ...shadows.card,
+  // ── Profile ────────────────────────────────────
+  profileCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  avatar: {
+    width: 52, height: 52, borderRadius: 26, alignItems: 'center',
+    justifyContent: 'center', backgroundColor: colors.primaryLight,
   },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
+  avatarText: { ...typography.h4, color: colors.primary },
+  profileText: { flex: 1, minWidth: 0, gap: spacing.xxs + 2 },
+  personName: { ...typography.h4, color: colors.textPrimary },
+  callBtn: {
+    width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
   },
-  vehicleInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
-  vehicleIconBox: {
-    width: 44, height: 44, borderRadius: 12, backgroundColor: colors.actionGreen + '0A',
-    justifyContent: 'center', alignItems: 'center', marginRight: spacing.md,
-  },
-  vehicleDetails: {},
-  vehicleType: { ...typography.bodyLg, color: colors.textPrimary },
-  vehiclePlate: { ...typography.h4, color: colors.textSecondary },
-  zonesRow: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
-  zoneTag: { backgroundColor: colors.secondary + '0C', paddingHorizontal: spacing.xs + 4, paddingVertical: spacing.xxs, borderRadius: 6 },
-  zoneTagText: { ...typography.labelSm, color: colors.secondary },
 
-  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
-  metricItem: {
-    width: '47%', backgroundColor: colors.background, borderRadius: 8, padding: spacing.xs + 4,
-    alignItems: 'center', borderWidth: 1, borderColor: colors.border,
-  },
-  metricNumber: { ...typography.h3, color: colors.actionGreen },
-  metricLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  progressWrapper: { marginTop: spacing.xxs },
-  progressLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xxs },
-  progressTrack: { height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: 6, borderRadius: 3 },
-
-  toggleRow: {
-    flexDirection: 'row', borderRadius: 10, backgroundColor: colors.surface,
-    overflow: 'hidden', marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
-  },
-  toggleBtn: { flex: 1, paddingVertical: spacing.xs + 4, alignItems: 'center' },
-  toggleActive: { backgroundColor: colors.actionGreen + '08', borderBottomWidth: 2, borderBottomColor: colors.actionGreen },
-  toggleText: { ...typography.bodyMd, color: colors.textSecondary },
-  toggleTextActive: { color: colors.actionGreen, fontWeight: typography.labelLg.fontWeight },
-
-  listStateBlock: { alignItems: 'center', paddingVertical: spacing.xl, gap: spacing.xs },
-  listStateText: { ...typography.bodyMd, color: colors.textSecondary, textAlign: 'center' },
-
-  deliveryRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  deliveryInfo: { flex: 1 },
-  deliveryCustomer: { ...typography.bodyMd, color: colors.textPrimary },
-  deliveryTime: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  deliveryStatusBadge: { paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: 6 },
-  deliveryStatusText: { ...typography.labelSm },
-
-  actionsCard: {
-    backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
-    borderWidth: 1, borderColor: colors.border,
-    ...shadows.card,
-  },
-  actionsGrid: { flexDirection: 'row', gap: spacing.xs },
-  actionBtn: {
-    flex: 1, backgroundColor: colors.background, borderRadius: 10, padding: spacing.md,
-    alignItems: 'center', borderWidth: 1, borderColor: colors.border,
-  },
-  actionIconCircle: {
-    width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xxs,
-  },
-  // minHeight is two lines, so a one-line and a two-line label leave their
-  // tiles the same height. The labels themselves were also shortened -- four
-  // tiles in this row left each too narrow and React Native broke inside the
-  // words ("Set Unavaila ble").
-  actionLabel: {
-    ...typography.caption, color: colors.textPrimary, textAlign: 'center',
-    minHeight: 30,
-  },
-  deactivatedNote: {
+  // ── Performance ────────────────────────────────
+  statRow: { flexDirection: 'row', paddingVertical: spacing.sm + 2 },
+  stat: { flex: 1, alignItems: 'center', paddingHorizontal: spacing.xxs },
+  statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.border },
+  statValue: { ...typography.h4, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
+  statLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  statNote: {
     ...typography.caption,
-    marginTop: spacing.md, color: colors.textSecondary,
-    lineHeight: 18,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    paddingVertical: spacing.xs + 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderLight,
   },
 
+  // ── Deliveries ─────────────────────────────────
+  listStateBlock: { alignItems: 'center', paddingVertical: spacing.lg, gap: spacing.xs },
+  listStateText: { ...typography.bodySm, color: colors.textSecondary, textAlign: 'center' },
+  deliveryRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+  },
+  deliveryInfo: { flex: 1, minWidth: 0 },
+  deliveryCustomer: { ...typography.labelMd, color: colors.textPrimary },
+  deliveryTime: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+
+  // ── Details ────────────────────────────────────
+  detailRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+  },
+  detailLabel: { ...typography.bodySm, color: colors.textSecondary },
+  detailValue: { ...typography.labelMd, color: colors.textPrimary, flexShrink: 1, textAlign: 'right' },
+  detailValueUnset: { color: colors.textTertiary, fontWeight: typography.bodySm.fontWeight },
+
+  // ── Manage ─────────────────────────────────────
+  manageRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+  },
+  manageRowDisabled: { opacity: 0.5 },
+  manageTitle: { ...typography.labelMd, color: colors.textPrimary },
+  manageTitleDanger: { color: colors.danger },
+  deactivatedNote: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
+
+  // ── Modals ─────────────────────────────────────
   modalBackdrop: {
     flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'center',
     alignItems: 'center', padding: spacing.xl,

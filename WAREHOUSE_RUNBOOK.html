@@ -508,9 +508,9 @@
   <div class="tw"><table>
     <thead><tr><th>Tab</th><th>What it does</th></tr></thead>
     <tbody>
-      <tr><td>Assign</td><td>Unassigned deliveries with checkboxes → <em>Assign Selected (n)</em> → pick a rider. Links to the full Create Delivery form and the three-panel Assign Work screen.</td></tr>
-      <tr><td>Monitor</td><td>Live status counts and active deliveries → the full Delivery Monitor (map, filters, sort).</td></tr>
-      <tr><td>Approvals</td><td><strong>Open Inventory Approval Queue (n pending)</strong> — where deliveries become sales. Also lists failed/returned deliveries.</td></tr>
+      <tr><td>Assign</td><td>Unassigned deliveries with checkboxes and each one’s date → tick some → <em>Assign to rider</em> → pick a rider. The header’s New button opens the full Create Delivery form, and Plan by rider opens the three-panel Assign Work screen.</td></tr>
+      <tr><td>Monitor</td><td>Active deliveries → Open monitor for the full Delivery Monitor (map, filters, sort).</td></tr>
+      <tr><td>Approvals</td><td><strong>Inventory approvals</strong> (with the pending count) — where deliveries become sales. Also lists failed/returned deliveries.</td></tr>
     </tbody>
   </table></div>
 
@@ -783,7 +783,7 @@
     <p><strong>4a. Create</strong> — Delivery Management → Assign → <strong>Open Full Create Delivery Form</strong>: customer <code>Ahmed Store</code>, item <code>5L Cooking Oil</code> qty <code>20</code> → Add item (20 × 1,000 = 20,000), priority High, <strong>Pre-paid sale UNCHECKED</strong> → Create Delivery.</p>
     <p>Read the confirmation — <em>“a Sales Order is created (non-posting) and the stock moves to Goods in Transit — revenue posts only after you approve the completed delivery.”</em> That sentence is the contract this step verifies.</p>
     <p><strong>Check now, before assigning:</strong> the Trial Balance must be completely unchanged.</p>
-    <p><strong>4b. Assign</strong> — tick the delivery → <strong>Assign Selected (1)</strong> → pick <strong>Saim Raza</strong>. The success alert should name a Sales Order number and report <code>Stock moved to Goods in Transit at cost (Rs 16,000)</code>.</p>
+    <p><strong>4b. Assign</strong> — tick the delivery → <strong>Assign to rider</strong> → pick <strong>Saim Raza</strong>. The success alert should name a Sales Order number and report <code>Stock moved to Goods in Transit at cost (Rs 16,000)</code>.</p>
     <p><strong>4c. Rider</strong> — log in as <code>rider1@warehouseco.com</code>:</p>
     <ul>
       <li>Deliveries → open the delivery</li>
@@ -795,7 +795,7 @@
     </ul>
     <p><strong>Test the state machine while you’re here:</strong> try to skip a step (there is only ever one action button); double-tap the action button (must advance <em>once</em>); submit the bill photo twice (refused with <em>“Already submitted”</em>); submit with no photo / no name / no payment status (each blocked with a specific message).</p>
     <p><strong>Check now:</strong> as admin, the Trial Balance shows <strong>only</strong> the Goods in Transit entry from 4b. The rider’s whole journey posted nothing.</p>
-    <p><strong>4d. Approve</strong> — Delivery Management → Approvals → Inventory Approval Queue. The pending request must show the <strong>PAID</strong> badge, customer, <code>Rs 20,000</code>, the hint <em>“Posts the sale (Rs 20,000) as CASH received, plus COGS.”</em>, the item table (Before / Delivered / Returned / After), the signed bill photo, and the submitted timestamp. Tap <strong>Approve</strong>, reading the confirmation dialog first.</p>
+    <p><strong>4d. Approve</strong> — Delivery Management → Approvals → Inventory approvals. The pending request must show the <strong>PAID</strong> badge, customer, <code>Rs 20,000</code>, the hint <em>“Posts the sale (Rs 20,000) as CASH received, plus COGS.”</em>, the item table (Before / Delivered / Returned / After), the signed bill photo, and the submitted timestamp. Tap <strong>Approve</strong>, reading the confirmation dialog first.</p>
 
     <h4>Expected result</h4>
 <div class="je">4a  Create           →  no entry

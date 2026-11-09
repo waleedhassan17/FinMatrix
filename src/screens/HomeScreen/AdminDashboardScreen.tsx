@@ -578,11 +578,40 @@ const StatCard: React.FC<{
 );
 
 // ── Delivery progress card ────────────────────────────
-const DeliveryProgressCard: React.FC<{ delivery: DeliveryOverviewData; completedPct: number }> = ({
+// The four statuses are listed as a legend for the bar above them: each row's
+// dot is the colour of its segment. They used to be four bordered tiles with
+// uppercase labels, which was four frames inside a framed card, too tight for
+// "IN TRANSIT" at phone width. They also had Assigned in a blue that never
+// appeared in the bar, because the bar merged it into the amber "waiting"
+// segment.
+//
+// The rows read in the order a delivery moves: Pending → Assigned (top row),
+// then In transit → Delivered (bottom row). The bar starts with Delivered, so
+// its green part reads as progress from the left. The rows are two explicit
+// rows of two, for the same reason the quick-action grid is (see
+// `actionsGrid`): a percentage-width wrap does not resolve inside the
+// ScrollView.
+type DeliveryStatusKey = 'pending' | 'assigned' | 'inTransit' | 'delivered';
+const DELIVERY_STATUS: Record<DeliveryStatusKey, { label: string; color: string }> = {
+  pending: { label: 'Pending', color: C.warn },
+  assigned: { label: 'Assigned', color: C.info },
+  inTransit: { label: 'In transit', color: C.indigo },
+  delivered: { label: 'Delivered', color: C.pos },
+};
+const BAR_ORDER: DeliveryStatusKey[] = ['delivered', 'inTransit', 'assigned', 'pending'];
+const LEGEND_ROWS: DeliveryStatusKey[][] = [['pending', 'assigned'], ['inTransit', 'delivered']];
+
+export const DeliveryProgressCard: React.FC<{ delivery: DeliveryOverviewData; completedPct: number }> = ({
   delivery, completedPct
 }) => {
-  const waiting = delivery.pending + delivery.assigned;
   const hasData = delivery.total > 0;
+  // The server's total also counts orders in none of the four statuses
+  // (cancelled, returned, unassigned). That share stays as bare track, so the
+  // green part is as long as the completion figure says. Without it the bar was
+  // split among the four alone and read fuller than the percentage: 24 of 38
+  // delivered drew as 24 of 29.
+  const listed = BAR_ORDER.reduce((sum, key) => sum + delivery[key], 0);
+  const unlisted = Math.max(0, delivery.total - listed);
   return (
     <View style={s.card}>
       <View style={s.deliveryHeader}>
@@ -599,28 +628,32 @@ const DeliveryProgressCard: React.FC<{ delivery: DeliveryOverviewData; completed
       <View style={s.segTrack}>
         {hasData ? (
           <>
-            {delivery.delivered > 0 && <View style={{ flex: delivery.delivered, backgroundColor: C.pos }} />}
-            {delivery.inTransit > 0 && <View style={{ flex: delivery.inTransit, backgroundColor: C.indigo }} />}
-            {waiting > 0 && <View style={{ flex: waiting, backgroundColor: C.warn }} />}
+            {BAR_ORDER.map(key =>
+              delivery[key] > 0 ? (
+                <View key={key} style={{ flex: delivery[key], backgroundColor: DELIVERY_STATUS[key].color }} />
+              ) : null,
+            )}
+            {unlisted > 0 && <View style={{ flex: unlisted }} />}
           </>
         ) : (
           <View style={{ flex: 1, backgroundColor: C.lineSoft }} />
         )}
       </View>
 
-      <View style={s.chipsRow}>
-        {[
-          { label: 'Pending', value: delivery.pending, color: C.warn },
-          { label: 'In transit', value: delivery.inTransit, color: C.indigo },
-          { label: 'Delivered', value: delivery.delivered, color: C.pos },
-          { label: 'Assigned', value: delivery.assigned, color: C.info },
-        ].map(chip => (
-          <View key={chip.label} style={s.chip}>
-            <Text style={s.chipVal}>{chip.value}</Text>
-            <View style={s.chipLabelRow}>
-              <View style={[s.chipDot, { backgroundColor: chip.color }]} />
-              <Text style={s.chipLabel}>{chip.label}</Text>
-            </View>
+      <View style={s.legend}>
+        {LEGEND_ROWS.map(row => (
+          <View key={row.join('-')} style={s.legendRow}>
+            {row.map(key => {
+              const { label, color } = DELIVERY_STATUS[key];
+              const value = delivery[key];
+              return (
+                <View key={key} style={s.legendItem} accessible accessibilityLabel={`${label}, ${value}`}>
+                  <View style={[s.legendDot, { backgroundColor: color }]} />
+                  <Text style={s.legendLabel} numberOfLines={1}>{label}</Text>
+                  <Text style={[s.legendValue, value === 0 && s.legendValueZero]}>{value}</Text>
+                </View>
+              );
+            })}
           </View>
         ))}
       </View>
@@ -748,13 +781,18 @@ const DashboardSkeleton: React.FC = () => (
     <View style={s.section}>
       <View style={s.sectionHeader}><Skel w={96} h={15} r={5} /></View>
       {/* Same surface as the delivery card, and the same three blocks: the
-          completion figure, the segmented track, the four status chips. */}
+          completion figure, the segmented track, the two rows of the status
+          legend. */}
       <View style={[s.card, { gap: 12 }]}>
         <Skel w={'42%'} h={28} r={7} />
-        <Skel w={'100%'} h={9} r={5} />
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {[0, 1, 2, 3].map(i => (
-            <View key={i} style={{ flex: 1 }}><Skel w={'100%'} h={46} r={12} /></View>
+        <Skel w={'100%'} h={8} r={4} />
+        <View style={s.legend}>
+          {[0, 1].map(row => (
+            <View key={row} style={s.legendRow}>
+              {[0, 1].map(i => (
+                <View key={i} style={{ flex: 1 }}><Skel w={'100%'} h={12} r={4} /></View>
+              ))}
+            </View>
           ))}
         </View>
       </View>
@@ -847,13 +885,17 @@ const s = StyleSheet.create({
   mutedSm: { ...THEME.typography.caption, color: C.ink3, fontFamily: FONT, marginTop: 2 },
   totalPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.canvas, borderWidth: 1, borderColor: C.line, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
   totalPillText: { ...THEME.typography.labelSm, color: C.ink2, fontFamily: FONT, fontVariant: ['tabular-nums'] },
-  segTrack: { height: 9, flexDirection: 'row', backgroundColor: C.lineSoft, borderRadius: 5, overflow: 'hidden', gap: 2, marginBottom: 14 },
-  chipsRow: { flexDirection: 'row', gap: 8 },
-  chip: { flex: 1, alignItems: 'center', backgroundColor: C.canvas, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingVertical: 8 },
-  chipVal: { ...THEME.typography.h3, color: C.ink, fontFamily: FONT, lineHeight: 21, fontVariant: ['tabular-nums'] },
-  chipLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
-  chipDot: { width: 6, height: 6, borderRadius: 3 },
-  chipLabel: { ...THEME.typography.overline, color: C.ink2, fontFamily: FONT },
+  segTrack: { height: 8, flexDirection: 'row', backgroundColor: C.lineSoft, borderRadius: 4, overflow: 'hidden', gap: 2, marginBottom: 16 },
+  // Status legend. A hairline above the rows separates the summary (figure and
+  // bar) from the breakdown, so the rows need no frame of their own.
+  legend: { borderTopWidth: 1, borderTopColor: C.lineSoft, paddingTop: 14, gap: 12 },
+  legendRow: { flexDirection: 'row', gap: 24 },
+  legendItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendLabel: { ...THEME.typography.bodySm, color: C.ink2, fontFamily: FONT, flex: 1 },
+  legendValue: { ...THEME.typography.h5, color: C.ink, fontFamily: FONT, fontVariant: ['tabular-nums'] },
+  // A zero is shown in a lighter ink, so the statuses that have deliveries stand out.
+  legendValueZero: { color: C.ink3, fontWeight: THEME.typography.labelSm.fontWeight },
 
   // Quick actions — a 2 × 2 grid, as two explicit rows of two.
   //

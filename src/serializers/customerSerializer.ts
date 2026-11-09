@@ -18,6 +18,13 @@ export interface SerializedCustomerList {
   page: number;
   totalPages: number;
   totalCustomers: number;
+  /** Company-wide, NOT scoped to the current page, search or filter. */
+  summary: CustomerListSummary | null;
+}
+
+export interface CustomerListSummary {
+  total: number;
+  outstandingBalance: number;
 }
 
 // The API stores decimals as strings ("1500.0000") and addresses with
@@ -93,12 +100,16 @@ export function customerListSerializer(payload: any): SerializedCustomerList {
         ? data.customers
         : [];
   const pagination = (data && !Array.isArray(data)) ? (data.pagination || {}) : {};
+  const summary = (data && !Array.isArray(data)) ? data.summary : null;
 
   return {
     customers: rawCustomers.map(mapCustomer),
     page: pagination.page ?? 1,
     totalPages: pagination.totalPages ?? 1,
     totalCustomers: pagination.total ?? rawCustomers.length,
+    summary: summary
+      ? { total: toNumber(summary.total), outstandingBalance: toNumber(summary.outstandingBalance) }
+      : null,
   };
 }
 
