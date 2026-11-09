@@ -679,7 +679,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
                 nothing to correct, and waiting would strand the stock in
                 transit. */}
             <View style={styles.actionBtn}>
-              <CustomButton title="Reject" onPress={() => promptReject(request)} variant="danger" fullWidth />
+              <CustomButton title="Reject" onPress={() => promptReject(request)} variant="destructive" fullWidth />
             </View>
           </View>
         )}
@@ -729,7 +729,7 @@ const InventoryApprovalScreen: React.FC<Props> = ({ navigation }) => {
                       ? openReversal(request)
                       : promptUndo(request)
                   }
-                  variant="danger"
+                  variant="destructive"
                   size="sm"
                 />
               </View>

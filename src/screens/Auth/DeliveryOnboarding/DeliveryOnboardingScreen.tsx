@@ -170,7 +170,6 @@ const DeliveryOnboardingScreen: React.FC<Props> = ({ navigation }) => {
             title="Get Started"
             onPress={handleGetStarted}
             variant="primary"
-            size="lg"
             fullWidth
           />
         ) : (

@@ -14,6 +14,7 @@ import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { ReportContainer, ReportHeader } from '../../components/reports/ReportUI';
 import EmptyState from '../../components/shared/EmptyState';
+import CustomButton from '../../Custom-Components/CustomButton';
 import ApprovalRequestCard from './ApprovalRequestCard';
 import RejectReasonModal from './RejectReasonModal';
 import {
@@ -208,31 +209,30 @@ const StaffApprovalsScreen: React.FC = () => {
                 }
                 actions={
                   isPendingApproval(item) ? (
+                    // In-card actions: the compact size, secondary on the
+                    // left and the primary on the right, as in every bar.
                     <>
-                      <TouchableOpacity
-                        style={[styles.action, styles.approve]}
-                        disabled={decidingId === item.id}
-                        onPress={() =>
-                          dispatch(
-                            decideApproval({ id: item.id, decision: 'approve' }),
-                          )
-                        }
-                        activeOpacity={0.8}
-                      >
-                        <Feather name="check" size={14} color={colors.neutral0} />
-                        <Text style={styles.approveText}>
-                          {decidingId === item.id ? 'Approving…' : 'Approve'}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.action, styles.reject]}
-                        disabled={decidingId === item.id}
-                        onPress={() => setRejecting(item)}
-                        activeOpacity={0.8}
-                      >
-                        <Feather name="x" size={14} color={colors.danger} />
-                        <Text style={styles.rejectText}>Reject</Text>
-                      </TouchableOpacity>
+                      <View style={styles.action}>
+                        <CustomButton
+                          title="Reject"
+                          variant="destructive"
+                          size="sm"
+                          fullWidth
+                          disabled={decidingId === item.id}
+                          onPress={() => setRejecting(item)}
+                        />
+                      </View>
+                      <View style={styles.action}>
+                        <CustomButton
+                          title={decidingId === item.id ? 'Approving…' : 'Approve'}
+                          variant="primary"
+                          size="sm"
+                          fullWidth
+                          disabled={decidingId === item.id}
+                          icon={<Feather name="check" size={14} color={colors.neutral0} />}
+                          onPress={() => dispatch(decideApproval({ id: item.id, decision: 'approve' }))}
+                        />
+                      </View>
                     </>
                   ) : null
                 }
@@ -295,19 +295,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flexGrow: 1,
   },
-  action: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-  },
-  approve: { backgroundColor: colors.actionGreen },
-  approveText: { ...typography.labelSm, color: colors.neutral0 },
-  reject: { borderWidth: 1, borderColor: colors.danger },
-  rejectText: { ...typography.labelSm, color: colors.danger },
+  action: { flex: 1 },
 });
 
 export default StaffApprovalsScreen;

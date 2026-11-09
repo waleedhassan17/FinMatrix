@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
@@ -20,8 +19,7 @@ import {
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
-import CustomButton from '../../Custom-Components/CustomButton';
-import { AddButton } from '../../components/form/FormUI';
+import { ActionBar, AddButton, IconButton } from '../../components/form/FormUI';
 import TaxField from '../../components/form/TaxField';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
@@ -261,9 +259,15 @@ const VendorCreditFormScreen: React.FC = () => {
                 )}
               </View>
               {lines.length > 1 && (
-                <TouchableOpacity onPress={() => setLines(prev => prev.filter((_, idx) => idx !== i))} style={styles.del}>
-                  <Feather name="trash-2" size={16} color={THEME.colors.danger} />
-                </TouchableOpacity>
+                <View style={styles.del}>
+                  <IconButton
+                    icon="trash-2"
+                    size="sm"
+                    tone="danger"
+                    onPress={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
+                    accessibilityLabel={`Remove line ${i + 1}`}
+                  />
+                </View>
               )}
             </View>
           ))}
@@ -278,14 +282,14 @@ const VendorCreditFormScreen: React.FC = () => {
           <Row label="Total Credit" value={rs(totals.total)} strong />
         </Card>
 
-        <CustomButton
-          title={creditCap.submitLabel('Record Vendor Credit')}
-          onPress={save}
-          isLoading={saving}
-          fullWidth
-        />
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* The fixed bar every form shares. */}
+      <ActionBar
+        secondary={{ title: 'Cancel', onPress: () => navigation.goBack(), disabled: saving }}
+        primary={{ title: creditCap.submitLabel('Record Vendor Credit'), onPress: save, isLoading: saving }}
+      />
     </ReportContainer>
   );
 };
@@ -312,7 +316,7 @@ const styles = StyleSheet.create({
   lineNumRow: { flexDirection: 'row', alignItems: 'flex-start' },
   amountCol: { flex: 1, minWidth: 132, marginRight: THEME.spacing.xs },
   taxCol: { flex: 1 },
-  del: { paddingTop: 28, paddingHorizontal: 4 },
+  del: { paddingTop: 26, paddingLeft: 8 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   totalLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
   totalValue: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },

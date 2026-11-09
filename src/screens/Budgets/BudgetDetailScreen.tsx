@@ -125,7 +125,7 @@ const BudgetDetailScreen: React.FC = () => {
           )}
         </Card>
 
-        <CustomButton title="Delete Budget" variant="danger" onPress={doDelete} fullWidth />
+        <CustomButton title="Delete Budget" variant="destructive" onPress={doDelete} fullWidth />
         <View style={{ height: 24 }} />
       </ScrollView>
     </ReportContainer>

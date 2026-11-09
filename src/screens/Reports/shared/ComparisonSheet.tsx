@@ -25,6 +25,7 @@ import {
 } from '../../../models/comparisonModel';
 import type { ReportDateRange } from '../../../models/reportModel';
 import BottomSheet from './BottomSheet';
+import { PrimaryButton } from '../../../components/form/FormUI';
 import { rangeText } from './PeriodSheet';
 
 const { colors, radius, spacing, typography } = THEME;
@@ -107,17 +108,16 @@ const AsOfSheet: React.FC<AsOfProps> = props => {
       title="Compare with"
       subtitle={`Balance as of ${day(asOfDate)}`}
       footer={
-        <TouchableOpacity
-          style={[styles.apply, !canApply && styles.applyDisabled]}
-          disabled={!canApply}
-          onPress={() => {
-            onApply(key, key === 'none' ? null : resolved, custom);
-            onClose();
-          }}
-          accessibilityRole="button"
-        >
-          <Text style={styles.applyText}>Apply</Text>
-        </TouchableOpacity>
+        <View style={styles.apply}>
+          <PrimaryButton
+            title="Apply"
+            disabled={!canApply}
+            onPress={() => {
+              onApply(key, key === 'none' ? null : resolved, custom);
+              onClose();
+            }}
+          />
+        </View>
       }
     >
       {AS_OF_COMPARE_OPTIONS.map(o => {
@@ -174,16 +174,15 @@ const RangeSheet: React.FC<RangeProps> = ({ visible, onClose, range, value, onAp
       title="Compare with"
       subtitle={rangeText(range)}
       footer={
-        <TouchableOpacity
-          style={styles.apply}
-          onPress={() => {
-            onApply(key, rangeCompare(key, range));
-            onClose();
-          }}
-          accessibilityRole="button"
-        >
-          <Text style={styles.applyText}>Apply</Text>
-        </TouchableOpacity>
+        <View style={styles.apply}>
+          <PrimaryButton
+            title="Apply"
+            onPress={() => {
+              onApply(key, rangeCompare(key, range));
+              onClose();
+            }}
+          />
+        </View>
       }
     >
       {RANGE_COMPARE_OPTIONS.map(o => {
@@ -221,16 +220,7 @@ const styles = StyleSheet.create({
   optionDetail: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
   custom: { paddingVertical: spacing.sm, gap: spacing.xxs },
   invalid: { ...typography.caption, color: colors.danger },
-  apply: {
-    minHeight: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
-  },
-  applyDisabled: { opacity: 0.5 },
-  applyText: { ...typography.labelLg, color: colors.textInverse },
+  apply: { marginBottom: spacing.xs },
 });
 
 export default ComparisonSheet;

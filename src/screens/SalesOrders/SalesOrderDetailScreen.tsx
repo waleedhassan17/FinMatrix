@@ -20,7 +20,7 @@ import { formatCurrency } from '../../utils/formatters';
 import CreditLimitModal from '../../components/shared/CreditLimitModal';
 import { creditAssessmentFrom, type CreditAssessment } from '../../models/creditModel';
 
-import CustomButton from '../../Custom-Components/CustomButton';
+import { ActionBar, IconButton } from '../../components/form/FormUI';
 import { ReportContainer, ReportHeader, Card, SectionCard, Badge, ProgressBar, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
 import { titleCase } from '../../components/transactions/TxnListUI';
@@ -153,16 +153,44 @@ const SalesOrderDetailScreen: React.FC = () => {
 
         {!!o.notes && <Card><Text style={styles.notes}>{o.notes}</Text></Card>}
 
-        <View style={styles.actions}>
-          <CustomButton title="Share PDF" variant="secondary" onPress={() => { void sharePdf(); }} isLoading={sharing} fullWidth />
-          {o.status === 'open' && <CustomButton title="Edit Sales Order" variant="secondary" onPress={() => navigation.navigate('SalesOrderForm', { salesOrderId })} fullWidth />}
-          {active && o.status !== 'fulfilled' && <CustomButton title="Mark Fully Fulfilled" variant="primary" onPress={() => { void markFulfilled(); }} isLoading={isSaving} fullWidth />}
-          {canInvoice && <CustomButton title="Convert to Invoice" variant="primary" onPress={convert} isLoading={isSaving} fullWidth />}
-          {active && <CustomButton title="Cancel Order" variant="secondary" onPress={() => dispatch(cancelSalesOrder(salesOrderId))} fullWidth />}
-          {active && <CustomButton title="Delete" variant="danger" onPress={doDelete} fullWidth />}
-        </View>
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* One bar instead of six stacked buttons. Primary is the next step —
+          fulfil an open order, invoice a fulfilled one. Everything else is
+          behind More, closed while a request is running; Cancel Order and
+          Delete ask first (Cancel used to fire on one tap). */}
+      <ActionBar
+        leading={
+          <IconButton icon="share-2" onPress={() => { void sharePdf(); }} isLoading={sharing} accessibilityLabel="Share PDF" />
+        }
+        moreDisabled={isSaving}
+        primary={
+          canInvoice
+            ? { title: 'Convert to Invoice', onPress: convert, isLoading: isSaving }
+            : active && o.status !== 'fulfilled'
+              ? { title: 'Mark Fulfilled', onPress: () => { void markFulfilled(); }, isLoading: isSaving }
+              : undefined
+        }
+        secondary={o.status === 'open' ? { title: 'Edit', onPress: () => navigation.navigate('SalesOrderForm', { salesOrderId }) } : undefined}
+        more={
+          active
+            ? [
+                ...(canInvoice && o.status !== 'fulfilled'
+                  ? [{ label: 'Mark fully fulfilled', icon: 'check' as const, onPress: () => { void markFulfilled(); } }]
+                  : []),
+                {
+                  label: 'Cancel order',
+                  icon: 'slash' as const,
+                  destructive: true,
+                  confirm: { title: 'Cancel this sales order?', message: 'It can no longer be fulfilled or invoiced.', confirmLabel: 'Cancel order' },
+                  onPress: () => { void dispatch(cancelSalesOrder(salesOrderId)); },
+                },
+                { label: 'Delete sales order', icon: 'trash-2' as const, destructive: true, confirm: false as const, onPress: doDelete },
+              ]
+            : undefined
+        }
+      />
       <CreditLimitModal
         assessment={creditRefusal?.assessment ?? null}
         busy={isSaving}
@@ -196,7 +224,6 @@ const styles = StyleSheet.create({
   lineTotal: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   divider: { height: 1, backgroundColor: THEME.colors.border, marginVertical: 8 },
   notes: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
-  actions: { gap: 10 },
 });
 
 export default SalesOrderDetailScreen;

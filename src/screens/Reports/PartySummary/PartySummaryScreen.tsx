@@ -18,7 +18,6 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -27,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { THEME, rampSteps } from '../../../theme';
 import { Alert } from '../../../utils/alert';
+import { ActionBar, IconButton } from '../../../components/form/FormUI';
 import { useCompanyInfo } from '../../../utils/companyInfo';
 import {
   ReportContainer,
@@ -231,85 +231,57 @@ const PartySummaryScreen: React.FC = () => {
           </ScrollView>
 
           {sendable ? (
-            <View style={[styles.footer, { paddingBottom: spacing.sm + insets.bottom }]}>
-              {payable ? (
-                <TouchableOpacity
-                  style={[styles.primaryBtn, busy !== null && styles.dimmed]}
-                  activeOpacity={0.85}
-                  disabled={busy !== null}
-                  onPress={payNow}
-                  accessibilityRole="button"
-                  accessibilityLabel={partyType === 'customer' ? 'Receive Payment' : 'Pay Bills'}
-                >
-                  <Feather name="dollar-sign" size={16} color={colors.textInverse} />
-                  <Text style={styles.primaryText}>{partyType === 'customer' ? 'Receive Payment' : 'Pay Bills'}</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.primaryBtn, busy !== null && styles.dimmed]}
-                  activeOpacity={0.85}
-                  disabled={busy !== null}
-                  onPress={() => run('share', sharePartySummaryPdf)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Share PDF"
-                >
-                  {busy === 'share' ? (
-                    <ActivityIndicator size="small" color={colors.textInverse} />
-                  ) : (
-                    <Feather name="share-2" size={16} color={colors.textInverse} />
-                  )}
-                  <Text style={styles.primaryText}>Share PDF</Text>
-                </TouchableOpacity>
-              )}
-              <View style={styles.secondaryRow}>
-                {/* With a payment to take, Share PDF steps down beside the others. */}
-                {payable ? (
-                  <TouchableOpacity
-                    style={[styles.secondaryBtn, busy !== null && styles.dimmed]}
-                    activeOpacity={0.85}
-                    disabled={busy !== null}
-                    onPress={() => run('share', sharePartySummaryPdf)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Share PDF"
-                  >
-                    {busy === 'share' ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    ) : (
-                      <Feather name="share-2" size={16} color={colors.primary} />
-                    )}
-                    <Text style={styles.secondaryText}>Share</Text>
-                  </TouchableOpacity>
-                ) : null}
-                <TouchableOpacity
-                  style={[styles.secondaryBtn, (busy !== null || !phone) && styles.dimmed]}
-                  activeOpacity={0.85}
-                  disabled={busy !== null || !phone}
-                  onPress={() => run('whatsapp', openPartySummaryInWhatsApp)}
-                  accessibilityRole="button"
-                  accessibilityLabel={phone ? 'Send on WhatsApp' : 'WhatsApp, no mobile number on file'}
-                >
-                  <Feather name="message-circle" size={16} color={colors.primary} />
-                  <Text style={styles.secondaryText}>WhatsApp</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.secondaryBtn, busy !== null && styles.dimmed]}
-                  activeOpacity={0.85}
-                  disabled={busy !== null}
-                  onPress={() => run('save', savePartySummaryPdf)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Save PDF"
-                >
-                  {busy === 'save' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Feather name="download" size={16} color={colors.primary} />
-                  )}
-                  <Text style={styles.secondaryText}>Save PDF</Text>
-                </TouchableOpacity>
-              </View>
-              {!phone ? (
-                <Text style={styles.footerHint}>No mobile number on file — Share PDF reaches WhatsApp too.</Text>
-              ) : null}
+            // The shared bar. Taking the payment is the next step when there is
+            // one; otherwise sharing the PDF is. Save (and Share, when it steps
+            // down) are the leading icons, WhatsApp the secondary.
+            <View style={[styles.footer, { paddingBottom: insets.bottom }]}>
+              <ActionBar
+                leading={
+                  <>
+                    {payable ? (
+                      <IconButton
+                        icon="share-2"
+                        onPress={() => run('share', sharePartySummaryPdf)}
+                        isLoading={busy === 'share'}
+                        disabled={busy !== null && busy !== 'share'}
+                        accessibilityLabel="Share PDF"
+                      />
+                    ) : null}
+                    {/* An icon, not a labelled button: beside two more icons a
+                        label had too little width and cut off. */}
+                    <IconButton
+                      icon="message-circle"
+                      onPress={() => run('whatsapp', openPartySummaryInWhatsApp)}
+                      disabled={busy !== null || !phone}
+                      accessibilityLabel={phone ? 'Send on WhatsApp' : 'WhatsApp, no mobile number on file'}
+                    />
+                    <IconButton
+                      icon="download"
+                      onPress={() => run('save', savePartySummaryPdf)}
+                      isLoading={busy === 'save'}
+                      disabled={busy !== null && busy !== 'save'}
+                      accessibilityLabel="Save PDF"
+                    />
+                  </>
+                }
+                primary={
+                  payable
+                    ? {
+                        title: partyType === 'customer' ? 'Receive Payment' : 'Pay Bills',
+                        icon: 'dollar-sign',
+                        onPress: payNow,
+                        disabled: busy !== null,
+                      }
+                    : {
+                        title: 'Share PDF',
+                        icon: 'share-2',
+                        onPress: () => run('share', sharePartySummaryPdf),
+                        isLoading: busy === 'share',
+                        disabled: busy !== null,
+                      }
+                }
+                note={!phone ? 'No mobile number on file — Share PDF reaches WhatsApp too.' : undefined}
+              />
             </View>
           ) : null}
         </>
@@ -483,40 +455,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.borderLight,
   },
 
-  footer: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    gap: spacing.xs,
-  },
-  primaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    minHeight: 46,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-  },
-  primaryText: { ...typography.labelLg, color: colors.textInverse },
-  secondaryRow: { flexDirection: 'row', gap: spacing.xs },
-  secondaryBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    minHeight: 42,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  secondaryText: { ...typography.labelMd, color: colors.primary },
-  dimmed: { opacity: 0.5 },
-  footerHint: { ...typography.caption, color: colors.textTertiary, textAlign: 'center' },
+  // The bar draws its own surface; this only carries the bottom inset.
+  footer: { backgroundColor: colors.surface },
 });
 
 export default PartySummaryScreen;

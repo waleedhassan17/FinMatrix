@@ -12,11 +12,11 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
+import { ActionBar } from '../../../components/form/FormUI';
 import MoneyAccountDropdown from '../../../components/shared/MoneyAccountDropdown';
 import { selectAccounts } from '../../ChartOfAccounts/COAList/coaListSlice';
 import { moneyAccountLabel } from '../../../models/moneyAccountModel';
@@ -44,8 +44,6 @@ import {
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 import type { TaxRate } from '../../../types';
 
-// Design-system tokens (see src/theme/theme.ts).
-const { colors } = THEME;
 import {
   ReportContainer,
   ReportHeader,
@@ -282,26 +280,11 @@ const TaxPaymentScreen: React.FC = () => {
           )}
         </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Text style={styles.cancelBtnText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.submitBtn, isSaving && { opacity: 0.7 }]}
-            onPress={handleSubmit}
-            activeOpacity={0.85}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator color={colors.neutral0} size="small" />
-            ) : (
-              <>
-                <Feather name="check" size={18} color={colors.neutral0} />
-                <Text style={styles.submitBtnText}>Record Payment</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+
+        <ActionBar
+          secondary={{ title: 'Cancel', onPress: () => navigation.goBack(), disabled: isSaving }}
+          primary={{ title: 'Record Payment', onPress: handleSubmit, isLoading: isSaving, icon: 'check' }}
+        />
       </KeyboardAvoidingView>
     </ReportContainer>
   );
@@ -398,37 +381,6 @@ const styles = StyleSheet.create({
   inputWithIconField: { flex: 1, borderWidth: 0, backgroundColor: 'transparent', borderRadius: 0 },
   notesInput: { minHeight: 78 },
 
-  footer: {
-    flexDirection: 'row',
-    gap: 10,
-    backgroundColor: THEME.colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: THEME.colors.border,
-    paddingHorizontal: THEME.spacing.lg,
-    paddingVertical: 14,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 14,
-  },
-  cancelBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1.5,
-    borderColor: THEME.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelBtnText: { ...THEME.typography.h5, color: THEME.colors.textSecondary },
-  submitBtn: {
-    flex: 2,
-    height: 48,
-    borderRadius: THEME.radius.md,
-    backgroundColor: THEME.colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  submitBtnText: { ...THEME.typography.h5, color: colors.neutral0 }
 });
 
 export default TaxPaymentScreen;

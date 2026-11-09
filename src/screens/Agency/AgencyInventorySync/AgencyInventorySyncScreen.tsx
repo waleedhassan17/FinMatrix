@@ -4,7 +4,7 @@
 // Table: Agency Item | SKU | Agency Qty | System Qty | Status
 // Sync All & Selective Sync buttons.
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -43,11 +43,11 @@ import {
   type SyncRow,
   type SyncStatus
 } from './agencyInventorySyncSlice';
-import CustomButton from '../../../Custom-Components/CustomButton';
+import { ActionBar } from '../../../components/form/FormUI';
 import type { MoreStackParamList } from '../../../navigators/stacks/MoreStack';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, radius, shadows, spacing, typography } = THEME;
+const { colors, radius, spacing, typography } = THEME;
 
 type SyncRoute = RouteProp<MoreStackParamList, 'AgencyInventorySync'>;
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
@@ -114,6 +114,8 @@ const AgencyInventorySyncScreen: React.FC = () => {
   const rows = useAppSelector(selectSyncRows);
   const isLoading = useAppSelector(selectSyncIsLoading);
   const isSyncing = useAppSelector(selectSyncIsSyncing);
+  // Which button started the sync, so the spinner shows on that one.
+  const [syncingAll, setSyncingAll] = useState(false);
   const searchQuery = useAppSelector(selectSyncSearchQuery);
   const statusFilter = useAppSelector(selectSyncStatusFilter);
 
@@ -183,6 +185,7 @@ const AgencyInventorySyncScreen: React.FC = () => {
         {
           text: 'Sync All',
           onPress: async () => {
+            setSyncingAll(true);
             dispatch(setIsSyncing(true));
             await dispatch(syncSelectedItems({ agencyId, itemIds: unsyncedIds })).unwrap();
             dispatch(markRowsSynced(unsyncedIds));
@@ -208,6 +211,7 @@ const AgencyInventorySyncScreen: React.FC = () => {
         {
           text: 'Sync',
           onPress: async () => {
+            setSyncingAll(false);
             dispatch(setIsSyncing(true));
             await dispatch(syncSelectedItems({ agencyId, itemIds: selectedIds })).unwrap();
             dispatch(markRowsSynced(selectedIds));
@@ -314,7 +318,7 @@ const AgencyInventorySyncScreen: React.FC = () => {
           data={filteredRows}
           keyExtractor={item => item.agencyItemId}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: spacing.md }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={{ padding: spacing.xxl, alignItems: 'center' }}>
@@ -324,32 +328,17 @@ const AgencyInventorySyncScreen: React.FC = () => {
         />
       )}
 
-      {/* Bottom buttons */}
-      <View style={styles.bottomBar}>
-        {isSyncing && (
-          <View style={styles.syncingOverlay}>
-            <ActivityIndicator size="small" color={colors.surface} />
-            <Text style={styles.syncingText}>Syncing…</Text>
-          </View>
-        )}
-        <CustomButton
-          title="Sync All"
-          onPress={handleSyncAll}
-          variant="secondary"
-          size="lg"
-          fullWidth
-          disabled={isSyncing}
-        />
-        <View style={{ width: spacing.xs }} />
-        <CustomButton
-          title={`Sync Selected (${selectedCount})`}
-          onPress={handleSyncSelected}
-          variant="primary"
-          size="lg"
-          fullWidth
-          disabled={isSyncing || selectedCount === 0}
-        />
-      </View>
+      {/* Bottom buttons — the shared bar; the spinner rides on the button
+          that started the sync instead of a dark overlay across both. */}
+      <ActionBar
+        secondary={{ title: 'Sync All', onPress: handleSyncAll, isLoading: isSyncing && syncingAll, disabled: isSyncing }}
+        primary={{
+          title: `Sync Selected (${selectedCount})`,
+          onPress: handleSyncSelected,
+          isLoading: isSyncing && !syncingAll,
+          disabled: isSyncing || selectedCount === 0,
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -469,31 +458,6 @@ const styles = StyleSheet.create({
   statusText: { ...typography.overline },
 
   // ── Bottom bar ─────────────────────────────────────
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    paddingBottom: spacing.xl,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    ...shadows.sm,
-  },
-  syncingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: radius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.xs,
-    zIndex: 1,
-  },
-  syncingText: { ...typography.h5, color: colors.surface }
 });
 
 export default AgencyInventorySyncScreen;

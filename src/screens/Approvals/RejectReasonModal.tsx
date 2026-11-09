@@ -13,9 +13,9 @@ import {
   StyleSheet,
   Modal,
   TextInput,
-  TouchableOpacity,
 } from 'react-native';
 import { THEME } from '../../utils/theme';
+import CustomButton from '../../Custom-Components/CustomButton';
 
 const { colors, radius, spacing, typography } = THEME;
 
@@ -62,16 +62,13 @@ const RejectReasonModal: React.FC<{
             autoFocus
           />
           <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.modalCancel} onPress={cancel}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modalConfirm, tooShort && styles.modalConfirmDisabled]}
-              disabled={tooShort}
-              onPress={submit}
-            >
-              <Text style={styles.modalConfirmText}>Reject request</Text>
-            </TouchableOpacity>
+            <View style={styles.modalBtn}>
+              <CustomButton title="Cancel" variant="secondary" onPress={cancel} fullWidth />
+            </View>
+            {/* The final "yes" of a rejection: the one place a filled red button belongs. */}
+            <View style={styles.modalBtn}>
+              <CustomButton title="Reject request" variant="danger" onPress={submit} disabled={tooShort} fullWidth />
+            </View>
           </View>
         </View>
       </View>
@@ -113,24 +110,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.md,
   },
-  modalCancel: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalCancelText: { ...typography.labelMd, color: colors.textSecondary },
-  modalConfirm: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.danger,
-  },
-  modalConfirmDisabled: { opacity: 0.4 },
-  modalConfirmText: { ...typography.labelMd, color: colors.neutral0 },
+  modalBtn: { flex: 1 },
 });
 
 export default RejectReasonModal;

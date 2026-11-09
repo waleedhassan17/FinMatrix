@@ -13,6 +13,7 @@ import { Feather } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 
 import BottomSheet from './BottomSheet';
+import { PrimaryButton } from '../../../components/form/FormUI';
 import { DateField } from '../../../components/reports/ReportUI';
 import type { ReportDateRange } from '../../../models/reportModel';
 import { THEME } from '../../../theme';
@@ -120,18 +121,16 @@ function PeriodSheet<K extends string>({
         {draft.startDate > draft.endDate ? (
           <Text style={styles.error}>The start date must be on or before the end.</Text>
         ) : null}
-        <TouchableOpacity
-          style={[styles.apply, invalid && styles.applyOff]}
-          disabled={invalid}
-          onPress={() => {
-            onChange(draft);
-            setOpen(false);
-          }}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: invalid }}
-        >
-          <Text style={styles.applyText}>Apply</Text>
-        </TouchableOpacity>
+        <View style={styles.apply}>
+          <PrimaryButton
+            title="Apply"
+            disabled={invalid}
+            onPress={() => {
+              onChange(draft);
+              setOpen(false);
+            }}
+          />
+        </View>
       </BottomSheet>
     </>
   );
@@ -166,16 +165,7 @@ const styles = StyleSheet.create({
   dates: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
   dateCell: { flex: 1 },
   error: { ...typography.caption, color: colors.danger, marginTop: spacing.xs },
-  apply: {
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-  },
-  applyOff: { opacity: 0.5 },
-  applyText: { ...typography.labelLg, color: colors.textInverse },
+  apply: { marginTop: spacing.sm, marginBottom: spacing.sm },
 });
 
 export default PeriodSheet;

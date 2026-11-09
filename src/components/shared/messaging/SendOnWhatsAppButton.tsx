@@ -27,9 +27,24 @@ export interface SendOnWhatsAppButtonProps {
   fallback: () => Promise<{ opened: boolean; reason?: string }>;
   onSent?: () => void;
   variant?: 'primary' | 'secondary' | 'text';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md';
   fullWidth?: boolean;
+  /** Tighter padding, for a slot in an ActionBar. */
+  compact?: boolean;
+  /**
+   * Show why the button is disabled under it. Off inside an ActionBar, where
+   * a caption under one button grew the whole bar: the screen puts the same
+   * words (whatsappDisabledReason) in the bar's note instead.
+   */
+  showReason?: boolean;
 }
+
+/** Why a WhatsApp send is impossible for this contact, or null if it is not. */
+export const whatsappDisabledReason = (
+  phone: string | null | undefined,
+  optedOut?: boolean,
+): string | null =>
+  optedOut ? 'Opted out of WhatsApp' : !normalizeWhatsappPhone(phone) ? 'No WhatsApp number' : null;
 
 /**
  * One WhatsApp button for every document.
@@ -50,11 +65,12 @@ const SendOnWhatsAppButton: React.FC<SendOnWhatsAppButtonProps> = ({
   variant = 'secondary',
   size = 'sm',
   fullWidth = true,
+  compact = false,
+  showReason = true,
 }) => {
   const { enabled, featureOn } = useWhatsappConnect();
   const [busy, setBusy] = useState(false);
-  const number = normalizeWhatsappPhone(phone);
-  const disabledReason = optedOut ? 'Opted out of WhatsApp' : !number ? 'No WhatsApp number' : null;
+  const disabledReason = whatsappDisabledReason(phone, optedOut);
 
   const press = useCallback(async () => {
     if (disabledReason) return;
@@ -95,11 +111,13 @@ const SendOnWhatsAppButton: React.FC<SendOnWhatsAppButtonProps> = ({
         variant={variant}
         size={size}
         fullWidth={fullWidth}
+        compact={compact}
+        accessibilityHint={disabledReason ?? undefined}
         isLoading={busy}
         disabled={busy || !!disabledReason}
         icon={<Feather name="message-circle" size={14} color={disabledReason ? colors.textDisabled : colors.primary} />}
       />
-      {disabledReason ? (
+      {disabledReason && showReason ? (
         <Text style={styles.reason} accessibilityLiveRegion="polite">
           {disabledReason}
         </Text>

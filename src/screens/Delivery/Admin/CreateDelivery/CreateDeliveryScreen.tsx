@@ -17,6 +17,8 @@ import { HEADER_NAVY } from '../../../../components/reports/ReportUI';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { THEME } from '../../../../utils/theme';
+import CustomButton from '../../../../Custom-Components/CustomButton';
+import { ActionBar } from '../../../../components/form/FormUI';
 import type { MoreStackParamList } from '../../../../navigators/stacks/MoreStack';
 import { useCustomerPicker } from '../../../../hooks/usePartyPicker';
 import { selectInventoryItems, fetchInventoryItems } from '../../../Inventory/InventoryList/inventoryListSlice';
@@ -361,15 +363,19 @@ const CreateDeliveryScreen: React.FC = () => {
                         placeholderTextColor={colors.textTertiary}
                       />
                     </View>
-                    <TouchableOpacity
-                      style={[styles.addBtn, !itemId && styles.addBtnDisabled]}
-                      onPress={addItemToDraft}
-                      disabled={!itemId}
-                      activeOpacity={0.85}
-                    >
-                      <Feather name="plus" size={16} color={colors.neutral0} />
-                      <Text style={styles.addBtnText}>Add item</Text>
-                    </TouchableOpacity>
+                    {/* Secondary, not a second navy block: Create Delivery
+                        below is the screen's one primary. */}
+                    <View style={styles.addBtn}>
+                      <CustomButton
+                        title="Add item"
+                        variant="secondary"
+                        onPress={addItemToDraft}
+                        disabled={!itemId}
+                        fullWidth
+                        compact
+                        icon={<Feather name="plus" size={16} color={colors.primary} />}
+                      />
+                    </View>
                   </View>
                 </>
               )}
@@ -480,24 +486,25 @@ const CreateDeliveryScreen: React.FC = () => {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Sticky footer */}
-        <View style={styles.footer}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.footerValue}>{money(totals.value)}</Text>
-            <Text style={styles.footerMeta}>{totals.count} item{totals.count === 1 ? '' : 's'} · {totals.lines} line{totals.lines === 1 ? '' : 's'}</Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.createBtn, !canCreate && styles.createBtnDisabled]}
-            onPress={() => { void handleCreate(); }}
-            disabled={!canCreate}
-            activeOpacity={0.9}
-          >
-            <Feather name="check" size={18} color={colors.neutral0} />
-            <Text style={styles.createBtnText}>
-              {isCreating ? (asRequest ? 'Sending…' : 'Creating…') : asRequest ? 'Send for Approval' : 'Create Delivery'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Sticky footer — the shared bar, with the running total above. */}
+        <ActionBar
+          summary={
+            <View style={styles.footerSummary}>
+              <Text style={styles.footerMeta}>
+                {totals.count} item{totals.count === 1 ? '' : 's'} · {totals.lines} line{totals.lines === 1 ? '' : 's'}
+              </Text>
+              <Text style={styles.footerValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {money(totals.value)}
+              </Text>
+            </View>
+          }
+          primary={{
+            title: isCreating ? (asRequest ? 'Sending…' : 'Creating…') : asRequest ? 'Send for Approval' : 'Create Delivery',
+            onPress: () => { void handleCreate(); },
+            disabled: !canCreate,
+            icon: 'check',
+          }}
+        />
       </View>
       {credit.modal}
     </SafeAreaView>
@@ -575,12 +582,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs, textAlign: 'center',
     color: colors.textPrimary, backgroundColor: colors.surface,
   },
-  addBtn: {
-    flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: colors.actionGreen, borderRadius: radius.lg,
-  },
-  addBtnDisabled: { opacity: 0.45 },
-  addBtnText: { ...typography.h5, color: colors.neutral0, ...typography.h5 },
+  addBtn: { flex: 1 },
 
   lineDivider: { height: 1, backgroundColor: colors.border, marginTop: spacing.md, marginBottom: spacing.xxs },
   lineItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs },
@@ -604,20 +606,10 @@ const styles = StyleSheet.create({
   segmentDot: { width: 7, height: 7, borderRadius: 3.5 },
   segmentText: { ...typography.labelMd, color: colors.textSecondary },
 
-  // Footer
-  footer: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    paddingHorizontal: spacing.xl, paddingTop: spacing.xs, paddingBottom: spacing.md,
-    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
-  },
-  footerValue: { ...typography.h3, color: colors.textPrimary },
-  footerMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
-  createBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.actionGreen, borderRadius: radius.lg,
-    paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
-  },
-  createBtnDisabled: { opacity: 0.45 },
+  // Footer — the running total over the bar's button
+  footerSummary: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.sm },
+  footerValue: { ...typography.h4, color: colors.textPrimary, fontVariant: ['tabular-nums'], flexShrink: 1 },
+  footerMeta: { ...typography.caption, color: colors.textSecondary },
 
   prepaidRow: {
     flexDirection: 'row',
@@ -643,7 +635,6 @@ const styles = StyleSheet.create({
   prepaidCheckActive: { backgroundColor: colors.success, borderColor: colors.success },
   prepaidTitle: { ...typography.h5, color: colors.textPrimary },
   prepaidSub: { ...typography.labelSm, color: colors.textSecondary, marginTop: 2, lineHeight: 16 },
-  createBtnText: { color: colors.neutral0,  ...typography.bodyMd }
 });
 
 export default CreateDeliveryScreen;

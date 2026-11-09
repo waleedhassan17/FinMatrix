@@ -20,7 +20,7 @@ import {
 import { getOutstandingInvoicesAPI } from '../../networks/sales/paymentNetwork';
 import { invoiceListSerializer } from '../../serializers/invoiceSerializer';
 import { formatCurrency } from '../../utils/formatters';
-import CustomButton from '../../Custom-Components/CustomButton';
+import { ActionBar } from '../../components/form/FormUI';
 import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
 import { titleCase } from '../../components/transactions/TxnListUI';
@@ -75,6 +75,8 @@ const CreditMemoDetailScreen: React.FC = () => {
   if (!c) return <ReportContainer><ReportHeader title="Credit Memo" onBack={() => navigation.goBack()} /></ReportContainer>;
 
   const hasBalance = c.balance > 0.01 && c.status !== 'void' && c.status !== 'refunded';
+  // Void / Delete only while nothing has been applied from it.
+  const canRemove = c.status === 'open' && c.amountApplied < 0.01;
 
   // These post journal entries and move stock. Dispatching without inspecting
   // the result meant a rejected void looked identical to a successful one, and
@@ -143,34 +145,57 @@ const CreditMemoDetailScreen: React.FC = () => {
           />
         )}
 
-        <View style={styles.actions}>
-          {hasBalance && <CustomButton title="Apply to Invoice" variant="primary" onPress={openApply} fullWidth />}
-          {hasBalance && (
-            <CustomButton
-              title="Refund Remaining"
-              variant="secondary"
-              disabled={!refundFrom}
-              onPress={() =>
-                Alert.alert(
-                  'Refund the remaining credit?',
-                  `Pays ${rs(c.balance)} back to ${c.customerName || 'the customer'} from ${moneyAccountLabel(accounts, refundFrom)}.`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Refund',
-                      onPress: () => run(refundCreditMemo({ id: creditMemoId, bankAccountId: refundFrom || undefined }), 'Refund recorded'),
-                    },
-                  ],
-                )
-              }
-              fullWidth
-            />
-          )}
-          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Void" variant="secondary" onPress={() => run(voidCreditMemo(creditMemoId), 'Credit memo voided')} fullWidth />}
-          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Delete" variant="danger" onPress={() => run(removeCreditMemo(creditMemoId), 'Credit memo deleted', true)} fullWidth />}
-        </View>
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* Apply is the next step for credit still available; a refund is the
+          other way to use it. Void and Delete are behind More and now ask
+          first — both used to run on one tap. */}
+      {(hasBalance || canRemove) && (
+        <ActionBar
+          primary={hasBalance ? { title: 'Apply to Invoice', onPress: openApply } : undefined}
+          secondary={
+            hasBalance
+              ? {
+                  title: 'Refund',
+                  disabled: !refundFrom,
+                  onPress: () =>
+                    Alert.alert(
+                      'Refund the remaining credit?',
+                      `Pays ${rs(c.balance)} back to ${c.customerName || 'the customer'} from ${moneyAccountLabel(accounts, refundFrom)}.`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Refund',
+                          onPress: () => run(refundCreditMemo({ id: creditMemoId, bankAccountId: refundFrom || undefined }), 'Refund recorded'),
+                        },
+                      ],
+                    ),
+                }
+              : undefined
+          }
+          more={
+            canRemove
+              ? [
+                  {
+                    label: 'Void credit memo',
+                    icon: 'x-octagon',
+                    destructive: true,
+                    confirm: { title: 'Void this credit memo?', message: 'Its credit can no longer be applied or refunded.', confirmLabel: 'Void' },
+                    onPress: () => run(voidCreditMemo(creditMemoId), 'Credit memo voided'),
+                  },
+                  {
+                    label: 'Delete credit memo',
+                    icon: 'trash-2',
+                    destructive: true,
+                    confirm: { title: 'Delete this credit memo?', message: 'This cannot be undone.', confirmLabel: 'Delete' },
+                    onPress: () => run(removeCreditMemo(creditMemoId), 'Credit memo deleted', true),
+                  },
+                ]
+              : undefined
+          }
+        />
+      )}
     </ReportContainer>
   );
 };
@@ -192,7 +217,6 @@ const styles = StyleSheet.create({
   lineDesc: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   lineMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   lineTotal: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
-  actions: { gap: 10 },
 });
 
 export default CreditMemoDetailScreen;

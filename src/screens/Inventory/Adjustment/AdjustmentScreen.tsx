@@ -31,7 +31,7 @@ import {
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
-import CustomButton from '../../../Custom-Components/CustomButton';
+import { ActionBar } from '../../../components/form/FormUI';
 import { useCapability } from '../../../hooks/useCapability';
 import {
   ADJUSTMENT_REASONS,
@@ -404,31 +404,11 @@ const AdjustmentScreen: React.FC = () => {
         {/* ── Actions ──
             Pinned, not trailing the scroll: the journal-entry preview makes
             this form long enough that a commit button at the very bottom is
-            easy to miss. Each button is wrapped in a flex column — CustomButton's
-            fullWidth is width:100%, so two of them directly in a row push the
-            second one off the screen. */}
-        <View style={styles.footer}>
-          <View style={styles.footerCancel}>
-            <CustomButton
-              title="Cancel"
-              onPress={() => navigation.goBack()}
-              variant="secondary"
-              size="md"
-              fullWidth
-            />
-          </View>
-          <View style={styles.footerPrimary}>
-            <CustomButton
-              title={adjustCap.submitLabel('Post Adjustment')}
-              onPress={handleSave}
-              variant="primary"
-              size="md"
-              fullWidth
-              isLoading={isSaving}
-              disabled={isSaving}
-            />
-          </View>
-        </View>
+            easy to miss. The shared bar, as on every form. */}
+        <ActionBar
+          secondary={{ title: 'Cancel', onPress: () => navigation.goBack(), disabled: isSaving }}
+          primary={{ title: adjustCap.submitLabel('Post Adjustment'), onPress: handleSave, isLoading: isSaving }}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -597,22 +577,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // ── Pinned action bar ─────────────────────────────
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xs + 2,
-    paddingBottom: spacing.xs + 2,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  // The commit action carries more weight than the escape hatch, which the
-  // header's back arrow already duplicates.
-  footerCancel: { flex: 1 },
-  footerPrimary: { flex: 1.7 }
 });
 
 export default AdjustmentScreen;

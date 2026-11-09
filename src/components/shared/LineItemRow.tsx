@@ -9,14 +9,13 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../theme';
 import { formatCurrency } from '../../utils/formatters';
 import TaxField, { FIELD_HEIGHT } from '../form/TaxField';
+import { IconButton } from '../form/FormUI';
 
 // Design-system tokens (see src/theme/theme.ts).
 const { colors, spacing, radius } = THEME;
@@ -89,14 +88,13 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
       <View style={styles.headerRow}>
         <Text style={styles.lineLabel}>Item {index + 1}</Text>
         {canDelete && (
-          <TouchableOpacity
-            style={styles.deleteBtn}
+          <IconButton
+            icon="trash-2"
+            size="sm"
+            tone="danger"
             onPress={onDelete}
-            accessibilityRole="button"
             accessibilityLabel={`Remove item ${index + 1}`}
-          >
-            <Feather name="x" size={14} color={colors.danger} />
-          </TouchableOpacity>
+          />
         )}
       </View>
 
@@ -181,20 +179,13 @@ const styles = StyleSheet.create({
     ...THEME.typography.labelMd,
     color: colors.textSecondary,
   },
-  deleteBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    backgroundColor: colors.danger + '14',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   descInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
+    borderRadius: THEME.form.controlRadius,
+    height: FIELD_HEIGHT,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 0,
     ...THEME.typography.bodyMd,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
@@ -219,7 +210,7 @@ const styles = StyleSheet.create({
   numericInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderRadius: THEME.form.controlRadius,
     height: FIELD_HEIGHT,
     paddingHorizontal: spacing.xs,
     paddingVertical: 0,

@@ -451,7 +451,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     ...shadows.xs,
   },
-  rowCardError: { borderLeftWidth: 3, borderLeftColor: colors.danger },
+  // A row that will not import: outlined all round in red, never a side stripe.
+  rowCardError: { borderWidth: 1, borderColor: colors.dangerLight },
   rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowNumber: { ...typography.overline, color: colors.textTertiary },
   rowName: { ...typography.h5, color: colors.textPrimary, marginTop: spacing.xxs },

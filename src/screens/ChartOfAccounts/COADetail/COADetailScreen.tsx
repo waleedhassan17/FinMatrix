@@ -217,7 +217,7 @@ const COADetailScreen: React.FC = () => {
         scrollEventThrottle={200}
       >
         {/* ── Top Card ── */}
-        <View style={[styles.topCard, { borderLeftColor: typeColor }]}>
+        <View style={styles.topCard}>
           <View style={styles.topCardRow}>
             <View style={styles.topCardLeft}>
               <Text style={styles.accountCode}>{account.code}</Text>
@@ -389,7 +389,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.md,
-    borderLeftWidth: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     marginBottom: spacing.md,
     ...shadows.sm,
   },

@@ -428,7 +428,6 @@ const CustomerFormScreen: React.FC = () => {
                 title="Cancel"
                 onPress={() => navigation.goBack()}
                 variant="secondary"
-                size="lg"
                 fullWidth
               />
             </View>
@@ -437,7 +436,6 @@ const CustomerFormScreen: React.FC = () => {
                 title={isEditing ? 'Update' : 'Create'}
                 onPress={handleSave}
                 variant="primary"
-                size="lg"
                 fullWidth
                 isLoading={form.isSaving}
               />

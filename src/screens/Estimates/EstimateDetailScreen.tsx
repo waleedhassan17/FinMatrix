@@ -20,7 +20,7 @@ import { formatCurrency } from '../../utils/formatters';
 import CreditLimitModal from '../../components/shared/CreditLimitModal';
 import { creditAssessmentFrom, type CreditAssessment } from '../../models/creditModel';
 import { backorderMessage, backorderShortfalls } from '../../models/salesLineModel';
-import CustomButton from '../../Custom-Components/CustomButton';
+import { ActionBar, IconButton } from '../../components/form/FormUI';
 import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
 import { titleCase } from '../../components/transactions/TxnListUI';
@@ -139,17 +139,50 @@ const EstimateDetailScreen: React.FC = () => {
 
         {!!e.notes && <Card><Text style={styles.notes}>{e.notes}</Text></Card>}
 
-        <View style={styles.actions}>
-          <CustomButton title="Share PDF" variant="secondary" onPress={() => { void sharePdf(); }} isLoading={sharing} fullWidth />
-          {e.status === 'sent' && <CustomButton title="Mark Accepted" variant="primary" onPress={() => dispatch(changeEstimateStatus({ id: estimateId, status: 'accepted' }))} fullWidth />}
-          {e.status === 'sent' && <CustomButton title="Mark Declined" variant="secondary" onPress={() => dispatch(changeEstimateStatus({ id: estimateId, status: 'declined' }))} fullWidth />}
-          {canConvert && <CustomButton title="Convert to Invoice" variant="primary" onPress={doConvertInvoice} isLoading={isSaving} fullWidth />}
-          {canConvert && <CustomButton title="Convert to Sales Order" variant="secondary" onPress={() => { void doConvertSO(); }} isLoading={isSaving} fullWidth />}
-          {canEdit && <CustomButton title="Edit" variant="secondary" onPress={() => navigation.navigate('EstimateForm', { estimateId })} fullWidth />}
-          {canEdit && <CustomButton title="Delete" variant="danger" onPress={doDelete} fullWidth />}
-        </View>
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* One bar instead of up to seven stacked buttons. The next step is the
+          primary: accept a sent estimate, convert an accepted one, edit the
+          rest. Everything else is behind More, which is closed while a
+          conversion is running; Delete asks first. */}
+      <ActionBar
+        leading={
+          <IconButton icon="share-2" onPress={() => { void sharePdf(); }} isLoading={sharing} accessibilityLabel="Share PDF" />
+        }
+        moreDisabled={isSaving}
+        primary={
+          e.status === 'sent'
+            ? {
+                title: 'Accept',
+                accessibilityHint: 'Records that the customer accepted this estimate',
+                icon: 'check',
+                onPress: () => dispatch(changeEstimateStatus({ id: estimateId, status: 'accepted' })),
+              }
+            : canConvert
+              ? { title: 'Convert to Invoice', onPress: doConvertInvoice, isLoading: isSaving }
+              : canEdit
+                ? { title: 'Edit', onPress: () => navigation.navigate('EstimateForm', { estimateId }), icon: 'edit-2' }
+                : undefined
+        }
+        secondary={
+          e.status === 'sent'
+            ? { title: 'Decline', accessibilityHint: 'Records that the customer declined this estimate', onPress: () => dispatch(changeEstimateStatus({ id: estimateId, status: 'declined' })) }
+            : undefined
+        }
+        more={[
+          ...(e.status === 'sent' && canConvert
+            ? [{ label: 'Convert to Invoice', icon: 'file-text' as const, onPress: doConvertInvoice }]
+            : []),
+          ...(canConvert
+            ? [{ label: 'Convert to Sales Order', icon: 'shopping-cart' as const, onPress: () => { void doConvertSO(); } }]
+            : []),
+          ...(canEdit && canConvert
+            ? [{ label: 'Edit', icon: 'edit-2' as const, onPress: () => navigation.navigate('EstimateForm', { estimateId }) }]
+            : []),
+          ...(canEdit ? [{ label: 'Delete estimate', icon: 'trash-2' as const, destructive: true, confirm: false as const, onPress: doDelete }] : []),
+        ]}
+      />
       <CreditLimitModal
         assessment={creditRefusal}
         busy={isSaving}
@@ -183,7 +216,6 @@ const styles = StyleSheet.create({
   lineTotal: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   divider: { height: 1, backgroundColor: THEME.colors.border, marginVertical: 8 },
   notes: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
-  actions: { gap: 10 },
 });
 
 export default EstimateDetailScreen;

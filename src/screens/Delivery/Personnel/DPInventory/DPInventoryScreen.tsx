@@ -155,15 +155,15 @@ const DPInventoryScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.statsRow}>
-          <View style={[styles.miniStat, { borderLeftColor: THEME.colors.success }]}>
+          <View style={styles.miniStat}>
             <Text style={[styles.miniStatValue, { color: THEME.colors.success }]}>{stats.synced}</Text>
             <Text style={styles.miniStatLabel}>Synced</Text>
           </View>
-          <View style={[styles.miniStat, { borderLeftColor: THEME.colors.warning }]}>
+          <View style={styles.miniStat}>
             <Text style={[styles.miniStatValue, { color: THEME.colors.warning }]}>{stats.pending}</Text>
             <Text style={styles.miniStatLabel}>Pending</Text>
           </View>
-          <View style={[styles.miniStat, { borderLeftColor: THEME.colors.danger }]}>
+          <View style={styles.miniStat}>
             <Text style={[styles.miniStatValue, { color: THEME.colors.danger }]}>{stats.rejected}</Text>
             <Text style={styles.miniStatLabel}>Rejected</Text>
           </View>
@@ -453,7 +453,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: THEME.radius.lg,
-    borderLeftWidth: 3,
     borderWidth: 1,
     borderColor: THEME.colors.borderLight,
     ...THEME.shadows.xs,

@@ -7,7 +7,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
   TextInput,
@@ -42,6 +41,7 @@ import {
   EmptyBlock,
   LoadingBlock,
   ErrorBlock,
+  FigureStrip,
 } from '../../../components/reports/ReportUI';
 import { TxnCard } from '../../../components/transactions/TxnListUI';
 import { FilterTabs, type TabItem } from '../../../components/shared/Tabs';
@@ -51,7 +51,7 @@ import type { Bill } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
-const { colors, radius, shadows, spacing, typography } = THEME;
+const { colors, spacing, typography } = THEME;
 
 // ═══════════════════════════════════════════════════════
 // COMPONENT
@@ -110,6 +110,8 @@ const BillListScreen: React.FC = () => {
     if (isLoading || isLoadingMore || page >= totalPages) return;
     dispatch(fetchBills({ page: page + 1, append: true }));
   }, [dispatch, isLoading, isLoadingMore, page, totalPages]);
+
+  const openCount = (counts.open ?? 0) + (counts.partial ?? 0) + (counts.overdue ?? 0);
 
   const TABS: TabItem<BillStatusFilter>[] = [
     { label: 'All', value: 'all', count: counts.all },
@@ -178,24 +180,27 @@ const BillListScreen: React.FC = () => {
         }
       />
 
-      {/* ── Summary Bar — hidden on first-run ───── */}
+      {/* ── Headline figures — hidden on first-run ── */}
+      {/* One surface, the full amount fitted to its half; red only when a
+          bill is actually overdue. No count tile: the All tab has it. */}
       {!showChrome ? null : (
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryMoney}>{formatCurrency(totalOutstanding, 'Rs ')}</Text>
-          <Text style={styles.summaryLabel}>Outstanding</Text>
+        <View style={styles.figures}>
+          <FigureStrip
+            items={[
+              {
+                label: 'Owing',
+                value: formatCurrency(totalOutstanding, 'Rs '),
+                caption: `${openCount} open bill${openCount === 1 ? '' : 's'}`,
+              },
+              {
+                label: 'Overdue',
+                value: formatCurrency(overdueAmount, 'Rs '),
+                tone: overdueAmount > 0 ? 'danger' : 'default',
+                caption: (counts.overdue ?? 0) > 0 ? `${counts.overdue} past due` : 'Nothing past due',
+              },
+            ]}
+          />
         </View>
-        <View style={styles.summaryCard}>
-          <Text style={[styles.summaryMoney, { color: colors.danger }]}>
-            {formatCurrency(overdueAmount, 'Rs ')}
-          </Text>
-          <Text style={styles.summaryLabel}>Overdue</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>{counts.all}</Text>
-          <Text style={styles.summaryLabel}>Total</Text>
-        </View>
-      </View>
       )}
 
       {/* ── Search ──────────────────────────────── */}
@@ -273,27 +278,7 @@ const BillListScreen: React.FC = () => {
 // Scaffold, tabs and cards now come from ReportUI / TxnListUI; what remains
 // is the summary strip and the search field, which are specific to this screen.
 const styles = StyleSheet.create({
-  summaryRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    gap: spacing.xs,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    alignItems: 'center',
-    ...shadows.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  summaryValue: { ...typography.h3, color: colors.actionGreen },
-  // Money sits a step smaller than the plain count so a long figure fits.
-  summaryMoney: { ...typography.h5, color: colors.actionGreen, fontVariant: ['tabular-nums'] },
-  summaryLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  figures: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs, paddingBottom: spacing.xxs },
 
   searchRow: { paddingHorizontal: spacing.xl, marginBottom: spacing.xs },
   searchInput: {

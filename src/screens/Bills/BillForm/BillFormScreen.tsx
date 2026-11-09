@@ -11,7 +11,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
   TextInput,
   StatusBar,
 } from 'react-native';
@@ -49,10 +48,10 @@ import CustomInput from '../../../Custom-Components/CustomInput';
 import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import {
+  ActionBar,
   AddButton,
   FormSectionHeader,
-  PrimaryButton,
-  SecondaryButton,
+  IconButton,
 } from '../../../components/form/FormUI';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import TaxField from '../../../components/form/TaxField';
@@ -228,75 +227,73 @@ const BillFormScreen: React.FC = () => {
   const renderLineItem = useCallback(
     (line: BillFormLine, idx: number) => (
       <View key={line.id} style={styles.lineCard}>
-        <View style={[styles.lineCardAccent, { backgroundColor: idx % 2 === 0 ? colors.danger : colors.secondary }]} />
-        <View style={styles.lineCardBody}>
-          <View style={styles.lineHeader}>
-            <View style={styles.lineBadge}>
-              <Text style={styles.lineBadgeText}>{idx + 1}</Text>
-            </View>
-            <Text style={styles.lineLabel}>Line Item</Text>
-            {form.lines.length > 1 && (
-              <TouchableOpacity
-                style={styles.lineDeleteBtn}
-                onPress={() => dispatch(removeBillLine(line.id))}
-              >
-                <Feather name="trash-2" size={14} color={colors.danger} />
-              </TouchableOpacity>
+        <View style={styles.lineHeader}>
+          <View style={styles.lineBadge}>
+            <Text style={styles.lineBadgeText}>{idx + 1}</Text>
+          </View>
+          <Text style={styles.lineLabel}>Line Item</Text>
+          {form.lines.length > 1 && (
+            <IconButton
+              icon="trash-2"
+              size="sm"
+              tone="danger"
+              onPress={() => dispatch(removeBillLine(line.id))}
+              accessibilityLabel={`Remove line ${idx + 1}`}
+            />
+          )}
+        </View>
+
+        <CustomDropdown
+          label="Account *"
+          options={accountOptions}
+          value={line.accountId}
+          onChange={v => handleAccountChange(line.id, v)}
+          placeholder="Select expense account…"
+          searchable
+        />
+
+        <TextInput
+          style={styles.descInput}
+          value={line.description}
+          onChangeText={v => dispatch(updateBillLine({ id: line.id, field: 'description', value: v }))}
+          placeholder="Description"
+          placeholderTextColor={colors.textTertiary}
+        />
+
+        <View style={styles.lineNumRow}>
+          <View style={{ flex: 1, minWidth: 132, marginRight: spacing.xs }}>
+            <Text style={styles.fieldLabel}>Amount (Rs)</Text>
+            <TextInput
+              style={styles.numericInput}
+              value={line.amount}
+              onChangeText={v =>
+                dispatch(updateBillLine({ id: line.id, field: 'amount', value: v.replace(/[^0-9.]/g, '') }))
+              }
+              placeholder="0"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="decimal-pad"
+            />
+          </View>
+          {/* TaxField, not CustomDropdown. The dropdown brought its own
+              label role, its own 48px field and a bottom margin, so beside
+              the hand-built Amount column the two shared neither a top nor a
+              bottom edge. This is the same control the invoice lines use. */}
+          <View style={{ flex: 1 }}>
+            <TaxField
+              value={line.taxRate}
+              onChange={v => dispatch(updateBillLine({ id: line.id, field: 'taxRate', value: v }))}
+            />
+          </View>
+        </View>
+
+        <View style={styles.lineTotalRow}>
+          <Feather name="arrow-right" size={12} color={colors.actionGreen} />
+          <Text style={styles.lineTotal}>
+            {formatCurrency(
+              (parseFloat(line.amount) || 0) * (1 + (parseFloat(line.taxRate) || 0) / 100),
+              'Rs ',
             )}
-          </View>
-
-          <CustomDropdown
-            label="Account *"
-            options={accountOptions}
-            value={line.accountId}
-            onChange={v => handleAccountChange(line.id, v)}
-            placeholder="Select expense account…"
-            searchable
-          />
-
-          <TextInput
-            style={styles.descInput}
-            value={line.description}
-            onChangeText={v => dispatch(updateBillLine({ id: line.id, field: 'description', value: v }))}
-            placeholder="Description"
-            placeholderTextColor={colors.textTertiary}
-          />
-
-          <View style={styles.lineNumRow}>
-            <View style={{ flex: 1, minWidth: 132, marginRight: spacing.xs }}>
-              <Text style={styles.fieldLabel}>Amount (Rs)</Text>
-              <TextInput
-                style={styles.numericInput}
-                value={line.amount}
-                onChangeText={v =>
-                  dispatch(updateBillLine({ id: line.id, field: 'amount', value: v.replace(/[^0-9.]/g, '') }))
-                }
-                placeholder="0"
-                placeholderTextColor={colors.textTertiary}
-                keyboardType="decimal-pad"
-              />
-            </View>
-            {/* TaxField, not CustomDropdown. The dropdown brought its own
-                label role, its own 48px field and a bottom margin, so beside
-                the hand-built Amount column the two shared neither a top nor a
-                bottom edge. This is the same control the invoice lines use. */}
-            <View style={{ flex: 1 }}>
-              <TaxField
-                value={line.taxRate}
-                onChange={v => dispatch(updateBillLine({ id: line.id, field: 'taxRate', value: v }))}
-              />
-            </View>
-          </View>
-
-          <View style={styles.lineTotalRow}>
-            <Feather name="arrow-right" size={12} color={colors.actionGreen} />
-            <Text style={styles.lineTotal}>
-              {formatCurrency(
-                (parseFloat(line.amount) || 0) * (1 + (parseFloat(line.taxRate) || 0) / 100),
-                'Rs ',
-              )}
-            </Text>
-          </View>
+          </Text>
         </View>
       </View>
     ),
@@ -322,46 +319,43 @@ const BillFormScreen: React.FC = () => {
           contentContainerStyle={styles.scrollContent}
         >
           {/* ── Section: Vendor & Dates ──────────────── */}
-          <FormSectionHeader title="BILL DETAILS" dotColor={colors.danger} />
+          <FormSectionHeader title="BILL DETAILS" />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: colors.danger }]} />
-            <View style={styles.cardBody}>
-              <CustomDropdown
-                label="Vendor *"
-                options={vendorOptions}
-                value={form.vendorId}
-                onChange={handleVendorChange}
-                placeholder="Select vendor…"
-                error={form.errors.vendorId}
-                searchable
-              />
-              <CustomInput
-                label="Bill #"
-                value={form.billNumber}
-                onChangeText={v => dispatch(setBillField({ key: 'billNumber', value: v }))}
-                placeholder="BILL-0000"
-                error={form.errors.billNumber}
-                disabled={isEditing}
-              />
-              <View style={styles.rowFields}>
-                <View style={{ flex: 1, marginRight: spacing.xs }}>
-                  <DateField
-                    label="Issue Date *"
-                    value={form.issueDate}
-                    onChangeText={v => dispatch(setBillField({ key: 'issueDate', value: v }))}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  {/* Due date is a future date → allow dates after today; never
-                      before the issue date. */}
-                  <DateField
-                    label="Due Date *"
-                    value={form.dueDate}
-                    onChangeText={v => dispatch(setBillField({ key: 'dueDate', value: v }))}
-                    minimumDate={form.issueDate ? new Date(form.issueDate) : undefined}
-                    maximumDate={new Date(2100, 11, 31)}
-                  />
-                </View>
+            <CustomDropdown
+              label="Vendor *"
+              options={vendorOptions}
+              value={form.vendorId}
+              onChange={handleVendorChange}
+              placeholder="Select vendor…"
+              error={form.errors.vendorId}
+              searchable
+            />
+            <CustomInput
+              label="Bill #"
+              value={form.billNumber}
+              onChangeText={v => dispatch(setBillField({ key: 'billNumber', value: v }))}
+              placeholder="BILL-0000"
+              error={form.errors.billNumber}
+              disabled={isEditing}
+            />
+            <View style={styles.rowFields}>
+              <View style={{ flex: 1, marginRight: spacing.xs }}>
+                <DateField
+                  label="Issue Date *"
+                  value={form.issueDate}
+                  onChangeText={v => dispatch(setBillField({ key: 'issueDate', value: v }))}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                {/* Due date is a future date → allow dates after today; never
+                    before the issue date. */}
+                <DateField
+                  label="Due Date *"
+                  value={form.dueDate}
+                  onChangeText={v => dispatch(setBillField({ key: 'dueDate', value: v }))}
+                  minimumDate={form.issueDate ? new Date(form.issueDate) : undefined}
+                  maximumDate={new Date(2100, 11, 31)}
+                />
               </View>
             </View>
           </View>
@@ -369,7 +363,6 @@ const BillFormScreen: React.FC = () => {
           {/* ── Section: Line Items ──────────────────── */}
           <FormSectionHeader
             title="LINE ITEMS"
-            dotColor={colors.secondary}
             right={<AddButton label="Add Line" onPress={() => dispatch(addBillLine())} />}
           />
           {form.errors.lines && (
@@ -379,18 +372,15 @@ const BillFormScreen: React.FC = () => {
           {form.lines.map((line, idx) => renderLineItem(line, idx))}
 
           {/* ── Section: Notes ───────────────────────── */}
-          <FormSectionHeader title="NOTES" dotColor={colors.secondary} />
+          <FormSectionHeader title="NOTES" />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: colors.secondary }]} />
-            <View style={styles.cardBody}>
-              <CustomInput
-                label="Notes"
-                value={form.notes}
-                onChangeText={v => dispatch(setBillField({ key: 'notes', value: v }))}
-                placeholder="Additional notes for this bill…"
-                multiline
-              />
-            </View>
+            <CustomInput
+              label="Notes"
+              value={form.notes}
+              onChangeText={v => dispatch(setBillField({ key: 'notes', value: v }))}
+              placeholder="Additional notes for this bill…"
+              multiline
+            />
           </View>
 
           {/* ── Premium Totals Panel ─────────────────── */}
@@ -420,26 +410,18 @@ const BillFormScreen: React.FC = () => {
             </View>
           </LinearGradient>
 
-          {/* ── Action Buttons ───────────────────────── */}
-          <View style={styles.btnRow}>
-            <View style={{ flex: 1, marginRight: spacing.xs }}>
-              <SecondaryButton
-                title="Save Draft"
-                onPress={() => handleSave('draft')}
-                disabled={form.isSaving}
-                icon={<Feather name="save" size={16} color={colors.actionGreen} />}
-              />
-            </View>
-            <View style={{ flex: 1.4 }}>
-              <PrimaryButton
-                title={form.isSaving ? 'Saving…' : isEditing ? 'Update & Open' : 'Save & Open'}
-                onPress={() => handleSave('open')}
-                isLoading={form.isSaving}
-                icon={<Feather name="check-circle" size={16} color={colors.neutral0} />}
-              />
-            </View>
-          </View>
         </ScrollView>
+
+        {/* ── Actions — the fixed bar every form shares ── */}
+        <ActionBar
+          secondary={{ title: 'Save Draft', onPress: () => handleSave('draft'), disabled: form.isSaving }}
+          primary={{
+            title: form.isSaving ? 'Saving…' : isEditing ? 'Update & Open' : 'Save & Open',
+            onPress: () => handleSave('open'),
+            isLoading: form.isSaving,
+            icon: 'check-circle',
+          }}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -455,24 +437,25 @@ const styles = StyleSheet.create({
   // paddingTop 0 — FormSectionHeader's marginTop supplies it (see FormUI).
   scrollContent: { paddingHorizontal: spacing.md, paddingTop: 0, paddingBottom: spacing.xxl },
 
+  // A plain card: no coloured stripe down its edge, as on every form now.
   sectionCard: {
-    flexDirection: 'row', backgroundColor: colors.neutral0, borderRadius: radius.lg,
-    overflow: 'hidden', ...shadows.xs, borderWidth: 1, borderColor: colors.neutral200,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    ...shadows.xs,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
-  cardAccent: { width: 4 },
-  cardBody: { flex: 1, padding: spacing.md },
   rowFields: { flexDirection: 'row' },
 
   lineError: { ...typography.caption, color: colors.danger, marginBottom: spacing.xs },
 
   // ── Line Item Card ──────────────────────────────
   lineCard: {
-    flexDirection: 'row', backgroundColor: colors.neutral0, borderRadius: radius.lg,
-    overflow: 'hidden', marginBottom: spacing.xs, ...shadows.xs,
-    borderWidth: 1, borderColor: colors.neutral200,
+    backgroundColor: colors.neutral0, borderRadius: radius.lg, padding: spacing.md,
+    marginBottom: spacing.xs, ...shadows.xs,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
   },
-  lineCardAccent: { width: 4 },
-  lineCardBody: { flex: 1, padding: spacing.md },
   lineHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs, gap: spacing.xxs },
   lineBadge: {
     width: 24, height: 24, borderRadius: 12,
@@ -480,23 +463,20 @@ const styles = StyleSheet.create({
   },
   lineBadgeText: { ...typography.overline, color: colors.neutral500 },
   lineLabel: { flex: 1, ...typography.labelMd, color: colors.textSecondary },
-  lineDeleteBtn: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: colors.dangerLight, justifyContent: 'center', alignItems: 'center',
-  },
 
+  // The form's standard control height and radius, beside the dropdown above.
   descInput: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs, paddingVertical: spacing.xs,
+    borderWidth: 1, borderColor: colors.border, borderRadius: THEME.form.controlRadius,
+    height: THEME.form.controlHeight, paddingHorizontal: spacing.sm, paddingVertical: 0,
     ...THEME.typography.bodyMd, color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   lineNumRow: { flexDirection: 'row', marginBottom: spacing.xxs, flexWrap: 'wrap', rowGap: spacing.xxs },
   fieldLabel: { ...typography.labelSm, color: colors.textSecondary, marginBottom: spacing.xxs },
   numericInput: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs, paddingVertical: spacing.xs,
-    ...THEME.typography.bodyMd, color: colors.textPrimary,
+    borderWidth: 1, borderColor: colors.border, borderRadius: THEME.form.controlRadius,
+    height: THEME.form.controlHeight, paddingHorizontal: spacing.sm, paddingVertical: 0,
+    ...THEME.typography.bodyMd, color: colors.textPrimary, textAlign: 'right',
   },
   lineTotalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: spacing.xxs },
   lineTotal: { ...typography.h5, color: colors.actionGreen, fontVariant: ['tabular-nums'] },
@@ -513,7 +493,6 @@ const styles = StyleSheet.create({
   grandTotalLabel: { ...typography.h4, color: PANEL.accent },
   grandTotalValue: { ...typography.h2, color: colors.neutral0, fontVariant: ['tabular-nums'] },
 
-  btnRow: { flexDirection: 'row', marginTop: spacing.xl, marginBottom: spacing.md },
 });
 
 export default BillFormScreen;

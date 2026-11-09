@@ -37,6 +37,7 @@ import {
   resetDetailUIState
 } from './adminDeliveryDetailSlice';
 import CustomButton from '../../../../Custom-Components/CustomButton';
+import { ActionBar, IconButton } from '../../../../components/form/FormUI';
 import CustomDropdown from '../../../../Custom-Components/CustomDropdown';
 import { updateDeliveryAPI } from '../../../../networks/delivery/deliveryNetwork';
 import { useCreditLimitPrompt } from '../../../../hooks/useCreditLimitPrompt';
@@ -619,35 +620,31 @@ const AdminDeliveryDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* ── Fixed Bottom Action Bar ── */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={[styles.bottomBtn, { backgroundColor: colors.secondary }, isTerminal && styles.bottomBtnDisabled]}
-          onPress={() => dispatch(toggleReassignPanel())}
-          disabled={isTerminal}
-        >
-          <Feather name="refresh-cw" size={16} color={colors.neutral0} />
-          <Text style={styles.bottomBtnText}>Re-assign</Text>
-        </TouchableOpacity>
-        {/* One verb, always the right one: an undispatched delivery is
-            deleted outright; a dispatched one is cancelled so its stock and
-            Goods in Transit are properly reversed. */}
-        <TouchableOpacity
-          style={[styles.bottomBtn, { backgroundColor: colors.danger }, isTerminal && styles.bottomBtnDisabled]}
-          onPress={() => dispatch(toggleCancelConfirm())}
-          disabled={isTerminal}
-        >
-          <Feather name={isDiscardable ? 'trash-2' : 'x'} size={16} color={colors.neutral0} />
-          <Text style={styles.bottomBtnText}>{isDiscardable ? 'Delete' : 'Cancel'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.bottomBtn, { backgroundColor: colors.success }]}
-          onPress={handleContact}
-        >
-          <Feather name="phone" size={16} color={colors.neutral0} />
-          <Text style={styles.bottomBtnText}>Contact</Text>
-        </TouchableOpacity>
-      </View>
+      {/* ── Fixed Bottom Action Bar — the shared bar ──
+          It was three filled buttons in purple, red and green. Re-assign is
+          the next step for a live delivery; Contact is the leading icon; the
+          one destructive verb sits behind More. That verb is always the right
+          one: an undispatched delivery is deleted outright, a dispatched one
+          is cancelled so its stock and Goods in Transit are properly
+          reversed — and the panel above asks before either happens. */}
+      {isTerminal ? (
+        <ActionBar secondary={{ title: 'Contact rider', icon: 'phone', onPress: handleContact }} />
+      ) : (
+        <ActionBar
+          leading={<IconButton icon="phone" onPress={handleContact} accessibilityLabel="Contact rider" />}
+          primary={{ title: 'Re-assign', icon: 'refresh-cw', onPress: () => dispatch(toggleReassignPanel()) }}
+          moreDisabled={isSubmitting}
+          more={[
+            {
+              label: isDiscardable ? 'Delete delivery' : 'Cancel delivery',
+              icon: isDiscardable ? 'trash-2' : 'x-circle',
+              destructive: true,
+              confirm: false,
+              onPress: () => dispatch(toggleCancelConfirm()),
+            },
+          ]}
+        />
+      )}
 
       {/* Manual delivery-location modal (geocode-failure fallback) */}
       <Modal
@@ -990,36 +987,9 @@ const styles = StyleSheet.create({
   dangerNote: { ...THEME.typography.bodyMd, color: colors.dangerHover, marginBottom: spacing.md },
   panelButtons: { marginTop: spacing.xs, gap: spacing.xs },
   linkBtn: { alignItems: 'center', paddingVertical: spacing.xs },
-  linkBtnText: { ...THEME.typography.bodyMd, color: colors.secondary },
+  // Navy, as every text action is; it was violet.
+  linkBtnText: { ...THEME.typography.labelLg, color: colors.primary },
 
-  // Bottom action bar
-  bottomBar: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.xs,
-  },
-  bottomBtn: {
-    gap: 4,
-    flex: 1,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bottomBtnDisabled: {
-    opacity: 0.4,
-  },
-  bottomBtnText: {
-    color: colors.surface,
-    ...typography.labelSm,
-    
-    textAlign: 'center',
-    lineHeight: 16,
-  }
 });
 
 export default AdminDeliveryDetailScreen;

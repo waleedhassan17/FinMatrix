@@ -178,7 +178,9 @@ export const HeaderAction: React.FC<{
     disabled={disabled}
   >
     <Feather name={icon} size={THEME.form.addPill.iconSize} color={T.colors.neutral0} />
-    <Text style={S.headerActionText}>{label}</Text>
+    <Text style={S.headerActionText} numberOfLines={1}>
+      {label}
+    </Text>
   </TouchableOpacity>
 );
 
@@ -250,8 +252,8 @@ export const KpiTile: React.FC<KpiItem & { style?: StyleProp<ViewStyle> }> = ({
   delta,
   style,
 }) => (
+  // No coloured strip down the side: the tinted icon is the tile's only accent.
   <View style={[S.kpiTile, style]}>
-    <View style={[S.kpiAccent, { backgroundColor: accent }]} />
     <View style={S.kpiBody}>
       {icon ? (
         <View style={[S.kpiIcon, { backgroundColor: `${accent}14` }]}>
@@ -906,7 +908,6 @@ export const DateField: React.FC<{
         <Text style={[S.fieldInput, !display && { color: T.colors.textTertiary }]} numberOfLines={1}>
           {display || placeholder}
         </Text>
-        <Feather name="chevron-down" size={16} color={T.colors.textTertiary} />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -1147,7 +1148,9 @@ export const EmptyBlock: React.FC<{
   hint?: string;
   actionLabel?: string;
   onAction?: () => void;
-}> = ({ icon = 'inbox', title, hint, actionLabel, onAction }) => (
+  /** The action's glyph. A plus suits "Create…"; a retry wants refresh-cw. */
+  actionIcon?: keyof typeof Feather.glyphMap | null;
+}> = ({ icon = 'inbox', title, hint, actionLabel, onAction, actionIcon = 'plus' }) => (
   <View style={S.stateBlock}>
     <View style={[S.stateIcon, { backgroundColor: T.colors.neutral100 }]}>
       <Feather name={icon} size={20} color={T.colors.textTertiary} />
@@ -1155,9 +1158,19 @@ export const EmptyBlock: React.FC<{
     <Text style={S.stateText}>{title}</Text>
     {hint ? <Text style={S.stateHint}>{hint}</Text> : null}
     {actionLabel && onAction ? (
-      <TouchableOpacity style={S.stateAction} onPress={onAction} activeOpacity={0.8}>
-        <Feather name="plus" size={THEME.form.addPill.iconSize} color={T.colors.neutral0} />
-        <Text style={S.stateActionText}>{actionLabel}</Text>
+      <TouchableOpacity
+        style={S.stateAction}
+        onPress={onAction}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={actionLabel}
+      >
+        {actionIcon ? (
+          <Feather name={actionIcon} size={THEME.form.addPill.iconSize} color={T.colors.neutral0} />
+        ) : null}
+        <Text style={S.stateActionText} numberOfLines={1}>
+          {actionLabel}
+        </Text>
       </TouchableOpacity>
     ) : null}
   </View>
@@ -1514,11 +1527,9 @@ const S = StyleSheet.create({
     borderRadius: T.radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: T.colors.border,
-    flexDirection: 'row',
     overflow: 'hidden',
     ...T.shadows.xs,
   },
-  kpiAccent: { width: 4 },
   kpiBody: { flex: 1, padding: T.spacing.sm + 2 },
   kpiIcon: {
     width: 28,
@@ -1782,16 +1793,25 @@ const S = StyleSheet.create({
   segmentTextActive: { color: T.colors.primary },
 
   // Date field
-  fieldLabel: { ...T.typography.labelMd, color: T.colors.textSecondary, marginBottom: 6 },
+  // The same control as CustomInput and CustomDropdown: side by side on a form
+  // ("Payment Date" beside "Method") a 42px grey date under a smaller label sat
+  // visibly out of line with the 48px white field next to it.
+  fieldLabel: {
+    ...T.typography.bodyMd,
+    fontWeight: T.typography.labelSm.fontWeight,
+    color: T.colors.textPrimary,
+    // CustomInput's own gap, so a date and a field side by side start level.
+    marginBottom: T.spacing.xxs,
+  },
   fieldWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: T.colors.neutral50,
-    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: T.colors.surface,
+    borderWidth: 1,
     borderColor: T.colors.border,
-    borderRadius: T.radius.md,
+    borderRadius: THEME.form.controlRadius,
     paddingHorizontal: 12,
-    height: 42,
+    height: THEME.form.controlHeight,
   },
   fieldInput: { flex: 1, ...T.typography.bodyMd, color: T.colors.textPrimary, paddingVertical: 0 },
 

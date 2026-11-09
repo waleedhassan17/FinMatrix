@@ -63,7 +63,8 @@ import { fetchAccounts, selectAccounts } from '../../ChartOfAccounts/COAList/coa
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
-import { PrimaryButton, SecondaryButton } from '../../../components/form/FormUI';
+import { ActionBar, FormSectionHeader } from '../../../components/form/FormUI';
+import { AllocationHeader, AllocationNote, AllocationRow } from '../../../components/transactions/AllocationRow';
 import { DateField, ReportHeader, HEADER_NAVY, LoadingBlock } from '../../../components/reports/ReportUI';
 import { formatCurrency, formatDate, lakhCroreWords } from '../../../utils/formatters';
 import type { PaymentMethod } from '../../../types';
@@ -374,120 +375,90 @@ const PayBillsScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* ── Payment Details ─────────────────────── */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: colors.danger }]} />
-            <Text style={styles.sectionTitle}>PAYMENT DETAILS</Text>
-          </View>
+          {/* ── Payment details ─────────────────────── */}
+          {/* The web's order: who, when and how, then where the money comes
+              from. "Pay from" used to sit above Method while its hint pointed
+              to "the method above". */}
+          <FormSectionHeader title="Payment details" />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: colors.danger }]} />
-            <View style={styles.cardBody}>
-              <CustomDropdown
-                label="Vendor *"
-                options={vendorOptions}
-                value={form.vendorId}
-                onChange={handleVendorChange}
-                placeholder="Select vendor…"
-                error={form.errors.vendorId}
-                searchable
-              />
-              <MoneyAccountDropdown
-                label={needsProof || creditUsed <= 0 ? 'Pay from account *' : 'Pay from account'}
-                value={form.bankAccountId}
-                onChange={v => dispatch(setPayBillField({ key: 'bankAccountId', value: v }))}
-                error={form.errors.bankAccountId}
-                hint={
-                  form.bankAccountId
-                    ? undefined
-                    : !needsProof && creditUsed > 0
-                      ? 'Not needed: vendor credit covers what is being settled.'
-                      : 'The account the money leaves — choose Cash for a cash payment. The method above is just how you paid.'
-                }
-              />
-              {/* A warning, not a block: a bank overdraft is a real thing. */}
-              {!!overdraw && (
-                <Text style={styles.overdrawNote}>
-                  This pays {formatCurrency(totalAllocated, 'Rs ')} from {overdraw.name}, which holds{' '}
-                  {formatCurrency(overdraw.balance, 'Rs ')}. It will go {formatCurrency(overdraw.shortfall, 'Rs ')} overdrawn.
-                </Text>
-              )}
-              <View style={styles.rowFields}>
-                <View style={{ flex: 1, marginRight: spacing.xs }}>
-                  <DateField
-                    label="Payment Date *"
-                    value={form.paymentDate}
-                    onChangeText={v => dispatch(setPayBillField({ key: 'paymentDate', value: v }))}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <CustomDropdown
-                    label="Method"
-                    options={METHOD_OPTIONS}
-                    value={form.method}
-                    onChange={v => dispatch(setPayBillField({ key: 'method', value: v as PaymentMethod }))}
-                  />
-                </View>
+            <CustomDropdown
+              label="Vendor *"
+              options={vendorOptions}
+              value={form.vendorId}
+              onChange={handleVendorChange}
+              placeholder="Select vendor…"
+              error={form.errors.vendorId}
+              searchable
+            />
+            <View style={styles.rowFields}>
+              <View style={{ flex: 1, marginRight: spacing.xs }}>
+                <DateField
+                  label="Payment Date *"
+                  value={form.paymentDate}
+                  onChangeText={v => dispatch(setPayBillField({ key: 'paymentDate', value: v }))}
+                />
               </View>
-              <CustomInput
-                label="Reference / Cheque #"
-                value={form.reference}
-                onChangeText={v => dispatch(setPayBillField({ key: 'reference', value: v }))}
-                placeholder="e.g. CHQ-12345"
-              />
-              {form.outstandingRows.length > 0 && (
-                <>
-                  <CustomInput
-                    label="Amount to pay (Rs)"
-                    value={form.payAmount}
-                    onChangeText={v => dispatch(setPayAmount(v))}
-                    placeholder="Each ticked bill in full"
-                    keyboardType="decimal-pad"
-                    error={form.errors.payAmount}
-                  />
-                  <Text style={styles.fieldHint}>
-                    {lakhCroreWords(form.payAmount)
-                      ? `= ${lakhCroreWords(form.payAmount)}`
-                      : 'Optional: type a sum and it is spread over the ticked bills, oldest first.'}
-                  </Text>
-                </>
-              )}
-              <View style={styles.amountRow}>
-                <View style={{ flex: 1, marginRight: spacing.xs }}>
-                  <View style={styles.totalReadout}>
-                    <Text style={styles.totalReadoutLabel}>{creditUsed > 0 ? 'Cash to pay' : 'Total payment'}</Text>
-                    <Text style={styles.totalReadoutValue}>{formatCurrency(totalAllocated, 'Rs ')}</Text>
-                    <Text style={styles.totalReadoutHint}>
-                      {creditUsed > 0
-                        ? 'The bills below, less the vendor credit used on them.'
-                        : 'Sum of the amounts you enter against each bill below.'}
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[styles.payAllChip, form.outstandingRows.length === 0 && styles.payAllChipDisabled]}
-                  onPress={() => dispatch(payAllBills())}
-                  activeOpacity={0.7}
-                  disabled={form.outstandingRows.length === 0}
-                >
-                  <Feather name="zap" size={14} color={colors.danger} />
-                  <Text style={styles.payAllChipText}>Pay All</Text>
-                </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <CustomDropdown
+                  label="Method"
+                  options={METHOD_OPTIONS}
+                  value={form.method}
+                  onChange={v => dispatch(setPayBillField({ key: 'method', value: v as PaymentMethod }))}
+                />
               </View>
             </View>
+            <MoneyAccountDropdown
+              label={needsProof || creditUsed <= 0 ? 'Pay from account *' : 'Pay from account'}
+              value={form.bankAccountId}
+              onChange={v => dispatch(setPayBillField({ key: 'bankAccountId', value: v }))}
+              error={form.errors.bankAccountId}
+              hint={
+                form.bankAccountId
+                  ? undefined
+                  : !needsProof && creditUsed > 0
+                    ? 'Not needed: vendor credit covers what is being settled.'
+                    : 'Where the money comes from. Choose Cash for a cash payment.'
+              }
+            />
+            {/* A warning, not a block: a bank overdraft is a real thing. */}
+            {!!overdraw && (
+              <Text style={styles.overdrawNote}>
+                This pays {formatCurrency(totalAllocated, 'Rs ')} from {overdraw.name}, which holds{' '}
+                {formatCurrency(overdraw.balance, 'Rs ')}. It will go {formatCurrency(overdraw.shortfall, 'Rs ')} overdrawn.
+              </Text>
+            )}
+            <CustomInput
+              label="Reference / Cheque #"
+              value={form.reference}
+              onChangeText={v => dispatch(setPayBillField({ key: 'reference', value: v }))}
+              placeholder="e.g. CHQ-12345"
+            />
           </View>
 
-          {/* ── Outstanding Bills ─────────────────────── */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: colors.secondary }]} />
-            <Text style={styles.sectionTitle}>OUTSTANDING BILLS</Text>
-          </View>
+          {/* ── Outstanding bills ─────────────────────── */}
+          {/* "Pay all in full" lives with the bills it pays, as on the web —
+              not in the details card above, before any bill is on screen. */}
+          <FormSectionHeader
+            title="Outstanding bills"
+            right={
+              form.outstandingRows.length > 0 ? (
+                <CustomButton
+                  title="Pay all in full"
+                  variant="secondary"
+                  size="sm"
+                  onPress={() => dispatch(payAllBills())}
+                  disabled={form.isSaving}
+                />
+              ) : undefined
+            }
+          />
 
           {form.isLoadingBills ? (
             <LoadingBlock label="Loading outstanding bills…" />
           ) : form.outstandingRows.length === 0 ? (
             <View style={styles.emptyCard}>
               <View style={styles.emptyIconBg}>
-                <Feather name="file-text" size={20} color={colors.secondary} />
+                <Feather name="file-text" size={20} color={colors.textSecondary} />
               </View>
               <Text style={styles.emptyTitle}>
                 {form.vendorId ? 'No outstanding bills' : 'Select a vendor'}
@@ -509,81 +480,64 @@ const PayBillsScreen: React.FC = () => {
               )}
             </View>
           ) : (
-            <>
-              {form.errors.allocations && (
-                <Text style={styles.errorText}>{form.errors.allocations}</Text>
-              )}
-              <View style={styles.tableWrap}>
-                <View style={styles.tableHeader}>
-                  <TouchableOpacity
-                    style={styles.checkboxWrap}
-                    onPress={() => dispatch(toggleAllBills())}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <View style={[styles.checkbox, allChecked && styles.checkboxChecked]}>
-                      {allChecked && <Feather name="check" size={13} color={colors.neutral0} />}
-                    </View>
-                  </TouchableOpacity>
-                  <Text style={[styles.thText, { flex: 1.3 }]}>Bill</Text>
-                  <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Bill Amt</Text>
-                  <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Balance</Text>
-                  <Text style={[styles.thText, styles.thRight, { width: 96 }]}>Settle</Text>
-                </View>
-                {form.outstandingRows.map((row, idx) => (
-                  <View
-                    key={row.billId}
-                    style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven, row.checked && styles.tableRowChecked]}
-                  >
-                    <TouchableOpacity
-                      style={styles.checkboxWrap}
-                      onPress={() => dispatch(toggleBillCheck(row.billId))}
-                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                    >
-                      <View style={[styles.checkbox, row.checked && styles.checkboxChecked]}>
-                        {row.checked && <Feather name="check" size={13} color={colors.neutral0} />}
-                      </View>
-                    </TouchableOpacity>
-                    <View style={{ flex: 1.3 }}>
-                      <Text style={[styles.tdText, styles.tdStrong]} numberOfLines={1}>{row.billNumber}</Text>
-                      <Text style={styles.tdSub}>Due {formatDate(row.dueDate)}</Text>
-                      {/* What the vendor's credit covers of it — the rest is cash. */}
-                      {row.creditApplied > 0 && (
-                        <Text style={[styles.creditChip, styles.creditChipOn]}>
-                          {formatCurrency(row.creditApplied, 'Rs ')} from credit
-                        </Text>
-                      )}
-                    </View>
-                    {/* minWidth 0 lets a crore-sized figure wrap inside its
-                        column instead of spilling over the one beside it. */}
-                    <Text style={[styles.tdText, styles.tdRight, styles.amountCell]}>{formatCurrency(row.total, 'Rs ')}</Text>
-                    <View style={styles.amountCell}>
-                      <Text style={[styles.tdText, styles.tdRight]}>{formatCurrency(row.balance, 'Rs ')}</Text>
-                    </View>
-                    {/* Editable per bill: what this bill is settled by, credit
-                        and cash together — this is what lets you settle a newer
-                        bill in full while paying an older one in part. Clamped
-                        to the balance in the reducer. */}
-                    <TextInput
-                      style={[styles.allocInput, row.allocated > 0 && styles.allocInputActive]}
-                      value={row.allocated > 0 ? String(row.allocated) : ''}
-                      onChangeText={(v: string) =>
-                        dispatch(setBillAllocation({ billId: row.billId, value: v.replace(/[^0-9.]/g, '') }))
-                      }
-                      placeholder="0"
-                      placeholderTextColor={colors.textTertiary}
-                      keyboardType="decimal-pad"
-                      editable={!form.isSaving}
-                    />
-                  </View>
-                ))}
-                <View style={styles.tableTotalRow}>
-                  <Text style={styles.tableTotalLabel}>
-                    {checkedCount} of {form.outstandingRows.length} bill{form.outstandingRows.length === 1 ? '' : 's'}
-                  </Text>
-                  <Text style={styles.tableTotalValue}>{formatCurrency(totalSettled, 'Rs ')}</Text>
-                </View>
+            <View style={styles.tableWrap}>
+              {/* Optional: one sum, spread over the ticked bills oldest first. */}
+              <View style={styles.amountBlock}>
+                <CustomInput
+                  label="Amount to pay (Rs)"
+                  value={form.payAmount}
+                  onChangeText={v => dispatch(setPayAmount(v))}
+                  placeholder="Each ticked bill in full"
+                  keyboardType="decimal-pad"
+                  error={form.errors.payAmount}
+                />
+                <Text style={styles.fieldHint}>
+                  {lakhCroreWords(form.payAmount)
+                    ? `= ${lakhCroreWords(form.payAmount)}`
+                    : 'Optional: type a sum and it is spread over the ticked bills, oldest first.'}
+                </Text>
+                {form.errors.allocations && (
+                  <Text style={styles.errorText}>{form.errors.allocations}</Text>
+                )}
               </View>
-            </>
+              <AllocationHeader
+                label="Select all"
+                onToggleAll={() => dispatch(toggleAllBills())}
+                allChecked={allChecked}
+              />
+              {form.outstandingRows.map(row => (
+                <AllocationRow
+                  key={row.billId}
+                  kind="Bill"
+                  number={row.billNumber}
+                  balance={formatCurrency(row.balance, 'Rs ')}
+                  detail={`Due ${formatDate(row.dueDate)} · of ${formatCurrency(row.total, 'Rs ')}`}
+                  checked={row.checked}
+                  onToggle={() => dispatch(toggleBillCheck(row.billId))}
+                  // Editable per bill: what this bill is settled by, credit and cash
+                  // together — this is what lets you settle a newer bill in full while
+                  // paying an older one in part. Clamped to the balance in the reducer.
+                  amount={{
+                    label: 'Settle (Rs)',
+                    value: row.allocated > 0 ? String(row.allocated) : '',
+                    onChangeText: v => dispatch(setBillAllocation({ billId: row.billId, value: v.replace(/[^0-9.]/g, '') })),
+                    editable: !form.isSaving,
+                    accessibilityLabel: `Amount to settle on ${row.billNumber}`,
+                  }}
+                >
+                  {/* What the vendor's credit covers of it — the rest is cash. */}
+                  {row.creditApplied > 0 && (
+                    <AllocationNote tone="success">{formatCurrency(row.creditApplied, 'Rs ')} from credit</AllocationNote>
+                  )}
+                </AllocationRow>
+              ))}
+              <View style={styles.tableTotalRow}>
+                <Text style={styles.tableTotalLabel}>
+                  {checkedCount} of {form.outstandingRows.length} bill{form.outstandingRows.length === 1 ? '' : 's'}
+                </Text>
+                <Text style={styles.tableTotalValue}>{formatCurrency(totalSettled, 'Rs ')}</Text>
+              </View>
+            </View>
           )}
 
           {/* ── Vendor credit ─────────────────────────── */}
@@ -592,60 +546,54 @@ const PayBillsScreen: React.FC = () => {
               cash; each credit's amount stays editable. */}
           {form.credits.length > 0 && (
             <>
-              <View style={styles.sectionLabelRow}>
-                <View style={[styles.sectionDot, { backgroundColor: colors.success }]} />
-                <Text style={styles.sectionTitle}>VENDOR CREDIT</Text>
-              </View>
+              <FormSectionHeader title="Vendor credit" />
               <View style={styles.sectionCard}>
-                <View style={[styles.cardAccent, { backgroundColor: colors.success }]} />
-                <View style={styles.cardBody}>
-                  <View style={styles.creditHeadRow}>
-                    <Text style={[styles.creditHeadText, { flex: 1 }]}>
-                      {form.vendorName || 'This vendor'} has {formatCurrency(creditHeld, 'Rs ')} of credit —
-                      spent first, oldest bill first, before any cash.
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => dispatch(setUseCredits(!form.useCredits))}
-                      activeOpacity={0.8}
-                      accessibilityRole="switch"
-                      accessibilityState={{ checked: form.useCredits }}
-                      accessibilityLabel="Use in this payment"
-                      style={[styles.toggleSwitch, form.useCredits && styles.toggleSwitchOn]}
-                    >
-                      <View style={[styles.toggleKnob, form.useCredits && styles.toggleKnobOn]} />
-                    </TouchableOpacity>
-                  </View>
-                  {form.useCredits && (
-                    <>
-                      {form.credits.map(c => {
-                        const over = (parseFloat(c.use) || 0) > c.available + 0.004;
-                        return (
-                          <View key={c.id} style={styles.creditLine}>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.creditRef} numberOfLines={1}>{c.reference || 'Vendor credit'}</Text>
-                              <Text style={styles.creditMeta}>
-                                {formatCurrency(c.available, 'Rs ')} available
-                              </Text>
-                              <Text style={styles.creditApplies}>
-                                Applies {formatCurrency(spread.perCredit[c.id] ?? 0, 'Rs ')}
-                              </Text>
-                            </View>
-                            <TextInput
-                              style={[styles.creditInput, over && styles.creditInputOver]}
-                              value={c.use}
-                              onChangeText={v => dispatch(setCreditUse({ id: c.id, value: v }))}
-                              keyboardType="decimal-pad"
-                              accessibilityLabel={`Amount of ${c.reference || 'vendor credit'} to use`}
-                              editable={!form.isSaving}
-                            />
-                          </View>
-                        );
-                      })}
-                      <Text style={styles.creditTotalText}>Credits used {formatCurrency(creditUsed, 'Rs ')}</Text>
-                      {!!form.errors.credits && <Text style={styles.errorText}>{form.errors.credits}</Text>}
-                    </>
-                  )}
+                <View style={styles.creditHeadRow}>
+                  <Text style={[styles.creditHeadText, { flex: 1 }]}>
+                    {form.vendorName || 'This vendor'} has {formatCurrency(creditHeld, 'Rs ')} of credit —
+                    spent first, oldest bill first, before any cash.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => dispatch(setUseCredits(!form.useCredits))}
+                    activeOpacity={0.8}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: form.useCredits }}
+                    accessibilityLabel="Use in this payment"
+                    style={[styles.toggleSwitch, form.useCredits && styles.toggleSwitchOn]}
+                  >
+                    <View style={[styles.toggleKnob, form.useCredits && styles.toggleKnobOn]} />
+                  </TouchableOpacity>
                 </View>
+                {form.useCredits && (
+                  <>
+                    {form.credits.map(c => {
+                      const over = (parseFloat(c.use) || 0) > c.available + 0.004;
+                      return (
+                        <View key={c.id} style={styles.creditLine}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.creditRef} numberOfLines={1}>{c.reference || 'Vendor credit'}</Text>
+                            <Text style={styles.creditMeta}>
+                              {formatCurrency(c.available, 'Rs ')} available
+                            </Text>
+                            <Text style={styles.creditApplies}>
+                              Applies {formatCurrency(spread.perCredit[c.id] ?? 0, 'Rs ')}
+                            </Text>
+                          </View>
+                          <TextInput
+                            style={[styles.creditInput, over && styles.creditInputOver]}
+                            value={c.use}
+                            onChangeText={v => dispatch(setCreditUse({ id: c.id, value: v }))}
+                            keyboardType="decimal-pad"
+                            accessibilityLabel={`Amount of ${c.reference || 'vendor credit'} to use`}
+                            editable={!form.isSaving}
+                          />
+                        </View>
+                      );
+                    })}
+                    <Text style={styles.creditTotalText}>Credits used {formatCurrency(creditUsed, 'Rs ')}</Text>
+                    {!!form.errors.credits && <Text style={styles.errorText}>{form.errors.credits}</Text>}
+                  </>
+                )}
               </View>
             </>
           )}
@@ -679,21 +627,15 @@ const PayBillsScreen: React.FC = () => {
           )}
 
           {/* ── Notes ────────────────────────────────── */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: colors.secondary }]} />
-            <Text style={styles.sectionTitle}>NOTES</Text>
-          </View>
+          <FormSectionHeader title="Notes" />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: colors.secondary }]} />
-            <View style={styles.cardBody}>
-              <CustomInput
-                label="Payment Notes"
-                value={form.notes}
-                onChangeText={v => dispatch(setPayBillField({ key: 'notes', value: v }))}
-                placeholder="Optional notes…"
-                multiline
-              />
-            </View>
+            <CustomInput
+              label="Payment Notes"
+              value={form.notes}
+              onChangeText={v => dispatch(setPayBillField({ key: 'notes', value: v }))}
+              placeholder="Optional notes…"
+              multiline
+            />
           </View>
 
           {/* ── Payment proof ────────────────────────── */}
@@ -701,107 +643,88 @@ const PayBillsScreen: React.FC = () => {
               nothing and there is nothing to evidence. */}
           {needsProof && (
           <>
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionDot, { backgroundColor: colors.info }]} />
-            <Text style={styles.sectionTitle}>PAYMENT PROOF</Text>
-          </View>
+          <FormSectionHeader title="Payment proof" />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: colors.info }]} />
-            <View style={styles.cardBody}>
-              <Text style={styles.proofHelp}>
-                Attach a receipt, bank confirmation, or a photo of the cash voucher.
-              </Text>
+            <Text style={styles.proofHelp}>
+              Attach a receipt, bank confirmation, or a photo of the cash voucher.
+            </Text>
 
-              {!proof.localUri ? (
-                <TouchableOpacity style={styles.proofPick} onPress={chooseProof} activeOpacity={0.75}>
-                  <Feather name="paperclip" size={16} color={colors.actionGreen} />
-                  <Text style={styles.proofPickText}>Attach proof</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.proofRow}>
-                  {proof.mimeType.startsWith('image/') ? (
-                    <Image source={{ uri: proof.localUri }} style={styles.proofThumb} />
+            {!proof.localUri ? (
+              <TouchableOpacity style={styles.proofPick} onPress={chooseProof} activeOpacity={0.75}>
+                <Feather name="paperclip" size={16} color={colors.actionGreen} />
+                <Text style={styles.proofPickText}>Attach proof</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.proofRow}>
+                {proof.mimeType.startsWith('image/') ? (
+                  <Image source={{ uri: proof.localUri }} style={styles.proofThumb} />
+                ) : (
+                  <View style={[styles.proofThumb, styles.proofThumbDoc]}>
+                    <Feather name="file-text" size={20} color={colors.textSecondary} />
+                  </View>
+                )}
+
+                <View style={styles.proofMeta}>
+                  <Text style={styles.proofName} numberOfLines={1}>{proof.name}</Text>
+                  {proof.isUploading ? (
+                    <View style={styles.proofStatusRow}>
+                      <ActivityIndicator size="small" color={colors.actionGreen} />
+                      <Text style={styles.proofStatus}>Uploading…</Text>
+                    </View>
+                  ) : proof.error ? (
+                    <TouchableOpacity
+                      onPress={() =>
+                        startUpload({
+                          uri: proof.localUri,
+                          name: proof.name,
+                          mimeType: proof.mimeType,
+                        })
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.proofRetry}>{proof.error} Tap to retry.</Text>
+                    </TouchableOpacity>
                   ) : (
-                    <View style={[styles.proofThumb, styles.proofThumbDoc]}>
-                      <Feather name="file-text" size={20} color={colors.textSecondary} />
+                    <View style={styles.proofStatusRow}>
+                      <Feather name="check-circle" size={12} color={colors.success} />
+                      <Text style={[styles.proofStatus, { color: colors.success }]}>Attached</Text>
                     </View>
                   )}
-
-                  <View style={styles.proofMeta}>
-                    <Text style={styles.proofName} numberOfLines={1}>{proof.name}</Text>
-                    {proof.isUploading ? (
-                      <View style={styles.proofStatusRow}>
-                        <ActivityIndicator size="small" color={colors.actionGreen} />
-                        <Text style={styles.proofStatus}>Uploading…</Text>
-                      </View>
-                    ) : proof.error ? (
-                      <TouchableOpacity
-                        onPress={() =>
-                          startUpload({
-                            uri: proof.localUri,
-                            name: proof.name,
-                            mimeType: proof.mimeType,
-                          })
-                        }
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.proofRetry}>{proof.error} Tap to retry.</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={styles.proofStatusRow}>
-                        <Feather name="check-circle" size={12} color={colors.success} />
-                        <Text style={[styles.proofStatus, { color: colors.success }]}>Attached</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <TouchableOpacity
-                    onPress={() => dispatch(clearPaymentProof())}
-                    disabled={proof.isUploading}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="x" size={18} color={colors.textTertiary} />
-                  </TouchableOpacity>
                 </View>
-              )}
-            </View>
+
+                <TouchableOpacity
+                  onPress={() => dispatch(clearPaymentProof())}
+                  disabled={proof.isUploading}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="x" size={18} color={colors.textTertiary} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
           </>
           )}
 
-          {/* ── Actions ──────────────────────────────── */}
-          <View style={styles.btnRow}>
-            <View style={{ flex: 1, marginRight: spacing.xs }}>
-              <SecondaryButton title="Cancel" onPress={() => navigation.goBack()} disabled={form.isSaving} />
-            </View>
-            <View style={{ flex: 1.4 }}>
-              {/* Gated on proof.id, not on a file being chosen: the upload must
-                  have come back before money can move.
-
-                  Only when cash actually moves, though. A settlement funded
-                  entirely from vendor credit posts no payment — savePayment
-                  sends it with no cash leg — so there is nothing to evidence
-                  and demanding a receipt would just block it. */}
-              <PrimaryButton
-                title={
-                  form.isSaving
-                    ? 'Recording…'
-                    : payCap.submitLabel(needsProof || creditUsed <= 0 ? 'Record Payment' : 'Apply Vendor Credit')
-                }
-                onPress={handleSave}
-                isLoading={form.isSaving}
-                disabled={form.isSaving || (needsProof && !proof.id)}
-                icon={<Feather name="check-circle" size={16} color={colors.neutral0} />}
-              />
-            </View>
-          </View>
-          {needsProof && !proof.id && (
-            <Text style={styles.proofGate}>
-              Attach a payment proof to record this payment.
-            </Text>
-          )}
         </ScrollView>
+
+        {/* Gated on proof.id, not on a file being chosen: the upload must have
+            come back before money can move. Only when cash actually moves,
+            though — a settlement funded entirely from vendor credit posts no
+            payment, so demanding a receipt would just block it. */}
+        <ActionBar
+          secondary={{ title: 'Cancel', onPress: () => navigation.goBack(), disabled: form.isSaving }}
+          primary={{
+            title: form.isSaving
+              ? 'Recording…'
+              : payCap.submitLabel(needsProof || creditUsed <= 0 ? 'Record Payment' : 'Apply Vendor Credit'),
+            onPress: handleSave,
+            isLoading: form.isSaving,
+            disabled: form.isSaving || (needsProof && !proof.id),
+            icon: 'check-circle',
+          }}
+          note={needsProof && !proof.id ? 'Attach a payment proof to record this payment.' : undefined}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -848,26 +771,18 @@ const styles = StyleSheet.create({
   proofRetry: {
     ...typography.caption, color: colors.danger, marginTop: 2,
   },
-  proofGate: {
-    ...typography.caption, color: colors.textTertiary, textAlign: 'center',
-    marginTop: spacing.xxs,
-  },
 
   container: { flex: 1, backgroundColor: colors.neutral100 },
   safeTop: { backgroundColor: HEADER_NAVY[0] },
 
   scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.xs, paddingBottom: spacing.xxl },
 
-  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.xs, gap: spacing.xxs + 2 },
-  sectionDot: { width: 8, height: 8, borderRadius: 4 },
-  sectionTitle: { ...THEME.form.sectionTitle },
 
+  // A plain card: no coloured stripe down its edge, as on every form now.
   sectionCard: {
-    flexDirection: 'row', backgroundColor: colors.neutral0, borderRadius: radius.lg,
-    overflow: 'hidden', ...shadows.xs, borderWidth: 1, borderColor: colors.neutral200,
+    backgroundColor: colors.neutral0, borderRadius: radius.lg, padding: spacing.md,
+    ...shadows.xs, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
   },
-  cardAccent: { width: 4 },
-  cardBody: { flex: 1, padding: spacing.md },
   rowFields: { flexDirection: 'row' },
   overdrawNote: {
     ...THEME.typography.caption,
@@ -875,52 +790,20 @@ const styles = StyleSheet.create({
     marginTop: -spacing.xxs,
     marginBottom: spacing.xs,
   },
-  amountRow: { flexDirection: 'row', alignItems: 'flex-end' },
 
-  payAllChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: spacing.xs + 4, paddingVertical: spacing.xs + 2,
-    backgroundColor: colors.dangerLighter, borderWidth: 1, borderColor: colors.dangerLight,
-    borderRadius: 20, marginBottom: spacing.xxs,
-  },
-  payAllChipText: { ...typography.labelMd, color: colors.danger },
 
   emptyCard: {
     backgroundColor: colors.neutral0, borderRadius: radius.lg, paddingVertical: spacing.xl,
     paddingHorizontal: spacing.md, alignItems: 'center', borderWidth: 1, borderColor: colors.neutral200, borderStyle: 'dashed',
   },
-  emptyIconBg: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.secondaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xxs },
+  emptyIconBg: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.neutral100, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xxs },
   emptyTitle: { ...typography.h5, color: colors.textPrimary, marginBottom: 2 },
   emptyText: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
   errorText: { ...typography.caption, color: colors.danger, marginBottom: spacing.xs },
 
-  tableWrap: { backgroundColor: colors.neutral0, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.neutral200, ...shadows.xs },
-  tableHeader: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xxs + 2,
-    paddingHorizontal: spacing.xs, backgroundColor: colors.neutral50, borderBottomWidth: 2, borderBottomColor: colors.danger,
-  },
-  thText: { ...typography.overline, color: colors.danger },
-  thRight: { textAlign: 'right' },
-  tableRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.xs, backgroundColor: colors.neutral0,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.neutral100,
-  },
-  tableRowEven: { backgroundColor: colors.backgroundAlt },
-  tableRowChecked: { backgroundColor: colors.dangerLighter },
-  tdText: { ...typography.caption, color: colors.textPrimary },
-  // labelSm carries emphasis at the same 12px, so an emphasised cell
-  // never reflows the column.
-  tdStrong: { ...typography.labelSm },
-  tdRight: { textAlign: 'right' },
-  amountCell: { flex: 1, minWidth: 0, marginLeft: spacing.xxs },
+  tableWrap: { backgroundColor: colors.neutral0, borderRadius: radius.lg, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, ...shadows.xs },
+  amountBlock: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xxs },
 
-  checkboxWrap: { width: 32, alignItems: 'center' },
-  checkbox: {
-    width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: colors.neutral300,
-    justifyContent: 'center', alignItems: 'center', backgroundColor: colors.neutral0,
-  },
-  checkboxChecked: { backgroundColor: colors.danger, borderColor: colors.danger },
 
   summaryCard: { borderRadius: radius.lg + 4, padding: spacing.md + 4, marginTop: spacing.xl, ...shadows.md },
   summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs + 2, marginBottom: spacing.xs },
@@ -941,7 +824,7 @@ const styles = StyleSheet.create({
   creditMeta: { ...typography.caption, color: colors.textSecondary },
   creditApplies: { ...typography.caption, color: colors.success, marginTop: 2 },
   creditInput: {
-    width: 104, height: 40, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.neutral300,
+    width: 120, height: THEME.form.controlHeight, borderRadius: THEME.form.controlRadius, borderWidth: 1, borderColor: colors.border,
     paddingHorizontal: spacing.xs, textAlign: 'right', ...typography.bodySm, color: colors.textPrimary,
     backgroundColor: colors.neutral0,
   },
@@ -954,29 +837,8 @@ const styles = StyleSheet.create({
   toggleSwitchOn: { backgroundColor: colors.actionGreen },
   toggleKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.neutral0, ...shadows.xs },
   toggleKnobOn: { transform: [{ translateX: 18 }] },
-  creditChip: { ...typography.labelSm, color: colors.success, marginTop: 2 },
-  creditChipOn: { color: colors.actionGreenDark },
   emptyCta: { marginTop: 12 },
   fieldHint: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: -spacing.xxs, marginBottom: spacing.xs },
-  totalReadout: { paddingVertical: 4 },
-  totalReadoutLabel: { ...THEME.typography.caption, color: colors.textSecondary },
-  totalReadoutValue: { ...typography.h3, color: colors.textPrimary, marginTop: 2, fontVariant: ['tabular-nums'] },
-  totalReadoutHint: { ...THEME.typography.caption, color: colors.textTertiary, marginTop: 2 },
-  payAllChipDisabled: { opacity: 0.4 },
-  tdSub: { ...THEME.typography.caption, color: colors.textTertiary, marginTop: 1 },
-  allocInput: {
-    width: 96,
-    height: 38,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: 8,
-    textAlign: 'right',
-    ...THEME.typography.bodySm,
-    color: colors.textPrimary,
-    backgroundColor: colors.neutral0,
-  },
-  allocInputActive: { borderColor: colors.success, backgroundColor: colors.actionGreenLighter },
   tableTotalRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -989,7 +851,6 @@ const styles = StyleSheet.create({
   },
   tableTotalLabel: { ...THEME.typography.caption, color: colors.textSecondary },
   tableTotalValue: { ...typography.labelLg, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
-  btnRow: { flexDirection: 'row', marginTop: spacing.xl, marginBottom: spacing.md },
 });
 
 export default PayBillsScreen;

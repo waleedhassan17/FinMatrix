@@ -384,7 +384,7 @@ const OverviewTab: React.FC<{
     <CustomButton
       title={vendor.isActive ? 'Deactivate Vendor' : 'Activate Vendor'}
       onPress={onToggleActive}
-      variant={vendor.isActive ? 'danger' : 'primary'}
+      variant={vendor.isActive ? 'destructive' : 'primary'}
       size="md"
       fullWidth
     />

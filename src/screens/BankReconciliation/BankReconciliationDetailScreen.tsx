@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Modal } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -126,7 +126,7 @@ const BankReconciliationDetailScreen: React.FC = () => {
 
         {!!recon.notes && <Card><Text style={styles.notes}>{recon.notes}</Text></Card>}
 
-        <CustomButton title="Undo Reconciliation" variant="danger" onPress={() => setConfirmVisible(true)} isLoading={undoing} fullWidth />
+        <CustomButton title="Undo Reconciliation" variant="destructive" onPress={() => setConfirmVisible(true)} isLoading={undoing} fullWidth />
         <View style={{ height: 24 }} />
       </ScrollView>
 
@@ -139,12 +139,12 @@ const BankReconciliationDetailScreen: React.FC = () => {
               recorded in the audit log. Continue?
             </Text>
             <View style={styles.modalRow}>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalCancel]} onPress={() => setConfirmVisible(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalDanger]} onPress={doUndo}>
-                <Text style={styles.modalDangerText}>Undo</Text>
-              </TouchableOpacity>
+              <View style={styles.modalBtn}>
+                <CustomButton title="Cancel" variant="secondary" onPress={() => setConfirmVisible(false)} fullWidth />
+              </View>
+              <View style={styles.modalBtn}>
+                <CustomButton title="Undo" variant="danger" onPress={doUndo} fullWidth />
+              </View>
             </View>
           </View>
         </View>
@@ -176,12 +176,8 @@ const styles = StyleSheet.create({
   modalCard: { width: '100%', maxWidth: 420, backgroundColor: colors.neutral0, borderRadius: THEME.radius.lg, padding: 20 },
   modalTitle: { ...THEME.typography.h4,  color: THEME.colors.textPrimary },
   modalBody: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary, lineHeight: 19, marginTop: 8 },
-  modalRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 18 },
-  modalBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: THEME.radius.md },
-  modalCancel: { backgroundColor: colors.background },
-  modalCancelText: { ...THEME.typography.labelMd,  color: THEME.colors.textPrimary },
-  modalDanger: { backgroundColor: THEME.colors.danger },
-  modalDangerText: { ...THEME.typography.labelMd,  color: colors.neutral0 }
+  modalRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  modalBtn: { flex: 1 },
 });
 
 export default BankReconciliationDetailScreen;

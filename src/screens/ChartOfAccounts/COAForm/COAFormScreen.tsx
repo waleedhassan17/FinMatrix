@@ -404,7 +404,6 @@ const COAFormScreen: React.FC = () => {
               title={isEdit ? 'Update Account' : 'Create Account'}
               onPress={handleSave}
               variant="primary"
-              size="lg"
               fullWidth
               isLoading={isSaving}
             />

@@ -605,7 +605,7 @@ const OverviewTab: React.FC<{
     <CustomButton
       title={isToggling ? 'Updating…' : customer.isActive ? 'Deactivate Customer' : 'Activate Customer'}
       onPress={onToggleActive}
-      variant={customer.isActive ? 'danger' : 'primary'}
+      variant={customer.isActive ? 'destructive' : 'primary'}
       size="md"
       fullWidth
       disabled={isToggling}

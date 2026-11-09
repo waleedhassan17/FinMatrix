@@ -548,7 +548,6 @@ const InventoryFormScreen: React.FC = () => {
               title={isEdit ? 'Update Item' : 'Create Item'}
               onPress={handleSave}
               variant="primary"
-              size="lg"
               fullWidth
               isLoading={isSaving}
             />

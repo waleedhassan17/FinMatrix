@@ -401,7 +401,7 @@ const form = {
     fontWeight: '700' as const,
     iconSize: 15,
   },
-  /** Section header: dot + 11px uppercase letter-spaced title (doc-form style). */
+  /** Section header: 11px uppercase letter-spaced title (doc-form style). */
   sectionTitle: {
     fontFamily,
     fontSize: 11,
@@ -410,7 +410,6 @@ const form = {
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
   },
-  sectionDot: { size: 8, color: colors.actionGreen },
   /**
    * The dark "summary / totals" panel that closes every transaction form.
    * All five forms drew this panel from their own local palette; the spec

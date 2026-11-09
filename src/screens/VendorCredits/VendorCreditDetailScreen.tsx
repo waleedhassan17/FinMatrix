@@ -20,7 +20,7 @@ import {
 import { getBillsAPI } from '../../networks/purchases/billNetwork';
 import { billListSerializer } from '../../serializers/billSerializer';
 import { formatCurrency } from '../../utils/formatters';
-import CustomButton from '../../Custom-Components/CustomButton';
+import { ActionBar } from '../../components/form/FormUI';
 import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
 import { titleCase } from '../../components/transactions/TxnListUI';
@@ -72,6 +72,8 @@ const VendorCreditDetailScreen: React.FC = () => {
   if (!c) return <ReportContainer><ReportHeader title="Vendor Credit" onBack={() => navigation.goBack()} /></ReportContainer>;
 
   const hasBalance = c.balance > 0.01 && c.status !== 'void';
+  // Void / Delete only while nothing has been applied from it.
+  const canRemove = c.status === 'open' && c.amountApplied < 0.01;
 
   // Voiding puts stock back and reverses the entry, so the result has to be
   // inspected: dispatching blind made a rejection indistinguishable from
@@ -135,13 +137,36 @@ const VendorCreditDetailScreen: React.FC = () => {
           </SectionCard>
         )}
 
-        <View style={styles.actions}>
-          {hasBalance && <CustomButton title="Apply to Bill" variant="primary" onPress={openApply} fullWidth />}
-          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Void" variant="secondary" onPress={() => run(voidVendorCredit(vendorCreditId), 'Vendor credit voided')} fullWidth />}
-          {c.status === 'open' && c.amountApplied < 0.01 && <CustomButton title="Delete" variant="danger" onPress={() => run(removeVendorCredit(vendorCreditId), 'Vendor credit deleted', true)} fullWidth />}
-        </View>
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* Apply is the next step; Void and Delete are behind More and now ask
+          first — both used to run on one tap, Delete as a filled red block. */}
+      {(hasBalance || canRemove) && (
+        <ActionBar
+          primary={hasBalance ? { title: 'Apply to Bill', onPress: openApply } : undefined}
+          more={
+            canRemove
+              ? [
+                  {
+                    label: 'Void vendor credit',
+                    icon: 'x-octagon',
+                    destructive: true,
+                    confirm: { title: 'Void this vendor credit?', message: 'It can no longer be applied to a bill.', confirmLabel: 'Void' },
+                    onPress: () => run(voidVendorCredit(vendorCreditId), 'Vendor credit voided'),
+                  },
+                  {
+                    label: 'Delete vendor credit',
+                    icon: 'trash-2',
+                    destructive: true,
+                    confirm: { title: 'Delete this vendor credit?', message: 'This cannot be undone.', confirmLabel: 'Delete' },
+                    onPress: () => run(removeVendorCredit(vendorCreditId), 'Vendor credit deleted', true),
+                  },
+                ]
+              : undefined
+          }
+        />
+      )}
     </ReportContainer>
   );
 };
@@ -164,7 +189,6 @@ const styles = StyleSheet.create({
   lineDesc: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   lineMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
   lineTotal: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
-  actions: { gap: 10 },
 });
 
 export default VendorCreditDetailScreen;

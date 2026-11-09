@@ -16,11 +16,11 @@ import {
   Modal,
   TextInput,
   ScrollView,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
 import { Alert } from '../../../utils/alert';
+import { IconButton, PrimaryButton, SecondaryButton } from '../../../components/form/FormUI';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 
@@ -48,7 +48,7 @@ import { getStoredCompanyId } from '../../../utils/storageUtils';
 import { getCompanyAPI, updateCompanyAPI } from '../../../networks/auth/authNetwork';
 
 // Design-system tokens (see src/theme/theme.ts).
-const { colors, typography } = THEME;
+const { typography } = THEME;
 import {
   ReportContainer,
   ReportHeader,
@@ -195,16 +195,8 @@ const TaxSettingsScreen: React.FC = () => {
               thumbColor={item.isActive ? THEME.colors.primary : THEME.colors.textDisabled}
               ios_backgroundColor={THEME.colors.neutral200}
             />
-            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => dispatch(openEditModal(item))}>
-              <Feather name="edit-2" size={15} color={THEME.colors.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: THEME.colors.dangerLight }]}
-              activeOpacity={0.7}
-              onPress={() => handleDelete(item)}
-            >
-              <Feather name="trash-2" size={15} color={THEME.colors.danger} />
-            </TouchableOpacity>
+            <IconButton icon="edit-2" size="sm" onPress={() => dispatch(openEditModal(item))} accessibilityLabel={`Edit ${item.name}`} />
+            <IconButton icon="trash-2" size="sm" tone="danger" onPress={() => handleDelete(item)} accessibilityLabel={`Delete ${item.name}`} />
           </View>
         </Card>
       );
@@ -364,21 +356,12 @@ const TaxSettingsScreen: React.FC = () => {
               </View>
 
               <View style={styles.modalBtns}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => dispatch(closeModal())} activeOpacity={0.7}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.saveBtn, isSaving && { opacity: 0.7 }]}
-                  onPress={handleSave}
-                  activeOpacity={0.8}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator color={colors.neutral0} size="small" />
-                  ) : (
-                    <Text style={styles.saveBtnText}>{editingId ? 'Update' : 'Add Rate'}</Text>
-                  )}
-                </TouchableOpacity>
+                <View style={styles.modalBtnSecondary}>
+                  <SecondaryButton title="Cancel" onPress={() => dispatch(closeModal())} />
+                </View>
+                <View style={styles.modalBtnPrimary}>
+                  <PrimaryButton title={editingId ? 'Update' : 'Add Rate'} onPress={handleSave} isLoading={isSaving} />
+                </View>
               </View>
             </ScrollView>
           </View>
@@ -432,14 +415,6 @@ const styles = StyleSheet.create({
     borderTopColor: THEME.colors.borderLight,
     marginTop: 2,
   },
-  actionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: THEME.radius.sm,
-    backgroundColor: THEME.colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
   // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
@@ -485,18 +460,8 @@ const styles = StyleSheet.create({
   },
   activeHint: { ...THEME.typography.caption, color: THEME.colors.textTertiary, marginTop: 2 },
   modalBtns: { flexDirection: 'row', gap: 10, marginTop: THEME.spacing.lg },
-  cancelBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1.5,
-    borderColor: THEME.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelBtnText: { ...THEME.typography.h5, color: THEME.colors.textSecondary },
-  saveBtn: { flex: 2, height: 46, borderRadius: THEME.radius.md, backgroundColor: THEME.colors.primary, alignItems: 'center', justifyContent: 'center' },
-  saveBtnText: { ...THEME.typography.h5, color: colors.neutral0 }
+  modalBtnSecondary: { flex: 1 },
+  modalBtnPrimary: { flex: 1.4 },
 });
 
 export default TaxSettingsScreen;

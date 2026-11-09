@@ -18,7 +18,8 @@ import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HEADER_NAVY,
-  HeaderAction
+  HeaderAction,
+  FigureStrip,
 } from '../../../components/reports/ReportUI';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -127,10 +128,8 @@ const VendorListScreen: React.FC = () => {
   // ── Render card ─────────────────────────────────
   const renderCard = ({ item: vendor }: { item: Vendor }) => (
     <TouchableOpacity
-      style={[
-        styles.card,
-        { borderLeftColor: vendor.isActive ? colors.success : colors.textTertiary, borderLeftWidth: 4 },
-      ]}
+      // Active / Inactive is the badge's job; no coloured edge as well.
+      style={styles.card}
       activeOpacity={0.7}
       onPress={() => navigation.navigate('VendorDetail', { vendorId: vendor.id })}
     >
@@ -200,20 +199,22 @@ const VendorListScreen: React.FC = () => {
         </View>
       </LinearGradient>
 
-      {/* Summary */}
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>{totalVendors}</Text>
-          <Text style={styles.summaryLabel}>Total</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, { color: colors.success }]}>{activeVendors}</Text>
-          <Text style={styles.summaryLabel}>Active</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, typography.h5]}>{formatCurrency(totalOwed, 'Rs ')}</Text>
-          <Text style={styles.summaryLabel}>Total Owed</Text>
-        </View>
+      {/* Headline figures — one surface, the full amount fitted to its half. */}
+      <View style={styles.figures}>
+        <FigureStrip
+          items={[
+            {
+              label: 'You owe',
+              value: formatCurrency(totalOwed, 'Rs '),
+              caption: 'Vendor balances',
+            },
+            {
+              label: 'Vendors',
+              value: String(totalVendors),
+              caption: `${activeVendors} active`,
+            },
+          ]}
+        />
       </View>
 
       {/* Expandable Search */}
@@ -335,24 +336,8 @@ const styles = StyleSheet.create({
   searchToggle: { padding: spacing.xxs },
   searchToggleIcon: { ...typography.h3 },
 
-  // ── Summary ────────────────────────────────────
-  summaryRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    gap: spacing.xs,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.xs + 4,
-    paddingHorizontal: spacing.xs,
-    alignItems: 'center',
-    ...shadows.xs,
-  },
-  summaryValue: { ...THEME.typography.h3, color: colors.actionGreen },
-  summaryLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  // ── Figures ────────────────────────────────────
+  figures: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.xs },
 
   // ── Search ─────────────────────────────────────
   searchRow: { paddingHorizontal: spacing.xl, marginBottom: spacing.xs },

@@ -30,8 +30,7 @@ import { salesOrderSingleSerializer } from '../../serializers/salesOrderSerializ
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
-import CustomButton from '../../Custom-Components/CustomButton';
-import { AddButton } from '../../components/form/FormUI';
+import { ActionBar, AddButton } from '../../components/form/FormUI';
 import LineItemRow from '../../components/shared/LineItemRow';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
@@ -291,9 +290,14 @@ const SalesOrderFormScreen: React.FC = () => {
           <Row label="Total" value={rs(totals.total)} strong />
         </Card>
 
-        <CustomButton title={editingId ? 'Update Sales Order' : 'Create Sales Order'} onPress={save} isLoading={saving} fullWidth />
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* The fixed bar every form shares. */}
+      <ActionBar
+        secondary={{ title: 'Cancel', onPress: () => navigation.goBack(), disabled: saving }}
+        primary={{ title: editingId ? 'Update Sales Order' : 'Create Sales Order', onPress: save, isLoading: saving }}
+      />
     </ReportContainer>
   );
 };

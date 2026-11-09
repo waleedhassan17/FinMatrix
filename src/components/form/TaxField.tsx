@@ -17,7 +17,7 @@ import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { THEME } from '../../theme';
 import { taxRateError } from '../../models/taxRate';
 
-const { colors, spacing, radius } = THEME;
+const { colors, spacing } = THEME;
 
 /**
  * The height every line-item field is drawn at.
@@ -27,7 +27,7 @@ const { colors, spacing, radius } = THEME;
  * built from both drifts by a few pixels. Exported so the inputs beside this
  * field can be pinned to the same number.
  */
-export const FIELD_HEIGHT = 40;
+export const FIELD_HEIGHT = THEME.form.controlHeight;
 
 interface TaxFieldProps {
   value: string;
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderRadius: THEME.form.controlRadius,
     backgroundColor: colors.surface,
   },
   fieldError: { borderColor: colors.danger },

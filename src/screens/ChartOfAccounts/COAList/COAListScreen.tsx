@@ -215,7 +215,6 @@ const COAListScreen: React.FC = () => {
     ({ section }: { section: Section }) => (
       <View style={styles.sectionHeader}>
         <View style={styles.sectionHeaderLeft}>
-          <View style={[styles.sectionAccent, { backgroundColor: TYPE_COLORS[section.type] }]} />
           <Text style={styles.sectionHeaderTitle}>{section.title}</Text>
           <View style={[styles.countBadge, { backgroundColor: TYPE_COLORS[section.type] + '14' }]}>
             <Text style={[styles.countText, { color: TYPE_COLORS[section.type] }]}>{section.count}</Text>
@@ -423,7 +422,6 @@ const styles = StyleSheet.create({
     marginTop: THEME.spacing.sm,
   },
   sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionAccent: { width: 3, height: 14, borderRadius: 2 },
   sectionHeaderTitle: { ...THEME.typography.labelLg, color: THEME.colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.4 },
   countBadge: { paddingHorizontal: 8, paddingVertical: 1, borderRadius: THEME.radius.full },
   countText: { ...THEME.typography.labelSm, letterSpacing: 0 },

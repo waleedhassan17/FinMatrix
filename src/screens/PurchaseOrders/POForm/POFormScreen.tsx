@@ -10,7 +10,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -51,10 +50,10 @@ import {
 import CustomInput from '../../../Custom-Components/CustomInput';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import {
+  ActionBar,
   AddButton,
   FormSectionHeader,
-  PrimaryButton,
-  SecondaryButton,
+  IconButton,
 } from '../../../components/form/FormUI';
 import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import TaxField from '../../../components/form/TaxField';
@@ -532,48 +531,45 @@ const POFormScreen: React.FC = () => {
               the controls that do have one also carry the muted styling. */}
           <View pointerEvents={isReviewing ? 'none' : 'auto'}>
           {/* ── PO Details ─────────────────────────── */}
-          <FormSectionHeader title="PO DETAILS" dotColor={colors.info} />
+          <FormSectionHeader title="PO DETAILS" />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: colors.info }]} />
-            <View style={styles.cardBody}>
-              <CustomDropdown
-                label="Vendor *"
-                options={vendorOptions}
-                value={form.vendorId}
-                onChange={handleVendorChange}
-                placeholder="Select vendor…"
-                error={form.errors.vendorId}
-                searchable
-                disabled={isReviewing}
-              />
-              {/* The server owns this number and ignores anything we send,
-                  so it is shown, never typed. */}
-              <CustomInput
-                label="PO #"
-                value={form.poNumber}
-                onChangeText={() => {}}
-                placeholder="Assigned on save"
-                disabled
-              />
-              <View style={styles.rowFields}>
-                <View style={{ flex: 1, marginRight: spacing.xs }}>
-                  <DateField
-                    label="Order Date *"
-                    value={form.orderDate}
-                    onChangeText={v => dispatch(setField({ key: 'orderDate', value: v }))}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  {/* Expected delivery is a future date → allow dates after today;
-                      never before the order date. */}
-                  <DateField
-                    label="Expected Date *"
-                    value={form.expectedDate}
-                    onChangeText={v => dispatch(setField({ key: 'expectedDate', value: v }))}
-                    minimumDate={form.orderDate ? new Date(form.orderDate) : undefined}
-                    maximumDate={new Date(2100, 11, 31)}
-                  />
-                </View>
+            <CustomDropdown
+              label="Vendor *"
+              options={vendorOptions}
+              value={form.vendorId}
+              onChange={handleVendorChange}
+              placeholder="Select vendor…"
+              error={form.errors.vendorId}
+              searchable
+              disabled={isReviewing}
+            />
+            {/* The server owns this number and ignores anything we send,
+                so it is shown, never typed. */}
+            <CustomInput
+              label="PO #"
+              value={form.poNumber}
+              onChangeText={() => {}}
+              placeholder="Assigned on save"
+              disabled
+            />
+            <View style={styles.rowFields}>
+              <View style={{ flex: 1, marginRight: spacing.xs }}>
+                <DateField
+                  label="Order Date *"
+                  value={form.orderDate}
+                  onChangeText={v => dispatch(setField({ key: 'orderDate', value: v }))}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                {/* Expected delivery is a future date → allow dates after today;
+                    never before the order date. */}
+                <DateField
+                  label="Expected Date *"
+                  value={form.expectedDate}
+                  onChangeText={v => dispatch(setField({ key: 'expectedDate', value: v }))}
+                  minimumDate={form.orderDate ? new Date(form.orderDate) : undefined}
+                  maximumDate={new Date(2100, 11, 31)}
+                />
               </View>
             </View>
           </View>
@@ -581,7 +577,6 @@ const POFormScreen: React.FC = () => {
           {/* ── Line Items ─────────────────────────── */}
           <FormSectionHeader
             title="ITEMS"
-            dotColor={colors.secondary}
             right={
               isReviewing ? undefined : (
                 <AddButton label="Add Item" onPress={() => dispatch(addLine())} />
@@ -594,114 +589,119 @@ const POFormScreen: React.FC = () => {
 
           {form.lines.map((line, idx) => (
             <View key={line.id} style={styles.lineCard}>
-              <View style={[styles.lineCardAccent, { backgroundColor: idx % 2 === 0 ? colors.info : colors.secondary }]} />
-              <View style={styles.lineCardBody}>
-                <View style={styles.lineHeader}>
-                  <View style={styles.lineBadge}>
-                    <Text style={styles.lineBadgeText}>{idx + 1}</Text>
-                  </View>
-                  <Text style={styles.lineLabel}>Item</Text>
-                  {form.lines.length > 1 && (
-                    <TouchableOpacity style={styles.lineDeleteBtn} disabled={isReviewing} onPress={() => dispatch(removeLine(line.id))}>
-                      <Feather name="trash-2" size={14} color={colors.danger} />
-                    </TouchableOpacity>
-                  )}
+              <View style={styles.lineHeader}>
+                <View style={styles.lineBadge}>
+                  <Text style={styles.lineBadgeText}>{idx + 1}</Text>
                 </View>
-
-                <CustomDropdown
-                  label="Item *"
-                  options={itemOptions}
-                  value={line.itemId}
-                  onChange={v => handleItemChange(line.id, v)}
-                  placeholder="Select item…"
-                  searchable
-                />
-
-                <TextInput
-                  style={styles.descInput}
-                  value={line.description}
-                  onChangeText={v => dispatch(updateLine({ id: line.id, field: 'description', value: v }))}
-                  placeholder="Description"
-                  placeholderTextColor={colors.textTertiary}
-                />
-
-                <View style={styles.lineNumRow}>
-                  <View style={{ flex: 1, minWidth: 132, marginRight: spacing.xs }}>
-                    <Text style={styles.fieldLabel}>Quantity</Text>
-                    <TextInput
-                      style={styles.numericInput}
-                      value={line.quantity}
-                      onChangeText={v =>
-                        dispatch(updateLine({ id: line.id, field: 'quantity', value: v.replace(/[^0-9.]/g, '') }))
-                      }
-                      placeholder="0"
-                      placeholderTextColor={colors.textTertiary}
-                      keyboardType="decimal-pad"
-                    />
-                  </View>
-                  <View style={{ flex: 1, marginRight: spacing.xs }}>
-                    <Text style={styles.fieldLabel}>Unit Price (Rs)</Text>
-                    <TextInput
-                      style={styles.numericInput}
-                      value={line.unitPrice}
-                      onChangeText={v =>
-                        dispatch(updateLine({ id: line.id, field: 'unitPrice', value: v.replace(/[^0-9.]/g, '') }))
-                      }
-                      placeholder="0"
-                      placeholderTextColor={colors.textTertiary}
-                      keyboardType="decimal-pad"
-                    />
-                  </View>
-                  <View style={{ width: 88 }}>
-                    <TaxField
-                      value={line.taxRate}
-                      onChange={v => dispatch(updateLine({ id: line.id, field: 'taxRate', value: v }))}
-                    />
-                  </View>
-                </View>
-
-                {/* What receiving at this price would do to the item's
-                    weighted-average cost. A projection — the cost only moves
-                    when the goods are actually received, with its journal
-                    entry. */}
-                {costPreviews.has(line.id) && (
-                  <View style={styles.costPreview}>
-                    <Text style={styles.costPreviewText}>
-                      On hand {costPreviews.get(line.id)!.onHand} · Avg cost{' '}
-                      {formatCurrency(costPreviews.get(line.id)!.before, 'Rs ')}
-                    </Text>
-                    <Text style={styles.costPreviewText}>
-                      If received at this price →{' '}
-                      <Text
-                        style={[
-                          styles.costPreviewAfter,
-                          {
-                            color:
-                              costPreviews.get(line.id)!.after > costPreviews.get(line.id)!.before
-                                ? colors.warning
-                                : colors.success,
-                          },
-                        ]}
-                      >
-                        {formatCurrency(costPreviews.get(line.id)!.after, 'Rs ')}
-                      </Text>
-                    </Text>
-                  </View>
-                )}
-
-                <View style={styles.lineTotalRow}>
-                  <Feather name="arrow-right" size={12} color={colors.actionGreen} />
-                  <Text style={styles.lineTotal}>
-                    Line total (excl. tax): {formatCurrency(line.amount, 'Rs ')}
-                  </Text>
-                </View>
-                {(parseFloat(line.taxRate) || 0) > 0 && (
-                  <Text style={styles.lineTaxNote}>
-                    Tax {line.taxRate}%: {formatCurrency(Math.round(line.amount * (parseFloat(line.taxRate) || 0)) / 100, 'Rs ')}
-                    {' · '}Incl. tax {formatCurrency(line.amount + Math.round(line.amount * (parseFloat(line.taxRate) || 0)) / 100, 'Rs ')}
-                  </Text>
+                <Text style={styles.lineLabel}>Item</Text>
+                {form.lines.length > 1 && (
+                  <IconButton
+                    icon="trash-2"
+                    size="sm"
+                    tone="danger"
+                    disabled={isReviewing}
+                    onPress={() => dispatch(removeLine(line.id))}
+                    accessibilityLabel={`Remove item ${idx + 1}`}
+                  />
                 )}
               </View>
+
+              <CustomDropdown
+                label="Item *"
+                options={itemOptions}
+                value={line.itemId}
+                onChange={v => handleItemChange(line.id, v)}
+                placeholder="Select item…"
+                searchable
+              />
+
+              <TextInput
+                style={styles.descInput}
+                value={line.description}
+                onChangeText={v => dispatch(updateLine({ id: line.id, field: 'description', value: v }))}
+                placeholder="Description"
+                placeholderTextColor={colors.textTertiary}
+              />
+
+              <View style={styles.lineNumRow}>
+                {/* Qty and Rate share the width; Tax keeps 88. Qty used to hold a
+                    132dp floor, which left Unit Price about 56dp, so its label
+                    wrapped onto three lines. Same labels as LineItemRow. */}
+                <View style={{ flex: 1, marginRight: spacing.xs }}>
+                  <Text style={styles.fieldLabel} numberOfLines={1}>Qty</Text>
+                  <TextInput
+                    style={styles.numericInput}
+                    value={line.quantity}
+                    onChangeText={v =>
+                      dispatch(updateLine({ id: line.id, field: 'quantity', value: v.replace(/[^0-9.]/g, '') }))
+                    }
+                    placeholder="0"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={{ flex: 1, marginRight: spacing.xs }}>
+                  <Text style={styles.fieldLabel} numberOfLines={1}>Rate (Rs)</Text>
+                  <TextInput
+                    style={styles.numericInput}
+                    value={line.unitPrice}
+                    onChangeText={v =>
+                      dispatch(updateLine({ id: line.id, field: 'unitPrice', value: v.replace(/[^0-9.]/g, '') }))
+                    }
+                    placeholder="0"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={{ width: 88 }}>
+                  <TaxField
+                    value={line.taxRate}
+                    onChange={v => dispatch(updateLine({ id: line.id, field: 'taxRate', value: v }))}
+                  />
+                </View>
+              </View>
+
+              {/* What receiving at this price would do to the item's
+                  weighted-average cost. A projection — the cost only moves
+                  when the goods are actually received, with its journal
+                  entry. */}
+              {costPreviews.has(line.id) && (
+                <View style={styles.costPreview}>
+                  <Text style={styles.costPreviewText}>
+                    On hand {costPreviews.get(line.id)!.onHand} · Avg cost{' '}
+                    {formatCurrency(costPreviews.get(line.id)!.before, 'Rs ')}
+                  </Text>
+                  <Text style={styles.costPreviewText}>
+                    If received at this price →{' '}
+                    <Text
+                      style={[
+                        styles.costPreviewAfter,
+                        {
+                          color:
+                            costPreviews.get(line.id)!.after > costPreviews.get(line.id)!.before
+                              ? colors.warning
+                              : colors.success,
+                        },
+                      ]}
+                    >
+                      {formatCurrency(costPreviews.get(line.id)!.after, 'Rs ')}
+                    </Text>
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.lineTotalRow}>
+                <Feather name="arrow-right" size={12} color={colors.actionGreen} />
+                <Text style={styles.lineTotal}>
+                  Line total (excl. tax): {formatCurrency(line.amount, 'Rs ')}
+                </Text>
+              </View>
+              {(parseFloat(line.taxRate) || 0) > 0 && (
+                <Text style={styles.lineTaxNote}>
+                  Tax {line.taxRate}%: {formatCurrency(Math.round(line.amount * (parseFloat(line.taxRate) || 0)) / 100, 'Rs ')}
+                  {' · '}Incl. tax {formatCurrency(line.amount + Math.round(line.amount * (parseFloat(line.taxRate) || 0)) / 100, 'Rs ')}
+                </Text>
+              )}
             </View>
           ))}
 
@@ -733,104 +733,71 @@ const POFormScreen: React.FC = () => {
           </LinearGradient>
 
           {/* ── Notes ──────────────────────────────── */}
-          <FormSectionHeader title="NOTES" dotColor={colors.secondary} />
+          <FormSectionHeader title="NOTES" />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: colors.secondary }]} />
-            <View style={styles.cardBody}>
-              <CustomInput
-                label="Notes (Optional)"
-                value={form.notes}
-                onChangeText={v => dispatch(setField({ key: 'notes', value: v }))}
-                placeholder="Additional notes…"
-                multiline
-              />
-            </View>
+            <CustomInput
+              label="Notes (Optional)"
+              value={form.notes}
+              onChangeText={v => dispatch(setField({ key: 'notes', value: v }))}
+              placeholder="Additional notes…"
+              multiline
+            />
           </View>
 
           </View>
 
-          {/* ── Actions ────────────────────────────── */}
-          {isReviewing ? (
-            // Only the owner decides. Staff reach this same screen from My
-            // Requests to see what they submitted, and get no buttons.
-            decideCap.allowed && request && isPendingApproval(request) ? (
-              <View>
-                <View style={styles.btnRow}>
-                  <View style={{ flex: 1, marginRight: spacing.xs }}>
-                    <SecondaryButton
-                      title="Reject"
-                      onPress={() => setRejectOpen(true)}
-                      disabled={deciding}
-                      icon={<Feather name="x" size={16} color={colors.actionGreen} />}
-                    />
-                  </View>
-                  <View style={{ flex: 1.4 }}>
-                    <PrimaryButton
-                      title={deciding ? 'Approving…' : 'Approve'}
-                      onPress={handleApprove}
-                      isLoading={deciding}
-                      icon={<Feather name="check" size={16} color={colors.neutral0} />}
-                    />
-                  </View>
-                </View>
-                {/* The payload cannot be amended before approval — no endpoint
-                    accepts one. Approving creates a DRAFT PO, which posts
-                    nothing, so edits happen there instead. */}
-                <SecondaryButton
-                  title="Approve & edit the draft"
-                  onPress={handleApproveAndEdit}
-                  disabled={deciding}
-                  icon={<Feather name="edit-2" size={16} color={colors.actionGreen} />}
-                />
-              </View>
-            ) : (
-              <View style={styles.reviewNote}>
-                <Text style={styles.reviewNoteText}>
-                  {request && !isPendingApproval(request)
-                    ? 'This request has already been decided.'
-                    : 'Only the owner can approve or reject a request.'}
-                </Text>
-              </View>
-            )
-          ) : poCap.needsApproval && !isEditing ? (
-            // One button, because there is only one outcome: the request is
-            // filed either way. 'draft' rather than 'sent' — the status PATCH
-            // has nothing to act on while the PO does not exist yet.
-            //
-            // Creation only. Editing an existing PO is a different action the
-            // capability map does not cover, and collapsing its two buttons
-            // would silently drop the send the user asked for.
-            <View style={styles.btnRow}>
-              <View style={{ flex: 1 }}>
-                <PrimaryButton
-                  title={form.isSaving ? 'Sending…' : poCap.submitLabel('Save & Send')}
-                  onPress={() => handleSave('draft')}
-                  isLoading={form.isSaving}
-                  icon={<Feather name="send" size={16} color={colors.neutral0} />}
-                />
-              </View>
-            </View>
-          ) : (
-            <View style={styles.btnRow}>
-              <View style={{ flex: 1, marginRight: spacing.xs }}>
-                <SecondaryButton
-                  title="Save Draft"
-                  onPress={() => handleSave('draft')}
-                  disabled={form.isSaving}
-                  icon={<Feather name="save" size={16} color={colors.actionGreen} />}
-                />
-              </View>
-              <View style={{ flex: 1.4 }}>
-                <PrimaryButton
-                  title={form.isSaving ? 'Saving…' : isEditing ? 'Update & Send' : 'Save & Send'}
-                  onPress={() => handleSave('sent')}
-                  isLoading={form.isSaving}
-                  icon={<Feather name="send" size={16} color={colors.neutral0} />}
-                />
-              </View>
-            </View>
-          )}
         </ScrollView>
+
+        {/* ── Actions — the fixed bar every form shares ── */}
+        {isReviewing ? (
+          // Only the owner decides. Staff reach this same screen from My
+          // Requests to see what they submitted, and get no buttons.
+          decideCap.allowed && request && isPendingApproval(request) ? (
+            // The payload cannot be amended before approval — no endpoint
+            // accepts one. Approving creates a DRAFT PO, which posts nothing, so
+            // "Approve & edit the draft" is the way to change it; behind More.
+            <ActionBar
+              more={[{ label: 'Approve & edit the draft', icon: 'edit-2', onPress: handleApproveAndEdit }]}
+              moreDisabled={deciding}
+              secondary={{ title: 'Reject', onPress: () => setRejectOpen(true), disabled: deciding }}
+              primary={{ title: deciding ? 'Approving…' : 'Approve', onPress: handleApprove, isLoading: deciding, icon: 'check' }}
+            />
+          ) : (
+            <ActionBar
+              note={
+                request && !isPendingApproval(request)
+                  ? 'This request has already been decided.'
+                  : 'Only the owner can approve or reject a request.'
+              }
+            />
+          )
+        ) : poCap.needsApproval && !isEditing ? (
+          // One button, because there is only one outcome: the request is filed
+          // either way. 'draft' rather than 'sent' — the status PATCH has nothing
+          // to act on while the PO does not exist yet.
+          //
+          // Creation only. Editing an existing PO is a different action the
+          // capability map does not cover, and collapsing its two buttons would
+          // silently drop the send the user asked for.
+          <ActionBar
+            primary={{
+              title: form.isSaving ? 'Sending…' : poCap.submitLabel('Save & Send'),
+              onPress: () => handleSave('draft'),
+              isLoading: form.isSaving,
+              icon: 'send',
+            }}
+          />
+        ) : (
+          <ActionBar
+            secondary={{ title: 'Save Draft', onPress: () => handleSave('draft'), disabled: form.isSaving }}
+            primary={{
+              title: form.isSaving ? 'Saving…' : isEditing ? 'Update & Send' : 'Save & Send',
+              onPress: () => handleSave('sent'),
+              isLoading: form.isSaving,
+              icon: 'send',
+            }}
+          />
+        )}
       </KeyboardAvoidingView>
 
       <RejectReasonModal
@@ -851,39 +818,40 @@ const styles = StyleSheet.create({
   // paddingTop 0 — FormSectionHeader's marginTop supplies it (see FormUI).
   scrollContent: { paddingHorizontal: spacing.md, paddingTop: 0, paddingBottom: spacing.xxl },
 
+  // A plain card: no coloured stripe down its edge, as on every form now.
   sectionCard: {
-    flexDirection: 'row', backgroundColor: colors.neutral0, borderRadius: radius.lg,
-    overflow: 'hidden', ...shadows.xs, borderWidth: 1, borderColor: colors.neutral200,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    ...shadows.xs,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
-  cardAccent: { width: 4 },
-  cardBody: { flex: 1, padding: spacing.md },
   rowFields: { flexDirection: 'row' },
 
   lineError: { ...typography.caption, color: colors.danger, marginBottom: spacing.xs },
 
   lineCard: {
-    flexDirection: 'row', backgroundColor: colors.neutral0, borderRadius: radius.lg,
-    overflow: 'hidden', marginBottom: spacing.xs, ...shadows.xs, borderWidth: 1, borderColor: colors.neutral200,
+    backgroundColor: colors.neutral0, borderRadius: radius.lg, padding: spacing.md,
+    marginBottom: spacing.xs, ...shadows.xs, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
   },
-  lineCardAccent: { width: 4 },
-  lineCardBody: { flex: 1, padding: spacing.md },
   lineHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xxs, gap: spacing.xxs },
   lineBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.neutral100, alignItems: 'center', justifyContent: 'center' },
   lineBadgeText: { ...typography.overline, color: colors.neutral500 },
   lineLabel: { flex: 1, ...typography.overline, color: colors.textTertiary },
-  lineDeleteBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.dangerLight, justifyContent: 'center', alignItems: 'center' },
 
+  // The form's standard control height and radius, beside the dropdown above.
   descInput: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs, paddingVertical: spacing.xs,
+    borderWidth: 1, borderColor: colors.border, borderRadius: THEME.form.controlRadius,
+    height: THEME.form.controlHeight, paddingHorizontal: spacing.sm, paddingVertical: 0,
     ...THEME.typography.bodyMd, color: colors.textPrimary, marginTop: spacing.xxs,
   },
-  lineNumRow: { flexDirection: 'row', marginTop: spacing.xs, flexWrap: 'wrap', rowGap: spacing.xxs },
+  lineNumRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: spacing.xs },
   fieldLabel: { ...typography.labelSm, color: colors.textSecondary, marginBottom: spacing.xxs },
   numericInput: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs, paddingVertical: spacing.xs,
-    ...THEME.typography.bodyMd, color: colors.textPrimary,
+    borderWidth: 1, borderColor: colors.border, borderRadius: THEME.form.controlRadius,
+    height: THEME.form.controlHeight, paddingHorizontal: spacing.sm, paddingVertical: 0,
+    ...THEME.typography.bodyMd, color: colors.textPrimary, textAlign: 'right',
   },
   lineTotalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: spacing.xs },
   costPreview: { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: colors.border },
@@ -903,7 +871,6 @@ const styles = StyleSheet.create({
   grandTotalLabel: { ...typography.h4, color: PANEL.accent },
   grandTotalValue: { ...typography.h2, color: colors.neutral0, fontVariant: ['tabular-nums'] },
 
-  btnRow: { flexDirection: 'row', marginTop: spacing.xl, marginBottom: spacing.md },
   reviewBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -917,18 +884,6 @@ const styles = StyleSheet.create({
     ...typography.bodySm,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  reviewNote: {
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
-    padding: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.backgroundAlt,
-  },
-  reviewNoteText: {
-    ...typography.bodySm,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
 });
 

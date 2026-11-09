@@ -69,8 +69,15 @@ const AdminTabNavigator: React.FC = () => {
         },
         tabBarActiveTintColor: ACTIVE,
         tabBarInactiveTintColor: INACTIVE,
+        // Every form now has a fixed action bar. With the tabs under it as well,
+        // the keyboard left a small phone almost no room for the field in use.
+        tabBarHideOnKeyboard: true,
+        // At 12px "Transactions" did not fit a fifth of a 360dp phone and every
+        // tab bar read "Transacti…". 11px, tracked in slightly, it fits.
         tabBarLabelStyle: {
           ...THEME.typography.labelSm,
+          fontSize: THEME.typography.overline.fontSize,
+          letterSpacing: -0.1,
           marginTop: 2
         },
         tabBarItemStyle: {

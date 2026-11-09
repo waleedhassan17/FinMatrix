@@ -18,6 +18,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import { fetchPayrollRun, selectPayrollState, processRun, removeRun } from './payrollSlice';
 import { formatCurrency } from '../../utils/formatters';
 import CustomButton from '../../Custom-Components/CustomButton';
+import { ActionBar } from '../../components/form/FormUI';
 import { ReportContainer, ReportHeader, Card, SectionCard, KpiGrid, Badge, LoadingBlock, ErrorBlock, ACCENT } from '../../components/reports/ReportUI';
 import { viewPayslipPdf, downloadPayslipPdf, sharePayslipPdf, type PayslipRef, type PayslipActionResult } from '../../utils/payslipPdf';
 import type { MoreStackParamList } from '../../navigators/stacks/MoreStack';
@@ -127,22 +128,30 @@ const PayrollRunDetailScreen: React.FC = () => {
           />
         )}
 
-        <View style={styles.actions}>
-          {r.status !== 'paid' && <CustomButton title="Process Payroll" variant="primary" onPress={process} isLoading={isSaving} disabled={!payFrom} fullWidth />}
-          {r.status !== 'paid' && (
-            <CustomButton
-              title="Delete"
-              variant="danger"
-              onPress={() => Alert.alert('Delete draft run', 'Nothing was posted for it, so deleting leaves the books unchanged.', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive', onPress: () => { dispatch(removeRun(payrollRunId)); navigation.goBack(); } },
-              ])}
-              fullWidth
-            />
-          )}
-        </View>
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* A draft run's next step is Process; Delete is behind More and asks. */}
+      {r.status !== 'paid' && (
+        <ActionBar
+          primary={{ title: 'Process Payroll', onPress: process, isLoading: isSaving, disabled: !payFrom }}
+          moreDisabled={isSaving}
+          more={[
+            {
+              label: 'Delete draft run',
+              icon: 'trash-2',
+              destructive: true,
+              confirm: {
+                title: 'Delete draft run',
+                message: 'Nothing was posted for it, so deleting leaves the books unchanged.',
+                confirmLabel: 'Delete',
+              },
+              onPress: () => { dispatch(removeRun(payrollRunId)); navigation.goBack(); },
+            },
+          ]}
+          note={!payFrom ? 'Choose the account salaries are paid from.' : undefined}
+        />
+      )}
 
       {/* ── Payslip (per employee) ── */}
       <Modal visible={!!payslipItem} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setPayslipItem(null)}>
@@ -207,7 +216,6 @@ const styles = StyleSheet.create({
   bodyText: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
   colName: { flex: 1.4 }, colVal: { flex: 1, textAlign: 'right' },
   bold: { fontWeight: typography.labelLg.fontWeight },
-  actions: { gap: 10 },
   hint: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, paddingTop: 8 },
   slipBackdrop: { flex: 1, backgroundColor: 'rgba(9,30,66,0.5)', justifyContent: 'center', padding: 24 },
   slipCard: { backgroundColor: colors.neutral0, borderRadius: 16, padding: 18, gap: 8 },

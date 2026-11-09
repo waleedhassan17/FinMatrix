@@ -1,3 +1,23 @@
+// ═══════════════════════════════════════════════════════
+// FinMatrix — THE button
+// ═══════════════════════════════════════════════════════
+// Every action button in the signed-in app is this component, directly or
+// through the FormUI wrappers (PrimaryButton, SecondaryButton,
+// DestructiveButton) and the ActionBar that lays them out.
+//
+//   primary      navy fill — the one next step. At most one per bar.
+//   secondary    white, neutral border, navy label.
+//   destructive  white, red border tint, red label — Void / Delete on a page.
+//   danger       red fill — only the final "yes, do it" of a confirmation.
+//   text         a navy label with no surface; inline links only, never in a bar.
+//
+// One action height: md, 48dp. sm (36dp) is for compact actions inside a card
+// ("Create a bill", "Pay all in full"). There is no larger size: a 56dp button
+// beside 48dp ones is the inconsistency this file exists to end.
+//
+// A label never wraps: one line, shrinking a little before it would. A
+// two-line "Record Payment" grew the whole bar it sat in.
+
 import React from 'react';
 import {
   TouchableOpacity,
@@ -6,11 +26,10 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { colors, borderRadius } from '../theme';
 import { THEME } from '../utils/theme';
 
-type ButtonVariant = 'primary' | 'secondary' | 'text' | 'danger';
-type ButtonSize = 'sm' | 'md' | 'lg';
+type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'text' | 'danger';
+type ButtonSize = 'sm' | 'md';
 
 interface CustomButtonProps {
   title: string;
@@ -22,11 +41,15 @@ interface CustomButtonProps {
   icon?: React.ReactNode;
   fullWidth?: boolean;
   /**
-   * Tighter side padding, for a button sharing a row with another: the label
-   * gets the width instead of the padding.
+   * Tighter side padding, for a button sharing a bar with others — the label
+   * gets the width instead of the padding. ActionBar sets it.
    */
   compact?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
+
+const { colors } = THEME;
 
 const CustomButton: React.FC<CustomButtonProps> = ({
   title,
@@ -38,63 +61,50 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   icon,
   fullWidth = false,
   compact = false,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const isDisabled = disabled || isLoading;
-
-  const variantStyles = {
-    primary: styles.variant_primary,
-    secondary: styles.variant_secondary,
-    text: styles.variant_text,
-    danger: styles.variant_danger,
-  };
-
-  const sizeStyles = {
-    sm: styles.size_sm,
-    md: styles.size_md,
-    lg: styles.size_lg,
-  };
-
-  const textVariantStyles = {
-    primary: styles.text_primary,
-    secondary: styles.text_secondary,
-    text: styles.text_text,
-    danger: styles.text_danger,
-  };
-
-  const textSizeStyles = {
-    sm: styles.textSize_sm,
-    md: styles.textSize_md,
-    lg: styles.textSize_lg,
-  };
+  const small = size === 'sm';
 
   const loaderColor =
-    variant === 'secondary' || variant === 'text' ? colors.primary : colors.white;
+    variant === 'primary' || variant === 'danger'
+      ? colors.neutral0
+      : variant === 'destructive'
+        ? colors.danger
+        : colors.primary;
 
   return (
     <TouchableOpacity
       style={[
         styles.base,
-        variantStyles[variant],
-        sizeStyles[size],
+        VARIANT[variant],
+        small ? styles.size_sm : styles.size_md,
         compact && styles.compact,
         fullWidth ? styles.fullWidth : undefined,
         isDisabled ? styles.disabled : undefined,
       ]}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.7}>
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: isDisabled, busy: isLoading }}
+    >
       {isLoading ? (
         <ActivityIndicator size="small" color={loaderColor} />
       ) : (
         <View style={styles.content}>
-          {icon && <View style={styles.iconWrapper}>{icon}</View>}
+          {icon ? <View style={[styles.iconWrapper, compact && styles.iconWrapperCompact]}>{icon}</View> : null}
           <Text
-            style={[
-              styles.text,
-              textVariantStyles[variant],
-              textSizeStyles[size],
-              isDisabled ? styles.textDisabled : undefined,
-            ]}>
+            style={[styles.text, TEXT[variant], small || compact ? styles.textSize_sm : styles.textSize_md]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            // A bar's slots are narrow on a 320dp phone; let those labels give a
+            // little more before they would cut off.
+            minimumFontScale={compact ? 0.75 : 0.85}
+          >
             {title}
           </Text>
         </View>
@@ -107,19 +117,24 @@ const styles = StyleSheet.create({
   base: {
     // Controls sit at 8; 12 is the card radius. A button as round as the card
     // it sits on reads as a pill rather than a control.
-    borderRadius: borderRadius.sm,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-    minHeight: 48,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    // Lets the label shrink inside a narrow bar slot instead of overflowing.
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   iconWrapper: {
     marginRight: 8,
+  },
+  iconWrapperCompact: {
+    marginRight: 6,
   },
   fullWidth: {
     width: '100%',
@@ -128,75 +143,66 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
-  // ── Variants ──
-  variant_primary: {
+  size_sm: {
+    paddingHorizontal: 14,
+    minHeight: 36,
+  },
+  size_md: {
+    paddingHorizontal: 20,
+    minHeight: 48,
+  },
+  // A bar's buttons share a phone's width: 10 a side and the 14px label is what
+  // lets [share] [Remind] [Record Payment] fit a 320dp screen without shrinking.
+  compact: {
+    paddingHorizontal: 10,
+  },
+
+  text: {
+    fontFamily: THEME.typography.fontFamily,
+    fontWeight: THEME.typography.labelLg.fontWeight,
+    flexShrink: 1,
+  },
+  textSize_sm: {
+    fontSize: THEME.typography.h5.fontSize,
+  },
+  textSize_md: {
+    fontSize: THEME.typography.labelLg.fontSize,
+  },
+});
+
+const VARIANT = StyleSheet.create({
+  primary: {
     backgroundColor: colors.primary,
   },
   // A neutral outline, not a second accent. Two navy-bordered buttons side by
   // side compete for the same attention; the primary should be the only thing
   // on screen wearing the brand colour.
-  variant_secondary: {
+  secondary: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  variant_text: {
+  // Red says what the action does without shouting it: a filled red block
+  // was the loudest thing on screens where deleting is the rarest choice.
+  destructive: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.dangerLight,
+  },
+  text: {
     backgroundColor: 'transparent',
   },
-  variant_danger: {
+  danger: {
     backgroundColor: colors.danger,
   },
+});
 
-  // ── Sizes ──
-  size_sm: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    minHeight: 36,
-  },
-  size_md: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    minHeight: 48,
-  },
-  size_lg: {
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    minHeight: 56,
-  },
-
-  compact: {
-    paddingHorizontal: 12,
-  },
-
-  // ── Text ──
-  text: {
-    fontWeight: THEME.typography.labelMd.fontWeight,
-    fontFamily: THEME.typography.fontFamily,
-  },
-  text_primary: {
-    color: colors.white,
-  },
-  text_secondary: {
-    color: colors.primary,
-  },
-  text_text: {
-    color: colors.primary,
-  },
-  text_danger: {
-    color: colors.white,
-  },
-  textSize_sm: {
-    fontSize: THEME.typography.bodyMd.fontSize,
-  },
-  textSize_md: {
-    fontSize: THEME.typography.bodyLg.fontSize,
-  },
-  textSize_lg: {
-    fontSize: THEME.typography.h3.fontSize,
-  },
-  textDisabled: {
-    opacity: 0.7,
-  },
+const TEXT = StyleSheet.create({
+  primary: { color: colors.neutral0 },
+  secondary: { color: colors.primary },
+  destructive: { color: colors.danger },
+  text: { color: colors.primary },
+  danger: { color: colors.neutral0 },
 });
 
 export default CustomButton;

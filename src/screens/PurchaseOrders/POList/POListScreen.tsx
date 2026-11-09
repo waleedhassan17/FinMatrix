@@ -45,6 +45,7 @@ import {
   EmptyBlock,
   LoadingBlock,
   ErrorBlock,
+  FigureStrip,
 } from '../../../components/reports/ReportUI';
 import { TxnCard } from '../../../components/transactions/TxnListUI';
 import { FilterTabs, type TabItem } from '../../../components/shared/Tabs';
@@ -55,7 +56,7 @@ import type { TransactionsStackParamList } from '../../../navigators/stacks/Tran
 import { usePendingApprovals } from '../../../hooks/usePendingApprovals';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
-const { colors, radius, shadows, spacing, typography } = THEME;
+const { colors, radius, spacing, typography } = THEME;
 
 const POListScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -100,13 +101,18 @@ const POListScreen: React.FC = () => {
       closed: n('closed'),
     };
   }, [list.summary, items.length]);
-  const totals = useMemo(
-    () => ({
-      totalPOs: list.summary?.count ?? list.total,
-      totalValue: Number(list.extras?.totals?.total ?? 0),
-    }),
-    [list.summary, list.total, list.extras],
-  );
+  // What has been ordered and not yet received — the figure that says how
+  // much is in the pipeline, as on the web. The server's (sent + partial, over
+  // every order the search matches); from the rows loaded only with a server
+  // too old to send it. The old "Total Value" summed every PO ever raised,
+  // closed and cancelled ones included, which answered no question.
+  const onOrder = useMemo(() => {
+    if (list.extras && 'onOrder' in list.extras) return Number(list.extras.onOrder) || 0;
+    return items
+      .filter(po => po.status === 'sent' || po.status === 'partially_received')
+      .reduce((sum, po) => sum + (po.total || 0), 0);
+  }, [list.extras, items]);
+  const awaitingCount = counts.sent + counts.partially_received;
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -265,17 +271,21 @@ const POListScreen: React.FC = () => {
         }
       />
 
-      {/* ── Summary — the loader keeps it visible, as it did before ─────── */}
-      {(showChrome || initialLoading) && (
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryValue}>{totals.totalPOs}</Text>
-            <Text style={styles.summaryLabel}>Orders</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryMoney}>{formatCurrency(totals.totalValue, 'Rs ')}</Text>
-            <Text style={styles.summaryLabel}>Total Value</Text>
-          </View>
+      {/* ── Headline figure — one surface, the full amount ─────────────── */}
+      {showChrome && (
+        <View style={styles.figures}>
+          <FigureStrip
+            items={[
+              {
+                label: 'Value still on order',
+                value: formatCurrency(onOrder, 'Rs '),
+                caption:
+                  awaitingCount > 0
+                    ? `${awaitingCount} order${awaitingCount === 1 ? '' : 's'} awaiting receipt`
+                    : 'Nothing awaiting receipt',
+              },
+            ]}
+          />
         </View>
       )}
 
@@ -359,27 +369,7 @@ const POListScreen: React.FC = () => {
 // is the summary strip and the search field, which are specific to this screen.
 const styles = StyleSheet.create({
   footer: { paddingVertical: spacing.md, alignItems: 'center' },
-  summaryRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    gap: spacing.xs,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    alignItems: 'center',
-    ...shadows.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  summaryValue: { ...typography.h3, color: colors.actionGreen },
-  // Money sits a step smaller than the plain count so a long figure fits.
-  summaryMoney: { ...typography.h5, color: colors.actionGreen, fontVariant: ['tabular-nums'] },
-  summaryLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  figures: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs, paddingBottom: spacing.xxs },
 
   searchRow: { paddingHorizontal: spacing.xl, marginBottom: spacing.xs },
   searchInput: {

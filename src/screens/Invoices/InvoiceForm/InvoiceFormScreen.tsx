@@ -56,12 +56,7 @@ import { DateField, ReportHeader, HEADER_NAVY } from '../../../components/report
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
 import CustomButton from '../../../Custom-Components/CustomButton';
 import LineItemRow from '../../../components/shared/LineItemRow';
-import {
-  AddButton,
-  FormSectionHeader,
-  PrimaryButton,
-  SecondaryButton,
-} from '../../../components/form/FormUI';
+import { ActionBar, AddButton, FormSectionHeader } from '../../../components/form/FormUI';
 import { useCapability } from '../../../hooks/useCapability';
 import { useRequesterName } from '../../../hooks/useRequesterName';
 import { fetchApprovalById } from '../../../networks/approvals/approvalsNetwork';
@@ -477,46 +472,43 @@ const InvoiceFormScreen: React.FC = () => {
               container because DateField and LineItemRow have no disabled prop. */}
           <View pointerEvents={isReviewing ? 'none' : 'auto'}>
           {/* ── Section: Customer & Dates ────────────── */}
-          <FormSectionHeader title="INVOICE DETAILS" dotColor={colors.actionGreen} />
+          <FormSectionHeader title="INVOICE DETAILS" />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: colors.actionGreen }]} />
-            <View style={styles.cardBody}>
-              <CustomDropdown
-                label="Customer *"
-                options={customerOptions}
-                value={form.customerId}
-                onChange={handleCustomerChange}
-                placeholder="Select customer…"
-                error={form.errors.customerId}
-                searchable
-              />
-              <CustomInput
-                label="Invoice #"
-                value={form.invoiceNumber}
-                onChangeText={v => dispatch(setField({ key: 'invoiceNumber', value: v }))}
-                placeholder="INV-0000"
-                error={form.errors.invoiceNumber}
-                disabled={isEditing}
-              />
-              <View style={styles.rowFields}>
-                <View style={{ flex: 1, marginRight: spacing.xs }}>
-                  <DateField
-                    label="Issue Date *"
-                    value={form.issueDate}
-                    onChangeText={v => dispatch(setField({ key: 'issueDate', value: v }))}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  {/* Due date is a future date → allow dates after today; never
-                      before the issue date. */}
-                  <DateField
-                    label="Due Date *"
-                    value={form.dueDate}
-                    onChangeText={v => dispatch(setField({ key: 'dueDate', value: v }))}
-                    minimumDate={form.issueDate ? new Date(form.issueDate) : undefined}
-                    maximumDate={new Date(2100, 11, 31)}
-                  />
-                </View>
+            <CustomDropdown
+              label="Customer *"
+              options={customerOptions}
+              value={form.customerId}
+              onChange={handleCustomerChange}
+              placeholder="Select customer…"
+              error={form.errors.customerId}
+              searchable
+            />
+            <CustomInput
+              label="Invoice #"
+              value={form.invoiceNumber}
+              onChangeText={v => dispatch(setField({ key: 'invoiceNumber', value: v }))}
+              placeholder="INV-0000"
+              error={form.errors.invoiceNumber}
+              disabled={isEditing}
+            />
+            <View style={styles.rowFields}>
+              <View style={{ flex: 1, marginRight: spacing.xs }}>
+                <DateField
+                  label="Issue Date *"
+                  value={form.issueDate}
+                  onChangeText={v => dispatch(setField({ key: 'issueDate', value: v }))}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                {/* Due date is a future date → allow dates after today; never
+                    before the issue date. */}
+                <DateField
+                  label="Due Date *"
+                  value={form.dueDate}
+                  onChangeText={v => dispatch(setField({ key: 'dueDate', value: v }))}
+                  minimumDate={form.issueDate ? new Date(form.issueDate) : undefined}
+                  maximumDate={new Date(2100, 11, 31)}
+                />
               </View>
             </View>
           </View>
@@ -524,7 +516,6 @@ const InvoiceFormScreen: React.FC = () => {
           {/* ── Section: Line Items ──────────────────── */}
           <FormSectionHeader
             title="LINE ITEMS"
-            dotColor={colors.info}
             right={<AddButton label="Add Item" onPress={() => dispatch(addLine())} />}
           />
           {form.errors.lines && (
@@ -583,51 +574,45 @@ const InvoiceFormScreen: React.FC = () => {
           ))}
 
           {/* ── Section: Discount ────────────────────── */}
-          <FormSectionHeader title="DISCOUNT" dotColor={colors.warning} />
+          <FormSectionHeader title="DISCOUNT" />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: colors.warning }]} />
-            <View style={styles.cardBody}>
-              <View style={styles.rowFields}>
-                <View style={{ flex: 1, marginRight: spacing.xs }}>
-                  <CustomDropdown
-                    label="Discount Type"
-                    options={DISCOUNT_OPTIONS}
-                    value={form.discountType}
-                    onChange={v => {
-                      dispatch(setField({ key: 'discountType', value: v as DiscountType }));
-                      dispatch(calculateTotals());
-                    }}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <CustomInput
-                    label={form.discountType === 'percent' ? 'Discount (%)' : 'Discount (Rs)'}
-                    value={form.discountValue}
-                    onChangeText={v => {
-                      dispatch(setField({ key: 'discountValue', value: v.replace(/[^0-9.]/g, '') }));
-                      dispatch(calculateTotals());
-                    }}
-                    placeholder="0"
-                    keyboardType="decimal-pad"
-                  />
-                </View>
+            <View style={styles.rowFields}>
+              <View style={{ flex: 1, marginRight: spacing.xs }}>
+                <CustomDropdown
+                  label="Discount Type"
+                  options={DISCOUNT_OPTIONS}
+                  value={form.discountType}
+                  onChange={v => {
+                    dispatch(setField({ key: 'discountType', value: v as DiscountType }));
+                    dispatch(calculateTotals());
+                  }}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <CustomInput
+                  label={form.discountType === 'percent' ? 'Discount (%)' : 'Discount (Rs)'}
+                  value={form.discountValue}
+                  onChangeText={v => {
+                    dispatch(setField({ key: 'discountValue', value: v.replace(/[^0-9.]/g, '') }));
+                    dispatch(calculateTotals());
+                  }}
+                  placeholder="0"
+                  keyboardType="decimal-pad"
+                />
               </View>
             </View>
           </View>
 
           {/* ── Section: Notes ───────────────────────── */}
-          <FormSectionHeader title="NOTES" dotColor={colors.secondary} />
+          <FormSectionHeader title="NOTES" />
           <View style={styles.sectionCard}>
-            <View style={[styles.cardAccent, { backgroundColor: colors.secondary }]} />
-            <View style={styles.cardBody}>
-              <CustomInput
-                label="Notes"
-                value={form.notes}
-                onChangeText={v => dispatch(setField({ key: 'notes', value: v }))}
-                placeholder="Additional notes for this invoice…"
-                multiline
-              />
-            </View>
+            <CustomInput
+              label="Notes"
+              value={form.notes}
+              onChangeText={v => dispatch(setField({ key: 'notes', value: v }))}
+              placeholder="Additional notes for this invoice…"
+              multiline
+            />
           </View>
 
           {/* ── Premium Totals Panel ──────────────────── */}
@@ -672,71 +657,47 @@ const InvoiceFormScreen: React.FC = () => {
 
           </View>
 
-          {/* ── Action Buttons ───────────────────────── */}
-          {isReviewing ? (
-            decideCap.allowed && request && isPendingApproval(request) ? (
-              <View style={styles.btnRow}>
-                <View style={{ flex: 1, marginRight: spacing.xs }}>
-                  <SecondaryButton
-                    title="Reject"
-                    onPress={() => setRejectOpen(true)}
-                    disabled={deciding}
-                    icon={<Feather name="x" size={16} color={colors.actionGreen} />}
-                  />
-                </View>
-                <View style={{ flex: 1.4 }}>
-                  <PrimaryButton
-                    title={deciding ? 'Approving…' : 'Approve'}
-                    onPress={handleApprove}
-                    isLoading={deciding}
-                    icon={<Feather name="check" size={16} color={colors.neutral0} />}
-                  />
-                </View>
-              </View>
-            ) : (
-              <View style={styles.reviewNote}>
-                <Text style={styles.reviewNoteText}>
-                  {request && !isPendingApproval(request)
-                    ? 'This request has already been decided.'
-                    : 'Only the owner can approve or reject a request.'}
-                </Text>
-              </View>
-            )
-          ) : invoiceCap.needsApproval && !isEditing ? (
-            // One button, because there is only one outcome: the request is
-            // filed either way, and draft-vs-sent is a distinction the owner
-            // makes when they approve, not one staff can act on here.
-            <View style={styles.btnRow}>
-              <View style={{ flex: 1 }}>
-                <PrimaryButton
-                  title={form.isSaving ? 'Sending…' : invoiceCap.submitLabel('Save & Send')}
-                  onPress={() => handleSave('sent')}
-                  isLoading={form.isSaving}
-                  icon={<Feather name="send" size={16} color={colors.neutral0} />}
-                />
-              </View>
-            </View>
-          ) : (
-            <View style={styles.btnRow}>
-              <View style={{ flex: 1, marginRight: spacing.xs }}>
-                <SecondaryButton
-                  title="Save Draft"
-                  onPress={() => handleSave('draft')}
-                  disabled={form.isSaving}
-                  icon={<Feather name="save" size={16} color={colors.actionGreen} />}
-                />
-              </View>
-              <View style={{ flex: 1.4 }}>
-                <PrimaryButton
-                  title={form.isSaving ? 'Saving…' : 'Save & Send'}
-                  onPress={() => handleSave('sent')}
-                  isLoading={form.isSaving}
-                  icon={<Feather name="send" size={16} color={colors.neutral0} />}
-                />
-              </View>
-            </View>
-          )}
         </ScrollView>
+
+        {/* ── Actions — the fixed bar every form shares ── */}
+        {isReviewing ? (
+          decideCap.allowed && request && isPendingApproval(request) ? (
+            <ActionBar
+              secondary={{ title: 'Reject', onPress: () => setRejectOpen(true), disabled: deciding }}
+              primary={{ title: deciding ? 'Approving…' : 'Approve', onPress: handleApprove, isLoading: deciding, icon: 'check' }}
+            />
+          ) : (
+            <ActionBar
+              note={
+                request && !isPendingApproval(request)
+                  ? 'This request has already been decided.'
+                  : 'Only the owner can approve or reject a request.'
+              }
+            />
+          )
+        ) : invoiceCap.needsApproval && !isEditing ? (
+          // One button, because there is only one outcome: the request is filed
+          // either way, and draft-vs-sent is a distinction the owner makes when
+          // they approve, not one staff can act on here.
+          <ActionBar
+            primary={{
+              title: form.isSaving ? 'Sending…' : invoiceCap.submitLabel('Save & Send'),
+              onPress: () => handleSave('sent'),
+              isLoading: form.isSaving,
+              icon: 'send',
+            }}
+          />
+        ) : (
+          <ActionBar
+            secondary={{ title: 'Save Draft', onPress: () => handleSave('draft'), disabled: form.isSaving }}
+            primary={{
+              title: form.isSaving ? 'Saving…' : 'Save & Send',
+              onPress: () => handleSave('sent'),
+              isLoading: form.isSaving,
+              icon: 'send',
+            }}
+          />
+        )}
       </KeyboardAvoidingView>
 
       <RejectReasonModal
@@ -784,22 +745,14 @@ const styles = StyleSheet.create({
 
   // ── Section labels ──────────────────────────────
 
-  // ── Section card with accent stripe ─────────────
+  // A plain card: no coloured stripe down its edge, as on every form now.
   sectionCard: {
-    flexDirection: 'row',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    overflow: 'hidden',
-    ...shadows.xs,
-    borderWidth: 1,
-    borderColor: colors.neutral200,
-  },
-  cardAccent: {
-    width: 4,
-  },
-  cardBody: {
-    flex: 1,
     padding: spacing.md,
+    ...shadows.xs,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   rowFields: { flexDirection: 'row' },
 
@@ -852,23 +805,6 @@ const styles = StyleSheet.create({
   },
   reviewBannerTitle: { ...typography.labelMd, color: colors.textPrimary },
   reviewBannerBody: { ...typography.bodySm, color: colors.textSecondary, marginTop: 2 },
-  reviewNote: {
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
-    padding: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.backgroundAlt,
-  },
-  reviewNoteText: {
-    ...typography.bodySm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  btnRow: {
-    flexDirection: 'row',
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
-  },
 });
 
 export default InvoiceFormScreen;

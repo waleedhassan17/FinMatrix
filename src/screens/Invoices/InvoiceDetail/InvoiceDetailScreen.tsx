@@ -43,7 +43,6 @@ import {
   upsertInvoice,
 } from '../InvoiceList/invoiceListSlice';
 import { useCustomerById } from '../../../hooks/usePartyPicker';
-import CustomButton from '../../../Custom-Components/CustomButton';
 import {
   ReportContainer,
   ReportHeader,
@@ -55,10 +54,12 @@ import {
 } from '../../../components/reports/ReportUI';
 import { useContactWhatsapp, useWhatsappConnect } from '../../../hooks/useWhatsappConnect';
 import MessageTimeline from '../../../components/shared/messaging/MessageTimeline';
-import SendOnWhatsAppButton from '../../../components/shared/messaging/SendOnWhatsAppButton';
+import SendOnWhatsAppButton, { whatsappDisabledReason } from '../../../components/shared/messaging/SendOnWhatsAppButton';
+import { ActionBar, IconButton } from '../../../components/form/FormUI';
+import { DocLineRow, DocLinesHeader } from '../../../components/transactions/DocLineRow';
 import { maskWhatsapp } from '../../../utils/whatsappPreview';
 import { txnStatusColor } from '../../../components/transactions/txnStatus';
-import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { formatCurrency, formatDate, formatQty } from '../../../utils/formatters';
 import {
   shareInvoicePdf,
   openWhatsAppChat,
@@ -337,28 +338,47 @@ const InvoiceDetailScreen: React.FC = () => {
   // approval" on two lines beside Share and Remind, because CustomButton sets
   // no numberOfLines and the label simply wrapped, growing the whole bar.
   const recordPaymentAction = paymentAwaitingApproval ? (
-    <View style={styles.actionPrimary}>
-      <View style={styles.waitingBadge}>
-        <Feather name="clock" size={13} color={colors.warning} />
-        <Text style={styles.waitingBadgeText}>Awaiting approval</Text>
-      </View>
+    <View style={styles.waitingBadge} accessible accessibilityLabel="Payment awaiting the owner's approval">
+      <Feather name="clock" size={13} color={colors.warning} />
+      <Text style={styles.waitingBadgeText} numberOfLines={1}>
+        Awaiting approval
+      </Text>
     </View>
   ) : (
-    <View style={styles.actionPrimary}>
-      <CustomButton
-        title="Record Payment"
-        onPress={() =>
-          navigation.navigate('ReceivePayment', {
-            customerId: invoice.customerId,
-            invoiceId: invoice.id,
-          })
-        }
-        variant="primary"
-        size="sm"
-        fullWidth
-      />
-    </View>
+    {
+      title: 'Record Payment',
+      onPress: () =>
+        navigation.navigate('ReceivePayment', {
+          customerId: invoice.customerId,
+          invoiceId: invoice.id,
+        }),
+    }
   );
+
+  // Share is the same icon in the same place on every document.
+  const shareButton = (
+    <IconButton icon="share-2" onPress={handleSharePdf} accessibilityLabel="Share PDF" isLoading={isSending} />
+  );
+
+  // The reminder reaches the customer's chat only with a usable number; when
+  // it cannot, the reason goes in the bar's note rather than under the button.
+  const canRemind = customerHasWhatsApp || (connect.enabled && !!contact);
+  const remindReason = canRemind ? whatsappDisabledReason(whatsappNumber, contactOptedOut) : null;
+  const remindButton = canRemind ? (
+    <SendOnWhatsAppButton
+      title="Remind"
+      docType="invoice"
+      docId={invoice.id}
+      event="reminder"
+      phone={whatsappNumber}
+      optedOut={contactOptedOut}
+      fallback={openReminderChat}
+      onSent={() => setMessagesKey(k => k + 1)}
+      size="md"
+      compact
+      showReason={false}
+    />
+  ) : undefined;
 
   // ═════════════════════════════════════════════════════
   // RENDER
@@ -476,36 +496,15 @@ const InvoiceDetailScreen: React.FC = () => {
           {/* ── Line Items Table ──────────────────── */}
           <Text style={styles.sectionLabel}>Items</Text>
 
-          {/* Table header */}
-          <View style={styles.tableHeader}>
-            <Text style={[styles.thText, { flex: 2.5 }]}>Description</Text>
-            <Text style={[styles.thText, styles.thRight, { flex: 0.5 }]}>Qty</Text>
-            <Text style={[styles.thText, styles.thRight, { flex: 0.9 }]}>Rate</Text>
-            <Text style={[styles.thText, styles.thRight, { flex: 0.5 }]}>Tax</Text>
-            <Text style={[styles.thText, styles.thRight, { flex: 1.1 }]}>Amount</Text>
-          </View>
-
-          {/* Table rows */}
-          {invoice.lines.map((line, idx) => (
-            <View
+          <DocLinesHeader label="Description" />
+          {invoice.lines.map(line => (
+            <DocLineRow
               key={line.id}
-              style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven]}
-            >
-              <View style={{ flex: 2.5 }}>
-                <Text style={styles.tdText} numberOfLines={2}>{line.description || line.itemName}</Text>
-              </View>
-              <Text style={[styles.tdText, styles.tdRight, { flex: 0.5 }]}>{line.quantity}</Text>
-              <Text style={[styles.tdText, styles.tdRight, { flex: 0.9 }]}>
-                {formatCurrency(line.unitPrice, 'Rs ')}
-              </Text>
-              <Text style={[styles.tdText, styles.tdRight, { flex: 0.5 }]}>{line.taxRate}%</Text>
-              <Text style={[styles.tdText, styles.tdRight, { flex: 1.1 }]}>
-                {formatCurrency(line.amount, 'Rs ')}
-              </Text>
-            </View>
+              title={line.description || line.itemName}
+              amount={formatCurrency(line.amount, 'Rs ')}
+              details={[`${formatQty(line.quantity)} × ${formatCurrency(line.unitPrice, 'Rs ')} · ${line.taxRate}% tax`]}
+            />
           ))}
-
-          <View style={styles.divider} />
 
           {/* ── Totals ────────────────────────────── */}
           <View style={styles.totalsBlock}>
@@ -593,169 +592,43 @@ const InvoiceDetailScreen: React.FC = () => {
       </ScrollView>
 
       {/* ── Action Bar ──────────────────────────────── */}
-      <View style={styles.actionBar}>
-        {/* Draft: Edit + Share, with Post as the primary action. Posting is
-            what puts the invoice in the ledger, so it gets the primary slot;
-            sharing a PDF is a separate decision and no longer the only route
-            out of draft. */}
-        {invoice.status === 'draft' && offerPostAndSend && (
-          <>
-            <View style={styles.actionShare}>
-              <CustomButton
-                title="Share"
-                onPress={handleSharePdf}
-                variant="text"
-                size="sm"
-                fullWidth
-                disabled={isSending}
-              />
-            </View>
-            <View style={styles.actionSecondary}>
-              <CustomButton
-                title="Post only"
-                onPress={() => handlePostToBooks(false)}
-                variant="secondary"
-                size="sm"
-                fullWidth
-                disabled={isSending}
-              />
-            </View>
-            <View style={styles.actionPrimary}>
-              <CustomButton
-                title={isSending ? 'Posting…' : 'Post & send on WhatsApp'}
-                onPress={() => handlePostToBooks(true)}
-                variant="primary"
-                size="sm"
-                fullWidth
-                disabled={isSending}
-              />
-            </View>
-          </>
-        )}
-        {invoice.status === 'draft' && !offerPostAndSend && (
-          <>
-            <View style={styles.actionShare}>
-              <CustomButton
-                title="Edit"
-                onPress={() => navigation.navigate('InvoiceForm', { invoiceId: invoice.id })}
-                variant="text"
-                size="sm"
-                fullWidth
-              />
-            </View>
-            <View style={styles.actionSecondary}>
-              <CustomButton
-                title={isSending ? 'Sending…' : 'Share'}
-                onPress={handleSharePdf}
-                variant="secondary"
-                size="sm"
-                fullWidth
-                disabled={isSending}
-              />
-            </View>
-            <View style={styles.actionPrimary}>
-              <CustomButton
-                title={isSending ? 'Posting…' : 'Post'}
-                onPress={() => handlePostToBooks()}
-                variant="primary"
-                size="sm"
-                fullWidth
-                disabled={isSending}
-              />
-            </View>
-          </>
-        )}
-
-        {/* Sent / overdue: Record Payment primary, WhatsApp resend + share secondary */}
-        {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-          <>
-            <View style={styles.actionShare}>
-              <CustomButton
-                title="Share"
-                onPress={handleSharePdf}
-                variant="text"
-                size="sm"
-                fullWidth
-              />
-            </View>
-            {/* Only when it genuinely reaches the customer's chat. With
-                Connect on the server sends the reminder (and the overdue one
-                carries the PDF); off, it opens the wa.me chat as before. */}
-            {(customerHasWhatsApp || (connect.enabled && !!contact)) && (
-              <View style={styles.actionSecondary}>
-                <SendOnWhatsAppButton
-                  title={connect.enabled ? 'Send reminder' : 'Remind'}
-                  docType="invoice"
-                  docId={invoice.id}
-                  event="reminder"
-                  phone={whatsappNumber}
-                  optedOut={contactOptedOut}
-                  fallback={openReminderChat}
-                  onSent={() => setMessagesKey(k => k + 1)}
-                />
-              </View>
-            )}
-            {recordPaymentAction}
-          </>
-        )}
-
-        {/* Partial: same as sent/overdue — can still record payment */}
-        {invoice.status === 'partial' && (
-          <>
-            <View style={styles.actionShare}>
-              <CustomButton
-                title="Share"
-                onPress={handleSharePdf}
-                variant="text"
-                size="sm"
-                fullWidth
-              />
-            </View>
-            {/* Only when it genuinely reaches the customer's chat. With
-                Connect on the server sends the reminder (and the overdue one
-                carries the PDF); off, it opens the wa.me chat as before. */}
-            {(customerHasWhatsApp || (connect.enabled && !!contact)) && (
-              <View style={styles.actionSecondary}>
-                <SendOnWhatsAppButton
-                  title={connect.enabled ? 'Send reminder' : 'Remind'}
-                  docType="invoice"
-                  docId={invoice.id}
-                  event="reminder"
-                  phone={whatsappNumber}
-                  optedOut={contactOptedOut}
-                  fallback={openReminderChat}
-                  onSent={() => setMessagesKey(k => k + 1)}
-                />
-              </View>
-            )}
-            {recordPaymentAction}
-          </>
-        )}
-
-        {/* Paid / void / cancelled: share PDF only */}
-        {(invoice.status === 'paid' || invoice.status === 'void' || invoice.status === 'cancelled') && (
-          <>
-            <View style={styles.actionSecondary}>
-              <CustomButton
-                title="Share"
-                onPress={handleSharePdf}
-                variant="secondary"
-                size="sm"
-                fullWidth
-              />
-            </View>
-            <View style={styles.actionPrimary}>
-              <CustomButton
-                title="New Invoice"
-                onPress={() => navigation.navigate('InvoiceForm')}
-                variant="primary"
-                size="sm"
-                fullWidth
-              />
-            </View>
-          </>
-        )}
-      </View>
+      {/* One bar, one spec: Share is the leading icon, the next step is the
+          primary, the next most common action the secondary. All 48px, and no
+          label wraps. Draft: posting is what puts the invoice in the ledger,
+          so it gets the primary slot. */}
+      {invoice.status === 'draft' && offerPostAndSend ? (
+        <ActionBar
+          leading={shareButton}
+          secondary={{ title: 'Post only', onPress: () => handlePostToBooks(false), disabled: isSending }}
+          primary={{
+            title: isSending ? 'Posting…' : 'Post & send',
+            onPress: () => handlePostToBooks(true),
+            disabled: isSending,
+            icon: 'message-circle',
+          }}
+        />
+      ) : invoice.status === 'draft' ? (
+        <ActionBar
+          leading={shareButton}
+          secondary={{ title: 'Edit', onPress: () => navigation.navigate('InvoiceForm', { invoiceId: invoice.id }) }}
+          primary={{ title: isSending ? 'Posting…' : 'Post', onPress: () => handlePostToBooks(), disabled: isSending }}
+        />
+      ) : invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'partial' ? (
+        // Sent / overdue / partial: Record Payment, with the WhatsApp reminder
+        // beside it when it can reach the customer's chat.
+        <ActionBar
+          leading={shareButton}
+          secondary={remindButton}
+          primary={recordPaymentAction}
+          note={remindReason ? `${remindReason}, so Remind is off.` : undefined}
+        />
+      ) : (
+        // Paid / void / cancelled: nothing left to do with it but share it.
+        <ActionBar
+          leading={shareButton}
+          primary={{ title: 'New Invoice', onPress: () => navigation.navigate('InvoiceForm'), icon: 'plus' }}
+        />
+      )}
       <CreditLimitModal
         assessment={creditRefusal}
         busy={isSending}
@@ -847,29 +720,10 @@ const styles = StyleSheet.create({
   sectionLabel: { ...THEME.form.sectionTitle, marginBottom: spacing.xxs },
   billToName: { ...typography.labelLg, color: colors.textPrimary },
 
-  // ── Line items table ───────────────────────────
-  tableHeader: {
-    flexDirection: 'row',
-    paddingVertical: spacing.xs,
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.actionGreen,
-  },
-  thText: { ...typography.overline, color: colors.actionGreen },
-  thRight: { textAlign: 'right' },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  tableRowEven: { backgroundColor: colors.background },
-  tdText: { ...typography.caption, color: colors.textPrimary },
-  // Figures align digit-for-digit down the column.
-  tdRight: { textAlign: 'right', fontVariant: ['tabular-nums'] },
 
   // ── Totals ─────────────────────────────────────
-  totalsBlock: { marginLeft: 'auto', width: '65%' },
+  // The card's full width: at 65% a crore-sized figure ran into its label.
+  totalsBlock: { marginTop: spacing.xs },
   totalsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -915,29 +769,17 @@ const styles = StyleSheet.create({
   methodBadgeText: { ...typography.labelSm, color: colors.secondary },
   paymentRef: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xxs },
 
-  // ── Action Bar ─────────────────────────────────
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.xxs,
-    ...shadows.xs,
-  },
-  actionPrimary: { flex: 1.4 },
   // Mirrors InventoryApprovalScreen's waitingBadge: warning tint, clock, and
   // centred text that wraps gracefully rather than distorting the bar.
+  // The same 48px and radius as the buttons it stands in for.
   waitingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
+    minHeight: 48,
     paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
+    borderRadius: 8,
     backgroundColor: colors.warning + '1A',
   },
   waitingBadgeText: {
@@ -945,8 +787,6 @@ const styles = StyleSheet.create({
     color: colors.warning,
     textAlign: 'center',
   },
-  actionSecondary: { flex: 1 },
-  actionShare: { flex: 1 },
 });
 
 export default InvoiceDetailScreen;

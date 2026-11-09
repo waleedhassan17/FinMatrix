@@ -371,7 +371,7 @@ const AnalyticsTab: React.FC<{ agencyId: string }> = ({ agencyId }) => {
 };
 
 const AnalyticCard: React.FC<{ label: string; value: string; color: string }> = ({ label, value, color }) => (
-  <View style={[styles.analyticCard, { borderTopColor: color }]}>
+  <View style={styles.analyticCard}>
     <Text style={[styles.analyticCardVal, { color }]}>{value}</Text>
     <Text style={styles.analyticCardLabel}>{label}</Text>
   </View>
@@ -651,7 +651,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: spacing.xs + 2,
     alignItems: 'center',
-    borderTopWidth: 3,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     ...shadows.xs,
   },
   analyticCardVal: { ...typography.h3 },

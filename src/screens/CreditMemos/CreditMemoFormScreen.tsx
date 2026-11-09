@@ -18,8 +18,7 @@ import { useCapability } from '../../hooks/useCapability';
 import { formatCurrency } from '../../utils/formatters';
 import CustomDropdown from '../../Custom-Components/CustomDropdown';
 import CustomInput from '../../Custom-Components/CustomInput';
-import CustomButton from '../../Custom-Components/CustomButton';
-import { AddButton } from '../../components/form/FormUI';
+import { ActionBar, AddButton } from '../../components/form/FormUI';
 import LineItemRow from '../../components/shared/LineItemRow';
 import { ReportContainer, ReportHeader, Card, SectionCard, DateField } from '../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
@@ -296,17 +295,21 @@ const CreditMemoFormScreen: React.FC = () => {
           <Row label="Total Credit" value={rs(totals.total)} strong />
         </Card>
 
-        <CustomButton
-          title={memoCap.submitLabel(reversal ? 'Reverse Delivery' : 'Issue Credit Memo')}
-          onPress={save}
-          // Submitting before the draft lands would post a blank memo against
-          // the delivery it is meant to reverse.
-          isLoading={saving || loadingDraft}
-          disabled={saving || loadingDraft}
-          fullWidth
-        />
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* The fixed bar every form shares. */}
+      <ActionBar
+        secondary={{ title: 'Cancel', onPress: () => navigation.goBack(), disabled: saving }}
+        primary={{
+          title: memoCap.submitLabel(reversal ? 'Reverse Delivery' : 'Issue Credit Memo'),
+          onPress: save,
+          // Submitting before the draft lands would post a blank memo against
+          // the delivery it is meant to reverse.
+          isLoading: saving || loadingDraft,
+          disabled: saving || loadingDraft,
+        }}
+      />
     </ReportContainer>
   );
 };

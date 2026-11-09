@@ -4,7 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput
+  TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import { Alert } from '../../utils/alert';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -17,7 +18,7 @@ import {
   fetchJournalEntry, selectJournalEntryState, postJournalEntry, voidJournalEntry
 } from './journalEntrySlice';
 import { formatCurrency } from '../../utils/formatters';
-import CustomButton from '../../Custom-Components/CustomButton';
+import { ActionBar } from '../../components/form/FormUI';
 import { ReportContainer, ReportHeader, Card, SectionCard, Badge, LoadingBlock, ErrorBlock } from '../../components/reports/ReportUI';
 import { txnStatusColor } from '../../components/transactions/txnStatus';
 import type { TransactionsStackParamList } from '../../navigators/stacks/TransactionsStack';
@@ -32,6 +33,7 @@ const GeneralJournalDetailScreen: React.FC = () => {
   const { entryId } = route.params;
   const dispatch = useAppDispatch();
   const { current: e, isLoading, error } = useAppSelector(selectJournalEntryState);
+  const { width: screenWidth } = useWindowDimensions();
   const [busy, setBusy] = useState(false);
   const [showVoid, setShowVoid] = useState(false);
   const [voidReason, setVoidReason] = useState('');
@@ -61,6 +63,15 @@ const GeneralJournalDetailScreen: React.FC = () => {
   if (!e) return <ReportContainer><ReportHeader title="Journal Entry" onBack={() => navigation.goBack()} /></ReportContainer>;
 
   const balanced = Math.abs(e.totalDebits - e.totalCredits) < 0.01;
+  // One width for both figure columns: the longest amount on the entry at
+  // ~7.4px a character (13px tabular figures), with a floor that keeps "Debit"
+  // readable. The ceiling comes from the screen, leaving the "Account" heading
+  // about 56dp (page and card padding take 64, the two column gaps 16); past it
+  // a figure shrinks to fit rather than clip.
+  const longest = [e.totalDebits, e.totalCredits, ...e.lines.flatMap(l => [l.debit || 0, l.credit || 0])]
+    .reduce((m, n) => Math.max(m, rs(n).length), 0);
+  const amtMax = Math.floor((screenWidth - 64 - 56 - 16) / 2);
+  const amtW = Math.min(amtMax, Math.max(80, Math.round(longest * 7.4)));
 
   return (
     <ReportContainer>
@@ -78,26 +89,40 @@ const GeneralJournalDetailScreen: React.FC = () => {
           <Info label="Balanced" value={balanced ? 'Yes' : 'No'} strong />
         </Card>
 
+        {/* Each line: the account and its note on their own rows, in full, then
+            the Debit and Credit figures. The figure columns share one width,
+            sized to the longest amount, so a dash never runs into the figure
+            beside it ("— Rs 120,000.00") and the totals line up beneath. */}
         <SectionCard title="Lines" icon="list">
           <View style={styles.lineHead}>
             <Text style={[styles.colAcct, styles.headText]}>Account</Text>
-            <Text style={[styles.colVal, styles.headText]}>Debit</Text>
-            <Text style={[styles.colVal, styles.headText]}>Credit</Text>
+            <Text style={[styles.headText, styles.colAmt, { width: amtW }]}>Debit</Text>
+            <Text style={[styles.headText, styles.colAmt, { width: amtW }]}>Credit</Text>
           </View>
           {e.lines.map((l, i) => (
             <View key={l.id ?? i} style={styles.lineRow}>
-              <View style={styles.colAcct}>
-                <Text style={styles.lineDesc}>{l.accountNumber} {l.accountName}</Text>
-                {!!l.description && <Text style={styles.lineMeta}>{l.description}</Text>}
+              <Text style={styles.lineDesc}>
+                {l.accountNumber} {l.accountName}
+              </Text>
+              {!!l.description && <Text style={styles.lineMeta}>{l.description}</Text>}
+              <View style={styles.lineFigures}>
+                <Text style={[styles.lineVal, styles.colAmt, { width: amtW }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                  {l.debit ? rs(l.debit) : '—'}
+                </Text>
+                <Text style={[styles.lineVal, styles.colAmt, { width: amtW }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                  {l.credit ? rs(l.credit) : '—'}
+                </Text>
               </View>
-              <Text style={[styles.colVal, styles.lineVal]}>{l.debit ? rs(l.debit) : '—'}</Text>
-              <Text style={[styles.colVal, styles.lineVal]}>{l.credit ? rs(l.credit) : '—'}</Text>
             </View>
           ))}
           <View style={styles.totalRow}>
             <Text style={[styles.colAcct, styles.totalText]}>Total</Text>
-            <Text style={[styles.colVal, styles.totalText]}>{rs(e.totalDebits)}</Text>
-            <Text style={[styles.colVal, styles.totalText]}>{rs(e.totalCredits)}</Text>
+            <Text style={[styles.totalText, styles.colAmt, { width: amtW }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {rs(e.totalDebits)}
+            </Text>
+            <Text style={[styles.totalText, styles.colAmt, { width: amtW }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {rs(e.totalCredits)}
+            </Text>
           </View>
         </SectionCard>
 
@@ -119,22 +144,27 @@ const GeneralJournalDetailScreen: React.FC = () => {
           </SectionCard>
         )}
 
-        <View style={styles.actions}>
-          {e.status === 'draft' && !showVoid && (
-            <CustomButton title="Post to Ledger" variant="primary" onPress={doPost} isLoading={busy} fullWidth />
-          )}
-          {(e.status === 'draft' || e.status === 'posted') && !showVoid && (
-            <CustomButton title="Void" variant="danger" onPress={() => setShowVoid(true)} fullWidth />
-          )}
-          {showVoid && (
-            <>
-              <CustomButton title="Confirm Void" variant="danger" onPress={doVoid} isLoading={busy} fullWidth />
-              <CustomButton title="Cancel" variant="secondary" onPress={() => { setShowVoid(false); setVoidReason(''); }} fullWidth />
-            </>
-          )}
-        </View>
-        <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* Post is the next step for a draft; Void is behind More, and asks
+          for its reason before anything happens. A posted entry's only
+          action is Void, so it shows as the one (red-outlined) button. */}
+      {showVoid ? (
+        <ActionBar
+          secondary={{ title: 'Cancel', onPress: () => { setShowVoid(false); setVoidReason(''); }, disabled: busy }}
+          primary={{ title: 'Confirm Void', variant: 'danger', onPress: doVoid, isLoading: busy }}
+        />
+      ) : e.status === 'draft' || e.status === 'posted' ? (
+        <ActionBar
+          more={[{ label: 'Void', icon: 'x-octagon', destructive: true, confirm: false, onPress: () => setShowVoid(true) }]}
+          moreDisabled={busy}
+          primary={
+            e.status === 'draft'
+              ? { title: 'Post to Ledger', onPress: doPost, isLoading: busy, icon: 'check-circle' }
+              : undefined
+          }
+        />
+      ) : null}
     </ReportContainer>
   );
 };
@@ -151,19 +181,19 @@ const styles = StyleSheet.create({
   infoLabel: { ...THEME.typography.bodySm, color: THEME.colors.textSecondary },
   infoValue: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
   bold: { ...THEME.typography.labelLg },
-  lineHead: { flexDirection: 'row', paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.border },
-  headText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
-  lineRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
-  colAcct: { flex: 1.6 },
-  colVal: { flex: 1, textAlign: 'right' },
+  lineHead: { flexDirection: 'row', alignItems: 'flex-end', paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: THEME.colors.border },
+  headText: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
+  lineRow: { paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: THEME.colors.borderLight },
+  lineFigures: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 2 },
+  colAcct: { flex: 1, minWidth: 0 },
+  colAmt: { textAlign: 'right', marginLeft: 8, fontVariant: ['tabular-nums'] },
   lineDesc: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
-  lineMeta: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary },
+  lineMeta: { ...THEME.typography.caption, color: THEME.colors.textSecondary, marginTop: 1 },
   lineVal: { ...THEME.typography.bodySm, color: THEME.colors.textPrimary },
-  totalRow: { flexDirection: 'row', paddingVertical: 10, marginTop: 2, borderTopWidth: 2, borderTopColor: THEME.colors.border },
+  totalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, marginTop: 2, borderTopWidth: 1, borderTopColor: THEME.colors.border },
   totalText: { ...THEME.typography.labelMd, color: THEME.colors.textPrimary },
   reasonInput: { borderWidth: 1, borderColor: THEME.colors.border, borderRadius: 8, padding: 10, minHeight: 60, textAlignVertical: 'top', ...THEME.typography.bodyMd, color: THEME.colors.textPrimary },
   voidHint: { ...THEME.typography.labelSm, color: THEME.colors.textSecondary, marginTop: 8 },
-  actions: { gap: 10 }
 });
 
 export default GeneralJournalDetailScreen;

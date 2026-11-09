@@ -51,7 +51,6 @@ const DS = {
 // for THIS company's type, with server-set prices. The legacy standard/pro
 // cards that used to be hardcoded here are no longer offered anywhere (the
 // backend also rejects them for tier companies with PLAN_TYPE_MISMATCH).
-const PLAN_ACCENTS = [THEME.colors.success, THEME.colors.secondary];
 
 const perksFor = (p: TierPlanCard): string[] => {
   const perks = ['Full accounting suite'];
@@ -264,7 +263,7 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
             </Text>
           </View>
         ) : (
-          plans.map((p, i) => (
+          plans.map(p => (
             <TouchableOpacity
               key={p.key}
               style={[S.planCard, awaiting && S.planCardDisabled]}
@@ -272,7 +271,6 @@ const RenewSubscriptionScreen: React.FC<Props> = ({ navigation, route }) => {
               disabled={awaiting}
               onPress={() => choose(p.key)}
             >
-              <View style={[S.planStripe, { backgroundColor: PLAN_ACCENTS[i % PLAN_ACCENTS.length] }]} />
               <View style={{ flex: 1 }}>
                 <View style={S.planHeaderRow}>
                   <Text style={S.planName}>{p.durationMonths} months</Text>
@@ -349,7 +347,6 @@ const S = StyleSheet.create({
     borderRadius: 14, padding: 16, borderWidth: 1, borderColor: DS.border,
   },
   planCardDisabled: { opacity: 0.45 },
-  planStripe: { width: 4, alignSelf: 'stretch', borderRadius: 3 },
   planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   planName: { ...THEME.typography.h4, color: DS.text.h },
   planPrice: { ...THEME.typography.labelLg, color: DS.primary },

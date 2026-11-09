@@ -235,7 +235,7 @@ const AddDeliveryPersonnelScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <View style={{ marginTop: spacing.xl }}>
-        <CustomButton title="Create Account" onPress={handleCreatePersonnel} variant="primary" size="lg" fullWidth isLoading={isCreating} />
+        <CustomButton title="Create Account" onPress={handleCreatePersonnel} variant="primary" fullWidth isLoading={isCreating} />
       </View>
     </ScrollView>
   );

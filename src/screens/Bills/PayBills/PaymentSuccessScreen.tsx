@@ -22,7 +22,7 @@ import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../utils/theme';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
-import CustomButton from '../../../Custom-Components/CustomButton';
+import { ActionBar } from '../../../components/form/FormUI';
 import { ReportContainer } from '../../../components/reports/ReportUI';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
@@ -125,47 +125,32 @@ const PaymentSuccessScreen: React.FC = () => {
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
 
-      <View style={styles.actions}>
-        <View style={styles.actionSecondary}>
-          <CustomButton
-            title="Pay another"
-            onPress={() => navigation.replace('PayBills')}
-            variant="secondary"
-            size="sm"
-            fullWidth
-          />
-        </View>
-        <View style={styles.actionPrimary}>
-          {/* Back to where the task started: the bill if they came from one,
-              otherwise the bills list. Never a dead end.
+      {/* Back to where the task started: the bill if they came from one,
+          otherwise the bills list (or the payables summary). Never a dead end.
 
-              popTo, not replace. The user almost always arrives here from that
-              bill's own detail screen, so replace() built a SECOND BillDetail
-              on top of the first — Back then landed on a stale copy of the
-              same bill instead of the purchase order behind it. popTo unwinds
-              to the one already in the stack (refreshing its params), and adds
-              it if they paid from somewhere else.
+          popTo, not replace. The user almost always arrives here from that
+          bill's own detail screen, so replace() built a SECOND BillDetail on
+          top of the first — Back then landed on a stale copy of the same bill
+          instead of the purchase order behind it. popTo unwinds to the one
+          already in the stack (refreshing its params), and adds it if they
+          paid from somewhere else.
 
-              This still cannot return to a filled-in Pay Bills form and post
-              the payment twice: PayBills was replaced by this screen, so it is
-              no longer in the stack to pop back to. */}
-          {/* From the payables summary, Done goes back to it: PayBills was
-              replaced by this screen, so the summary is right below. */}
-          <CustomButton
-            title={billId ? 'View bill' : fromSummary ? 'Back to summary' : 'Done'}
-            onPress={() =>
-              billId
-                ? navigation.popTo('BillDetail', { billId })
-                : fromSummary
-                  ? navigation.goBack()
-                  : navigation.popTo('BillList')
-            }
-            variant="primary"
-            size="sm"
-            fullWidth
-          />
-        </View>
-      </View>
+          This still cannot return to a filled-in Pay Bills form and post the
+          payment twice: PayBills was replaced by this screen, so it is no
+          longer in the stack to pop back to. From the summary, the summary is
+          right below for the same reason. */}
+      <ActionBar
+        secondary={{ title: 'Pay another', onPress: () => navigation.replace('PayBills') }}
+        primary={{
+          title: billId ? 'View bill' : fromSummary ? 'Back to summary' : 'Done',
+          onPress: () =>
+            billId
+              ? navigation.popTo('BillDetail', { billId })
+              : fromSummary
+                ? navigation.goBack()
+                : navigation.popTo('BillList'),
+        }}
+      />
     </ReportContainer>
   );
 };
@@ -215,14 +200,4 @@ const styles = StyleSheet.create({
   billApplied: { ...THEME.typography.labelLg, color: colors.success, fontVariant: ['tabular-nums'] },
   settledNote: { ...THEME.typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
 
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    padding: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: THEME.colors.surface,
-  },
-  actionSecondary: { flex: 1 },
-  actionPrimary: { flex: 1.4 },
 });

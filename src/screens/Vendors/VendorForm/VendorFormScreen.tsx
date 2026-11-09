@@ -44,7 +44,7 @@ import { selectAccounts, fetchAccounts } from '../../ChartOfAccounts/COAList/coa
 import CustomInput from '../../../Custom-Components/CustomInput';
 import { ReportHeader, HEADER_NAVY } from '../../../components/reports/ReportUI';
 import CustomDropdown from '../../../Custom-Components/CustomDropdown';
-import CustomButton from '../../../Custom-Components/CustomButton';
+import { ActionBar } from '../../../components/form/FormUI';
 import { validateVendor, PAYMENT_TERMS_OPTIONS } from '../../../models/vendorModel';
 import { isPartyCodeError } from '../../../models/partyCodeModel';
 import { getNextVendorCodeAPI } from '../../../networks/purchases/vendorNetwork';
@@ -348,28 +348,10 @@ const VendorFormScreen: React.FC = () => {
         </ScrollView>
 
         {/* ── Sticky Action Bar ────────────────────── */}
-        <View style={styles.actionBar}>
-          <View style={styles.actionSecondary}>
-            <CustomButton
-              title="Cancel"
-              onPress={() => navigation.goBack()}
-              variant="secondary"
-              size="sm"
-              fullWidth
-            />
-          </View>
-          <View style={styles.actionPrimary}>
-            <CustomButton
-              title={isEditing ? 'Update Vendor' : 'Save Vendor'}
-              onPress={handleSave}
-              variant="primary"
-              size="sm"
-              fullWidth
-              isLoading={form.isSaving}
-              disabled={form.isSaving}
-            />
-          </View>
-        </View>
+        <ActionBar
+          secondary={{ title: 'Cancel', onPress: () => navigation.goBack(), disabled: form.isSaving }}
+          primary={{ title: isEditing ? 'Update Vendor' : 'Save Vendor', onPress: handleSave, isLoading: form.isSaving }}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -409,19 +391,6 @@ const styles = StyleSheet.create({
 
   rowFields: { flexDirection: 'row' },
 
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.xs,
-    ...shadows.xs,
-  },
-  actionSecondary: { flex: 1 },
-  actionPrimary: { flex: 1.4 }
 });
 
 export default VendorFormScreen;

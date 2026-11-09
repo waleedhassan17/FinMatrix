@@ -1,7 +1,9 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Shared transaction-list card
-//   • TxnCard  — left-status-bordered card: number + subtitle + status
-//                badge, an optional meta row, and a Total / secondary row.
+//   • TxnCard  — number + subtitle + status badge, an optional meta row, and
+//                a Total / secondary row. The status is the badge's colour and
+//                nothing else: a coloured stripe down the card's edge repeated
+//                it as decoration.
 // The filter tabs that used to live here are now the app-wide FilterTabs,
 // in components/shared/Tabs.tsx.
 // ═══════════════════════════════════════════════════════
@@ -50,9 +52,11 @@ export const TxnCard: React.FC<TxnCardProps> = ({
   onPress,
 }) => (
   <TouchableOpacity
-    style={[s.card, { borderLeftWidth: 4, borderLeftColor: statusColor }]}
+    style={s.card}
     activeOpacity={0.6}
     onPress={onPress}
+    accessibilityRole="button"
+    accessibilityLabel={[number, subtitle, statusLabel, `${primaryLabel} ${primaryValue}`, secondaryValue != null ? `${secondaryLabel} ${secondaryValue}` : null].filter(Boolean).join(', ')}
   >
     <View style={s.cardTop}>
       <View style={{ flex: 1, marginRight: spacing.xs }}>

@@ -236,7 +236,6 @@ const JoinCompanyScreen: React.FC<Props> = ({ navigation }) => {
                 title="Verify Code"
                 onPress={handleVerifyCode}
                 variant="primary"
-                size="lg"
                 fullWidth
                 isLoading={isLoading}
                 disabled={code.join('').length < 6}

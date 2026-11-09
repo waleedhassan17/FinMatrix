@@ -327,7 +327,6 @@ const DeliveryMonitorScreen: React.FC<Props> = ({ navigation }) => {
                   onPress={() => navigation.navigate('AdminDeliveryDetail', { deliveryId: delivery.id })}
                 >
                   <View style={styles.cardTop}>
-                    <View style={[styles.cardStatusStripe, { backgroundColor: statusColor }]} />
                     <View style={styles.cardMain}>
                       <View style={styles.cardRow}>
                         <Text style={styles.cardCustomer} numberOfLines={1}>{delivery.customerName}</Text>
@@ -595,7 +594,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden'
   },
   cardTop: { flexDirection: 'row' },
-  cardStatusStripe: { width: 4 },
   cardMain: { flex: 1, padding: 14 },
   cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   cardCustomer: { ...typography.labelLg, color: colors.textPrimary, flex: 1, marginRight: 8 },

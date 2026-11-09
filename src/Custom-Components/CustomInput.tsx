@@ -141,6 +141,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   input: {
+    // A web <input> will not shrink below its default width without this, so
+    // in a half-width column it overflowed and dragged the whole form sideways.
+    minWidth: 0,
     flex: 1,
     ...THEME.typography.bodyLg,
     color: colors.textPrimary,

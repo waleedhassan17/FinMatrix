@@ -6,10 +6,11 @@
 // ═══════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
+import { ActionBar, PrimaryButton } from '../../../components/form/FormUI';
 
 import { THEME } from '../../../utils/theme';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
@@ -95,10 +96,13 @@ const TaxLiabilityScreen: React.FC = () => {
               onChangeText={v => dispatch(setRange({ from: range.from, to: v }))}
             />
           </View>
-          <TouchableOpacity style={styles.calcBtn} onPress={handleCalculate} activeOpacity={0.85}>
-            <Feather name="refresh-cw" size={14} color={colors.neutral0} />
-            <Text style={styles.calcBtnText}>Calculate</Text>
-          </TouchableOpacity>
+          <View style={styles.calcBtn}>
+            <PrimaryButton
+              title="Calculate"
+              onPress={handleCalculate}
+              icon={<Feather name="refresh-cw" size={16} color={colors.neutral0} />}
+            />
+          </View>
         </Card>
 
         {isLoading && <LoadingBlock label="Computing liability…" />}
@@ -168,33 +172,18 @@ const TaxLiabilityScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* Record Payment CTA */}
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.recordBtn} onPress={handleRecordPayment} activeOpacity={0.85}>
-          <Feather name="credit-card" size={18} color={colors.neutral0} />
-          <Text style={styles.recordBtnText}>Record Tax Payment</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Record Payment — the shared bar */}
+      <ActionBar primary={{ title: 'Record Tax Payment', onPress: handleRecordPayment, icon: 'credit-card' }} />
     </ReportContainer>
   );
 };
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  scrollContent: { padding: THEME.spacing.md, gap: THEME.spacing.sm + 2, paddingBottom: 110 },
+  scrollContent: { padding: THEME.spacing.md, gap: THEME.spacing.sm + 2, paddingBottom: THEME.spacing.xl },
 
   rangeRow: { flexDirection: 'row', gap: THEME.spacing.sm },
-  calcBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: THEME.colors.primary,
-    borderRadius: THEME.radius.md,
-    paddingVertical: 11,
-    marginTop: THEME.spacing.sm + 2,
-  },
-  calcBtnText: { ...THEME.typography.labelLg, color: colors.neutral0 },
+  calcBtn: { marginTop: THEME.spacing.sm + 2 },
 
   tdName: { ...THEME.typography.labelMd,  color: THEME.colors.textPrimary },
   tdSub: { ...THEME.typography.labelSm, color: THEME.colors.textTertiary, marginTop: 1, letterSpacing: 0 },
@@ -213,28 +202,6 @@ const styles = StyleSheet.create({
   dueBannerOk: { backgroundColor: THEME.colors.successLight, borderColor: THEME.colors.success + '40' },
   dueText: { flex: 1, ...THEME.typography.bodySm, color: THEME.colors.warningHover, lineHeight: 18 },
 
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: THEME.colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: THEME.colors.border,
-    paddingHorizontal: THEME.spacing.lg,
-    paddingVertical: 14,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 14,
-  },
-  recordBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: THEME.colors.primary,
-    borderRadius: THEME.radius.lg,
-    height: 50,
-  },
-  recordBtnText: { ...THEME.typography.h5, color: colors.neutral0 }
 });
 
 export default TaxLiabilityScreen;

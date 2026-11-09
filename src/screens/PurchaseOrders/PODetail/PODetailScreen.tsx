@@ -68,8 +68,9 @@ import {
 import { upsertPurchaseOrder } from '../POList/poListSlice';
 import { PO_STATUS_COLORS, PO_STATUS_LABELS, formatPODate } from '../../../models/purchaseOrderModel';
 import { purchaseOrderSingleSerializer } from '../../../serializers/purchaseOrderSerializer';
-import CustomButton from '../../../Custom-Components/CustomButton';
-import { formatCurrency } from '../../../utils/formatters';
+import { ActionBar } from '../../../components/form/FormUI';
+import { DocLineRow, DocLinesHeader } from '../../../components/transactions/DocLineRow';
+import { formatCurrency, formatQty } from '../../../utils/formatters';
 import type { PurchaseOrderStatus } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
@@ -497,58 +498,33 @@ const PODetailScreen: React.FC = () => {
           ) : (
             <>
               <Text style={styles.sectionLabel}>Items</Text>
-              <View style={styles.tableHeader}>
-                <Text style={[styles.thText, { flex: 2 }]}>Item</Text>
-                <Text style={[styles.thText, styles.thRight, { flex: 0.6 }]}>Qty</Text>
-                {!isRequisition && (
-                  <Text style={[styles.thText, styles.thRight, { flex: 0.7 }]}>Recvd</Text>
-                )}
-                <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Rate</Text>
-                <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Amount</Text>
-              </View>
-              <View>
-                <Text style={styles.tdSub}>Amounts exclude tax</Text>
-              </View>
-              {po.lines.map((line, idx) => (
-                <View
+              <DocLinesHeader label="Item · amounts exclude tax" />
+              {po.lines.map(line => (
+                <DocLineRow
                   key={line.id}
-                  style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven]}
-                >
-                  <View style={{ flex: 2 }}>
-                    <Text style={styles.tdText} numberOfLines={1}>{nameForLine(line)}</Text>
-                    {!!line.description && (
-                      <Text style={styles.tdSub} numberOfLines={1}>{line.description}</Text>
-                    )}
-                    {line.taxRate > 0 && (
-                      <Text style={styles.tdSub}>+ tax {line.taxRate}%</Text>
-                    )}
-                  </View>
-                  <Text style={[styles.tdText, styles.tdRight, { flex: 0.6 }]}>{line.quantity}</Text>
-                  {!isRequisition && (
-                    <Text
-                      style={[
-                        styles.tdText,
-                        styles.tdRight,
-                        { flex: 0.7 },
-                        line.receivedQuantity >= line.quantity && styles.tdReceivedFull,
-                        line.receivedQuantity > 0 && line.receivedQuantity < line.quantity && styles.tdReceivedPartial,
-                      ]}
-                    >
-                      {line.receivedQuantity}
-                    </Text>
-                  )}
-                  <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>
-                    {formatCurrency(line.unitPrice, 'Rs ')}
-                  </Text>
-                  <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>
-                    {formatCurrency(line.amount, 'Rs ')}
-                  </Text>
-                </View>
+                  title={nameForLine(line)}
+                  amount={formatCurrency(line.amount, 'Rs ')}
+                  details={[
+                    line.description && line.description !== nameForLine(line) ? line.description : null,
+                    `${formatQty(line.quantity)} × ${formatCurrency(line.unitPrice, 'Rs ')}${line.taxRate > 0 ? ` · + ${line.taxRate}% tax` : ''}`,
+                  ]}
+                  footer={
+                    !isRequisition ? (
+                      <Text
+                        style={[
+                          styles.received,
+                          line.receivedQuantity >= line.quantity && styles.receivedFull,
+                          line.receivedQuantity > 0 && line.receivedQuantity < line.quantity && styles.receivedPartial,
+                        ]}
+                      >
+                        Received {formatQty(line.receivedQuantity)} of {formatQty(line.quantity)}
+                      </Text>
+                    ) : undefined
+                  }
+                />
               ))}
             </>
           )}
-
-          <View style={styles.divider} />
 
           {/* ── Totals ──────────────────────────── */}
           <View style={styles.totalsBlock}>
@@ -612,153 +588,57 @@ const PODetailScreen: React.FC = () => {
         <View style={{ height: spacing.xl * 3 }} />
       </ScrollView>
 
-      {/* ── Action Bar (matches Estimates / SO / Bills) ── */}
-      <View style={styles.actionBar}>
-        {receivingMode ? (
-          <>
-            <View style={styles.actionSecondary}>
-              <CustomButton
-                title="Cancel"
-                onPress={() => dispatch(exitReceivingMode())}
-                variant="secondary"
-                size="sm"
-                fullWidth
-                disabled={isReceiving}
-              />
-            </View>
-            <View style={styles.actionPrimary}>
-              <CustomButton
-                title="Save Received"
-                onPress={handleSaveReceive}
-                variant="primary"
-                size="sm"
-                fullWidth
-                isLoading={isReceiving}
-                disabled={isReceiving}
-              />
-            </View>
-          </>
-        ) : (
-          <>
-            {/* Draft: Edit + Send */}
-            {po.status === 'draft' && (
-              <>
-                {editCap.allowed && (
-                  <View style={styles.actionSecondary}>
-                    <CustomButton
-                      title="Edit"
-                      onPress={() => navigation.push('POForm', { poId: po.id })}
-                      variant="secondary"
-                      size="sm"
-                      fullWidth
-                    />
-                  </View>
-                )}
-                <View style={styles.actionPrimary}>
-                  <CustomButton
-                    title="Approve & Send"
-                    onPress={handleSend}
-                    variant="primary"
-                    size="sm"
-                    fullWidth
-                    isLoading={isUpdatingStatus}
-                    disabled={isUpdatingStatus}
-                  />
-                </View>
-              </>
-            )}
+      {/* ── Action Bar — the shared bar every document uses ──
+          Closing is final (handleClose asks first), so it sits behind More
+          with the other quieter actions; the next step is the primary.
 
-            {/* Sent / Partially received: Receive + Convert + Close */}
-            {canReceive && (
-              <>
-                {(canConvertToBill || isBilled) && (
-                  <View style={styles.actionSecondary}>
-                    <CustomButton
-                      title={canConvertToBill ? 'To Bill' : 'View Bill'}
-                      onPress={canConvertToBill ? handleConvertToBill : handleViewBill}
-                      variant="secondary"
-                      size="sm"
-                      fullWidth
-                      isLoading={isConverting}
-                      disabled={isConverting}
-                    />
-                  </View>
-                )}
-                <View style={styles.actionSecondary}>
-                  <CustomButton
-                    title="Close"
-                    onPress={handleClose}
-                    variant="secondary"
-                    size="sm"
-                    fullWidth
-                    disabled={isUpdatingStatus}
-                  />
-                </View>
-                <View style={styles.actionPrimary}>
-                  <CustomButton
-                    title="Receive Items"
-                    onPress={() => dispatch(enterReceivingMode())}
-                    variant="primary"
-                    size="sm"
-                    fullWidth
-                  />
-                </View>
-              </>
-            )}
-
-            {/* Fully received: Convert to Bill — or open the bill it became */}
-            {isFullyReceived && (
-              <>
-                <View style={styles.actionSecondary}>
-                  <CustomButton
-                    title="Close"
-                    onPress={handleClose}
-                    variant="secondary"
-                    size="sm"
-                    fullWidth
-                    disabled={isUpdatingStatus}
-                  />
-                </View>
-                <View style={styles.actionPrimary}>
-                  <CustomButton
-                    title={canConvertToBill ? 'Convert to Bill' : `View ${po.billNumber || 'Bill'}`}
-                    onPress={canConvertToBill ? handleConvertToBill : handleViewBill}
-                    variant="primary"
-                    size="sm"
-                    fullWidth
-                    isLoading={isConverting}
-                    disabled={isConverting}
-                  />
-                </View>
-              </>
-            )}
-
-            {/* Closed: read-only.
-
-                This used to be "View Bills" onto the whole BillList, which was
-                wrong twice over. A closed PO has exactly one bill and that is
-                what the user wants — the global list makes them hunt for it.
-                And navigate('BillList') PUSHES a second BillList even when one
-                is already in the stack (React Navigation 7 only merges params
-                when the target is the focused screen), so the trail filled up
-                with repeated list screens and Back stopped landing where the
-                user expected. popTo returns to the existing one. */}
-            {po.status === 'closed' && (
-              <View style={styles.actionPrimary}>
-                <CustomButton
-                  title={linkedBillId ? 'View Bill' : 'View Bills'}
-                  onPress={
-                    linkedBillId ? handleViewBill : () => navigation.popTo('BillList')
-                  }
-                  variant="primary"
-                  size="sm"
-                  fullWidth
-                />
-              </View>
-            )}
-          </>
-        )}
-      </View>
+          Closed: one way on, the bill it became. "View Bills" onto the whole
+          BillList used to make the user hunt for it, and navigate('BillList')
+          PUSHED a second list even when one was already in the stack — popTo
+          returns to the existing one. */}
+      {receivingMode ? (
+        <ActionBar
+          secondary={{ title: 'Cancel', onPress: () => dispatch(exitReceivingMode()), disabled: isReceiving }}
+          primary={{ title: 'Save Received', onPress: handleSaveReceive, isLoading: isReceiving, icon: 'check-circle' }}
+        />
+      ) : po.status === 'draft' ? (
+        <ActionBar
+          secondary={editCap.allowed ? { title: 'Edit', onPress: () => navigation.push('POForm', { poId: po.id }) } : undefined}
+          primary={{ title: 'Approve & Send', onPress: handleSend, isLoading: isUpdatingStatus, icon: 'send' }}
+        />
+      ) : canReceive ? (
+        <ActionBar
+          more={[{ label: 'Close order', icon: 'lock', destructive: true, confirm: false, onPress: handleClose }]}
+          moreDisabled={isUpdatingStatus || isConverting}
+          secondary={
+            canConvertToBill || isBilled
+              ? {
+                  title: canConvertToBill ? 'To Bill' : 'View Bill',
+                  onPress: canConvertToBill ? handleConvertToBill : handleViewBill,
+                  isLoading: isConverting,
+                }
+              : undefined
+          }
+          primary={{ title: 'Receive Items', onPress: () => dispatch(enterReceivingMode()), icon: 'package' }}
+        />
+      ) : isFullyReceived ? (
+        <ActionBar
+          more={[{ label: 'Close order', icon: 'lock', destructive: true, confirm: false, onPress: handleClose }]}
+          moreDisabled={isUpdatingStatus || isConverting}
+          primary={{
+            title: canConvertToBill ? 'Convert to Bill' : `View ${po.billNumber || 'Bill'}`,
+            onPress: canConvertToBill ? handleConvertToBill : handleViewBill,
+            isLoading: isConverting,
+          }}
+        />
+      ) : po.status === 'closed' ? (
+        <ActionBar
+          secondary={{
+            title: linkedBillId ? 'View Bill' : 'View Bills',
+            onPress: linkedBillId ? handleViewBill : () => navigation.popTo('BillList'),
+          }}
+        />
+      ) : null}
     </ReportContainer>
   );
 };
@@ -819,29 +699,14 @@ const styles = StyleSheet.create({
   sectionLabel: { ...THEME.form.sectionTitle, marginBottom: spacing.xxs },
   vendorName: { ...typography.labelLg, color: colors.textPrimary },
 
-  tableHeader: {
-    flexDirection: 'row',
-    paddingVertical: spacing.xs,
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.actionGreen,
-  },
-  thText: { ...typography.overline, color: colors.actionGreen },
-  thRight: { textAlign: 'right' },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  tableRowEven: { backgroundColor: colors.background },
   tdText: { ...typography.caption, color: colors.textPrimary },
-  tdSub: { ...typography.overline, textTransform: 'none', color: colors.textTertiary, marginTop: 1 },
+  tdSub: { ...typography.caption, color: colors.textTertiary, marginTop: 1 },
   // Figures align digit-for-digit down the column.
   tdRight: { textAlign: 'right', fontVariant: ['tabular-nums'] },
-  // labelSm keeps the 12px cell size while carrying the emphasis weight.
-  tdReceivedFull: { ...typography.labelSm, color: colors.success },
-  tdReceivedPartial: { ...typography.labelSm, color: colors.warning },
+  // Received N of M: quiet until something has actually come in.
+  received: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+  receivedFull: { ...typography.labelSm, color: colors.success },
+  receivedPartial: { ...typography.labelSm, color: colors.warning },
 
   // Receiving mode
   receivingRow: {
@@ -869,7 +734,8 @@ const styles = StyleSheet.create({
   },
   receivingMaxText: { ...typography.caption, color: colors.textTertiary, marginLeft: spacing.xxs },
 
-  totalsBlock: { marginLeft: 'auto', width: '65%' },
+  // The card's full width: at 65% a crore-sized figure ran into its label.
+  totalsBlock: { marginTop: spacing.xs },
   totalsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -893,19 +759,6 @@ const styles = StyleSheet.create({
 
   notesText: { ...typography.bodySm, color: colors.textSecondary },
 
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.xxs,
-    ...shadows.xs,
-  },
-  actionPrimary: { flex: 1.4 },
-  actionSecondary: { flex: 1 },
 });
 
 export default PODetailScreen;

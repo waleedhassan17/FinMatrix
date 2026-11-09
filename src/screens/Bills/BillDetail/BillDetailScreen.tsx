@@ -42,7 +42,8 @@ import {
 import { fetchBills, upsertBill, removeBill } from '../BillList/billListSlice';
 import { BILL_STATUS_COLORS, BILL_STATUS_LABELS } from '../../../models/billModel';
 import { billSingleSerializer } from '../../../serializers/billSerializer';
-import CustomButton from '../../../Custom-Components/CustomButton';
+import { ActionBar } from '../../../components/form/FormUI';
+import { DocLineRow, DocLinesHeader } from '../../../components/transactions/DocLineRow';
 import {
   ReportContainer,
   ReportHeader,
@@ -265,32 +266,15 @@ const BillDetailScreen: React.FC = () => {
           {/* ── Line Items Table ──────────────────── */}
           <Text style={styles.sectionLabel}>Items</Text>
 
-          <View style={styles.tableHeader}>
-            <Text style={[styles.thText, { flex: 1.2 }]}>Account</Text>
-            <Text style={[styles.thText, { flex: 1.5 }]}>Description</Text>
-            <Text style={[styles.thText, styles.thRight, { flex: 0.6 }]}>Tax</Text>
-            <Text style={[styles.thText, styles.thRight, { flex: 1 }]}>Amount</Text>
-          </View>
-
-          {bill.lines.map((line, idx) => (
-            <View
+          <DocLinesHeader label="Account" />
+          {bill.lines.map(line => (
+            <DocLineRow
               key={line.id}
-              style={[styles.tableRow, idx % 2 === 0 && styles.tableRowEven]}
-            >
-              <Text style={[styles.tdText, { flex: 1.2 }]} numberOfLines={1}>
-                {line.accountName}
-              </Text>
-              <Text style={[styles.tdText, { flex: 1.5 }]} numberOfLines={2}>
-                {line.description}
-              </Text>
-              <Text style={[styles.tdText, styles.tdRight, { flex: 0.6 }]}>{line.taxRate}%</Text>
-              <Text style={[styles.tdText, styles.tdRight, { flex: 1 }]}>
-                {formatCurrency(line.amount, 'Rs ')}
-              </Text>
-            </View>
+              title={line.accountName}
+              amount={formatCurrency(line.amount, 'Rs ')}
+              details={[line.description, `${line.taxRate}% tax`]}
+            />
           ))}
-
-          <View style={styles.divider} />
 
           {/* ── Totals ────────────────────────────── */}
           <View style={styles.totalsBlock}>
@@ -378,61 +362,29 @@ const BillDetailScreen: React.FC = () => {
 
       {/* ── Action Bar ──────────────────────────────
           Gated on the BALANCE, not just the status: a bill with nothing left
-          to pay must not keep offering Pay Bill / Edit / Delete. */}
-      <View style={styles.actionBar}>
-        {canEdit && (
-          <View style={styles.actionSecondary}>
-            <CustomButton
-              title="Edit"
-              onPress={() => navigation.push('BillForm', { billId: bill.id })}
-              variant="secondary"
-              size="sm"
-              fullWidth
-            />
-          </View>
-        )}
-
-        {canDelete && (
-          <View style={styles.actionSecondary}>
-            <CustomButton title="Delete" onPress={handleDelete} variant="secondary" size="sm" fullWidth />
-          </View>
-        )}
-
-        {canPay && (
-          <View style={styles.actionPrimary}>
-            <CustomButton
-              title="Pay Bill"
-              onPress={() => navigation.push('PayBills', { vendorId: bill.vendorId, billId: bill.id })}
-              variant="primary"
-              size="sm"
-              fullWidth
-            />
-          </View>
-        )}
-
-        {isSettled && (
-          <View style={styles.actionPrimary}>
-            <CustomButton title="View Payments" onPress={scrollToPayments} variant="primary" size="sm" fullWidth />
-          </View>
-        )}
-
-        {bill.status === 'void' && (
-          <View style={styles.actionPrimary}>
-            {/* popTo, not navigate: this is a BACK action. navigate() pushes a
-                second BillList on top even when one is already in the stack,
-                which left Back pointing at the voided bill the user had just
-                walked away from. popTo unwinds to the existing list, and adds
-                it if they never came through one. */}
-            <CustomButton
-              title="Back to Bills"
-              onPress={() => navigation.popTo('BillList')}
-              variant="secondary"
-              size="sm"
-              fullWidth
-            />
-          </View>
-        )}
-      </View>
+          to pay must not keep offering Pay Bill / Edit / Delete. Delete is
+          behind More (handleDelete asks first). A void bill gets no bar: the
+          old "Back to Bills" button repeated the header's back arrow. */}
+      {(canEdit || canDelete || canPay || isSettled) && (
+        <ActionBar
+          more={
+            canDelete
+              ? [{ label: 'Delete bill', icon: 'trash-2', destructive: true, confirm: false, onPress: handleDelete }]
+              : undefined
+          }
+          primary={
+            canPay
+              ? {
+                  title: 'Pay Bill',
+                  onPress: () => navigation.push('PayBills', { vendorId: bill.vendorId, billId: bill.id }),
+                }
+              : canEdit
+                ? { title: 'Edit', onPress: () => navigation.push('BillForm', { billId: bill.id }), icon: 'edit-2' }
+                : undefined
+          }
+          secondary={isSettled ? { title: 'View Payments', onPress: scrollToPayments } : undefined}
+        />
+      )}
     </ReportContainer>
   );
 };
@@ -502,27 +454,9 @@ const styles = StyleSheet.create({
   sectionLabel: { ...THEME.form.sectionTitle, marginBottom: spacing.xxs },
   vendorName: { ...typography.labelLg, color: colors.textPrimary },
 
-  tableHeader: {
-    flexDirection: 'row',
-    paddingVertical: spacing.xs,
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.actionGreen,
-  },
-  thText: { ...typography.overline, color: colors.actionGreen },
-  thRight: { textAlign: 'right' },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  tableRowEven: { backgroundColor: colors.background },
-  tdText: { ...typography.caption, color: colors.textPrimary },
-  // Figures align digit-for-digit down the column.
-  tdRight: { textAlign: 'right', fontVariant: ['tabular-nums'] },
 
-  totalsBlock: { marginLeft: 'auto', width: '65%' },
+  // The card's full width: at 65% a crore-sized figure ran into its label.
+  totalsBlock: { marginTop: spacing.xs },
   totalsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -567,19 +501,6 @@ const styles = StyleSheet.create({
   methodBadgeText: { ...typography.labelSm, color: colors.secondary },
   paymentRef: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xxs },
 
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.xxs,
-    ...shadows.xs,
-  },
-  actionPrimary: { flex: 1.4 },
-  actionSecondary: { flex: 1 },
 });
 
 export default BillDetailScreen;

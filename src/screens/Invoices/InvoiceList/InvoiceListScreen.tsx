@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Invoice List Screen
 // Filter tabs (All / Draft / Sent / Overdue / Paid) with
-// counts, search, summary bar, and colored status cards.
+// counts, search, the Outstanding / Overdue figures, and status cards.
 // Searched, filtered and paged by the server; the counts and
 // tiles are the server's, over every invoice the search matches.
 // ═══════════════════════════════════════════════════════
@@ -49,6 +49,7 @@ import {
   EmptyBlock,
   LoadingBlock,
   ErrorBlock,
+  FigureStrip,
 } from '../../../components/reports/ReportUI';
 import { TxnCard } from '../../../components/transactions/TxnListUI';
 import { FilterTabs, type TabItem } from '../../../components/shared/Tabs';
@@ -58,7 +59,7 @@ import type { Invoice } from '../../../types';
 import type { TransactionsStackParamList } from '../../../navigators/stacks/TransactionsStack';
 
 type Nav = NativeStackNavigationProp<TransactionsStackParamList>;
-const { colors, radius, shadows, spacing, typography } = THEME;
+const { colors, radius, spacing, typography } = THEME;
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Draft',
@@ -163,9 +164,9 @@ const InvoiceListScreen: React.FC = () => {
 
   // ── Summary values ──────────────────────────────
   // The server's figures; from what has loaded only with an older server.
-  const { totalOutstanding, overdueAmount, invoiceCount } = useMemo(() => {
+  const { totalOutstanding, overdueAmount } = useMemo(() => {
     if (summary) {
-      return { totalOutstanding: summary.outstanding, overdueAmount: summary.overdue, invoiceCount: summary.count };
+      return { totalOutstanding: summary.outstanding, overdueAmount: summary.overdue };
     }
     let outstanding = 0;
     let overdue = 0;
@@ -174,8 +175,10 @@ const InvoiceListScreen: React.FC = () => {
       if (i.status === 'sent' || i.status === 'partial' || i.status === 'overdue') outstanding += balance;
       if (i.status === 'overdue') overdue += balance;
     });
-    return { totalOutstanding: outstanding, overdueAmount: overdue, invoiceCount: invoices.length };
+    return { totalOutstanding: outstanding, overdueAmount: overdue };
   }, [summary, invoices]);
+  const openCount = (counts.sent ?? 0) + (counts.partial ?? 0) + (counts.overdue ?? 0);
+  const overdueCount = counts.overdue ?? 0;
 
   // FinMatrix Connect: WhatsApp ticks beside each invoice's status.
   const { enabled: connectEnabled } = useWhatsappConnect();
@@ -272,26 +275,28 @@ const InvoiceListScreen: React.FC = () => {
         }
       />
 
-      {/* Summary bar — hidden on first-run and during initial load */}
+      {/* Headline figures — one surface, the full amount, fitted to its
+          half of the card so a crore-sized figure never wraps or clips. No
+          count tile: the All tab already carries the count. Red only when
+          something is actually overdue. Hidden on first-run and initial load. */}
       {!initialLoading && !isFirstRun && (
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryMoney}>
-            {formatCurrency(totalOutstanding, 'Rs ')}
-          </Text>
-          <Text style={styles.summaryLabel}>Outstanding</Text>
+        <View style={styles.figures}>
+          <FigureStrip
+            items={[
+              {
+                label: 'Outstanding',
+                value: formatCurrency(totalOutstanding, 'Rs '),
+                caption: `${openCount} open invoice${openCount === 1 ? '' : 's'}`,
+              },
+              {
+                label: 'Overdue',
+                value: formatCurrency(overdueAmount, 'Rs '),
+                tone: overdueAmount > 0 ? 'danger' : 'default',
+                caption: overdueCount > 0 ? `${overdueCount} past due` : 'Nothing past due',
+              },
+            ]}
+          />
         </View>
-        <View style={styles.summaryCard}>
-          <Text style={[styles.summaryMoney, { color: colors.danger }]}>
-            {formatCurrency(overdueAmount, 'Rs ')}
-          </Text>
-          <Text style={styles.summaryLabel}>Overdue</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>{invoiceCount}</Text>
-          <Text style={styles.summaryLabel}>Total</Text>
-        </View>
-      </View>
       )}
 
       {/* Outside the isFirstRun gates above on purpose: a staff member's very
@@ -373,29 +378,8 @@ const InvoiceListScreen: React.FC = () => {
 // Scaffold, tabs and cards now come from ReportUI / TxnListUI; what remains
 // is the summary strip and the search field, which are specific to this screen.
 const styles = StyleSheet.create({
-  // ── Summary ────────────────────────────────────
-  summaryRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.xxs,
-    gap: spacing.xs,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    alignItems: 'center',
-    ...shadows.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  summaryValue: { ...typography.h3, color: colors.actionGreen },
-  // Money sits a step smaller than the plain count so a long figure fits.
-  summaryMoney: { ...typography.h5, color: colors.actionGreen, fontVariant: ['tabular-nums'] },
-  summaryLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  // ── Figures ────────────────────────────────────
+  figures: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs, paddingBottom: spacing.xxs },
 
   // ── Search ─────────────────────────────────────
   searchRow: { paddingHorizontal: spacing.xl, marginBottom: spacing.xs },

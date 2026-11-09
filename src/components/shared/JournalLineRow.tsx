@@ -1,21 +1,31 @@
 // ═══════════════════════════════════════════════════════
-// FinMatrix — Reusable Journal Line Row Component
+// FinMatrix — Journal line (one card per line)
 // ═══════════════════════════════════════════════════════
-// Mutual debit/credit exclusion: entering debit disables credit and vice versa.
+// The same structure as the web's JournalLineRow, built from the form kit so
+// every control is the standard 48px field:
+//
+//   Line N                                   [trash]
+//   Account          ▾
+//   Debit (Rs)        Credit (Rs)
+//   = 11 lakh 50 thousand
+//   Line note (optional)
+//
+// Mutual exclusion: a line is a debit OR a credit. Typing one side clears the
+// other, and the other side is disabled (greyed) — not coloured. A credit is not an
+// error, so it no longer lights up red; nor a debit green.
+//
+// It used to be a bordered box nested inside a bordered card, with the note,
+// debit and credit crammed into one row: the amounts got 90px each, so
+// 1,150,000 did not fit, and the inputs were hand-rolled at ~40px.
 
 import React, { useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
-import CustomDropdown from '../../Custom-Components/CustomDropdown';
+import { View, Text, StyleSheet } from 'react-native';
 import { THEME } from '../../utils/theme';
+import { AmountInput, FormDropdown, FormInput, IconButton } from '../form/FormUI';
+import { lakhCroreWords } from '../../utils/formatters';
+import { sanitizeAmount } from '../../models/journalDraftModel';
 
-// Design-system tokens (see src/theme/theme.ts).
-const { colors, spacing, radius, shadows } = THEME;
+const { colors, spacing, radius, typography } = THEME;
 
 interface AccountOption {
   label: string;
@@ -23,6 +33,8 @@ interface AccountOption {
 }
 
 interface JournalLineRowProps {
+  /** 0-based; shown as "Line N". */
+  index: number;
   accountId: string;
   description: string;
   debit: string;
@@ -39,6 +51,7 @@ interface JournalLineRowProps {
 }
 
 const JournalLineRow: React.FC<JournalLineRowProps> = ({
+  index,
   accountId,
   description,
   debit,
@@ -58,160 +71,111 @@ const JournalLineRow: React.FC<JournalLineRowProps> = ({
 
   const handleDebitChange = useCallback(
     (v: string) => {
-      // sanitize: digits + single decimal
-      const sanitized = v.replace(/[^0-9.]/g, '');
-      onDebitChange(sanitized);
-      // clear credit when debit entered
-      if (parseFloat(sanitized) > 0 && credit) {
-        onCreditChange('');
-      }
+      const next = sanitizeAmount(v);
+      onDebitChange(next);
+      if (parseFloat(next) > 0 && credit) onCreditChange('');
     },
     [onDebitChange, onCreditChange, credit],
   );
 
   const handleCreditChange = useCallback(
     (v: string) => {
-      const sanitized = v.replace(/[^0-9.]/g, '');
-      onCreditChange(sanitized);
-      // clear debit when credit entered
-      if (parseFloat(sanitized) > 0 && debit) {
-        onDebitChange('');
-      }
+      const next = sanitizeAmount(v);
+      onCreditChange(next);
+      if (parseFloat(next) > 0 && debit) onDebitChange('');
     },
     [onCreditChange, onDebitChange, debit],
   );
 
+  // Words for whichever side holds the amount — a missing or extra zero is
+  // caught here, before the entry posts.
+  const words = lakhCroreWords(hasDebit ? debit : hasCredit ? credit : '');
+
   return (
-    <View style={styles.container}>
-      {/* Account dropdown */}
-      <View style={styles.accountRow}>
-        <View style={styles.accountDropdown}>
-          <CustomDropdown
-            label="Account"
-            options={accountOptions}
-            value={accountId}
-            onChange={onAccountChange}
-            placeholder="Select account…"
-            error={accountError}
-            searchable
+    <View style={styles.card}>
+      <View style={styles.head}>
+        <Text style={styles.headText}>Line {index + 1}</Text>
+        {canDelete ? (
+          <IconButton
+            icon="trash-2"
+            size="sm"
+            tone="danger"
+            onPress={onDelete}
+            accessibilityLabel={`Remove line ${index + 1}`}
           />
-        </View>
-        {canDelete && (
-          <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
-            <Text style={styles.deleteBtnText}>✕</Text>
-          </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
-      {/* Description + amounts row */}
-      <View style={styles.fieldsRow}>
-        <View style={styles.descriptionField}>
-          <TextInput
-            style={styles.descInput}
-            value={description}
-            onChangeText={onDescriptionChange}
-            placeholder="Description"
-            placeholderTextColor={colors.textTertiary}
-          />
-        </View>
-        <View style={styles.amountField}>
-          <TextInput
-            style={[
-              styles.amountInput,
-              hasDebit && styles.debitHighlight,
-              hasCredit && styles.amountDisabled,
-            ]}
+      <FormDropdown
+        label="Account"
+        options={accountOptions}
+        value={accountId}
+        onChange={onAccountChange}
+        placeholder="Select account…"
+        error={accountError}
+        searchable
+      />
+
+      <View style={styles.amounts}>
+        <View style={styles.amount}>
+          <AmountInput
+            label="Debit (Rs)"
             value={debit}
             onChangeText={handleDebitChange}
-            placeholder="Debit"
-            placeholderTextColor={colors.textTertiary}
+            placeholder="0.00"
             keyboardType="decimal-pad"
-            editable={!hasCredit}
+            disabled={hasCredit}
+            textAlign="right"
           />
         </View>
-        <View style={styles.amountField}>
-          <TextInput
-            style={[
-              styles.amountInput,
-              hasCredit && styles.creditHighlight,
-              hasDebit && styles.amountDisabled,
-            ]}
+        <View style={styles.amount}>
+          <AmountInput
+            label="Credit (Rs)"
             value={credit}
             onChangeText={handleCreditChange}
-            placeholder="Credit"
-            placeholderTextColor={colors.textTertiary}
+            placeholder="0.00"
             keyboardType="decimal-pad"
-            editable={!hasDebit}
+            disabled={hasDebit}
+            textAlign="right"
           />
         </View>
       </View>
+      {words ? <Text style={styles.words}>= {words}</Text> : null}
+      {amountError ? <Text style={styles.error}>{amountError}</Text> : null}
 
-      {amountError && <Text style={styles.errorText}>{amountError}</Text>}
+      <FormInput
+        label="Line note (optional)"
+        value={description}
+        onChangeText={onDescriptionChange}
+        placeholder="What this line is for"
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    padding: spacing.xs,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.md,
+    paddingBottom: spacing.xs,
     marginBottom: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...THEME.shadows.xs,
   },
-  accountRow: {
+  head: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  accountDropdown: { flex: 1 },
-  deleteBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.danger + '14',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: spacing.xs,
-    marginTop: spacing.xl,
+    justifyContent: 'space-between',
+    minHeight: 32,
+    marginBottom: spacing.xs,
   },
-  deleteBtnText: {
-    ...THEME.typography.labelLg,
-    color: colors.danger,
-  },
-  fieldsRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  descriptionField: { flex: 1 },
-  descInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-    ...THEME.typography.bodyMd,
-    color: colors.textPrimary,
-  },
-  amountField: { width: 90 },
-  amountInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-    ...THEME.typography.bodyMd,
-    color: colors.textPrimary,
-    textAlign: 'right',
-  },
-  debitHighlight: { borderColor: colors.success, backgroundColor: colors.success + '08' },
-  creditHighlight: { borderColor: colors.danger, backgroundColor: colors.danger + '08' },
-  amountDisabled: { backgroundColor: colors.background, color: colors.textTertiary },
-  errorText: {
-    ...THEME.typography.caption,
-    color: colors.danger,
-    marginTop: spacing.xxs,
-  },
+  headText: { ...typography.labelMd, color: colors.textSecondary },
+  amounts: { flexDirection: 'row', gap: spacing.xs },
+  amount: { flex: 1 },
+  words: { ...typography.caption, color: colors.textSecondary, marginTop: -spacing.xxs, marginBottom: spacing.xs },
+  error: { ...typography.caption, color: colors.danger, marginTop: -spacing.xxs, marginBottom: spacing.xs },
 });
 
 export default React.memo(JournalLineRow);
