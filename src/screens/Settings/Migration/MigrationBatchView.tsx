@@ -104,6 +104,7 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
   const warnings = b.issues.warning;
   const rows = b.counts?.rows ?? {};
   const signedOff = !!b.signedOffAt;
+  const imported = b.status === 'committed' || b.status === 'closed';
 
   return (
     <View>
@@ -119,9 +120,11 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
           </View>
           <Text style={styles.readinessPct} testID="readiness">{b.readiness}%</Text>
         </View>
-        <Text style={styles.hint}>
-          Ready to import at 100%: every row decided, every match confirmed and every check passed.
-        </Text>
+        {!imported && (
+          <Text style={styles.hint}>
+            Ready to import at 100%: every row decided, every match confirmed and every check passed.
+          </Text>
+        )}
         {b.lastError ? <Text style={styles.error}>{b.lastError}</Text> : null}
       </SectionCard>
 
@@ -181,7 +184,7 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
 
       {/* Row counts */}
       {Object.keys(rows).length > 0 && (
-        <SectionCard title="What will come across" icon="list" style={styles.card}>
+        <SectionCard title={imported ? 'What came across' : 'What will come across'} icon="list" style={styles.card}>
           {Object.entries(rows).map(([entity, c]) => (
             <View key={entity} style={styles.countRow}>
               <Text style={styles.countName}>{ENTITY_LABEL[entity] ?? entity}</Text>

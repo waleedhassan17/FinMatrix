@@ -218,8 +218,10 @@ describe('MigrationBatchView', () => {
   });
 
   it('offers the certificate, Undo and Close after the import', () => {
-    const { button, h } = render({ batch: batch({ status: 'committed', step: 7, readiness: 100, committedAt: '2026-11-02T10:00:00Z' }) });
+    const { button, h, has } = render({ batch: batch({ status: 'committed', step: 7, readiness: 100, committedAt: '2026-11-02T10:00:00Z' }) });
     expect(button('Add files')).toBeUndefined();
+    expect(has('What came across')).toBe(true);
+    expect(has(/Ready to import at 100%/)).toBe(false);
     act(() => button('Undo migration').props.onPress());
     act(() => button('Close migration').props.onPress());
     act(() => button('Download certificate').props.onPress());
