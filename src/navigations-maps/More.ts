@@ -50,6 +50,9 @@ import CompanySwitcherScreen from '../screens/Settings/CompanySwitcher/CompanySw
 import GlobalSearchScreen from '../screens/GlobalSearch/GlobalSearchScreen';
 import WhatsAppConnectScreen from '../screens/Settings/WhatsAppConnect/WhatsAppConnectScreen';
 import FixContactsScreen from '../screens/Settings/WhatsAppConnect/FixContactsScreen';
+import BackupExportScreen from '../screens/Settings/BackupExport/BackupExportScreen';
+import MigrationListScreen from '../screens/Settings/Migration/MigrationListScreen';
+import MigrationBatchScreen from '../screens/Settings/Migration/MigrationBatchScreen';
 // BILLING-DISABLED BUILD: un-comment with the registrations at the bottom.
 // import RenewSubscriptionScreen from '../screens/Subscription/RenewSubscriptionScreen';
 // import SubscriptionPayScreen from '../screens/Subscription/SubscriptionPayScreen';
@@ -99,6 +102,10 @@ export const MoreRouteNames = {
   // FinMatrix Connect (WhatsApp)
   WhatsAppConnect: 'WhatsAppConnect',
   FixContacts: 'FixContacts',
+  // Data: company backup and the Migration Center (owner only)
+  BackupExport: 'BackupExport',
+  MigrationList: 'MigrationList',
+  MigrationBatch: 'MigrationBatch',
   // BILLING-DISABLED BUILD: un-comment with the registrations below and the
   // MoreStackParamList entries in navigators/stacks/MoreStack.tsx.
   // RenewSubscription: 'RenewSubscription',
@@ -158,6 +165,9 @@ export const MORE_ROUTES: IRoute[] = withSharedRecords([
   { title: MoreRouteNames.GlobalSearch, component: GlobalSearchScreen },
   { title: MoreRouteNames.WhatsAppConnect, component: WhatsAppConnectScreen },
   { title: MoreRouteNames.FixContacts, component: FixContactsScreen },
+  { title: MoreRouteNames.BackupExport, component: BackupExportScreen },
+  { title: MoreRouteNames.MigrationList, component: MigrationListScreen },
+  { title: MoreRouteNames.MigrationBatch, component: MigrationBatchScreen },
   // BILLING-DISABLED BUILD
   // { title: MoreRouteNames.RenewSubscription, component: RenewSubscriptionScreen },
   // { title: MoreRouteNames.SubscriptionPay, component: SubscriptionPayScreen },

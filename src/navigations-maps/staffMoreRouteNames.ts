@@ -99,4 +99,9 @@ export const STAFF_FORBIDDEN_ROUTES = [
   'BankReconciliationList',
   'BankReconciliation',
   'BankReconciliationDetail',
+  // The company backup holds every record, and a migration posts opening
+  // balances and closes the books before the cutover: both are the owner's.
+  'BackupExport',
+  'MigrationList',
+  'MigrationBatch',
 ] as const;
