@@ -79,7 +79,7 @@ const preview: CertificatePreview = {
   allPassed: true,
   checks: NINE.map(c => check(c)),
   spotChecks: [
-    { kind: 'customer', name: 'Ali Traders', documents: 2, sourceBalance: '1000.00', finmatrixBalance: '1000.00', matches: true },
+    { kind: 'customer', name: 'Ali Traders', documents: 2, asTyped: ['۵۰۰', 'Rs 500'], sourceBalance: '1000.00', finmatrixBalance: '1000.00', matches: true },
     { kind: 'vendor', name: 'Karachi Foods', documents: 1, sourceBalance: '500.00', finmatrixBalance: '500.00', matches: true },
   ],
   rejectedTotal: 0,
@@ -188,6 +188,12 @@ describe('MigrationBatchView', () => {
     const box = tree.root.findAll(n => n.props.accessibilityRole === 'checkbox' && n.props.testID === 'spot-1')[0];
     act(() => box.props.onPress());
     expect(h.onToggleSpot).toHaveBeenCalledWith(1);
+  });
+
+  it('shows each spot check\'s amounts exactly as typed', () => {
+    const { has } = render({ batch: batch({ status: 'ready', readiness: 100 }), preview });
+    expect(has('As typed: ۵۰۰ · Rs 500')).toBe(true);
+    expect(has(/all ten checks matched/)).toBe(true);
   });
 
   it('enables Import once signed off', () => {

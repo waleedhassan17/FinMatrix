@@ -196,7 +196,7 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
         </SectionCard>
       )}
 
-      {/* The nine checks */}
+      {/* The ten checks (SOURCE_READBACK first) */}
       {(b.checks?.length || canRunChecks(b)) && b.status !== 'committed' && b.status !== 'closed' && b.status !== 'rolled_back' ? (
         <SectionCard title="Reconciliation checks" subtitle="Every check must match to the rupee" icon="check-square" style={styles.card}>
           {(b.checks ?? []).map(c => (
@@ -231,7 +231,7 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
             <>
               <Text style={styles.text}>
                 {p.preview.allPassed
-                  ? 'A practice import posted everything and all nine checks matched. Nothing has been saved yet.'
+                  ? 'A practice import posted everything and all ten checks matched, every figure read the same two ways. Nothing has been saved yet.'
                   : 'The practice import found a difference. Nothing can be imported until every check matches.'}
               </Text>
               <View style={styles.inlineButton}>
@@ -247,6 +247,9 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
                         {s.documents} open {s.kind === 'customer' ? 'invoices' : 'bills'} · {money(s.finmatrixBalance)}
                         {s.matches ? '' : ` · your file says ${money(s.sourceBalance)}`}
                       </Text>
+                      {s.asTyped && s.asTyped.length > 0 ? (
+                        <Text style={styles.hint}>As typed: {s.asTyped.join(' · ')}</Text>
+                      ) : null}
                     </View>
                   ))}
                 </>

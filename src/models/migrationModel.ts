@@ -61,6 +61,8 @@ export interface SpotCheck {
   kind: 'customer' | 'vendor';
   name: string;
   documents: number;
+  /** Each open document's amount due exactly as typed in the file. */
+  asTyped?: string[];
   sourceBalance: string;
   finmatrixBalance: string;
   matches: boolean;

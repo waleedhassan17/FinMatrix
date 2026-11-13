@@ -80,6 +80,7 @@ describe('migrationNetwork', () => {
     expect(post).toHaveBeenCalledWith('/migrations/b1/sign-off', { confirmed: true, spotCheckDone: true });
     await commitMigrationAPI('b1');
     expect(post.mock.calls[1][0]).toBe('/migrations/b1/commit');
+    expect(post.mock.calls[1][2]).toEqual({ timeout: 180_000 });
   });
 
   it('downloads the certificate through the authenticated path', async () => {

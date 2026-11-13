@@ -38,11 +38,14 @@ export async function uploadMigrationFilesAPI(id: string, files: PickedFile[]): 
 
 export const listMigrationIssuesAPI = async (id: string): Promise<{ groups: IssueGroup[]; items: MigrationIssue[]; total: number }> =>
   call(() => api.get(`/migrations/${id}/issues`, { params: { limit: 100 } }));
-export const validateMigrationAPI = (id: string) => call<MigrationBatch>(() => api.post(`/migrations/${id}/validate`));
+/** Validate, dry-run, commit and undo run the whole import on the server. */
+const LONG_RUNNING = { timeout: 180_000 };
+
+export const validateMigrationAPI = (id: string) => call<MigrationBatch>(() => api.post(`/migrations/${id}/validate`, undefined, LONG_RUNNING));
 export const dryRunMigrationAPI = (id: string) => call<{ batch: MigrationBatch; certificate: CertificatePreview }>(() => api.post(`/migrations/${id}/dry-run`, undefined, { timeout: 180_000 }));
 export const signOffMigrationAPI = (id: string) => call<MigrationBatch>(() => api.post(`/migrations/${id}/sign-off`, { confirmed: true, spotCheckDone: true }));
 export const commitMigrationAPI = (id: string) => call<{ batch: MigrationBatch }>(() => api.post(`/migrations/${id}/commit`, undefined, { timeout: 180_000 }));
-export const rollbackMigrationAPI = (id: string) => call<{ batch: MigrationBatch }>(() => api.post(`/migrations/${id}/rollback`));
+export const rollbackMigrationAPI = (id: string) => call<{ batch: MigrationBatch }>(() => api.post(`/migrations/${id}/rollback`, undefined, LONG_RUNNING));
 export const closeMigrationAPI = (id: string) => call<MigrationBatch>(() => api.post(`/migrations/${id}/close`));
 export const downloadMigrationCertificateAPI = (id: string) =>
   downloadAndShareFile(`/migrations/${id}/certificate`, `migration-certificate-${id.slice(0, 8)}.pdf`, 'application/pdf');

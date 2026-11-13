@@ -20,6 +20,8 @@ export const MIGRATION_ERRORS_EN: Record<string, string> = {
   INVALID_VALUE: 'One of the values is not one we recognise.',
   MISSING_REQUIRED_VALUE: 'A required value is empty.',
   MAPPING_UNCONFIRMED: 'A match needs your confirmation.',
+  AMOUNT_READBACK_MISMATCH: 'An amount can be read two ways. Type it plainly on the web (for example 120000) so there is only one.',
+  DATE_READBACK_MISMATCH: 'A date can be read two ways. Type it as year-month-day on the web (for example 2026-06-30).',
   DUPLICATE_RECORD: 'A record appears twice. Merge the rows or skip one.',
   UNKNOWN_ACCOUNT: 'An account in your trial balance is not in your chart of accounts.',
   UNKNOWN_CUSTOMER: 'An invoice names a customer we cannot find.',
