@@ -88,7 +88,7 @@ describe('sales order PDF from the screen model', () => {
     expectedDate: null,
     status: 'partial',
     lines: [
-      { id: 'l1', itemId: 'sofa', description: 'Three-seater sofa', quantity: 2, quantityFulfilled: 1, unitPrice: 125000, taxRate: 0, lineTotal: 250000 },
+      { id: 'l1', itemId: 'sofa', description: 'Three-seater sofa', quantity: 2, quantityFulfilled: 1, quantityInvoiced: 0, toInvoice: 1, toShip: 1, unitPrice: 125000, taxRate: 0, lineTotal: 250000 },
     ],
     subtotal: 250000,
     discountType: 'none',
@@ -98,6 +98,12 @@ describe('sales order PDF from the screen model', () => {
     total: 250000,
     notes: '',
     invoiceId: null,
+    invoices: [],
+    nextInvoice: null,
+    totals: null,
+    actions: null,
+    deliveryId: null,
+    deliveryReference: null,
   };
 
   it('maps number, status and fulfilment, and shows the photo', () => {

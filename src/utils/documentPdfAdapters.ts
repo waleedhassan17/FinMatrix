@@ -26,6 +26,7 @@ const SALES_ORDER_STATUS: Record<SalesOrderModel['status'], SalesOrderStatus> = 
   partial: 'partially_fulfilled',
   fulfilled: 'fulfilled',
   invoiced: 'closed',
+  closed: 'closed',
   cancelled: 'closed',
 };
 

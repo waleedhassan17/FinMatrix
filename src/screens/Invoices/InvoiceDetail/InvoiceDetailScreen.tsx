@@ -477,6 +477,20 @@ const InvoiceDetailScreen: React.FC = () => {
             </View>
           </View>
 
+          {/* Raised from a sales order: one tap back to it (and the rest of
+              its shipments and invoices). */}
+          {!!invoice.salesOrderId && (
+            <TouchableOpacity
+              style={styles.sourceRow}
+              onPress={() => navigation.navigate('SalesOrderDetail', { salesOrderId: invoice.salesOrderId! })}
+              accessibilityRole="button"
+              accessibilityLabel={`Open sales order ${invoice.salesOrderNumber ?? ''}`}
+            >
+              <Text style={styles.metaKey}>From sales order</Text>
+              <Text style={styles.sourceLink}>{invoice.salesOrderNumber || 'View order'}</Text>
+            </TouchableOpacity>
+          )}
+
           <View style={styles.divider} />
 
           {/* ── Bill To ───────────────────────────── */}
@@ -713,6 +727,8 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'space-between' },
   metaCol: { alignItems: 'center', flex: 1 },
   metaKey: { ...typography.caption, color: colors.textTertiary, marginBottom: 2 },
+  sourceRow: { marginTop: spacing.sm, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sourceLink: { ...typography.labelMd, color: colors.primary },
   metaVal: { ...typography.labelMd, color: colors.textPrimary },
 
   // ── Bill To ────────────────────────────────────

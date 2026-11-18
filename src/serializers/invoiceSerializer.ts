@@ -68,6 +68,8 @@ export const mapInvoice = (raw: any): Invoice => ({
   total: toNum(raw.total),
   amountPaid: toNum(raw.amountPaid),
   notes: raw.notes ?? '',
+  salesOrderId: raw.salesOrderId ?? null,
+  salesOrderNumber: raw.salesOrderNumber ?? null,
   createdBy: raw.createdBy ?? '',
   createdAt: raw.createdAt ?? '',
   updatedAt: raw.updatedAt ?? '',

@@ -280,6 +280,9 @@ export interface Invoice {
   total: number;
   amountPaid: number;
   notes: string;
+  /** The sales order it bills shipments of, when raised from one (detail only). */
+  salesOrderId?: string | null;
+  salesOrderNumber?: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
