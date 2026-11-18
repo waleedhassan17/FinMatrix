@@ -45,6 +45,7 @@ const SalesOrderListScreen: React.FC = () => {
     { label: 'Partial', value: 'partial', count: counts.partial ?? 0 },
     { label: 'Fulfilled', value: 'fulfilled', count: counts.fulfilled ?? 0 },
     { label: 'Invoiced', value: 'invoiced', count: counts.invoiced ?? 0 },
+    { label: 'Closed', value: 'closed', count: counts.closed ?? 0 },
     { label: 'Cancelled', value: 'cancelled', count: counts.cancelled ?? 0 },
   ];
 
