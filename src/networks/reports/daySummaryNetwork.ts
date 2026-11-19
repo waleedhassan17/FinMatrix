@@ -21,6 +21,8 @@ export const getDayEntriesAPI = (params: {
   date: string;
   type?: DayEntryFilter;
   createdBy?: string | null;
+  /** Document number or party name. */
+  q?: string | null;
   page?: number;
   limit?: number;
 }): Promise<unknown> =>
@@ -28,6 +30,7 @@ export const getDayEntriesAPI = (params: {
     date: params.date,
     ...(params.type && params.type !== 'all' ? { type: params.type } : {}),
     ...(params.createdBy ? { createdBy: params.createdBy } : {}),
+    ...(params.q ? { q: params.q } : {}),
     page: params.page ?? 1,
     limit: params.limit ?? 50,
   });

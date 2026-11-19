@@ -36,6 +36,7 @@ import {
   ErrorBlock,
   EmptyBlock,
   reportContentStyle,
+  nearEnd,
 } from '../../../components/reports/ReportUI';
 import RankedBars from '../shared/RankedBars';
 import { useAdoptParam } from '../shared/useAdoptParam';
@@ -62,6 +63,7 @@ import {
   setDayCreatedBy,
   setDayDate,
   setDayFilter,
+  setDayQuery,
 } from './daySummarySlice';
 import DayHeadline from './DayHeadline';
 import { AttentionCard, DocumentGrid, MoneyCard, ProfitStrip, TeamCard } from './DayPanels';
@@ -104,9 +106,9 @@ const DaySummaryScreen: React.FC = () => {
     () =>
       Promise.all([
         dispatch(fetchDaySummary({ date: st.date, createdBy })),
-        dispatch(fetchDayEntries({ date: st.date, createdBy, filter: st.filter, page: 1 })),
+        dispatch(fetchDayEntries({ date: st.date, createdBy, filter: st.filter, query: st.query, page: 1 })),
       ]),
-    [dispatch, st.date, st.filter, createdBy],
+    [dispatch, st.date, st.filter, st.query, createdBy],
   );
 
   useEffect(() => {
@@ -116,8 +118,19 @@ const DaySummaryScreen: React.FC = () => {
 
   useEffect(() => {
     if (!ready(st.date)) return;
-    dispatch(fetchDayEntries({ date: st.date, createdBy, filter: st.filter, page: 1 }));
-  }, [dispatch, ready, st.date, st.filter, createdBy]);
+    dispatch(fetchDayEntries({ date: st.date, createdBy, filter: st.filter, query: st.query, page: 1 }));
+  }, [dispatch, ready, st.date, st.filter, st.query, createdBy]);
+
+  // The next page of the Day Book, when there is one and none is on its way.
+  // Scrolling to the bottom asks for it by itself, so a phone never needs a
+  // pager: the list simply carries on.
+  const loadMore = useCallback(() => {
+    if (st.entriesLoading || st.entriesLoadingMore || st.entries.length >= st.entriesTotal) return;
+    dispatch(
+      fetchDayEntries({ date: st.date, createdBy, filter: st.filter, query: st.query, page: st.entriesPage + 1 }),
+    );
+  }, [dispatch, st.date, st.filter, st.query, st.entries.length, st.entriesTotal, st.entriesPage, st.entriesLoading, st.entriesLoadingMore, createdBy]);
+  const onSearch = useCallback((q: string) => dispatch(setDayQuery(q)), [dispatch]);
 
   useEffect(() => {
     if (isOwner) dispatch(fetchDaySchedule());
@@ -197,6 +210,8 @@ const DaySummaryScreen: React.FC = () => {
         <ScrollView
           contentContainerStyle={reportContentStyle}
           showsVerticalScrollIndicator={false}
+          onScroll={nearEnd(loadMore)}
+          scrollEventThrottle={250}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
           }
@@ -329,10 +344,14 @@ const DaySummaryScreen: React.FC = () => {
                 loading={st.entriesLoading}
                 loadingMore={st.entriesLoadingMore}
                 error={st.entriesError}
-                onRetry={() => dispatch(fetchDayEntries({ date: st.date, createdBy, filter: st.filter, page: 1 }))}
-                onMore={() =>
-                  dispatch(fetchDayEntries({ date: st.date, createdBy, filter: st.filter, page: st.entriesPage + 1 }))
+                query={st.query}
+                onSearch={onSearch}
+                counted={st.entriesCounted}
+                excluded={st.entriesExcluded}
+                onRetry={() =>
+                  dispatch(fetchDayEntries({ date: st.date, createdBy, filter: st.filter, query: st.query, page: 1 }))
                 }
+                onMore={loadMore}
                 showBy={!ownOnly}
                 onOpen={open}
               />

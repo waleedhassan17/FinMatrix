@@ -5,13 +5,14 @@
 // draft, a void, a cancelled order) says so instead of disappearing: the
 // reader sees everything entered, and which of it counts.
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 import { THEME, statusStyle } from '../../../theme';
 import { SectionCard, LoadMoreFooter, ErrorBlock, ReportSkeleton } from '../../../components/reports/ReportUI';
 import { formatCurrency } from '../../../utils/formatters';
+import { compactMoney } from '../../../models/itemExplorerModel';
 import {
   KIND_META,
   dayShortLabel,
@@ -79,10 +80,58 @@ export const DayBookRow: React.FC<{
   );
 };
 
+/** How long typing pauses before the search runs. */
+const SEARCH_DELAY_MS = 300;
+
+/**
+ * The Day Book's search: typing is local, and the search runs once it
+ * pauses. A search changed elsewhere (a new day) replaces what is typed.
+ */
+const DayBookSearch: React.FC<{ query: string; onSearch: (q: string) => void }> = ({ query, onSearch }) => {
+  const [draft, setDraft] = useState(query);
+  const [seen, setSeen] = useState(query);
+  if (query !== seen) {
+    setSeen(query);
+    if (query !== draft.trim()) setDraft(query);
+  }
+  useEffect(() => {
+    const next = draft.trim();
+    if (next === query) return undefined;
+    const t = setTimeout(() => onSearch(next), SEARCH_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [draft, query, onSearch]);
+  return (
+    <View style={styles.search}>
+      <Feather name="search" size={15} color={colors.textTertiary} />
+      <TextInput
+        value={draft}
+        onChangeText={setDraft}
+        placeholder="Search number or party"
+        placeholderTextColor={colors.textTertiary}
+        style={styles.searchInput}
+        autoCorrect={false}
+        autoCapitalize="none"
+        returnKeyType="search"
+        accessibilityLabel="Search the Day Book by document number or party"
+      />
+      {draft ? (
+        <TouchableOpacity onPress={() => setDraft('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Clear search">
+          <Feather name="x-circle" size={15} color={colors.textTertiary} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+};
+
 const DayBookList: React.FC<{
   summary: DaySummary;
   filter: DayEntryFilter;
   onFilter: (f: DayEntryFilter) => void;
+  query: string;
+  onSearch: (q: string) => void;
+  /** What every matching row counts, and leaves out — not just those loaded. */
+  counted: number;
+  excluded: number;
   entries: DayEntry[];
   total: number;
   loading: boolean;
@@ -92,12 +141,32 @@ const DayBookList: React.FC<{
   onMore: () => void;
   showBy: boolean;
   onOpen: (target: DayEntryTarget) => void;
-}> = ({ summary, filter, onFilter, entries, total, loading, loadingMore, error, onRetry, onMore, showBy, onOpen }) => (
+}> = ({
+  summary,
+  filter,
+  onFilter,
+  query,
+  onSearch,
+  counted,
+  excluded,
+  entries,
+  total,
+  loading,
+  loadingMore,
+  error,
+  onRetry,
+  onMore,
+  showBy,
+  onOpen,
+}) => (
   <SectionCard
     title="Day Book"
     icon="book-open"
-    subtitle={`${filterLabel(filter)} · ${loading ? '…' : `${total} ${total === 1 ? 'entry' : 'entries'}`} · newest first`}
+    subtitle={`${filterLabel(filter)}${query ? ` matching “${query}”` : ''} · ${
+      loading ? '…' : `${total.toLocaleString('en-US')} ${total === 1 ? 'entry' : 'entries'}`
+    } · newest first`}
   >
+    <DayBookSearch query={query} onSearch={onSearch} />
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
       {dayBookChips(summary, filter).map(c => {
         const on = c.filter === filter;
@@ -113,7 +182,7 @@ const DayBookList: React.FC<{
           >
             <Text style={[styles.chipText, on && styles.chipTextOn]}>{c.label}</Text>
             {c.count !== null ? (
-              <Text style={[styles.chipCount, on && styles.chipTextOn]}>{c.count}</Text>
+              <Text style={[styles.chipCount, on && styles.chipTextOn]}>{c.count.toLocaleString('en-US')}</Text>
             ) : null}
           </TouchableOpacity>
         );
@@ -124,9 +193,19 @@ const DayBookList: React.FC<{
     ) : error ? (
       <ErrorBlock message={error} onRetry={onRetry} />
     ) : entries.length === 0 ? (
-      <Text style={styles.empty}>Nothing here for this day.</Text>
+      <Text style={styles.empty}>{query ? `No entries match “${query}”.` : 'Nothing here for this day.'}</Text>
     ) : (
       <>
+        <Text style={styles.totals}>
+          {filter === 'voided' ? (
+            `${formatCurrency(excluded)} voided or deleted`
+          ) : (
+            <>
+              <Text style={styles.totalsStrong}>{formatCurrency(counted)}</Text> counted
+              {excluded > 0 ? ` · ${compactMoney(excluded)} not counted` : ''}
+            </>
+          )}
+        </Text>
         {entries.map(e => (
           <DayBookRow key={`${e.kind}-${e.id}-${e.createdAt}`} entry={e} showBy={showBy} voids={filter === 'voided'} onOpen={onOpen} />
         ))}
@@ -165,6 +244,21 @@ const styles = StyleSheet.create({
   badge: { borderRadius: radius.sm, paddingHorizontal: spacing.xs, paddingVertical: 2, marginLeft: 'auto' },
   badgeText: { ...typography.labelSm },
   empty: { ...typography.bodySm, color: colors.textTertiary, paddingVertical: spacing.sm, textAlign: 'center' },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    height: 40,
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  searchInput: { flex: 1, ...typography.bodyMd, color: colors.textPrimary, paddingVertical: 0 },
+  totals: { ...typography.caption, color: colors.textSecondary, paddingTop: spacing.xs },
+  totalsStrong: { ...typography.labelSm, color: colors.textPrimary },
   chips: { gap: spacing.xs, paddingBottom: spacing.xs },
   chip: {
     flexDirection: 'row',

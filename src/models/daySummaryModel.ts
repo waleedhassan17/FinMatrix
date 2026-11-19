@@ -132,10 +132,19 @@ export interface DayEntry {
 export interface DayEntriesPage {
   date: string;
   filter: DayEntryFilter;
+  /** The search applied, or null. */
+  q: string | null;
+  /** This page's rows. */
   items: DayEntry[];
+  /** Rows matching the filter and search, across every page. */
   total: number;
+  /** Their amounts the day's totals count, across every page. */
+  countedTotal: number;
+  /** Their amounts the totals leave out (drafts, voids, cancelled). */
+  excludedTotal: number;
   page: number;
   limit: number;
+  pages: number;
 }
 
 export interface DaySummarySchedule {
