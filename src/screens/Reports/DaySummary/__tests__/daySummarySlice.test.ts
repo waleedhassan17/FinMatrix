@@ -5,9 +5,17 @@ jest.mock('../../../../networks/network/apiHelpers', () => ({
   extractErrorMessage: (e: { message?: string }) => e?.message ?? 'error',
 }));
 
-import { daySummarySlice, fetchDaySummary, setDayDate, setDayFilter, setDayCreatedBy } from '../daySummarySlice';
-import { daySummarySerializer } from '../../../../serializers/daySummarySerializer';
-import { daySummaryOwner } from '../__fixtures__/daySummary';
+import {
+  daySummarySlice,
+  fetchDayEntries,
+  fetchDaySummary,
+  setDayCreatedBy,
+  setDayDate,
+  setDayFilter,
+  setDayQuery,
+} from '../daySummarySlice';
+import { dayEntriesSerializer, daySummarySerializer } from '../../../../serializers/daySummarySerializer';
+import { dayEntriesPage, daySummaryOwner } from '../__fixtures__/daySummary';
 
 const reducer = daySummarySlice.reducer;
 const init = () => reducer(undefined, { type: '@@init' });
@@ -54,5 +62,41 @@ describe('daySummarySlice', () => {
     expect(s.isCustomDate).toBe(true);
     const back = reducer(s, daySummarySlice.actions.refreshDayDate());
     expect(back.date).toBe('2026-11-01');
+  });
+
+  const entriesFulfilled = (arg: { date: string; query: string; page: number }) => ({
+    type: fetchDayEntries.fulfilled.type,
+    payload: dayEntriesSerializer({ ...dayEntriesPage, total: 120, countedTotal: 98000, excludedTotal: 450 }),
+    meta: {
+      arg: { createdBy: null as string | null, filter: 'all' as const, ...arg },
+      requestId: 'r',
+      requestStatus: 'fulfilled' as const,
+    },
+  });
+
+  it('keeps the whole view’s totals and adds a next page to the list', () => {
+    let s = reducer(init(), setDayDate('2026-11-18'));
+    s = reducer(s, entriesFulfilled({ date: '2026-11-18', query: '', page: 1 }));
+    expect(s.entries).toHaveLength(2);
+    expect([s.entriesTotal, s.entriesCounted, s.entriesExcluded]).toEqual([120, 98000, 450]);
+    s = reducer(s, entriesFulfilled({ date: '2026-11-18', query: '', page: 2 }));
+    expect(s.entries).toHaveLength(4);
+    expect(s.entriesPage).toBe(2);
+  });
+
+  it('drops a Day Book page for a search the user has since changed', () => {
+    let s = reducer(init(), setDayDate('2026-11-18'));
+    s = reducer(s, setDayQuery('  INV-0417 '));
+    expect(s.query).toBe('INV-0417');
+    s = reducer(s, entriesFulfilled({ date: '2026-11-18', query: '', page: 1 }));
+    expect(s.entries).toHaveLength(0);
+    s = reducer(s, entriesFulfilled({ date: '2026-11-18', query: 'INV-0417', page: 1 }));
+    expect(s.entries).toHaveLength(2);
+  });
+
+  it('a new day clears the search', () => {
+    let s = reducer(init(), setDayQuery('Ali'));
+    s = reducer(s, setDayDate('2026-11-17'));
+    expect(s.query).toBe('');
   });
 });

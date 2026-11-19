@@ -179,8 +179,12 @@ export const dayEntriesSerializer = (payload: unknown): DayEntriesPage => {
         deleted: e.deleted === true,
       })),
     total: int(r.total),
+    countedTotal: money(r.countedTotal),
+    excludedTotal: money(r.excludedTotal),
+    q: strOrNull(r.q),
     page: int(r.page) || 1,
     limit: int(r.limit) || 50,
+    pages: int(r.pages),
   };
 };
 

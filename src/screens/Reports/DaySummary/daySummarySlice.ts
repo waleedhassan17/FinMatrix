@@ -31,6 +31,8 @@ interface DaySummaryState {
   createdBy: string | null;
   compare: CompareKey;
   filter: DayEntryFilter;
+  /** The Day Book search (document number or party). */
+  query: string;
 
   summary: DaySummary | null;
   isLoading: boolean;
@@ -39,6 +41,9 @@ interface DaySummaryState {
   entries: DayEntry[];
   entriesTotal: number;
   entriesPage: number;
+  /** What the whole view (every page) counts, and leaves out. */
+  entriesCounted: number;
+  entriesExcluded: number;
   entriesLoading: boolean;
   entriesLoadingMore: boolean;
   entriesError: string;
@@ -59,12 +64,15 @@ const initialState: DaySummaryState = {
   createdBy: null,
   compare: 'yesterday',
   filter: 'all',
+  query: '',
   summary: null,
   isLoading: false,
   error: '',
   entries: [],
   entriesTotal: 0,
   entriesPage: 0,
+  entriesCounted: 0,
+  entriesExcluded: 0,
   entriesLoading: false,
   entriesLoadingMore: false,
   entriesError: '',
@@ -77,7 +85,7 @@ const initialState: DaySummaryState = {
 };
 
 type SummaryArg = { date: string; createdBy: string | null };
-type EntriesArg = { date: string; createdBy: string | null; filter: DayEntryFilter; page: number };
+type EntriesArg = { date: string; createdBy: string | null; filter: DayEntryFilter; query: string; page: number };
 
 export const daySummarySlice = createAppSlice({
   name: 'daySummary',
@@ -86,8 +94,9 @@ export const daySummarySlice = createAppSlice({
     setDayDate: create.reducer((state, action: PayloadAction<string>) => {
       state.date = action.payload;
       state.isCustomDate = action.payload !== toIsoDate(new Date());
-      // A filter chosen on one day means nothing on the next.
+      // A filter or search chosen on one day means nothing on the next.
       state.filter = 'all';
+      state.query = '';
     }),
     /**
      * Back to today unless the user chose a day. initialState is evaluated
@@ -102,6 +111,7 @@ export const daySummarySlice = createAppSlice({
       state.date = action.payload;
       state.isCustomDate = action.payload !== toIsoDate(new Date());
       state.filter = 'all';
+      state.query = '';
     }),
     setDayFilter: create.reducer((state, action: PayloadAction<DayEntryFilter>) => {
       state.filter = action.payload;
@@ -112,6 +122,9 @@ export const daySummarySlice = createAppSlice({
     }),
     setDayCompare: create.reducer((state, action: PayloadAction<CompareKey>) => {
       state.compare = action.payload;
+    }),
+    setDayQuery: create.reducer((state, action: PayloadAction<string>) => {
+      state.query = action.payload.trim().slice(0, 100);
     }),
 
     fetchDaySummary: create.asyncThunk(
@@ -143,6 +156,7 @@ export const daySummarySlice = createAppSlice({
             date: arg.date,
             type: arg.filter,
             createdBy: arg.createdBy,
+            q: arg.query,
             page: arg.page,
             limit: DAY_BOOK_PAGE,
           }),
@@ -155,12 +169,22 @@ export const daySummarySlice = createAppSlice({
         },
         fulfilled: (state, action) => {
           const a = action.meta.arg;
-          if (a.date !== state.date || a.filter !== state.filter || a.createdBy !== state.createdBy) return;
+          // An answer for a view the user has left never replaces the one on screen.
+          if (
+            a.date !== state.date ||
+            a.filter !== state.filter ||
+            a.createdBy !== state.createdBy ||
+            a.query !== state.query
+          ) {
+            return;
+          }
           state.entriesLoading = false;
           state.entriesLoadingMore = false;
           state.entries = a.page > 1 ? [...state.entries, ...action.payload.items] : action.payload.items;
           state.entriesTotal = action.payload.total;
           state.entriesPage = a.page;
+          state.entriesCounted = action.payload.countedTotal;
+          state.entriesExcluded = action.payload.excludedTotal;
         },
         rejected: (state, action) => {
           state.entriesLoading = false;
@@ -224,6 +248,7 @@ export const {
   setDayFilter,
   setDayCreatedBy,
   setDayCompare,
+  setDayQuery,
   fetchDaySummary,
   fetchDayEntries,
   fetchDayToday,
