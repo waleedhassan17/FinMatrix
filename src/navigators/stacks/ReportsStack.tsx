@@ -55,6 +55,7 @@ export type ReportsStackParamList = {
   };
   AnalyticsDashboard: undefined;
   DeliveryDailyReport: undefined;
+  DaySummary: { date?: string } | undefined;
   DeliveryPerformance: undefined;
 } & SharedRecordParamList;
 

@@ -18,6 +18,8 @@ import AdminDeliveryDetailScreen from '../screens/Delivery/Admin/AdminDeliveryDe
 import InventoryApprovalScreen from '../screens/Delivery/Admin/InventoryApproval/InventoryApprovalScreen';
 import GlobalSearchScreen from '../screens/GlobalSearch/GlobalSearchScreen';
 import NotificationsScreen from '../screens/Notifications/NotificationsScreen';
+// The day at a glance — the dashboard's Today card and the digest notification open it.
+import DaySummaryScreen from '../screens/Reports/DaySummary/DaySummaryScreen';
 
 // ── First-run setup checklist destinations (FinMatrixGuide §5.7) ──
 // These screens are ALSO registered in their own feature stacks; they are
@@ -159,6 +161,7 @@ export const DashboardRouteNames = {
   SalesOrderForm: 'SalesOrderForm',
   POForm: 'POForm',
   BillForm: 'BillForm',
+  DaySummary: 'DaySummary',
 } as const;
 
 export type DashboardRouteName = typeof DashboardRouteNames[keyof typeof DashboardRouteNames];
@@ -176,6 +179,7 @@ export const DASHBOARD_ROUTES: IRoute[] = withSharedRecords([
   { title: DashboardRouteNames.InventoryApproval, component: InventoryApprovalScreen },
   { title: DashboardRouteNames.GlobalSearch, component: GlobalSearchScreen },
   { title: DashboardRouteNames.Notifications, component: NotificationsScreen },
+  { title: DashboardRouteNames.DaySummary, component: DaySummaryScreen },
   // setup checklist — see the import block above for why these are duplicated
   { title: DashboardRouteNames.OpeningBalance, component: OpeningBalanceScreen },
   { title: DashboardRouteNames.JournalEntryForm, component: GeneralJournalFormScreen },

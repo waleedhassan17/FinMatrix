@@ -23,6 +23,7 @@ import AnalyticsDashboardScreen from '../screens/Reports/AnalyticsDashboard/Anal
 import AccountRegisterScreen from '../screens/Reports/AccountRegister/AccountRegisterScreen';
 import CashFlowLineScreen from '../screens/Reports/CashFlowLine/CashFlowLineScreen';
 import DeliveryDailyReportScreen from '../screens/Reports/DeliveryDailyReport/DeliveryDailyReportScreen';
+import DaySummaryScreen from '../screens/Reports/DaySummary/DaySummaryScreen';
 import DeliveryPerformanceScreen from '../screens/Reports/DeliveryPerformance/DeliveryPerformanceScreen';
 
 export const ReportsRouteNames = {
@@ -43,6 +44,7 @@ export const ReportsRouteNames = {
   AccountRegister: 'AccountRegister',
   CashFlowLine: 'CashFlowLine',
   DeliveryDailyReport: 'DeliveryDailyReport',
+  DaySummary: 'DaySummary',
   DeliveryPerformance: 'DeliveryPerformance',
 } as const;
 
@@ -66,5 +68,6 @@ export const REPORTS_ROUTES: IRoute[] = withSharedRecords([
   { title: ReportsRouteNames.AccountRegister, component: AccountRegisterScreen },
   { title: ReportsRouteNames.CashFlowLine, component: CashFlowLineScreen },
   { title: ReportsRouteNames.DeliveryDailyReport, component: DeliveryDailyReportScreen },
+  { title: ReportsRouteNames.DaySummary, component: DaySummaryScreen },
   { title: ReportsRouteNames.DeliveryPerformance, component: DeliveryPerformanceScreen },
 ]);

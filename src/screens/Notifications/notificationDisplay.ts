@@ -16,7 +16,8 @@ export type NotificationTarget =
   | { screen: 'InventoryApproval' }
   | { screen: 'DeliveryMonitor' }
   | { screen: 'AdminDeliveryDetail'; params: { deliveryId: string } }
-  | { screen: 'DeliveryPersonnelList' };
+  | { screen: 'DeliveryPersonnelList' }
+  | { screen: 'DaySummary'; params: { date?: string } };
 
 const idOf = (data: Record<string, unknown>, key: string): string | null => {
   const v = data[key];
@@ -28,15 +29,19 @@ const idOf = (data: Record<string, unknown>, key: string): string | null => {
  * models/notificationTarget.ts). The server's `data.route` names screens from
  * several stacks (a rider's DPHistory, for one), so it is not trusted.
  *
- * Every current target is a delivery screen, so none is offered when the
- * company cannot see deliveries. The subscription notices have no screen in
- * this build because the billing screens are switched off, so they stay
- * readable but are not links.
+ * The delivery targets are offered only when the company can see deliveries.
+ * The end-of-day summary opens the day it covers, on every plan. The
+ * subscription notices have no screen in this build because the billing
+ * screens are switched off, so they stay readable but are not links.
  */
 export function notificationTarget(
   n: Pick<AppNotification, 'type' | 'data'>,
   opts: { showDelivery: boolean },
 ): NotificationTarget | null {
+  if (n.type === 'day_summary') {
+    const date = idOf(n.data, 'date');
+    return { screen: 'DaySummary', params: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? { date } : {} };
+  }
   if (!opts.showDelivery) return null;
   switch (n.type) {
     case 'inventory_approvals':

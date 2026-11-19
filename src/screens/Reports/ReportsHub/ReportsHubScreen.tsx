@@ -22,6 +22,7 @@ type ReportsNav = NativeStackNavigationProp<ReportsStackParamList>;
 // One icon per report, so a report row has the same anatomy as a row on the
 // Transactions and More hubs. Keyed by the hub item's key.
 const REPORT_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
+  'day-summary': 'sun',
   pl: 'trending-up',
   bs: 'layers',
   tb: 'columns',
