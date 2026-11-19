@@ -35,7 +35,7 @@ import React from 'react';
 import { Text } from 'react-native';
 import renderer, { act } from 'react-test-renderer';
 import { MigrationBatchView, type MigrationBatchViewProps } from '../MigrationBatchView';
-import type { CertificatePreview, MigrationBatch, MigrationCheck } from '../../../../models/migrationModel';
+import type { CertificatePreview, MigrationBatch, MigrationCheck, MigrationUploadView } from '../../../../models/migrationModel';
 
 const check = (code: string, passed = true): MigrationCheck => ({
   code,
@@ -193,7 +193,7 @@ describe('MigrationBatchView', () => {
   it('shows each spot check\'s amounts exactly as typed', () => {
     const { has } = render({ batch: batch({ status: 'ready', readiness: 100 }), preview });
     expect(has('As typed: ۵۰۰ · Rs 500')).toBe(true);
-    expect(has(/all ten checks matched/)).toBe(true);
+    expect(has(/all eleven checks matched/)).toBe(true);
   });
 
   it('enables Import once signed off', () => {
@@ -247,5 +247,64 @@ describe('MigrationBatchView', () => {
     const { has, button } = render({ batch: batch({ status: 'rolled_back', step: 7, rolledBackAt: '2026-11-03T10:00:00Z' }) });
     expect(has('Undone')).toBe(true);
     expect(button('Import')).toBeUndefined();
+  });
+
+  it('shows a backup on its way, with Pause, and Resume once paused', () => {
+    const onPauseUpload = jest.fn();
+    const onResumeUpload = jest.fn();
+    const sending = { name: 'FAROOQ.ptb', sent: 100 * 1024 * 1024, total: 253.6 * 1024 * 1024, paused: false, error: null as string | null };
+    const live = render({ batch: batch({ status: 'uploaded', sourceSystem: 'peachtree' }), sending, onPauseUpload, onResumeUpload });
+    expect(live.has(/100\.0 MB of 253\.6 MB · 39%/)).toBe(true);
+    expect(live.has(/Keep FinMatrix open/)).toBe(true);
+    act(() => live.button('Pause').props.onPress());
+    expect(onPauseUpload).toHaveBeenCalled();
+    // Add files waits while it is being sent.
+    expect(live.button('Add files').props.disabled).toBe(true);
+    const paused = render({ batch: batch({ status: 'uploaded' }), sending: { ...sending, paused: true, error: 'Network error.' }, onResumeUpload });
+    expect(paused.has(/Network error\. Tap Resume/)).toBe(true);
+    act(() => paused.button('Resume').props.onPress());
+    expect(onResumeUpload).toHaveBeenCalled();
+  });
+
+  it('shows the server reading the backup, and why one could not be read', () => {
+    const upload: Omit<MigrationUploadView, 'status' | 'progress'> = { id: 'u1', name: 'FAROOQ.ptb', size: 253618655, fileId: null, updatedAt: '', errorCode: null, error: null };
+    const reading = render({ batch: batch({ status: 'uploaded', uploads: [{ ...upload, status: 'reading', progress: { stage: 'reading', detail: 'JrnlRow', done: 1, total: 2 } }] }) });
+    expect(reading.has(/Reading your Peachtree backup — FAROOQ\.ptb/)).toBe(true);
+    expect(reading.has(/Reading Peachtree's books — JrnlRow, 50%/)).toBe(true);
+    const failed = render({ batch: batch({ status: 'uploaded', uploads: [{ ...upload, status: 'failed', progress: null, errorCode: 'MIGRATION_PTB_TABLE_MISSING', error: 'JRNLROW.DAT is missing.' }] }) });
+    expect(failed.has('FAROOQ.ptb could not be read')).toBe(true);
+    expect(failed.has('JRNLROW.DAT is missing.')).toBe(true);
+  });
+
+  it('offers to discard an upload that did not finish', () => {
+    const onDiscardUpload = jest.fn();
+    const r = render({
+      batch: batch({ status: 'uploaded', uploads: [{ id: 'u9', name: 'FAROOQ.ptb', size: 253618655, status: 'receiving', progress: null, errorCode: null, error: null, fileId: null, updatedAt: '' }] }),
+      onDiscardUpload,
+    });
+    expect(r.has(/did not finish uploading/)).toBe(true);
+    act(() => r.button('Discard it').props.onPress());
+    expect(onDiscardUpload).toHaveBeenCalledWith('u9');
+  });
+
+  it('lists what Peachtree must provide, and what each report is', () => {
+    const r = render({
+      batch: batch({
+        status: 'uploaded',
+        sourceSystem: 'peachtree',
+        cutoverDate: '2026-10-06',
+        files: [
+          { id: 'f1', originalName: 'FAROOQ.ptb', sizeBytes: 253618655, kind: 'ptb', detected: [] },
+          { id: 'f2', originalName: 'TB.xlsx', sizeBytes: 9000, kind: 'xlsx', detected: [{ sheet: 'TB', target: 'peachtree:trial_balance', confidence: 1, rows: 90 }] },
+        ],
+      }),
+    });
+    expect(r.has('From Peachtree / Sage 50')).toBe(true);
+    expect(r.has(/as of 2026-10-05, then Excel/)).toBe(true);
+    expect(r.has('TB → Peachtree / Sage 50 Trial balance')).toBe(true);
+    const marks = r.tree.root.findAll(n => typeof n.props.accessibilityLabel === 'string' && /: (received|not yet)$/.test(n.props.accessibilityLabel) && n.props.style !== undefined);
+    const labels = [...new Set(marks.map(m => m.props.accessibilityLabel))];
+    expect(labels.filter(l => l.endsWith('received'))).toHaveLength(2);
+    expect(labels.filter(l => l.endsWith('not yet'))).toHaveLength(3);
   });
 });

@@ -21,12 +21,18 @@ import CustomButton from '../../../Custom-Components/CustomButton';
 import {
   ENTITY_LABEL,
   MIGRATION_STATUS_LABEL,
+  PEACHTREE_REPORTS,
+  detectedLabel,
+  formatSize,
+  isUploadActive,
+  uploadStageText,
   WIZARD_STEP_LABEL,
   canImport,
   canRunChecks,
   canSignOff,
   canUpload,
   needsWeb,
+  openingDateOf,
   sourceLabel,
   type CertificatePreview,
   type IssueGroup,
@@ -38,6 +44,16 @@ import { migrationErrorMessage } from '../../../utils/migrationErrors';
 const { colors, spacing, radius, typography } = THEME;
 
 export type BatchAction = 'upload' | 'checks' | 'prepare' | 'signOff' | 'import' | 'undo' | 'close' | 'certificate';
+
+/** A backup on its way from this phone. */
+export interface BackupSending {
+  name: string;
+  sent: number;
+  total: number;
+  paused: boolean;
+  /** Why it stopped, when it was not the owner's Pause. */
+  error: string | null;
+}
 
 export function migrationStatusColor(s: MigrationStatus): string {
   switch (s) {
@@ -79,6 +95,11 @@ export interface MigrationBatchViewProps {
   onUndo: () => void;
   onClose: () => void;
   onCertificate: () => void;
+  sending?: BackupSending | null;
+  onPauseUpload?: () => void;
+  onResumeUpload?: () => void;
+  onCancelUpload?: () => void;
+  onDiscardUpload?: (uploadId: string) => void;
 }
 
 const Tick: React.FC<{ on: boolean; label: string; onPress: () => void; testID?: string }> = ({ on, label, onPress, testID }) => (
@@ -95,6 +116,64 @@ const Tick: React.FC<{ on: boolean; label: string; onPress: () => void; testID?:
     <Text style={styles.tickText}>{label}</Text>
   </TouchableOpacity>
 );
+
+/** A backup being sent, read, or stopped: what is happening and what to do. */
+const BackupStatus: React.FC<MigrationBatchViewProps> = p => {
+  const uploads = p.batch.uploads ?? [];
+  const reading = uploads.find(isUploadActive);
+  const latest = uploads[0];
+  const failed = latest?.status === 'failed' && !(p.batch.files ?? []).some(f => f.kind === 'ptb') ? latest : null;
+  const interrupted = !p.sending ? uploads.find(u => u.status === 'receiving') : undefined;
+  const s = p.sending;
+  const pct = s && s.total ? Math.min(100, Math.floor((s.sent / s.total) * 100)) : 0;
+  return (
+    <View>
+      {s && (
+        <View style={styles.upload} testID="backup-sending">
+          <Text style={styles.strong} numberOfLines={1}>{s.name}</Text>
+          <ProgressBar pct={pct} color={s.paused ? colors.warning : colors.primary} />
+          <Text style={styles.hint}>
+            {formatSize(s.sent)} of {formatSize(s.total)} · {pct}%{s.paused && !s.error ? ' · paused' : ''}
+          </Text>
+          {s.error ? (
+            <Text style={styles.error}>{s.error} Tap Resume to continue from where it stopped.</Text>
+          ) : (
+            <Text style={styles.hint}>Keep FinMatrix open. If you leave it, the upload pauses and continues when you come back.</Text>
+          )}
+          <View style={styles.uploadButtons}>
+            {s.paused ? (
+              <CustomButton title="Resume" variant="secondary" size="sm" onPress={() => p.onResumeUpload?.()} />
+            ) : (
+              <CustomButton title="Pause" variant="secondary" size="sm" onPress={() => p.onPauseUpload?.()} />
+            )}
+            <CustomButton title="Cancel" variant="secondary" size="sm" onPress={() => p.onCancelUpload?.()} />
+          </View>
+        </View>
+      )}
+      {!s && interrupted && (
+        <View style={styles.upload}>
+          <Text style={styles.strong}>{interrupted.name} ({formatSize(interrupted.size)}) did not finish uploading</Text>
+          <Text style={styles.hint}>Add the same file again: it continues where it stopped, sending only the pieces still missing.</Text>
+          <View style={styles.uploadButtons}>
+            <CustomButton title="Discard it" variant="secondary" size="sm" onPress={() => p.onDiscardUpload?.(interrupted.id)} />
+          </View>
+        </View>
+      )}
+      {reading && (
+        <View style={styles.upload} testID="backup-reading">
+          <Text style={styles.strong}>Reading {/\.ptb$/i.test(reading.name) ? 'your Peachtree backup' : 'your export'} — {reading.name}</Text>
+          <Text style={styles.hint}>{uploadStageText(reading.progress)}. This takes a minute or two; you can leave and come back.</Text>
+        </View>
+      )}
+      {!reading && !s && failed && (
+        <View style={styles.upload} testID="backup-failed">
+          <Text style={styles.error}>{failed.name} could not be read</Text>
+          <Text style={styles.text}>{failed.error ?? migrationErrorMessage(failed.errorCode)}</Text>
+        </View>
+      )}
+    </View>
+  );
+};
 
 export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
   const b = p.batch;
@@ -128,29 +207,62 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
         {b.lastError ? <Text style={styles.error}>{b.lastError}</Text> : null}
       </SectionCard>
 
+      {/* What Peachtree must provide */}
+      {editable && b.sourceSystem === 'peachtree' && (
+        <SectionCard title="From Peachtree / Sage 50" icon="clipboard" style={styles.card}>
+          <Text style={styles.text}>
+            {"FinMatrix reads your books from the backup and proves every figure against Peachtree's own reports. The import waits until both agree to the paisa."}
+          </Text>
+          {[
+            { done: (b.files ?? []).some(f => f.kind === 'ptb'), title: 'The Peachtree backup (.ptb)', how: 'In Peachtree: File → Back Up. Add the file it saves.' },
+            ...PEACHTREE_REPORTS.map(r => ({
+              done: (b.files ?? []).some(f => (f.detected ?? []).some(d => d.target === `peachtree:${r.kind}`)),
+              title: `${r.title}${r.stockOnly ? ' (if you keep stock)' : ''}`,
+              how: `${r.where} → ${r.title}, as of ${openingDateOf(b)}, then Excel.`,
+            })),
+          ].map(i => (
+            <View key={i.title} style={styles.fileRow} accessibilityLabel={`${i.title}: ${i.done ? 'received' : 'not yet'}`}>
+              <Feather name={i.done ? 'check-circle' : 'circle'} size={14} color={i.done ? colors.success : colors.textTertiary} />
+              <View style={styles.flex}>
+                <Text style={styles.strong}>{i.title}</Text>
+                <Text style={styles.hint}>{i.how}</Text>
+              </View>
+            </View>
+          ))}
+        </SectionCard>
+      )}
+
       {/* Files */}
       {editable && (
         <SectionCard title="Files" icon="paperclip" style={styles.card}>
           {(b.files ?? []).length === 0 ? (
             <Text style={styles.text}>
-              Upload the starter workbook, your spreadsheets, or a TallyPrime XML export. Several files can be added
-              at once, up to 25 MB each.
+              Upload the starter workbook, your system's exports (Excel, CSV, text, QuickBooks IIF, Tally XML, ZIPs of
+              them) or a Peachtree / Sage 50 backup (.ptb) — any file up to 2 GB.
             </Text>
           ) : (
             (b.files ?? []).map(f => (
               <View key={f.id} style={styles.fileRow}>
-                <Feather name="file" size={14} color={colors.primary} />
+                <Feather name={f.kind === 'ptb' ? 'archive' : 'file'} size={14} color={colors.primary} />
                 <View style={styles.flex}>
                   <Text style={styles.strong} numberOfLines={1}>{f.originalName}</Text>
                   <Text style={styles.hint}>
-                    {(f.detected ?? []).map(d => `${d.sheet} → ${d.target ? ENTITY_LABEL[d.target] ?? d.target : 'unknown'}`).join(' · ') || 'Read'}
+                    {(f.detected ?? []).map(d => `${d.sheet} → ${detectedLabel(d.target)}`).join(' · ') || 'Read'}
                   </Text>
                 </View>
               </View>
             ))
           )}
+          <BackupStatus {...p} />
           <View style={styles.inlineButton}>
-            <CustomButton title="Add files" variant="secondary" size="sm" isLoading={p.busy === 'upload'} disabled={!!p.busy} onPress={p.onAddFiles} />
+            <CustomButton
+              title="Add files"
+              variant="secondary"
+              size="sm"
+              isLoading={p.busy === 'upload'}
+              disabled={!!p.busy || (!!p.sending && !p.sending.paused)}
+              onPress={p.onAddFiles}
+            />
           </View>
         </SectionCard>
       )}
@@ -196,7 +308,7 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
         </SectionCard>
       )}
 
-      {/* The ten checks (SOURCE_READBACK first) */}
+      {/* The eleven checks (SOURCE_READBACK first) */}
       {(b.checks?.length || canRunChecks(b)) && b.status !== 'committed' && b.status !== 'closed' && b.status !== 'rolled_back' ? (
         <SectionCard title="Reconciliation checks" subtitle="Every check must match to the rupee" icon="check-square" style={styles.card}>
           {(b.checks ?? []).map(c => (
@@ -231,7 +343,7 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
             <>
               <Text style={styles.text}>
                 {p.preview.allPassed
-                  ? 'A practice import posted everything and all ten checks matched, every figure read the same two ways. Nothing has been saved yet.'
+                  ? 'A practice import posted everything and all eleven checks matched, every figure read the same two ways. Nothing has been saved yet.'
                   : 'The practice import found a difference. Nothing can be imported until every check matches.'}
               </Text>
               <View style={styles.inlineButton}>
@@ -277,7 +389,7 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
                 onPress={p.onImport}
               />
               <Text style={styles.hint}>
-                Posts everything dated {day(b.cutoverDate)}, then closes your books up to the day before.
+                Posts your opening balances dated {day(openingDateOf(b))}, the close of business before your cutover day, then closes your books through that day.
               </Text>
             </>
           )}
@@ -330,6 +442,8 @@ const styles = StyleSheet.create({
   hint: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xxs },
   error: { ...typography.caption, color: colors.danger, marginTop: spacing.xxs },
   inlineButton: { marginTop: spacing.sm, alignSelf: 'flex-start' },
+  upload: { marginTop: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.background, gap: spacing.xxs },
+  uploadButtons: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs },
   buttonRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm },
   readiness: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   readinessBar: { flex: 1 },

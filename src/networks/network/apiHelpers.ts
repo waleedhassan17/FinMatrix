@@ -427,3 +427,64 @@ export const postMultipart = async (
   }
   return json;
 };
+
+/**
+ * PUT raw bytes (a piece of a large upload) with auth + company headers.
+ * Resolves to the parsed JSON body; failures throw an ApiError with the
+ * server's code, as postMultipart does, and a 401 gets one token refresh and
+ * one retry. `signal` stops the request (a paused upload).
+ */
+export const putBinary = async (
+  path: string,
+  body: ArrayBuffer,
+  opts: { headers?: Record<string, string>; signal?: AbortSignal } = {},
+): Promise<any> => {
+  const send = async (): Promise<Response> => {
+    const token = await getAccessToken();
+    const companyId = await getStoredCompanyId();
+    try {
+      return await fetch(`${API_BASE_URL}${path}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          ...opts.headers,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(companyId ? { 'x-company-id': companyId } : {}),
+        },
+        body: body as any,
+        signal: opts.signal,
+      });
+    } catch (e: any) {
+      if (opts.signal?.aborted) throw Object.assign(new Error('The upload was paused.'), { name: 'AbortError' });
+      throw new Error('Network error. Please check your connection.');
+    }
+  };
+
+  let res = await send();
+  if (res.status === 401 && !isIntentionalSignOut()) {
+    if (await refreshSessionTokens()) res = await send();
+    if (res.status === 401) {
+      await clearTokens();
+      emitSessionExpired();
+    }
+  }
+  let json: any = null;
+  try {
+    json = await res.json();
+  } catch {
+    /* non-JSON body */
+  }
+  if (!res.ok) {
+    const raw = json?.error?.message ?? json?.message;
+    const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+    const err: any = new ApiError(
+      typeof msg === 'string' && msg ? msg : `Upload failed (${res.status}). Please try again.`,
+      json?.error?.code ?? json?.code,
+      res.status,
+      json?.error?.details ?? json?.details,
+    );
+    err.response = { status: res.status, data: json };
+    throw err;
+  }
+  return json;
+};

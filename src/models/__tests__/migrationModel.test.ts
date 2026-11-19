@@ -6,6 +6,7 @@ import {
   canSignOff,
   canUpload,
   needsWeb,
+  openingDateOf,
   webBatchUrl,
   type MigrationBatch,
   type SpotCheck,
@@ -93,5 +94,16 @@ describe('backup model', () => {
     expect(formatBytes(512)).toBe('512 B');
     expect(formatBytes(2048)).toBe('2 KB');
     expect(formatBytes(3.5 * 1024 * 1024)).toBe('3.5 MB');
+  });
+});
+
+describe('openingDateOf', () => {
+  it('uses the date the server sends', () => {
+    expect(openingDateOf({ cutoverDate: '2026-07-01', openingDate: '2026-06-30' })).toBe('2026-06-30');
+  });
+  it('derives the day before the cutover when an older server sends none', () => {
+    expect(openingDateOf({ cutoverDate: '2026-07-01' })).toBe('2026-06-30');
+    expect(openingDateOf({ cutoverDate: '2026-01-01' })).toBe('2025-12-31');
+    expect(openingDateOf({ cutoverDate: '2028-03-01' })).toBe('2028-02-29');
   });
 });
