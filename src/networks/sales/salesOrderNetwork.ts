@@ -25,10 +25,26 @@ export const fulfillSalesOrderAPI = (
   lines: { lineId: string; quantityFulfilled: string }[],
   overrideReason?: string,
 ) => wrap(api.post(`/sales-orders/${id}/fulfill`, { lines, ...creditOverrideBody(overrideReason) }));
-export const convertSalesOrderToInvoiceAPI = (id: string, dueDate?: string, overrideReason?: string) =>
+/**
+ * Invoice what has shipped and is not invoiced yet (an order with nothing
+ * shipped is shipped and invoiced in full, in one step). The order stays open
+ * for the rest; `closeRemaining` closes it instead. Staff get an approval
+ * request back.
+ */
+export const convertSalesOrderToInvoiceAPI = (
+  id: string,
+  dueDate?: string,
+  overrideReason?: string,
+  closeRemaining = false,
+) =>
   wrap(api.post(`/sales-orders/${id}/convert-to-invoice`, {
     ...(dueDate ? { dueDate } : {}),
+    ...(closeRemaining ? { closeRemaining: true } : {}),
     ...creditOverrideBody(overrideReason),
   }));
+/** Short-close: what has not shipped will not ship. Posts nothing. */
+export const closeSalesOrderAPI = (id: string, reason?: string) =>
+  wrap(api.post(`/sales-orders/${id}/close`, reason?.trim() ? { reason: reason.trim() } : {}));
+export const reopenSalesOrderAPI = (id: string) => wrap(api.post(`/sales-orders/${id}/reopen`, {}));
 export const cancelSalesOrderAPI = (id: string) => wrap(api.post(`/sales-orders/${id}/cancel`, {}));
 export const deleteSalesOrderAPI = (id: string) => wrap(api.delete(`/sales-orders/${id}`));
