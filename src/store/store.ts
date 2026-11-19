@@ -104,6 +104,7 @@ import { analyticsDashboardSlice } from '../screens/Reports/AnalyticsDashboard/a
 import { accountRegisterSlice } from '../screens/Reports/AccountRegister/accountRegisterSlice';
 import { inlineEntriesSlice } from '../screens/Reports/shared/inlineEntriesSlice';
 import { deliveryDailyReportSlice } from '../screens/Reports/DeliveryDailyReport/deliveryDailyReportSlice';
+import { daySummarySlice } from '../screens/Reports/DaySummary/daySummarySlice';
 import { deliveryPerformanceSlice } from '../screens/Reports/DeliveryPerformance/deliveryPerformanceSlice';
 import { taxSettingsSlice } from '../screens/Tax/TaxSettings/taxSettingsSlice';
 import { taxLiabilitySlice } from '../screens/Tax/TaxLiability/taxLiabilitySlice';
@@ -133,6 +134,7 @@ const rootReducer = combineReducers({
   accountRegister: accountRegisterSlice.reducer,
   reportDrill: inlineEntriesSlice.reducer,
     deliveryDailyReport: deliveryDailyReportSlice.reducer,
+    daySummary: daySummarySlice.reducer,
     deliveryPerformance: deliveryPerformanceSlice.reducer,
     taxSettings: taxSettingsSlice.reducer,
     taxLiability: taxLiabilitySlice.reducer,

@@ -54,6 +54,9 @@ import { isFeatureVisible } from '../../utils/featureGates';
 import { ReportContainer } from '../../components/reports/ReportUI';
 import { C, FONT, TINT, card } from './dashboardTheme';
 import RevenueTrendCard, { WINDOW_MONTHS } from './RevenueTrendCard';
+import TodayCard from './TodayCard';
+import { fetchDayToday, selectDaySummaryState } from '../Reports/DaySummary/daySummarySlice';
+import { dayShortLabel } from '../../models/daySummaryModel';
 import { THEME, HEADER_RADIUS } from '../../theme';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -128,6 +131,8 @@ const AdminDashboardScreen: React.FC = () => {
   const rawData = useAppSelector(selectRawDashboardData);
   const setup = useAppSelector(selectDashboardSetup);
   const revenueTrend = useAppSelector(selectRevenueTrend);
+  // Today at a glance (the Day Summary's headline). Staff get their own day.
+  const { today: dayToday, todayLoading, todayError } = useAppSelector(selectDaySummaryState);
   const unreadNotifications = useAppSelector(selectUnreadCount);
 
   // Dismiss/finish the first-run checklist (FinMatrixGuide §5.7). Marks the
@@ -170,6 +175,7 @@ const AdminDashboardScreen: React.FC = () => {
   useEffect(() => {
     dispatch(loadDashboard());
     dispatch(fetchUnreadCount());
+    dispatch(fetchDayToday());
   }, [dispatch]);
 
   // Refetch whenever the dashboard regains focus.
@@ -189,6 +195,7 @@ const AdminDashboardScreen: React.FC = () => {
         return;
       }
       dispatch(refreshDashboard());
+      dispatch(fetchDayToday());
       // Coming back from the Notifications screen is the common case here:
       // whatever was read there should already be off the badge.
       dispatch(fetchUnreadCount());
@@ -231,6 +238,7 @@ const AdminDashboardScreen: React.FC = () => {
   const onRefresh = useCallback(() => {
     dispatch(refreshDashboard());
     dispatch(fetchUnreadCount());
+    dispatch(fetchDayToday());
   }, [dispatch]);
 
   const isInitialLoading = status === 'loading' && stats.length === 0;
@@ -366,6 +374,24 @@ const AdminDashboardScreen: React.FC = () => {
                 each tile is a push and back returns to the dashboard. They used
                 to hop into the Transactions tab, where back landed on its hub
                 (QA #3, #4). */}
+            {/* ── Today ────────────────────────────────
+                The day so far, first: what was sold and collected today is
+                the question an owner opens the app with. The card opens the
+                Day Summary, pushed on this stack so back returns here. */}
+            <Section
+              title={dayToday?.scope.ownOnly ? 'My day' : 'Today'}
+              caption={dayToday ? dayShortLabel(dayToday.date) : undefined}
+              action="Day summary"
+              onAction={() => navigation.navigate('DaySummary')}
+            >
+              <TodayCard
+                summary={dayToday}
+                loading={todayLoading}
+                failed={!!todayError}
+                onOpen={() => navigation.navigate('DaySummary')}
+              />
+            </Section>
+
             <Section title="Financials" caption={asOfLabel(rawData?.period?.endDate)}>
               <View style={s.statRow}>
                 <StatCard

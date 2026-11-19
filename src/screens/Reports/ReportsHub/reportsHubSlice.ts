@@ -25,6 +25,7 @@ const initialCategories: ReportHubCategory[] = [
     items: [
       // Descriptions follow the website's report subtitles, cut to the one line a
       // hub row has (HUB_SUBTITLE_MAX, components/shared/HubList).
+      { key: 'day-summary', title: 'Day Summary', description: 'What the business did on a day', icon: 'DAY', target: 'DaySummary' },
       { key: 'pl', title: 'P&L', description: 'What you earned and what it cost', icon: 'PL', target: 'ProfitLoss' },
       { key: 'bs', title: 'Balance Sheet', description: 'What the business owns and owes', icon: 'BS', target: 'BalanceSheet' },
       { key: 'tb', title: 'Trial Balance', description: 'Debits against credits, by account', icon: 'TB', target: 'TrialBalance' },

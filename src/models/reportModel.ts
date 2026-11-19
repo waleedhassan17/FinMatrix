@@ -35,6 +35,7 @@ export interface ReportHubItem {
     | 'BudgetList'
     | 'DeliveryDailyReport'
     | 'DeliveryPerformance'
+    | 'DaySummary'
     | 'SalesByCustomer'
     | 'SalesByItem'
     | 'SalesTaxReport';

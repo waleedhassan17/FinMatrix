@@ -12,6 +12,8 @@ export type DashboardStackParamList = {
   GlobalSearch: undefined;
   // The bell on the dashboard header: things needing attention + the server feed.
   Notifications: undefined;
+  // The day at a glance; `date` from the end-of-day notification.
+  DaySummary: { date?: string } | undefined;
   DeliveryPersonnelList: undefined;
   AddDeliveryPersonnel: undefined;
   DeliveryPersonnelDetail: { userId: string };

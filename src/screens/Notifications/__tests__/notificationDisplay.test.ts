@@ -35,6 +35,19 @@ describe('notificationTarget', () => {
     expect(notificationTarget({ type: 'something_new', data: { route: 'DPHistory' } }, on)).toBeNull();
   });
 
+  it('opens the day an end-of-day summary covers, on every plan', () => {
+    for (const showDelivery of [true, false]) {
+      expect(notificationTarget({ type: 'day_summary', data: { date: '2026-11-19' } }, { showDelivery })).toEqual({
+        screen: 'DaySummary',
+        params: { date: '2026-11-19' },
+      });
+    }
+    expect(notificationTarget({ type: 'day_summary', data: { date: 'soon' } }, on)).toEqual({
+      screen: 'DaySummary',
+      params: {},
+    });
+  });
+
   it('offers no delivery screen to a company that cannot see deliveries', () => {
     expect(
       notificationTarget({ type: 'delivery_assigned', data: { deliveryId: 'd9' } }, { showDelivery: false }),
