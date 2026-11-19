@@ -237,7 +237,7 @@ export const MigrationBatchView: React.FC<MigrationBatchViewProps> = p => {
         <SectionCard title="Files" icon="paperclip" style={styles.card}>
           {(b.files ?? []).length === 0 ? (
             <Text style={styles.text}>
-              Upload the starter workbook, your system's exports (Excel, CSV, text, QuickBooks IIF, Tally XML, ZIPs of
+              Upload the starter workbook, your system&apos;s exports (Excel, CSV, text, QuickBooks IIF, Tally XML, ZIPs of
               them) or a Peachtree / Sage 50 backup (.ptb) — any file up to 2 GB.
             </Text>
           ) : (
