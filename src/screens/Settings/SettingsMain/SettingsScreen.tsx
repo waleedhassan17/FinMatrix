@@ -270,6 +270,14 @@ const SettingsScreen: React.FC = () => {
           </>
         )}
 
+        {/* Data: the whole company out, and a business's books in */}
+        <SectionHeader title="DATA" />
+        <View style={s.card}>
+          <NavRow icon="archive" label="Backup & export" onPress={() => nav.navigate('BackupExport')} />
+          <View style={s.divider} />
+          <NavRow icon="log-in" label="Move to FinMatrix" onPress={() => nav.navigate('MigrationList')} />
+        </View>
+
         {/* Notifications */}
         <SectionHeader title="NOTIFICATIONS" />
         <View style={s.card}>
