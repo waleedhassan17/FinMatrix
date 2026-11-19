@@ -33,6 +33,7 @@ function serializeAccount(raw: any): COAApiAccount {
     parentId: raw.parentId ?? null,
     isActive: typeof raw.isActive === 'boolean' ? raw.isActive : true,
     isSystemAccount: typeof raw.isSystemAccount === 'boolean' ? raw.isSystemAccount : false,
+    systemRole: typeof raw.systemRole === 'string' ? raw.systemRole : null,
     balance: isNaN(balance) ? 0 : balance,
     normalBalance: raw.normalBalance === 'credit' ? 'credit' : 'debit',
     createdAt: raw.createdAt || '',

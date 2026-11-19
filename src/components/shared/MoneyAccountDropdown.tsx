@@ -85,7 +85,11 @@ const MoneyAccountDropdown: React.FC<Props> = ({
     [accounts],
   );
   const misfiled = useMemo(() => misfiledMoneyAccounts(accounts), [accounts]);
-  const cash = money.find(a => a.code === '1000') ?? null;
+  // Cash by its role: a company that moved from another system keeps that
+  // system's numbers, so 1000 may be another account. The number is the
+  // fallback for a server that sends no roles.
+  const cash =
+    money.find(a => a.systemRole === 'cash') ?? money.find(a => a.code === '1000') ?? null;
 
   useEffect(() => {
     if (defaultToCash && !value && cash) onChange(cash.id);

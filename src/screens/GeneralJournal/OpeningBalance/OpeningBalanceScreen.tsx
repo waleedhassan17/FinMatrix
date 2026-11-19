@@ -79,6 +79,8 @@ interface AccountOpt {
   value: string;
   type: string;
   code: string;
+  /** Its system role, when it has one (cash, bank, inventory…). */
+  role?: string | null;
 }
 
 let seq = 0;
@@ -89,22 +91,35 @@ const blank = (): Row => ({ id: `r${++seq}`, accountId: '', amount: '' });
  * codes in preference order, so a company whose chart was edited still gets a
  * working chip instead of a dead end.
  */
-const QUICK_ADD: Record<
-  Side,
-  { codes: string[]; label: string; icon: keyof typeof Feather.glyphMap }[]
-> = {
+interface QuickPick {
+  /** System roles it means, in order: numbers may have moved (another system's chart). */
+  roles: string[];
+  /** Default numbers, for a server that sends no roles. */
+  codes: string[];
+  label: string;
+  icon: keyof typeof Feather.glyphMap;
+}
+const QUICK_ADD: Record<Side, QuickPick[]> = {
   own: [
-    { codes: ['1000'], label: 'Cash', icon: 'dollar-sign' },
-    { codes: ['1010'], label: 'Bank', icon: 'credit-card' },
-    { codes: ['1200'], label: 'Inventory', icon: 'package' },
+    { roles: ['cash'], codes: ['1000'], label: 'Cash', icon: 'dollar-sign' },
+    { roles: ['bank'], codes: ['1010'], label: 'Bank', icon: 'credit-card' },
+    { roles: ['inventory'], codes: ['1200'], label: 'Inventory', icon: 'package' },
   ],
   owe: [
-    // 3900 first: Opening Balance Equity is where an opening entry's capital
+    // Opening Balance Equity first: it is where an opening entry's capital
     // belongs, and it is what auto-balance uses — keep the two consistent.
-    { codes: ['3900', '3000'], label: 'My own money', icon: 'user' },
-    { codes: ['2000'], label: 'Money I owe', icon: 'file-text' },
+    { roles: ['opening_balance_equity', 'owner_equity'], codes: ['3900', '3000'], label: 'My own money', icon: 'user' },
+    { roles: ['accounts_payable'], codes: ['2000'], label: 'Money I owe', icon: 'file-text' },
   ]
 };
+
+/** The account a shortcut means: by role, then by its default number. */
+export const pickAccount = <A extends { code: string; role?: string | null }>(
+  accounts: A[],
+  pick: { roles: string[]; codes: string[] },
+): A | undefined =>
+  pick.roles.map(r => accounts.find(a => a.role === r)).find((a): a is A => !!a) ??
+  pick.codes.map(c => accounts.find(a => a.code === c)).find((a): a is A => !!a);
 
 /** Equity account that absorbs a difference, mirroring QuickBooks. */
 const OPENING_EQUITY = '3900';
@@ -134,7 +149,8 @@ const OpeningBalanceScreen: React.FC = () => {
               label: `${a.code} · ${a.name}`,
               value: a.id,
               type: a.type,
-              code: a.code
+              code: a.code,
+              role: a.systemRole ?? null,
             })),
         );
       } catch (e: any) {
@@ -176,7 +192,7 @@ const OpeningBalanceScreen: React.FC = () => {
    */
   const plugAccount = useMemo(
     () =>
-      accounts.find(a => a.code === OPENING_EQUITY) ??
+      pickAccount(accounts, { roles: ['opening_balance_equity'], codes: [OPENING_EQUITY] }) ??
       accounts.find(a => a.type === 'equity'),
     [accounts],
   );
@@ -201,11 +217,8 @@ const OpeningBalanceScreen: React.FC = () => {
   };
 
   /** One-tap shortcut: focus an existing empty row on that account, or add one. */
-  const quickAdd = (side: Side, codes: string[]) => {
-    const account = codes.reduce<AccountOpt | undefined>(
-      (found, code) => found ?? accounts.find(a => a.code === code),
-      undefined,
-    );
+  const quickAdd = (side: Side, pick: QuickPick) => {
+    const account = pickAccount(accounts, pick);
     if (!account) {
       Toast.show({
         type: 'info',
@@ -222,10 +235,10 @@ const OpeningBalanceScreen: React.FC = () => {
   };
 
   const fillExample = () => {
-    const pick = (code: string) => accounts.find(a => a.code === code)?.value ?? '';
-    const cash = pick('1000');
-    const bank = pick('1010');
-    const capital = pick(OPENING_EQUITY) || pick('3000');
+    const pick = (roles: string[], codes: string[]) => pickAccount(accounts, { roles, codes })?.value ?? '';
+    const cash = pick(['cash'], ['1000']);
+    const bank = pick(['bank'], ['1010']);
+    const capital = pick(['opening_balance_equity', 'owner_equity'], [OPENING_EQUITY, '3000']);
     if (!cash || !bank || !capital) {
       Toast.show({
         type: 'info',
@@ -340,7 +353,7 @@ const OpeningBalanceScreen: React.FC = () => {
             <TouchableOpacity
               key={q.label}
               style={s.chip}
-              onPress={() => quickAdd(side, q.codes)}
+              onPress={() => quickAdd(side, q)}
               activeOpacity={0.7}
             >
               <Feather name={q.icon} size={12} color={THEME.colors.textSecondary} />

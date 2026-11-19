@@ -100,7 +100,17 @@ describe('the account form speaks the server’s language', () => {
   });
 
   it('reads whether the type and number may still change', () => {
-    expect(structureFromDetail({ data: { structure: { editable: true, reason: null } } })).toEqual({ editable: true, reason: null });
+    // An older server sends only `editable`: it covered type and number both.
+    expect(structureFromDetail({ data: { structure: { editable: true, reason: null } } })).toEqual({
+      editable: true,
+      numberEditable: true,
+      typeEditable: true,
+      reason: null,
+    });
+    // A system account nothing refers to yet: its number may change, its type never.
+    expect(
+      structureFromDetail({ data: { structure: { editable: false, numberEditable: true, typeEditable: false, reason: 'A system account.' } } }),
+    ).toMatchObject({ numberEditable: true, typeEditable: false });
     expect(structureFromDetail({ data: {} }).editable).toBe(false);
   });
 });
