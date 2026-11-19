@@ -28,6 +28,8 @@ export interface COAApiAccount {
   parentId: string | null;
   isActive: boolean;
   isSystemAccount: boolean;
+  /** What automatic posting uses it for (`cash`, `accounts_receivable`…), or null; its number may change, this never does. */
+  systemRole?: string | null;
   balance: number;
   normalBalance: 'debit' | 'credit';
   createdAt: string;
@@ -54,22 +56,34 @@ export interface COAApiSingleResponse {
  * account, which is what lets one saved as the wrong type be put right.
  */
 export interface AccountStructure {
+  /** Type and number may both change. */
   editable: boolean;
+  /** The number may change (a system account's too, while nothing refers to it). */
+  numberEditable: boolean;
+  /** The type may change (never a system account's). */
+  typeEditable: boolean;
   reason: string | null;
 }
 
 /** Locked: what an older server, which sends no `structure`, means. */
 export const LOCKED_STRUCTURE: AccountStructure = {
   editable: false,
+  numberEditable: false,
+  typeEditable: false,
   reason: 'Fixed once an account exists — postings already reference it.',
 };
 
 /** `structure` from a GET /accounts/:id response, locked when absent. */
 export const structureFromDetail = (payload: any): AccountStructure => {
   const s = payload?.data?.structure ?? payload?.structure;
-  return typeof s?.editable === 'boolean'
-    ? { editable: s.editable, reason: typeof s.reason === 'string' ? s.reason : null }
-    : LOCKED_STRUCTURE;
+  if (typeof s?.editable !== 'boolean') return LOCKED_STRUCTURE;
+  // An older server sends only `editable`: it covered both.
+  return {
+    editable: s.editable,
+    numberEditable: typeof s.numberEditable === 'boolean' ? s.numberEditable : s.editable,
+    typeEditable: typeof s.typeEditable === 'boolean' ? s.typeEditable : s.editable,
+    reason: typeof s.reason === 'string' ? s.reason : null,
+  };
 };
 
 // ─── Form helpers (used by COAFormScreen) ────────────

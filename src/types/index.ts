@@ -127,6 +127,12 @@ export interface Account {
   parentId: string | null;
   isActive: boolean;
   isSystemAccount: boolean;
+  /**
+   * What automatic posting uses it for (`cash`, `accounts_receivable`…), or
+   * null. Its number and name may change; this never does — so the app finds
+   * Cash and the rest by it.
+   */
+  systemRole?: string | null;
   balance: number;
   normalBalance: 'debit' | 'credit';
   createdAt: string;

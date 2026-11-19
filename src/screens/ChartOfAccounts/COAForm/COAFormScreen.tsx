@@ -91,6 +91,10 @@ const COAFormScreen: React.FC = () => {
    */
   const [structure, setStructure] = useState<AccountStructure>(LOCKED_STRUCTURE);
   const structureLocked = isEdit && !structure.editable;
+  // A system account's number may change while nothing refers to it (posting
+  // finds it by what it is for); its type and kind never.
+  const numberLocked = isEdit && !structure.numberEditable;
+  const typeLocked = isEdit && !structure.typeEditable;
   const isSystem = isEdit && !!existing?.isSystemAccount;
   /** Whether the user has typed a number over the suggestion. */
   const [numberTouched, setNumberTouched] = useState(false);
@@ -159,7 +163,7 @@ const COAFormScreen: React.FC = () => {
   // The number follows the suggestion until the user types one of their own,
   // and on an existing account only once its type has been changed.
   const shownCode =
-    !structureLocked && !numberTouched && (!isEdit || form.type !== existing?.type)
+    !numberLocked && !numberTouched && (!isEdit || form.type !== existing?.type)
       ? (suggestions[0] ?? form.code)
       : form.code;
 
@@ -203,7 +207,7 @@ const COAFormScreen: React.FC = () => {
     const values = { ...form, code: shownCode };
     const validationErrors = validateAccount(values, existingCodes, {
       isEdit,
-      numberEditable: !structureLocked,
+      numberEditable: !numberLocked,
     });
     if (Object.keys(validationErrors).length > 0) {
       dispatch(setFormErrors(validationErrors));
@@ -259,7 +263,7 @@ const COAFormScreen: React.FC = () => {
         >
           {isEdit && (
             <Text style={styles.structureNote}>
-              {structureLocked
+              {numberLocked || typeLocked
                 ? (structure.reason ?? 'Its type and number are fixed.')
                 : 'Nothing refers to this account yet, so its type and number can still change.'}
             </Text>
@@ -312,7 +316,7 @@ const COAFormScreen: React.FC = () => {
             onChange={handleTypeChange}
             placeholder="Select type..."
             error={errors.type}
-            disabled={structureLocked}
+            disabled={typeLocked}
           />
 
           {/* Sub Type */}
@@ -340,9 +344,9 @@ const COAFormScreen: React.FC = () => {
             placeholder={form.type ? 'e.g. 1020' : 'Select type & sub type above'}
             keyboardType="number-pad"
             error={errors.code}
-            disabled={structureLocked}
+            disabled={numberLocked}
           />
-          {!structureLocked && suggestions.length > 1 && (
+          {!numberLocked && suggestions.length > 1 && (
             <View style={styles.chipRow}>
               <Text style={styles.chipLabel}>Free numbers:</Text>
               {suggestions.map(option => (
