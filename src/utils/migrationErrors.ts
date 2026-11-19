@@ -54,6 +54,7 @@ export const MIGRATION_ERRORS_EN: Record<string, string> = {
   SOURCE_REPORT_DUPLICATE: 'The same report was uploaded twice. Remove one of them.',
   SOURCE_REPORT_DATE: 'A report is not as of the day before your cutover. Change the cutover date if every report is right, or export the report again for the right date.',
   SOURCE_TOTALS_MISMATCH: "A report's own printed total does not match its lines. Export it again from your old system, unchanged, and upload it.",
+  MIGRATION_CHART_CHANGED: 'The chart of accounts changed after your files were checked. Check the files again on the web so the plan matches the chart.',
   SOURCE_NET_CREDIT: 'Some customers or vendors have more credit than open invoices or bills. Accept to bring the rest in as advances, or apply the credits in your old system first.',
 };
 
