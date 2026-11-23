@@ -99,7 +99,17 @@ export interface DaySummary {
   };
   trendDates: string[];
   documents: DayDocumentRow[];
-  sales: { subtotal: number; discount: number; tax: number; total: number; unpaid: number };
+  sales: {
+    subtotal: number;
+    discount: number;
+    tax: number;
+    total: number;
+    unpaid: number;
+    /** Customer returns (credit memos) dated the day, tax included. */
+    returns: number;
+    /** total − returns. */
+    net: number;
+  };
   cash: { methods: DayMethodRow[]; received: number; paid: number; net: number };
   topCustomers: DayPartyRow[];
   topItems: DayItemRow[];

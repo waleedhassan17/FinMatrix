@@ -10,7 +10,8 @@ import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../theme';
 import { SectionCard, FigureStrip } from '../../../components/reports/ReportUI';
-import { formatCurrency } from '../../../utils/formatters';
+import { formatCurrency, formatQty } from '../../../utils/formatters';
+import type { DayReorderRow } from '../../../models/dayItemSheetModel';
 import { compactMoney } from '../../../models/itemExplorerModel';
 import {
   KIND_META,
@@ -103,10 +104,80 @@ export const MoneyCard: React.FC<{ summary: DaySummary }> = ({ summary }) => {
           </View>
         </>
       )}
+      {sales.returns > 0 ? (
+        <View style={styles.afterReturns} accessibilityLabel="Sales after returns">
+          <Text style={styles.th}>Sales after returns</Text>
+          <View style={styles.tr}>
+            <Text style={[styles.td, styles.flex2]}>Sales</Text>
+            <Text style={[styles.tdMoney, styles.right]}>{formatCurrency(sales.total)}</Text>
+          </View>
+          <View style={styles.tr}>
+            <Text style={[styles.td, styles.flex2]}>Returns</Text>
+            <Text style={[styles.tdMoney, styles.right, { color: colors.danger }]}>−{formatCurrency(sales.returns)}</Text>
+          </View>
+          <View style={[styles.tr, styles.trTotal]}>
+            <Text style={[styles.tdStrong, styles.flex2]}>Net sales</Text>
+            <Text style={[styles.tdStrong, styles.right]}>{formatCurrency(sales.net)}</Text>
+          </View>
+        </View>
+      ) : null}
       {sales.unpaid > 0 ? (
         <Text style={styles.note}>
           <Text style={styles.noteStrong}>{formatCurrency(sales.unpaid)}</Text> of this day’s sales is still unpaid.
         </Text>
+      ) : null}
+    </SectionCard>
+  );
+};
+
+/**
+ * What sold in the period and now needs buying in: out of stock first, then
+ * the items at or below their reorder point. Stock is as it stands now.
+ */
+export const ReorderCard: React.FC<{ reorder: DayReorderRow[]; onOpen: (itemId: string) => void }> = ({
+  reorder,
+  onOpen,
+}) => {
+  if (reorder.length === 0) return null;
+  const shown = reorder.slice(0, 8);
+  return (
+    <SectionCard
+      title="Reorder soon"
+      icon="alert-circle"
+      subtitle={
+        reorder.length === 1 ? '1 item sold that needs buying in' : `${reorder.length} items sold that need buying in`
+      }
+    >
+      {shown.map(r => (
+        <TouchableOpacity
+          key={r.itemId}
+          style={styles.tr}
+          activeOpacity={0.7}
+          onPress={() => onOpen(r.itemId)}
+          accessibilityRole="button"
+          accessibilityLabel={`${r.name}: ${r.outOfStock ? 'out of stock' : `${formatQty(r.onHand)} left`}`}
+        >
+          <View style={styles.flex2}>
+            <Text style={styles.td} numberOfLines={1}>
+              {r.name}
+            </Text>
+            <Text style={styles.reorderMeta} numberOfLines={1}>
+              {[
+                r.code,
+                r.reorderPoint > 0 ? `reorder at ${formatQty(r.reorderPoint)}` : null,
+                r.reorderQuantity > 0 ? `order ${formatQty(r.reorderQuantity)}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          </View>
+          <Text style={[styles.tdStrong, { color: r.outOfStock ? colors.danger : colors.warning }]}>
+            {r.outOfStock ? 'Out of stock' : `${formatQty(r.onHand)} left`}
+          </Text>
+        </TouchableOpacity>
+      ))}
+      {reorder.length > shown.length ? (
+        <Text style={styles.note}>{reorder.length - shown.length} more — see Inventory.</Text>
       ) : null}
     </SectionCard>
   );
@@ -146,7 +217,18 @@ export const AttentionCard: React.FC<{
   );
 };
 
-const fig = (f: { count: number; total: number }) => (f.count === 0 ? '—' : `${f.count} · ${compactMoney(f.total)}`);
+/** A count over its amount: two short lines fit a phone's narrow columns. */
+const Fig: React.FC<{ f: { count: number; total: number } }> = ({ f }) =>
+  f.count === 0 ? (
+    <Text style={[styles.td, styles.right, styles.mutedInline]}>—</Text>
+  ) : (
+    <View style={styles.figCell}>
+      <Text style={styles.tdStrong}>{f.count}</Text>
+      <Text style={styles.figAmount} numberOfLines={1}>
+        {compactMoney(f.total)}
+      </Text>
+    </View>
+  );
 
 /** Who entered what (owner). A row narrows the whole screen to that person. */
 export const TeamCard: React.FC<{
@@ -178,9 +260,9 @@ export const TeamCard: React.FC<{
             <Text style={[styles.td, styles.flex2, t.userId ? styles.link : styles.mutedInline]} numberOfLines={1}>
               {t.name}
             </Text>
-            <Text style={[styles.td, styles.right]}>{fig(t.invoices)}</Text>
-            {showOrders ? <Text style={[styles.td, styles.right]}>{fig(t.salesOrders)}</Text> : null}
-            <Text style={[styles.td, styles.right]}>{fig(t.receipts)}</Text>
+            <Fig f={t.invoices} />
+            {showOrders ? <Fig f={t.salesOrders} /> : null}
+            <Fig f={t.receipts} />
           </TouchableOpacity>
         ))}
       </>
@@ -255,6 +337,15 @@ const styles = StyleSheet.create({
   tdMoney: { ...typography.caption, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
   tdStrong: { ...typography.labelMd, color: colors.textPrimary, fontVariant: ['tabular-nums'] },
   note: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
+  afterReturns: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderLight,
+  },
+  reorderMeta: { ...typography.caption, color: colors.textTertiary },
+  figCell: { flex: 1, minWidth: 0, alignItems: 'flex-end' },
+  figAmount: { ...typography.caption, color: colors.textTertiary, fontVariant: ['tabular-nums'] },
   noteStrong: { ...typography.labelSm, color: colors.textPrimary },
 
   attention: {
