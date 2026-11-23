@@ -9,7 +9,7 @@ import { View, Text, StyleSheet, Switch, TouchableOpacity, ActivityIndicator } f
 
 import { THEME } from '../../../theme';
 import BottomSheet from '../../../components/shared/BottomSheet';
-import { DIGEST_HOURS, type DaySummarySchedule } from '../../../models/daySummaryModel';
+import { DIGEST_HOURS, zoneLabel, type DaySummarySchedule } from '../../../models/daySummaryModel';
 
 const { colors, radius, spacing, typography } = THEME;
 
@@ -80,6 +80,7 @@ const DigestForm: React.FC<{
         disabled={saving}
         activeOpacity={0.85}
         accessibilityRole="button"
+        accessibilityState={{ busy: saving, disabled: saving }}
       >
         {saving ? <ActivityIndicator color={colors.textInverse} /> : <Text style={styles.saveText}>Save</Text>}
       </TouchableOpacity>
@@ -91,27 +92,50 @@ const DigestSheet: React.FC<{
   visible: boolean;
   onClose: () => void;
   schedule: DaySummarySchedule | null;
+  /** The saved settings could not be read. */
+  loadError?: string;
+  onReload?: () => void;
   saving: boolean;
   error: string;
   onSave: (next: Choice) => void;
-}> = ({ visible, onClose, schedule, saving, error, onSave }) => (
+}> = ({ visible, onClose, schedule, loadError = '', onReload, saving, error, onSave }) => (
   <BottomSheet
     visible={visible}
     onClose={onClose}
     title="Daily summary"
-    subtitle={`Every owner gets the day’s headline in the bell${schedule?.timezone ? ` (${schedule.timezone} time)` : ''}.`}
+    subtitle={`Every owner gets the day’s headline in the bell${schedule?.timezone ? ` (${zoneLabel(schedule.timezone)})` : ''}.`}
   >
-    <DigestForm
-      key={visible ? `open-${schedule?.enabled}-${schedule?.hour}-${schedule?.email}` : 'closed'}
-      schedule={schedule}
-      saving={saving}
-      error={error}
-      onSave={onSave}
-    />
+    {schedule ? (
+      <DigestForm
+        key={visible ? `open-${schedule.enabled}-${schedule.hour}-${schedule.email}` : 'closed'}
+        schedule={schedule}
+        saving={saving}
+        error={error}
+        onSave={onSave}
+      />
+    ) : (
+      // Until the saved settings are in hand the form has nothing true to show,
+      // and saving it would overwrite them with defaults.
+      <View style={styles.waiting}>
+        {loadError ? (
+          <>
+            <Text style={styles.rowLabel}>{loadError}</Text>
+            {onReload ? (
+              <TouchableOpacity style={styles.save} onPress={onReload} accessibilityRole="button" activeOpacity={0.85}>
+                <Text style={styles.saveText}>Try again</Text>
+              </TouchableOpacity>
+            ) : null}
+          </>
+        ) : (
+          <ActivityIndicator color={colors.primary} accessibilityLabel="Loading your settings" />
+        )}
+      </View>
+    )}
   </BottomSheet>
 );
 
 const styles = StyleSheet.create({
+  waiting: { paddingVertical: spacing.md, gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs },
   rowLabel: { ...typography.bodyMd, color: colors.textPrimary, flex: 1 },
   section: { ...typography.labelMd, color: colors.textSecondary, marginTop: spacing.sm, marginBottom: spacing.xs },

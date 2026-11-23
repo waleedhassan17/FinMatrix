@@ -75,7 +75,30 @@ export interface DayUserRow {
   salesOrders: DayFigure;
   estimates: DayFigure;
   receipts: DayFigure;
+  /** Purchase orders placed (not drafts, not withdrawn). */
+  purchaseOrders: DayFigure;
   documents: number;
+}
+
+/** Where the company's purchase orders stand now — not tied to the day. Owner only. */
+export interface DayPurchasePosition {
+  /** Sent or partly received: the value still to arrive (tax included, like a PO's total). */
+  open: DayFigure;
+  /** Of those, expected before today; `oldest` is the earliest expected date. */
+  overdue: DayFigure & { oldest: string | null };
+  /** Received but not yet billed by the supplier: the POs' GRNI balance. */
+  receivedNotBilled: DayFigure;
+}
+
+/** The buying side of the day. */
+export interface DayPurchasing {
+  placed: DayFigure;
+  /** Stock received against purchase orders, at cost; `count` is purchase orders. */
+  received: DayFigure;
+  /** Bills raised from purchase orders, dated the day. */
+  billed: DayFigure;
+  topVendors: DayPartyRow[];
+  position: DayPurchasePosition | null;
 }
 
 export interface DayMember {
@@ -96,6 +119,10 @@ export interface DaySummary {
     received: DayKpi;
     orders: DayKpi | null;
     purchases: DayKpi;
+    /** Purchase orders placed. Null when the plan has none (or an older server). */
+    purchaseOrders: DayKpi | null;
+    /** Stock received against purchase orders, at cost. */
+    goodsReceived: DayKpi | null;
   };
   trendDates: string[];
   documents: DayDocumentRow[];
@@ -118,7 +145,10 @@ export interface DaySummary {
   team: DayUserRow[] | null;
   members: DayMember[] | null;
   profit: { revenue: number; cogs: number; grossProfit: number; expenses: number; netIncome: number } | null;
+  /** cancelledOrders: cancelled sales orders and withdrawn purchase orders. */
   attention: { backdated: number; drafts: number; cancelledOrders: number; voided: DayFigure | null };
+  /** Null when the plan has no purchase orders (or an older server). */
+  purchasing: DayPurchasing | null;
   isEmpty: boolean;
   generatedAt: string;
 }
@@ -259,7 +289,38 @@ export const dayLabel = (iso: string): string => (iso ? dayjs(iso).format('ddd D
 /** "Thu 19 Nov". */
 export const dayShortLabel = (iso: string): string => (iso ? dayjs(iso).format('ddd D MMM') : '—');
 
-export const entryTime = (iso: string): string => (iso ? dayjs(iso).format('HH:mm') : '—');
+/**
+ * "14:05" — when a document was entered, on the company's clock (not the
+ * phone's), so the Day Book matches the hourly chart wherever it is read.
+ */
+export const entryTime = (iso: string, timeZone?: string): string => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  if (timeZone) {
+    try {
+      return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone }).format(d);
+    } catch {
+      // An engine without time-zone data: the phone's clock is the best there is.
+    }
+  }
+  return dayjs(iso).format('HH:mm');
+};
+
+/** "Pakistan Standard Time" — the company's zone in words (the IANA name if unknown). */
+export const zoneLabel = (timeZone: string): string => {
+  try {
+    const part = new Intl.DateTimeFormat('en-GB', { timeZone, timeZoneName: 'long' })
+      .formatToParts(new Date())
+      .find(p => p.type === 'timeZoneName');
+    return part?.value ?? timeZone;
+  } catch {
+    return timeZone;
+  }
+};
+
+/** Money with a true minus sign (−), so a negative never reads as a hyphen. */
+export const dayMoney = (n: number): string => formatCurrency(n).replace(/^-/, '−');
 
 // ─── Comparisons ────────────────────────────────────────────────────────
 
@@ -284,7 +345,11 @@ export const dayChange = (current: number, previous: number): { text: string; up
 // ─── Needs a look ───────────────────────────────────────────────────────
 
 export interface AttentionItem {
-  filter: DayEntryFilter;
+  key: string;
+  /** The Day Book filter the line narrows to… */
+  filter?: DayEntryFilter;
+  /** …or, for overdue purchase orders, the Purchase Orders list. */
+  opensPurchaseOrders?: boolean;
   label: string;
   detail: string;
 }
@@ -292,8 +357,10 @@ export interface AttentionItem {
 export const attentionItems = (s: DaySummary): AttentionItem[] => {
   const a = s.attention;
   const out: AttentionItem[] = [];
+  const buying = s.kinds.includes('purchase_order');
   if (a.backdated > 0) {
     out.push({
+      key: 'backdated',
       filter: 'backdated',
       label: `${a.backdated} back-dated ${a.backdated === 1 ? 'entry' : 'entries'}`,
       detail: 'Entered on this day but dated earlier.',
@@ -301,23 +368,40 @@ export const attentionItems = (s: DaySummary): AttentionItem[] => {
   }
   if (a.drafts > 0) {
     out.push({
+      key: 'drafts',
       filter: 'drafts',
       label: `${a.drafts} ${a.drafts === 1 ? 'draft' : 'drafts'} not posted`,
-      detail: 'Not in the books until posted.',
+      detail: buying ? 'Not in the books, or not sent to the supplier, until posted.' : 'Not in the books until posted.',
     });
   }
   if (a.voided && a.voided.count > 0) {
     out.push({
+      key: 'voided',
       filter: 'voided',
-      label: `${a.voided.count} voided or deleted (${formatCurrency(a.voided.total)})`,
+      label: `${a.voided.count} voided or deleted (${dayMoney(a.voided.total)})`,
       detail: 'Cancelled on this day, and by whom.',
     });
   }
   if (a.cancelledOrders > 0) {
+    const n = a.cancelledOrders;
     out.push({
+      key: 'cancelled',
       filter: 'cancelled',
-      label: `${a.cancelledOrders} sales ${a.cancelledOrders === 1 ? 'order' : 'orders'} cancelled`,
-      detail: 'Dated this day; will not be delivered.',
+      label: buying
+        ? `${n} ${n === 1 ? 'order' : 'orders'} cancelled or withdrawn`
+        : `${n} sales ${n === 1 ? 'order' : 'orders'} cancelled`,
+      detail: buying
+        ? 'Sales orders not to be delivered; purchase orders called off.'
+        : 'Dated this day; will not be delivered.',
+    });
+  }
+  const overdue = s.purchasing?.position?.overdue;
+  if (overdue && overdue.count > 0) {
+    out.push({
+      key: 'overdue-pos',
+      opensPurchaseOrders: true,
+      label: `${overdue.count} purchase ${overdue.count === 1 ? 'order' : 'orders'} overdue`,
+      detail: `${dayMoney(overdue.total)} still to arrive${overdue.oldest ? `, expected since ${dayShortLabel(overdue.oldest)}` : ''}.`,
     });
   }
   return out;
@@ -353,15 +437,24 @@ export const dayShareText = (s: DaySummary, companyName: string): string => {
     return lines.join('\n');
   }
   const h = s.headline;
-  lines.push(`Sales: ${formatCurrency(h.sales.total)} (${countLabel(h.sales.count, 'invoice')})`);
-  lines.push(`Received: ${formatCurrency(h.received.total)} (${countLabel(h.received.count, 'receipt')})`);
-  if (h.orders) lines.push(`Orders booked: ${formatCurrency(h.orders.total)} (${countLabel(h.orders.count, 'sales_order')})`);
-  lines.push(`Purchases: ${formatCurrency(h.purchases.total)} (${countLabel(h.purchases.count, 'bill')})`);
-  if (s.sales.unpaid > 0) lines.push(`Still unpaid from these sales: ${formatCurrency(s.sales.unpaid)}`);
-  if (s.profit) lines.push(`Gross profit: ${formatCurrency(s.profit.grossProfit)}`);
+  // Sales and money received always; the rest only when there was some.
+  const line = (label: string, k: DayKpi | null, kind: DayDocKind, always = false) => {
+    if (k && (always || k.count > 0 || k.total !== 0)) lines.push(`${label}: ${dayMoney(k.total)} (${countLabel(k.count, kind)})`);
+  };
+  line('Sales', h.sales, 'invoice', true);
+  line('Received', h.received, 'receipt', true);
+  line('Orders booked', h.orders, 'sales_order');
+  line('POs placed', h.purchaseOrders, 'purchase_order');
+  if (h.goodsReceived && h.goodsReceived.count > 0) {
+    lines.push(`Goods received: ${dayMoney(h.goodsReceived.total)} at cost (${countLabel(h.goodsReceived.count, 'purchase_order')})`);
+  }
+  line(h.purchaseOrders ? 'Bills' : 'Purchases', h.purchases, 'bill');
+  if (s.sales.returns > 0) lines.push(`Returns: ${dayMoney(s.sales.returns)} · net sales ${dayMoney(s.sales.net)}`);
+  if (s.sales.unpaid > 0) lines.push(`Still unpaid from these sales: ${dayMoney(s.sales.unpaid)}`);
+  if (s.profit) lines.push(`Gross profit (books): ${dayMoney(s.profit.grossProfit)}`);
   if (s.topCustomers.length > 0) {
     lines.push('', 'Top customers:');
-    for (const c of s.topCustomers.slice(0, 3)) lines.push(`• ${c.name} — ${formatCurrency(c.total)}`);
+    for (const c of s.topCustomers.slice(0, 3)) lines.push(`• ${c.name} — ${dayMoney(c.total)}`);
   }
   const flags = attentionItems(s);
   if (flags.length > 0) {
@@ -371,15 +464,35 @@ export const dayShareText = (s: DaySummary, companyName: string): string => {
   return lines.join('\n');
 };
 
-/** The PDF: headline, documents, money by method, then the Day Book. */
-export const dayReportDoc = (s: DaySummary, entries: DayEntry[]): ReportDoc => {
-  const rows: ReportDocRow[] = [];
+/** The headline figures in screen order: selling, then buying. */
+export const headlineRows = (s: DaySummary): Array<[string, DayKpi]> => {
   const h = s.headline;
+  const rows: Array<[string, DayKpi | null]> = [
+    ['Sales', h.sales],
+    ['Money received', h.received],
+    ['Orders booked', h.orders],
+    ['POs placed', h.purchaseOrders],
+    ['Goods received', h.goodsReceived],
+    [h.purchaseOrders ? 'Bills' : 'Purchases', h.purchases],
+  ];
+  return rows.filter((r): r is [string, DayKpi] => r[1] !== null);
+};
+
+/**
+ * The PDF: headline, documents, money by method, buying, then the Day Book
+ * (`entries`, of `entryTotal` in all — the PDF says so when it holds fewer).
+ */
+export const dayReportDoc = (
+  s: DaySummary,
+  entries: DayEntry[],
+  opts: { compare?: CompareKey; entryTotal?: number; extraRows?: ReportDocRow[] } = {},
+): ReportDoc => {
+  const rows: ReportDocRow[] = [];
+  const compare = opts.compare ?? 'yesterday';
   rows.push({ label: 'Headline', kind: 'heading', values: [null, null] });
-  rows.push({ label: 'Sales', values: [String(h.sales.count), h.sales.total] });
-  rows.push({ label: 'Money received', values: [String(h.received.count), h.received.total] });
-  if (h.orders) rows.push({ label: 'Orders booked', values: [String(h.orders.count), h.orders.total] });
-  rows.push({ label: 'Purchases', values: [String(h.purchases.count), h.purchases.total] });
+  for (const [label, k] of headlineRows(s)) {
+    rows.push({ label: `${label} (${compareLabel(compare)}: ${dayMoney(comparedFigure(k, compare).total)})`, values: [String(k.count), k.total] });
+  }
   if (s.profit) rows.push({ label: 'Gross profit (books)', values: [null, s.profit.grossProfit] });
 
   rows.push({ label: 'Documents created', kind: 'heading', values: [null, null] });
@@ -397,25 +510,49 @@ export const dayReportDoc = (s: DaySummary, entries: DayEntry[]): ReportDoc => {
     rows.push({ label: 'Net', kind: 'total', values: [null, s.cash.net] });
   }
 
+  const p = s.purchasing;
+  if (p) {
+    rows.push({ label: 'Purchasing', kind: 'heading', values: [null, null] });
+    rows.push({ label: 'Purchase orders placed', depth: 1, values: [String(p.placed.count), p.placed.total] });
+    rows.push({ label: 'Goods received (at cost)', depth: 1, values: [String(p.received.count), p.received.total] });
+    rows.push({ label: 'Billed from purchase orders', depth: 1, values: [String(p.billed.count), p.billed.total] });
+    if (p.position) {
+      rows.push({ label: 'Open, still to arrive (now)', depth: 1, values: [String(p.position.open.count), p.position.open.total] });
+      rows.push({ label: 'Overdue (now)', depth: 1, values: [String(p.position.overdue.count), p.position.overdue.total] });
+      rows.push({
+        label: 'Received, not yet billed (now)',
+        depth: 1,
+        values: [String(p.position.receivedNotBilled.count), p.position.receivedNotBilled.total],
+      });
+    }
+  }
+
+  if (opts.extraRows?.length) rows.push(...opts.extraRows);
+
+  const notes = [
+    'Documents count on the day they are dated, so these figures agree with the P&L. Drafts, voids, cancelled sales orders and withdrawn purchase orders are listed but not counted.',
+    `Times are ${zoneLabel(s.timezone)}.`,
+  ];
   if (entries.length > 0) {
     rows.push({ label: 'Day Book', kind: 'heading', values: [null, null] });
     for (const e of entries) {
       const flag = !e.counted ? ` (${e.status ?? 'not counted'})` : e.backdated ? ` (dated ${e.date})` : '';
+      const kind = KIND_META[e.kind].one.replace(/^./, c => c.toUpperCase());
       rows.push({
-        label: `${entryTime(e.createdAt)} · ${KIND_META[e.kind].label} ${e.number ?? ''} · ${e.partyName ?? '—'}${flag}`,
+        label: `${entryTime(e.createdAt, s.timezone)} · ${kind} ${e.number ?? ''} · ${e.partyName ?? '—'}${flag}`,
         depth: 1,
         values: [e.createdBy?.name ?? '—', e.amount],
       });
     }
+    const all = opts.entryTotal ?? entries.length;
+    if (all > entries.length) notes.push(`The Day Book lists the first ${entries.length} of ${all} entries.`);
   }
   return {
     title: s.scope.ownOnly ? 'My day' : 'Day Summary',
     periodLabel: dayjs(s.date).format('dddd, D MMMM YYYY'),
-    columns: ['Count / by', 'Amount'],
+    columns: ['Count / entered by', 'Amount'],
     rows,
-    notes: [
-      'Documents count on the day they are dated, so these figures agree with the P&L. Drafts, voids and cancelled orders are listed but not counted.',
-    ],
+    notes,
   };
 };
 
@@ -427,10 +564,10 @@ export const hourLabel = (h: number): string => {
   return `${twelve}:00 ${suffix}`;
 };
 
-/** Evenings send that day; mornings recap the day before. */
+/** Evenings send that day; mornings recap the day before. The same choices as the website. */
 export const DIGEST_HOURS: Array<{ hour: number; label: string; hint: string }> = [
-  ...[18, 19, 20, 21, 22, 23].map(h => ({ hour: h, label: hourLabel(h), hint: 'that day' })),
-  ...[7, 8, 9].map(h => ({ hour: h, label: hourLabel(h), hint: 'next morning' })),
+  ...[17, 18, 19, 20, 21, 22, 23].map(h => ({ hour: h, label: hourLabel(h), hint: 'that day' })),
+  ...[6, 7, 8, 9, 10].map(h => ({ hour: h, label: hourLabel(h), hint: 'next morning' })),
 ];
 
 // ─── Charts ─────────────────────────────────────────────────────────────

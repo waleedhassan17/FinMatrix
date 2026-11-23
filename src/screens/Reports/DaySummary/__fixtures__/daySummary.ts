@@ -76,6 +76,32 @@ export const daySummaryOwner = {
   generatedAt: '2026-11-19T15:00:00.000Z',
 };
 
+/** A business that buys on purchase orders: the Buying row and the Purchasing card. */
+export const daySummaryBuying = {
+  ...daySummaryOwner,
+  headline: {
+    ...daySummaryOwner.headline,
+    purchaseOrders: kpi(3, 90000, 45000),
+    goodsReceived: kpi(2, '74000.0000', 0),
+  },
+  team: daySummaryOwner.team.map(t => ({
+    ...t,
+    purchaseOrders: t.userId === 'u-owner' ? { count: 3, total: 90000 } : { count: 0, total: 0 },
+  })),
+  attention: { ...daySummaryOwner.attention, cancelledOrders: 1 },
+  purchasing: {
+    placed: { count: 3, total: 90000 },
+    received: { count: 2, total: 74000 },
+    billed: { count: 1, total: 40000 },
+    topVendors: [{ id: 'v1', name: 'Nestle Distributors', count: 2, total: 60000 }],
+    position: {
+      open: { count: 4, total: 120000 },
+      overdue: { count: 2, total: 35000, oldest: '2026-11-12' },
+      receivedNotBilled: { count: 1, total: 34000 },
+    },
+  },
+};
+
 export const daySummaryStaff = {
   ...daySummaryOwner,
   scope: { ownOnly: true, createdBy: { id: 'u-staff', name: 'Sara Staff' } },

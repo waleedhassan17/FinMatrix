@@ -11,10 +11,9 @@ import { Feather } from '@expo/vector-icons';
 
 import { THEME, statusStyle } from '../../../theme';
 import { SectionCard, LoadMoreFooter, ErrorBlock, ReportSkeleton } from '../../../components/reports/ReportUI';
-import { formatCurrency } from '../../../utils/formatters';
-import { compactMoney } from '../../../models/itemExplorerModel';
 import {
   KIND_META,
+  dayMoney,
   dayShortLabel,
   entryTarget,
   entryTime,
@@ -34,8 +33,10 @@ export const DayBookRow: React.FC<{
   entry: DayEntry;
   showBy: boolean;
   voids: boolean;
+  /** The company's zone: entry times are on its clock, not the phone's. */
+  timeZone?: string;
   onOpen: (target: DayEntryTarget) => void;
-}> = ({ entry: e, showBy, voids, onOpen }) => {
+}> = ({ entry: e, showBy, voids, timeZone, onOpen }) => {
   const target = entryTarget(e);
   const struck = !e.counted && !voids;
   const tone = e.status ? statusStyle(e.status) : null;
@@ -46,7 +47,9 @@ export const DayBookRow: React.FC<{
       onPress={() => target && onOpen(target)}
       activeOpacity={0.7}
       accessibilityRole={target ? 'button' : undefined}
-      accessibilityLabel={`${KIND_META[e.kind].label} ${e.number ?? ''}, ${e.partyName ?? ''}, ${formatCurrency(e.amount)}`}
+      accessibilityLabel={`${KIND_META[e.kind].one} ${e.number ?? ''}, ${e.partyName ?? ''}, ${dayMoney(e.amount)}${
+        e.status ? `, ${statusText(e.status)}` : ''
+      }`}
     >
       <View style={styles.icon}>
         <Feather name={KIND_META[e.kind].icon as keyof typeof Feather.glyphMap} size={15} color={colors.primary} />
@@ -57,7 +60,7 @@ export const DayBookRow: React.FC<{
             {e.number ?? KIND_META[e.kind].one}
           </Text>
           <Text style={[styles.amount, struck && styles.struck]} numberOfLines={1}>
-            {formatCurrency(e.amount)}
+            {dayMoney(e.amount)}
           </Text>
         </View>
         <Text style={styles.party} numberOfLines={1}>
@@ -65,7 +68,7 @@ export const DayBookRow: React.FC<{
         </Text>
         <View style={styles.meta}>
           <Text style={styles.metaText}>
-            {entryTime(e.createdAt)}
+            {entryTime(e.createdAt, timeZone)}
             {showBy && e.createdBy ? ` · ${e.createdBy.name}` : ''}
           </Text>
           {e.backdated ? <Text style={styles.backdated}>dated {dayShortLabel(e.date)}</Text> : null}
@@ -137,6 +140,8 @@ const DayBookList: React.FC<{
   loading: boolean;
   loadingMore: boolean;
   error: string;
+  /** The next page failed; the rows already shown stay. */
+  moreError?: string;
   onRetry: () => void;
   onMore: () => void;
   showBy: boolean;
@@ -154,6 +159,7 @@ const DayBookList: React.FC<{
   loading,
   loadingMore,
   error,
+  moreError = '',
   onRetry,
   onMore,
   showBy,
@@ -176,8 +182,9 @@ const DayBookList: React.FC<{
             onPress={() => onFilter(c.filter)}
             style={[styles.chip, c.warn && styles.chipWarn, on && (c.warn ? styles.chipWarnOn : styles.chipOn)]}
             activeOpacity={0.75}
-            accessibilityRole="tab"
+            accessibilityRole="button"
             accessibilityState={{ selected: on }}
+            accessibilityHint="Filters the Day Book"
             accessibilityLabel={`${c.label}${c.count !== null ? `, ${c.count}` : ''}`}
           >
             <Text style={[styles.chipText, on && styles.chipTextOn]}>{c.label}</Text>
@@ -198,24 +205,49 @@ const DayBookList: React.FC<{
       <>
         <Text style={styles.totals}>
           {filter === 'voided' ? (
-            `${formatCurrency(excluded)} voided or deleted`
+            `${dayMoney(excluded)} voided or deleted`
           ) : (
             <>
-              <Text style={styles.totalsStrong}>{formatCurrency(counted)}</Text> counted
-              {excluded > 0 ? ` · ${compactMoney(excluded)} not counted` : ''}
+              <Text style={styles.totalsStrong}>{dayMoney(counted)}</Text> counted
+              {excluded > 0 ? ` · ${dayMoney(excluded)} not counted` : ''}
             </>
           )}
         </Text>
         {entries.map(e => (
-          <DayBookRow key={`${e.kind}-${e.id}-${e.createdAt}`} entry={e} showBy={showBy} voids={filter === 'voided'} onOpen={onOpen} />
+          <DayBookRow
+            key={`${e.kind}-${e.id}-${e.createdAt}`}
+            entry={e}
+            showBy={showBy}
+            voids={filter === 'voided'}
+            timeZone={summary.timezone}
+            onOpen={onOpen}
+          />
         ))}
-        <LoadMoreFooter shown={entries.length} total={total} hasMore={entries.length < total} loading={loadingMore} onMore={onMore} />
+        {moreError && !loadingMore ? (
+          <View style={styles.moreError}>
+            <Text style={styles.moreErrorText}>{moreError}</Text>
+            <TouchableOpacity onPress={onMore} accessibilityRole="button" hitSlop={8}>
+              <Text style={styles.retry}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <LoadMoreFooter shown={entries.length} total={total} hasMore={entries.length < total} loading={loadingMore} onMore={onMore} />
+        )}
       </>
     )}
   </SectionCard>
 );
 
 const styles = StyleSheet.create({
+  moreError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingTop: spacing.sm,
+  },
+  moreErrorText: { ...typography.caption, color: colors.textSecondary, flex: 1 },
+  retry: { ...typography.labelMd, color: colors.primary },
   row: {
     flexDirection: 'row',
     gap: spacing.sm,

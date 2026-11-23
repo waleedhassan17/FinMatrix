@@ -5,7 +5,7 @@
 // two thin bars an hour. A shop sees its rush hours. Mirrors the website's
 // HourlyActivity.
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 import { THEME } from '../../../theme';
@@ -15,18 +15,22 @@ import { busiestHour, hourTick, hourWindow, type DayHourRow } from '../../../mod
 
 const { colors, spacing, typography } = THEME;
 
+/** An axis label's width: "12 PM" with room to spare. */
+const TICK_WIDTH = 40;
+
 const HourlyActivity: React.FC<{ hourly: DayHourRow[] }> = ({ hourly }) => {
   const hours = hourWindow(hourly);
   const max = Math.max(...hours.map(h => Math.max(h.sales, h.received)), 0);
   const peak = busiestHour(hourly);
+  const [axisWidth, setAxisWidth] = useState(0);
   return (
     <SectionCard
       title="Activity by hour"
       icon="clock"
       subtitle={
         peak
-          ? `Busiest at ${hourTick(peak.hour)} · ${compactMoney(peak.sales)} sales`
-          : 'When sales and receipts were entered'
+          ? `Busiest at ${hourTick(peak.hour)} · ${compactMoney(peak.sales)} sales, ${compactMoney(peak.received)} received`
+          : 'Sales and receipts by the hour they were entered'
       }
     >
       {max === 0 ? (
@@ -34,7 +38,10 @@ const HourlyActivity: React.FC<{ hourly: DayHourRow[] }> = ({ hourly }) => {
       ) : (
         <View
           accessible
-          accessibilityLabel={`Sales and money received by hour. ${peak ? `Busiest at ${hourTick(peak.hour)}.` : ''}`}
+          accessibilityLabel={`Sales and money received by hour: ${hours
+            .filter(h => h.sales > 0 || h.received > 0)
+            .map(h => `${hourTick(h.hour)}, ${compactMoney(h.sales)} sales, ${compactMoney(h.received)} received`)
+            .join('; ')}.`}
         >
           <View style={styles.legend}>
             <View style={styles.legendItem}>
@@ -56,14 +63,20 @@ const HourlyActivity: React.FC<{ hourly: DayHourRow[] }> = ({ hourly }) => {
           </View>
           {/* Every fourth hour, placed along the axis: a label squeezed into
               one hour's column would be clipped to "1…". */}
-          <View style={styles.ticks}>
-            {hours.map((h, i) =>
-              h.hour % 4 === 0 ? (
-                <Text key={h.hour} style={[styles.tick, { left: `${(i / hours.length) * 100}%` }]} numberOfLines={1}>
-                  {hourTick(h.hour)}
-                </Text>
-              ) : null,
-            )}
+          <View style={styles.ticks} onLayout={e => setAxisWidth(e.nativeEvent.layout.width)}>
+            {axisWidth > 0
+              ? hours.map((h, i) => {
+                  if (h.hour % 4 !== 0) return null;
+                  // Centred under its hour, but never past either end of the axis.
+                  const centre = ((i + 0.5) / hours.length) * axisWidth;
+                  const left = Math.min(Math.max(centre - TICK_WIDTH / 2, 0), axisWidth - TICK_WIDTH);
+                  return (
+                    <Text key={h.hour} style={[styles.tick, { left }]} numberOfLines={1}>
+                      {hourTick(h.hour)}
+                    </Text>
+                  );
+                })
+              : null}
           </View>
         </View>
       )}
@@ -88,7 +101,7 @@ const styles = StyleSheet.create({
   hour: { flex: 1, height: '100%', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 1 },
   bar: { flex: 1, maxWidth: 7, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
   ticks: { height: 18, marginTop: 3 },
-  tick: { ...typography.caption, color: colors.textTertiary, position: 'absolute', top: 0, width: 48 },
+  tick: { ...typography.caption, color: colors.textTertiary, position: 'absolute', top: 0, width: TICK_WIDTH, textAlign: 'center' },
 });
 
 export default HourlyActivity;

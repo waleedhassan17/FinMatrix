@@ -1,23 +1,25 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Day Summary · headline
 // ═══════════════════════════════════════════════════════
-// The day in four figures — sales, money received, orders booked, purchases —
+// The day's headline figures — sales, money received, orders booked, purchases —
 // each with its count, a pill for the move against the comparison day, and
-// the week to this day as seven bars (this day solid). Two across on a phone;
-// the same anatomy as the website's KPI cards. Own file so it is tested alone.
+// the week to this day as seven bars (this day solid). A business that buys on
+// purchase orders gets two labelled rows, Selling and Buying (POs placed,
+// goods received, bills). Two across on a phone; the same anatomy as the
+// website's KPI cards. Own file so it is tested alone.
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 import { THEME } from '../../../theme';
-import { formatCurrency } from '../../../utils/formatters';
 import { compactMoney } from '../../../models/itemExplorerModel';
 import {
   compareLabel,
   comparedFigure,
   countLabel,
   dayChange,
+  dayMoney,
   dayShortLabel,
   weekdayInitials,
   type CompareKey,
@@ -38,7 +40,53 @@ interface Item {
   tintBg: string;
   /** Up is good news; null when the move is just a fact (purchases). */
   upIsGood: boolean | null;
+  /** The count line, when "3 invoices" is not the right words. */
+  countText?: string;
 }
+
+/** "2 POs" — a half-width tile has no room for "2 purchase orders". */
+const shortPos = (n: number) => `${n.toLocaleString('en-US')} ${n === 1 ? 'PO' : 'POs'}`;
+
+/** The selling figures, and the buying ones when the plan has purchase orders. */
+export const headlineGroups = (s: DaySummary): Array<{ label: string | null; items: Item[] }> => {
+  const all = headlineItems(s);
+  if (!s.headline.purchaseOrders) return [{ label: null, items: all }];
+  const selling = all.filter(i => i.key === 'sales' || i.key === 'received' || i.key === 'orders');
+  const goods = s.headline.goodsReceived;
+  const buying: Item[] = [
+    {
+      key: 'pos',
+      label: 'POs placed',
+      kpi: s.headline.purchaseOrders,
+      kind: 'purchase_order',
+      icon: 'shopping-cart',
+      tint: colors.info,
+      tintBg: colors.infoLight,
+      upIsGood: null,
+      countText: shortPos(s.headline.purchaseOrders.count),
+    },
+    ...(goods
+      ? [
+          {
+            key: 'goods',
+            label: 'Goods received',
+            kpi: goods,
+            kind: 'purchase_order' as const,
+            icon: 'package' as const,
+            tint: colors.success,
+            tintBg: colors.successLighter,
+            upIsGood: null,
+            countText: goods.count ? `At cost · ${shortPos(goods.count)}` : 'Nothing received',
+          },
+        ]
+      : []),
+    { ...all.find(i => i.key === 'purchases')!, label: 'Bills', icon: 'file-minus' },
+  ];
+  return [
+    { label: 'Selling', items: selling },
+    { label: 'Buying', items: buying },
+  ];
+};
 
 export const headlineItems = (s: DaySummary): Item[] => [
   {
@@ -53,7 +101,7 @@ export const headlineItems = (s: DaySummary): Item[] => [
   },
   {
     key: 'received',
-    label: 'Received',
+    label: 'Money received',
     kpi: s.headline.received,
     kind: 'receipt',
     icon: 'download',
@@ -139,19 +187,20 @@ export const WeekBars: React.FC<{ values: number[]; dates: string[]; label: stri
   );
 };
 
-const DayHeadline: React.FC<{ summary: DaySummary; compare: CompareKey }> = ({ summary, compare }) => (
+const Tiles: React.FC<{ items: Item[]; summary: DaySummary; compare: CompareKey }> = ({ items, summary, compare }) => (
   <View style={styles.grid}>
-    {headlineItems(summary).map((item, i, all) => {
+    {items.map((item, i, all) => {
       const prior = comparedFigure(item.kpi, compare);
       const change = dayChange(item.kpi.total, prior.total);
       // An odd one out spans the row rather than leaving half of it empty.
       const alone = all.length % 2 === 1 && i === all.length - 1;
+      const counted = item.countText ?? countLabel(item.kpi.count, item.kind);
       return (
         <View
           key={item.key}
           style={[styles.tile, alone && styles.tileWide]}
           accessible
-          accessibilityLabel={`${item.label} ${formatCurrency(item.kpi.total)}, ${countLabel(item.kpi.count, item.kind)}${change ? `, ${change.text} ${compareLabel(compare)}` : ''}`}
+          accessibilityLabel={`${item.label} ${dayMoney(item.kpi.total)}, ${counted}${change ? `, ${change.text} ${compareLabel(compare)}` : ''}`}
         >
           <View style={styles.head}>
             <View style={[styles.icon, { backgroundColor: item.tintBg }]}>
@@ -162,11 +211,11 @@ const DayHeadline: React.FC<{ summary: DaySummary; compare: CompareKey }> = ({ s
             </Text>
           </View>
           <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-            {formatCurrency(item.kpi.total)}
+            {dayMoney(item.kpi.total)}
           </Text>
           <View style={styles.subRow}>
             <Text style={styles.caption} numberOfLines={1}>
-              {countLabel(item.kpi.count, item.kind)}
+              {counted}
             </Text>
             {change ? <DeltaPill text={change.text} up={change.up} upIsGood={item.upIsGood} /> : null}
           </View>
@@ -180,7 +229,25 @@ const DayHeadline: React.FC<{ summary: DaySummary; compare: CompareKey }> = ({ s
   </View>
 );
 
+const DayHeadline: React.FC<{ summary: DaySummary; compare: CompareKey }> = ({ summary, compare }) => (
+  <View style={styles.groups}>
+    {headlineGroups(summary).map(g => (
+      <View key={g.label ?? 'all'} style={styles.group}>
+        {g.label ? (
+          <Text style={styles.groupLabel} accessibilityRole="header">
+            {g.label}
+          </Text>
+        ) : null}
+        <Tiles items={g.items} summary={summary} compare={compare} />
+      </View>
+    ))}
+  </View>
+);
+
 const styles = StyleSheet.create({
+  groups: { gap: spacing.md },
+  group: { gap: spacing.xs },
+  groupLabel: { ...typography.overline, color: colors.textTertiary },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.sm },
   tile: {
     width: '48.5%',

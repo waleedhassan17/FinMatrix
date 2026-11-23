@@ -40,6 +40,8 @@ interface DaySummaryState {
   query: string;
 
   summary: DaySummary | null;
+  /** The day and person `summary` is for ("date|createdBy"). */
+  summaryFor: string;
   isLoading: boolean;
   error: string;
 
@@ -52,6 +54,8 @@ interface DaySummaryState {
   entriesLoading: boolean;
   entriesLoadingMore: boolean;
   entriesError: string;
+  /** The next page failed: the rows already shown stay, with a retry under them. */
+  entriesMoreError: string;
 
   /** The dashboard's "Today" card — today, everyone (or own, for staff). */
   today: DaySummary | null;
@@ -59,6 +63,8 @@ interface DaySummaryState {
   todayError: string;
 
   schedule: DaySummarySchedule | null;
+  /** The saved settings could not be read: the form must not save defaults over them. */
+  scheduleLoadError: string;
   scheduleSaving: boolean;
   scheduleError: string;
 
@@ -86,6 +92,7 @@ const initialState: DaySummaryState = {
   filter: 'all',
   query: '',
   summary: null,
+  summaryFor: '',
   isLoading: false,
   error: '',
   entries: [],
@@ -96,10 +103,12 @@ const initialState: DaySummaryState = {
   entriesLoading: false,
   entriesLoadingMore: false,
   entriesError: '',
+  entriesMoreError: '',
   today: null,
   todayLoading: false,
   todayError: '',
   schedule: null,
+  scheduleLoadError: '',
   scheduleSaving: false,
   scheduleError: '',
   sheetMode: 'day',
@@ -116,6 +125,10 @@ const initialState: DaySummaryState = {
 };
 
 type SummaryArg = { date: string; createdBy: string | null };
+const summaryKey = (a: SummaryArg) => `${a.date}|${a.createdBy ?? ''}`;
+
+/** What a failed load says — never a raw network or server message. */
+export const DAY_LOAD_FAILED = 'The day could not be loaded. Check the connection and try again.';
 type EntriesArg = { date: string; createdBy: string | null; filter: DayEntryFilter; query: string; page: number };
 type ItemsArg = { from: string; to: string; createdBy: string | null; compare: DayItemCompare | null };
 const itemsKey = (a: ItemsArg) => [a.from, a.to, a.createdBy ?? '', a.compare ?? ''].join('|');
@@ -235,11 +248,18 @@ export const daySummarySlice = createAppSlice({
           if (action.meta.arg.date !== state.date || action.meta.arg.createdBy !== state.createdBy) return;
           state.isLoading = false;
           state.summary = action.payload;
+          state.summaryFor = summaryKey(action.meta.arg);
         },
         rejected: (state, action) => {
-          if (action.meta.arg.date !== state.date) return;
+          if (action.meta.arg.date !== state.date || action.meta.arg.createdBy !== state.createdBy) return;
           state.isLoading = false;
-          state.error = action.error?.message ?? 'The day summary could not be loaded';
+          state.error = DAY_LOAD_FAILED;
+          // Another day's (or person's) figures must not stay up under this day's
+          // name. A failed refresh of the same day keeps them, and says so.
+          if (state.summaryFor !== summaryKey(action.meta.arg)) {
+            state.summary = null;
+            state.summaryFor = '';
+          }
         },
       },
     ),
@@ -261,6 +281,7 @@ export const daySummarySlice = createAppSlice({
           if (action.meta.arg.page > 1) state.entriesLoadingMore = true;
           else state.entriesLoading = true;
           state.entriesError = '';
+          state.entriesMoreError = '';
         },
         fulfilled: (state, action) => {
           const a = action.meta.arg;
@@ -284,9 +305,10 @@ export const daySummarySlice = createAppSlice({
         rejected: (state, action) => {
           state.entriesLoading = false;
           state.entriesLoadingMore = false;
-          if (action.meta.arg.date === state.date) {
-            state.entriesError = action.error?.message ?? 'The Day Book could not be loaded';
-          }
+          if (action.meta.arg.date !== state.date) return;
+          // A later page failing keeps the rows already on screen.
+          if (action.meta.arg.page > 1) state.entriesMoreError = 'More entries could not be loaded.';
+          else state.entriesError = 'The Day Book could not be loaded. Check the connection and try again.';
         },
       },
     ),
@@ -307,8 +329,14 @@ export const daySummarySlice = createAppSlice({
     }),
 
     fetchDaySchedule: create.asyncThunk(async () => dayScheduleSerializer(await getDaySummaryScheduleAPI()), {
+      pending: state => {
+        state.scheduleLoadError = '';
+      },
       fulfilled: (state, action) => {
         state.schedule = action.payload;
+      },
+      rejected: state => {
+        state.scheduleLoadError = 'Your current settings could not be loaded.';
       },
     }),
 
@@ -324,9 +352,9 @@ export const daySummarySlice = createAppSlice({
           state.scheduleSaving = false;
           state.schedule = action.payload;
         },
-        rejected: (state, action) => {
+        rejected: state => {
           state.scheduleSaving = false;
-          state.scheduleError = action.error?.message ?? 'Could not save the daily summary';
+          state.scheduleError = 'Could not save the daily summary. Nothing was changed.';
         },
       },
     ),
