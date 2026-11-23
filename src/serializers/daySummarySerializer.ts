@@ -13,6 +13,8 @@ import {
   type DayEntryFilter,
   type DayFigure,
   type DayKpi,
+  type DayPartyRow,
+  type DayPurchasing,
   type DaySummary,
   type DaySummarySchedule,
 } from '../models/daySummaryModel';
@@ -51,6 +53,31 @@ const kpi = (v: unknown): DayKpi => {
   };
 };
 
+const party = (fallback: string) => (v: unknown): DayPartyRow => {
+  const c = obj(v);
+  return { id: str(c.id), name: str(c.name, fallback), ...figure(c) };
+};
+
+const purchasing = (v: unknown): DayPurchasing | null => {
+  if (!v || typeof v !== 'object') return null;
+  const r = obj(v);
+  const pos = r.position ? obj(r.position) : null;
+  const overdue = pos ? obj(pos.overdue) : {};
+  return {
+    placed: figure(r.placed),
+    received: figure(r.received),
+    billed: figure(r.billed),
+    topVendors: arr(r.topVendors).map(party('Unnamed supplier')),
+    position: pos
+      ? {
+          open: figure(pos.open),
+          overdue: { ...figure(overdue), oldest: strOrNull(overdue.oldest) },
+          receivedNotBilled: figure(pos.receivedNotBilled),
+        }
+      : null,
+  };
+};
+
 const person = (v: unknown): { id: string; name: string } | null => {
   const r = obj(v);
   const id = strOrNull(r.id);
@@ -77,6 +104,8 @@ export const daySummarySerializer = (payload: unknown): DaySummary => {
       received: kpi(headline.received),
       orders: headline.orders ? kpi(headline.orders) : null,
       purchases: kpi(headline.purchases),
+      purchaseOrders: headline.purchaseOrders ? kpi(headline.purchaseOrders) : null,
+      goodsReceived: headline.goodsReceived ? kpi(headline.goodsReceived) : null,
     },
     trendDates: arr(r.trendDates).map((d) => str(d)),
     documents: arr(r.documents)
@@ -101,9 +130,7 @@ export const daySummarySerializer = (payload: unknown): DaySummary => {
       paid: money(cash.paid),
       net: money(cash.net),
     },
-    topCustomers: arr(r.topCustomers)
-      .map(obj)
-      .map((c) => ({ id: str(c.id), name: str(c.name, 'Unnamed customer'), ...figure(c) })),
+    topCustomers: arr(r.topCustomers).map(party('Unnamed customer')),
     topItems: arr(r.topItems)
       .map(obj)
       .map((i) => ({
@@ -133,6 +160,7 @@ export const daySummarySerializer = (payload: unknown): DaySummary => {
           salesOrders: figure(t.salesOrders),
           estimates: figure(t.estimates),
           receipts: figure(t.receipts),
+          purchaseOrders: figure(t.purchaseOrders),
           documents: int(t.documents),
         }))
       : null,
@@ -154,6 +182,7 @@ export const daySummarySerializer = (payload: unknown): DaySummary => {
       cancelledOrders: int(attention.cancelledOrders),
       voided: attention.voided ? figure(attention.voided) : null,
     },
+    purchasing: purchasing(r.purchasing),
     isEmpty: r.isEmpty === true,
     generatedAt: str(r.generatedAt),
   };

@@ -9,9 +9,12 @@ import {
   busiestHour,
   dayBookChips,
   dayChange,
+  dayMoney,
   dayReportDoc,
   dayShareText,
   entryTarget,
+  entryTime,
+  headlineRows,
   hourLabel,
   hourTick,
   hourWindow,
@@ -23,7 +26,7 @@ import {
   daySummarySerializer,
   dayScheduleSerializer,
 } from '../../../../serializers/daySummarySerializer';
-import { dayEntriesPage, daySummaryOwner, daySummaryStaff } from '../__fixtures__/daySummary';
+import { dayEntriesPage, daySummaryBuying, daySummaryOwner, daySummaryStaff } from '../__fixtures__/daySummary';
 
 const owner = daySummarySerializer({ success: true, data: daySummaryOwner });
 
@@ -153,5 +156,86 @@ describe('Day Book chips', () => {
   });
   it('keeps the chosen type even when it is empty', () => {
     expect(dayBookChips(owner, 'estimate').map(c => c.filter)).toContain('estimate');
+  });
+});
+
+describe('purchasing', () => {
+  const buying = daySummarySerializer(daySummaryBuying);
+
+  it('reads the buying figures, and an older server as none', () => {
+    expect(buying.headline.purchaseOrders?.count).toBe(3);
+    expect(buying.headline.goodsReceived?.total).toBe(74000);
+    expect(buying.purchasing?.position?.overdue).toEqual({ count: 2, total: 35000, oldest: '2026-11-12' });
+    expect(buying.team?.[0].purchaseOrders).toEqual({ count: 3, total: 90000 });
+    expect(owner.purchasing).toBeNull();
+    expect(owner.headline.purchaseOrders).toBeNull();
+    expect(owner.team?.[0].purchaseOrders).toEqual({ count: 0, total: 0 });
+  });
+
+  it('lists the headline selling first, then buying', () => {
+    expect(headlineRows(buying).map(([label]) => label)).toEqual([
+      'Sales',
+      'Money received',
+      'Orders booked',
+      'POs placed',
+      'Goods received',
+      'Bills',
+    ]);
+    expect(headlineRows(owner).map(([label]) => label)).toEqual(['Sales', 'Money received', 'Orders booked', 'Purchases']);
+  });
+
+  it('flags overdue POs (opening Purchase orders) and names withdrawn ones', () => {
+    const items = attentionItems(buying);
+    const overdue = items.find(i => i.key === 'overdue-pos');
+    expect(overdue).toMatchObject({ opensPurchaseOrders: true, label: '2 purchase orders overdue' });
+    expect(overdue?.filter).toBeUndefined();
+    expect(items.find(i => i.key === 'cancelled')?.label).toBe('1 order cancelled or withdrawn');
+  });
+
+  it('puts the buying side in the share text and the PDF', () => {
+    const text = dayShareText(buying, 'Acme');
+    expect(text).toContain('POs placed: Rs 90,000.00 (3 purchase orders)');
+    expect(text).toContain('Goods received: Rs 74,000.00 at cost (2 purchase orders)');
+    expect(text).toContain('Bills: Rs 40,000.00 (1 bill)');
+    expect(text).toContain('⚠ 2 purchase orders overdue');
+    const doc = dayReportDoc(buying, []);
+    const labels = doc.rows.map(r => r.label);
+    expect(labels).toContain('Purchasing');
+    expect(labels).toContain('Overdue (now)');
+    expect(doc.columns).toEqual(['Count / entered by', 'Amount']);
+  });
+});
+
+describe('the PDF and the share text', () => {
+  it('says when the Day Book holds fewer rows than the day had', () => {
+    const entries = dayEntriesSerializer(dayEntriesPage).items;
+    const doc = dayReportDoc(owner, entries, { entryTotal: 740 });
+    expect(doc.notes?.join(' ')).toContain(`first ${entries.length} of 740 entries`);
+    expect(dayReportDoc(owner, entries).notes?.join(' ')).not.toContain('first');
+  });
+
+  it('follows the comparison chosen', () => {
+    const doc = dayReportDoc(owner, [], { compare: 'lastWeek' });
+    expect(doc.rows.find(r => r.label.startsWith('Sales'))?.label).toContain('vs last week');
+  });
+
+  it('leaves out of the share text the figures that were nil', () => {
+    const quietOrders = daySummarySerializer({
+      ...daySummaryOwner,
+      headline: { ...daySummaryOwner.headline, orders: { ...daySummaryOwner.headline.orders, count: 0, total: 0 } },
+    });
+    expect(dayShareText(quietOrders, 'Acme')).not.toContain('Orders booked');
+  });
+});
+
+describe('money and times', () => {
+  it('shows a negative with a true minus sign', () => {
+    expect(dayMoney(-3000)).toBe('−Rs 3,000.00');
+  });
+
+  it('gives entry times on the company clock, not the phone’s', () => {
+    expect(entryTime('2026-11-19T10:15:00.000Z', 'Asia/Karachi')).toBe('15:15');
+    expect(entryTime('2026-11-19T10:15:00.000Z', 'UTC')).toBe('10:15');
+    expect(entryTime('')).toBe('—');
   });
 });

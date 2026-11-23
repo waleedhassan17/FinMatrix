@@ -194,7 +194,7 @@ const ItemSalesCard: React.FC<ItemSalesCardProps> = props => {
 
       {sheet && view ? (
         <View style={[styles.sheet, loading && styles.busy]}>
-          <Figures totals={view.totals} sheet={sheet} compareLabel={props.compareLabel} />
+          <Figures totals={view.totals} sheet={sheet} />
 
           {sheet.rows.length === 0 ? (
             <EmptyBlock
@@ -247,7 +247,7 @@ const ItemSalesCard: React.FC<ItemSalesCardProps> = props => {
 };
 
 /** Four figures in a 2×2 grid — the same four on every phone. */
-const Figures: React.FC<{ totals: SheetTotals; sheet: DayItemSheet; compareLabel: string }> = ({
+const Figures: React.FC<{ totals: SheetTotals; sheet: DayItemSheet }> = ({
   totals: t,
   sheet,
 }) => {
@@ -260,14 +260,14 @@ const Figures: React.FC<{ totals: SheetTotals; sheet: DayItemSheet; compareLabel
     },
     {
       label: 'Returns',
-      value: t.returnsValue > 0 ? `−${formatCurrency(t.returnsValue)}` : formatCurrency(0),
+      value: formatCurrency(-t.returnsValue).replace(/^-/, '−'),
       note: t.returned > 0 ? `${qtyCell(t.returned)} units back` : 'None',
       danger: t.returnsValue > 0,
     },
     sheet.showCost && t.profit !== null
       ? {
-          label: 'Gross profit',
-          value: formatCurrency(t.profit),
+          label: 'Gross profit on items',
+          value: formatCurrency(t.profit).replace(/^-/, '−'),
           note: t.margin === null ? undefined : `${t.margin.toFixed(1)}% margin`,
           danger: t.profit < 0,
         }

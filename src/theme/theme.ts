@@ -586,7 +586,7 @@ const STATUS_TIER = {
 
 const STATUS_TIER_OF: Record<string, keyof typeof STATUS_TIER> = {
   // ── neutral ──
-  draft: 'neutral', void: 'neutral', cancelled: 'neutral', inactive: 'neutral',
+  draft: 'neutral', void: 'neutral', cancelled: 'neutral', withdrawn: 'neutral', inactive: 'neutral',
   unassigned: 'neutral', archived: 'neutral', none: 'neutral', on_leave: 'neutral',
   // ── personnel availability ──
   available: 'success', busy: 'warning',

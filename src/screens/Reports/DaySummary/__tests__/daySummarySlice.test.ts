@@ -9,6 +9,7 @@ import {
   daySummarySlice,
   fetchDayEntries,
   fetchDayItems,
+  fetchDaySchedule,
   fetchDaySummary,
   setItemGroupBy,
   setItemQuery,
@@ -84,6 +85,28 @@ describe('daySummarySlice', () => {
     },
   });
 
+  const entriesRejected = (arg: { date: string; page: number }) => ({
+    type: fetchDayEntries.rejected.type,
+    error: { message: 'socket hang up' },
+    meta: {
+      arg: { createdBy: null as string | null, filter: 'all' as const, query: '', ...arg },
+      requestId: 'r',
+      requestStatus: 'rejected' as const,
+    },
+  });
+
+  it('a later page failing keeps the rows already shown, with a retry', () => {
+    let s = reducer(init(), setDayDate('2026-11-18'));
+    s = reducer(s, entriesFulfilled({ date: '2026-11-18', query: '', page: 1 }));
+    s = reducer(s, entriesRejected({ date: '2026-11-18', page: 2 }));
+    expect(s.entries).toHaveLength(2);
+    expect(s.entriesError).toBe('');
+    expect(s.entriesMoreError).toBe('More entries could not be loaded.');
+    s = reducer(s, entriesRejected({ date: '2026-11-18', page: 1 }));
+    expect(s.entriesError).toMatch(/could not be loaded/);
+    expect(s.entriesError).not.toContain('socket');
+  });
+
   it('keeps the whole view’s totals and adds a next page to the list', () => {
     let s = reducer(init(), setDayDate('2026-11-18'));
     s = reducer(s, entriesFulfilled({ date: '2026-11-18', query: '', page: 1 }));
@@ -108,6 +131,37 @@ describe('daySummarySlice', () => {
     let s = reducer(init(), setDayQuery('Ali'));
     s = reducer(s, setDayDate('2026-11-17'));
     expect(s.query).toBe('');
+  });
+});
+
+describe('daySummarySlice — a failed load', () => {
+  const rejected = (date: string, createdBy: string | null = null) => ({
+    type: fetchDaySummary.rejected.type,
+    error: { message: 'Network Error' },
+    meta: { arg: { date, createdBy }, requestId: 'r', requestStatus: 'rejected' as const },
+  });
+
+  it('never leaves another day’s figures up under the new day', () => {
+    let s = reducer(reducer(init(), setDayDate('2026-11-18')), fulfilled('2026-11-18', null));
+    expect(s.summary?.date).toBe('2026-11-18');
+    s = reducer(s, setDayDate('2026-11-17'));
+    s = reducer(s, rejected('2026-11-17'));
+    expect(s.summary).toBeNull();
+    expect(s.error).toMatch(/could not be loaded/);
+    expect(s.error).not.toContain('Network Error');
+  });
+
+  it('a failed refresh of the same day keeps its figures', () => {
+    let s = reducer(reducer(init(), setDayDate('2026-11-18')), fulfilled('2026-11-18', null));
+    s = reducer(s, rejected('2026-11-18'));
+    expect(s.summary?.date).toBe('2026-11-18');
+    expect(s.error).not.toBe('');
+  });
+
+  it('remembers that the digest settings could not be read', () => {
+    const s = reducer(init(), { type: fetchDaySchedule.rejected.type, error: { message: 'x' }, meta: {} });
+    expect(s.schedule).toBeNull();
+    expect(s.scheduleLoadError).toMatch(/could not be loaded/);
   });
 });
 

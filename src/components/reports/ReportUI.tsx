@@ -738,7 +738,9 @@ export const Segmented: React.FC<{
   options: string[];
   activeIndex: number;
   onChange: (i: number) => void;
-}> = ({ options, activeIndex, onChange }) => {
+  /** What the choice is ("Compare with"), read before each option. */
+  accessibilityLabel?: string;
+}> = ({ options, activeIndex, onChange, accessibilityLabel }) => {
   // The track's inner width, and each label's width on one line.
   const [track, setTrack] = useState(0);
   const [natural, setNatural] = useState<Record<string, number>>({});
@@ -786,7 +788,7 @@ export const Segmented: React.FC<{
         // A screen reader hears which of the views is on, not just a word.
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
-        accessibilityLabel={`${opt}, ${i + 1} of ${options.length}`}
+        accessibilityLabel={`${accessibilityLabel ? `${accessibilityLabel}: ` : ''}${opt}, ${i + 1} of ${options.length}`}
       >
         <Text style={[S.segmentText, active && S.segmentTextActive]} numberOfLines={1}>
           {opt}
