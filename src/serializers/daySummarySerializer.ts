@@ -16,6 +16,7 @@ import {
   type DaySummary,
   type DaySummarySchedule,
 } from '../models/daySummaryModel';
+import { DAY_ITEM_COMPARES, type DayItemCompare, type DayItemSheet } from '../models/dayItemSheetModel';
 
 type Raw = Record<string, unknown>;
 
@@ -88,6 +89,9 @@ export const daySummarySerializer = (payload: unknown): DaySummary => {
       tax: money(sales.tax),
       total: money(sales.total),
       unpaid: money(sales.unpaid),
+      returns: money(sales.returns),
+      // An older server sends no `net`: nothing was netted, so it is the total.
+      net: sales.net === undefined ? money(sales.total) : money(sales.net),
     },
     cash: {
       methods: arr(cash.methods)
@@ -197,5 +201,95 @@ export const dayScheduleSerializer = (payload: unknown): DaySummarySchedule => {
     email: r.email !== false,
     timezone: str(r.timezone, 'Asia/Karachi'),
     lastSent: strOrNull(r.lastSent),
+  };
+};
+
+const moneyOrNull = (v: unknown): number | null => (v === null || v === undefined ? null : money(v));
+const lineKind = (v: unknown): 'item' | 'service' => (v === 'service' ? 'service' : 'item');
+
+/** GET /reports/day-summary/items → the item-wise sales sheet. */
+export const dayItemSheetSerializer = (payload: unknown): DayItemSheet => {
+  const r = obj(unwrapEnvelope(payload));
+  const scope = obj(r.scope);
+  const totals = obj(r.totals);
+  const tie = obj(r.reconciliation);
+  const compare = (DAY_ITEM_COMPARES as readonly string[]).includes(String(r.compare))
+    ? (r.compare as DayItemCompare)
+    : null;
+  return {
+    from: str(r.from),
+    to: str(r.to, str(r.from)),
+    today: str(r.today),
+    currency: str(r.currency, 'PKR'),
+    scope: { ownOnly: scope.ownOnly === true, createdBy: person(scope.createdBy) },
+    compare,
+    compareFrom: strOrNull(r.compareFrom),
+    compareTo: strOrNull(r.compareTo),
+    rows: arr(r.rows)
+      .map(obj)
+      .map(x => ({
+        kind: lineKind(x.kind),
+        itemId: strOrNull(x.itemId),
+        code: strOrNull(x.code),
+        name: str(x.name, 'Item'),
+        unit: strOrNull(x.unit),
+        category: strOrNull(x.category),
+        agency: strOrNull(x.agency),
+        sold: money(x.sold),
+        free: money(x.free),
+        returned: money(x.returned),
+        net: money(x.net),
+        value: money(x.value),
+        returnsValue: money(x.returnsValue),
+        cost: moneyOrNull(x.cost),
+        profit: moneyOrNull(x.profit),
+        margin: moneyOrNull(x.margin),
+        costMissing: x.costMissing === true,
+        compareValue: moneyOrNull(x.compareValue),
+      })),
+    compareOnly: arr(r.compareOnly)
+      .map(obj)
+      .map(x => ({
+        kind: lineKind(x.kind),
+        itemId: strOrNull(x.itemId),
+        name: str(x.name, 'Item'),
+        category: strOrNull(x.category),
+        agency: strOrNull(x.agency),
+        compareValue: money(x.compareValue),
+      })),
+    totals: {
+      lines: int(totals.lines),
+      sold: money(totals.sold),
+      free: money(totals.free),
+      returned: money(totals.returned),
+      net: money(totals.net),
+      value: money(totals.value),
+      returnsValue: money(totals.returnsValue),
+      cost: moneyOrNull(totals.cost),
+      profit: moneyOrNull(totals.profit),
+      margin: moneyOrNull(totals.margin),
+      compareValue: moneyOrNull(totals.compareValue),
+    },
+    hasFree: r.hasFree === true,
+    showCost: r.showCost === true,
+    reconciliation: {
+      salesBeforeTax: money(tie.salesBeforeTax),
+      returns: money(tie.returns),
+      netSales: money(tie.netSales),
+      matches: tie.matches === true,
+    },
+    reorder: Array.isArray(r.reorder)
+      ? r.reorder.map(obj).map(x => ({
+          itemId: str(x.itemId),
+          code: str(x.code),
+          name: str(x.name, 'Item'),
+          unit: strOrNull(x.unit),
+          onHand: money(x.onHand),
+          reorderPoint: money(x.reorderPoint),
+          reorderQuantity: money(x.reorderQuantity),
+          outOfStock: x.outOfStock === true,
+        }))
+      : null,
+    generatedAt: str(r.generatedAt),
   };
 };

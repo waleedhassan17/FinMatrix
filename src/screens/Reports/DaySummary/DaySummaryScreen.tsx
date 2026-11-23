@@ -41,8 +41,10 @@ import {
 import RankedBars from '../shared/RankedBars';
 import { useAdoptParam } from '../shared/useAdoptParam';
 import { useShareReportPdf } from '../shared/useShareReportPdf';
+import { itemSheetDoc, itemShareLines } from '../../../models/dayItemSheetModel';
 import {
   COMPARE_KEYS,
+  compareLabel,
   dayLabel,
   dayReportDoc,
   dayShareText,
@@ -53,6 +55,7 @@ import {
 } from '../../../models/daySummaryModel';
 import {
   fetchDayEntries,
+  fetchDayItems,
   fetchDaySchedule,
   fetchDaySummary,
   openDay,
@@ -64,9 +67,15 @@ import {
   setDayDate,
   setDayFilter,
   setDayQuery,
+  setItemGroupBy,
+  setItemQuery,
+  setItemSort,
+  setSheetMode,
+  setSheetRange,
 } from './daySummarySlice';
 import DayHeadline from './DayHeadline';
-import { AttentionCard, DocumentGrid, MoneyCard, ProfitStrip, TeamCard } from './DayPanels';
+import { AttentionCard, DocumentGrid, MoneyCard, ProfitStrip, ReorderCard, TeamCard } from './DayPanels';
+import ItemSalesCard from './ItemSalesCard';
 import DayBookList from './DayBookList';
 import HourlyActivity from './HourlyActivity';
 import DigestSheet from './DigestSheet';
@@ -102,14 +111,28 @@ const DaySummaryScreen: React.FC = () => {
   );
 
   const createdBy = isOwner ? st.createdBy : null;
+  // Item-wise sales: the day on screen, or a range of its own.
+  const [sheetFrom, sheetTo] =
+    st.sheetMode === 'range' && st.sheetFrom ? [st.sheetFrom, st.sheetTo] : [st.date, st.date];
+  const itemCompare = st.compare === 'yesterday' ? 'previous' : 'lastWeek';
+  const loadItems = useCallback(
+    () => dispatch(fetchDayItems({ from: sheetFrom, to: sheetTo, createdBy, compare: itemCompare })),
+    [dispatch, sheetFrom, sheetTo, createdBy, itemCompare],
+  );
   const load = useCallback(
     () =>
       Promise.all([
         dispatch(fetchDaySummary({ date: st.date, createdBy })),
         dispatch(fetchDayEntries({ date: st.date, createdBy, filter: st.filter, query: st.query, page: 1 })),
+        loadItems(),
       ]),
-    [dispatch, st.date, st.filter, st.query, createdBy],
+    [dispatch, st.date, st.filter, st.query, createdBy, loadItems],
   );
+
+  useEffect(() => {
+    if (!ready(st.date)) return;
+    loadItems();
+  }, [ready, st.date, loadItems]);
 
   useEffect(() => {
     if (!ready(st.date)) return;
@@ -167,7 +190,10 @@ const DaySummaryScreen: React.FC = () => {
 
   const shareText = async () => {
     if (!s) return;
-    const message = dayShareText(s, company.name);
+    // The day's top product groups ride along when the sheet covers that day.
+    const sheetForDay = st.items && st.items.from === st.date && st.items.to === st.date ? st.items : null;
+    const extra = sheetForDay ? itemShareLines(sheetForDay, st.itemGroupBy) : [];
+    const message = [dayShareText(s, company.name), ...(extra.length ? ['', ...extra] : [])].join('\n');
     if (Platform.OS === 'web') {
       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
       return;
@@ -291,10 +317,49 @@ const DaySummaryScreen: React.FC = () => {
 
               <DayHeadline summary={s} compare={st.compare} />
               <AttentionCard summary={s} active={st.filter} onSelect={setFilter} />
+              {st.items?.reorder ? (
+                <ReorderCard reorder={st.items.reorder} onOpen={id => navigation.navigate('InventoryDetail', { itemId: id })} />
+              ) : null}
               <HourlyActivity hourly={s.hourly} />
               <DocumentGrid summary={s} active={st.filter} onSelect={setFilter} />
               <MoneyCard summary={s} />
               {s.profit ? <ProfitStrip profit={s.profit} /> : null}
+
+              {st.itemsUnavailable ? null : (
+              <ItemSalesCard
+                sheet={st.items}
+                loading={st.itemsLoading}
+                error={st.itemsError}
+                onRetry={loadItems}
+                mode={st.sheetMode}
+                onMode={m => dispatch(setSheetMode(m))}
+                from={sheetFrom}
+                to={sheetTo}
+                onRange={(from, to) => dispatch(setSheetRange({ from, to }))}
+                groupBy={st.itemGroupBy}
+                onGroupBy={g => dispatch(setItemGroupBy(g))}
+                sort={st.itemSort}
+                onSort={o => dispatch(setItemSort(o))}
+                query={st.itemQuery}
+                onSearch={q => dispatch(setItemQuery(q))}
+                compareLabel={
+                  st.sheetMode === 'range'
+                    ? st.compare === 'yesterday'
+                      ? 'vs the period before'
+                      : 'vs a week earlier'
+                    : compareLabel(st.compare)
+                }
+                onOpenItem={id => navigation.navigate('InventoryDetail', { itemId: id })}
+                onSharePdf={() =>
+                  pdf.share(
+                    st.items
+                      ? itemSheetDoc(st.items, { groupBy: st.itemGroupBy, sort: st.itemSort, q: st.itemQuery }, company.name)
+                      : null,
+                  )
+                }
+                sharing={pdf.busy}
+              />
+              )}
 
               <SectionCard title="Top customers" icon="award">
                 <RankedBars
@@ -317,7 +382,7 @@ const DaySummaryScreen: React.FC = () => {
                     key: i.itemId ?? `line-${n}`,
                     label: i.name,
                     value: i.total,
-                    hint: `${i.quantity.toLocaleString('en-US')} sold`,
+                    hint: `${i.quantity.toLocaleString('en-US')} net units`,
                   }))}
                   format={compactMoney}
                   emptyLabel="No items sold on this day."

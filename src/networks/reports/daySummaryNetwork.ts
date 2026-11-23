@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { api, extractErrorMessage } from '../network/apiHelpers';
-import { fetchReport } from './reportHelpers';
+import { fetchReport, fetchReportWithStatus } from './reportHelpers';
 import type { DayEntryFilter, DaySummarySchedule } from '../../models/daySummaryModel';
 
 /**
@@ -33,6 +33,23 @@ export const getDayEntriesAPI = (params: {
     ...(params.q ? { q: params.q } : {}),
     page: params.page ?? 1,
     limit: params.limit ?? 50,
+  });
+
+/**
+ * The item-wise sales sheet for one day, or a range when `to` differs from
+ * `from`, compared with `compare`'s period.
+ */
+export const getDayItemsAPI = (params: {
+  from: string;
+  to: string;
+  createdBy?: string | null;
+  compare?: 'previous' | 'lastWeek' | null;
+}): Promise<unknown> =>
+  // With its status: a 404 means a server from before the item sheet, not a failure.
+  fetchReportWithStatus('/reports/day-summary/items', {
+    ...(params.from === params.to ? { date: params.from } : { from: params.from, to: params.to }),
+    ...(params.createdBy ? { createdBy: params.createdBy } : {}),
+    ...(params.compare ? { compare: params.compare } : {}),
   });
 
 /** The owner's end-of-day digest. Owner only. */

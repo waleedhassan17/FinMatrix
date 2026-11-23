@@ -8,14 +8,24 @@ jest.mock('../../../../networks/network/apiHelpers', () => ({
 import {
   daySummarySlice,
   fetchDayEntries,
+  fetchDayItems,
   fetchDaySummary,
+  setItemGroupBy,
+  setItemQuery,
+  setItemSort,
+  setSheetMode,
+  setSheetRange,
   setDayCreatedBy,
   setDayDate,
   setDayFilter,
   setDayQuery,
 } from '../daySummarySlice';
-import { dayEntriesSerializer, daySummarySerializer } from '../../../../serializers/daySummarySerializer';
-import { dayEntriesPage, daySummaryOwner } from '../__fixtures__/daySummary';
+import {
+  dayEntriesSerializer,
+  dayItemSheetSerializer,
+  daySummarySerializer,
+} from '../../../../serializers/daySummarySerializer';
+import { dayEntriesPage, dayItemSheetOwner, daySummaryOwner } from '../__fixtures__/daySummary';
 
 const reducer = daySummarySlice.reducer;
 const init = () => reducer(undefined, { type: '@@init' });
@@ -98,5 +108,71 @@ describe('daySummarySlice', () => {
     let s = reducer(init(), setDayQuery('Ali'));
     s = reducer(s, setDayDate('2026-11-17'));
     expect(s.query).toBe('');
+  });
+});
+
+describe('daySummarySlice — item-wise sales', () => {
+  const sheet = (from: string, to = from) => dayItemSheetSerializer({ ...dayItemSheetOwner, from, to });
+  const items = (arg: { from: string; to: string; createdBy: string | null; compare: 'previous' | 'lastWeek' | null }) => ({
+    pending: { type: fetchDayItems.pending.type, meta: { arg, requestId: 'p', requestStatus: 'pending' as const } },
+    fulfilled: {
+      type: fetchDayItems.fulfilled.type,
+      payload: sheet(arg.from, arg.to),
+      meta: { arg, requestId: 'f', requestStatus: 'fulfilled' as const },
+    },
+  });
+
+  it('keeps the sheet for the period last asked for, and drops a late one', () => {
+    const day = items({ from: '2026-11-18', to: '2026-11-18', createdBy: null, compare: 'previous' });
+    const week = items({ from: '2026-11-12', to: '2026-11-18', createdBy: null, compare: 'previous' });
+    let s = reducer(init(), day.pending);
+    s = reducer(s, week.pending);
+    s = reducer(s, day.fulfilled);
+    expect(s.items).toBeNull();
+    expect(s.itemsLoading).toBe(true);
+    s = reducer(s, week.fulfilled);
+    expect(s.items?.from).toBe('2026-11-12');
+    expect(s.itemsLoading).toBe(false);
+  });
+
+  it('a range starts as the week ending on the day, and is read forwards', () => {
+    let s = reducer(init(), setDayDate('2026-11-18'));
+    s = reducer(s, setSheetMode('range'));
+    expect([s.sheetFrom, s.sheetTo]).toEqual(['2026-11-12', '2026-11-18']);
+    s = reducer(s, setSheetRange({ from: '2026-10-26', to: '2026-10-25' }));
+    expect([s.sheetFrom, s.sheetTo]).toEqual(['2026-10-25', '2026-10-26']);
+    s = reducer(s, setSheetMode('day'));
+    // Back to the day; the range is remembered for next time.
+    expect(s.sheetMode).toBe('day');
+    expect(s.sheetFrom).toBe('2026-10-25');
+  });
+
+  it('a server from before the item sheet (404) hides the card instead of showing an error', () => {
+    const arg = { from: '2026-11-18', to: '2026-11-18', createdBy: null as string | null, compare: 'previous' as const };
+    let s = reducer(init(), items(arg).pending);
+    s = reducer(s, {
+      type: fetchDayItems.rejected.type,
+      payload: { message: 'Not Found', status: 404 },
+      meta: { arg, requestId: 'r', requestStatus: 'rejected' as const, rejectedWithValue: true },
+      error: { message: 'Rejected' },
+    });
+    expect(s.itemsUnavailable).toBe(true);
+    expect(s.itemsError).toBe('');
+    // Any other failure is shown, so it can be retried.
+    s = reducer(s, items(arg).pending);
+    s = reducer(s, {
+      type: fetchDayItems.rejected.type,
+      payload: { message: 'Network Error', status: undefined },
+      meta: { arg, requestId: 'r2', requestStatus: 'rejected' as const, rejectedWithValue: true },
+      error: { message: 'Rejected' },
+    });
+    expect(s.itemsError).toBe('Network Error');
+  });
+
+  it('grouping, order and search are kept', () => {
+    let s = reducer(init(), setItemGroupBy('agency'));
+    s = reducer(s, setItemSort('value'));
+    s = reducer(s, setItemQuery('  lactogen  '));
+    expect([s.itemGroupBy, s.itemSort, s.itemQuery]).toEqual(['agency', 'value', 'lactogen']);
   });
 });

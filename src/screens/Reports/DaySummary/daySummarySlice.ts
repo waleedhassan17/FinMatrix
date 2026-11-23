@@ -7,15 +7,20 @@ import type {
   DaySummary,
   DaySummarySchedule,
 } from '../../../models/daySummaryModel';
+import type { DayItemCompare, DayItemSheet, ItemGrouping, ItemSort } from '../../../models/dayItemSheetModel';
+import { shiftDay } from '../../../models/daySummaryModel';
 import { toIsoDate } from '../../../models/reportModel';
+import { toReportRejection, type ReportRejection } from '../../../networks/reports/reportHelpers';
 import {
   getDayEntriesAPI,
+  getDayItemsAPI,
   getDaySummaryAPI,
   getDaySummaryScheduleAPI,
   saveDaySummaryScheduleAPI,
 } from '../../../networks/reports/daySummaryNetwork';
 import {
   dayEntriesSerializer,
+  dayItemSheetSerializer,
   daySummarySerializer,
   dayScheduleSerializer,
 } from '../../../serializers/daySummarySerializer';
@@ -56,6 +61,21 @@ interface DaySummaryState {
   schedule: DaySummarySchedule | null;
   scheduleSaving: boolean;
   scheduleError: string;
+
+  /** Item-wise sales: the chosen day, or a From–To range of its own. */
+  sheetMode: 'day' | 'range';
+  sheetFrom: string;
+  sheetTo: string;
+  itemGroupBy: ItemGrouping;
+  itemSort: ItemSort;
+  itemQuery: string;
+  items: DayItemSheet | null;
+  /** The view the latest request was for; older answers are dropped. */
+  itemsWanted: string;
+  itemsLoading: boolean;
+  itemsError: string;
+  /** The server is from before the item sheet (404): the card stays hidden. */
+  itemsUnavailable: boolean;
 }
 
 const initialState: DaySummaryState = {
@@ -82,10 +102,23 @@ const initialState: DaySummaryState = {
   schedule: null,
   scheduleSaving: false,
   scheduleError: '',
+  sheetMode: 'day',
+  sheetFrom: '',
+  sheetTo: '',
+  itemGroupBy: 'category',
+  itemSort: 'code',
+  itemQuery: '',
+  items: null,
+  itemsWanted: '',
+  itemsLoading: false,
+  itemsError: '',
+  itemsUnavailable: false,
 };
 
 type SummaryArg = { date: string; createdBy: string | null };
 type EntriesArg = { date: string; createdBy: string | null; filter: DayEntryFilter; query: string; page: number };
+type ItemsArg = { from: string; to: string; createdBy: string | null; compare: DayItemCompare | null };
+const itemsKey = (a: ItemsArg) => [a.from, a.to, a.createdBy ?? '', a.compare ?? ''].join('|');
 
 export const daySummarySlice = createAppSlice({
   name: 'daySummary',
@@ -126,6 +159,68 @@ export const daySummarySlice = createAppSlice({
     setDayQuery: create.reducer((state, action: PayloadAction<string>) => {
       state.query = action.payload.trim().slice(0, 100);
     }),
+    /** This day, or a range — a range starts as the week ending on the day. */
+    setSheetMode: create.reducer((state, action: PayloadAction<'day' | 'range'>) => {
+      state.sheetMode = action.payload;
+      if (action.payload === 'range' && !state.sheetFrom) {
+        state.sheetFrom = shiftDay(state.date, -6);
+        state.sheetTo = state.date;
+      }
+    }),
+    setSheetRange: create.reducer((state, action: PayloadAction<{ from: string; to: string }>) => {
+      const { from, to } = action.payload;
+      state.sheetMode = 'range';
+      // A range is always read forwards, whichever end was moved.
+      state.sheetFrom = from <= to ? from : to;
+      state.sheetTo = from <= to ? to : from;
+    }),
+    setItemGroupBy: create.reducer((state, action: PayloadAction<ItemGrouping>) => {
+      state.itemGroupBy = action.payload;
+    }),
+    setItemSort: create.reducer((state, action: PayloadAction<ItemSort>) => {
+      state.itemSort = action.payload;
+    }),
+    setItemQuery: create.reducer((state, action: PayloadAction<string>) => {
+      state.itemQuery = action.payload.trim().slice(0, 100);
+    }),
+
+    fetchDayItems: create.asyncThunk(
+      async (arg: ItemsArg, thunkAPI) => {
+        try {
+          return dayItemSheetSerializer(
+            await getDayItemsAPI({ from: arg.from, to: arg.to, createdBy: arg.createdBy, compare: arg.compare }),
+          );
+        } catch (e) {
+          return thunkAPI.rejectWithValue(toReportRejection(e));
+        }
+      },
+      {
+        pending: (state, action) => {
+          state.itemsWanted = itemsKey(action.meta.arg);
+          state.itemsLoading = true;
+          state.itemsError = '';
+        },
+        fulfilled: (state, action) => {
+          // An answer for a period the user has already left is dropped.
+          if (itemsKey(action.meta.arg) !== state.itemsWanted) return;
+          state.itemsLoading = false;
+          state.itemsUnavailable = false;
+          state.items = action.payload;
+        },
+        rejected: (state, action) => {
+          if (itemsKey(action.meta.arg) !== state.itemsWanted) return;
+          state.itemsLoading = false;
+          const r = action.payload as ReportRejection | undefined;
+          if (r?.status === 404) {
+            // An older server: no item sheet to show, and nothing to apologise for.
+            state.itemsUnavailable = true;
+            state.itemsError = '';
+            return;
+          }
+          state.itemsError = r?.message ?? action.error?.message ?? 'Item-wise sales could not be loaded';
+        },
+      },
+    ),
 
     fetchDaySummary: create.asyncThunk(
       async (arg: SummaryArg) => daySummarySerializer(await getDaySummaryAPI(arg)),
@@ -249,6 +344,12 @@ export const {
   setDayCreatedBy,
   setDayCompare,
   setDayQuery,
+  setSheetMode,
+  setSheetRange,
+  setItemGroupBy,
+  setItemSort,
+  setItemQuery,
+  fetchDayItems,
   fetchDaySummary,
   fetchDayEntries,
   fetchDayToday,
