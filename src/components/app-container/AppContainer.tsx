@@ -15,8 +15,7 @@ import {
 } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { currentLang, pick } from '../../i18n/lang';
-import { LAUNCH, LAUNCH_ERRORS } from '../../i18n/launchStrings';
+import { LAUNCH, LAUNCH_ERRORS } from '../../config/launchStrings';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import type { RootStackParamList } from '../../types';
 
@@ -120,8 +119,8 @@ export const AppContainer: React.FC = () => {
       const said = reason ? LAUNCH_ERRORS[reason] : undefined;
       Toast.show({
         type: said ? 'error' : 'info',
-        text1: said ? pick(LAUNCH.signedOut, currentLang()) : 'Session expired',
-        text2: said ? pick(said, currentLang()) : 'Please sign in again.',
+        text1: said ? LAUNCH.signedOut : 'Session expired',
+        text2: said ? said : 'Please sign in again.',
       });
     });
     return () => setSessionExpiredHandler(null);

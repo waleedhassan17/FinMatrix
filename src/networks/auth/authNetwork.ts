@@ -5,8 +5,7 @@
 import { api, setTokens, setStoredCompanyId, clearTokens, getAccessToken, extractErrorMessage } from '../network/apiHelpers';
 import { clearIntentionalSignOut } from '../../utils/authEvents';
 import { userResponseSerializer } from '../../serializers/authSerializer';
-import { currentLang, pick } from '../../i18n/lang';
-import { LAUNCH_ERRORS } from '../../i18n/launchStrings';
+import { LAUNCH_ERRORS } from '../../config/launchStrings';
 import { normalizePkPhone } from '../../utils/phone';
 
 // ─── Types ────────────────────────────────────────────
@@ -205,7 +204,7 @@ export const authLogin = async ({
       // A suspension is said in the reader's language (the server's
       // sentence is English).
       const said = code === 'ACCOUNT_SUSPENDED' || code === 'COMPANY_SUSPENDED'
-        ? pick(LAUNCH_ERRORS[code], currentLang())
+        ? LAUNCH_ERRORS[code]
         : null;
       throw new AuthError(said ?? err.message ?? 'Sign in is not available yet.', code, err.email, {
         companyStatus: err.companyStatus ?? err.details?.companyStatus ?? null,

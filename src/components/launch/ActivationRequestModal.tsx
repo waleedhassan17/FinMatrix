@@ -10,8 +10,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'rea
 import Toast from 'react-native-toast-message';
 
 import { AuthField, AuthSelect } from '../auth/AuthUI';
-import { pick, rtlText, useLang } from '../../i18n/lang';
-import { LAUNCH, LAUNCH_ERRORS } from '../../i18n/launchStrings';
+import { LAUNCH, LAUNCH_ERRORS } from '../../config/launchStrings';
 import { getOfferedPlans, requestActivation, type OfferedPlan } from '../../networks/launch/launchNetwork';
 import { THEME } from '../../theme';
 
@@ -26,7 +25,6 @@ interface Props {
 }
 
 const ActivationRequestModal: React.FC<Props> = ({ companyId, visible, onClose, onDone }) => {
-  const lang = useLang();
   const [plans, setPlans] = useState<OfferedPlan[]>([]);
   const [plan, setPlan] = useState(UNSURE_PLAN);
   const [note, setNote] = useState('');
@@ -48,14 +46,14 @@ const ActivationRequestModal: React.FC<Props> = ({ companyId, visible, onClose, 
     setError('');
     try {
       await requestActivation(companyId, { requestedPlan: plan, note: note.trim() || undefined });
-      Toast.show({ type: 'success', text1: pick(LAUNCH.activationSent, lang) });
+      Toast.show({ type: 'success', text1: LAUNCH.activationSent });
       setNote('');
       close();
       onDone?.();
     } catch (e) {
       const code = (e as { code?: string })?.code;
       const known = code ? LAUNCH_ERRORS[code] : undefined;
-      setError(known ? pick(known, lang) : (e as Error)?.message ?? 'Something went wrong.');
+      setError(known ? known : (e as Error)?.message ?? 'Something went wrong.');
     } finally {
       setBusy(false);
     }
@@ -65,28 +63,28 @@ const ActivationRequestModal: React.FC<Props> = ({ companyId, visible, onClose, 
     <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
       <View style={S.scrim}>
         <View style={S.sheet}>
-          <Text style={[S.title, rtlText(lang)]}>{pick(LAUNCH.activationTitle, lang)}</Text>
-          <Text style={[S.body, rtlText(lang)]}>{pick(LAUNCH.activationBody, lang)}</Text>
+          <Text style={[S.title]}>{LAUNCH.activationTitle}</Text>
+          <Text style={[S.body]}>{LAUNCH.activationBody}</Text>
           <AuthSelect
-            label={pick(LAUNCH.planLabel, lang)}
+            label={LAUNCH.planLabel}
             value={plan}
             onChange={setPlan}
             options={[
-              { value: UNSURE_PLAN, label: pick(LAUNCH.planUnsure, lang) },
+              { value: UNSURE_PLAN, label: LAUNCH.planUnsure },
               ...plans.map(p => ({ value: p.key, label: p.label })),
             ]}
           />
           <AuthField
-            label={pick(LAUNCH.noteLabel, lang)}
+            label={LAUNCH.noteLabel}
             value={note}
             onChangeText={setNote}
             maxLength={1000}
             multiline
           />
-          {error ? <Text style={[S.error, rtlText(lang)]}>{error}</Text> : null}
+          {error ? <Text style={[S.error]}>{error}</Text> : null}
           <View style={S.row}>
             <Pressable onPress={close} disabled={busy} style={S.secondary} accessibilityRole="button">
-              <Text style={S.secondaryText}>{lang === 'ur' ? 'منسوخ' : 'Cancel'}</Text>
+              <Text style={S.secondaryText}>Cancel</Text>
             </Pressable>
             <Pressable
               onPress={() => void submit()}
@@ -98,7 +96,7 @@ const ActivationRequestModal: React.FC<Props> = ({ companyId, visible, onClose, 
               {busy ? (
                 <ActivityIndicator color={colors.textInverse} />
               ) : (
-                <Text style={S.primaryText}>{pick(LAUNCH.requestActivation, lang)}</Text>
+                <Text style={S.primaryText}>{LAUNCH.requestActivation}</Text>
               )}
             </Pressable>
           </View>

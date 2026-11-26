@@ -11,7 +11,7 @@
 // The same screen serves a HELD free trial: the trial was not started
 // instantly because our team checks a few (the reason is never shown). Which
 // one applies comes from the session's pendingKind (or, from a blocked
-// sign-in, the gate's). English or Urdu, following the reader's choice.
+// sign-in, the gate's).
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Platform, AppState } from 'react-native';
@@ -28,9 +28,7 @@ import { bootstrapSession } from '../../../components/app-container/appContainer
 //   type BillingStatus,
 // } from '../../../networks/billing/billingNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
-import LangToggle from '../../../components/launch/LangToggle';
-import { pick, rtlText, useLang } from '../../../i18n/lang';
-import { LAUNCH } from '../../../i18n/launchStrings';
+import { LAUNCH } from '../../../config/launchStrings';
 import { useSignOut } from '../../../hooks/useSignOut';
 import type { UserRole } from '../../../types';
 import { THEME } from '../../../theme';
@@ -117,8 +115,6 @@ const PendingApprovalScreen: React.FC = () => {
   //     cancelled = true;
   //   };
   // }, [fromLogin, isAuthenticated]);
-
-  const lang = useLang();
   // A held free trial (we check a few) vs a request for approval.
   const isTrialRequest =
     route.params?.pendingKind === 'trial' || user?.pendingKind === 'trial';
@@ -210,14 +206,14 @@ const PendingApprovalScreen: React.FC = () => {
         message:
           status === 'rejected'
             ? 'Your registration was reviewed — see the details on the next screen.'
-            : pick(isTrialRequest ? LAUNCH.heldBody : LAUNCH.approvalPendingBody, lang)
+            : isTrialRequest ? LAUNCH.heldBody : LAUNCH.approvalPendingBody
       });
     } catch (e: any) {
       setNotice({ tone: 'error', message: e?.message ?? 'Could not refresh status' });
     } finally {
       setChecking(false);
     }
-  }, [dispatch, fromLogin, backToSignIn, isTrialRequest, goLive, lang]);
+  }, [dispatch, fromLogin, backToSignIn, isTrialRequest, goLive]);
 
   const handleSignOut = useCallback(() => {
     if (fromLogin) {
@@ -231,8 +227,8 @@ const PendingApprovalScreen: React.FC = () => {
     <AuthLayout
       header={
         <AuthHeader
-          pill={isTrialRequest ? pick(LAUNCH.planOnTrial, lang) : 'Pending Review'}
-          title={pick(isTrialRequest ? LAUNCH.heldTitle : LAUNCH.approvalPendingTitle, lang)}
+          pill={isTrialRequest ? LAUNCH.planOnTrial : 'Pending Review'}
+          title={isTrialRequest ? LAUNCH.heldTitle : LAUNCH.approvalPendingTitle}
           onBack={fromLogin ? backToSignIn : undefined}
         />
       }
@@ -252,7 +248,7 @@ const PendingApprovalScreen: React.FC = () => {
             label: fromLogin ? 'Use a different account' : 'Sign out',
             onPress: handleSignOut,
           }}
-          note={pick(LAUNCH.trialCardNote, lang)}
+          note={LAUNCH.trialCardNote}
         />
       }>
       {notice ? (
@@ -273,10 +269,8 @@ const PendingApprovalScreen: React.FC = () => {
           tone={approved ? 'success' : 'warning'}
         />
       </View>
-
-      <LangToggle />
-      <Text style={[styles.body, rtlText(lang)]} testID="pending-body">
-        {pick(isTrialRequest ? LAUNCH.heldBody : LAUNCH.approvalPendingBody, lang)}
+      <Text style={[styles.body]} testID="pending-body">
+        {isTrialRequest ? LAUNCH.heldBody : LAUNCH.approvalPendingBody}
       </Text>
 
       <AuthTimeline

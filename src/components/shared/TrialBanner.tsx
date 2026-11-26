@@ -5,8 +5,7 @@
 // not yet converted, not yet over. Hidden in every other state. Days are
 // Asia/Karachi calendar days, like the server's reminders; it turns urgent in
 // the last 3. "Request activation" opens the activation sheet (no online
-// payment); once a request is in, the strip says so instead. English or Urdu,
-// following the reader's choice.
+// payment); once a request is in, the strip says so instead.
 //
 // No billing fetch of its own. The countdown reads `user.subscription`, which
 // signin and /auth/me already return; days are computed from the expiry date
@@ -28,8 +27,7 @@ import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../theme';
 import type { SubscriptionSummary } from '../../types';
 import { TRIAL_URGENT_DAYS, trialDaysLeft } from '../../utils/trial';
-import { pick, rtlText, useLang } from '../../i18n/lang';
-import { fill, LAUNCH } from '../../i18n/launchStrings';
+import { fill, LAUNCH } from '../../config/launchStrings';
 import ActivationRequestModal from '../launch/ActivationRequestModal';
 
 const { colors, radius, spacing, typography } = THEME;
@@ -45,12 +43,12 @@ interface Props {
   children: React.ReactNode;
 }
 
-export const trialLabel = (days: number, lang: 'en' | 'ur'): string =>
+export const trialLabel = (days: number): string =>
   days <= 0
-    ? pick(LAUNCH.trialOneDayLeft, lang)
+    ? LAUNCH.trialOneDayLeft
     : days === 1
-      ? pick(LAUNCH.trialDayLeft, lang)
-      : fill(pick(LAUNCH.trialDaysLeft, lang), { n: days });
+      ? LAUNCH.trialDayLeft
+      : fill(LAUNCH.trialDaysLeft, { n: days });
 
 const TrialBanner: React.FC<Props> = ({
   subscription,
@@ -59,7 +57,6 @@ const TrialBanner: React.FC<Props> = ({
   children,
 }) => {
   const insets = useSafeAreaInsets();
-  const lang = useLang();
   const [now, setNow] = useState(() => new Date());
   const [open, setOpen] = useState(false);
   const lastRefresh = useRef<number | null>(null);
@@ -85,7 +82,7 @@ const TrialBanner: React.FC<Props> = ({
   const tone = urgent
     ? { bg: colors.warningLighter, fg: colors.warning }
     : { bg: colors.infoLight, fg: colors.info };
-  const label = visible ? trialLabel(days as number, lang) : '';
+  const label = visible ? trialLabel(days as number) : '';
 
   return (
     <View style={S.root}>
@@ -96,17 +93,17 @@ const TrialBanner: React.FC<Props> = ({
           testID="trial-banner"
         >
           <Feather name={inReview ? 'clock' : 'gift'} size={15} color={tone.fg} />
-          <Text style={[S.text, { color: tone.fg }, rtlText(lang)]} numberOfLines={2}>
-            {inReview ? `${label} · ${pick(LAUNCH.activationPending, lang)}` : label}
+          <Text style={[S.text, { color: tone.fg }]} numberOfLines={2}>
+            {inReview ? `${label} · ${LAUNCH.activationPending}` : label}
           </Text>
           {!inReview && companyId ? (
             <TouchableOpacity
               style={[S.cta, { backgroundColor: tone.fg }]}
               onPress={() => setOpen(true)}
               accessibilityRole="button"
-              accessibilityLabel={pick(LAUNCH.requestActivation, lang)}
+              accessibilityLabel={LAUNCH.requestActivation}
             >
-              <Text style={S.ctaText}>{pick(LAUNCH.requestActivation, lang)}</Text>
+              <Text style={S.ctaText}>{LAUNCH.requestActivation}</Text>
             </TouchableOpacity>
           ) : null}
         </View>

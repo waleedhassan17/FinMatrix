@@ -9,7 +9,7 @@
 //   deactivated         → contact FinMatrix support
 // A request already in review says so instead of offering another. The
 // screen re-reads the session every 30 s and on foreground, so an activation
-// takes effect without a tap. English or Urdu. Mirrors the web's status page.
+// takes effect without a tap. Mirrors the web's status page.
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking, StyleSheet, Text, View } from 'react-native';
@@ -26,12 +26,10 @@ import {
   StatusPill,
 } from '../../../components/auth/AuthUI';
 import ActivationRequestModal from '../../../components/launch/ActivationRequestModal';
-import LangToggle from '../../../components/launch/LangToggle';
 import { bootstrapSession } from '../../../components/app-container/appContainerSlice';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { useSignOut } from '../../../hooks/useSignOut';
-import { pick, rtlText, useLang, type Bilingual } from '../../../i18n/lang';
-import { LAUNCH } from '../../../i18n/launchStrings';
+import { LAUNCH } from '../../../config/launchStrings';
 import {
   FALLBACK_PUBLIC_CONFIG,
   getPublicConfig,
@@ -41,15 +39,12 @@ import { THEME } from '../../../theme';
 import { endedState, type EndedState } from '../../../utils/accountStatus';
 import { WEB_APP_URL } from '../../../utils/webAppUrl';
 
-const DEACTIVATED: { title: Bilingual; body: Bilingual } = {
-  title: { en: 'Account deactivated', ur: 'اکاؤنٹ غیر فعال' },
-  body: {
-    en: 'Access to this company is paused. Your data is safe. Contact FinMatrix support to restore it.',
-    ur: 'اس کمپنی تک رسائی روک دی گئی ہے۔ آپ کا ڈیٹا محفوظ ہے۔ بحالی کے لیے FinMatrix سپورٹ سے رابطہ کریں۔',
-  },
+const DEACTIVATED = {
+  title: 'Account deactivated',
+  body: 'Access to this company is paused. Your data is safe. Contact FinMatrix support to restore it.',
 };
 
-const VIEW: Record<EndedState, { title: Bilingual; body: Bilingual; icon: 'x-circle' | 'pause-circle' }> = {
+const VIEW: Record<EndedState, { title: string; body: string; icon: 'x-circle' | 'pause-circle' }> = {
   trialEnded: { title: LAUNCH.trialEndedTitle, body: LAUNCH.trialEndedBody, icon: 'x-circle' },
   planEnded: { title: LAUNCH.planEndedTitle, body: LAUNCH.planEndedBody, icon: 'x-circle' },
   suspended: { title: LAUNCH.suspendedTitle, body: LAUNCH.suspendedBody, icon: 'pause-circle' },
@@ -59,7 +54,6 @@ const VIEW: Record<EndedState, { title: Bilingual; body: Bilingual; icon: 'x-cir
 const AccountStatusScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigation = useNavigation<any>();
-  const lang = useLang();
   const user = useAppSelector(s => s.auth.user);
   const { confirmSignOut } = useSignOut();
   const [config, setConfig] = useState<PublicConfig>(FALLBACK_PUBLIC_CONFIG);
@@ -102,36 +96,35 @@ const AccountStatusScreen: React.FC = () => {
 
   return (
     <AuthLayout
-      header={<AuthHeader title={pick(view.title, lang)} subtitle={user?.displayName} />}
+      header={<AuthHeader title={view.title} subtitle={user?.displayName} />}
       footer={
         <AuthFooterBar
           primary={{
-            label: pick(LAUNCH.checkAgain, lang),
+            label: LAUNCH.checkAgain,
             onPress: () => void recheck(),
             loading: checking,
-            loadingLabel: pick(LAUNCH.checking, lang),
+            loadingLabel: LAUNCH.checking,
           }}
-          secondary={{ label: pick(LAUNCH.signOut, lang), onPress: confirmSignOut }}
+          secondary={{ label: LAUNCH.signOut, onPress: confirmSignOut }}
         />
       }
     >
-      <LangToggle />
       <View style={S.head}>
         <AuthIconTile icon={view.icon} tone={state === 'suspended' || state === 'deactivated' ? 'warning' : 'error'} />
-        <StatusPill label={pick(view.title, lang)} tone={ended ? 'error' : 'warning'} />
+        <StatusPill label={view.title} tone={ended ? 'error' : 'warning'} />
       </View>
 
-      <Text style={[S.body, rtlText(lang)]} testID="status-body">
-        {ended && !isOwner ? pick(LAUNCH.staffEndedBody, lang) : pick(view.body, lang)}
+      <Text style={[S.body]} testID="status-body">
+        {ended && !isOwner ? LAUNCH.staffEndedBody : view.body}
       </Text>
 
-      {inReview ? <AuthNotice tone="info" message={pick(LAUNCH.activationPending, lang)} style={S.gap} /> : null}
+      {inReview ? <AuthNotice tone="info" message={LAUNCH.activationPending} style={S.gap} /> : null}
 
       {ended && isOwner ? (
         <View style={S.actions}>
           <AuthOptionCard
             icon="download"
-            title={pick(LAUNCH.downloadData, lang)}
+            title={LAUNCH.downloadData}
             selectable={false}
             trailing="chevron"
             onPress={() => navigation.navigate('BackupExport')}
@@ -139,7 +132,7 @@ const AccountStatusScreen: React.FC = () => {
           {!inReview && user?.companyId ? (
             <AuthOptionCard
               icon="check-circle"
-              title={pick(LAUNCH.requestActivation, lang)}
+              title={LAUNCH.requestActivation}
               selectable={false}
               trailing="chevron"
               onPress={() => setOpen(true)}
@@ -147,7 +140,7 @@ const AccountStatusScreen: React.FC = () => {
           ) : null}
           <AuthOptionCard
             icon="calendar"
-            title={pick(LAUNCH.bookCall, lang)}
+            title={LAUNCH.bookCall}
             selectable={false}
             trailing="chevron"
             onPress={() => open_(`${WEB_APP_URL}/book-demo`)}
@@ -157,7 +150,7 @@ const AccountStatusScreen: React.FC = () => {
 
       {(config.supportEmail || config.supportWhatsapp) && (
         <View style={S.support}>
-          <Text style={[S.supportLabel, rtlText(lang)]}>{pick(LAUNCH.support, lang)}</Text>
+          <Text style={[S.supportLabel]}>{LAUNCH.support}</Text>
           {config.supportEmail ? (
             <Text style={S.link} accessibilityRole="link" onPress={() => open_(`mailto:${config.supportEmail}`)}>
               {config.supportEmail}

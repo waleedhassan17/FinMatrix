@@ -1,13 +1,12 @@
 // The app's launch logic: which status screen applies, what the session
 // carries from the server, a refusal's reason, the countdown wording, and the
-// Urdu strings the launch screens read.
+// launch copy the screens read.
 
 import { endedState } from '../accountStatus';
 import { subscriptionSummarySerializer, userResponseSerializer } from '../../serializers/authSerializer';
 import { reasonOf } from '../../networks/launch/launchNetwork';
 import { trialLabel } from '../../components/shared/TrialBanner';
-import { LAUNCH, LAUNCH_ERRORS } from '../../i18n/launchStrings';
-import { pick } from '../../i18n/lang';
+import { LAUNCH, LAUNCH_ERRORS } from '../../config/launchStrings';
 import type { SubscriptionSummary } from '../../types';
 
 jest.mock('../../networks/network/apiHelpers', () => ({
@@ -64,25 +63,23 @@ describe('reasonOf', () => {
 });
 
 describe('trial banner wording', () => {
-  it('last day, one day, many days — in both languages', () => {
-    expect(trialLabel(0, 'en')).toBe('Last day of your free trial');
-    expect(trialLabel(1, 'en')).toBe('1 day left in your free trial');
-    expect(trialLabel(12, 'en')).toBe('12 days left in your free trial');
-    expect(trialLabel(12, 'ur')).toMatch(/[؀-ۿ]/);
-    expect(trialLabel(12, 'ur')).toContain('12');
+  it('last day, one day, many days', () => {
+    expect(trialLabel(0)).toBe('Last day of your free trial');
+    expect(trialLabel(1)).toBe('1 day left in your free trial');
+    expect(trialLabel(12)).toBe('12 days left in your free trial');
   });
 });
 
-describe('launch strings', () => {
-  it('every string and every error has its Urdu', () => {
+describe('launch copy', () => {
+  it('every string and every error is plain English', () => {
     for (const [k, v] of Object.entries({ ...LAUNCH, ...LAUNCH_ERRORS })) {
-      expect([k, v.en.length > 0]).toEqual([k, true]);
-      expect([k, /[؀-ۿ]/.test(v.ur)]).toEqual([k, true]);
+      expect([k, typeof v === 'string' && v.length > 0]).toEqual([k, true]);
+      expect([k, /[\u0600-\u06FF]/.test(v)]).toEqual([k, false]);
     }
   });
   it('the reasons the trial screen shows exist', () => {
     for (const code of ['TRIAL_EMAIL_USED', 'TRIAL_PHONE_USED', 'TRIAL_TAX_ID_USED', 'TRIAL_DISABLED', 'TRIAL_ENDED', 'ACCOUNT_SUSPENDED', 'COMPANY_SUSPENDED', 'RATE_LIMIT']) {
-      expect(pick(LAUNCH_ERRORS[code], 'en')).toBeTruthy();
+      expect(LAUNCH_ERRORS[code]).toBeTruthy();
     }
   });
 });

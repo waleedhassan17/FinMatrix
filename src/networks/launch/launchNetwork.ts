@@ -44,7 +44,6 @@ export interface TrialEligibility {
   eligible: boolean;
   reason: string | null;
   message: string | null;
-  messageUr: string | null;
   signupMode: 'trial' | 'approval';
   trialDays: number;
 }

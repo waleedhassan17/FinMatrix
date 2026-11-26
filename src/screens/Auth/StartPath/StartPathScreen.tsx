@@ -23,12 +23,10 @@ import {
   AuthSelect,
   AUTH,
 } from '../../../components/auth/AuthUI';
-import LangToggle from '../../../components/launch/LangToggle';
 import { UNSURE_PLAN } from '../../../components/launch/ActivationRequestModal';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { useSignOut } from '../../../hooks/useSignOut';
-import { pick, rtlText, useLang } from '../../../i18n/lang';
-import { fill, LAUNCH, LAUNCH_ERRORS } from '../../../i18n/launchStrings';
+import { fill, LAUNCH, LAUNCH_ERRORS } from '../../../config/launchStrings';
 import { authMe } from '../../../networks/auth/authNetwork';
 import {
   FALLBACK_PUBLIC_CONFIG,
@@ -51,7 +49,6 @@ type Path = 'trial' | 'approval';
 
 const StartPathScreen: React.FC = () => {
   const dispatch = useAppDispatch();
-  const lang = useLang();
   const user = useAppSelector(s => s.auth.user);
   const companyId = user?.companyId ?? '';
   const { confirmSignOut } = useSignOut();
@@ -71,8 +68,8 @@ const StartPathScreen: React.FC = () => {
   const reason = eligibility && !eligibility.eligible ? eligibility.reason : null;
   const reasonText = reason
     ? LAUNCH_ERRORS[reason]
-      ? pick(LAUNCH_ERRORS[reason], lang)
-      : (lang === 'ur' ? eligibility?.messageUr : eligibility?.message) ?? ''
+      ? LAUNCH_ERRORS[reason]
+      : eligibility?.message ?? ''
     : '';
 
   const loadEligibility = useCallback(() => {
@@ -110,7 +107,7 @@ const StartPathScreen: React.FC = () => {
   const explain = (e: unknown) => {
     const code = reasonOf(e);
     const known = code ? LAUNCH_ERRORS[code] : undefined;
-    setError(known ? pick(known, lang) : (e as Error)?.message ?? 'Something went wrong.');
+    setError(known ? known : (e as Error)?.message ?? 'Something went wrong.');
   };
 
   const onContinue = async () => {
@@ -121,7 +118,7 @@ const StartPathScreen: React.FC = () => {
       if (path === 'trial') {
         const r = await startFreeTrial(companyId);
         if (r.status === 'active') {
-          Toast.show({ type: 'success', text1: pick(LAUNCH.welcomeTrial, lang) });
+          Toast.show({ type: 'success', text1: LAUNCH.welcomeTrial });
         }
       } else {
         await requestApproval(companyId, { requestedPlan: plan, note: note.trim() || undefined });
@@ -139,26 +136,25 @@ const StartPathScreen: React.FC = () => {
     <AuthLayout
       header={
         <AuthHeader
-          title={pick(LAUNCH.chooseTitle, lang)}
-          subtitle={pick(LAUNCH.chooseSubtitle, lang)}
+          title={LAUNCH.chooseTitle}
+          subtitle={LAUNCH.chooseSubtitle}
         />
       }
       footer={
         <AuthFooterBar
           primary={{
             label:
-              path === 'trial' ? pick(LAUNCH.startTrial, lang) : pick(LAUNCH.requestApproval, lang),
+              path === 'trial' ? LAUNCH.startTrial : LAUNCH.requestApproval,
             onPress: () => void onContinue(),
             loading: busy,
-            loadingLabel: path === 'trial' ? pick(LAUNCH.starting, lang) : pick(LAUNCH.sending, lang),
+            loadingLabel: path === 'trial' ? LAUNCH.starting : LAUNCH.sending,
             disabled: !companyId || (path === 'trial' && !eligible),
           }}
-          secondary={{ label: pick(LAUNCH.signOut, lang), onPress: confirmSignOut }}
-          note={pick(LAUNCH.trialCardNote, lang)}
+          secondary={{ label: LAUNCH.signOut, onPress: confirmSignOut }}
+          note={LAUNCH.trialCardNote}
         />
       }
     >
-      <LangToggle />
       {error ? (
         <AuthNotice tone="error" message={error} onDismiss={() => setError('')} style={S.gap} />
       ) : null}
@@ -167,8 +163,8 @@ const StartPathScreen: React.FC = () => {
         <View testID="path-trial" style={S.gap}>
           <AuthOptionCard
             icon="gift"
-            title={fill(pick(LAUNCH.trialCardTitle, lang), { days: config.trialDays })}
-            tagline={pick(LAUNCH.trialCardBody, lang)}
+            title={fill(LAUNCH.trialCardTitle, { days: config.trialDays })}
+            tagline={LAUNCH.trialCardBody}
             selected={path === 'trial'}
             selectable={eligible}
             onPress={eligible ? () => setPath('trial') : undefined}
@@ -176,7 +172,7 @@ const StartPathScreen: React.FC = () => {
           {!eligible && reasonText ? (
             <AuthNotice
               tone="warning"
-              title={pick(LAUNCH.trialUnavailable, lang)}
+              title={LAUNCH.trialUnavailable}
               message={reasonText}
               style={S.reason}
             />
@@ -187,8 +183,8 @@ const StartPathScreen: React.FC = () => {
       <View testID="path-approval" style={S.gap}>
         <AuthOptionCard
           icon="shield"
-          title={pick(LAUNCH.approvalCardTitle, lang)}
-          tagline={pick(LAUNCH.approvalCardBody, lang)}
+          title={LAUNCH.approvalCardTitle}
+          tagline={LAUNCH.approvalCardBody}
           selected={path === 'approval'}
           onPress={() => setPath('approval')}
         />
@@ -197,16 +193,16 @@ const StartPathScreen: React.FC = () => {
       {path === 'approval' && (
         <View style={S.gap}>
           <AuthSelect
-            label={pick(LAUNCH.planLabel, lang)}
+            label={LAUNCH.planLabel}
             value={plan}
             onChange={setPlan}
             options={[
-              { value: UNSURE_PLAN, label: pick(LAUNCH.planUnsure, lang) },
+              { value: UNSURE_PLAN, label: LAUNCH.planUnsure },
               ...plans.map(p => ({ value: p.key, label: p.label })),
             ]}
           />
           <AuthField
-            label={pick(LAUNCH.noteLabel, lang)}
+            label={LAUNCH.noteLabel}
             value={note}
             onChangeText={setNote}
             maxLength={1000}
@@ -216,11 +212,11 @@ const StartPathScreen: React.FC = () => {
       )}
 
       <Text
-        style={[S.link, rtlText(lang)]}
+        style={[S.link]}
         accessibilityRole="link"
         onPress={() => Linking.openURL(`${WEB_APP_URL}/book-demo`).catch((): void => undefined)}
       >
-        {pick(LAUNCH.orBookDemo, lang)}
+        {LAUNCH.orBookDemo}
       </Text>
     </AuthLayout>
   );

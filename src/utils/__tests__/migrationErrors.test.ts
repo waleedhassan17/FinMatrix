@@ -1,4 +1,4 @@
-import { MIGRATION_ERRORS_EN, MIGRATION_ERRORS_UR, migrationErrorMessage } from '../migrationErrors';
+import { MIGRATION_ERRORS_EN, migrationErrorMessage } from '../migrationErrors';
 
 describe('migrationErrorMessage', () => {
   it('turns a server code into plain words', () => {
@@ -10,16 +10,14 @@ describe('migrationErrorMessage', () => {
     expect(migrationErrorMessage('SOMETHING_NEW', 'Exact server text')).toBe('Exact server text');
     expect(migrationErrorMessage(undefined, '  ')).toMatch(/Something went wrong/);
   });
-  it('answers in Urdu when asked; every code has its own Urdu sentence', () => {
-    expect(migrationErrorMessage('CHECK_FAILED', null, 'ur')).toBe(MIGRATION_ERRORS_UR.CHECK_FAILED);
-    expect(migrationErrorMessage('CHECK_FAILED', null, 'en')).toBe(MIGRATION_ERRORS_EN.CHECK_FAILED);
+  it('every code has a plain-English sentence', () => {
     for (const code of Object.keys(MIGRATION_ERRORS_EN)) {
-      expect(MIGRATION_ERRORS_UR[code]).toMatch(/[\u0600-\u06FF]/);
+      expect(migrationErrorMessage(code)).toBe(MIGRATION_ERRORS_EN[code]);
     }
   });
   it('a trial that ended explains itself instead of a raw code', () => {
-    expect(migrationErrorMessage('TRIAL_ENDED', 'raw', 'en')).toMatch(/trial has ended/i);
-    expect(migrationErrorMessage('ACCOUNT_NOT_FOUND', 'raw', 'en')).toMatch(/chart of accounts/i);
+    expect(migrationErrorMessage('TRIAL_ENDED', 'raw')).toMatch(/trial has ended/i);
+    expect(migrationErrorMessage('ACCOUNT_NOT_FOUND', 'raw')).toMatch(/chart of accounts/i);
   });
   it('covers every code the Migration Center and backup return', () => {
     for (const code of [
