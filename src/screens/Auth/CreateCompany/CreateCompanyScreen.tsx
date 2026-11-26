@@ -49,10 +49,8 @@ import {
 } from '../../../models/agencyModel';
 import { dummyDeliveryPersonnel } from '../../../models/deliveryModel';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
-// BILLING-DISABLED BUILD: submitCompanyAPI is called straight off company
-// creation now that there is no plan step to carry it.
-import { createCompanyAPI, submitCompanyAPI } from '../../../networks/auth/authNetwork';
-import { BILLING_DISABLED_BUILD } from '../../../utils/featureGates';
+import { createCompanyAPI } from '../../../networks/auth/authNetwork';
+import { refreshSessionTokens } from '../../../networks/network/apiHelpers';
 import type { RootStackParamList } from '../../../types';
 
 // Design-system tokens (see src/theme/theme.ts).
@@ -383,7 +381,12 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
         taxId: taxId.trim()
       });
 
-      const companyId: string = backendCompany?.id ?? backendCompany?.companyId ?? `company_${uuidv4().slice(0, 8)}`;
+      // The server's id or nothing: an invented one would send every later
+      // request for a company that does not exist.
+      const companyId: string | undefined = backendCompany?.id ?? backendCompany?.companyId;
+      if (!companyId) {
+        throw new Error('The company could not be created. Please try again.');
+      }
       await setStoredCompanyId(companyId);
 
       // BILLING-DISABLED BUILD: the setUser that used to sit here (marking the
@@ -429,39 +432,14 @@ const CreateCompanyScreen: React.FC<Props> = ({ navigation, route }) => {
       dispatch(clearCompanyDraft());
       dispatch(createCompany(companyData));
 
-      // ── BILLING-DISABLED BUILD ────────────────────────────────────────
-      // Registration used to continue into plan selection, which is where
-      // the submit-for-approval call lived. With no plan step, this IS the
-      // end of onboarding, so it submits here.
-      //
-      // On failure the company is still left as a draft rather than blocking
-      // the owner: BaseNavigator's draft branch lands on PendingApproval,
-      // which retries the submit on mount. Either way they end up waiting
-      // for an administrator, never stuck on this form.
-      //
-      // No navigate() call in that path — changing companyStatus re-renders
-      // BaseNavigator onto the pending branch, which is the gate mechanism.
-      if (BILLING_DISABLED_BUILD) {
-        let submittedStatus = 'pending_approval';
-        try {
-          const res = await submitCompanyAPI(companyId);
-          submittedStatus = res?.status ?? 'pending_approval';
-        } catch {
-          submittedStatus = backendCompany?.status ?? 'email_verified';
-        }
-        dispatch(setUser({ ...user, companyId, companyStatus: submittedStatus }));
-        setIsCreating(false);
-      } else {
-        dispatch(
-          setUser({
-            ...user,
-            companyId,
-            companyStatus: backendCompany?.status ?? 'email_verified'
-          }),
-        );
-        setIsCreating(false);
-        navigation.navigate('SubscriptionSelect', { companyId, companyType });
-      }
+      // Onboarding ends with a choice, not a submit: marking the company a
+      // draft moves BaseNavigator onto its draft branch, which opens on
+      // StartPath (start the free trial, or request approval). No navigate()
+      // — the status change IS the hand-off. The token is re-issued first so
+      // it names the new company.
+      await refreshSessionTokens();
+      dispatch(setUser({ ...user, companyId, companyStatus: 'draft' }));
+      setIsCreating(false);
     } catch (err: any) {
       setIsCreating(false);
       // In-form banner, not a browser dialog — and scrolled into view so it

@@ -76,6 +76,8 @@ export interface User {
    * this, so the shell never needs a billing fetch of its own.
    */
   subscription?: SubscriptionSummary | null;
+  /** What a pending company waits on: a held trial, an approval, a payment. */
+  pendingKind?: 'trial' | 'approval' | 'payment' | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -91,6 +93,12 @@ export interface SubscriptionSummary {
   trialStartedAt: string | null;
   /** Set when a real payment was approved after the trial. */
   trialConvertedAt: string | null;
+  /** active | expiring | expired. Optional: older servers do not send it. */
+  subscriptionStatus?: string;
+  /** A free trial that is over (and was not converted). */
+  trialEnded?: boolean;
+  /** FinMatrix suspended this company. */
+  suspended?: boolean;
 }
 
 // ─── Company ──────────────────────────────────────────
@@ -865,7 +873,10 @@ export type RootStackParamList = {
   CreateCompany: { companyType?: 'small_business' | 'large_org' | 'warehouse' } | undefined;
   JoinCompany: undefined;
   DeliveryOnboarding: undefined;
-  PendingApproval: { fromLogin?: boolean; pendingKind?: 'trial' | 'payment' } | undefined;
+  PendingApproval: { fromLogin?: boolean; pendingKind?: 'trial' | 'approval' | 'payment' } | undefined;
+  StartPath: undefined;
+  AccountStatus: undefined;
+  BackupExport: undefined;
   CompanyRejected: { fromLogin?: boolean; mode?: 'rejected' | 'inactive'; reason?: string } | undefined;
   AdminTabs: undefined;
   DeliveryTabs: undefined;

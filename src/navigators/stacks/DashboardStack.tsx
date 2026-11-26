@@ -25,6 +25,8 @@ export type DashboardStackParamList = {
   InventoryApproval: undefined;
   // First-run setup checklist — mounted here so each step's back arrow
   // returns to the dashboard it was launched from. See navigations-maps/Dashboard.
+  MigrationList: undefined;
+  MigrationBatch: { batchId: string };
   OpeningBalance: undefined;
   JournalEntryForm: undefined;
   COAList: undefined;

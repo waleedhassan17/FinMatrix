@@ -8,12 +8,10 @@
 // The timeline exists because "awaiting approval" with no other information
 // reads as "stuck". Showing what has already completed makes the wait legible.
 //
-// The same screen serves a FREE TRIAL request, which waits on the same review
-// queue. Its copy is branched rather than a second screen added: the trial
-// promise is "activated within 24 hours" and "your 30 days start then", and
-// neither may be said to someone who paid, nor the payment copy to a trialist.
-// Which one applies comes from the sign-in gate (route param pendingKind) or,
-// with a live session, from /billing/status.
+// The same screen serves a HELD free trial: the trial was not started
+// instantly because our team checks a few (the reason is never shown). Which
+// one applies comes from the session's pendingKind (or, from a blocked
+// sign-in, the gate's).
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Platform, AppState } from 'react-native';
@@ -21,7 +19,7 @@ import Toast from 'react-native-toast-message';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../../hooks/useReduxHooks';
 import { setUser, selectSelectedRole } from '../authSlice';
-import { authMe, submitCompanyAPI } from '../../../networks/auth/authNetwork';
+import { authMe } from '../../../networks/auth/authNetwork';
 import { refreshSessionTokens } from '../../../networks/network/apiHelpers';
 import { bootstrapSession } from '../../../components/app-container/appContainerSlice';
 // BILLING-DISABLED BUILD: un-comment with the /billing/status effect below.
@@ -30,7 +28,7 @@ import { bootstrapSession } from '../../../components/app-container/appContainer
 //   type BillingStatus,
 // } from '../../../networks/billing/billingNetwork';
 import { setStoredCompanyId } from '../../../utils/storageUtils';
-import { BILLING_DISABLED_BUILD } from '../../../utils/featureGates';
+import { LAUNCH } from '../../../config/launchStrings';
 import { useSignOut } from '../../../hooks/useSignOut';
 import type { UserRole } from '../../../types';
 import { THEME } from '../../../theme';
@@ -117,50 +115,9 @@ const PendingApprovalScreen: React.FC = () => {
   //     cancelled = true;
   //   };
   // }, [fromLogin, isAuthenticated]);
-
-  // BILLING-DISABLED BUILD: no trial can be requested, so every branch below
-  // takes its non-trial form. Pinned to a constant rather than deleting the
-  // ternaries so the trial copy survives for the restore.
-  const isTrialRequest = BILLING_DISABLED_BUILD
-    ? false
-    : route.params?.pendingKind === 'trial';
-  // const isTrialRequest =
-  //   route.params?.pendingKind === 'trial' || billing?.trialPending === true;
-
-  // ── BILLING-DISABLED BUILD ──────────────────────────────────────────────
-  // Submit-on-arrival safety net. Onboarding now submits from
-  // CreateCompanyScreen, but a draft can still reach this screen: that call
-  // failed, or the owner registered on an older build, or they abandoned
-  // onboarding half-way and signed back in (the server deliberately does not
-  // block `draft` at sign-in). A draft 403s every business request, so
-  // leaving one un-submitted strands the account — an administrator never
-  // sees it in the queue, because nobody ever asked them to.
-  const submitAttempted = React.useRef(false);
-  useEffect(() => {
-    // Must not run once the plan step is back: it would submit a company for
-    // approval before the owner had chosen anything, and the server would
-    // refuse it with PLAN_REQUIRED.
-    if (!BILLING_DISABLED_BUILD) return;
-    if (fromLogin || !isAuthenticated) return;
-    const status = user?.companyStatus;
-    const isDraft = status === 'draft' || status === 'email_verified';
-    if (!isDraft || !user?.companyId || submitAttempted.current) return;
-    submitAttempted.current = true;
-    let cancelled = false;
-    submitCompanyAPI(user.companyId)
-      .then(() => authMe())
-      .then(({ data }) => {
-        if (!cancelled) dispatch(setUser(data.user));
-      })
-      .catch(() => {
-        // Leave the waiting copy up rather than showing an error for work the
-        // owner did not ask for. "Check status" retries the whole thing.
-        submitAttempted.current = false;
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch, fromLogin, isAuthenticated, user?.companyId, user?.companyStatus]);
+  // A held free trial (we check a few) vs a request for approval.
+  const isTrialRequest =
+    route.params?.pendingKind === 'trial' || user?.pendingKind === 'trial';
 
   const backToSignIn = useCallback(() => {
     navigation.navigate('SignIn', { role });
@@ -249,11 +206,7 @@ const PendingApprovalScreen: React.FC = () => {
         message:
           status === 'rejected'
             ? 'Your registration was reviewed — see the details on the next screen.'
-            : isTrialRequest
-              ? 'Not activated yet. Your free trial request is with our team — usually within 24 hours. We will email you as soon as it is live.'
-                // BILLING-DISABLED BUILD: was "Your payment is with our team;
-              // we will email you as soon as it is verified."
-              : 'Not approved yet. Your registration is with our team; we will email you as soon as it is reviewed.'
+            : isTrialRequest ? LAUNCH.heldBody : LAUNCH.approvalPendingBody
       });
     } catch (e: any) {
       setNotice({ tone: 'error', message: e?.message ?? 'Could not refresh status' });
@@ -274,13 +227,8 @@ const PendingApprovalScreen: React.FC = () => {
     <AuthLayout
       header={
         <AuthHeader
-          pill={isTrialRequest ? 'Free Trial' : 'Pending Review'}
-          title={isTrialRequest ? 'Your free trial is being activated' : 'Awaiting approval'}
-          subtitle={
-            isTrialRequest
-              ? 'Activation usually takes less than 24 hours.'
-              : 'Your company registration is with our review team.'
-          }
+          pill={isTrialRequest ? LAUNCH.planOnTrial : 'Pending Review'}
+          title={isTrialRequest ? LAUNCH.heldTitle : LAUNCH.approvalPendingTitle}
           onBack={fromLogin ? backToSignIn : undefined}
         />
       }
@@ -300,11 +248,7 @@ const PendingApprovalScreen: React.FC = () => {
             label: fromLogin ? 'Use a different account' : 'Sign out',
             onPress: handleSignOut,
           }}
-          note={
-            isTrialRequest
-              ? 'Free trials are usually activated within 24 hours'
-              : 'Reviews are usually completed within one business day'
-          }
+          note={LAUNCH.trialCardNote}
         />
       }>
       {notice ? (
@@ -325,11 +269,8 @@ const PendingApprovalScreen: React.FC = () => {
           tone={approved ? 'success' : 'warning'}
         />
       </View>
-
-      <Text style={styles.body}>
-        {isTrialRequest
-          ? `Thanks${user?.displayName ? `, ${user.displayName}` : ''}! We've received your request for a 30-day free trial — every feature, with one delivery rider. Our team activates it within 24 hours, and a confirmation email is on its way. Your 30 days start when the trial is activated, so no time is lost while you wait.`
-          : `Thanks${user?.displayName ? `, ${user.displayName}` : ''}! Your company registration has been submitted and is being reviewed by our team. You'll get an email as soon as it's approved.`}
+      <Text style={[styles.body]} testID="pending-body">
+        {isTrialRequest ? LAUNCH.heldBody : LAUNCH.approvalPendingBody}
       </Text>
 
       <AuthTimeline
@@ -339,14 +280,14 @@ const PendingApprovalScreen: React.FC = () => {
                 { title: 'Company set up', detail: 'Email verified and company details received', done: true },
                 {
                   title: 'Free trial requested',
-                  detail: 'All features · 1 delivery rider · 30 days',
+                  detail: 'All features · 1 delivery rider',
                   done: true,
                 },
                 {
-                  title: approved ? 'Trial active' : 'Activation review',
+                  title: approved ? 'Trial active' : 'A quick check by our team',
                   detail: approved
-                    ? 'Sign in again — your 30 days have started'
-                    : 'Usually within 24 hours',
+                    ? 'Your trial has started'
+                    : 'Usually within a few hours. This screen moves on by itself.',
                   done: approved,
                 },
               ]

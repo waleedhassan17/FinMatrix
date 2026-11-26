@@ -9,7 +9,12 @@
 // to the sign-in screen instead of sitting on dead screens whose every
 // request 401s until the next cold start.
 
-type SessionExpiredHandler = () => void;
+/**
+ * `reason` is the server's code when it said why: ACCOUNT_SUSPENDED (a
+ * super-admin suspended this user) or SESSION_REVOKED (every session was
+ * ended). The handler words the sign-out message from it.
+ */
+type SessionExpiredHandler = (reason?: string) => void;
 
 let handler: SessionExpiredHandler | null = null;
 
@@ -17,9 +22,9 @@ export const setSessionExpiredHandler = (h: SessionExpiredHandler | null) => {
   handler = h;
 };
 
-export const emitSessionExpired = () => {
+export const emitSessionExpired = (reason?: string) => {
   if (isIntentionalSignOut()) return;
-  handler?.();
+  handler?.(reason);
 };
 
 // ─── Intentional sign-out ────────────────────────────────────────────────

@@ -152,7 +152,12 @@ api.interceptors.response.use(
     if (error.response?.status === 403) {
       const body: any = error.response.data;
       const code = body?.error?.code ?? body?.code;
-      if (code === 'COMPANY_NOT_ACTIVE') {
+      if (
+        code === 'COMPANY_NOT_ACTIVE' ||
+        code === 'TRIAL_ENDED' ||
+        code === 'SUBSCRIPTION_EXPIRED' ||
+        code === 'COMPANY_SUSPENDED'
+      ) {
         emitCompanyStatusStale();
       } else if (code === 'RIDER_SEAT_LOCKED') {
         emitRiderSeatLocked(
@@ -167,6 +172,18 @@ api.interceptors.response.use(
     // failure could clear the tokens of a sign-in made moments later.
     if (error.response?.status === 401 && !isAuthRoute && isIntentionalSignOut()) {
       return Promise.reject(error);
+    }
+
+    // Suspended, or every session ended by FinMatrix: a refresh would be
+    // refused too, so sign out now and say why.
+    if (error.response?.status === 401 && !isAuthRoute) {
+      const body: any = error.response.data;
+      const code = body?.error?.code ?? body?.code;
+      if (code === 'ACCOUNT_SUSPENDED' || code === 'SESSION_REVOKED') {
+        await clearTokens();
+        emitSessionExpired(code);
+        return Promise.reject(error);
+      }
     }
 
     // Only attempt refresh on 401 and if we haven't already retried
@@ -208,7 +225,8 @@ api.interceptors.response.use(
         // "Session expired" toast would be wrong during an intentional
         // sign-out.
         if (!url.includes('/auth/signout') && !url.includes('/auth/logout')) {
-          emitSessionExpired();
+          const rb: any = axios.isAxiosError(refreshError) ? refreshError.response?.data : undefined;
+          emitSessionExpired(rb?.error?.code ?? rb?.code);
         }
         return Promise.reject(refreshError);
       } finally {
@@ -233,6 +251,14 @@ export const extractErrorMessage = (error: any): string => {
       return `Server error (${status}). Please try again later.`;
     }
 
+    // The throttler's own text is a class name ("ThrottlerException: Too Many
+    // Requests"; older servers label it INTERNAL_ERROR), so a plain 429 gets
+    // our sentence. A 429 with its own code keeps the server's message.
+    const serverCode = data?.error?.code;
+    if (status === 429 && (!serverCode || serverCode === 'RATE_LIMIT' || serverCode === 'INTERNAL_ERROR')) {
+      return 'Too many attempts. Please wait a few minutes and try again.';
+    }
+
     // NestJS standard: { error: { message: '...' } }
     const serverMsg = data?.error?.message;
     if (serverMsg) return serverMsg;
@@ -241,7 +267,6 @@ export const extractErrorMessage = (error: any): string => {
       return Array.isArray(data.message) ? data.message.join(', ') : String(data.message);
     }
     if (status === 401) return 'Invalid email or password.';
-    if (status === 429) return 'Too many requests. Please wait a moment.';
     if (status === 403) return 'You do not have permission for this action.';
     if (status === 404) return 'Resource not found.';
     if (status === 502 || status === 503) return 'Server is temporarily unavailable. Please try again in a moment.';

@@ -19,8 +19,13 @@ export const subscriptionSummarySerializer = (raw: any): SubscriptionSummary | n
     isTrial: raw.isTrial === true,
     trialStartedAt: iso(raw.trialStartedAt),
     trialConvertedAt: iso(raw.trialConvertedAt),
+    subscriptionStatus: typeof raw.subscriptionStatus === 'string' ? raw.subscriptionStatus : undefined,
+    trialEnded: raw.trialEnded === true,
+    suspended: raw.suspended === true,
   };
 };
+
+const PENDING_KINDS = ['trial', 'approval', 'payment'] as const;
 
 export const userResponseSerializer = (
   backendUser: any,
@@ -29,6 +34,7 @@ export const userResponseSerializer = (
     companyType?: string | null;
     features?: Record<string, boolean> | null;
     subscription?: unknown;
+    pendingKind?: unknown;
   },
 ): User => ({
   uid: backendUser.id,
@@ -45,6 +51,9 @@ export const userResponseSerializer = (
   companyType: tier?.companyType ?? null,
   features: tier?.features ?? null,
   subscription: subscriptionSummarySerializer(tier?.subscription),
+  pendingKind: (PENDING_KINDS as readonly unknown[]).includes(tier?.pendingKind)
+    ? (tier?.pendingKind as User['pendingKind'])
+    : null,
   createdAt: backendUser.createdAt || new Date().toISOString(),
   updatedAt: backendUser.updatedAt || new Date().toISOString(),
 });

@@ -14,6 +14,8 @@ export interface SetupStatus {
     customers: boolean;
     vendors: boolean;
     taxRates: boolean;
+    /** Old books brought in through the Migration Center (a closed migration). */
+    migration?: boolean;
   };
 }
 

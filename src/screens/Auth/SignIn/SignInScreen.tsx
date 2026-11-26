@@ -146,7 +146,7 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
       const e = err as {
         code?: string;
         rejectionReason?: string | null;
-        pendingKind?: 'trial' | 'payment' | null;
+        pendingKind?: 'trial' | 'approval' | 'payment' | null;
       };
       // Route the server's gate codes to the screen that explains them.
       if (e?.code === 'EMAIL_NOT_VERIFIED') {
@@ -156,7 +156,7 @@ const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
           fromLogin: true,
           pendingKind: e?.pendingKind ?? undefined,
         });
-      } else if (e?.code === 'COMPANY_INACTIVE') {
+      } else if (e?.code === 'COMPANY_INACTIVE' || e?.code === 'COMPANY_SUSPENDED') {
         navigation.navigate('CompanyRejected', { fromLogin: true, mode: 'inactive' });
       } else if (e?.code === 'COMPANY_REJECTED') {
         navigation.navigate('CompanyRejected', {

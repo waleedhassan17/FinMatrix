@@ -38,6 +38,7 @@ export interface SetupStep {
    * compile error rather than a tap that does nothing.
    */
   screen:
+    | 'MigrationList'
     | 'OpeningBalance'
     | 'COAList'
     | 'InventoryForm'
@@ -51,6 +52,17 @@ export interface SetupStep {
 
 // Accounting order — each item routes to the EXISTING screen/flow.
 export const SETUP_STEPS: SetupStep[] = [
+  // First for a company moving from another system: the Migration Center
+  // brings opening balances, parties and stock in, checked to the rupee —
+  // and replaces the opening-balance step below for those who use it.
+  {
+    key: 'migration',
+    label: 'Bring your data from your old system',
+    hint: 'Tally, Peachtree/Sage 50, QuickBooks, Xero, Zoho or a spreadsheet',
+    icon: 'download-cloud',
+    screen: 'MigrationList',
+    optional: true
+  },
   {
     key: 'openingBalance',
     label: 'Add Opening Balances',
