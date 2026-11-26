@@ -21,6 +21,9 @@ import CreateCompanyScreen from '../screens/Auth/CreateCompany/CreateCompanyScre
 import JoinCompanyScreen from '../screens/Auth/JoinCompany/JoinCompanyScreen';
 import PendingApprovalScreen from '../screens/Auth/PendingApproval/PendingApprovalScreen';
 import CompanyRejectedScreen from '../screens/Auth/CompanyRejected/CompanyRejectedScreen';
+import StartPathScreen from '../screens/Auth/StartPath/StartPathScreen';
+import AccountStatusScreen from '../screens/Auth/AccountStatus/AccountStatusScreen';
+import BackupExportScreen from '../screens/Settings/BackupExport/BackupExportScreen';
 import AdminTabNavigator from '../navigators/AdminTabNavigator';
 // BILLING-DISABLED BUILD: the three subscription screens are no longer
 // registered on any branch. The files stay in the tree.
@@ -37,6 +40,9 @@ export const AuthRouteNames = {
   EmailVerification: 'EmailVerification',
   PendingApproval: 'PendingApproval',
   CompanyRejected: 'CompanyRejected',
+  StartPath: 'StartPath',
+  AccountStatus: 'AccountStatus',
+  BackupExport: 'BackupExport',
   // BILLING-DISABLED BUILD: un-comment with the route arrays below.
   // RenewSubscription: 'RenewSubscription',
   // SubscriptionPay: 'SubscriptionPay',
@@ -80,28 +86,16 @@ export const PENDING_ROUTES: IRoute[] = [
 ];
 
 /**
- * ── Admin: subscription expired / deactivated ──
+ * ── Admin: trial ended · plan ended · suspended · deactivated ──
  *
- * BILLING-DISABLED BUILD. The renew-only paywall (phase2.md Flow 2) was the
- * ONLY thing on this branch, so it could not simply be commented out: an
- * empty array makes Stack.Navigator throw "Couldn't find any screens for the
- * navigator", i.e. a white screen for any company a super-admin deactivates.
- *
- * So the branch now lands on CompanyRejectedScreen in its `inactive` mode,
- * which already says "Account deactivated — access is paused until an
- * administrator restores it" and offers sign-out. SignInScreen already sends
- * COMPANY_INACTIVE there too, so both paths converge on one screen.
- *
- * To restore: swap this array back to RENEW_ROUTES below and update the
- * import + usage in navigators/BaseNavigator.tsx.
+ * AccountStatus says which, and never that data is gone: an owner whose
+ * trial or plan ended can still download a full backup (Backup & export is
+ * registered here; the server lets owners reach it while lapsed), request
+ * activation or book a call. A suspension or deactivation points to support.
  */
 export const INACTIVE_ROUTES: IRoute[] = [
-  {
-    title: AuthRouteNames.CompanyRejected,
-    component: CompanyRejectedScreen,
-    options: { animation: 'none' },
-    initialParams: { mode: 'inactive' },
-  },
+  { title: AuthRouteNames.AccountStatus, component: AccountStatusScreen, options: { animation: 'none' } },
+  { title: AuthRouteNames.BackupExport, component: BackupExportScreen },
 ];
 
 // export const RENEW_ROUTES: IRoute[] = [
@@ -127,20 +121,14 @@ export const REJECTED_ROUTES: IRoute[] = [
 /**
  * ── Admin: company drafted ──
  *
- * BILLING-DISABLED BUILD. A draft used to resume at plan selection + submit.
- * With no plan step, the remaining work is the submit itself, so this branch
- * lands on PendingApproval — which auto-submits the draft on mount and then
- * shows the waiting screen.
- *
- * PendingApproval is not optional here. Left as just [AdminTabs] this branch
- * does not crash, but a draft company 403s every business request
- * (CompanyGuard: "Finish setting up your company to continue"), so the owner
- * would get a dashboard of failures with no way out.
+ * The company exists but nothing was chosen yet: the owner picks how to
+ * start — the free trial (instant when eligible) or a request for approval —
+ * on StartPath. An owner who left half-way resumes here. A draft 403s every
+ * business request, so AdminTabs is only reached once the server says active.
  */
 export const DRAFT_COMPANY_ROUTES: IRoute[] = [
+  { title: AuthRouteNames.StartPath, component: StartPathScreen, options: { animation: 'none' } },
   { title: AuthRouteNames.PendingApproval, component: PendingApprovalScreen, options: { animation: 'none' } },
-  // { title: AuthRouteNames.SubscriptionSelect, component: SubscriptionSelectScreen, options: { animation: 'none' } },
-  // { title: AuthRouteNames.SubscriptionPay, component: SubscriptionPayScreen },
   { title: AuthRouteNames.AdminTabs, component: AdminTabNavigator, options: { animation: 'none' } },
 ];
 
@@ -150,8 +138,9 @@ export const COMPANY_ONBOARDING_ROUTES: IRoute[] = [
   { title: AuthRouteNames.CompanyTypeSelect, component: CompanyTypeSelectScreen, options: { animation: 'none' } },
   { title: AuthRouteNames.CreateCompany, component: CreateCompanyScreen, options: { animation: 'none' } },
   { title: AuthRouteNames.JoinCompany, component: JoinCompanyScreen, options: { animation: 'none' } },
-  // BILLING-DISABLED BUILD: CreateCompany now submits for approval itself, so
-  // onboarding ends at PendingApproval rather than hopping to plan selection.
+  // CreateCompany marks the company a draft; the navigator then moves to the
+  // draft branch, which opens on StartPath (trial or approval).
+  { title: AuthRouteNames.StartPath, component: StartPathScreen },
   { title: AuthRouteNames.PendingApproval, component: PendingApprovalScreen },
   // { title: AuthRouteNames.SubscriptionSelect, component: SubscriptionSelectScreen },
   // { title: AuthRouteNames.SubscriptionPay, component: SubscriptionPayScreen },

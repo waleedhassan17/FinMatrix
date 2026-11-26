@@ -1,16 +1,25 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Free trial helpers
 // ═══════════════════════════════════════════════════════
-// Pure functions shared by the trial banner, the pending screen and the renew
-// screen, so "is this company trialing?" and "how many days are left?" are
-// answered the same way everywhere — and the same way the server answers them
-// (billing.service daysBetween rounds UP, so the last partial day shows as 1).
+// Pure functions shared by the trial banner, the pending screen and the
+// account screens, so "is this company trialing?" and "how many days are
+// left?" are answered the same way everywhere — and the same way the server
+// answers them: calendar days in Asia/Karachi (the reminders count them so).
 
 import type { SubscriptionSummary } from '../types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** Pakistan Standard Time is UTC+5 all year (no daylight saving). */
+const PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
 
-/** Whole days until `expiryDate`, rounded up; 0 once it has passed; null if unknown. */
+/** Midnight (UTC ms) of the Asia/Karachi calendar day `t` falls on. */
+const pktDay = (t: number): number => Math.floor((t + PKT_OFFSET_MS) / DAY_MS) * DAY_MS;
+
+/**
+ * Calendar days, in Asia/Karachi, from today to the day `expiryDate` falls
+ * on. A trial ending at 3 pm today has 0 days left (its last day); 0 once the
+ * moment has passed; null if unknown.
+ */
 export const daysUntil = (
   expiryDate: string | null | undefined,
   now: Date = new Date(),
@@ -18,22 +27,27 @@ export const daysUntil = (
   if (!expiryDate) return null;
   const t = new Date(expiryDate).getTime();
   if (!Number.isFinite(t)) return null;
-  return Math.max(0, Math.ceil((t - now.getTime()) / DAY_MS));
+  if (t <= now.getTime()) return 0;
+  return Math.round((pktDay(t) - pktDay(now.getTime())) / DAY_MS);
 };
 
 /**
- * Days left in a RUNNING trial — approved, never converted to paid, not yet
- * expired. null in every other state (pending request, paid, lapsed), which is
- * exactly when no countdown should be shown.
+ * Days left in a RUNNING trial — granted, never converted, not yet over. 0
+ * means today is its last day. null in every other state (a request in
+ * review, a paid plan, an ended trial), which is when no countdown shows.
  */
 export const trialDaysLeft = (
   subscription: SubscriptionSummary | null | undefined,
   now: Date = new Date(),
 ): number | null => {
   if (!subscription?.isTrial || subscription.trialConvertedAt) return null;
-  const days = daysUntil(subscription.expiryDate, now);
-  return days !== null && days > 0 ? days : null;
+  if (!subscription.expiryDate) return null;
+  if (new Date(subscription.expiryDate).getTime() <= now.getTime()) return null;
+  return daysUntil(subscription.expiryDate, now);
 };
+
+/** The banner turns urgent in the last days of a trial. */
+export const TRIAL_URGENT_DAYS = 3;
 
 /** The trial ran out and nothing was bought — the renew screen's trial wording. */
 export const isLapsedTrial = (

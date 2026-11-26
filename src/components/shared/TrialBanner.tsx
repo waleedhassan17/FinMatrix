@@ -1,10 +1,12 @@
 // ═══════════════════════════════════════════════════════
 // FinMatrix — Free trial countdown (app chrome)
 // ═══════════════════════════════════════════════════════
-// A slim strip above the owner's app while a free trial is RUNNING: approved,
-// not yet converted to a paid plan, not yet expired. Hidden in every other
-// state — a pending request has nothing to count down, and a paid company has
-// nothing to be reminded of.
+// A slim strip above the owner's app while a free trial is RUNNING: granted,
+// not yet converted, not yet over. Hidden in every other state. Days are
+// Asia/Karachi calendar days, like the server's reminders; it turns urgent in
+// the last 3. "Request activation" opens the activation sheet (no online
+// payment); once a request is in, the strip says so instead. English or Urdu,
+// following the reader's choice.
 //
 // No billing fetch of its own. The countdown reads `user.subscription`, which
 // signin and /auth/me already return; days are computed from the expiry date
@@ -25,7 +27,10 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { THEME } from '../../theme';
 import type { SubscriptionSummary } from '../../types';
-import { pluralDays, trialDaysLeft } from '../../utils/trial';
+import { TRIAL_URGENT_DAYS, trialDaysLeft } from '../../utils/trial';
+import { pick, rtlText, useLang } from '../../i18n/lang';
+import { fill, LAUNCH } from '../../i18n/launchStrings';
+import ActivationRequestModal from '../launch/ActivationRequestModal';
 
 const { colors, radius, spacing, typography } = THEME;
 
@@ -34,21 +39,29 @@ const REFRESH_MIN_INTERVAL_MS = 60_000;
 
 interface Props {
   subscription: SubscriptionSummary | null | undefined;
-  onSubscribe: () => void;
+  companyId: string | null | undefined;
   /** Re-read the session (dispatches bootstrapSession). */
   onForegroundRefresh: () => void;
   children: React.ReactNode;
 }
 
+export const trialLabel = (days: number, lang: 'en' | 'ur'): string =>
+  days <= 0
+    ? pick(LAUNCH.trialOneDayLeft, lang)
+    : days === 1
+      ? pick(LAUNCH.trialDayLeft, lang)
+      : fill(pick(LAUNCH.trialDaysLeft, lang), { n: days });
+
 const TrialBanner: React.FC<Props> = ({
   subscription,
-  onSubscribe,
+  companyId,
   onForegroundRefresh,
   children,
 }) => {
   const insets = useSafeAreaInsets();
+  const lang = useLang();
   const [now, setNow] = useState(() => new Date());
-  // Set when the banner first shows (the session was just fetched), not at render.
+  const [open, setOpen] = useState(false);
   const lastRefresh = useRef<number | null>(null);
   const days = trialDaysLeft(subscription, now);
   const visible = days !== null;
@@ -67,44 +80,48 @@ const TrialBanner: React.FC<Props> = ({
     return () => sub.remove();
   }, [visible, onForegroundRefresh]);
 
-  const paymentInReview = subscription?.paymentStatus === 'submitted';
-  const urgent = visible && (days as number) <= 7;
+  const inReview = subscription?.paymentStatus === 'submitted';
+  const urgent = visible && (days as number) <= TRIAL_URGENT_DAYS;
   const tone = urgent
     ? { bg: colors.warningLighter, fg: colors.warning }
     : { bg: colors.infoLight, fg: colors.info };
+  const label = visible ? trialLabel(days as number, lang) : '';
 
-  // The tree keeps the SAME shape whether or not the bar shows. Returning bare
-  // children when hidden would change the parents of the navigator, and React
-  // would remount it — throwing the owner back to the first tab the moment a
-  // trial converts or ends.
   return (
     <View style={S.root}>
       {visible && (
         <View
           style={[S.bar, { backgroundColor: tone.bg, paddingTop: insets.top + spacing.xs }]}
           accessibilityRole="summary"
+          testID="trial-banner"
         >
-          <Feather name={paymentInReview ? 'clock' : 'gift'} size={15} color={tone.fg} />
-          <Text style={[S.text, { color: tone.fg }]} numberOfLines={2}>
-            {paymentInReview
-              ? `Payment under review · ${pluralDays(days as number)} of trial left`
-              : `${pluralDays(days as number)} left in your free trial`}
+          <Feather name={inReview ? 'clock' : 'gift'} size={15} color={tone.fg} />
+          <Text style={[S.text, { color: tone.fg }, rtlText(lang)]} numberOfLines={2}>
+            {inReview ? `${label} · ${pick(LAUNCH.activationPending, lang)}` : label}
           </Text>
-          {!paymentInReview && (
+          {!inReview && companyId ? (
             <TouchableOpacity
               style={[S.cta, { backgroundColor: tone.fg }]}
-              onPress={onSubscribe}
+              onPress={() => setOpen(true)}
               accessibilityRole="button"
-              accessibilityLabel="Subscribe to a plan"
+              accessibilityLabel={pick(LAUNCH.requestActivation, lang)}
             >
-              <Text style={S.ctaText}>Subscribe</Text>
+              <Text style={S.ctaText}>{pick(LAUNCH.requestActivation, lang)}</Text>
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
       )}
       <SafeAreaInsetsContext.Provider value={visible ? { ...insets, top: 0 } : insets}>
         <View style={S.body}>{children}</View>
       </SafeAreaInsetsContext.Provider>
+      {companyId ? (
+        <ActivationRequestModal
+          companyId={companyId}
+          visible={open}
+          onClose={() => setOpen(false)}
+          onDone={onForegroundRefresh}
+        />
+      ) : null}
     </View>
   );
 };
