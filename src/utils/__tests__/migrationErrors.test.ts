@@ -10,9 +10,16 @@ describe('migrationErrorMessage', () => {
     expect(migrationErrorMessage('SOMETHING_NEW', 'Exact server text')).toBe('Exact server text');
     expect(migrationErrorMessage(undefined, '  ')).toMatch(/Something went wrong/);
   });
-  it('shows English while an Urdu entry is still a placeholder', () => {
-    expect(MIGRATION_ERRORS_UR.CHECK_FAILED).toMatch(/^TODO_UR/);
-    expect(migrationErrorMessage('CHECK_FAILED', null, 'ur')).toBe(MIGRATION_ERRORS_EN.CHECK_FAILED);
+  it('answers in Urdu when asked; every code has its own Urdu sentence', () => {
+    expect(migrationErrorMessage('CHECK_FAILED', null, 'ur')).toBe(MIGRATION_ERRORS_UR.CHECK_FAILED);
+    expect(migrationErrorMessage('CHECK_FAILED', null, 'en')).toBe(MIGRATION_ERRORS_EN.CHECK_FAILED);
+    for (const code of Object.keys(MIGRATION_ERRORS_EN)) {
+      expect(MIGRATION_ERRORS_UR[code]).toMatch(/[\u0600-\u06FF]/);
+    }
+  });
+  it('a trial that ended explains itself instead of a raw code', () => {
+    expect(migrationErrorMessage('TRIAL_ENDED', 'raw', 'en')).toMatch(/trial has ended/i);
+    expect(migrationErrorMessage('ACCOUNT_NOT_FOUND', 'raw', 'en')).toMatch(/chart of accounts/i);
   });
   it('covers every code the Migration Center and backup return', () => {
     for (const code of [
