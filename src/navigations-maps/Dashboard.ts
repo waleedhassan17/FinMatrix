@@ -45,6 +45,8 @@ import VendorFormScreen from '../screens/Vendors/VendorForm/VendorFormScreen';
 import InventoryFormScreen from '../screens/Inventory/InventoryForm/InventoryFormScreen';
 import GeneralJournalFormScreen from '../screens/GeneralJournal/GeneralJournalFormScreen';
 import OpeningBalanceScreen from '../screens/GeneralJournal/OpeningBalance/OpeningBalanceScreen';
+import MigrationListScreen from '../screens/Settings/Migration/MigrationListScreen';
+import MigrationBatchScreen from '../screens/Settings/Migration/MigrationBatchScreen';
 
 // ── Dashboard quick-action destinations ──
 // Registered here for exactly the reason described above, and the reason the
@@ -127,6 +129,8 @@ export const DashboardRouteNames = {
   // the bell on the dashboard header
   Notifications: 'Notifications',
   // setup checklist
+  MigrationList: 'MigrationList',
+  MigrationBatch: 'MigrationBatch',
   OpeningBalance: 'OpeningBalance',
   JournalEntryForm: 'JournalEntryForm',
   COAList: 'COAList',
@@ -181,6 +185,8 @@ export const DASHBOARD_ROUTES: IRoute[] = withSharedRecords([
   { title: DashboardRouteNames.Notifications, component: NotificationsScreen },
   { title: DashboardRouteNames.DaySummary, component: DaySummaryScreen },
   // setup checklist — see the import block above for why these are duplicated
+  { title: DashboardRouteNames.MigrationList, component: MigrationListScreen },
+  { title: DashboardRouteNames.MigrationBatch, component: MigrationBatchScreen },
   { title: DashboardRouteNames.OpeningBalance, component: OpeningBalanceScreen },
   { title: DashboardRouteNames.JournalEntryForm, component: GeneralJournalFormScreen },
   { title: DashboardRouteNames.COAList, component: COAListScreen },
