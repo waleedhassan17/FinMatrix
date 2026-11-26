@@ -5,6 +5,8 @@
 import { api, setTokens, setStoredCompanyId, clearTokens, getAccessToken, extractErrorMessage } from '../network/apiHelpers';
 import { clearIntentionalSignOut } from '../../utils/authEvents';
 import { userResponseSerializer } from '../../serializers/authSerializer';
+import { currentLang, pick } from '../../i18n/lang';
+import { LAUNCH_ERRORS } from '../../i18n/launchStrings';
 import { normalizePkPhone } from '../../utils/phone';
 
 // ─── Types ────────────────────────────────────────────
@@ -57,7 +59,7 @@ export class AuthError extends Error {
   companyStatus?: string | null;
   rejectionReason?: string | null;
   /** COMPANY_PENDING only: what is in review — a free-trial request or a payment. */
-  pendingKind?: 'trial' | 'payment' | null;
+  pendingKind?: 'trial' | 'approval' | 'payment' | null;
   /** WRONG_PORTAL only: the kind of account it is, so the UI can name its door. */
   accountType?: string | null;
   constructor(
@@ -67,7 +69,7 @@ export class AuthError extends Error {
     extra?: {
       companyStatus?: string | null;
       rejectionReason?: string | null;
-      pendingKind?: 'trial' | 'payment' | null;
+      pendingKind?: 'trial' | 'approval' | 'payment' | null;
       accountType?: string | null;
     },
   ) {
@@ -82,7 +84,13 @@ export class AuthError extends Error {
 }
 
 // Login-gate codes the server returns when a company is not active.
-const LOGIN_GATE_CODES = ['COMPANY_PENDING', 'COMPANY_INACTIVE', 'COMPANY_REJECTED'];
+const LOGIN_GATE_CODES = [
+  'COMPANY_PENDING',
+  'COMPANY_INACTIVE',
+  'COMPANY_REJECTED',
+  'COMPANY_SUSPENDED',
+  'ACCOUNT_SUSPENDED',
+];
 
 export const RATE_LIMITED_MESSAGE =
   'Too many sign-in attempts. Wait a few minutes and try again.';
@@ -138,7 +146,7 @@ export const authLogin = async ({
       portal: 'admin',
     });
     const responseData = response.data?.data ?? response.data;
-    const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription } = responseData;
+    const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription, pendingKind } = responseData;
     // The platform console is a separate app now, but the server still admits
     // it through this portal (see the comment above) and hands back a real
     // token. Refuse here, BEFORE setTokens, so nothing is persisted and there
@@ -169,7 +177,7 @@ export const authLogin = async ({
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
-    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription });
+    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription, pendingKind });
     return { data: user };
   } catch (e: any) {
     // An AuthError raised in the try above is a decision this function already
@@ -194,13 +202,18 @@ export const authLogin = async ({
     // Company-status login gate: pending / inactive / rejected → route to the
     // correct screen with the reason.
     if (LOGIN_GATE_CODES.includes(code)) {
-      throw new AuthError(err.message ?? 'Sign in is not available yet.', code, err.email, {
-        companyStatus: err.companyStatus ?? null,
-        rejectionReason: err.rejectionReason ?? null,
+      // A suspension is said in the reader's language (the server's
+      // sentence is English).
+      const said = code === 'ACCOUNT_SUSPENDED' || code === 'COMPANY_SUSPENDED'
+        ? pick(LAUNCH_ERRORS[code], currentLang())
+        : null;
+      throw new AuthError(said ?? err.message ?? 'Sign in is not available yet.', code, err.email, {
+        companyStatus: err.companyStatus ?? err.details?.companyStatus ?? null,
+        rejectionReason: err.rejectionReason ?? err.details?.rejectionReason ?? null,
         // The exception filter keeps only `details`, so that is where the
         // server says whether a trial request or a payment is in review.
         pendingKind:
-          err.details?.pendingKind === 'trial' || err.details?.pendingKind === 'payment'
+          ['trial', 'approval', 'payment'].includes(err.details?.pendingKind)
             ? err.details.pendingKind
             : null,
       });
@@ -233,7 +246,7 @@ export const authDeliveryLogin = async ({
       portal: signInInfo.portal,
     });
     const responseData = response.data?.data ?? response.data;
-    const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription } =
+    const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription, pendingKind } =
       responseData;
     if (!tokens?.accessToken) {
       throw new Error('Login succeeded but no token received. Please try again.');
@@ -247,7 +260,7 @@ export const authDeliveryLogin = async ({
     // Staff need companyStatus/companyType/features exactly as an owner does —
     // they mount a company navigator and their tier gates the same rows. The
     // rider path never used them, which is why they were dropped here.
-    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription });
+    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription, pendingKind });
     return { data: user };
   } catch (e: any) {
     console.warn('[authDeliveryLogin] error:', e?.response?.status, e?.response?.data ?? e?.message);
@@ -275,14 +288,14 @@ export const authRegister = async ({
       phone: normalizePkPhone(registerInfo.phone),
       role: 'admin',
     });
-    const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription } = response.data.data;
+    const { user: backendUser, tokens, companyId, companyStatus, companyType, features, subscription, pendingKind } = response.data.data;
     await setTokens(tokens.accessToken, tokens.refreshToken);
     // A new session starts: its 401s are real and must be handled.
     clearIntentionalSignOut();
     if (companyId) {
       await setStoredCompanyId(companyId);
     }
-    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription });
+    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription, pendingKind });
     return { data: user };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));
@@ -294,8 +307,8 @@ export const authRegister = async ({
 export const authMe = async () => {
   try {
     const response = await api.get('/auth/me');
-    const { user: backendUser, companies, companyId, companyStatus, companyType, features, subscription } = response.data.data;
-    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription });
+    const { user: backendUser, companies, companyId, companyStatus, companyType, features, subscription, pendingKind } = response.data.data;
+    const user = mapUser(backendUser, companyStatus, { companyType, features, subscription, pendingKind });
     return { data: { user, companies, companyId } };
   } catch (e: any) {
     throw new Error(extractErrorMessage(e));

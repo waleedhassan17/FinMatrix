@@ -15,6 +15,8 @@ import {
 } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { currentLang, pick } from '../../i18n/lang';
+import { LAUNCH, LAUNCH_ERRORS } from '../../i18n/launchStrings';
 import { useAppDispatch, useAppSelector } from '../../hooks/useReduxHooks';
 import type { RootStackParamList } from '../../types';
 
@@ -26,7 +28,7 @@ import SmallBusinessNavigator from '../../navigators/tiers/SmallBusinessNavigato
 import LargeOrgNavigator from '../../navigators/tiers/LargeOrgNavigator';
 import SplashOverlay from '../../screens/Splash/SplashScreen';
 // BILLING-DISABLED BUILD: un-comment with the wrapper in renderNavigator().
-// import TrialBanner from '../shared/TrialBanner';
+import TrialBanner from '../shared/TrialBanner';
 
 import { bootstrapSession, selectIsAppReady } from './appContainerSlice';
 import {
@@ -112,12 +114,14 @@ export const AppContainer: React.FC = () => {
   // the navigator switches back to sign-in instead of leaving the user on
   // authenticated screens whose every request fails.
   useEffect(() => {
-    setSessionExpiredHandler(() => {
+    setSessionExpiredHandler(reason => {
       dispatch(signOut());
+      // Suspended or revoked by FinMatrix: say so, in the reader's language.
+      const said = reason ? LAUNCH_ERRORS[reason] : undefined;
       Toast.show({
-        type: 'info',
-        text1: 'Session expired',
-        text2: 'Please sign in again.',
+        type: said ? 'error' : 'info',
+        text1: said ? pick(LAUNCH.signedOut, currentLang()) : 'Session expired',
+        text2: said ? pick(said, currentLang()) : 'Please sign in again.',
       });
     });
     return () => setSessionExpiredHandler(null);
@@ -154,23 +158,11 @@ export const AppContainer: React.FC = () => {
     return () => setRiderSeatLockedHandler(null);
   }, [dispatch]);
 
-  // BILLING-DISABLED BUILD: both of these existed only for the TrialBanner
-  // below, and its Subscribe target is no longer a registered route.
-  //
-  // // One /auth/me re-read when a trialing owner returns to the app, so an
-  // // approval or conversion that happened meanwhile is reflected.
-  // const refreshSession = React.useCallback(() => {
-  //   dispatch(bootstrapSession());
-  // }, [dispatch]);
-  //
-  // // The trial banner's Subscribe → the plan chooser in the More stack.
-  // const openSubscribe = React.useCallback(() => {
-  //   if (!navigationRef.isReady()) return;
-  //   (navigationRef.navigate as (...args: unknown[]) => void)('MoreStack', {
-  //     screen: 'RenewSubscription',
-  //     params: { mode: 'change' },
-  //   });
-  // }, []);
+  // One /auth/me re-read when a trialing owner returns to the app, so an
+  // extension, conversion or activation that happened meanwhile shows.
+  const refreshSession = React.useCallback(() => {
+    dispatch(bootstrapSession());
+  }, [dispatch]);
 
   // ─── Clear auth form slices when user becomes authenticated ──
   useEffect(() => {
@@ -225,20 +217,18 @@ export const AppContainer: React.FC = () => {
       // Restore the three-tier switch by flipping WAREHOUSE_ONLY_BUILD in
       // utils/featureGates.ts and un-commenting the block below.
       if (WAREHOUSE_ONLY_BUILD) {
-        // BILLING-DISABLED BUILD: no trials exist, so the TrialBanner wrapper
-        // is gone. The `key` stays on the navigator so the tree keeps the same
-        // shape it had inside the banner and nothing remounts.
-        return <AdminTabNavigator key="tier-admin" />;
-        // return (
-        //   <TrialBanner
-        //     key="tier-admin"
-        //     subscription={user.subscription}
-        //     onSubscribe={openSubscribe}
-        //     onForegroundRefresh={refreshSession}
-        //   >
-        //     <AdminTabNavigator />
-        //   </TrialBanner>
-        // );
+        // The free-trial countdown sits above the owner's app; it renders
+        // nothing (but keeps the tree's shape) when no trial is running.
+        return (
+          <TrialBanner
+            key="tier-admin"
+            subscription={user.subscription}
+            companyId={user.companyId}
+            onForegroundRefresh={refreshSession}
+          >
+            <AdminTabNavigator />
+          </TrialBanner>
+        );
       }
 
       // ── Three-tier model (FinMatrix.md): small_business / large_org mount
